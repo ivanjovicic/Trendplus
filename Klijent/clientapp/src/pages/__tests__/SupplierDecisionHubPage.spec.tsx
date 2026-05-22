@@ -124,8 +124,8 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    expect(screen.getByText(/Skorkarta dobavljača/i)).toBeInTheDocument();
-    expect(screen.getByText(/Šta meri Skorkarta/i)).toBeInTheDocument();
+    expect(screen.getByText(/Skorkarta dobavljac/i)).toBeInTheDocument();
+    expect(screen.getByText(/meri Skorkarta/i)).toBeInTheDocument();
     expect(screen.getByText("Period")).toBeInTheDocument();
     expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Trend pune cene/i).length).toBeGreaterThan(0);

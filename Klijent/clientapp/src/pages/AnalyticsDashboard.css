@@ -215,6 +215,10 @@
 }
 
 .decision-cockpit-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
@@ -228,6 +232,20 @@
   margin: 6px 0 0;
   color: var(--text-secondary, var(--muted));
   font-size: 13px;
+}
+
+.decision-all-actions-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-primary, #2563eb);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.decision-all-actions-link:hover {
+  text-decoration: underline;
 }
 
 .decision-action-list {
@@ -345,6 +363,12 @@
   flex-wrap: wrap;
 }
 
+.decision-action-error {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--text-error, #ff6c6c);
+}
+
 .btn-add-to-queue {
   font-size: 11px;
   font-weight: 600;
@@ -399,6 +423,13 @@
   .analytics-skeleton-grid,
   .analytics-card-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .decision-cockpit-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

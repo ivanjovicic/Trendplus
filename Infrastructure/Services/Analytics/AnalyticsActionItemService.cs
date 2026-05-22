@@ -239,13 +239,17 @@ public sealed class AnalyticsActionItemService
             item.ResolvedAtUtc = null;
         }
 
-        // Store note in metadata if provided
+        // Store note in description if provided (phase 1, no DB schema change)
         if (!string.IsNullOrWhiteSpace(note))
         {
-            // Append note to description for simplicity
+            var normalizedNote = note.Trim();
+            var noteStamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm");
+            var formattedNote = $"[Napomena {noteStamp}]: {normalizedNote}";
+
+            // Append note to description with explicit timestamp format.
             item.Description = string.IsNullOrWhiteSpace(item.Description)
-                ? note
-                : $"{item.Description}\n\n[Napomena]: {note}";
+                ? formattedNote
+                : $"{item.Description}\n\n{formattedNote}";
         }
 
         await _db.SaveChangesAsync(ct);

@@ -43,6 +43,10 @@ export const analyticsMetricDescriptions = {
     "Completeness pokazuje da li su kljucna polja potrebna za analitiku popunjena i upotrebljiva.",
   recommendation:
     "Preporuka je pomocni signal za fokus, a ne automatska odluka. Tumaci se zajedno sa razlogom preporuke, marzom, PoP trendom i pokrivenoscu podataka.",
+  recommendationReason:
+    "Razlog preporuke objasnjava koji su signali doveli do odluke (trend, marza, zaliha, kvalitet podataka).",
+  reasonCodes:
+    "Reason codes su kratke backend oznake signala (npr. stock_gap, low_cost_coverage, stale_sales) za audit i brze provere.",
 } as const;
 
 export const canonicalTerms = {
@@ -52,6 +56,8 @@ export const canonicalTerms = {
   marginPct: { label: "Marza %", desc: analyticsMetricDescriptions.marginPct },
   popChange: { label: "PoP promena", desc: analyticsMetricDescriptions.popRevenueChangePct },
   recommendation: { label: "Preporuka", desc: analyticsMetricDescriptions.recommendation },
+  recommendationReason: { label: "Razlog preporuke", desc: analyticsMetricDescriptions.recommendationReason },
+  reasonCodes: { label: "Reason codes", desc: analyticsMetricDescriptions.reasonCodes },
   confidence: { label: "Pouzdanost", desc: analyticsMetricDescriptions.confidencePct },
   recommendationSafety: { label: "Sigurnost preporuke", desc: analyticsMetricDescriptions.recommendationSafety },
   reliabilityPct: { label: RECOMMENDATION_RELIABILITY_LABEL, desc: RECOMMENDATION_RELIABILITY_TOOLTIP },

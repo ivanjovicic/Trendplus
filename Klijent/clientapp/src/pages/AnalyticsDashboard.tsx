@@ -7,6 +7,8 @@ import {
   upsertAnalyticsAction,
 } from "../services/analyticsApi";
 import type {
+  AnalyticsActionSourceType,
+  AnalyticsActionUpsertInput,
   CategoryData,
   DailySale,
   DashboardAdvancedSnapshot,
@@ -120,6 +122,118 @@ function decisionPriorityRank(priority?: string | null): number {
   return 3;
 }
 
+type DashboardActionFilters = {
+  fromDate: string;
+  toDate: string;
+  storeId?: number;
+  supplierId?: number;
+};
+
+const DASHBOARD_ACTION_SOURCE_TYPES: AnalyticsActionSourceType[] = [
+  "dashboard",
+  "product",
+  "supplier",
+  "inventory",
+  "nivelacija",
+  "data_quality",
+];
+
+function formatActionDateKey(value: string): string {
+  if (!value) return "all";
+  return value.slice(0, 10);
+}
+
+function sanitizeActionKeyPart(value: string | null | undefined): string {
+  const normalized = (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(" ", "_")
+    .replaceAll("-", "_");
+
+  const sanitized = normalized.replace(/[^a-z0-9_]/g, "");
+  return sanitized || "signal";
+}
+
+function resolveDashboardActionUrl(action: DashboardDecisionAction): string {
+  const value = action.actionUrl?.trim() || action.link?.trim();
+  return value || "/analytics";
+}
+
+function inferDashboardActionSourceType(action: DashboardDecisionAction): AnalyticsActionSourceType {
+  const explicit = (action.sourceType ?? "").trim().toLowerCase();
+  if ((DASHBOARD_ACTION_SOURCE_TYPES as string[]).includes(explicit)) {
+    return explicit as AnalyticsActionSourceType;
+  }
+
+  const url = resolveDashboardActionUrl(action).toLowerCase();
+  if (url.includes("/analytics/products")) return "product";
+  if (url.includes("/analytics/inventory")) return "inventory";
+  if (url.includes("/analytics/supplier")) return "supplier";
+  if (url.includes("/analytics/data-quality")) return "data_quality";
+  if (url.includes("/analytics/pre-nivelacija-prioriteti")) return "nivelacija";
+  return "dashboard";
+}
+
+function resolveDashboardActionType(action: DashboardDecisionAction): string {
+  if (action.recommendationStatus?.trim()) {
+    return sanitizeActionKeyPart(action.recommendationStatus);
+  }
+
+  return sanitizeActionKeyPart(action.title);
+}
+
+function buildDashboardFallbackActionKey(
+  action: DashboardDecisionAction,
+  filters: DashboardActionFilters,
+): string {
+  const sourceType = inferDashboardActionSourceType(action);
+  const actionType = resolveDashboardActionType(action);
+  const periodFrom = formatActionDateKey(filters.fromDate);
+  const periodTo = formatActionDateKey(filters.toDate);
+  const storePart = filters.storeId == null ? "all" : String(filters.storeId);
+  const supplierPart = filters.supplierId == null ? "all" : String(filters.supplierId);
+  return `${sourceType}:${actionType}:${periodFrom}:${periodTo}:${storePart}:${supplierPart}`;
+}
+
+function buildAnalyticsActionFromDashboardAction(
+  action: DashboardDecisionAction,
+  filters: DashboardActionFilters,
+): AnalyticsActionUpsertInput {
+  const sourceType = inferDashboardActionSourceType(action);
+  const actionUrl = resolveDashboardActionUrl(action);
+  const sourceKey = action.actionKey?.trim() || buildDashboardFallbackActionKey(action, filters);
+  const priority = action.priority === "P1" || action.priority === "P2" || action.priority === "P3"
+    ? action.priority
+    : "P3";
+  const actionType = resolveDashboardActionType(action);
+  const periodFrom = formatActionDateKey(filters.fromDate);
+  const periodTo = formatActionDateKey(filters.toDate);
+  const metadata = {
+    ...(action.metadata ?? {}),
+    sourceType,
+    actionType,
+    periodFrom,
+    periodTo,
+    storeId: filters.storeId ?? "all",
+    supplierId: filters.supplierId ?? "all",
+  };
+
+  return {
+    sourceType,
+    sourceKey,
+    title: action.title,
+    description: action.description?.trim() || action.statusReason?.trim() || action.reason,
+    recommendationStatus: action.recommendationStatus ?? undefined,
+    priority,
+    impactEstimateRsd: action.impactEstimateRsd ?? undefined,
+    confidencePct: action.confidencePct ?? undefined,
+    reliabilityPct: action.reliabilityPct ?? undefined,
+    dataQualityStatus: normalizeDataQualityStatus(action.dataQualityStatus),
+    actionUrl,
+    metadataJson: JSON.stringify(metadata),
+  };
+}
+
 function mapLegacyActionLink(title: string): string {
   const normalized = title.trim().toLowerCase();
   if (normalized.includes("replenishment")) return "/analytics/inventory";
@@ -138,14 +252,20 @@ function buildFallbackDecisionActionsFromAdvanced(advanced: DashboardAdvancedSna
     const dataQualityStatus = normalizeRecommendationQualityStatus(item.dataQualityStatus);
 
     return {
+      sourceType: inferDashboardActionSourceType({ priority: item.priority || "P3", title: item.title || "", reason: item.recommendation || "", link: mapLegacyActionLink(item.title || "") }),
       priority: item.priority || "P3",
       title: item.title || "Operativna akcija",
+      description: item.recommendation || "Potrebna je dodatna provera signala.",
       reason: item.recommendation || "Potrebna je dodatna provera signala.",
       statusReason: item.statusReason || item.recommendation || "Pouzdanost preporuke nije dostupna.",
+      recommendationStatus: null,
       expectedImpact: null,
+      impactEstimateRsd: null,
       confidencePct,
       reliabilityPct,
       dataQualityStatus,
+      actionUrl: mapLegacyActionLink(item.title || ""),
+      metadata: { legacyAction: true },
       link: mapLegacyActionLink(item.title || ""),
       linkLabel: dataQualityStatus !== "good" ? "Otvori kvalitet podataka" : "Otvori povezani ekran",
     };
@@ -277,6 +397,8 @@ export default function AnalyticsDashboard() {
   const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
   const [decisionActions, setDecisionActions] = useState<DashboardDecisionAction[]>([]);
   const [addedToQueueKeys, setAddedToQueueKeys] = useState<Set<string>>(new Set());
+  const [queueBusyKeys, setQueueBusyKeys] = useState<Set<string>>(new Set());
+  const [queueErrorsByKey, setQueueErrorsByKey] = useState<Record<string, string>>({});
   const [healthText, setHealthText] = useState("");
   const [topTab, setTopTab] = useState<TopTabKey>("revenue");
   const [errors, setErrors] = useState<string[]>([]);
@@ -521,6 +643,19 @@ export default function AnalyticsDashboard() {
     [decisionActions]
   );
 
+  const currentActionFilters = useMemo<DashboardActionFilters>(() => ({
+    fromDate,
+    toDate,
+    storeId,
+    supplierId,
+  }), [fromDate, storeId, supplierId, toDate]);
+
+  const getDecisionActionCardKey = useCallback((action: DashboardDecisionAction, index: number) => {
+    const explicit = action.actionKey?.trim();
+    if (explicit) return explicit;
+    return `${buildDashboardFallbackActionKey(action, currentActionFilters)}:${index}`;
+  }, [currentActionFilters]);
+
   const categoryPieData = useMemo(() => {
     const totals = new Map<string, number>();
     for (const item of categoryData) totals.set(item.kategorija, (totals.get(item.kategorija) ?? 0) + item.totalRevenue);
@@ -700,8 +835,11 @@ export default function AnalyticsDashboard() {
 
       <section className="analytics-panel analytics-decision-cockpit">
         <div className="decision-cockpit-head">
-          <h2>Najvaznije odluke</h2>
-          <p>Prioriteti generisani iz prodaje, zaliha, marze i kvaliteta podataka.</p>
+          <div>
+            <h2>Najvaznije odluke</h2>
+            <p>Prioriteti generisani iz prodaje, zaliha, marze i kvaliteta podataka.</p>
+          </div>
+          <Link to="/analytics/actions" className="decision-all-actions-link">Vidi sve akcije</Link>
         </div>
         {loading ? (
           <div className="analytics-skeleton-grid">
@@ -711,9 +849,16 @@ export default function AnalyticsDashboard() {
           <div className="analytics-empty warning">Nema dovoljno pouzdanih podataka za automatske odluke.</div>
         ) : (
           <div className="decision-action-list">
-            {prioritizedDecisionActions.map((action, index) => (
+            {prioritizedDecisionActions.map((action, index) => {
+              const cardKey = getDecisionActionCardKey(action, index);
+              const isQueued = addedToQueueKeys.has(cardKey);
+              const isQueueBusy = queueBusyKeys.has(cardKey);
+              const queueError = queueErrorsByKey[cardKey];
+              const actionLink = resolveDashboardActionUrl(action);
+
+              return (
               <article
-                key={`${action.priority}-${action.title}-${index}`}
+                key={cardKey}
                 className={`decision-action-card priority-${(action.priority || "P3").toLowerCase()}`}
               >
                 <div className="decision-action-top">
@@ -721,7 +866,11 @@ export default function AnalyticsDashboard() {
                   <strong>{action.title}</strong>
                 </div>
                 <p className="decision-action-reason">{action.reason}</p>
-                {action.expectedImpact ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p> : null}
+                {action.expectedImpact
+                  ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p>
+                  : action.impactEstimateRsd != null
+                    ? <p className="decision-action-impact">Procenjeni uticaj: {fmtRsd(action.impactEstimateRsd, 0, "N/A")}</p>
+                    : null}
                 <div className="decision-action-foot">
                   <div className="decision-quality-stack">
                     <span className="decision-confidence">
@@ -741,38 +890,55 @@ export default function AnalyticsDashboard() {
                     {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
                   </div>
                   <div className="decision-action-links">
-                    <Link to={action.link} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                    <Link to={actionLink} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
                     <button
                       type="button"
-                      className={`btn-add-to-queue${addedToQueueKeys.has(`${action.priority}|${action.title}`) ? " added" : ""}`}
+                      className={`btn-add-to-queue${isQueued ? " added" : ""}`}
                       title="Dodaj u centralni red akcija"
+                      disabled={isQueueBusy || isQueued}
                       onClick={async (e) => {
                         e.stopPropagation();
-                        const key = `dashboard|${action.priority}|${action.title}`;
+                        if (isQueueBusy || isQueued) return;
+                        setQueueBusyKeys((prev) => {
+                          const next = new Set(prev);
+                          next.add(cardKey);
+                          return next;
+                        });
+                        setQueueErrorsByKey((prev) => {
+                          if (!(cardKey in prev)) return prev;
+                          const { [cardKey]: _discard, ...rest } = prev;
+                          return rest;
+                        });
                         try {
-                          await upsertAnalyticsAction({
-                            sourceType: "dashboard",
-                            sourceKey: key,
-                            title: action.title,
-                            description: action.reason,
-                            priority: (action.priority === "P1" || action.priority === "P2" || action.priority === "P3") ? action.priority : "P3",
-                            confidencePct: action.confidencePct ?? undefined,
-                            reliabilityPct: action.reliabilityPct ?? undefined,
-                            dataQualityStatus: normalizeDataQualityStatus(action.dataQualityStatus) ?? undefined,
-                            actionUrl: action.link,
+                          const actionInput = buildAnalyticsActionFromDashboardAction(action, currentActionFilters);
+                          await upsertAnalyticsAction(actionInput);
+                          setAddedToQueueKeys((prev) => {
+                            const next = new Set(prev);
+                            next.add(cardKey);
+                            return next;
                           });
-                          setAddedToQueueKeys((prev) => new Set([...prev, `${action.priority}|${action.title}`]));
-                        } catch {
-                          // silently ignore — not critical
+                        } catch (reason) {
+                          setQueueErrorsByKey((prev) => ({
+                            ...prev,
+                            [cardKey]: getErrorText(reason, "Akcija nije dodata u centralni red."),
+                          }));
+                        } finally {
+                          setQueueBusyKeys((prev) => {
+                            const next = new Set(prev);
+                            next.delete(cardKey);
+                            return next;
+                          });
                         }
                       }}
                     >
-                      {addedToQueueKeys.has(`${action.priority}|${action.title}`) ? "✓ Dodato" : "+ Dodaj u akcije"}
+                      {isQueueBusy ? "Dodajem..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                     </button>
+                    {queueError ? <small className="decision-action-error">{queueError}</small> : null}
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

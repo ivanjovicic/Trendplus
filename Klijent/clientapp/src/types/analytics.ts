@@ -143,14 +143,21 @@ export interface DashboardAction {
 }
 
 export interface DashboardDecisionAction {
+  actionKey?: string | null;
+  sourceType?: AnalyticsActionSourceType | null;
   priority: "P1" | "P2" | "P3" | string;
   title: string;
+  description?: string | null;
   reason: string;
   statusReason?: string | null;
+  recommendationStatus?: string | null;
   expectedImpact?: string | null;
+  impactEstimateRsd?: number | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  actionUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
   link: string;
   linkLabel?: string | null;
 }
@@ -242,11 +249,14 @@ export interface ProductDecisionCenterItem {
   daysSinceLastSale?: number | null;
   trendPct?: number | null;
   lostSalesEstimate: number;
+  slowStockCapital?: number | null;
   dataQualityStatus: string;
   confidencePct: number;
+  reliabilityPct?: number | null;
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
   recommendationReason: string;
+  reasonCodes?: string[] | null;
   recommendedAction: string;
 }
 

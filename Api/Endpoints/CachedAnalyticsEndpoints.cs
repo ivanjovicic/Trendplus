@@ -2814,7 +2814,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P1",
                 title: "Dopuni artikle sa visokim velocity i niskom zalihom",
                 impactTemplate: "Smanjenje procenjene izgubljene prodaje oko {0} RSD.",
-                link: BuildDashboardActionLink("/analytics/inventory", fromDate, toDate, storeId, supplierId));
+                sourceType: "inventory",
+                actionPath: "/analytics/inventory",
+                actionTypeKey: "replenish",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
 
             TryAddDecisionActionFromRows(
                 actions,
@@ -2825,7 +2831,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P1",
                 title: "Proveri artikle bez dobavljača, nabavne cene ili kategorije",
                 impactTemplate: "Bez ispravke podataka preporuke ostaju nepouzdane za {0} RSD prometa.",
-                link: BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId));
+                sourceType: "data_quality",
+                actionPath: "/analytics/data-quality",
+                actionTypeKey: "fix_data",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
 
             TryAddDecisionActionFromRows(
                 actions,
@@ -2836,7 +2848,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P1",
                 title: "Snizi artikle sa starom zalihom i slabom prodajom",
                 impactTemplate: "Ubrzanje obrta na sporoj zalihi vrednoj oko {0} RSD.",
-                link: BuildDashboardActionLink("/analytics/pre-nivelacija-prioriteti", fromDate, toDate, storeId, supplierId));
+                sourceType: "nivelacija",
+                actionPath: "/analytics/pre-nivelacija-prioriteti",
+                actionTypeKey: "markdown",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
 
             TryAddDecisionActionFromRows(
                 actions,
@@ -2847,7 +2865,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P2",
                 title: "Pojačaj artikle sa rastom i zdravom maržom",
                 impactTemplate: "Potencijal dodatnog rasta kroz artikle sa prometom oko {0} RSD.",
-                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+                sourceType: "product",
+                actionPath: "/analytics/products",
+                actionTypeKey: "boost",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
 
             TryAddDecisionActionFromRows(
                 actions,
@@ -2858,7 +2882,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P2",
                 title: "Zaustavi porudžbine artikala sa padom i viškom zalihe",
                 impactTemplate: "Smanjenje vezanog kapitala na artiklima vrednim oko {0} RSD.",
-                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+                sourceType: "product",
+                actionPath: "/analytics/products",
+                actionTypeKey: "do_not_order",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
 
             TryAddDecisionActionFromRows(
                 actions,
@@ -2869,7 +2899,13 @@ public static class CachedAnalyticsEndpoints
                 priority: "P3",
                 title: "Proveri artikle sa velikim padom ili nedovoljno signala",
                 impactTemplate: "Potrebna ručna provera za grupu artikala sa prometom oko {0} RSD.",
-                link: BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId));
+                sourceType: "product",
+                actionPath: "/analytics/products",
+                actionTypeKey: "insufficient_data",
+                fromDate: fromDate,
+                toDate: toDate,
+                storeId: storeId,
+                supplierId: supplierId);
         }
 
         if (actions.Count == 0 && advancedSnapshot?.Actions is { Count: > 0 })
@@ -2877,16 +2913,34 @@ public static class CachedAnalyticsEndpoints
             foreach (var action in advancedSnapshot.Actions.Take(4))
             {
                 var mappedLink = MapLegacyAdvancedActionLink(action.Title, fromDate, toDate, storeId, supplierId);
+                var sourceType = ResolveDashboardSourceTypeFromActionUrl(mappedLink);
+                var actionTypeKey = BuildDashboardActionTypeKey(action.Title);
+                var sourceKey = BuildDashboardActionSourceKey(sourceType, actionTypeKey, fromDate, toDate, storeId, supplierId);
                 actions.Add(new DashboardDecisionActionDto
                 {
+                    ActionKey = sourceKey,
+                    SourceType = sourceType,
                     Priority = string.IsNullOrWhiteSpace(action.Priority) ? "P3" : action.Priority,
                     Title = TranslateLegacyActionTitle(action.Title),
+                    Description = action.Recommendation,
                     Reason = action.Recommendation,
                     StatusReason = action.Recommendation,
+                    RecommendationStatus = null,
                     ExpectedImpact = null,
+                    ImpactEstimateRsd = null,
                     ConfidencePct = null,
                     ReliabilityPct = null,
                     DataQualityStatus = "insufficient_data",
+                    ActionUrl = mappedLink,
+                    Metadata = new Dictionary<string, object?>
+                    {
+                        ["actionType"] = actionTypeKey,
+                        ["periodFrom"] = FormatDashboardActionDate(fromDate),
+                        ["periodTo"] = FormatDashboardActionDate(toDate),
+                        ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture) ?? "all",
+                        ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all",
+                        ["legacyAction"] = true
+                    },
                     Link = mappedLink,
                     LinkLabel = "Otvori povezani ekran"
                 });
@@ -2909,7 +2963,13 @@ public static class CachedAnalyticsEndpoints
         string priority,
         string title,
         string impactTemplate,
-        string link)
+        string sourceType,
+        string actionPath,
+        string actionTypeKey,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
     {
         var candidates = rows
             .Where(x => x.RecommendationStatus == recommendationStatus)
@@ -2933,24 +2993,100 @@ public static class CachedAnalyticsEndpoints
         var avgConfidence = reliable.Count > 0
             ? (int)Math.Round(reliable.Average(x => x.ConfidencePct), MidpointRounding.AwayFromZero)
             : 0;
+        var avgReliability = reliable.Count > 0
+            ? (int?)Math.Round(reliable.Average(x => x.ReliabilityPct ?? 0), MidpointRounding.AwayFromZero)
+            : null;
 
         var impactedRevenue = reliable.Sum(x => x.Revenue);
+        var impactEstimateRsd = Math.Round(impactedRevenue, 2);
         var reason = $"{reliable.Count} artikala imaju signal '{exemplar.RecommendationLabel}'. Primer: {exemplar.ProductName} ({exemplar.RecommendationReason})";
         var impact = string.Format(CultureInfo.InvariantCulture, impactTemplate, Math.Round(impactedRevenue, 0).ToString("0", CultureInfo.InvariantCulture));
+        var actionUrl = BuildDashboardActionLink(actionPath, fromDate, toDate, storeId, supplierId);
+        var sourceKey = BuildDashboardActionSourceKey(sourceType, actionTypeKey, fromDate, toDate, storeId, supplierId);
 
         actions.Add(new DashboardDecisionActionDto
         {
+            ActionKey = sourceKey,
+            SourceType = sourceType,
             Priority = priority,
             Title = title,
+            Description = exemplar.RecommendationReason,
             Reason = reason,
             StatusReason = exemplar.RecommendationReason,
+            RecommendationStatus = recommendationStatus,
             ExpectedImpact = impact,
+            ImpactEstimateRsd = impactEstimateRsd,
             ConfidencePct = avgConfidence,
-            ReliabilityPct = null, // TODO: Extend ProductDecisionCenterRowDto with backend reliabilityPct for dashboard action quality context.
+            ReliabilityPct = avgReliability,
             DataQualityStatus = string.IsNullOrWhiteSpace(exemplar.DataQualityStatus) ? "insufficient_data" : exemplar.DataQualityStatus,
-            Link = link,
+            ActionUrl = actionUrl,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["actionType"] = actionTypeKey,
+                ["recommendationStatus"] = recommendationStatus,
+                ["periodFrom"] = FormatDashboardActionDate(fromDate),
+                ["periodTo"] = FormatDashboardActionDate(toDate),
+                ["storeId"] = storeId?.ToString(CultureInfo.InvariantCulture) ?? "all",
+                ["supplierId"] = supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all",
+                ["candidateCount"] = reliable.Count,
+                ["exemplarProductId"] = exemplar.ProductId,
+                ["exemplarSku"] = exemplar.Sku
+            },
+            Link = actionUrl,
             LinkLabel = "Otvori detalj"
         });
+    }
+
+    private static string FormatDashboardActionDate(DateTime? value)
+        => value.HasValue
+            ? value.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : "all";
+
+    private static string BuildDashboardActionSourceKey(
+        string sourceType,
+        string actionType,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var normalizedType = string.IsNullOrWhiteSpace(sourceType) ? "dashboard" : sourceType.Trim().ToLowerInvariant();
+        var normalizedAction = string.IsNullOrWhiteSpace(actionType) ? "signal" : actionType.Trim().ToLowerInvariant();
+        var fromPart = FormatDashboardActionDate(fromDate);
+        var toPart = FormatDashboardActionDate(toDate);
+        var storePart = storeId?.ToString(CultureInfo.InvariantCulture) ?? "all";
+        var supplierPart = supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all";
+        return $"{normalizedType}:{normalizedAction}:{fromPart}:{toPart}:{storePart}:{supplierPart}";
+    }
+
+    private static string BuildDashboardActionTypeKey(string? title)
+    {
+        var normalized = (title ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Replace(" ", "_", StringComparison.Ordinal)
+            .Replace("-", "_", StringComparison.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(normalized))
+            return "signal";
+
+        var sanitized = string.Concat(normalized.Where(ch =>
+            (ch >= 'a' && ch <= 'z')
+            || (ch >= '0' && ch <= '9')
+            || ch == '_'));
+
+        return string.IsNullOrWhiteSpace(sanitized) ? "signal" : sanitized;
+    }
+
+    private static string ResolveDashboardSourceTypeFromActionUrl(string? actionUrl)
+    {
+        var normalized = (actionUrl ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("/analytics/inventory", StringComparison.Ordinal)) return "inventory";
+        if (normalized.Contains("/analytics/products", StringComparison.Ordinal)) return "product";
+        if (normalized.Contains("/analytics/supplier", StringComparison.Ordinal)) return "supplier";
+        if (normalized.Contains("/analytics/data-quality", StringComparison.Ordinal)) return "data_quality";
+        if (normalized.Contains("/analytics/pre-nivelacija-prioriteti", StringComparison.Ordinal)) return "nivelacija";
+        return "dashboard";
     }
 
     private static int DecisionPriorityRank(string priority) => priority switch
@@ -4046,6 +4182,27 @@ public static class CachedAnalyticsEndpoints
                 trendPct,
                 daysSinceLastSale);
 
+            var reliabilityPct = ResolveRecommendationReliability(
+                recommendationStatus,
+                revenue,
+                unitsSold,
+                marginCoveragePct,
+                trendPct,
+                daysSinceLastSale,
+                dataQualityStatus);
+
+            var reasonCodes = BuildRecommendationReasonCodes(
+                recommendationStatus,
+                missingSupplier,
+                missingCost,
+                missingCategory,
+                missingVariantData,
+                stockGap,
+                article.CurrentStock,
+                marginCoveragePct,
+                trendPct,
+                daysSinceLastSale);
+
             var recommendationReason = BuildRecommendationReason(
                 recommendationStatus,
                 revenue,
@@ -4092,11 +4249,14 @@ public static class CachedAnalyticsEndpoints
                 DaysSinceLastSale = daysSinceLastSale,
                 TrendPct = trendPct.HasValue ? Math.Round(trendPct.Value, 2) : null,
                 LostSalesEstimate = lostSalesEstimate,
+                SlowStockCapital = slowStockCapital,
                 DataQualityStatus = dataQualityStatus,
                 ConfidencePct = confidencePct,
+                ReliabilityPct = reliabilityPct,
                 RecommendationStatus = recommendationStatus,
                 RecommendationLabel = recommendationLabel,
                 RecommendationReason = recommendationReason,
+                ReasonCodes = reasonCodes,
                 RecommendedAction = recommendedAction
             });
         }
@@ -4200,6 +4360,41 @@ public static class CachedAnalyticsEndpoints
         return (int)Math.Round(confidence, MidpointRounding.AwayFromZero);
     }
 
+    private static int ResolveRecommendationReliability(
+        string recommendationStatus,
+        decimal revenue,
+        int unitsSold,
+        decimal marginCoveragePct,
+        decimal? trendPct,
+        int? daysSinceLastSale,
+        string dataQualityStatus)
+    {
+        var reliability = 30m;
+
+        if (unitsSold >= 20) reliability += 25m;
+        else if (unitsSold >= 8) reliability += 12m;
+
+        if (revenue >= 100_000m) reliability += 10m;
+
+        if (marginCoveragePct >= 85m) reliability += 20m;
+        else if (marginCoveragePct >= 60m) reliability += 10m;
+        else reliability -= 20m;
+
+        reliability += trendPct.HasValue ? 10m : -5m;
+
+        if (!daysSinceLastSale.HasValue) reliability -= 10m;
+        else if (daysSinceLastSale.Value > 90) reliability -= 10m;
+
+        if (dataQualityStatus == "critical") reliability = Math.Min(reliability, 35m);
+        else if (dataQualityStatus == "warning") reliability = Math.Min(reliability, 70m);
+
+        if (recommendationStatus is "FIX_DATA" or "INSUFFICIENT_DATA")
+            reliability = Math.Min(reliability, 45m);
+
+        reliability = Math.Clamp(reliability, 5m, 99m);
+        return (int)Math.Round(reliability, MidpointRounding.AwayFromZero);
+    }
+
     private static string BuildRecommendationReason(
         string recommendationStatus,
         decimal revenue,
@@ -4227,6 +4422,60 @@ public static class CachedAnalyticsEndpoints
             "INSUFFICIENT_DATA" => $"Nedovoljno signala: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.",
             _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
         };
+    }
+
+    private static List<string> BuildRecommendationReasonCodes(
+        string recommendationStatus,
+        bool missingSupplier,
+        bool missingCost,
+        bool missingCategory,
+        bool missingVariantData,
+        int stockGap,
+        int currentStock,
+        decimal marginCoveragePct,
+        decimal? trendPct,
+        int? daysSinceLastSale)
+    {
+        var codes = new List<string>();
+
+        if (missingSupplier) codes.Add("missing_supplier");
+        if (missingCost) codes.Add("missing_cost");
+        if (missingCategory) codes.Add("missing_category");
+        if (missingVariantData) codes.Add("missing_variant_data");
+        if (stockGap > 0) codes.Add("stock_gap");
+        if (currentStock <= 0) codes.Add("out_of_stock");
+        if (marginCoveragePct < 60m) codes.Add("low_cost_coverage");
+        if (!trendPct.HasValue) codes.Add("trend_unavailable");
+        if (!daysSinceLastSale.HasValue) codes.Add("last_sale_unknown");
+        else if (daysSinceLastSale.Value >= 60) codes.Add("stale_sales");
+
+        switch (recommendationStatus)
+        {
+            case "BOOST":
+                codes.Add("high_velocity");
+                codes.Add("positive_trend");
+                break;
+            case "REPLENISH":
+                codes.Add("replenish_needed");
+                break;
+            case "MARKDOWN":
+                codes.Add("slow_velocity");
+                break;
+            case "DO_NOT_ORDER":
+                codes.Add("high_stock_risk");
+                break;
+            case "FIX_DATA":
+                codes.Add("data_quality_blocker");
+                break;
+            case "INSUFFICIENT_DATA":
+                codes.Add("insufficient_signal");
+                break;
+            default:
+                codes.Add("monitoring_state");
+                break;
+        }
+
+        return codes.Distinct(StringComparer.Ordinal).ToList();
     }
 
     private static int RecommendationPriority(string status) => status switch
@@ -4428,12 +4677,14 @@ public class ProductDecisionCenterRowDto
     public int? DaysSinceLastSale { get; set; }
     public decimal? TrendPct { get; set; }
     public decimal LostSalesEstimate { get; set; }
+    public decimal SlowStockCapital { get; set; }
     public string DataQualityStatus { get; set; } = "warning";
     public int ConfidencePct { get; set; }
-    // TODO: Add ReliabilityPct once product-level recommendation reliability signal is exposed by backend model.
+    public int? ReliabilityPct { get; set; }
     public string RecommendationStatus { get; set; } = "INSUFFICIENT_DATA";
     public string RecommendationLabel { get; set; } = "Nedovoljno podataka";
     public string RecommendationReason { get; set; } = string.Empty;
+    public List<string> ReasonCodes { get; set; } = [];
     public string RecommendedAction { get; set; } = string.Empty;
 }
 
@@ -4465,7 +4716,6 @@ public class DashboardInsightDto
     public string Color { get; set; } = "blue";
 }
 
-// TODO(backend-dto): expose confidence/reliability/dataQualityStatus/statusReason for dashboard actions.
 public class DashboardActionDto
 {
     public string Priority { get; set; } = "P3";
@@ -4475,14 +4725,21 @@ public class DashboardActionDto
 
 public class DashboardDecisionActionDto
 {
+    public string ActionKey { get; set; } = "";
+    public string SourceType { get; set; } = "dashboard";
     public string Priority { get; set; } = "P3";
     public string Title { get; set; } = "";
+    public string? Description { get; set; }
     public string Reason { get; set; } = "";
     public string? StatusReason { get; set; }
+    public string? RecommendationStatus { get; set; }
     public string? ExpectedImpact { get; set; }
+    public decimal? ImpactEstimateRsd { get; set; }
     public int? ConfidencePct { get; set; }
     public int? ReliabilityPct { get; set; }
     public string DataQualityStatus { get; set; } = "insufficient_data";
+    public string ActionUrl { get; set; } = "/analytics";
+    public Dictionary<string, object?> Metadata { get; set; } = new();
     public string Link { get; set; } = "/analytics";
     public string? LinkLabel { get; set; }
 }

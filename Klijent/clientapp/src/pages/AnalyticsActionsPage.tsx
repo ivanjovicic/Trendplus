@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   getAnalyticsActions,
@@ -21,7 +21,7 @@ import "./AnalyticsActionsPage.css";
 const SOURCE_LABELS: Record<AnalyticsActionSourceType, string> = {
   dashboard: "Dashboard",
   product: "Proizvodi",
-  supplier: "Dobavljači",
+  supplier: "Dobavljaci",
   inventory: "Zalihe",
   nivelacija: "Nivelacija",
   data_quality: "Kvalitet podataka",
@@ -29,10 +29,10 @@ const SOURCE_LABELS: Record<AnalyticsActionSourceType, string> = {
 
 const STATUS_LABELS: Record<AnalyticsActionStatus, string> = {
   new: "Novo",
-  accepted: "Prihvaćeno",
-  deferred: "Odloženo",
+  accepted: "Prihvaceno",
+  deferred: "Odlozeno",
   rejected: "Odbijeno",
-  done: "Završeno",
+  done: "Zavrseno",
 };
 
 const STATUS_CSS: Record<AnalyticsActionStatus, string> = {
@@ -52,7 +52,7 @@ const PRIORITY_CSS: Record<AnalyticsActionPriority, string> = {
 const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus, string> = {
   good: "Dobar",
   warning: "Upozorenje",
-  critical: "Kritičan",
+  critical: "Kritican",
   insufficient_data: "Nedovoljno podataka",
 };
 
@@ -65,7 +65,6 @@ const DATA_QUALITY_CSS: Record<string, string> = {
   poor: "dq-critical", // legacy -> critical
 };
 
-// Normalize legacy dataQualityStatus values to canonical ones
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -75,9 +74,8 @@ function normalizeDataQualityStatus(value: string | null | undefined): Analytics
   return null;
 }
 
-// Get display label for data quality status (supports legacy values)
 function getDataQualityLabel(value: AnalyticsActionAnyDataQualityStatus | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const normalized = normalizeDataQualityStatus(value);
   if (!normalized) return value;
   return DATA_QUALITY_LABELS[normalized];
@@ -90,6 +88,35 @@ function parseSourceTypeQuery(value: string | null): AnalyticsActionSourceType |
   }
   return undefined;
 }
+
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("sr-RS", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatMetadataJson(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+type StatusModalState = {
+  id: number;
+  title: string;
+  status: AnalyticsActionStatus;
+  note: string;
+};
 
 export default function AnalyticsActionsPage() {
   const location = useLocation();
@@ -111,6 +138,9 @@ export default function AnalyticsActionsPage() {
   });
 
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [statusModal, setStatusModal] = useState<StatusModalState | null>(null);
+  const [statusModalBusy, setStatusModalBusy] = useState(false);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
     setLoading(true);
@@ -122,7 +152,7 @@ export default function AnalyticsActionsPage() {
       setPage(res.page);
       setTotalPages(res.totalPages);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Greška pri učitavanju");
+      setError(e instanceof Error ? e.message : "Greska pri ucitavanju");
     } finally {
       setLoading(false);
     }
@@ -155,17 +185,41 @@ export default function AnalyticsActionsPage() {
     setFilters((f) => ({ ...f, [key]: normalizedValue, page: 1 }));
   }
 
-  async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string) {
+  async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string): Promise<boolean> {
     setUpdatingId(id);
     try {
       const updated = await updateAnalyticsActionStatus(id, { status, note });
       setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
       void loadCounts();
+      return true;
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Greška pri ažuriranju statusa");
+      alert(e instanceof Error ? e.message : "Greska pri azuriranju statusa");
+      return false;
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  function toggleExpanded(id: number) {
+    setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function openStatusNoteModal(item: AnalyticsActionItem, status: AnalyticsActionStatus) {
+    setStatusModal({
+      id: item.id,
+      title: item.title,
+      status,
+      note: "",
+    });
+  }
+
+  async function submitStatusModal() {
+    if (!statusModal) return;
+    setStatusModalBusy(true);
+    const trimmedNote = statusModal.note.trim();
+    const ok = await changeStatus(statusModal.id, statusModal.status, trimmedNote.length > 0 ? trimmedNote : undefined);
+    setStatusModalBusy(false);
+    if (ok) setStatusModal(null);
   }
 
   const openStatuses: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
@@ -175,7 +229,7 @@ export default function AnalyticsActionsPage() {
       <div className="aaq-header">
         <h1 className="aaq-title">Akcije i preporuke</h1>
         <p className="aaq-subtitle">
-          Centralni red akcija iz dashboarda, analize proizvoda, dobavljača, zaliha i nivelacija.
+          Centralni red akcija iz dashboarda, analize proizvoda, dobavljaca, zaliha i nivelacija.
         </p>
         {filters.sourceType === "inventory" && (
           <p className="aaq-subtitle">
@@ -184,7 +238,6 @@ export default function AnalyticsActionsPage() {
         )}
       </div>
 
-      {/* KPI bar */}
       {counts && (
         <div className="aaq-kpi-bar">
           <div className="aaq-kpi-card kpi-new">
@@ -193,11 +246,11 @@ export default function AnalyticsActionsPage() {
           </div>
           <div className="aaq-kpi-card kpi-accepted">
             <span className="kpi-value">{counts.accepted}</span>
-            <span className="kpi-label">Prihvaćeno</span>
+            <span className="kpi-label">Prihvaceno</span>
           </div>
           <div className="aaq-kpi-card kpi-deferred">
             <span className="kpi-value">{counts.deferred}</span>
-            <span className="kpi-label">Odloženo</span>
+            <span className="kpi-label">Odlozeno</span>
           </div>
           <div className="aaq-kpi-card kpi-done">
             <span className="kpi-value">{counts.done + counts.rejected}</span>
@@ -210,7 +263,6 @@ export default function AnalyticsActionsPage() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="aaq-filters">
         <select
           value={filters.status ?? ""}
@@ -254,23 +306,23 @@ export default function AnalyticsActionsPage() {
           <option value="">Svi kvaliteti</option>
           <option value="good">Dobar</option>
           <option value="warning">Upozorenje</option>
-          <option value="critical">Kritičan</option>
+          <option value="critical">Kritican</option>
           <option value="insufficient_data">Nedovoljno podataka</option>
         </select>
         <input
           type="search"
-          placeholder="Pretraži..."
+          placeholder="Pretrazi..."
           value={filters.search ?? ""}
           onChange={(e) => setFilter("search", e.target.value)}
           className="aaq-search"
-          aria-label="Pretraži akcije"
+          aria-label="Pretrazi akcije"
         />
       </div>
 
       {error && <div className="aaq-error">{error}</div>}
 
       {loading ? (
-        <div className="aaq-loading">Učitavanje...</div>
+        <div className="aaq-loading">Ucitavanje...</div>
       ) : items.length === 0 ? (
         <div className="aaq-empty">
           <p>Nema akcija.</p>
@@ -293,95 +345,139 @@ export default function AnalyticsActionsPage() {
                   <th>Data Q</th>
                   <th>Status</th>
                   <th>Akcije</th>
+                  <th>Detalji</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => {
                   const busy = updatingId === item.id;
                   const isOpen = openStatuses.includes(item.status);
+                  const isExpanded = expandedIds.includes(item.id);
+                  const prettyMetadata = formatMetadataJson(item.metadataJson);
+
                   return (
-                    <tr key={item.id} className={`aaq-row status-${item.status}`}>
-                      <td>
-                        <span className={PRIORITY_CSS[item.priority]}>{item.priority}</span>
-                      </td>
-                      <td>
-                        <span className="source-label">{SOURCE_LABELS[item.sourceType] ?? item.sourceType}</span>
-                      </td>
-                      <td className="td-title">
-                        {item.actionUrl ? (
-                          <a href={item.actionUrl} className="action-link">{item.title}</a>
-                        ) : (
-                          item.title
-                        )}
-                        {item.description && (
-                          <div className="td-desc">{item.description}</div>
-                        )}
-                      </td>
-                      <td className="td-rec">{item.recommendationStatus ?? "—"}</td>
-                      <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "—")}</td>
-                      <td className="td-num">{item.confidencePct != null ? `${fmtNumber(item.confidencePct, 0, "—")}%` : "—"}</td>
-                      <td>
-                        {item.dataQualityStatus ? (
-                          <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}>
-                            {getDataQualityLabel(item.dataQualityStatus)}
-                          </span>
-                        ) : "—"}
-                      </td>
-                      <td>
-                        <span className={STATUS_CSS[item.status]}>{STATUS_LABELS[item.status]}</span>
-                      </td>
-                      <td className="td-actions">
-                        {busy ? (
-                          <span className="aaq-busy">...</span>
-                        ) : (
-                          <div className="action-btns">
-                            {item.status === "new" && (
-                              <button
-                                className="btn-action btn-accept"
-                                onClick={() => void changeStatus(item.id, "accepted")}
-                                title="Prihvati"
-                              >
-                                Prihvati
-                              </button>
-                            )}
-                            {isOpen && item.status !== "deferred" && (
-                              <button
-                                className="btn-action btn-defer"
-                                onClick={() => void changeStatus(item.id, "deferred")}
-                                title="Odloži"
-                              >
-                                Odloži
-                              </button>
-                            )}
-                            {item.status === "accepted" && (
-                              <button
-                                className="btn-action btn-done"
-                                onClick={() => void changeStatus(item.id, "done")}
-                                title="Označi kao završeno"
-                              >
-                                Završi
-                              </button>
-                            )}
-                            {isOpen && (
-                              <button
-                                className="btn-action btn-reject"
-                                onClick={() => void changeStatus(item.id, "rejected")}
-                                title="Odbij"
-                              >
-                                Odbij
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                    <Fragment key={item.id}>
+                      <tr className={`aaq-row status-${item.status}`}>
+                        <td>
+                          <span className={PRIORITY_CSS[item.priority]}>{item.priority}</span>
+                        </td>
+                        <td>
+                          <span className="source-label">{SOURCE_LABELS[item.sourceType] ?? item.sourceType}</span>
+                        </td>
+                        <td className="td-title">
+                          {item.actionUrl ? (
+                            <a href={item.actionUrl} className="action-link">{item.title}</a>
+                          ) : (
+                            item.title
+                          )}
+                          {item.description && (
+                            <div className="td-desc">{item.description}</div>
+                          )}
+                        </td>
+                        <td className="td-rec">{item.recommendationStatus ?? "-"}</td>
+                        <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "-")}</td>
+                        <td className="td-num">{item.confidencePct != null ? `${fmtNumber(item.confidencePct, 0, "-")}%` : "-"}</td>
+                        <td>
+                          {item.dataQualityStatus ? (
+                            <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}>
+                              {getDataQualityLabel(item.dataQualityStatus)}
+                            </span>
+                          ) : "-"}
+                        </td>
+                        <td>
+                          <span className={STATUS_CSS[item.status]}>{STATUS_LABELS[item.status]}</span>
+                        </td>
+                        <td className="td-actions">
+                          {busy ? (
+                            <span className="aaq-busy">...</span>
+                          ) : (
+                            <div className="action-btns">
+                              {item.status === "new" && (
+                                <button
+                                  className="btn-action btn-accept"
+                                  onClick={() => void changeStatus(item.id, "accepted")}
+                                  title="Prihvati"
+                                >
+                                  Prihvati
+                                </button>
+                              )}
+                              {isOpen && item.status !== "deferred" && (
+                                <button
+                                  className="btn-action btn-defer"
+                                  onClick={() => openStatusNoteModal(item, "deferred")}
+                                  title="Odlozi"
+                                >
+                                  Odlozi
+                                </button>
+                              )}
+                              {item.status === "accepted" && (
+                                <button
+                                  className="btn-action btn-done"
+                                  onClick={() => openStatusNoteModal(item, "done")}
+                                  title="Oznaci kao zavrseno"
+                                >
+                                  Zavrsi
+                                </button>
+                              )}
+                              {isOpen && (
+                                <button
+                                  className="btn-action btn-reject"
+                                  onClick={() => openStatusNoteModal(item, "rejected")}
+                                  title="Odbij"
+                                >
+                                  Odbij
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="td-expand">
+                          <button
+                            type="button"
+                            className="btn-action btn-details"
+                            onClick={() => toggleExpanded(item.id)}
+                            aria-expanded={isExpanded}
+                            aria-controls={`aaq-details-${item.id}`}
+                          >
+                            {isExpanded ? "Sakrij" : "Detalji"}
+                          </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
+                          <td colSpan={10}>
+                            <div className="aaq-details-grid">
+                              <div><strong>SourceType:</strong> {item.sourceType}</div>
+                              <div><strong>SourceKey:</strong> {item.sourceKey}</div>
+                              <div><strong>SourceId:</strong> {item.sourceId ?? "-"}</div>
+                              <div><strong>CreatedAtUtc:</strong> {formatTimestamp(item.createdAtUtc)}</div>
+                              <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(item.updatedAtUtc)}</div>
+                              <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(item.resolvedAtUtc)}</div>
+                              <div><strong>CreatedByUserId:</strong> {item.createdByUserId ?? "-"}</div>
+                              <div><strong>UpdatedByUserName:</strong> {item.updatedByUserName ?? "-"}</div>
+                              <div>
+                                <strong>Izvorni ekran:</strong>{" "}
+                                {item.actionUrl ? <a href={item.actionUrl} className="action-link">Otvori</a> : "-"}
+                              </div>
+                            </div>
+                            <div className="aaq-metadata-panel">
+                              <strong>MetadataJson:</strong>
+                              {prettyMetadata ? (
+                                <pre>{prettyMetadata}</pre>
+                              ) : (
+                                <p>Metadata nije dostupan.</p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="aaq-pagination">
               <button
@@ -389,7 +485,7 @@ export default function AnalyticsActionsPage() {
                 onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
                 className="btn-page"
               >
-                ← Prethodna
+                {"<-"} Prethodna
               </button>
               <span className="page-info">
                 Strana {page} / {totalPages} ({totalCount} ukupno)
@@ -399,11 +495,46 @@ export default function AnalyticsActionsPage() {
                 onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
                 className="btn-page"
               >
-                Sledeća →
+                Sledeca {"->"}
               </button>
             </div>
           )}
         </>
+      )}
+
+      {statusModal && (
+        <div className="aaq-modal-backdrop" role="presentation" onClick={() => !statusModalBusy && setStatusModal(null)}>
+          <div
+            className="aaq-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="aaq-note-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="aaq-note-modal-title">Napomena uz status</h2>
+            <p className="aaq-modal-subtitle">
+              Menjate status akcije na <strong>{STATUS_LABELS[statusModal.status]}</strong>:
+            </p>
+            <p className="aaq-modal-title">{statusModal.title}</p>
+            <label htmlFor="aaq-note-textarea">Napomena (opciono)</label>
+            <textarea
+              id="aaq-note-textarea"
+              value={statusModal.note}
+              onChange={(e) => setStatusModal((current) => current ? { ...current, note: e.target.value } : current)}
+              rows={4}
+              placeholder="Unesite kratku napomenu..."
+              disabled={statusModalBusy}
+            />
+            <div className="aaq-modal-actions">
+              <button type="button" className="btn-page" onClick={() => setStatusModal(null)} disabled={statusModalBusy}>
+                Otkazi
+              </button>
+              <button type="button" className="btn-action btn-done" onClick={() => void submitStatusModal()} disabled={statusModalBusy}>
+                {statusModalBusy ? "Cuvanje..." : "Potvrdi"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
