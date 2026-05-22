@@ -260,7 +260,7 @@ export default function ProductDecisionCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fromDate, toDate, storeId, supplierId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -431,7 +431,7 @@ export default function ProductDecisionCenterPage() {
         ? row.recommendationReason
         : (row.reasonCodes?.length ? row.reasonCodes.join(", ") : "Bez dodatnog obrazlozenja.");
 
-      await upsertAnalyticsAction({
+      const action = await upsertAnalyticsAction({
         sourceType: "product",
         sourceKey,
         sourceId: row.productId,
@@ -459,9 +459,11 @@ export default function ProductDecisionCenterPage() {
       setQueuedActionKeys((prev) => {
         const next = new Set(prev);
         next.add(sourceKey);
+        if (action.sourceKey) next.add(action.sourceKey);
         return next;
       });
-      setQueueMessage(alreadyQueued ? "Akcija je vec u centralnom redu." : "Akcija dodata u centralni red.");
+      const isExistingAction = alreadyQueued || (action.sourceKey ?? "") === sourceKey;
+      setQueueMessage(isExistingAction ? "Akcija je vec u centralnom redu." : "Akcija dodata u centralni red.");
     } catch (reason) {
       setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
     } finally {

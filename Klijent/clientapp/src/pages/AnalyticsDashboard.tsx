@@ -272,18 +272,6 @@ function buildFallbackDecisionActionsFromAdvanced(advanced: DashboardAdvancedSna
   });
 }
 
-function formatCurrency(value: number): string {
-  return fmtRsd(value);
-}
-
-function formatNumber(value: number, digits = 0): string {
-  return fmtNumber(value, digits);
-}
-
-function formatPercent(value?: number | null, digits = 1): string {
-  return fmtPct(value, digits);
-}
-
 function trendLabel(value?: number | null): string {
   if (value == null) return "Nema trenda";
   return value >= 0 ? "Rast" : "Pad";
@@ -948,26 +936,26 @@ export default function AnalyticsDashboard() {
         {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
         {!loading && summary && (
           <div className="analytics-card-grid">
-            <MetricCard label="Ukupan promet" value={formatCurrency(summary.totalRevenue)} tone="good" infoTip={HELP.promet} />
-            <MetricCard label="Transakcije" value={formatNumber(summary.totalTransactions)} infoTip={HELP.transakcije} />
-            <MetricCard label="Prodate jedinice" value={formatNumber(summary.totalUnits)} infoTip={HELP.jedinice} />
-            <MetricCard label="Promet po danu" value={formatCurrency(derived.revenuePerDay)} />
-            <MetricCard label="Transakcije po danu" value={formatNumber(derived.transactionsPerDay, 1)} />
-            <MetricCard label="Dostupnost SKU" value={formatPercent(derived.availablePct)} tone="good" infoTip={HELP.sku} />
-            <MetricCard label="Crvena zona zaliha" value={formatPercent(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
-            <MetricCard label="MA7 + Momentum" value={formatCurrency(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
-            <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
-            <MetricCard label="Prosecna korpa" value={formatCurrency(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
+            <MetricCard label="Ukupan promet" value={fmtRsd(summary.totalRevenue)} tone="good" infoTip={HELP.promet} />
+            <MetricCard label="Transakcije" value={fmtNumber(summary.totalTransactions)} infoTip={HELP.transakcije} />
+            <MetricCard label="Prodate jedinice" value={fmtNumber(summary.totalUnits)} infoTip={HELP.jedinice} />
+            <MetricCard label="Promet po danu" value={fmtRsd(derived.revenuePerDay)} />
+            <MetricCard label="Transakcije po danu" value={fmtNumber(derived.transactionsPerDay, 1)} />
+            <MetricCard label="Dostupnost SKU" value={fmtPct(derived.availablePct)} tone="good" infoTip={HELP.sku} />
+            <MetricCard label="Crvena zona zaliha" value={fmtPct(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
+            <MetricCard label="MA7 + Momentum" value={fmtRsd(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
+            <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
+            <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
           </div>
         )}
 
         {!loading && (quickInsights || transactionStats) && (
           <div className="analytics-card-grid compact">
             <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvecim prometom." />
-            <MetricCard label="Promet najboljeg dana" value={formatCurrency(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
+            <MetricCard label="Promet najboljeg dana" value={fmtRsd(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
             <MetricCard label="Top proizvod" value={quickInsights?.topProduct ?? "N/A"} tone="neutral" />
-            <MetricCard label="Stavki po transakciji" value={transactionStats ? formatNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
-            <MetricCard label="Vrednost transakcije" value={transactionStats ? formatCurrency(transactionStats.avgTransactionValue) : "N/A"} tone="neutral" />
+            <MetricCard label="Stavki po transakciji" value={transactionStats ? fmtNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
+            <MetricCard label="Vrednost transakcije" value={transactionStats ? fmtRsd(transactionStats.avgTransactionValue) : "N/A"} tone="neutral" />
           </div>
         )}
 
@@ -976,8 +964,8 @@ export default function AnalyticsDashboard() {
             {advanced.cards.map((card: DashboardMetricCard) => (
               <article key={card.key} className={`metric-card ${statusTone(card.status)}`}>
                 <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svezina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
-                <strong>{formatNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
-                <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${formatPercent(card.trendPct)}` : statusLabel(card.status)}</small>
+                <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
+                <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${fmtPct(card.trendPct)}` : statusLabel(card.status)}</small>
                 {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top sifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
               </article>
             ))}
@@ -1037,21 +1025,21 @@ export default function AnalyticsDashboard() {
             <div className="trend-signal-grid">
               <article className="trend-signal-card">
                 <span>MA7 promet</span>
-                <strong>{formatCurrency(movingStats.ma7Revenue)}</strong>
+                <strong>{fmtRsd(movingStats.ma7Revenue)}</strong>
               </article>
               <article className="trend-signal-card">
                 <span>MA30 promet</span>
-                <strong>{formatCurrency(movingStats.ma30Revenue)}</strong>
+                <strong>{fmtRsd(movingStats.ma30Revenue)}</strong>
               </article>
               <article className="trend-signal-card">
                 <span>Momentum 7d</span>
                 <strong className={movingStats.momentumPct != null && movingStats.momentumPct < 0 ? "trend down" : "trend up"}>
-                  {formatPercent(movingStats.momentumPct)}
+                  {fmtPct(movingStats.momentumPct)}
                 </strong>
               </article>
               <article className="trend-signal-card">
                 <span>Elasticnost</span>
-                <strong>{movingStats.elasticity == null ? "N/A" : formatNumber(movingStats.elasticity, 2)}</strong>
+                <strong>{movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)}</strong>
               </article>
             </div>
           </section>
@@ -1071,18 +1059,18 @@ export default function AnalyticsDashboard() {
             weekdayChartData={weekdayChartData}
             hourChartData={hourChartData}
             paymentChartData={paymentChartData}
-            formatCurrency={formatCurrency}
-            formatNumber={formatNumber}
+            formatCurrency={(value: number) => fmtRsd(value)}
+            formatNumber={(value: number, digits = 0) => fmtNumber(value, digits)}
           />
         </Suspense>
         {!loading && inventory && (
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Brzi pregled zaliha</span><InfoTip text="Ukupno stanje i signal rizika od rasprodatosti." /></h3>
             <div className="stock-grid">
-              <article className="stock-card"><span className="metric-label"><span>Ukupno SKU</span><InfoTip text={HELP.sku} /></span><strong>{formatNumber(inventory.totalSkuCount)}</strong></article>
-              <article className="stock-card"><span>Ukupno na stanju</span><strong>{formatNumber(inventory.totalOnHand)}</strong></article>
-              <article className="stock-card warning"><span>Niska zaliha</span><strong>{formatNumber(inventory.lowStockCount)}</strong></article>
-              <article className="stock-card critical"><span>Bez zaliha</span><strong>{formatNumber(inventory.outOfStockCount)}</strong></article>
+              <article className="stock-card"><span className="metric-label"><span>Ukupno SKU</span><InfoTip text={HELP.sku} /></span><strong>{fmtNumber(inventory.totalSkuCount)}</strong></article>
+              <article className="stock-card"><span>Ukupno na stanju</span><strong>{fmtNumber(inventory.totalOnHand)}</strong></article>
+              <article className="stock-card warning"><span>Niska zaliha</span><strong>{fmtNumber(inventory.lowStockCount)}</strong></article>
+              <article className="stock-card critical"><span>Bez zaliha</span><strong>{fmtNumber(inventory.outOfStockCount)}</strong></article>
             </div>
           </section>
         )}
@@ -1097,7 +1085,7 @@ export default function AnalyticsDashboard() {
                 {topGainers.map((row) => (
                   <button key={`gain-${row.productId}`} type="button" className="trend-list-row up" onClick={() => openTopProductDetail(row)}>
                     <span>{row.productName}</span>
-                    <strong>+{formatPercent(row.trendPct)}</strong>
+                    <strong>+{fmtPct(row.trendPct)}</strong>
                   </button>
                 ))}
               </article>
@@ -1107,7 +1095,7 @@ export default function AnalyticsDashboard() {
                 {topLosers.map((row) => (
                   <button key={`loss-${row.productId}`} type="button" className="trend-list-row down" onClick={() => openTopProductDetail(row)}>
                     <span>{row.productName}</span>
-                    <strong>{formatPercent(row.trendPct)}</strong>
+                    <strong>{fmtPct(row.trendPct)}</strong>
                   </button>
                 ))}
               </article>
@@ -1164,7 +1152,7 @@ export default function AnalyticsDashboard() {
                     {topRows.map((row) => (
                       <tr
                         key={`${topTab}-${row.productId}`}
-                        title={`Trend: ${formatPercent(row.trendPct)} | Promet: ${formatCurrency(row.revenue)} | Komada: ${formatNumber(row.units)}`}
+                        title={`Trend: ${fmtPct(row.trendPct)} | Promet: ${fmtRsd(row.revenue)} | Komada: ${fmtNumber(row.units)}`}
                         className="cursor-pointer"
                         onClick={() => openTopProductDetail(row)}
                         onKeyDown={(e) => {
@@ -1177,15 +1165,15 @@ export default function AnalyticsDashboard() {
                         aria-label={`Otvori detalj artikla ${row.productName}`}
                       >
                         <td><div className="sku-cell"><strong>{row.sku}</strong><span>{row.productName}</span></div></td>
-                        <td>{formatCurrency(row.revenue)}</td>
-                        <td>{formatNumber(row.units)}</td>
-                        <td>{formatNumber(row.velocityUnitsPerDay, 2)}</td>
+                        <td>{fmtRsd(row.revenue)}</td>
+                        <td>{fmtNumber(row.units)}</td>
+                        <td>{fmtNumber(row.velocityUnitsPerDay, 2)}</td>
                         <td>
-                          <div>{row.marginImpact == null ? "N/A" : formatCurrency(row.marginImpact)}</div>
+                          <div>{row.marginImpact == null ? "N/A" : fmtRsd(row.marginImpact)}</div>
                           <small>{row.marginQualityLabel ?? "Kvalitet marze nije dostupan"}</small>
                         </td>
                         <td className={row.trendPct != null && row.trendPct < 0 ? "trend down" : "trend up"}>
-                          <div>{trendLabel(row.trendPct)} {formatPercent(row.trendPct)}</div>
+                          <div>{trendLabel(row.trendPct)} {fmtPct(row.trendPct)}</div>
                           {row.trendPct == null ? <small>Nema prethodnog perioda za PoP poredjenje.</small> : null}
                         </td>
                         <td><span className={`stock-pill ${statusTone(row.stockStatus)}`}>{statusLabel(row.stockStatus)}</span></td>
