@@ -241,8 +241,8 @@ export interface ProductDecisionCenterItem {
   velocityUnitsPerDay: number;
   marginContribution: number;
   marginPct?: number | null;
-  marginQualityLabel?: string | null;
-  marginCoveragePct?: number | null;
+  marginQualityLabel: string;
+  marginCoveragePct: number;
   currentStock: number;
   minStock: number;
   stockGap: number;
@@ -252,11 +252,11 @@ export interface ProductDecisionCenterItem {
   slowStockCapital?: number | null;
   dataQualityStatus: string;
   confidencePct: number;
-  reliabilityPct?: number | null;
+  reliabilityPct: number;
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
   recommendationReason: string;
-  reasonCodes?: string[] | null;
+  reasonCodes: string[];
   recommendedAction: string;
 }
 

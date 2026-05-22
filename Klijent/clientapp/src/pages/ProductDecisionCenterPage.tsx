@@ -97,20 +97,9 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   missing_cost: "Nedostaje nabavna cena.",
   missing_supplier: "Nedostaje dobavljac.",
   insufficient_history: "Nema dovoljno istorije za sigurnu preporuku.",
-  stock_gap: "Postoji manjak zalihe u odnosu na minimum.",
-  out_of_stock: "Artikal je trenutno rasprodat.",
-  low_cost_coverage: "Pokrice nabavne cene je slabo.",
-  trend_unavailable: "Trend nije dostupan za izabrani period.",
-  last_sale_unknown: "Poslednja prodaja nije poznata.",
-  stale_sales: "Prodaja je usporena tokom duzeg perioda.",
-  missing_category: "Nedostaje kategorija artikla.",
-  missing_variant_data: "Nedostaju podaci o boji ili velicini.",
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
-  slow_velocity: "Brzina prodaje je niska.",
   high_stock_risk: "Postoji rizik od viska zalihe.",
   data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
-  insufficient_signal: "Signal je slab za automatsku odluku.",
-  monitoring_state: "Preporuka je da se signal prati bez hitne akcije.",
 };
 
 const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
@@ -260,7 +249,7 @@ export default function ProductDecisionCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromDate, toDate, storeId, supplierId]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -307,7 +296,7 @@ export default function ProductDecisionCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fromDate, toDate, storeId, supplierId]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -427,9 +416,7 @@ export default function ProductDecisionCenterPage() {
     setQueueBusyKey(sourceKey);
     setQueueMessage(null);
     try {
-      const reasonText = row.recommendationReason?.trim()
-        ? row.recommendationReason
-        : (row.reasonCodes?.length ? row.reasonCodes.join(", ") : "Bez dodatnog obrazlozenja.");
+      const reasonText = row.recommendationReason;
 
       const action = await upsertAnalyticsAction({
         sourceType: "product",
@@ -656,7 +643,7 @@ export default function ProductDecisionCenterPage() {
                   const isQueued = queuedActionKeys.has(sourceKey);
                   const isQueueBusy = queueBusyKey === sourceKey;
                   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
-                  const reasonCodeItems = row.reasonCodes?.length
+                  const reasonCodeItems = row.reasonCodes.length
                     ? row.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
                     : null;
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
@@ -693,7 +680,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span className={recommendationToneClass(row.recommendationStatus)}>
-                            {RECOMMENDATION_LABELS[row.recommendationStatus]}
+                            {row.recommendationLabel}
                           </span>
                           <button
                             type="button"
@@ -750,7 +737,6 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-block">
                                 <strong>Reason codes:</strong>
-                                {/* TODO(backend-dto): ensure ProductDecisionCenter row always returns canonical reasonCodes. */}
                                 {reasonCodeItems?.length ? (
                                   <ul className="reason-code-list">
                                     {reasonCodeItems.map((item) => (

@@ -2994,7 +2994,7 @@ public static class CachedAnalyticsEndpoints
             ? (int)Math.Round(reliable.Average(x => x.ConfidencePct), MidpointRounding.AwayFromZero)
             : 0;
         var avgReliability = reliable.Count > 0
-            ? (int?)Math.Round(reliable.Average(x => x.ReliabilityPct ?? 0), MidpointRounding.AwayFromZero)
+            ? (int?)Math.Round(reliable.Average(x => x.ReliabilityPct), MidpointRounding.AwayFromZero)
             : null;
 
         var impactedRevenue = reliable.Sum(x => x.Revenue);
@@ -4160,19 +4160,23 @@ public static class CachedAnalyticsEndpoints
                 ? "critical"
                 : (marginCoveragePct < 60m || missingVariantData ? "warning" : "good");
 
-            var recommendationStatus = ResolveRecommendationStatus(
-                missingSupplier,
-                missingCost,
-                missingCategory,
-                revenue,
-                unitsSold,
-                velocityUnitsPerDay,
-                marginPct,
-                trendPct,
-                stockGap,
-                article.CurrentStock,
-                article.MinStock,
-                daysSinceLastSale);
+            var reasoning = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+                MissingSupplier: missingSupplier,
+                MissingCost: missingCost,
+                MissingCategory: missingCategory,
+                MissingVariantData: missingVariantData,
+                Revenue: revenue,
+                UnitsSold: unitsSold,
+                VelocityUnitsPerDay: velocityUnitsPerDay,
+                MarginPct: marginPct,
+                MarginCoveragePct: marginCoveragePct,
+                TrendPct: trendPct,
+                StockGap: stockGap,
+                CurrentStock: article.CurrentStock,
+                MinStock: article.MinStock,
+                DaysSinceLastSale: daysSinceLastSale));
+
+            var recommendationStatus = reasoning.RecommendationStatus;
 
             var confidencePct = ResolveRecommendationConfidence(
                 recommendationStatus,
@@ -4191,17 +4195,7 @@ public static class CachedAnalyticsEndpoints
                 daysSinceLastSale,
                 dataQualityStatus);
 
-            var reasonCodes = BuildRecommendationReasonCodes(
-                recommendationStatus,
-                missingSupplier,
-                missingCost,
-                missingCategory,
-                missingVariantData,
-                stockGap,
-                article.CurrentStock,
-                marginCoveragePct,
-                trendPct,
-                daysSinceLastSale);
+            var reasonCodes = reasoning.ReasonCodes;
 
             var recommendationReason = BuildRecommendationReason(
                 recommendationStatus,
@@ -4256,7 +4250,7 @@ public static class CachedAnalyticsEndpoints
                 RecommendationStatus = recommendationStatus,
                 RecommendationLabel = recommendationLabel,
                 RecommendationReason = recommendationReason,
-                ReasonCodes = reasonCodes,
+                ReasonCodes = reasonCodes.ToList(),
                 RecommendedAction = recommendedAction
             });
         }
@@ -4285,50 +4279,6 @@ public static class CachedAnalyticsEndpoints
             },
             Rows = sortedRows
         };
-    }
-
-    private static string ResolveRecommendationStatus(
-        bool missingSupplier,
-        bool missingCost,
-        bool missingCategory,
-        decimal revenue,
-        int unitsSold,
-        decimal velocityUnitsPerDay,
-        decimal? marginPct,
-        decimal? trendPct,
-        int stockGap,
-        int currentStock,
-        int minStock,
-        int? daysSinceLastSale)
-    {
-        if (missingSupplier || missingCost || missingCategory)
-            return "FIX_DATA";
-
-        if (unitsSold < 3 || revenue <= 0m || !daysSinceLastSale.HasValue)
-            return "INSUFFICIENT_DATA";
-
-        var goodTrend = (trendPct ?? 0m) >= 10m;
-        var badTrend = (trendPct ?? 0m) <= -10m;
-        var goodMargin = (marginPct ?? 0m) >= 22m;
-        var lowMargin = (marginPct ?? 0m) < 10m;
-        var highVelocity = velocityUnitsPerDay >= 0.8m;
-        var lowVelocity = velocityUnitsPerDay < 0.15m;
-        var staleStock = daysSinceLastSale.Value >= 45;
-        var highStock = currentStock > Math.Max(minStock * 3, minStock + 10);
-
-        if (goodTrend && goodMargin && highVelocity && stockGap > 0)
-            return "BOOST";
-
-        if (highVelocity && stockGap > 0)
-            return "REPLENISH";
-
-        if ((staleStock && lowVelocity && (badTrend || lowMargin)) && currentStock > minStock)
-            return "MARKDOWN";
-
-        if ((badTrend && lowMargin && highStock) || (staleStock && highStock && lowVelocity))
-            return "DO_NOT_ORDER";
-
-        return "WATCH";
     }
 
     private static int ResolveRecommendationConfidence(
@@ -4422,60 +4372,6 @@ public static class CachedAnalyticsEndpoints
             "INSUFFICIENT_DATA" => $"Nedovoljno signala: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.",
             _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
         };
-    }
-
-    private static List<string> BuildRecommendationReasonCodes(
-        string recommendationStatus,
-        bool missingSupplier,
-        bool missingCost,
-        bool missingCategory,
-        bool missingVariantData,
-        int stockGap,
-        int currentStock,
-        decimal marginCoveragePct,
-        decimal? trendPct,
-        int? daysSinceLastSale)
-    {
-        var codes = new List<string>();
-
-        if (missingSupplier) codes.Add("missing_supplier");
-        if (missingCost) codes.Add("missing_cost");
-        if (missingCategory) codes.Add("missing_category");
-        if (missingVariantData) codes.Add("missing_variant_data");
-        if (stockGap > 0) codes.Add("stock_gap");
-        if (currentStock <= 0) codes.Add("out_of_stock");
-        if (marginCoveragePct < 60m) codes.Add("low_cost_coverage");
-        if (!trendPct.HasValue) codes.Add("trend_unavailable");
-        if (!daysSinceLastSale.HasValue) codes.Add("last_sale_unknown");
-        else if (daysSinceLastSale.Value >= 60) codes.Add("stale_sales");
-
-        switch (recommendationStatus)
-        {
-            case "BOOST":
-                codes.Add("high_velocity");
-                codes.Add("positive_trend");
-                break;
-            case "REPLENISH":
-                codes.Add("replenish_needed");
-                break;
-            case "MARKDOWN":
-                codes.Add("slow_velocity");
-                break;
-            case "DO_NOT_ORDER":
-                codes.Add("high_stock_risk");
-                break;
-            case "FIX_DATA":
-                codes.Add("data_quality_blocker");
-                break;
-            case "INSUFFICIENT_DATA":
-                codes.Add("insufficient_signal");
-                break;
-            default:
-                codes.Add("monitoring_state");
-                break;
-        }
-
-        return codes.Distinct(StringComparer.Ordinal).ToList();
     }
 
     private static int RecommendationPriority(string status) => status switch
@@ -4669,8 +4565,8 @@ public class ProductDecisionCenterRowDto
     public decimal VelocityUnitsPerDay { get; set; }
     public decimal MarginContribution { get; set; }
     public decimal? MarginPct { get; set; }
-    public string? MarginQualityLabel { get; set; }
-    public decimal? MarginCoveragePct { get; set; }
+    public string MarginQualityLabel { get; set; } = string.Empty;
+    public decimal MarginCoveragePct { get; set; }
     public int CurrentStock { get; set; }
     public int MinStock { get; set; }
     public int StockGap { get; set; }
@@ -4680,7 +4576,7 @@ public class ProductDecisionCenterRowDto
     public decimal SlowStockCapital { get; set; }
     public string DataQualityStatus { get; set; } = "warning";
     public int ConfidencePct { get; set; }
-    public int? ReliabilityPct { get; set; }
+    public int ReliabilityPct { get; set; }
     public string RecommendationStatus { get; set; } = "INSUFFICIENT_DATA";
     public string RecommendationLabel { get; set; } = "Nedovoljno podataka";
     public string RecommendationReason { get; set; } = string.Empty;
