@@ -151,7 +151,8 @@ export default function AnalyticsActionsPage() {
   }, [location.search]);
 
   function setFilter(key: keyof AnalyticsActionFilters, value: string | number | undefined) {
-    setFilters((f) => ({ ...f, [key]: value || undefined, page: 1 }));
+    const normalizedValue = value === "" || value == null ? undefined : value;
+    setFilters((f) => ({ ...f, [key]: normalizedValue, page: 1 }));
   }
 
   async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string) {

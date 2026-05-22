@@ -78,6 +78,13 @@ Guardrail automation
 - Script: `scripts/check-analytics-guardrails.mjs` scans the frontend sources and flags suspicious patterns.
 - Run locally via `npm run check:analytics-guardrails` (from `Klijent/clientapp`).
 
+Required checks before merge
+----------------------------
+Run from `Klijent/clientapp`:
+- `npm run build`
+- `npm run check:analytics-guardrails`
+- `npm run test`
+
 Contact
 -------
 For questions about rules or false positives, talk to the analytics backend owner before changing the script rules.

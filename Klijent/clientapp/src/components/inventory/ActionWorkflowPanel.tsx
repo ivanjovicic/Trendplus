@@ -7,6 +7,8 @@ type ActionWorkflowPanelProps = {
   operationsLoading: boolean;
   workflowBusyKey: string | null;
   queueBusyKey: string | null;
+  centralQueueUrl?: string;
+  isSuggestionQueued?: (item: InventoryActionSuggestion) => boolean;
   onUpdateWorkflowStatus: (item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") => void;
   onAddToCentralQueue: (item: InventoryActionSuggestion) => void;
   sectionId?: string;
@@ -17,6 +19,8 @@ export function ActionWorkflowPanel({
   operationsLoading,
   workflowBusyKey,
   queueBusyKey,
+  centralQueueUrl = "/analytics/actions?sourceType=inventory",
+  isSuggestionQueued,
   onUpdateWorkflowStatus,
   onAddToCentralQueue,
   sectionId,
@@ -30,20 +34,33 @@ export function ActionWorkflowPanel({
           <h2 className="text-lg font-semibold text-foreground">Predlog akcije workflow</h2>
           <p className="text-sm text-muted">Dopuna, transfer, markdown i clearance predlozi sa workflow statusom obrade i brzim odlukama.</p>
         </div>
-        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
-          {workflowItems.length} aktivnih predloga
+        <div className="flex items-center gap-2">
+          <a
+            href={centralQueueUrl}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-info transition-colors duration-150 hover:border-info"
+            title="Otvori centralni Analytics Action Queue filtriran za inventory."
+          >
+            Otvori centralni red akcija
+          </a>
+          <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
+            {workflowItems.length} aktivnih predloga
+          </div>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-info">Pending</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.pendingCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-success">Approved</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.approvedCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-muted">Deferred</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.deferredCount ?? 0)}</div></div>
-        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-warning">Closed</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.closedCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-info">Na cekanju</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.pendingCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-success">Odobreno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.approvedCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-muted">Odlozeno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.deferredCount ?? 0)}</div></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-warning">Zatvoreno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.closedCount ?? 0)}</div></div>
       </div>
 
       <div className="mt-5 space-y-3">
-        {operationsLoading && workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Ucitavam workflow predloge...</div> : workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Za trenutne filtere nema otvorenih predloga akcije.</div> : workflowItems.map((item) => (
+        {operationsLoading && workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Ucitavam workflow predloge...</div> : workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Za trenutne filtere nema otvorenih predloga akcije.</div> : workflowItems.map((item) => {
+          const queued = isSuggestionQueued?.(item) ?? false;
+          const queueButtonDisabled = workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey;
+
+          return (
           <div key={item.suggestionKey} className="rounded-2xl border border-border bg-surface p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
@@ -67,20 +84,31 @@ export function ActionWorkflowPanel({
                 {item.note ? <div className="mt-2 text-xs text-muted">Napomena: {item.note}</div> : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAddToCentralQueue(item)}
-                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
-                  title="Dodaj predlog u centralni Analytics Action Queue."
-                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-info disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <ClipboardPlus size={14} />
-                  Dodaj u centralne akcije
-                </button>
+                {queued ? (
+                  <a
+                    href={centralQueueUrl}
+                    title="Ovaj predlog je vec dodat u centralni red akcija."
+                    className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success"
+                  >
+                    <CheckCircle2 size={14} />
+                    U centralnim akcijama
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCentralQueue(item)}
+                    disabled={queueButtonDisabled}
+                    title="Dodaj predlog u centralni Analytics Action Queue."
+                    className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-info disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <ClipboardPlus size={14} />
+                    Dodaj u centralne akcije
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "approved")}
-                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  disabled={queueButtonDisabled}
                   title="Oznaci predlog kao odobren - akcija je validna i moze se izvrsiti."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -90,7 +118,7 @@ export function ActionWorkflowPanel({
                 <button
                   type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "deferred")}
-                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  disabled={queueButtonDisabled}
                   title="Odlozi odluku - ponovo ces videti predlog kasnije."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -100,7 +128,7 @@ export function ActionWorkflowPanel({
                 <button
                   type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "closed")}
-                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  disabled={queueButtonDisabled}
                   title="Zatvori predlog - akcija nije relevantna u ovom trenutku ili je resena na drugi nacin."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -110,7 +138,7 @@ export function ActionWorkflowPanel({
               </div>
             </div>
           </div>
-        ))}
+        )})}
       </div>
     </section>
   );

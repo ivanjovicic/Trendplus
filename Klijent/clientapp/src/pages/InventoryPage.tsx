@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
-import { createInventoryReportSchedule, exportInventoryReport, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
+import { createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
@@ -36,6 +36,7 @@ const OOS_RISK_THRESHOLD = 0.25;
 const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
 const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
+const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
 
 type PreviousLoadState = { pageNumber: number; pageSize: number; selectedStoreId: number | null; selectedSupplierId: number | null; sortBy: string; trimmedSearch: string; compareStoreIdsKey: string };
 
@@ -72,6 +73,7 @@ export default function InventoryPage() {
   const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape");
   const [workflowBusyKey, setWorkflowBusyKey] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
+  const [queuedSuggestionKeys, setQueuedSuggestionKeys] = useState<string[]>([]);
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<InventoryReportScheduleInput>(createScheduleDraft);
@@ -133,6 +135,36 @@ export default function InventoryPage() {
       });
     return () => { cancelled = true; };
   }, [selectedStoreId, selectedSupplierId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadQueuedInventorySuggestions() {
+      try {
+        const [newActions, acceptedActions, deferredActions] = await Promise.all([
+          getAnalyticsActions({ sourceType: "inventory", status: "new", page: 1, pageSize: 200 }),
+          getAnalyticsActions({ sourceType: "inventory", status: "accepted", page: 1, pageSize: 200 }),
+          getAnalyticsActions({ sourceType: "inventory", status: "deferred", page: 1, pageSize: 200 }),
+        ]);
+
+        if (cancelled) return;
+
+        const nextKeys = new Set<string>();
+        for (const action of [...newActions.items, ...acceptedActions.items, ...deferredActions.items]) {
+          if (action.sourceKey) nextKeys.add(action.sourceKey);
+        }
+
+        if (nextKeys.size > 0) {
+          setQueuedSuggestionKeys((current) => Array.from(new Set([...current, ...nextKeys])));
+        }
+      } catch (reason) {
+        console.warn("Neuspesno ucitavanje postojecih inventory akcija iz centralnog reda.", reason);
+      }
+    }
+
+    void loadQueuedInventorySuggestions();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const currentLoad = {
@@ -494,6 +526,8 @@ export default function InventoryPage() {
   async function addWorkflowSuggestionToCentralQueue(item: InventoryActionSuggestion) {
     try {
       setQueueBusyKey(item.suggestionKey);
+      const wasAlreadyQueued = queuedSuggestionKeys.includes(item.suggestionKey);
+
       await upsertAnalyticsAction({
         sourceType: "inventory",
         sourceKey: item.suggestionKey,
@@ -512,7 +546,12 @@ export default function InventoryPage() {
           toStoreName: item.toStoreName,
         }),
       });
-      setExportStatus("Predlog dodat u centralne akcije.");
+      setQueuedSuggestionKeys((current) => (
+        current.includes(item.suggestionKey) ? current : [...current, item.suggestionKey]
+      ));
+      setExportStatus(wasAlreadyQueued
+        ? "Predlog je već bio u centralnim akcijama."
+        : "Predlog dodat u centralne akcije.");
     } catch (reason) {
       setExportStatus(reason instanceof Error ? reason.message : "Dodavanje u centralne akcije nije uspelo.");
     } finally {
@@ -652,8 +691,8 @@ export default function InventoryPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>
-            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Operativni pregled zaliha sa stampom i report izvozom.</h3>
-            <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Stranica sada spaja KPI pregled, filtriranje po prodavnici i dobavljacu, tabelarni rad, detalje artikla i server-side dokumente za deljenje sa timom.</p>
+            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Decision cockpit za zalihe: dopuna, OOS rizik, visak zalihe, transferi i workflow odluka.</h3>
+            <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Pregled vodi od prioriteta i signala ka dubinskoj analizi i operativnom izvozu bez promene poslovne logike.</p>
           </div>
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
@@ -705,7 +744,7 @@ export default function InventoryPage() {
               <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
               <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--success)] transition-all duration-200 hover:border-[var(--success)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
               <button type="button" aria-label="Izvezi PDF filtrirano" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--error)] transition-all duration-200 hover:border-[var(--error)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
-              <a href="/analytics/actions?sourceType=inventory" className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md">Otvori centralni red akcija</a>
+              <a href={INVENTORY_ACTIONS_QUEUE_URL} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md">Otvori centralni red akcija</a>
               <button type="button" aria-label="Osvezi stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-secondary hover:shadow-md"><RefreshCw size={14} />Osvezi</button>
             </div>
           </div>
@@ -753,7 +792,11 @@ export default function InventoryPage() {
         </div>
       </section>
 
-      {/* Decision Summary Bar - quick status at a glance */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-contrast">1. Odluke sada</h2>
+        <p className="text-sm text-muted">Najbitniji prioriteti i workflow koraci koje treba doneti odmah.</p>
+      </div>
+
       <DecisionSummaryBar
         balance={balance}
         actionWorkflow={actionWorkflow}
@@ -765,10 +808,24 @@ export default function InventoryPage() {
 
       {/* Decision-Critical Workflow Panel */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osvezi stranicu.</div>}>
-        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} queueBusyKey={queueBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} onAddToCentralQueue={(item) => void addWorkflowSuggestionToCentralQueue(item)} />
+        <ActionWorkflowPanel
+          sectionId={ACTION_WORKFLOW_SECTION_ID}
+          actionWorkflow={actionWorkflow}
+          operationsLoading={operationsLoading}
+          workflowBusyKey={workflowBusyKey}
+          queueBusyKey={queueBusyKey}
+          centralQueueUrl={INVENTORY_ACTIONS_QUEUE_URL}
+          isSuggestionQueued={(item) => queuedSuggestionKeys.includes(item.suggestionKey)}
+          onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)}
+          onAddToCentralQueue={(item) => void addWorkflowSuggestionToCentralQueue(item)}
+        />
       </ErrorBoundary>
 
-      {/* Decision-Critical Alerts & Forecasting */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-contrast">2. Rizici i signali</h2>
+        <p className="text-sm text-muted">Signalizacija rizika praznih polica, prekomernih zaliha i transfer potencijala.</p>
+      </div>
+
       <div className="grid gap-5 xl:grid-cols-2">
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osvezi stranicu.</div>}>
           <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
@@ -783,7 +840,11 @@ export default function InventoryPage() {
         <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
       </ErrorBoundary>
 
-      {/* Support & Insight Panels */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-contrast">3. Detaljna analiza zaliha</h2>
+        <p className="text-sm text-muted">KPI, prioriteti, poredjenje prodavnica i lista artikala za dublji pregled.</p>
+      </div>
+
       <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
       <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
@@ -796,30 +857,41 @@ export default function InventoryPage() {
       {/* Detail Table - scrollable inventory list */}
       <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
 
-      {/* Export & Scheduler - secondary/admin panel */}
-      <ExportSchedulerPanel
-        printOrientation={printOrientation}
-        onPrintOrientationChange={setPrintOrientation}
-        onPrintPreview={() => void runServerExport("pdf", true)}
-        onPrintBlank={() => void runBlankPrint()}
-        onExportCsv={exportVisibleCsv}
-        onExportCsvFiltered={() => void runServerExport("csv")}
-        onExportExcel={() => void runServerExport("xlsx")}
-        onExportPdf={() => void runServerExport("pdf")}
-        onRefresh={() => window.location.reload()}
-        schedules={schedules}
-        scheduleDraft={scheduleDraft}
-        setScheduleDraft={setScheduleDraft}
-        schedulerBusy={schedulerBusy}
-        schedulerMessage={schedulerMessage}
-        onCopyCurrentFilters={copyCurrentFiltersToSchedule}
-        onSaveSchedule={saveSchedule}
-        onRunScheduleNow={(id) => void runScheduleNow(id)}
-        exportBusy={exportBusy}
-        totalCount={totalCount}
-        rowsLength={rows.length}
-        exportStatus={exportStatus}
-      />
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izvestaja</h2>
+        <p className="text-sm text-muted">Operativne opcije za stampu, eksport i scheduler su dostupne po potrebi.</p>
+      </div>
+
+      <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold text-contrast">Izvoz i scheduler</summary>
+          <div className="mt-4">
+            <ExportSchedulerPanel
+              printOrientation={printOrientation}
+              onPrintOrientationChange={setPrintOrientation}
+              onPrintPreview={() => void runServerExport("pdf", true)}
+              onPrintBlank={() => void runBlankPrint()}
+              onExportCsv={exportVisibleCsv}
+              onExportCsvFiltered={() => void runServerExport("csv")}
+              onExportExcel={() => void runServerExport("xlsx")}
+              onExportPdf={() => void runServerExport("pdf")}
+              onRefresh={() => window.location.reload()}
+              schedules={schedules}
+              scheduleDraft={scheduleDraft}
+              setScheduleDraft={setScheduleDraft}
+              schedulerBusy={schedulerBusy}
+              schedulerMessage={schedulerMessage}
+              onCopyCurrentFilters={copyCurrentFiltersToSchedule}
+              onSaveSchedule={saveSchedule}
+              onRunScheduleNow={(id) => void runScheduleNow(id)}
+              exportBusy={exportBusy}
+              totalCount={totalCount}
+              rowsLength={rows.length}
+              exportStatus={exportStatus}
+            />
+          </div>
+        </details>
+      </section>
 
       {/* Detail Modal */}
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} onRetry={retryDetailFetch} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
