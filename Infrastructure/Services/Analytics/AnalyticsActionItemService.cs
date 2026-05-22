@@ -3,6 +3,7 @@ using Application.Artikli.Common.Interfaces;
 using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace Infrastructure.Services.Analytics;
 
@@ -44,21 +45,20 @@ public sealed class AnalyticsActionItemService
 
         if (!string.IsNullOrWhiteSpace(dataQualityStatus))
         {
-            if (dataQualityStatus.Equals(AnalyticsActionConstants.DataQualityStatuses.Warning, StringComparison.OrdinalIgnoreCase))
+            // Support legacy values by including any legacy keys that map to the requested canonical value
+            var canonical = dataQualityStatus;
+            var legacyKeys = AnalyticsActionConstants.DataQualityStatuses.LegacyMappings
+                .Where(kv => string.Equals(kv.Value, canonical, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => kv.Key)
+                .ToArray();
+
+            if (legacyKeys.Length > 0)
             {
-                q = q.Where(x =>
-                    x.DataQualityStatus == AnalyticsActionConstants.DataQualityStatuses.Warning ||
-                    x.DataQualityStatus == "fair");
-            }
-            else if (dataQualityStatus.Equals(AnalyticsActionConstants.DataQualityStatuses.Critical, StringComparison.OrdinalIgnoreCase))
-            {
-                q = q.Where(x =>
-                    x.DataQualityStatus == AnalyticsActionConstants.DataQualityStatuses.Critical ||
-                    x.DataQualityStatus == "poor");
+                q = q.Where(x => x.DataQualityStatus == canonical || legacyKeys.Contains(x.DataQualityStatus));
             }
             else
             {
-                q = q.Where(x => x.DataQualityStatus == dataQualityStatus);
+                q = q.Where(x => x.DataQualityStatus == canonical);
             }
         }
 
@@ -74,8 +74,8 @@ public sealed class AnalyticsActionItemService
         var totalCount = await q.CountAsync(ct);
 
         var items = await q
-            .OrderByDescending(x => x.Priority == "P1")
-            .ThenByDescending(x => x.Priority == "P2")
+            .OrderByDescending(x => x.Priority == AnalyticsActionConstants.Priorities.P1)
+            .ThenByDescending(x => x.Priority == AnalyticsActionConstants.Priorities.P2)
             .ThenByDescending(x => x.UpdatedAtUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -99,14 +99,18 @@ public sealed class AnalyticsActionItemService
 
         var p1Open = await _db.AnalyticsActionItems
             .AsNoTracking()
-            .CountAsync(x => x.Priority == "P1" && (x.Status == "new" || x.Status == "accepted" || x.Status == "deferred"), ct);
+            .CountAsync(x =>
+                x.Priority == AnalyticsActionConstants.Priorities.P1 &&
+                (x.Status == AnalyticsActionConstants.Statuses.New ||
+                 x.Status == AnalyticsActionConstants.Statuses.Accepted ||
+                 x.Status == AnalyticsActionConstants.Statuses.Deferred), ct);
 
         return new AnalyticsActionCountsDto(
-            New: items.FirstOrDefault(x => x.Status == "new")?.Count ?? 0,
-            Accepted: items.FirstOrDefault(x => x.Status == "accepted")?.Count ?? 0,
-            Deferred: items.FirstOrDefault(x => x.Status == "deferred")?.Count ?? 0,
-            Rejected: items.FirstOrDefault(x => x.Status == "rejected")?.Count ?? 0,
-            Done: items.FirstOrDefault(x => x.Status == "done")?.Count ?? 0,
+            New: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.New)?.Count ?? 0,
+            Accepted: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Accepted)?.Count ?? 0,
+            Deferred: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Deferred)?.Count ?? 0,
+            Rejected: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Rejected)?.Count ?? 0,
+            Done: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Done)?.Count ?? 0,
             P1Open: p1Open
         );
     }
@@ -118,12 +122,37 @@ public sealed class AnalyticsActionItemService
         string? userId,
         CancellationToken ct = default)
     {
+        if (!AnalyticsActionConstants.IsValidSourceType(request.SourceType))
+        {
+            throw new ArgumentException(
+                $"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}",
+                nameof(request.SourceType));
+        }
+
+        if (!AnalyticsActionConstants.IsValidPriority(request.Priority))
+        {
+            throw new ArgumentException(
+                $"priority must be one of: {string.Join(", ", AnalyticsActionConstants.Priorities.AllValues)}",
+                nameof(request.Priority));
+        }
+
+        // Normalize legacy data quality values (e.g., "fair" -> "warning", "poor" -> "critical")
+        var normalizedDataQuality = AnalyticsActionConstants.NormalizeDataQualityStatus(request.DataQualityStatus);
+        if (normalizedDataQuality is not null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQuality))
+        {
+            throw new ArgumentException(
+                $"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}",
+                nameof(request.DataQualityStatus));
+        }
+
         // Check for existing open action with same sourceType + sourceKey
         var existing = await _db.AnalyticsActionItems
             .FirstOrDefaultAsync(x =>
                 x.SourceType == request.SourceType &&
                 x.SourceKey == request.SourceKey &&
-                (x.Status == "new" || x.Status == "accepted" || x.Status == "deferred"),
+                (x.Status == AnalyticsActionConstants.Statuses.New ||
+                 x.Status == AnalyticsActionConstants.Statuses.Accepted ||
+                 x.Status == AnalyticsActionConstants.Statuses.Deferred),
                 ct);
 
         if (existing is not null)
@@ -145,8 +174,8 @@ public sealed class AnalyticsActionItemService
             ImpactEstimateRsd = request.ImpactEstimateRsd,
             ConfidencePct = request.ConfidencePct,
             ReliabilityPct = request.ReliabilityPct,
-            DataQualityStatus = request.DataQualityStatus,
-            Status = "new",
+            DataQualityStatus = normalizedDataQuality,
+            Status = AnalyticsActionConstants.Statuses.New,
             ActionUrl = request.ActionUrl,
             MetadataJson = request.MetadataJson,
             CreatedAtUtc = DateTime.UtcNow,
@@ -174,6 +203,17 @@ public sealed class AnalyticsActionItemService
         string? userName,
         CancellationToken ct = default)
     {
+        if (!AnalyticsActionConstants.IsValidStatus(newStatus))
+        {
+            _logger.LogWarning(
+                "AnalyticsActionItem status update rejected: invalid status {Status}. Allowed: {AllowedStatuses}",
+                newStatus,
+                string.Join(", ", AnalyticsActionConstants.Statuses.AllValues));
+            throw new ArgumentException(
+                $"status must be one of: {string.Join(", ", AnalyticsActionConstants.Statuses.AllValues)}",
+                nameof(newStatus));
+        }
+
         var item = await _db.AnalyticsActionItems
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
@@ -188,11 +228,13 @@ public sealed class AnalyticsActionItemService
         // Only terminal statuses are considered resolved.
         // rejected/done => resolved timestamp is set.
         // new/accepted/deferred => action is open (reopened) and resolved timestamp is cleared.
-        if (newStatus is "rejected" or "done")
+        if (newStatus is AnalyticsActionConstants.Statuses.Rejected or AnalyticsActionConstants.Statuses.Done)
         {
             item.ResolvedAtUtc ??= DateTime.UtcNow;
         }
-        else if (newStatus is "new" or "accepted" or "deferred")
+        else if (newStatus is AnalyticsActionConstants.Statuses.New
+            or AnalyticsActionConstants.Statuses.Accepted
+            or AnalyticsActionConstants.Statuses.Deferred)
         {
             item.ResolvedAtUtc = null;
         }
