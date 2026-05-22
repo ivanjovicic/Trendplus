@@ -251,6 +251,52 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
   }
 }
 
+async function patchJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
+  const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
+  const init: RequestInit = {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  };
+
+  if (isApiFailoverLayerActive()) {
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, timeoutMs);
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
+  }
+
+  const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
+  
+  try {
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, firstAttemptTimeoutMs);
+
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    // Don't retry on non-timeout errors
+    if (!(error instanceof FetchTimeoutError)) {
+      throw error;
+    }
+
+    // First attempt timed out - retry with longer timeout
+    const response = await fetchAnalyticsResponse(makeUrl(path), init, totalTimeoutMs);
+
+    if (!response.ok) {
+      throw new Error(await parseApiError(response, errorMessage));
+    }
+
+    return (await response.json()) as T;
+  }
+}
+
 function resolveClientCacheTtl(path: string): number {
   if (path.includes("/api/analytics/cached/filters/stores")) return 5 * 60_000;
   if (path.includes("/api/analytics/cached/filters/suppliers")) return 60_000;
@@ -988,14 +1034,11 @@ export async function updateAnalyticsActionStatus(
   id: number,
   input: AnalyticsActionStatusUpdateInput
 ): Promise<AnalyticsActionItem> {
-  const url = apiUrl(`/api/analytics/actions/${id}/status`);
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) throw new Error(`Greška pri ažuriranju statusa akcije (${res.status})`);
-  return res.json() as Promise<AnalyticsActionItem>;
+  return patchJson<AnalyticsActionItem>(
+    `/api/analytics/actions/${id}/status`,
+    input,
+    "Greška pri ažuriranju statusa akcije"
+  );
 }
 
 export async function createInventoryReportSchedule(input: InventoryReportScheduleInput): Promise<InventoryReportSchedule> {
@@ -1113,3 +1156,4 @@ export async function getInventoryAlerts(options?: {
     "Greska pri ucitavanju inventory alertova"
   );
 }
+

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   getAnalyticsActions,
   getAnalyticsActionCounts,
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
+import { fmtNumber, fmtRsd } from "../utils/analyticsFormatters";
 import type {
   AnalyticsActionItem,
   AnalyticsActionCounts,
@@ -12,6 +14,7 @@ import type {
   AnalyticsActionSourceType,
   AnalyticsActionPriority,
   AnalyticsActionDataQualityStatus,
+  AnalyticsActionAnyDataQualityStatus,
 } from "../types/analytics";
 import "./AnalyticsActionsPage.css";
 
@@ -46,13 +49,11 @@ const PRIORITY_CSS: Record<AnalyticsActionPriority, string> = {
   P3: "badge-priority p3",
 };
 
-const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus | "legacy-fair" | "legacy-poor", string> = {
+const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus, string> = {
   good: "Dobar",
   warning: "Upozorenje",
   critical: "Kritičan",
   insufficient_data: "Nedovoljno podataka",
-  "legacy-fair": "Srednji",
-  "legacy-poor": "Loš",
 };
 
 const DATA_QUALITY_CSS: Record<string, string> = {
@@ -75,23 +76,23 @@ function normalizeDataQualityStatus(value: string | null | undefined): Analytics
 }
 
 // Get display label for data quality status (supports legacy values)
-function getDataQualityLabel(value: string | null | undefined): string {
+function getDataQualityLabel(value: AnalyticsActionAnyDataQualityStatus | null | undefined): string {
   if (!value) return "—";
-  const lower = value.toLowerCase();
-  return DATA_QUALITY_LABELS[lower as keyof typeof DATA_QUALITY_LABELS] ?? value;
+  const normalized = normalizeDataQualityStatus(value);
+  if (!normalized) return value;
+  return DATA_QUALITY_LABELS[normalized];
 }
 
-function fmt(n: number | null | undefined): string {
-  if (n == null) return "—";
-  return n.toLocaleString("sr-RS");
-}
-
-function fmtRsd(n: number | null | undefined): string {
-  if (n == null) return "—";
-  return `${n.toLocaleString("sr-RS")} RSD`;
+function parseSourceTypeQuery(value: string | null): AnalyticsActionSourceType | undefined {
+  if (!value) return undefined;
+  if (value === "dashboard" || value === "product" || value === "supplier" || value === "inventory" || value === "nivelacija" || value === "data_quality") {
+    return value;
+  }
+  return undefined;
 }
 
 export default function AnalyticsActionsPage() {
+  const location = useLocation();
   const [items, setItems] = useState<AnalyticsActionItem[]>([]);
   const [counts, setCounts] = useState<AnalyticsActionCounts | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -100,9 +101,13 @@ export default function AnalyticsActionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<AnalyticsActionFilters>({
-    page: 1,
-    pageSize: 50,
+  const [filters, setFilters] = useState<AnalyticsActionFilters>(() => {
+    const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
+    return {
+      page: 1,
+      pageSize: 50,
+      sourceType,
+    };
   });
 
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -137,6 +142,14 @@ export default function AnalyticsActionsPage() {
     void loadCounts();
   }, [filters, loadItems, loadCounts]);
 
+  useEffect(() => {
+    const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
+    setFilters((current) => {
+      if ((current.sourceType ?? undefined) === sourceType) return current;
+      return { ...current, sourceType, page: 1 };
+    });
+  }, [location.search]);
+
   function setFilter(key: keyof AnalyticsActionFilters, value: string | number | undefined) {
     setFilters((f) => ({ ...f, [key]: value || undefined, page: 1 }));
   }
@@ -163,6 +176,11 @@ export default function AnalyticsActionsPage() {
         <p className="aaq-subtitle">
           Centralni red akcija iz dashboarda, analize proizvoda, dobavljača, zaliha i nivelacija.
         </p>
+        {filters.sourceType === "inventory" && (
+          <p className="aaq-subtitle">
+            <a href="/analytics/inventory" className="action-link">Otvori Inventory Analytics</a>
+          </p>
+        )}
       </div>
 
       {/* KPI bar */}
@@ -299,8 +317,8 @@ export default function AnalyticsActionsPage() {
                         )}
                       </td>
                       <td className="td-rec">{item.recommendationStatus ?? "—"}</td>
-                      <td className="td-num">{fmtRsd(item.impactEstimateRsd)}</td>
-                      <td className="td-num">{item.confidencePct != null ? `${fmt(item.confidencePct)}%` : "—"}</td>
+                      <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "—")}</td>
+                      <td className="td-num">{item.confidencePct != null ? `${fmtNumber(item.confidencePct, 0, "—")}%` : "—"}</td>
                       <td>
                         {item.dataQualityStatus ? (
                           <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}>

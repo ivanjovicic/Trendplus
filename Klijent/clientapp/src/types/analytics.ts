@@ -709,6 +709,11 @@ export type AnalyticsActionDataQualityStatus =
   | "critical"
   | "insufficient_data";
 
+export type AnalyticsActionLegacyDataQualityStatus = "fair" | "poor";
+export type AnalyticsActionAnyDataQualityStatus =
+  | AnalyticsActionDataQualityStatus
+  | AnalyticsActionLegacyDataQualityStatus;
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;
@@ -721,7 +726,7 @@ export interface AnalyticsActionItem {
   impactEstimateRsd?: number | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
-  dataQualityStatus?: string | null;
+  dataQualityStatus?: AnalyticsActionAnyDataQualityStatus | null;
   status: AnalyticsActionStatus;
   actionUrl?: string | null;
   metadataJson?: string | null;
@@ -761,7 +766,7 @@ export interface AnalyticsActionUpsertInput {
   impactEstimateRsd?: number | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
-  dataQualityStatus?: string | null;
+  dataQualityStatus?: AnalyticsActionDataQualityStatus | null;
   actionUrl?: string | null;
   metadataJson?: string | null;
 }
@@ -775,7 +780,7 @@ export interface AnalyticsActionFilters {
   status?: AnalyticsActionStatus;
   priority?: AnalyticsActionPriority;
   sourceType?: AnalyticsActionSourceType;
-  dataQualityStatus?: string;
+  dataQualityStatus?: AnalyticsActionDataQualityStatus;
   search?: string;
   page?: number;
   pageSize?: number;

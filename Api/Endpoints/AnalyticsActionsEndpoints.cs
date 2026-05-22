@@ -26,7 +26,20 @@ public static class AnalyticsActionsEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 200);
 
-            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, dataQualityStatus, search, page, pageSize, ct);
+            if (!string.IsNullOrWhiteSpace(status) && !AnalyticsActionConstants.IsValidStatus(status))
+                return Results.BadRequest($"status must be one of: {string.Join(", ", AnalyticsActionConstants.Statuses.AllValues)}");
+
+            if (!string.IsNullOrWhiteSpace(priority) && !AnalyticsActionConstants.IsValidPriority(priority))
+                return Results.BadRequest($"priority must be one of: {string.Join(", ", AnalyticsActionConstants.Priorities.AllValues)}");
+
+            if (!string.IsNullOrWhiteSpace(sourceType) && !AnalyticsActionConstants.IsValidSourceType(sourceType))
+                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+
+            var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus);
+            if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
+                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
+
+            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, normalizedDataQualityStatus, search, page, pageSize, ct);
 
             return Results.Ok(new
             {
@@ -84,7 +97,7 @@ public static class AnalyticsActionsEndpoints
             // Validate and normalize dataQualityStatus
             var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(body.DataQualityStatus);
             if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
-                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}, or legacy: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.LegacyMappings.Keys)}");
+                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
 
             var userId = httpContext.User?.FindFirst("sub")?.Value
                       ?? httpContext.User?.FindFirst("userId")?.Value;

@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,24 @@ public sealed class AnalyticsActionItemService
             q = q.Where(x => x.SourceType == sourceType);
 
         if (!string.IsNullOrWhiteSpace(dataQualityStatus))
-            q = q.Where(x => x.DataQualityStatus == dataQualityStatus);
+        {
+            if (dataQualityStatus.Equals(AnalyticsActionConstants.DataQualityStatuses.Warning, StringComparison.OrdinalIgnoreCase))
+            {
+                q = q.Where(x =>
+                    x.DataQualityStatus == AnalyticsActionConstants.DataQualityStatuses.Warning ||
+                    x.DataQualityStatus == "fair");
+            }
+            else if (dataQualityStatus.Equals(AnalyticsActionConstants.DataQualityStatuses.Critical, StringComparison.OrdinalIgnoreCase))
+            {
+                q = q.Where(x =>
+                    x.DataQualityStatus == AnalyticsActionConstants.DataQualityStatuses.Critical ||
+                    x.DataQualityStatus == "poor");
+            }
+            else
+            {
+                q = q.Where(x => x.DataQualityStatus == dataQualityStatus);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -167,9 +185,17 @@ public sealed class AnalyticsActionItemService
         item.UpdatedByUserId = userId;
         item.UpdatedByUserName = userName;
 
-        // Resolved statuses
+        // Only terminal statuses are considered resolved.
+        // rejected/done => resolved timestamp is set.
+        // new/accepted/deferred => action is open (reopened) and resolved timestamp is cleared.
         if (newStatus is "rejected" or "done")
-            item.ResolvedAtUtc = DateTime.UtcNow;
+        {
+            item.ResolvedAtUtc ??= DateTime.UtcNow;
+        }
+        else if (newStatus is "new" or "accepted" or "deferred")
+        {
+            item.ResolvedAtUtc = null;
+        }
 
         // Store note in metadata if provided
         if (!string.IsNullOrWhiteSpace(note))

@@ -60,7 +60,8 @@ public class AnalyticsActionItem
     public int? ReliabilityPct { get; set; }
 
     /// <summary>
-    /// Data quality status: "good" | "fair" | "poor" | null
+    /// Data quality status (canonical): "good" | "warning" | "critical" | "insufficient_data" | null.
+    /// Legacy values "fair"/"poor" may still exist in historical rows.
     /// </summary>
     public string? DataQualityStatus { get; set; }
 
@@ -91,7 +92,9 @@ public class AnalyticsActionItem
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// When the action was resolved (accepted, rejected, or done)
+    /// When the action was resolved (closed).
+    /// Set only for terminal statuses: "rejected" or "done".
+    /// Cleared if the action is reopened to "new", "accepted", or "deferred".
     /// </summary>
     public DateTime? ResolvedAtUtc { get; set; }
 

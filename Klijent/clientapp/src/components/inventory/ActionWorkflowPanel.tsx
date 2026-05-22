@@ -1,4 +1,4 @@
-import { Archive, CheckCircle2, Clock3, GitCompareArrows, Tag, Truck, XCircle } from "lucide-react";
+import { Archive, CheckCircle2, ClipboardPlus, Clock3, GitCompareArrows, Tag, Truck, XCircle } from "lucide-react";
 import type { InventoryActionSuggestion, InventoryActionWorkflow } from "../../types/analytics";
 import { formatCurrency, formatNumber, getActionStatusTone, getActionTypeTone, getPriorityTone } from "./inventoryUtils";
 
@@ -6,7 +6,9 @@ type ActionWorkflowPanelProps = {
   actionWorkflow: InventoryActionWorkflow | null;
   operationsLoading: boolean;
   workflowBusyKey: string | null;
+  queueBusyKey: string | null;
   onUpdateWorkflowStatus: (item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") => void;
+  onAddToCentralQueue: (item: InventoryActionSuggestion) => void;
   sectionId?: string;
 };
 
@@ -14,12 +16,14 @@ export function ActionWorkflowPanel({
   actionWorkflow,
   operationsLoading,
   workflowBusyKey,
+  queueBusyKey,
   onUpdateWorkflowStatus,
+  onAddToCentralQueue,
   sectionId,
 }: ActionWorkflowPanelProps) {
   const workflowItems = actionWorkflow?.items ?? [];
 
-    return (
+  return (
     <section id={sectionId} className="rounded-[28px] border border-border bg-surface p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
@@ -65,9 +69,19 @@ export function ActionWorkflowPanel({
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => onAddToCentralQueue(item)}
+                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  title="Dodaj predlog u centralni Analytics Action Queue."
+                  className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-info disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <ClipboardPlus size={14} />
+                  Dodaj u centralne akcije
+                </button>
+                <button
+                  type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "approved")}
-                  disabled={workflowBusyKey === item.suggestionKey}
-                  title="Označi predlog kao odobren - akcija je validna i može se izvršiti."
+                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  title="Oznaci predlog kao odobren - akcija je validna i moze se izvrsiti."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-success disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <CheckCircle2 size={14} />
@@ -76,8 +90,8 @@ export function ActionWorkflowPanel({
                 <button
                   type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "deferred")}
-                  disabled={workflowBusyKey === item.suggestionKey}
-                  title="Odlozi odluku - ponovo ćeš videti predlog kasnije."
+                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  title="Odlozi odluku - ponovo ces videti predlog kasnije."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-muted disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Clock3 size={14} />
@@ -86,8 +100,8 @@ export function ActionWorkflowPanel({
                 <button
                   type="button"
                   onClick={() => onUpdateWorkflowStatus(item, "closed")}
-                  disabled={workflowBusyKey === item.suggestionKey}
-                  title="Zatvori predlog - akcija nije relevantna u ovom trenutku ili je rešena na drugi način."
+                  disabled={workflowBusyKey === item.suggestionKey || queueBusyKey === item.suggestionKey}
+                  title="Zatvori predlog - akcija nije relevantna u ovom trenutku ili je resena na drugi nacin."
                   className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold text-warning disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <XCircle size={14} />

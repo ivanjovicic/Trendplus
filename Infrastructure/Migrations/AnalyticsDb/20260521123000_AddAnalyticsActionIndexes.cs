@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Infrastructure.Migrations.AnalyticsDb
 {
+    [Microsoft.EntityFrameworkCore.Migrations.Migration("20260521123000_AddAnalyticsActionIndexes")]
     public partial class AddAnalyticsActionIndexes : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

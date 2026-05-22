@@ -121,6 +121,17 @@ function recommendationToneClass(status: ProductDecisionRecommendationStatus): s
   return "decision-pill decision-pill-na";
 }
 
+function toCanonicalDataQualityStatus(
+  value: string | null | undefined,
+): "good" | "warning" | "critical" | "insufficient_data" | undefined {
+  if (!value) return undefined;
+  const lower = value.toLowerCase();
+  if (lower === "fair") return "warning";
+  if (lower === "poor") return "critical";
+  if (lower === "good" || lower === "warning" || lower === "critical" || lower === "insufficient_data") return lower;
+  return undefined;
+}
+
 export default function ProductDecisionCenterPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -515,7 +526,7 @@ export default function ProductDecisionCenterPage() {
                                   priority: row.confidencePct != null && row.confidencePct >= 80 ? "P1" : row.confidencePct != null && row.confidencePct >= 50 ? "P2" : "P3",
                                   impactEstimateRsd: row.revenue ?? undefined,
                                   confidencePct: row.confidencePct ?? undefined,
-                                  dataQualityStatus: row.dataQualityStatus ?? undefined,
+                                  dataQualityStatus: toCanonicalDataQualityStatus(row.dataQualityStatus),
                                   actionUrl: `/analitika/top-products-advanced/${row.productId}`,
                                 });
                                 setAddedToQueueIds((prev) => new Set([...prev, row.productId]));

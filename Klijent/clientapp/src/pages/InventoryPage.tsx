@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
-import { createInventoryReportSchedule, exportInventoryReport, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision } from "../services/analyticsApi";
+import { createInventoryReportSchedule, exportInventoryReport, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
@@ -71,6 +71,7 @@ export default function InventoryPage() {
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape");
   const [workflowBusyKey, setWorkflowBusyKey] = useState<string | null>(null);
+  const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [schedulerBusy, setSchedulerBusy] = useState(false);
   const [schedulerMessage, setSchedulerMessage] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<InventoryReportScheduleInput>(createScheduleDraft);
@@ -482,6 +483,43 @@ export default function InventoryPage() {
     }
   }
 
+  function mapWorkflowPriorityToQueuePriority(priority: string): "P1" | "P2" | "P3" {
+    const normalized = priority.trim().toLowerCase();
+    if (normalized === "critical" || normalized === "high") return "P1";
+    if (normalized === "medium") return "P2";
+    if (normalized === "low" || normalized === "optional") return "P3";
+    return "P2";
+  }
+
+  async function addWorkflowSuggestionToCentralQueue(item: InventoryActionSuggestion) {
+    try {
+      setQueueBusyKey(item.suggestionKey);
+      await upsertAnalyticsAction({
+        sourceType: "inventory",
+        sourceKey: item.suggestionKey,
+        sourceId: item.artikalId,
+        title: item.label,
+        description: item.reason,
+        recommendationStatus: item.actionType,
+        priority: mapWorkflowPriorityToQueuePriority(item.priority),
+        impactEstimateRsd: item.estimatedValue,
+        actionUrl: "/analytics/inventory",
+        metadataJson: JSON.stringify({
+          suggestionKey: item.suggestionKey,
+          actionType: item.actionType,
+          suggestedQty: item.suggestedQty,
+          fromStoreName: item.fromStoreName,
+          toStoreName: item.toStoreName,
+        }),
+      });
+      setExportStatus("Predlog dodat u centralne akcije.");
+    } catch (reason) {
+      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje u centralne akcije nije uspelo.");
+    } finally {
+      setQueueBusyKey(null);
+    }
+  }
+
   async function saveSchedule() {
     try {
       setSchedulerBusy(true);
@@ -667,6 +705,7 @@ export default function InventoryPage() {
               <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
               <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--success)] transition-all duration-200 hover:border-[var(--success)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
               <button type="button" aria-label="Izvezi PDF filtrirano" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--error)] transition-all duration-200 hover:border-[var(--error)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
+              <a href="/analytics/actions?sourceType=inventory" className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md">Otvori centralni red akcija</a>
               <button type="button" aria-label="Osvezi stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-secondary hover:shadow-md"><RefreshCw size={14} />Osvezi</button>
             </div>
           </div>
@@ -726,7 +765,7 @@ export default function InventoryPage() {
 
       {/* Decision-Critical Workflow Panel */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osvezi stranicu.</div>}>
-        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} />
+        <ActionWorkflowPanel sectionId={ACTION_WORKFLOW_SECTION_ID} actionWorkflow={actionWorkflow} operationsLoading={operationsLoading} workflowBusyKey={workflowBusyKey} queueBusyKey={queueBusyKey} onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)} onAddToCentralQueue={(item) => void addWorkflowSuggestionToCentralQueue(item)} />
       </ErrorBoundary>
 
       {/* Decision-Critical Alerts & Forecasting */}
