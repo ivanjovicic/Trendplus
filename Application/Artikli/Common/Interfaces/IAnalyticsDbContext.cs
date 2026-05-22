@@ -26,6 +26,7 @@ namespace Application.Artikli.Common.Interfaces
         public DbSet<TrendplusIndexRecord> TrendplusIndexRecords { get; }
         public DbSet<InventoryRecommendation> InventoryRecommendations { get; }
         public DbSet<AnalyticsActionItem> AnalyticsActionItems { get; }
+        public DbSet<AnalyticsActionNote> AnalyticsActionNotes { get; }
 
         DbConnection GetDbConnection();
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

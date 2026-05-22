@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import {
   getAnalyticsActions,
@@ -268,6 +270,9 @@ export default function ProductDecisionCenterPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // UX choice: clear queued keys on sourceKey-defining filter change
+    // to avoid temporary false-positive "U akcijama" badges for the previous context.
+    setQueuedActionKeys(new Set());
     (async () => {
       try {
         const responses = await Promise.all(
@@ -324,6 +329,7 @@ export default function ProductDecisionCenterPage() {
   }, [loadData]);
 
   const rows = payload?.rows ?? [];
+  const responseMeta = payload?.meta ?? null;
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -369,6 +375,24 @@ export default function ProductDecisionCenterPage() {
     lostSalesEstimate: payload?.summary.lostSalesEstimate ?? 0,
     slowStockCapital: payload?.summary.slowStockCapital ?? 0,
   }), [payload?.summary.lostSalesEstimate, payload?.summary.slowStockCapital, rows]);
+
+  const trustQualitySummary = useMemo(() => {
+    if (!rows.length) return undefined;
+    let missingSupplierCount = 0;
+    let missingCostCount = 0;
+    let insufficientSignalCount = 0;
+    for (const row of rows) {
+      const codes = row.reasonCodes ?? [];
+      if (codes.some((code) => code.toLowerCase() === "missing_supplier")) missingSupplierCount += 1;
+      if (codes.some((code) => code.toLowerCase() === "missing_cost")) missingCostCount += 1;
+      if (codes.some((code) => code.toLowerCase() === "insufficient_history")) insufficientSignalCount += 1;
+    }
+    return {
+      missingSupplierCount,
+      missingCostCount,
+      insufficientSignalCount,
+    };
+  }, [rows]);
 
   const tableFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "fromDate", label: "Od datuma", value: fromDate },
@@ -449,8 +473,7 @@ export default function ProductDecisionCenterPage() {
         if (action.sourceKey) next.add(action.sourceKey);
         return next;
       });
-      const isExistingAction = alreadyQueued || (action.sourceKey ?? "") === sourceKey;
-      setQueueMessage(isExistingAction ? "Akcija je vec u centralnom redu." : "Akcija dodata u centralni red.");
+      setQueueMessage(alreadyQueued ? "Akcija je vec u centralnom redu." : "Akcija dodata u centralni red.");
     } catch (reason) {
       setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
     } finally {
@@ -460,6 +483,20 @@ export default function ProductDecisionCenterPage() {
 
   return (
     <section className="product-decision-page">
+      <AnalyticsTrustHeader
+        title="Odluke o proizvodima"
+        description="Jedan ekran za dopunu, pojacanje, pracenje, snizenje, zaustavljanje narudzbine i proveru podataka."
+        periodFrom={payload?.periodFromUtc ?? fromDate}
+        periodTo={payload?.periodToUtc ?? toDate}
+        lastRefreshAt={payload?.generatedAtUtc ?? null}
+        dataSource="Product decision center (cached recommendation snapshot)"
+        dataQualityStatus={responseMeta?.dataQualityStatus ?? null}
+        dataQualitySummary={trustQualitySummary}
+        mode="recommendation"
+        recommendationNote="Finalni recommendation status dolazi iz backend decision engine-a."
+        emptyStateReason={!loading && !error && sortedRows.length === 0 ? (responseMeta?.message ?? "Nema kandidata za izabrane filtere i period.") : null}
+        methodologyHref="/analytics/data-quality"
+      />
       <header className="product-decision-header">
         <div>
           <h1>Odluke o proizvodima</h1>
@@ -611,7 +648,20 @@ export default function ProductDecisionCenterPage() {
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}
       {loading ? <div className="product-decision-message">Ucitavanje Product Decision Center podataka...</div> : null}
-      {error ? <div className="product-decision-message product-decision-message-error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Podaci trenutno nisu dostupni"
+          message={error}
+          suggestions={[
+            "Proverite da li je analytics refresh zavrsen.",
+            "Probajte ponovo za nekoliko trenutaka.",
+          ]}
+          onRetry={() => {
+            void loadData();
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
 
       {!loading && !error ? (
         <div className="product-decision-table-wrap">

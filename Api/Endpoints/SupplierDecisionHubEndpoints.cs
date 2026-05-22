@@ -6,6 +6,7 @@ using Npgsql;
 using System.Data;
 using System.Globalization;
 using System.Text;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -151,7 +152,8 @@ public static class SupplierDecisionHubEndpoints
                                 x.SupplierQualityIndex,
                                 x.RecommendationCode,
                                 x.ConfidenceScore))
-                            .ToList());
+                            .ToList(),
+                        BuildResponseMeta(rows));
                 },
                 CacheExpiration.HeavyAnalytics,
                 ct);
@@ -248,7 +250,14 @@ public static class SupplierDecisionHubEndpoints
                             x.ConfidenceScore))
                         .ToList();
 
-                    return new RankingResponse(page, pageSize, ordered.Count, paged, BuildDecisionScoreDataNote(activeFilters));
+                    return new RankingResponse(
+                        page,
+                        pageSize,
+                        ordered.Count,
+                        paged,
+                        BuildDecisionScoreDataNote(activeFilters),
+                        BuildScorecardTrustMetadata(ordered, activeFilters),
+                        BuildResponseMeta(ordered));
                 },
                 CacheExpiration.HeavyAnalytics,
                 ct);
@@ -543,7 +552,30 @@ public static class SupplierDecisionHubEndpoints
             topGrow,
             topRisk,
             insights,
-            dataNote);
+                dataNote,
+                BuildScorecardTrustMetadata(rows, filters),
+                BuildResponseMeta(rows));
+    }
+
+    private static AnalyticsResponseMetaDto BuildResponseMeta(IReadOnlyCollection<SupplierScoreRow> rows)
+    {
+        if (rows.Count == 0)
+        {
+            return new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                Message = "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
+                DataQualityStatus = "insufficient_data",
+                GeneratedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        return new AnalyticsResponseMetaDto
+        {
+            Success = true,
+            DataQualityStatus = "good",
+            GeneratedAtUtc = DateTime.UtcNow
+        };
     }
 
     private static SummarySupplierItem MapSummarySupplier(SupplierScoreRow row) =>
@@ -984,6 +1016,35 @@ SELECT
                 ? "Odabrani period prelazi 180 dana — prikazani su ukupni podaci iz cele istorije nivelacija."
                 : null
         };
+    }
+
+    private static ScorecardTrustMetadata BuildScorecardTrustMetadata(
+        IReadOnlyList<SupplierScoreRow> rows,
+        SupplierDecisionHubFilters filters)
+    {
+        var hasData = rows.Count > 0;
+        var windowDays = GetDecisionScoreWindowDays(filters);
+        var effectiveFrom = hasData ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
+        var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
+        var coverage = windowDays switch
+        {
+            90 => "window_90d",
+            180 => "window_180d",
+            _ => "all_history"
+        };
+
+        return new ScorecardTrustMetadata(
+            filters.FromDate,
+            filters.ToDate,
+            effectiveFrom,
+            effectiveTo,
+            hasData,
+            filters.HasExplicitDateRange,
+            hasData,
+            true,
+            windowDays,
+            filters.DataScope,
+            coverage);
     }
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
@@ -2021,7 +2082,22 @@ public sealed record SummaryResponse(
     IReadOnlyList<SummarySupplierItem> TopGrowSuppliers,
     IReadOnlyList<SummarySupplierItem> TopRiskSuppliers,
     IReadOnlyList<KeyInsightItem> KeyInsights,
-    string? DataNote = null);
+    string? DataNote = null,
+    ScorecardTrustMetadata? TrustMetadata = null,
+    AnalyticsResponseMetaDto? Meta = null);
+
+public sealed record ScorecardTrustMetadata(
+    DateTime RequestedFrom,
+    DateTime RequestedTo,
+    DateTime EffectiveFrom,
+    DateTime EffectiveTo,
+    bool HasData,
+    bool HasExplicitDateRange,
+    bool RecommendationAllowed,
+    bool NoSilentFallback,
+    int WindowDays,
+    string DataScope,
+    string Coverage);
 
 // TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
 // ReliabilityPct, DataQualityStatus, StatusReason and ReasonCodes so the UI can
@@ -2041,7 +2117,9 @@ public sealed record KeyInsightItem(
     string Details,
     string Tone);
 
-public sealed record QuadrantResponse(IReadOnlyList<QuadrantItem> Items);
+public sealed record QuadrantResponse(
+    IReadOnlyList<QuadrantItem> Items,
+    AnalyticsResponseMetaDto? Meta = null);
 
 // TODO(backend-dto): include recommendation quality payload on quadrant items too.
 public sealed record QuadrantItem(
@@ -2060,7 +2138,9 @@ public sealed record RankingResponse(
     int PageSize,
     int TotalCount,
     IReadOnlyList<RankingItem> Items,
-    string? DataNote = null);
+    string? DataNote = null,
+    ScorecardTrustMetadata? TrustMetadata = null,
+    AnalyticsResponseMetaDto? Meta = null);
 
 // TODO(backend-dto): include recommendation quality payload and margin quality context on ranking rows.
 public sealed record RankingItem(

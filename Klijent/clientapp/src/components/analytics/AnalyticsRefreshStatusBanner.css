@@ -1,0 +1,110 @@
+.analytics-refresh-banner {
+  border: 1px solid var(--border-muted, #d3dce9);
+  background: var(--surface-elevated, #ffffff);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.analytics-refresh-banner-fresh {
+  border-color: color-mix(in srgb, var(--success, #2f9e44) 55%, var(--border-muted, #d3dce9));
+}
+
+.analytics-refresh-banner-stale {
+  border-color: color-mix(in srgb, var(--warning, #f59f00) 55%, var(--border-muted, #d3dce9));
+}
+
+.analytics-refresh-banner-critical {
+  border-color: color-mix(in srgb, var(--error, #e03131) 60%, var(--border-muted, #d3dce9));
+}
+
+.analytics-refresh-banner-unknown {
+  border-style: dashed;
+}
+
+.arb-main {
+  display: grid;
+  gap: 6px;
+}
+
+.arb-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary, #0f172a);
+}
+
+.arb-row strong {
+  color: var(--text-secondary, #334155);
+}
+
+.arb-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.arb-badge-fresh {
+  color: var(--success, #2f9e44);
+  border-color: color-mix(in srgb, var(--success, #2f9e44) 40%, transparent);
+}
+
+.arb-badge-stale {
+  color: var(--warning, #f59f00);
+  border-color: color-mix(in srgb, var(--warning, #f59f00) 45%, transparent);
+}
+
+.arb-badge-critical {
+  color: var(--error, #e03131);
+  border-color: color-mix(in srgb, var(--error, #e03131) 45%, transparent);
+}
+
+.arb-badge-unknown {
+  color: var(--text-muted, #64748b);
+  border-color: color-mix(in srgb, var(--text-muted, #64748b) 35%, transparent);
+}
+
+.arb-error {
+  color: var(--error, #e03131);
+}
+
+.arb-warning {
+  color: var(--warning, #f59f00);
+}
+
+.arb-link {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--accent-primary, #2563eb);
+  white-space: nowrap;
+}
+
+.arb-link:hover {
+  text-decoration: underline;
+}
+
+.arb-loading {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+@media (max-width: 900px) {
+  .analytics-refresh-banner {
+    flex-direction: column;
+  }
+
+  .arb-link {
+    align-self: flex-start;
+  }
+}

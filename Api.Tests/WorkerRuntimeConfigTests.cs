@@ -1,6 +1,7 @@
 using Api.Config;
 using Api.Services.Access;
 using Api.Services.Startup;
+using Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -64,6 +65,21 @@ public sealed class WorkerRuntimeConfigTests
     }
 
     [Fact]
+    public void IsRegisteredInCurrentProcess_DoesNotRegisterNightlyRefresh_InWebProcess()
+    {
+        var definition = Assert.Single(
+            WorkerRegistryCatalog.Definitions,
+            item => item.WorkerName == "NightlyAnalyticsRefreshWorker");
+
+        var isRegistered = WorkerRuntimeConfig.IsRegisteredInCurrentProcess(
+            definition,
+            ProcessType.Web,
+            registerAccessImportWorkerInWebProcess: false);
+
+        Assert.False(isRegistered);
+    }
+
+    [Fact]
     public void RegisterWorkerHostedServices_RegistersCriticalWorkers_InWorkerProcess()
     {
         var services = new ServiceCollection();
@@ -79,6 +95,7 @@ public sealed class WorkerRuntimeConfigTests
 
         Assert.Contains(typeof(Workers.SyncWorker), hostedServiceTypes);
         Assert.Contains(typeof(AccessImportBackgroundWorker), hostedServiceTypes);
+        Assert.Contains(typeof(Workers.NightlyAnalyticsRefreshWorker), hostedServiceTypes);
         Assert.Contains(typeof(DeferredStartupTasksHostedService), hostedServiceTypes);
     }
 

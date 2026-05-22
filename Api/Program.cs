@@ -439,6 +439,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<WorkerConfigurationService>(); // Per-worker runtime settings
     builder.Services.AddSingleton<WorkerRuntimePolicyService>();
     builder.Services.AddScoped<WorkerRegistryService>();
+    builder.Services.AddScoped<AnalyticsRefreshStatusService>();
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     
     // Embedding service for AI-powered image search
@@ -554,9 +555,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     {
         builder.Services.AddHostedService<AccessImportBackgroundWorker>();
     }
-    // Register workers that declare RegistersInWebProcess=true (e.g. NightlyAnalyticsRefreshWorker).
-    // Only active when workersEnabled=true (set Workers:Enabled=true env var on Render web service).
-    // NOTE: Render free tier spins down after inactivity — nightly refresh won't fire if the process is asleep.
+    // Register only explicitly web-safe workers.
+    // Heavy analytics refresh workers must stay worker-process-only.
     var nightlyRegisteredInWeb = false;
     if (!isWorkerProcess && workersEnabled)
     {
@@ -1108,6 +1108,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapControllers();
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
+    app.MapAnalyticsRefreshStatusEndpoints();
     app.MapCachedAnalyticsEndpoints();
     app.MapInventoryEndpoints();
     app.MapAnalyticsActionsEndpoints();

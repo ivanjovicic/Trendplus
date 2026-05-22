@@ -112,4 +112,9 @@ public class AnalyticsActionItem
     /// User name who last updated (for audit trail)
     /// </summary>
     public string? UpdatedByUserName { get; set; }
+
+    /// <summary>
+    /// Audit trail entries for status changes and optional notes.
+    /// </summary>
+    public ICollection<AnalyticsActionNote> Notes { get; set; } = new List<AnalyticsActionNote>();
 }

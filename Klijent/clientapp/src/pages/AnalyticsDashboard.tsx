@@ -2,11 +2,16 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   checkAnalyticsHealth,
+  getAnalyticsRefreshStatus,
   getDashboardBootstrap,
   getStores,
   upsertAnalyticsAction,
 } from "../services/analyticsApi";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import type {
+  AnalyticsResponseMeta,
+  AnalyticsRefreshStatus,
   AnalyticsActionSourceType,
   AnalyticsActionUpsertInput,
   CategoryData,
@@ -30,6 +35,7 @@ import type {
   WeekdayData,
 } from "../types/analytics";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
@@ -384,6 +390,9 @@ export default function AnalyticsDashboard() {
   const [validFreshness, setValidFreshness] = useState<DashboardValidationEndpoint | null>(null);
   const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
   const [decisionActions, setDecisionActions] = useState<DashboardDecisionAction[]>([]);
+  const [dashboardMeta, setDashboardMeta] = useState<AnalyticsResponseMeta | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
+  const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
   const [addedToQueueKeys, setAddedToQueueKeys] = useState<Set<string>>(new Set());
   const [queueBusyKeys, setQueueBusyKeys] = useState<Set<string>>(new Set());
   const [queueErrorsByKey, setQueueErrorsByKey] = useState<Record<string, string>>({});
@@ -444,9 +453,10 @@ export default function AnalyticsDashboard() {
     setShowDetailedAnalysis(false);
     setErrors([]);
 
-    const bootstrapR = await Promise.allSettled([
+    const [bootstrapR, refreshStatusR] = await Promise.allSettled([
       getDashboardBootstrap(fromDate, toDate, true, storeId, supplierId),
-    ]).then(([result]) => result);
+      getAnalyticsRefreshStatus(),
+    ]);
 
     const nextErrors: string[] = [];
     if (bootstrapR.status === "fulfilled") {
@@ -472,6 +482,7 @@ export default function AnalyticsDashboard() {
           ? [...(bootstrapR.value.decisionActions ?? [])]
           : buildFallbackDecisionActionsFromAdvanced(bootstrapR.value.advanced)
       );
+      setDashboardMeta(bootstrapR.value.meta ?? null);
       nextErrors.push(...bootstrapR.value.errors);
     } else {
       setSummary(null);
@@ -492,7 +503,16 @@ export default function AnalyticsDashboard() {
       setValidFreshness(null);
       setValidLostSales(null);
       setDecisionActions([]);
+      setDashboardMeta(null);
       nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
+    }
+
+    if (refreshStatusR.status === "fulfilled") {
+      setRefreshStatus(refreshStatusR.value);
+      setRefreshStatusError(null);
+    } else {
+      setRefreshStatus(null);
+      setRefreshStatusError(getErrorText(refreshStatusR.reason, "Status osvezavanja analitike nije dostupan."));
     }
 
     setErrors(compactErrorMessages(nextErrors));
@@ -589,6 +609,7 @@ export default function AnalyticsDashboard() {
     if (topTab === "velocity") return topAdvanced.byVelocity ?? [];
     return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
+  const hasFatalLoadError = !loading && errors.length > 0 && summary == null;
 
   const topGainers = useMemo(
     () =>
@@ -747,6 +768,31 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="analytics-dashboard">
+      <AnalyticsTrustHeader
+        title="Pregled analitike"
+        description="Decision cockpit za KPI, trendove i prioritetne preporuke na nivou prodaje, proizvoda i zaliha."
+        periodFrom={fromDate}
+        periodTo={toDate}
+        lastRefreshAt={advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
+        dataSource="Analytics dashboard bootstrap (cached read model)"
+        dataQualityStatus={
+          dashboardMeta?.dataQualityStatus
+            ?? (validFreshness?.status === "good" || validFreshness?.status === "warning" || validFreshness?.status === "critical"
+              ? validFreshness.status
+            : null
+            )
+        }
+        dataQualitySummary={{
+          missingSupplierCount: validCompleteness?.affectedSku ?? null,
+          missingCostCount: validLostSales?.negativeQtyCount ?? null,
+          ignoredRowsCount: validCompleteness?.totalSku != null && validCompleteness.affectedSku != null
+            ? Math.max(validCompleteness.totalSku - validCompleteness.affectedSku, 0)
+            : null,
+        }}
+        mode="recommendation"
+        recommendationNote="Dashboard prikazuje prioritetne preporuke sistema i operativne signale. Potvrdi odluku na ciljnom ekranu."
+        methodologyHref="/analytics/data-quality"
+      />
       <header className="analytics-header">
         <div>
           <h1>Pregled analitike</h1>
@@ -812,6 +858,11 @@ export default function AnalyticsDashboard() {
         </div>
       </section>
 
+      <AnalyticsRefreshStatusBanner
+        status={refreshStatus}
+        loading={loading}
+        error={refreshStatusError}
+      />
       {healthText && <div className="analytics-health">{healthText}</div>}
       {isInvalidFilterRange && <div className="analytics-empty warning">Proverite filtere: neispravan vremenski opseg.</div>}
       {errors.length > 0 && (
@@ -820,7 +871,24 @@ export default function AnalyticsDashboard() {
           <ul>{errors.map((error, index) => <li key={`err-${index}`}>{error}</li>)}</ul>
         </section>
       )}
+      {hasFatalLoadError ? (
+        <AnalyticsErrorState
+          title="Podaci trenutno nisu dostupni"
+          message={dashboardMeta?.message || errors[0] || "Dashboard trenutno nije dostupan."}
+          errorCode={dashboardMeta?.errorCode ?? null}
+          suggestions={[
+            "Pokrenite osvezavanje analytics podataka i probajte ponovo.",
+            "Ako problem traje, proverite data quality i backend logove.",
+          ]}
+          onRetry={() => {
+            void load();
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
 
+      {!hasFatalLoadError ? (
+      <>
       <section className="analytics-panel analytics-decision-cockpit">
         <div className="decision-cockpit-head">
           <div>
@@ -1213,6 +1281,8 @@ export default function AnalyticsDashboard() {
           </>
         )}
       </section>
+      </>
+      ) : null}
     </div>
   );
 }

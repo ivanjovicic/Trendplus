@@ -1,5 +1,6 @@
 import type {
   AnalyticsDashboardBootstrap,
+  AnalyticsRefreshStatus,
   AnalyticsDataQualityHealth,
   CategoryData,
   CategoryTrendPoint,
@@ -65,6 +66,14 @@ type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
 };
 
+type AnalyticsMetaCarrier = {
+  meta?: {
+    success?: boolean;
+    message?: string | null;
+    errorCode?: string | null;
+  } | null;
+};
+
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
   const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
@@ -121,7 +130,8 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
-    return (await res.json()) as T;
+    const payload = (await res.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -131,7 +141,8 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
-    return (await res.json()) as T;
+    const payload = (await res.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   } catch (error) {
     // Don't retry on non-timeout errors
     if (!(error instanceof FetchTimeoutError)) {
@@ -143,7 +154,8 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
-    return (await res.json()) as T;
+    const payload = (await res.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 }
 
@@ -221,7 +233,8 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -233,7 +246,8 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   } catch (error) {
     // Don't retry on non-timeout errors
     if (!(error instanceof FetchTimeoutError)) {
@@ -247,7 +261,8 @@ async function postJson<T>(path: string, body: unknown, errorMessage?: string): 
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 }
 
@@ -267,7 +282,8 @@ async function patchJson<T>(path: string, body: unknown, errorMessage?: string):
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -279,7 +295,8 @@ async function patchJson<T>(path: string, body: unknown, errorMessage?: string):
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   } catch (error) {
     // Don't retry on non-timeout errors
     if (!(error instanceof FetchTimeoutError)) {
@@ -293,7 +310,8 @@ async function patchJson<T>(path: string, body: unknown, errorMessage?: string):
       throw new Error(await parseApiError(response, errorMessage));
     }
 
-    return (await response.json()) as T;
+    const payload = (await response.json()) as T;
+    return assertAnalyticsMetaSuccess(payload, errorMessage);
   }
 }
 
@@ -330,6 +348,24 @@ async function parseApiError(res: Response, fallbackMessage?: string): Promise<s
 
   if (text) return text;
   return fallbackMessage ?? `HTTP ${res.status}`;
+}
+
+function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const meta = (payload as AnalyticsMetaCarrier).meta;
+  if (!meta) {
+    return payload;
+  }
+
+  if (meta.success === false) {
+    const detail = meta.message?.trim() || fallbackMessage || "Podaci trenutno nisu dostupni.";
+    throw new Error(detail);
+  }
+
+  return payload;
 }
 
 export async function checkAnalyticsHealth(): Promise<{
@@ -621,6 +657,14 @@ export async function getDashboardBootstrap(
     "/api/analytics/cached/dashboard/bootstrap",
     params,
     "Greska pri ucitavanju analytics dashboard bootstrapa"
+  );
+}
+
+export async function getAnalyticsRefreshStatus(): Promise<AnalyticsRefreshStatus> {
+  return fetchJson(
+    "/api/analytics/refresh-status",
+    undefined,
+    "Greska pri ucitavanju statusa osvezavanja analitike"
   );
 }
 

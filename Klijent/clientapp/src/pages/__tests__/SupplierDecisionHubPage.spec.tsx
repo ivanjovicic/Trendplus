@@ -124,9 +124,9 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    expect(screen.getByText(/Skorkarta dobavljac/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Skorkarta dobavljac/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/meri Skorkarta/i)).toBeInTheDocument();
-    expect(screen.getByText("Period")).toBeInTheDocument();
+    expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
     expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Trend pune cene/i).length).toBeGreaterThan(0);
   });

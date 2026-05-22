@@ -1,0 +1,49 @@
+.analytics-error-state {
+  border: 1px solid var(--error, #d9534f);
+  background: color-mix(in srgb, var(--error, #d9534f) 8%, white);
+  border-radius: 14px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.analytics-error-state h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--error, #d9534f);
+}
+
+.analytics-error-state p {
+  margin: 0.2rem 0;
+}
+
+.aes-code {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.aes-suggestions {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.aes-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.aes-actions button,
+.aes-actions a {
+  border: 1px solid var(--error, #d9534f);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  background: white;
+  color: var(--error, #d9534f);
+}
+
+.aes-actions button {
+  cursor: pointer;
+}

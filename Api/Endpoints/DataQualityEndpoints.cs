@@ -4,6 +4,7 @@ using Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -22,28 +23,39 @@ public static class DataQualityEndpoints
             var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
             var score = BuildScore(snapshot, options.Value);
 
-            return Results.Ok(new
-            {
-                generatedAt = snapshot.GeneratedAtUtc,
-                lookbackDays = snapshot.LookbackDays,
-                windowFrom = snapshot.WindowFromUtc,
-                windowTo = snapshot.WindowToUtc,
-                orphanArticleCount = snapshot.OrphanArticleCount,
-                totalRevenue = snapshot.TotalRevenue,
-                missingCostRevenue = snapshot.MissingCostRevenue,
-                missingCostRevenueSharePct = snapshot.MissingCostRevenueSharePct,
-                unknownSupplierRevenue = snapshot.UnknownSupplierRevenue,
-                unknownSupplierRevenueSharePct = snapshot.UnknownSupplierRevenueSharePct,
-                score = score.Value,
-                scoreStatus = score.Status,
-                scoreSummary = score.Summary,
-                thresholds = new
+            return Results.Ok(new DataQualityHealthResponse(
+                snapshot.GeneratedAtUtc,
+                snapshot.LookbackDays,
+                snapshot.WindowFromUtc,
+                snapshot.WindowToUtc,
+                snapshot.OrphanArticleCount,
+                snapshot.TotalRevenue,
+                snapshot.MissingCostRevenue,
+                snapshot.MissingCostRevenueSharePct,
+                snapshot.UnknownSupplierRevenue,
+                snapshot.UnknownSupplierRevenueSharePct,
+                score.Value,
+                score.Status,
+                score.Summary,
+                new DataQualityHealthThresholds(
+                    options.Value.WarningOrphanArticleCount,
+                    options.Value.WarningMissingCostRevenueSharePct,
+                    options.Value.WarningUnknownSupplierRevenueSharePct),
+                new AnalyticsResponseMetaDto
                 {
-                    orphanArticleCount = options.Value.WarningOrphanArticleCount,
-                    missingCostRevenueSharePct = options.Value.WarningMissingCostRevenueSharePct,
-                    unknownSupplierRevenueSharePct = options.Value.WarningUnknownSupplierRevenueSharePct
-                }
-            });
+                    Success = true,
+                    GeneratedAtUtc = DateTime.UtcNow,
+                    LastRefreshAtUtc = snapshot.GeneratedAtUtc,
+                    DataQualityStatus = score.Status switch
+                    {
+                        "critical" => "critical",
+                        "warning" => "warning",
+                        "good" or "excellent" => "good",
+                        _ => "insufficient_data"
+                    },
+                    Message = snapshot.TotalRevenue <= 0 ? "Nema dovoljno podataka za score data quality-ja u ovom prozoru." : null,
+                    IsPartial = false
+                }));
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -72,7 +84,20 @@ public static class DataQualityEndpoints
                 request.DataScope,
                 options.Value.MinSalesForNoisyIssuesRsd), ct);
 
-            return Results.Ok(result);
+            var meta = new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                GeneratedAtUtc = DateTime.UtcNow,
+                DataQualityStatus = result.Total == 0 ? "insufficient_data" : "warning",
+                Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null
+            };
+
+            return Results.Ok(new DataQualityIssueListResponse(
+                result.Page,
+                result.PageSize,
+                result.Total,
+                result.Items,
+                meta));
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -99,7 +124,14 @@ public static class DataQualityEndpoints
                 normalizedIssueType,
                 resolvedLimit,
                 items.Count,
-                items));
+                items,
+                new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    GeneratedAtUtc = DateTime.UtcNow,
+                    DataQualityStatus = items.Count == 0 ? "insufficient_data" : "warning",
+                    Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null
+                }));
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -116,7 +148,14 @@ public static class DataQualityEndpoints
             return Results.Ok(new DataQualityTrendResponse(
                 resolvedDays,
                 string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
-                points));
+                points,
+                new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    GeneratedAtUtc = DateTime.UtcNow,
+                    DataQualityStatus = points.Count == 0 ? "insufficient_data" : "warning",
+                    Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null
+                }));
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -135,12 +174,43 @@ public static class DataQualityEndpoints
         string IssueType,
         int Limit,
         int Count,
-        IReadOnlyList<DataQualityTopOffenderDto> Items);
+        IReadOnlyList<DataQualityTopOffenderDto> Items,
+        AnalyticsResponseMetaDto? Meta = null);
+
+    public sealed record DataQualityIssueListResponse(
+        int Page,
+        int PageSize,
+        int Total,
+        IReadOnlyList<DataQualityIssueItemDto> Items,
+        AnalyticsResponseMetaDto? Meta = null);
 
     public sealed record DataQualityTrendResponse(
         int Days,
         string DataScope,
-        IReadOnlyList<DataQualityTrendPointDto> Points);
+        IReadOnlyList<DataQualityTrendPointDto> Points,
+        AnalyticsResponseMetaDto? Meta = null);
+
+    public sealed record DataQualityHealthThresholds(
+        int OrphanArticleCount,
+        double MissingCostRevenueSharePct,
+        double UnknownSupplierRevenueSharePct);
+
+    public sealed record DataQualityHealthResponse(
+        DateTime GeneratedAt,
+        int LookbackDays,
+        DateTime WindowFrom,
+        DateTime WindowTo,
+        int OrphanArticleCount,
+        decimal TotalRevenue,
+        decimal MissingCostRevenue,
+        double MissingCostRevenueSharePct,
+        decimal UnknownSupplierRevenue,
+        double UnknownSupplierRevenueSharePct,
+        int Score,
+        string ScoreStatus,
+        string ScoreSummary,
+        DataQualityHealthThresholds Thresholds,
+        AnalyticsResponseMetaDto? Meta = null);
 
     private static DataQualityScoreDto BuildScore(
         AnalyticsDataQualityHealthSnapshot snapshot,

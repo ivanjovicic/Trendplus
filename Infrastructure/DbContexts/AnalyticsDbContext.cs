@@ -383,6 +383,43 @@ namespace Infrastructure.DbContexts
                 entity.HasIndex(e => new { e.Status, e.UpdatedAtUtc })
                     .HasDatabaseName("idx_analytics_action_status_updated");
             });
+
+            modelBuilder.Entity<AnalyticsActionNote>(entity =>
+            {
+                entity.ToTable("analytics_action_notes");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.ActionItemId)
+                    .IsRequired();
+                entity.Property(e => e.StatusFrom)
+                    .HasMaxLength(32)
+                    .IsRequired();
+                entity.Property(e => e.StatusTo)
+                    .HasMaxLength(32)
+                    .IsRequired();
+                entity.Property(e => e.Note)
+                    .HasMaxLength(4000);
+                entity.Property(e => e.CreatedAtUtc)
+                    .IsRequired()
+                    .HasDefaultValueSql("now()");
+                entity.Property(e => e.CreatedByUserId)
+                    .HasMaxLength(200);
+                entity.Property(e => e.CreatedByUserName)
+                    .HasMaxLength(200);
+
+                // Audit trail should not be cascaded away implicitly.
+                entity.HasOne(e => e.ActionItem)
+                    .WithMany(e => e.Notes)
+                    .HasForeignKey(e => e.ActionItemId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.ActionItemId)
+                    .HasDatabaseName("idx_analytics_action_notes_action_item");
+                entity.HasIndex(e => e.CreatedAtUtc)
+                    .HasDatabaseName("idx_analytics_action_notes_created");
+                entity.HasIndex(e => new { e.ActionItemId, e.CreatedAtUtc })
+                    .HasDatabaseName("idx_analytics_action_notes_action_created");
+            });
         }
 
         public DbSet<ProductsDim> ProductsDim => Set<ProductsDim>();
@@ -419,6 +456,7 @@ namespace Infrastructure.DbContexts
 
         // ── Analytics Action Queue ───────────────────────────────────────
         public DbSet<AnalyticsActionItem> AnalyticsActionItems => Set<AnalyticsActionItem>();
+        public DbSet<AnalyticsActionNote> AnalyticsActionNotes => Set<AnalyticsActionNote>();
 
         public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
             : base(options) { }

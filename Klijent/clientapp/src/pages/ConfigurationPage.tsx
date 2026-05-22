@@ -88,8 +88,38 @@ type Panel =
   | "themes"
   | "logs";
 
+function isPanel(value: string | null): value is Panel {
+  return value === "backend"
+    || value === "workers"
+    || value === "import"
+    || value === "health"
+    || value === "cache"
+    || value === "toggles"
+    || value === "diagnostics"
+    || value === "themes"
+    || value === "logs";
+}
+
+function readPanelFromLocation(): Panel {
+  if (typeof window === "undefined") return "backend";
+  const params = new URLSearchParams(window.location.search);
+  const requestedPanel = params.get("panel");
+  return isPanel(requestedPanel) ? requestedPanel : "backend";
+}
+
+function replacePanelInLocation(panel: Panel) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (panel === "backend") {
+    url.searchParams.delete("panel");
+  } else {
+    url.searchParams.set("panel", panel);
+  }
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 export default function ConfigurationPage() {
-  const [activePanel, setActivePanel] = useState<Panel>("backend");
+  const [activePanel, setActivePanel] = useState<Panel>(() => readPanelFromLocation());
   const [batches, setBatches] = useState<PendingBatch[]>([]);
   const [health, setHealth] = useState<HealthCheck | null>(null);
   const [redisStatus, setRedisStatus] = useState<RedisStatus | null>(null);
@@ -102,6 +132,11 @@ export default function ConfigurationPage() {
   const { currentTheme, themes, setTheme } = useTheme();
   const { apiPingEnabled, setApiPingEnabled } = usePingControl();
   const { showToast } = useToast();
+
+  const changePanel = useCallback((panel: Panel) => {
+    setActivePanel(panel);
+    replacePanelInLocation(panel);
+  }, []);
 
   const loadPendingBatches = useCallback(async () => {
     setLoading(true);
@@ -344,63 +379,63 @@ export default function ConfigurationPage() {
           <div className="config-menu">
             <button
               className={`config-menu-item ${activePanel === "backend" ? "active" : ""}`}
-              onClick={() => setActivePanel("backend")}
+              onClick={() => changePanel("backend")}
             >
               <Server size={18} />
               <span>Backend</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "workers" ? "active" : ""}`}
-              onClick={() => setActivePanel("workers")}
+              onClick={() => changePanel("workers")}
             >
               <Cpu size={18} />
               <span>Radnici</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "import" ? "active" : ""}`}
-              onClick={() => setActivePanel("import")}
+              onClick={() => changePanel("import")}
             >
               <HardDrive size={18} />
               <span>Import</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "health" ? "active" : ""}`}
-              onClick={() => setActivePanel("health")}
+              onClick={() => changePanel("health")}
             >
               <Gauge size={18} />
               <span>Zdravlje API-ja</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "cache" ? "active" : ""}`}
-              onClick={() => setActivePanel("cache")}
+              onClick={() => changePanel("cache")}
             >
               <Database size={18} />
               <span>Cache / Redis</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "toggles" ? "active" : ""}`}
-              onClick={() => setActivePanel("toggles")}
+              onClick={() => changePanel("toggles")}
             >
               <Zap size={18} />
               <span>Runtime opcije</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "diagnostics" ? "active" : ""}`}
-              onClick={() => setActivePanel("diagnostics")}
+              onClick={() => changePanel("diagnostics")}
             >
               <Terminal size={18} />
               <span>Dijagnostika</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "themes" ? "active" : ""}`}
-              onClick={() => setActivePanel("themes")}
+              onClick={() => changePanel("themes")}
             >
               <Sun size={18} />
               <span>Teme</span>
             </button>
             <button
               className={`config-menu-item ${activePanel === "logs" ? "active" : ""}`}
-              onClick={() => setActivePanel("logs")}
+              onClick={() => changePanel("logs")}
             >
               <LogOut size={18} />
               <span>Audit logovi</span>

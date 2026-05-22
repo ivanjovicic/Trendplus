@@ -1,4 +1,5 @@
 import { makeUrl } from "./analyticsApi";
+import type { AnalyticsResponseMeta } from "../types/analytics";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -68,6 +69,20 @@ export type KeyInsightItem = {
   tone: string;
 };
 
+export type ScorecardTrustMetadata = {
+  requestedFrom: string;
+  requestedTo: string;
+  effectiveFrom: string;
+  effectiveTo: string;
+  hasData: boolean;
+  hasExplicitDateRange: boolean;
+  recommendationAllowed: boolean;
+  noSilentFallback: boolean;
+  windowDays: number;
+  dataScope: string;
+  coverage: "window_90d" | "window_180d" | "all_history" | string;
+};
+
 export type SummaryResponse = {
   from: string;
   to: string;
@@ -81,6 +96,8 @@ export type SummaryResponse = {
   topRiskSuppliers: SummarySupplierItem[];
   keyInsights: KeyInsightItem[];
   dataNote?: string | null;
+  trustMetadata?: ScorecardTrustMetadata | null;
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type QuadrantItem = {
@@ -101,6 +118,7 @@ export type QuadrantItem = {
 
 export type QuadrantResponse = {
   items: QuadrantItem[];
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type RankingItem = {
@@ -131,6 +149,8 @@ export type RankingResponse = {
   totalCount: number;
   items: RankingItem[];
   dataNote?: string | null;
+  trustMetadata?: ScorecardTrustMetadata | null;
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type SupplierHeaderDto = {
@@ -240,7 +260,12 @@ async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage:
   if (!response.ok) {
     throw new Error(errorMessage);
   }
-  return (await response.json()) as T;
+  const data = (await response.json()) as T;
+  const meta = (data as { meta?: AnalyticsResponseMeta | null })?.meta;
+  if (meta && meta.success === false) {
+    throw new Error(meta.message?.trim() || errorMessage);
+  }
+  return data;
 }
 
 export async function getSupplierDecisionSummary(

@@ -68,7 +68,7 @@ public static class AnalyticsActionsEndpoints
             AnalyticsActionItemService svc,
             CancellationToken ct) =>
         {
-            var item = await svc.GetByIdAsync(id, ct);
+            var item = await svc.GetByIdAsync(id, includeNotes: true, ct);
             return item is null ? Results.NotFound() : Results.Ok(item);
         })
         .WithName("GetAnalyticsActionById");
@@ -140,7 +140,11 @@ public static class AnalyticsActionsEndpoints
                         ?? httpContext.User?.FindFirst("preferred_username")?.Value;
 
             var updated = await svc.UpdateStatusAsync(id, body.Status, body.Note, userId, userName, ct);
-            return updated is null ? Results.NotFound() : Results.Ok(updated);
+            if (updated is null)
+                return Results.NotFound();
+
+            var detailed = await svc.GetByIdAsync(id, includeNotes: true, ct);
+            return detailed is null ? Results.NotFound() : Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionStatus");
     }

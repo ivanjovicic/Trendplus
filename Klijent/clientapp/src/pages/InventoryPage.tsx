@@ -3,6 +3,8 @@ import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Wareho
 import { createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
 import { DecisionSummaryBar } from "../components/inventory/DecisionSummaryBar";
 import { DemandForecastPanel } from "../components/inventory/DemandForecastPanel";
@@ -416,6 +418,21 @@ export default function InventoryPage() {
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
   const topRiskRows = useMemo(() => rows.slice().sort((left, right) => (left.stockState === right.stockState ? right.reorderGap - left.reorderGap : { critical: 0, warning: 1, healthy: 2 }[left.stockState] - { critical: 0, warning: 1, healthy: 2 }[right.stockState])).slice(0, TOP_RISK_ITEMS), [rows]);
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => right.estimatedValueAmount - left.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS), [rows]);
+  const inventoryLastRefreshAt = useMemo(() => {
+    const timestamps = [
+      actionWorkflow?.generatedAtUtc,
+      forecast?.generatedAtUtc,
+      alerts?.generatedAtUtc,
+      rebalance?.generatedAtUtc,
+      storeComparison?.generatedAtUtc,
+    ].filter((value): value is string => Boolean(value));
+
+    if (timestamps.length === 0) return null;
+    return timestamps
+      .map((value) => ({ value, time: new Date(value).getTime() }))
+      .filter((entry) => !Number.isNaN(entry.time))
+      .sort((a, b) => b.time - a.time)[0]?.value ?? null;
+  }, [actionWorkflow?.generatedAtUtc, alerts?.generatedAtUtc, forecast?.generatedAtUtc, rebalance?.generatedAtUtc, storeComparison?.generatedAtUtc]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
     const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
     return [`${row.id}:${row.idObjekat ?? 0}`, {
@@ -682,11 +699,38 @@ export default function InventoryPage() {
   }
 
   if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Ucitavanje bilansa stanja...</div>;
-  if (error && !pageData) return <div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Greska: {error}</div>;
+  if (error && !pageData) {
+    return (
+      <AnalyticsErrorState
+        title="Podaci trenutno nisu dostupni"
+        message={error}
+        suggestions={[
+          "Proverite backend stanje i osvezite stranicu.",
+          "Ako je analytics refresh u toku, sacekajte par minuta.",
+        ]}
+        onRetry={() => {
+          window.location.reload();
+        }}
+        helpHref="/analytics/data-quality"
+      />
+    );
+  }
 
   return (
     <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaze. Osvezi stranicu ili pokusaj ponovo za nekoliko trenutaka.</div>}>
       <div className="space-y-6">
+      <AnalyticsTrustHeader
+        title="Inventory analytics"
+        description="Decision cockpit za zalihe: dopuna, OOS rizik, visak zalihe, transferi i workflow odluka."
+        periodFrom={null}
+        periodTo={null}
+        lastRefreshAt={inventoryLastRefreshAt}
+        dataSource="Inventory cached snapshots + operational workflow"
+        dataQualityStatus={null}
+        mode="recommendation"
+        recommendationNote="Workflow akcije su korisnicki vodjene; backend recommendation payload ostaje izvor istine."
+        methodologyHref="/analytics/data-quality"
+      />
       <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">

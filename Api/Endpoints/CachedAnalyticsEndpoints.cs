@@ -1054,6 +1054,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/products/decision-center", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            ILogger<Program> logger,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -1070,14 +1071,41 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope);
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
-                CacheExpiration.Short,
-                ct);
+            try
+            {
+                var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope);
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
+                    CacheExpiration.Short,
+                    ct);
 
-            return Results.Ok(result);
+                return Results.Ok(result);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Product decision center fallback due to timeout.");
+                return Results.Ok(new ProductDecisionCenterResponseDto
+                {
+                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Product Decision Center podaci trenutno nisu dostupni zbog isteka vremena."),
+                });
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Product decision center fallback due to database issue.");
+                return Results.Ok(new ProductDecisionCenterResponseDto
+                {
+                    Meta = BuildErrorMeta("ANALYTICS_DB_UNAVAILABLE", "Product Decision Center podaci trenutno nisu dostupni zbog greske baze."),
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Product decision center fallback due to unexpected issue.");
+                return Results.Ok(new ProductDecisionCenterResponseDto
+                {
+                    Meta = BuildErrorMeta("ANALYTICS_UNEXPECTED_ERROR", "Product Decision Center podaci trenutno nisu dostupni."),
+                });
+            }
         });
 
         // ========== CATEGORY TRENDS (CACHED) ==========
@@ -1364,6 +1392,13 @@ public static class CachedAnalyticsEndpoints
                             response.Errors,
                             "Lost-sales validacija nije dostupna.");
 
+                        response.Meta = BuildSuccessMeta(
+                            dataQualityStatus: ResolveDashboardDataQualityStatus(response),
+                            isPartial: response.Errors.Count > 0,
+                            warningCode: response.Errors.Count > 0 ? "ANALYTICS_PARTIAL_DATA" : null,
+                            message: response.Errors.Count > 0 ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+                            lastRefreshAtUtc: response.Advanced?.GeneratedAtUtc ?? response.ValidationFreshness?.LastImport);
+
                         return response;
                     },
                     CacheExpiration.Short,
@@ -1381,7 +1416,8 @@ public static class CachedAnalyticsEndpoints
                 logger.LogWarning(ex, "Dashboard bootstrap fallback due to timeout.");
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
-                    Errors = ["Dashboard bootstrap fallback: request timed out."]
+                    Errors = ["Dashboard bootstrap fallback: request timed out."],
+                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.")
                 });
             }
             catch (NpgsqlException ex)
@@ -1389,7 +1425,8 @@ public static class CachedAnalyticsEndpoints
                 logger.LogWarning(ex, "Dashboard bootstrap fallback due to database issue.");
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
-                    Errors = ["Dashboard bootstrap fallback: database temporarily unavailable."]
+                    Errors = ["Dashboard bootstrap fallback: database temporarily unavailable."],
+                    Meta = BuildErrorMeta("ANALYTICS_DB_UNAVAILABLE", "Dashboard podaci trenutno nisu dostupni zbog greske baze.")
                 });
             }
             catch (TimeoutException ex)
@@ -1397,7 +1434,8 @@ public static class CachedAnalyticsEndpoints
                 logger.LogWarning(ex, "Dashboard bootstrap fallback due to timeout.");
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
-                    Errors = ["Dashboard bootstrap fallback: request timed out."]
+                    Errors = ["Dashboard bootstrap fallback: request timed out."],
+                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.")
                 });
             }
         });
@@ -4030,7 +4068,10 @@ public static class CachedAnalyticsEndpoints
                 PeriodFromUtc = periodFromUtc,
                 PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
                 Summary = new ProductDecisionCenterSummaryDto(),
-                Rows = []
+                Rows = [],
+                Meta = BuildSuccessMeta(
+                    dataQualityStatus: "insufficient_data",
+                    message: "Nema podataka za izabrani period i filtere.")
             };
         }
 
@@ -4277,8 +4318,85 @@ public static class CachedAnalyticsEndpoints
                 LostSalesEstimate = Math.Round(totalLostSalesEstimate, 2),
                 SlowStockCapital = Math.Round(totalSlowStockCapital, 2)
             },
-            Rows = sortedRows
+            Rows = sortedRows,
+            Meta = BuildSuccessMeta(
+                dataQualityStatus: ResolveDataQualityFromRows(sortedRows),
+                message: sortedRows.Count == 0 ? "Nema dovoljno podataka za preporuke u ovom periodu." : null,
+                lastRefreshAtUtc: nowUtc)
         };
+    }
+
+    private static AnalyticsResponseMetaDto BuildSuccessMeta(
+        string? dataQualityStatus = null,
+        bool isPartial = false,
+        string? warningCode = null,
+        string? message = null,
+        DateTime? lastRefreshAtUtc = null)
+    {
+        return new AnalyticsResponseMetaDto
+        {
+            Success = true,
+            WarningCode = warningCode,
+            Message = message,
+            GeneratedAtUtc = DateTime.UtcNow,
+            LastRefreshAtUtc = lastRefreshAtUtc,
+            DataQualityStatus = dataQualityStatus,
+            IsPartial = isPartial
+        };
+    }
+
+    private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message)
+    {
+        return new AnalyticsResponseMetaDto
+        {
+            Success = false,
+            ErrorCode = errorCode,
+            Message = message,
+            GeneratedAtUtc = DateTime.UtcNow,
+            DataQualityStatus = "insufficient_data",
+            IsPartial = false
+        };
+    }
+
+    private static string ResolveDataQualityFromRows(IReadOnlyList<ProductDecisionCenterRowDto> rows)
+    {
+        if (rows.Count == 0)
+        {
+            return "insufficient_data";
+        }
+
+        if (rows.Any(x => string.Equals(x.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "critical";
+        }
+
+        if (rows.Any(x => string.Equals(x.DataQualityStatus, "warning", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "warning";
+        }
+
+        return "good";
+    }
+
+    private static string ResolveDashboardDataQualityStatus(AnalyticsDashboardBootstrapDto response)
+    {
+        var status = response.ValidationFreshness?.Status?.Trim().ToLowerInvariant();
+        if (status is "critical")
+        {
+            return "critical";
+        }
+
+        if (status is "warning")
+        {
+            return "warning";
+        }
+
+        if (status is "good" or "info")
+        {
+            return "good";
+        }
+
+        return response.Errors.Count > 0 ? "warning" : "insufficient_data";
     }
 
     private static int ResolveRecommendationConfidence(
@@ -4592,6 +4710,11 @@ public class ProductDecisionCenterResponseDto
     public int TotalRows { get; set; }
     public ProductDecisionCenterSummaryDto Summary { get; set; } = new();
     public List<ProductDecisionCenterRowDto> Rows { get; set; } = [];
+    public AnalyticsResponseMetaDto Meta { get; set; } = new()
+    {
+        Success = true,
+        GeneratedAtUtc = DateTime.UtcNow
+    };
 }
 
 public class DashboardMetricCardDto
@@ -4690,5 +4813,10 @@ public class AnalyticsDashboardBootstrapDto
     public DashboardValidationEndpointDto? ValidationLostSales { get; set; }
     public List<DashboardDecisionActionDto> DecisionActions { get; set; } = [];
     public List<string> Errors { get; set; } = [];
+    public AnalyticsResponseMetaDto Meta { get; set; } = new()
+    {
+        Success = true,
+        GeneratedAtUtc = DateTime.UtcNow
+    };
 }
 

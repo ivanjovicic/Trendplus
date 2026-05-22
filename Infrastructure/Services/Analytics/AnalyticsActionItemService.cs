@@ -84,8 +84,17 @@ public sealed class AnalyticsActionItemService
         return (items, totalCount);
     }
 
-    public async Task<AnalyticsActionItem?> GetByIdAsync(long id, CancellationToken ct = default)
-        => await _db.AnalyticsActionItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+    public async Task<AnalyticsActionItem?> GetByIdAsync(long id, bool includeNotes = false, CancellationToken ct = default)
+    {
+        var query = _db.AnalyticsActionItems.AsNoTracking();
+        if (includeNotes)
+        {
+            query = query
+                .Include(x => x.Notes.OrderBy(n => n.CreatedAtUtc));
+        }
+
+        return await query.FirstOrDefaultAsync(x => x.Id == id, ct);
+    }
 
     // ── Counts for KPI bar ─────────────────────────────────────────────────
 
@@ -220,8 +229,14 @@ public sealed class AnalyticsActionItemService
         if (item is null)
             return null;
 
+        var oldStatus = item.Status;
+        var normalizedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (oldStatus == newStatus && normalizedNote is null)
+            return item;
+
+        var now = DateTime.UtcNow;
         item.Status = newStatus;
-        item.UpdatedAtUtc = DateTime.UtcNow;
+        item.UpdatedAtUtc = now;
         item.UpdatedByUserId = userId;
         item.UpdatedByUserName = userName;
 
@@ -230,7 +245,7 @@ public sealed class AnalyticsActionItemService
         // new/accepted/deferred => action is open (reopened) and resolved timestamp is cleared.
         if (newStatus is AnalyticsActionConstants.Statuses.Rejected or AnalyticsActionConstants.Statuses.Done)
         {
-            item.ResolvedAtUtc ??= DateTime.UtcNow;
+            item.ResolvedAtUtc ??= now;
         }
         else if (newStatus is AnalyticsActionConstants.Statuses.New
             or AnalyticsActionConstants.Statuses.Accepted
@@ -239,17 +254,18 @@ public sealed class AnalyticsActionItemService
             item.ResolvedAtUtc = null;
         }
 
-        // Store note in description if provided (phase 1, no DB schema change)
-        if (!string.IsNullOrWhiteSpace(note))
+        if (oldStatus != newStatus)
         {
-            var normalizedNote = note.Trim();
-            var noteStamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm");
-            var formattedNote = $"[Napomena {noteStamp}]: {normalizedNote}";
-
-            // Append note to description with explicit timestamp format.
-            item.Description = string.IsNullOrWhiteSpace(item.Description)
-                ? formattedNote
-                : $"{item.Description}\n\n{formattedNote}";
+            _db.AnalyticsActionNotes.Add(new AnalyticsActionNote
+            {
+                ActionItemId = item.Id,
+                StatusFrom = oldStatus,
+                StatusTo = newStatus,
+                Note = normalizedNote,
+                CreatedAtUtc = now,
+                CreatedByUserId = userId,
+                CreatedByUserName = userName
+            });
         }
 
         await _db.SaveChangesAsync(ct);

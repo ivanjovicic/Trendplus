@@ -6,6 +6,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { server } from "../../mocks/server";
 import ColorSalesStatsPage from "../ColorSalesStatsPage";
 
+vi.mock("react", async () => {
+  const actual = await vi.importActual<typeof import("react")>("react");
+  return actual;
+});
+
 // Mock the chart components
 vi.mock("recharts", () => ({
   PieChart: ({ children }: any) => <div>{children}</div>,

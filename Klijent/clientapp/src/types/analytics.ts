@@ -6,6 +6,54 @@ export interface SalesSummary {
   avgItemPrice: number;
 }
 
+export interface AnalyticsResponseMeta {
+  success: boolean;
+  warningCode?: string | null;
+  errorCode?: string | null;
+  message?: string | null;
+  generatedAtUtc?: string | null;
+  lastRefreshAtUtc?: string | null;
+  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  isPartial?: boolean;
+}
+
+export type AnalyticsFreshnessStatus = "fresh" | "stale" | "critical" | "unknown";
+
+export interface AnalyticsRefreshJobStatus {
+  key: string;
+  displayName: string;
+  workerName: string;
+  lastSuccessfulRefreshAtUtc?: string | null;
+  lastAttemptAtUtc?: string | null;
+  lastFailureAtUtc?: string | null;
+  isRunning: boolean;
+  lastErrorMessage?: string | null;
+  currentStep?: string | null;
+  refreshedObjects: number;
+  failedObjects: number;
+  durationSeconds?: number | null;
+  dataFreshnessStatus: AnalyticsFreshnessStatus | string;
+  statusReason?: string | null;
+}
+
+export interface AnalyticsRefreshStatus {
+  lastSuccessfulRefreshAtUtc?: string | null;
+  lastAttemptAtUtc?: string | null;
+  lastFailureAtUtc?: string | null;
+  isRunning: boolean;
+  lastErrorMessage?: string | null;
+  currentStep?: string | null;
+  refreshedObjects: number;
+  failedObjects: number;
+  durationSeconds?: number | null;
+  dataFreshnessStatus: AnalyticsFreshnessStatus | string;
+  processType: "web" | "worker" | string;
+  workersEnabled: boolean;
+  workerProcessWarning?: string | null;
+  generatedAtUtc: string;
+  jobs: AnalyticsRefreshJobStatus[];
+}
+
 export interface TopProduct {
   productId: number;
   productName: string;
@@ -276,6 +324,7 @@ export interface ProductDecisionCenterResponse {
   totalRows: number;
   summary: ProductDecisionCenterSummary;
   rows: ProductDecisionCenterItem[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface AnalyticsDashboardBootstrap {
@@ -298,6 +347,7 @@ export interface AnalyticsDashboardBootstrap {
   validationLostSales: DashboardValidationEndpoint | null;
   decisionActions: DashboardDecisionAction[];
   errors: string[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export type DataQualityIssueType = "missingSupplier" | "missingShoeType" | "invalidName";
@@ -323,6 +373,7 @@ export interface DataQualityIssueListResult {
   pageSize: number;
   total: number;
   items: DataQualityIssueItem[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface AnalyticsDataQualityHealth {
@@ -344,6 +395,7 @@ export interface AnalyticsDataQualityHealth {
     missingCostRevenueSharePct: number;
     unknownSupplierRevenueSharePct: number;
   };
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface DataQualityTopOffenderItem {
@@ -363,6 +415,7 @@ export interface DataQualityTopOffendersResult {
   limit: number;
   count: number;
   items: DataQualityTopOffenderItem[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface DataQualityTrendPoint {
@@ -376,6 +429,7 @@ export interface DataQualityTrendResult {
   days: number;
   dataScope: string;
   points: DataQualityTrendPoint[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface InventoryBalance {
@@ -724,6 +778,17 @@ export type AnalyticsActionAnyDataQualityStatus =
   | AnalyticsActionDataQualityStatus
   | AnalyticsActionLegacyDataQualityStatus;
 
+export interface AnalyticsActionNote {
+  id: number;
+  actionItemId: number;
+  statusFrom: AnalyticsActionStatus;
+  statusTo: AnalyticsActionStatus;
+  note?: string | null;
+  createdAtUtc: string;
+  createdByUserId?: string | null;
+  createdByUserName?: string | null;
+}
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;
@@ -746,6 +811,7 @@ export interface AnalyticsActionItem {
   createdByUserId?: string | null;
   updatedByUserId?: string | null;
   updatedByUserName?: string | null;
+  notes?: AnalyticsActionNote[];
 }
 
 export interface AnalyticsActionListResponse {

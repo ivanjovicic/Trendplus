@@ -1,5 +1,5 @@
 import "./InfoTip.css";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const SHOW_DELAY_MS = 150;
@@ -14,7 +14,6 @@ function computePos(rect: DOMRect): Pos {
   const tooltipWidth = Math.min(MAX_TOOLTIP_W, Math.max(180, vw - EDGE_MARGIN * 2));
   const halfTooltipWidth = tooltipWidth / 2;
   let left = rect.left + rect.width / 2;
-  // Clamp so tooltip never bleeds off-screen
   left = Math.max(halfTooltipWidth + EDGE_MARGIN, Math.min(left, vw - halfTooltipWidth - EDGE_MARGIN));
   const below = rect.top < 120;
   const top = below ? rect.bottom + 8 : rect.top - 8;
@@ -23,7 +22,7 @@ function computePos(rect: DOMRect): Pos {
 
 export default function InfoTip({ text }: { text: string }) {
   const tooltipId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLSpanElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -31,17 +30,26 @@ export default function InfoTip({ text }: { text: string }) {
   const [entering, setEntering] = useState(false);
 
   const clearTimers = useCallback(() => {
-    if (showTimer.current !== null) { clearTimeout(showTimer.current); showTimer.current = null; }
-    if (hideTimer.current !== null) { clearTimeout(hideTimer.current); hideTimer.current = null; }
+    if (showTimer.current !== null) {
+      clearTimeout(showTimer.current);
+      showTimer.current = null;
+    }
+
+    if (hideTimer.current !== null) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
   }, []);
 
   const show = useCallback(() => {
     clearTimers();
     showTimer.current = setTimeout(() => {
-      if (!triggerRef.current) return;
-      const p = computePos(triggerRef.current.getBoundingClientRect());
-      setPos(p);
-      // next frame so the element is in DOM before we trigger the transition
+      if (!triggerRef.current) {
+        return;
+      }
+
+      const nextPos = computePos(triggerRef.current.getBoundingClientRect());
+      setPos(nextPos);
       requestAnimationFrame(() => requestAnimationFrame(() => setEntering(true)));
     }, SHOW_DELAY_MS);
   }, [clearTimers]);
@@ -53,37 +61,60 @@ export default function InfoTip({ text }: { text: string }) {
   }, [clearTimers]);
 
   const toggle = useCallback(() => {
-    if (entering) hide(); else show();
+    if (entering) {
+      hide();
+      return;
+    }
+
+    show();
   }, [entering, show, hide]);
 
-  // ESC closes
+  const onTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  }, [toggle]);
+
   useEffect(() => {
-    if (!entering) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { hide(); triggerRef.current?.focus(); } };
+    if (!entering) {
+      return;
+    }
+
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        hide();
+        triggerRef.current?.focus();
+      }
+    };
+
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [entering, hide]);
 
-  // Scroll / resize close
   useEffect(() => {
-    if (!pos) return;
+    if (!pos) {
+      return;
+    }
+
     window.addEventListener("scroll", hide, { passive: true, capture: true });
     window.addEventListener("resize", hide, { passive: true });
+
     return () => {
       window.removeEventListener("scroll", hide, { capture: true });
       window.removeEventListener("resize", hide);
     };
   }, [pos, hide]);
 
-  // Cleanup on unmount
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   return (
     <>
-      <button
+      <span
         ref={triggerRef}
-        type="button"
         className="info-tip"
+        role="button"
+        tabIndex={0}
         aria-describedby={entering ? tooltipId : undefined}
         aria-label="Više informacija"
         onMouseEnter={show}
@@ -91,8 +122,8 @@ export default function InfoTip({ text }: { text: string }) {
         onFocus={show}
         onBlur={hide}
         onClick={toggle}
+        onKeyDown={onTriggerKeyDown}
       >
-        {/* Info circle SVG - always centered via flex parent */}
         <svg
           viewBox="0 0 16 16"
           fill="currentColor"
@@ -103,7 +134,7 @@ export default function InfoTip({ text }: { text: string }) {
         >
           <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7.25 4.5a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM7.25 7h1.5v4.5h-1.5V7z" />
         </svg>
-      </button>
+      </span>
 
       {pos &&
         createPortal(

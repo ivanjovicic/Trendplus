@@ -60,8 +60,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByText("Pregled analitike");
-    expect(title).toBeInTheDocument();
+    const titleMatches = screen.getAllByText("Pregled analitike");
+    expect(titleMatches.length).toBeGreaterThan(0);
   });
 
   it("renders filter controls", () => {
@@ -71,8 +71,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabel = screen.getByText("Period");
-    expect(periodLabel).toBeInTheDocument();
+    const periodLabels = screen.getAllByText("Period");
+    expect(periodLabels.length).toBeGreaterThan(0);
   });
 
   it("shows overview dashboard section", () => {

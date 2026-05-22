@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import {
+  getAnalyticsRefreshStatus,
   getAnalyticsDataQualityHealth,
   getAnalyticsDataQualityTrend,
   getDataQualityIssues,
   getDataQualityTopOffenders,
 } from "../services/analyticsApi";
 import type {
+  AnalyticsRefreshStatus,
   AnalyticsDataQualityHealth,
   DataQualityIssueItem,
   DataQualityIssueListResult,
@@ -310,6 +315,8 @@ export default function DataQualityPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
+  const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
   const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
 
   const issueType = normalizeIssueType(searchParams.get("type"));
@@ -375,7 +382,7 @@ export default function DataQualityPage() {
     setError(null);
     setHealthError(null);
 
-    const [issuesResult, healthResult] = await Promise.allSettled([
+    const [issuesResult, healthResult, refreshResult] = await Promise.allSettled([
       getDataQualityIssues({
         type: issueType,
         page,
@@ -386,6 +393,7 @@ export default function DataQualityPage() {
         dataScope: contextDataScope,
       }),
       getAnalyticsDataQualityHealth(undefined, contextDataScope),
+      getAnalyticsRefreshStatus(),
     ]);
 
     if (issuesResult.status === "fulfilled") {
@@ -407,6 +415,18 @@ export default function DataQualityPage() {
         healthResult.reason instanceof Error
           ? healthResult.reason.message
           : "Health snapshot nije dostupan."
+      );
+    }
+
+    if (refreshResult.status === "fulfilled") {
+      setRefreshStatus(refreshResult.value);
+      setRefreshStatusError(null);
+    } else {
+      setRefreshStatus(null);
+      setRefreshStatusError(
+        refreshResult.reason instanceof Error
+          ? refreshResult.reason.message
+          : "Status osvezavanja analitike nije dostupan."
       );
     }
 
@@ -468,9 +488,31 @@ export default function DataQualityPage() {
   };
 
   const showAdvancedContext = Boolean(contextIncludeUnknown || contextFocus || contextSupplierId || contextSezonaId);
+  const trustDataQualityStatus = health?.scoreStatus === "critical"
+    ? "critical"
+    : health?.scoreStatus === "warning"
+      ? "warning"
+      : health?.scoreStatus === "good" || health?.scoreStatus === "excellent"
+        ? "good"
+        : health?.meta?.dataQualityStatus ?? null;
 
   return (
     <div className="data-quality-page">
+      <AnalyticsTrustHeader
+        title="Provera kvaliteta podataka"
+        description="Centralni pregled problema koji direktno uticu na pouzdanost analitike i preporuka."
+        periodFrom={contextFromDate ?? health?.windowFrom ?? null}
+        periodTo={contextToDate ?? health?.windowTo ?? null}
+        lastRefreshAt={health?.meta?.lastRefreshAtUtc ?? health?.generatedAt ?? null}
+        dataSource={contextDataScope ? `Data quality (${contextDataScope})` : "Data quality read model"}
+        dataQualityStatus={trustDataQualityStatus}
+        dataQualitySummary={{
+          missingSupplierCount: health?.orphanArticleCount ?? null,
+        }}
+        mode="report"
+        emptyStateReason={!loading && !error && data?.items.length === 0 ? (data?.meta?.message ?? "Nema otvorenih data quality problema za izabrani filter.") : null}
+        methodologyHref="/analytics/data-quality"
+      />
       <header className="data-quality-header">
         <div>
           <h1 className="data-quality-title">Provera kvaliteta podataka <InfoTip text="Problemi koji utiču na analytics." /></h1>
@@ -492,6 +534,12 @@ export default function DataQualityPage() {
           </div>
         </div>
       </header>
+
+      <AnalyticsRefreshStatusBanner
+        status={refreshStatus}
+        loading={loading}
+        error={refreshStatusError}
+      />
 
       {health ? (
         <section className="data-quality-health-grid">
@@ -637,7 +685,20 @@ export default function DataQualityPage() {
         </div>
       ) : null}
 
-      {error ? <div className="data-quality-error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Data quality podaci trenutno nisu dostupni"
+          message={error}
+          suggestions={[
+            "Proverite konekciju sa analytics bazom i pokrenite refresh.",
+            "Probajte ponovo za nekoliko trenutaka.",
+          ]}
+          onRetry={() => {
+            void load();
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {healthError ? <div className="data-quality-loading">{healthError}</div> : null}
       {loading ? <div className="data-quality-loading">Ucitavam data quality probleme...</div> : null}
 

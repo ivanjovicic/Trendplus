@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
+  getAnalyticsActionById,
   getAnalyticsActions,
   getAnalyticsActionCounts,
   updateAnalyticsActionStatus,
@@ -139,6 +140,9 @@ export default function AnalyticsActionsPage() {
 
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [detailsById, setDetailsById] = useState<Record<number, AnalyticsActionItem>>({});
+  const [detailsLoadingId, setDetailsLoadingId] = useState<number | null>(null);
+  const [detailsErrorById, setDetailsErrorById] = useState<Record<number, string>>({});
   const [statusModal, setStatusModal] = useState<StatusModalState | null>(null);
   const [statusModalBusy, setStatusModalBusy] = useState(false);
 
@@ -190,6 +194,12 @@ export default function AnalyticsActionsPage() {
     try {
       const updated = await updateAnalyticsActionStatus(id, { status, note });
       setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
+      setDetailsById((prev) => ({ ...prev, [id]: updated }));
+      setDetailsErrorById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       void loadCounts();
       return true;
     } catch (e) {
@@ -200,8 +210,30 @@ export default function AnalyticsActionsPage() {
     }
   }
 
-  function toggleExpanded(id: number) {
-    setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  async function toggleExpanded(item: AnalyticsActionItem) {
+    const { id } = item;
+    const willOpen = !expandedIds.includes(id);
+    setExpandedIds((prev) => (willOpen ? [...prev, id] : prev.filter((x) => x !== id)));
+    if (!willOpen || detailsById[id]) return;
+
+    setDetailsLoadingId(id);
+    setDetailsErrorById((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    try {
+      const detail = await getAnalyticsActionById(id);
+      setDetailsById((prev) => ({ ...prev, [id]: detail }));
+      setItems((prev) => prev.map((it) => (it.id === id ? detail : it)));
+    } catch (e) {
+      setDetailsErrorById((prev) => ({
+        ...prev,
+        [id]: e instanceof Error ? e.message : "Greska pri ucitavanju detalja",
+      }));
+    } finally {
+      setDetailsLoadingId((current) => (current === id ? null : current));
+    }
   }
 
   function openStatusNoteModal(item: AnalyticsActionItem, status: AnalyticsActionStatus) {
@@ -353,7 +385,11 @@ export default function AnalyticsActionsPage() {
                   const busy = updatingId === item.id;
                   const isOpen = openStatuses.includes(item.status);
                   const isExpanded = expandedIds.includes(item.id);
-                  const prettyMetadata = formatMetadataJson(item.metadataJson);
+                  const detailsItem = detailsById[item.id] ?? item;
+                  const prettyMetadata = formatMetadataJson(detailsItem.metadataJson);
+                  const detailError = detailsErrorById[item.id];
+                  const isDetailLoading = detailsLoadingId === item.id;
+                  const notes = detailsItem.notes ?? [];
 
                   return (
                     <Fragment key={item.id}>
@@ -435,7 +471,7 @@ export default function AnalyticsActionsPage() {
                           <button
                             type="button"
                             className="btn-action btn-details"
-                            onClick={() => toggleExpanded(item.id)}
+                            onClick={() => void toggleExpanded(item)}
                             aria-expanded={isExpanded}
                             aria-controls={`aaq-details-${item.id}`}
                           >
@@ -447,25 +483,54 @@ export default function AnalyticsActionsPage() {
                         <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
                           <td colSpan={10}>
                             <div className="aaq-details-grid">
-                              <div><strong>SourceType:</strong> {item.sourceType}</div>
-                              <div><strong>SourceKey:</strong> {item.sourceKey}</div>
-                              <div><strong>SourceId:</strong> {item.sourceId ?? "-"}</div>
-                              <div><strong>CreatedAtUtc:</strong> {formatTimestamp(item.createdAtUtc)}</div>
-                              <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(item.updatedAtUtc)}</div>
-                              <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(item.resolvedAtUtc)}</div>
-                              <div><strong>CreatedByUserId:</strong> {item.createdByUserId ?? "-"}</div>
-                              <div><strong>UpdatedByUserName:</strong> {item.updatedByUserName ?? "-"}</div>
+                              <div><strong>SourceType:</strong> {detailsItem.sourceType}</div>
+                              <div><strong>SourceKey:</strong> {detailsItem.sourceKey}</div>
+                              <div><strong>SourceId:</strong> {detailsItem.sourceId ?? "-"}</div>
+                              <div><strong>CreatedAtUtc:</strong> {formatTimestamp(detailsItem.createdAtUtc)}</div>
+                              <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(detailsItem.updatedAtUtc)}</div>
+                              <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(detailsItem.resolvedAtUtc)}</div>
+                              <div><strong>CreatedByUserId:</strong> {detailsItem.createdByUserId ?? "-"}</div>
+                              <div><strong>UpdatedByUserName:</strong> {detailsItem.updatedByUserName ?? "-"}</div>
                               <div>
                                 <strong>Izvorni ekran:</strong>{" "}
-                                {item.actionUrl ? <a href={item.actionUrl} className="action-link">Otvori</a> : "-"}
+                                {detailsItem.actionUrl ? <a href={detailsItem.actionUrl} className="action-link">Otvori</a> : "-"}
                               </div>
                             </div>
+                            {isDetailLoading && (
+                              <div className="aaq-detail-loading">Ucitavanje istorije...</div>
+                            )}
+                            {detailError && (
+                              <div className="aaq-detail-error">{detailError}</div>
+                            )}
                             <div className="aaq-metadata-panel">
                               <strong>MetadataJson:</strong>
                               {prettyMetadata ? (
                                 <pre>{prettyMetadata}</pre>
                               ) : (
                                 <p>Metadata nije dostupan.</p>
+                              )}
+                            </div>
+                            <div className="aaq-notes-timeline">
+                              <strong>Istorija statusa i napomena</strong>
+                              {notes.length === 0 ? (
+                                <p className="aaq-note-empty">Nema zabelezenih promena statusa.</p>
+                              ) : (
+                                notes.map((entry) => (
+                                  <div key={entry.id} className="aaq-note-item">
+                                    <div className="aaq-note-header">
+                                      <span>{formatTimestamp(entry.createdAtUtc)}</span>
+                                      <span className="aaq-note-status">
+                                        {STATUS_LABELS[entry.statusFrom]} {"->"} {STATUS_LABELS[entry.statusTo]}
+                                      </span>
+                                    </div>
+                                    <div className="aaq-note-user">
+                                      Korisnik: {entry.createdByUserName || entry.createdByUserId || "Sistem"}
+                                    </div>
+                                    <div className="aaq-note-body">
+                                      {entry.note?.trim() ? entry.note : "Status promenjen bez napomene."}
+                                    </div>
+                                  </div>
+                                ))
                               )}
                             </div>
                           </td>

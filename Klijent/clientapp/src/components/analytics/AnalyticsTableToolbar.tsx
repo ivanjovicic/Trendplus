@@ -147,16 +147,18 @@ export default function AnalyticsTableToolbar<Row>(props: {
     <>
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
-          >
-            <Download size={14} />
-            Izvoz
+          <div className="inline-flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
+            >
+              <Download size={14} />
+              Izvoz
+              <ChevronDown size={14} />
+            </button>
             <InfoTip text="Izvezi tabelu u PDF, Excel ili CSV format." />
-            <ChevronDown size={14} />
-          </button>
+          </div>
 
           {menuOpen ? (
             <div className="absolute right-0 z-20 mt-2 min-w-[180px] rounded-xl border border-border bg-surface p-1 shadow-[0_12px_30px_-12px_var(--theme-color-rgba-0-0-0-0p9, rgba(0,0,0,0.9))]">
