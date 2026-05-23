@@ -19,6 +19,9 @@ import {
 import type { StoreOption } from "../types/analytics";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
@@ -748,6 +751,17 @@ export default function ShoeTypeSalesStatsPage() {
 
   return (
     <div className="shoetype-decision-page">
+      <AnalyticsTrustHeader
+        title="Prodaja po tipu obuce"
+        description="Podrska odluci sa asortimanskim fokusom po tipu obuce."
+        periodFrom={activeFilters.fromDate}
+        periodTo={activeFilters.toDate}
+        lastRefreshAt={data?.generatedAt ?? null}
+        dataSource="Sales facts analytics"
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <header className="shoetype-decision-header">
         <div>
           <h1 className="shoetype-decision-title">Prodaja po tipu obuće</h1>
@@ -847,15 +861,29 @@ export default function ShoeTypeSalesStatsPage() {
       {invalidRange ? (
         <div className="shoetype-decision-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
-      {error ? <div className="shoetype-decision-message error">{error}</div> : null}
-        {loading && !data ? (
+      {error ? (
+        <AnalyticsErrorState
+          title="Greška pri učitavanju podataka po tipu obuće"
+          message={error}
+          onRetry={() => void load(activeFilters)}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {loading && !data ? (
         <div className="shoetype-decision-loading" role="status" aria-live="polite">
           <UltraSpinner size="md" label="Učitavam tipove obuće" />
           <span>Učitavam tipove obuće...</span>
         </div>
       ) : null}
       {!loading && !error && emptyStateHint ? (
-        <div className="shoetype-decision-message info">{emptyStateHint}</div>
+        <AnalyticsEmptyState
+          variant="filtered_out"
+          message={emptyStateHint}
+          actions={[
+            { label: "Proširite period pretrage." },
+            { label: "Uklonite filter prodavnice ili sezone." },
+          ]}
+        />
       ) : null}
 
 

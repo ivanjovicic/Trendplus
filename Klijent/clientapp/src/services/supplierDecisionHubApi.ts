@@ -83,7 +83,7 @@ export type ScorecardTrustMetadata = {
   lastRefreshAtUtc?: string | null;
   rowCount?: number;
   ignoredRowCount?: number;
-  zeroRevenueRowsExcluded?: boolean;
+  zeroRevenueRowsExcludedCount?: number;
   missingSupplierNameCount?: number;
   hasData: boolean;
   hasExplicitDateRange: boolean;

@@ -25,3 +25,77 @@
   margin: 0;
   padding-left: 18px;
 }
+
+/* Variant modifiers */
+.aes-no-data {
+  border-color: var(--border-default, #d1d5db);
+}
+
+.aes-insufficient-data {
+  border-color: var(--warning, #f59e0b);
+  background: var(--surface-warning, #fffbeb);
+}
+
+.aes-filtered-out {
+  border-color: var(--info, #3b82f6);
+}
+
+/* Reasons and actions sections */
+.aes-reasons,
+.aes-actions {
+  margin-top: 10px;
+}
+
+/* Action list items */
+.aes-actions ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.aes-action-btn {
+  background: none;
+  border: 1px solid var(--border-default, #d1d5db);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 4px 10px;
+  color: var(--text-primary, #111827);
+  transition: border-color 0.15s;
+}
+
+.aes-action-btn:hover {
+  border-color: var(--accent, #6366f1);
+}
+
+.aes-action-link {
+  color: var(--link, #2563eb);
+  font-size: 0.875rem;
+  text-decoration: underline;
+}
+
+/* Footer links */
+.aes-footer-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default, #d1d5db);
+}
+
+.aes-footer-link {
+  color: var(--text-secondary, #374151);
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+/* Empty reason (from API) */
+.aes-empty-reason {
+  color: var(--text-secondary, #374151);
+  font-size: 0.875rem;
+  margin-top: 4px !important;
+  font-style: italic;
+}

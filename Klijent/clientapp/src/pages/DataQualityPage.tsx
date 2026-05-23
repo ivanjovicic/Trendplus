@@ -723,17 +723,18 @@ export default function DataQualityPage() {
 
       {!loading && !error && data?.items.length === 0 && data?.meta?.dataQualityStatus === "insufficient_data" ? (
         <AnalyticsEmptyState
-          title="Nema dovoljno podataka za izabrani filter."
+          variant="insufficient_data"
           message={data.meta.message ?? "Nema otvorenih data quality problema u izabranom opsegu."}
           reasons={[
             "U izabranom periodu nema problema koji prolaze prag signalnog prometa.",
             "Scope ili tip problema je suzio rezultat na prazan skup.",
           ]}
           actions={[
-            "Proverite drugi tip problema.",
-            "Proširite period i osvežite listu.",
-            "Pokrenite analytics refresh i pokušajte ponovo.",
+            { label: "Proverite drugi tip problema." },
+            { label: "Proširite period i osvežite listu." },
+            { label: "Pokrenite analytics refresh i pokušajte ponovo." },
           ]}
+          dataQualityHref="/analytics/data-quality"
         />
       ) : null}
       {healthError ? <div className="data-quality-loading">{healthError}</div> : null}

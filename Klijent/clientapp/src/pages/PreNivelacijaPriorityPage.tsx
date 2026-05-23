@@ -10,6 +10,9 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti } from "../services/preNivelacijaApi";
@@ -428,6 +431,17 @@ export default function PreNivelacijaPriorityPage() {
 
   return (
     <div className="pnp-decision-page">
+      <AnalyticsTrustHeader
+        title="Prioriteti pre-nivelacije"
+        description="Operativna podrska za odluke po SKU pre faze snizenja."
+        periodFrom={null}
+        periodTo={null}
+        lastRefreshAt={data?.generatedAtUtc ?? null}
+        dataSource="Nivelacija analytics"
+        mode="recommendation"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <header className="pnp-decision-header">
         <div>
           <h1 className="pnp-decision-title">Prioriteti pre-nivelacije</h1>
@@ -489,7 +503,23 @@ export default function PreNivelacijaPriorityPage() {
         </div>
       </section>
 
-      {error ? <div className="pnp-decision-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Greška pri učitavanju pre-nivelacija prioriteta"
+          message={error}
+          onRetry={() => void load(activeFilters, page)}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {!loading && !error && data && decisionRows.length === 0 ? (
+        <AnalyticsEmptyState
+          variant="no_data"
+          actions={[
+            { label: "Promenite filtere dobavljača ili fokusa." },
+            { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
+          ]}
+        />
+      ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
 
       {!loading && data ? (

@@ -125,7 +125,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("DateTime? LastRefreshAtUtc", endpoint);
         Assert.Contains("int RowCount", endpoint);
         Assert.Contains("int IgnoredRowCount", endpoint);
-        Assert.Contains("bool ZeroRevenueRowsExcluded", endpoint);
+        Assert.Contains("int ZeroRevenueRowsExcludedCount", endpoint);
         Assert.Contains("int MissingSupplierNameCount", endpoint);
         Assert.Contains("string? DataNote", endpoint);
         Assert.Contains("bool NoSilentFallback", endpoint);

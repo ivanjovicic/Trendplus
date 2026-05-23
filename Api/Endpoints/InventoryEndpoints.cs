@@ -9,6 +9,8 @@ using Infrastructure.Services.Caching;
 using Infrastructure.Services.Inventory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Npgsql;
 using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
@@ -25,63 +27,55 @@ public static class InventoryEndpoints
 
         group.MapGet("/balance", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId,
             int? supplierId,
             CancellationToken ct) =>
         {
-            var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
 
-            var totalSku = await query.CountAsync(ct);
-            var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
-            var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
-            var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-            var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
+                var totalSku = await query.CountAsync(ct);
+                var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
+                var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
+                var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
+                var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
 
-            return Results.Ok(new InventoryBalanceDto(
-                TotalSku: totalSku,
-                TotalOnHand: totalOnHand,
-                LowStockCount: lowStock,
-                OutOfStockCount: outOfStock,
-                EstimatedInventoryValue: Math.Round(estimatedValue, 2)));
+                AnalyticsResponseMetaDto meta = totalSku == 0
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", "insufficient_data")
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new InventoryBalanceDto(
+                    TotalSku: totalSku,
+                    TotalOnHand: totalOnHand,
+                    LowStockCount: lowStock,
+                    OutOfStockCount: outOfStock,
+                    EstimatedInventoryValue: Math.Round(estimatedValue, 2),
+                    Meta: meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Inventory balance query failed due to database issue.");
+                return Results.Ok(new InventoryBalanceDto(0, 0, 0, 0, 0m,
+                    AnalyticsResponseMetaFactory.Error("inventory_db_error", "Zalihe trenutno nisu dostupne.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading inventory balance.");
+                return Results.Ok(new InventoryBalanceDto(0, 0, 0, 0, 0m,
+                    AnalyticsResponseMetaFactory.Error("inventory_error", "Neocekivana greska pri ucitavanju zaliha.", correlationId)));
+            }
         })
         .WithName("GetInventoryBalance");
-
-        group.MapGet("/list", async (
-            ITrendplusDbContext db,
-            int page = 1,
-            int pageSize = 50,
-            int? storeId = null,
-            int? supplierId = null,
-            string? search = null,
-            string? sortBy = null,
-            CancellationToken ct = default) =>
-        {
-            page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, 1000);
-
-            var query = ApplyInventorySorting(
-                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search),
-                sortBy);
-
-            var total = await query.CountAsync(ct);
-            var items = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(a => new InventoryListItemDto(
-                    a.Id,
-                    a.PLU,
-                    a.Naziv,
-                    a.Kolicina,
-                    a.MinimalnaKolicina,
-                    a.NabavnaCena,
-                    (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
-                    a.IDObjekat,
-                    a.IDDobavljac))
-                .ToListAsync(ct);
-
-            return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize));
-        })
-        .WithName("GetInventoryList");
 
         group.MapGet("/insights", async (
             IAnalyticsCacheService cache,
@@ -357,6 +351,71 @@ public static class InventoryEndpoints
         })
         .WithName("PrintBlankInventoryForm")
         .RequireRateLimiting("writes");
+
+        group.MapGet("/list", async (
+            ITrendplusDbContext db,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
+            int page = 1,
+            int pageSize = 50,
+            int? storeId = null,
+            int? supplierId = null,
+            string? search = null,
+            string? sortBy = null,
+            CancellationToken ct = default) =>
+        {
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
+
+                var query = ApplyInventorySorting(
+                    ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search),
+                    sortBy);
+
+                var total = await query.CountAsync(ct);
+                var items = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(a => new InventoryListItemDto(
+                        a.Id,
+                        a.PLU,
+                        a.Naziv,
+                        a.Kolicina,
+                        a.MinimalnaKolicina,
+                        a.NabavnaCena,
+                        (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
+                        a.IDObjekat,
+                        a.IDDobavljac))
+                    .ToListAsync(ct);
+
+                AnalyticsResponseMetaDto meta = total == 0
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", "insufficient_data")
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Inventory list query failed due to database issue.");
+                var errMeta = AnalyticsResponseMetaFactory.Error("inventory_list_db_error", "Lista artikala trenutno nije dostupna.", correlationId);
+                return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>([], 0, page, pageSize, errMeta));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading inventory list.");
+                var errMeta = AnalyticsResponseMetaFactory.Error("inventory_list_error", "Neocekivana greska pri ucitavanju liste artikala.", correlationId);
+                return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>([], 0, page, pageSize, errMeta));
+            }
+        })
+        .WithName("GetInventoryList");
 
         group.MapGet("/store-comparison", async (
             IAnalyticsCacheService cache,
@@ -916,9 +975,9 @@ public static class InventoryEndpoints
         var worstStore = stores.OrderByDescending(item => item.CriticalCount).ThenByDescending(item => item.Stale90PlusCount).FirstOrDefault();
         var bestStore = stores.OrderByDescending(item => item.HealthySharePct).ThenByDescending(item => item.EstimatedValue).FirstOrDefault();
         var summary = stores.Count == 0
-            ? "Nema dovoljno podataka za poređenje lokacija."
+            ? "Nema dovoljno podataka za poreÄ‘enje lokacija."
             : worstStore is null || bestStore is null
-                ? $"Prikazane su {stores.Count} lokacije za poređenje."
+                ? $"Prikazane su {stores.Count} lokacije za poreÄ‘enje."
                 : $"Najveci operativni pritisak je u lokaciji {worstStore.StoreName}, dok {bestStore.StoreName} trenutno ima najbolji udeo zdravih SKU.";
 
         return new InventoryStoreComparisonDto(
@@ -1122,6 +1181,15 @@ public static class InventoryEndpoints
         => !string.IsNullOrWhiteSpace(item.Plu)
             ? item.Plu.Trim().ToUpperInvariant()
             : item.Naziv.Trim().ToUpperInvariant();
+
+    private static string ResolveCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader)) return responseHeader;
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader)) return requestHeader;
+        return httpContext.TraceIdentifier;
+    }
 
     private static InventoryReportScheduleDto MapScheduleDto(InventoryReportScheduleDefinition definition)
     {
@@ -1376,7 +1444,7 @@ public static class InventoryEndpoints
             Table = new DocumentTablePayload
             {
                 TableKey = "inventory-balance-blank",
-                TableTitle = "Bilans stanja — Prazan obrazac",
+                TableTitle = "Bilans stanja â€” Prazan obrazac",
                 Columns = columns,
                 Filters = [],
                 Metadata =

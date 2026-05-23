@@ -17,6 +17,9 @@ import {
 } from "../services/colorSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
@@ -624,6 +627,17 @@ export default function ColorSalesStatsPage() {
 
   return (
     <div className="color-decision-page">
+      <AnalyticsTrustHeader
+        title="Prodaja po boji"
+        description="Analiza boja: rast, popularnost i prioriteti za nabavku."
+        periodFrom={activeFilters.fromDate}
+        periodTo={activeFilters.toDate}
+        lastRefreshAt={data?.generatedAt ?? null}
+        dataSource="Sales facts analytics"
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <header className="color-decision-header">
         <div>
           <h1 className="color-decision-title">Prodaja po boji</h1>
@@ -723,10 +737,24 @@ export default function ColorSalesStatsPage() {
       {invalidRange ? (
         <div className="color-decision-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
-      {error ? <div className="color-decision-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Greška pri učitavanju podataka po boji"
+          message={error}
+          onRetry={() => void load(activeFilters)}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {loading ? <div className="color-decision-message loading">Ucitavam boje...</div> : null}
       {!loading && !error && emptyStateHint ? (
-        <div className="color-decision-message info">{emptyStateHint}</div>
+        <AnalyticsEmptyState
+          variant="filtered_out"
+          message={emptyStateHint}
+          actions={[
+            { label: "Proširite period pretrage." },
+            { label: "Uklonite filter prodavnice ili sezone." },
+          ]}
+        />
       ) : null}
       {!loading && !error && qualityNotes.length > 0 ? (
         <div className="color-decision-message info">

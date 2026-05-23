@@ -11,6 +11,9 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
@@ -976,6 +979,17 @@ const advancedSignals = useMemo(
 
   return (
     <div className="ppn-decision-page">
+      <AnalyticsTrustHeader
+        title="Prodaja pre/posle nivelacije"
+        description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljacu."
+        periodFrom={activeFilters.fromDate}
+        periodTo={activeFilters.toDate}
+        lastRefreshAt={data?.generatedAt ?? null}
+        dataSource="Nivelacija analytics"
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <header className="ppn-decision-header">
         <div>
           <h1 className="ppn-decision-title">Prodaja pre/posle nivelacije</h1>
@@ -1041,7 +1055,24 @@ const advancedSignals = useMemo(
       </section>
 
       {invalidRange ? <div className="ppn-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
-      {error ? <div className="ppn-decision-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Greška pri učitavanju pre/post analitike"
+          message={error}
+          onRetry={() => void load(activeFilters)}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {!loading && !error && data && decisionRows.length === 0 ? (
+        <AnalyticsEmptyState
+          variant="no_data"
+          actions={[
+            { label: "Proširite period pretrage." },
+            { label: "Uklonite filter dobavljača ili prodavnice." },
+            { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
+          ]}
+        />
+      ) : null}
       {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}
 
       {!loading && data ? (

@@ -171,7 +171,7 @@ describe("SupplierDecisionHubPage", () => {
       lastRefreshAtUtc: "2026-05-12T00:00:00Z",
       rowCount: 0,
       ignoredRowCount: 0,
-      zeroRevenueRowsExcluded: true,
+      zeroRevenueRowsExcludedCount: 0,
       missingSupplierNameCount: 0,
       hasData: false,
       hasExplicitDateRange: true,

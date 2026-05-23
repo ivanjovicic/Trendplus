@@ -4,5 +4,6 @@ public sealed record ArtikliPagedResponse<T>(
     IReadOnlyList<T> Items,
     int TotalCount,
     int PageNumber,
-    int PageSize
+    int PageSize,
+    AnalyticsResponseMetaDto? Meta = null
 );

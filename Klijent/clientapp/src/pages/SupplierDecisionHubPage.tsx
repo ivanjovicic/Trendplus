@@ -298,7 +298,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         : "insufficient_data";
       const statusReason = recommendationAllowed
         ? item.statusReason?.trim() || "Backend nije dostavio obrazlozenje za ovaj scorecard signal."
-        : "Nedovoljno podataka u izabranom periodu; scorecard preporuka je onemogucena.";
+        : (trustMetadata?.usedFallback
+          ? "Za izabrani period nema dovoljno podataka; prikaz je pomocni signal iz sireg dataseta."
+          : "Nedovoljno podataka u izabranom periodu; scorecard preporuka je onemogucena.");
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
 
       return {
@@ -354,8 +356,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const zeroStateExplanation = useMemo(() => {
     if (!summary || !ranking) return null;
 
-    if (!trustMetadata?.hasData && trustMetadata?.hasExplicitDateRange) {
+    if (!trustMetadata?.hasData && trustMetadata?.hasExplicitDateRange && !trustMetadata?.usedFallback) {
       return "Za trazeni period nema scorecard zapisa za dobavljace. Sistem nije koristio siri period kao fallback, pa je rezultat eksplicitno prazan za ovaj opseg.";
+    }
+
+    if (!trustMetadata?.hasData && trustMetadata?.hasExplicitDateRange && trustMetadata?.usedFallback) {
+      return `Za izabrani period nema dovoljno podataka. Koriscen je dataset ${trustMetadata.effectivePeriodLabel} kao pomocni signal, ali ni on nema dovoljno scorecard zapisa za prikaz.`;
     }
 
     const allKeyMetricsZero =
@@ -547,16 +553,16 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? "unknown"}
           refreshIsRunning={refreshStatus?.isRunning ?? false}
           refreshCurrentStep={refreshStatus?.currentStep ?? null}
-          dataSource={`Supplier decision scorecard (${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`}
+          dataSource={`Supplier decision scorecard (request: ${trustMetadata?.requestedDataset ?? "n/a"}, effective: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`}
           dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
           dataQualitySummary={{
             missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
             ignoredRowsCount: trustMetadata?.ignoredRowCount ?? null,
           }}
-          mode="signal"
+          mode="recommendation"
           recommendationNote={
             trustMetadata?.usedFallback
-              ? `Prikazan je fallback period: ${trustMetadata.effectivePeriodLabel}.`
+              ? `Za izabrani period nema dovoljno podataka. Koriscen je dataset ${trustMetadata.effectivePeriodLabel} kao pomocni signal.`
               : "Skorkarta je dodatni signal. Finalna preporuka dolazi iz taba Pregled."
           }
           emptyStateReason={!loading && !showBlockingError && sortedRows.length === 0 ? zeroStateExplanation : null}
@@ -565,6 +571,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       ) : null}
 
       <section className="sdh-decision-context" aria-label="ObjaÅ¡njenje skorkarte">
+        <div>
+          <strong>Kako citati skorkartu dobavljaca?</strong>
+          <span>Scorecard signal koristi statuse Pojacaj, Zadrzi, Oprez, Smanji / Ne veruj i Nedovoljno podataka. Kada je aktivan fallback, status se prikazuje kao Pomocni signal i ne treba ga tumaciti kao finalnu preporuku.</span>
+        </div>
         <div>
           <strong>Å ta meri Skorkarta?</strong>
           <span>Scorecard skup dobavljaÄa: artikli sa prvom nivelacijom u izabranom periodu, uz prihod, marÅ¾u, punu cenu, zalihu i pouzdanost signala.</span>
@@ -669,7 +679,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!loading && !showBlockingError && sortedRows.length === 0 && scorecardMeta?.dataQualityStatus === "insufficient_data" ? (
         <AnalyticsEmptyState
-          title="Nema dovoljno podataka za izabrani period."
+          variant="insufficient_data"
           message={scorecardMeta.message ?? zeroStateExplanation ?? "Za ovaj opseg nema scorecard signala."}
           reasons={[
             "U traženom periodu nema dovoljno nivo signalnih podataka.",
@@ -677,10 +687,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             "Nedostaju ulazni podaci za pouzdanu preporuku.",
           ]}
           actions={[
-            "Proširite period na 90d ili 180d.",
-            "Uklonite uske filtere (objekat/dobavljač).",
-            "Otvorite Data Quality radi provere blokera.",
+            { label: "Proširite period na 90d ili 180d." },
+            { label: "Uklonite uske filtere (objekat/dobavljač)." },
+            { label: "Otvorite Data Quality radi provere blokera.", href: "/analytics/data-quality" },
           ]}
+          dataQualityHref="/analytics/data-quality"
         />
       ) : null}
       {loading ? <div className="sdh-decision-message loading" role="status" aria-live="polite">UÄitavam skorkarte dobavljaÄa...</div> : null}
@@ -704,7 +715,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!loading && !showBlockingError && trustMetadata?.usedFallback ? (
         <div className="sdh-decision-message warning" role="note">
-          <strong>Fallback period je primenjen:</strong> zahtevani opseg nema dovoljno podataka, prikazan je {trustMetadata.effectivePeriodLabel}. {trustMetadata.fallbackReason ?? ""}
+          Za izabrani period nema dovoljno podataka. Koriscen je dataset {trustMetadata.effectivePeriodLabel} kao pomocni signal. {trustMetadata.fallbackReason ?? ""}
         </div>
       ) : null}
 
@@ -857,6 +868,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                     ) : (
                       sortedRows.map((row) => {
                         const expanded = expandedSupplierId === row.supplierId;
+                        const displayedStatusLabel = row.status === "insufficient_data" && trustMetadata?.usedFallback
+                          ? "Pomocni signal"
+                          : statusDisplayLabel(row.status);
                         return (
                           <tr key={row.supplierId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.supplierName}</td>
@@ -864,7 +878,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
                             <td className="align-right">{fmtPct(row.preMarkdownMarginPct * 100, 2)}</td>
                             <td className={`align-right ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
-                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
+                            <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span></td>
                             <td className="align-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );

@@ -58,7 +58,7 @@ describe("buildSupplierDecisionReportPayload", () => {
         lastRefreshAtUtc: "2026-07-31T05:30:00Z",
         rowCount: 2,
         ignoredRowCount: 0,
-        zeroRevenueRowsExcluded: true,
+        zeroRevenueRowsExcludedCount: 0,
         missingSupplierNameCount: 0,
         hasData: true,
         hasExplicitDateRange: true,

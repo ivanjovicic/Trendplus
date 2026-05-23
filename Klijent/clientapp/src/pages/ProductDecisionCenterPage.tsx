@@ -696,7 +696,7 @@ export default function ProductDecisionCenterPage() {
 
       {!loading && !error && responseMeta?.dataQualityStatus === "insufficient_data" ? (
         <AnalyticsEmptyState
-          title="Nema dovoljno podataka za izabrani period."
+          variant="insufficient_data"
           message={responseMeta.message ?? "Dataset je uspešno učitan, ali nema dovoljno signalnih redova za odluke."}
           reasons={[
             "U periodu nema dovoljno prodajnih događaja za recommendation signal.",
@@ -704,10 +704,11 @@ export default function ProductDecisionCenterPage() {
             "Nedostaju ključni ulazi (nabavna cena, dobavljač).",
           ]}
           actions={[
-            "Proširite period (npr. 60 ili 90 dana).",
-            "Uklonite uske filtere i pokušajte ponovo.",
-            "Otvorite Data Quality i proverite blokere signala.",
+            { label: "Proširite period (npr. 60 ili 90 dana)." },
+            { label: "Uklonite uske filtere i pokušajte ponovo." },
+            { label: "Otvorite Data Quality i proverite blokere signala.", href: "/analytics/data-quality" },
           ]}
+          dataQualityHref="/analytics/data-quality"
         />
       ) : null}
 

@@ -23,6 +23,9 @@ type AnalyticsTrustHeaderProps = {
   recommendationNote?: string;
   emptyStateReason?: string | null;
   methodologyHref?: string;
+  methodologyLabel?: string;
+  dataQualityHref?: string;
+  refreshStatusHref?: string;
 };
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
@@ -113,6 +116,9 @@ export default function AnalyticsTrustHeader({
   recommendationNote,
   emptyStateReason,
   methodologyHref,
+  methodologyLabel,
+  dataQualityHref,
+  refreshStatusHref,
 }: AnalyticsTrustHeaderProps) {
   const normalizedStatus = normalizeStatus(dataQualityStatus);
   const tone = statusTone(normalizedStatus);
@@ -179,9 +185,11 @@ export default function AnalyticsTrustHeader({
         )}
       </div>
 
-      {methodologyHref ? (
+      {(methodologyHref || dataQualityHref || refreshStatusHref) ? (
         <div className="ath-footer">
-          <a href={methodologyHref}>Metodologija i tumacenje signala</a>
+          {methodologyHref ? <a href={methodologyHref}>{methodologyLabel ?? "Metodologija i tumacenje signala"}</a> : null}
+          {dataQualityHref ? <a href={dataQualityHref}>Kvalitet podataka</a> : null}
+          {refreshStatusHref ? <a href={refreshStatusHref}>Status osvezavanja</a> : null}
         </div>
       ) : null}
     </section>

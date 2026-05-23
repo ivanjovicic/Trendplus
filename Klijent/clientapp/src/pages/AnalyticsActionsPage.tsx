@@ -7,6 +7,7 @@ import {
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
 import { fmtNumber, fmtRsd } from "../utils/analyticsFormatters";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
   AnalyticsActionCounts,
@@ -258,6 +259,17 @@ export default function AnalyticsActionsPage() {
 
   return (
     <div className="aaq-page">
+      <AnalyticsTrustHeader
+        title="Akcije i preporuke"
+        description="Centralni red akcija iz dashboarda, analize proizvoda, dobavljaca, zaliha i nivelacija."
+        periodFrom={null}
+        periodTo={null}
+        lastRefreshAt={null}
+        dataSource="Analytics actions log"
+        mode="report"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <div className="aaq-header">
         <h1 className="aaq-title">Akcije i preporuke</h1>
         <p className="aaq-subtitle">

@@ -14,6 +14,9 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
 import { getStores } from "../services/analyticsApi";
@@ -1111,6 +1114,17 @@ export default function DailySalesStatsPage() {
 
   return (
     <div className="daily-sales-page">
+      <AnalyticsTrustHeader
+        title="Prodaja po smeni"
+        description="Dnevni pregled prodaje po smenama: kolicine, prihodi i top dobavljaci."
+        periodFrom={activeFilters.fromDate}
+        periodTo={activeFilters.toDate}
+        lastRefreshAt={null}
+        dataSource="Sales facts analytics"
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+      />
       <header className="daily-sales-header">
         <div>
           <h1>Prodaja po smeni</h1>
@@ -1198,7 +1212,24 @@ export default function DailySalesStatsPage() {
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {error ? <div className="daily-sales-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Greška pri učitavanju dnevne prodaje"
+          message={error}
+          onRetry={() => void load(activeFilters)}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {!loading && !error && data && (data.dateRows?.length ?? 0) === 0 ? (
+        <AnalyticsEmptyState
+          variant="no_data"
+          actions={[
+            { label: "Proširite period pretrage." },
+            { label: "Uklonite filter prodavnice." },
+            { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
+          ]}
+        />
+      ) : null}
       {loading ? (
         <div className="daily-sales-message loading">
           <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />

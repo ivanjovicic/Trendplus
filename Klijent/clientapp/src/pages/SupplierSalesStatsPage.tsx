@@ -219,6 +219,19 @@ function displayStatusLabel(status: DecisionStatus): string {
   if (status === "do_not_trust") return "Smanji / Ne veruj";
   return "Nedovoljno podataka";
 }
+
+function displaySignalLabel(
+  status: DecisionStatus,
+  reliabilityAvailable: boolean,
+  dataQualityStatus: RecommendationQualityStatus,
+): string {
+  if (status === "insufficient_data") return "Nedovoljno podataka";
+  if (!reliabilityAvailable || dataQualityStatus === "insufficient_data" || dataQualityStatus === "critical") {
+    return "Pomocni signal";
+  }
+
+  return displayStatusLabel(status);
+}
 function trendClass(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
@@ -606,7 +619,6 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? 0;
       const recommended = supplier.recommendation;
       const status = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
-      const statusLabel = recommended?.label ?? displayStatusLabel(status);
       const statusReason = recommended?.summary
         ?? (supplier.isUnknown
           ? "DobavljaÄ je nepoznat u master podacima; signal nije pouzdan za odluku."
@@ -619,6 +631,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const reasonCodes = recommended?.reasonCodes ?? [];
       const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
       const reliabilityPct = reliabilityPctValue ?? 0;
+      const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
       const footwearBreakdown = supplier.footwearBreakdown ?? [];
       const primaryFootwearType = supplier.primaryFootwearType
         ?? footwearBreakdown[0]?.tipObuceNaziv
@@ -1587,7 +1600,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                   title={buildStatusTooltip(supplier)}
                                   aria-label={buildStatusTooltip(supplier)}
                                 >
-                                  {displayStatusLabel(supplier.status)}
+                                  {supplier.statusLabel}
                                 </span>
                                 {supplier.statusReason ? (
                                   <span className="supplier-status-reason-chip" title={supplier.statusReason}>
@@ -1638,7 +1651,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     className={`${statusClass(selectedSupplier.status)} supplier-detail-status-badge`}
                     title={buildStatusTooltip(selectedSupplier)}
                   >
-                    {displayStatusLabel(selectedSupplier.status)}
+                    {selectedSupplier.statusLabel}
                   </div>
                   <button
                     type="button"

@@ -657,6 +657,10 @@ public static class SupplierDecisionHubEndpoints
         IReadOnlyCollection<SupplierScoreRow> rows,
         ScorecardTrustMetadata? trustMetadata = null)
     {
+        var fallbackWarningMessage = trustMetadata?.UsedFallback == true
+            ? $"Za izabrani period nema dovoljno podataka. Koriscen je dataset {trustMetadata.EffectivePeriodLabel} kao pomocni signal."
+            : null;
+
         if (rows.Count == 0)
         {
             return new AnalyticsResponseMetaDto
@@ -665,14 +669,28 @@ public static class SupplierDecisionHubEndpoints
                 EmptyReason = "no_data_in_period",
                 Message = "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
                 DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "insufficient_data",
+                IsPartial = trustMetadata?.UsedFallback == true,
+                WarningCode = trustMetadata?.UsedFallback == true ? "FALLBACK_DATASET_USED" : null,
+                WarningMessage = fallbackWarningMessage,
                 GeneratedAtUtc = DateTime.UtcNow
             };
         }
+
+        var recommendationGated = trustMetadata is { RecommendationAllowed: false };
+        var warningCode = trustMetadata?.UsedFallback == true
+            ? "FALLBACK_DATASET_USED"
+            : (recommendationGated ? "RECOMMENDATION_GATED" : null);
+        var warningMessage = trustMetadata?.UsedFallback == true
+            ? fallbackWarningMessage
+            : (recommendationGated ? "Preporuka je onemogucena zbog nedovoljne pouzdanosti podataka." : null);
 
         return new AnalyticsResponseMetaDto
         {
             Success = true,
             DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "good",
+            IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
+            WarningCode = warningCode,
+            WarningMessage = warningMessage,
             GeneratedAtUtc = DateTime.UtcNow
         };
     }
@@ -1243,6 +1261,13 @@ SELECT
         return "custom_range";
     }
 
+    private static string ResolveEffectiveDataset(int windowDays) => windowDays switch
+    {
+        90 => "90d",
+        180 => "180d",
+        _ => "all_history"
+    };
+
     private static string BuildEffectivePeriodLabel(SupplierDecisionHubFilters filters, string dataset)
     {
         if (dataset == "custom_range")
@@ -1269,6 +1294,16 @@ SELECT
     private static string? BuildDecisionScoreDataNote(SupplierDecisionHubFilters filters)
     {
         var requestedDataset = ResolveRequestedDataset(filters);
+        var effectiveDataset = ResolveEffectiveDataset(GetDecisionScoreWindowDays(filters));
+        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase);
+
+        if (usedFallback)
+        {
+            return requestedDataset == "30d"
+                ? "Trazeni period je 30d, ali ne postoji posebna 30d materialized view. Za helper signal koristi se 90d dataset, uz striktan filter opsega i bez tihog fallback-a za finalnu preporuku."
+                : $"Trazeni period se oslanja na dataset {BuildEffectivePeriodLabel(filters, effectiveDataset)} kao pomocni signal, uz striktan filter opsega i bez tihog fallback-a.";
+        }
+
         return requestedDataset switch
         {
             "30d" => "Metrike su izracunate za trazeni period od 30 dana, uz striktan opseg bez tihog fallback-a.",
@@ -1286,22 +1321,34 @@ SELECT
     {
         var hasData = rows.Count > 0;
         var requestedDataset = ResolveRequestedDataset(filters);
-        var effectiveDataset = requestedDataset;
-        var usedFallback = false;
         var windowDays = GetDecisionScoreWindowDays(filters);
+        var effectiveDataset = ResolveEffectiveDataset(windowDays);
+        var usedFallback = !string.Equals(requestedDataset, effectiveDataset, StringComparison.OrdinalIgnoreCase);
         var effectiveFrom = hasData ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
         var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
         var missingSupplierNameCount = rows.Count(x => x.SupplierNameMissing);
+        var hasLowSampleSize = rows.Count > 0 && rows.Count < 3;
+        var zeroRevenueRowsExcludedCount = 0;
+        var ignoredRowCount = zeroRevenueRowsExcludedCount;
         var dataCoverageStatus = !hasData
             ? "insufficient_data"
-            : (missingSupplierNameCount > 0 || rows.Count < 3 ? "warning" : "good");
-        var recommendationAllowed = hasData && dataCoverageStatus is "good" or "warning";
+            : (usedFallback || missingSupplierNameCount > 0 || hasLowSampleSize ? "warning" : "good");
+        var recommendationAllowed = hasData
+            && !usedFallback
+            && !hasLowSampleSize
+            && missingSupplierNameCount == 0
+            && dataCoverageStatus == "good";
         var coverage = windowDays switch
         {
             90 => "window_90d",
             180 => "window_180d",
             _ => "all_history"
         };
+        var fallbackReason = usedFallback
+            ? requestedDataset == "30d"
+                ? "Trazeni 30d nema zaseban scorecard dataset; koristi se 90d kao pomocni signal."
+                : "Uzi dataset nije dostupan; prikazan je siri helper dataset."
+            : null;
 
         return new ScorecardTrustMetadata(
             filters.FromDate,
@@ -1313,11 +1360,11 @@ SELECT
                 BuildEffectivePeriodLabel(filters, effectiveDataset),
                 dataCoverageStatus,
                 usedFallback,
-                usedFallback ? "Nema dovoljno podataka u uzem opsegu." : null,
+                fallbackReason,
                 null,
                 rows.Count,
-                0,
-                true,
+                ignoredRowCount,
+                zeroRevenueRowsExcludedCount,
                 missingSupplierNameCount,
             hasData,
             filters.HasExplicitDateRange,
@@ -2380,7 +2427,7 @@ public sealed record ScorecardTrustMetadata(
     DateTime? LastRefreshAtUtc,
     int RowCount,
     int IgnoredRowCount,
-    bool ZeroRevenueRowsExcluded,
+    int ZeroRevenueRowsExcludedCount,
     int MissingSupplierNameCount,
     bool HasData,
     bool HasExplicitDateRange,

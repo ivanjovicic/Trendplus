@@ -1,10 +1,39 @@
+import { Link } from "react-router-dom";
 import "./AnalyticsEmptyState.css";
 
+type EmptyStateAction = {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+};
+
 type AnalyticsEmptyStateProps = {
-  title: string;
+  title?: string;
   message?: string;
   reasons?: string[];
-  actions?: string[];
+  actions?: EmptyStateAction[];
+  emptyReason?: string | null;
+  dataQualityHref?: string;
+  refreshStatusHref?: string;
+  variant?: "no_data" | "insufficient_data" | "filtered_out";
+};
+
+const VARIANT_DEFAULTS: Record<
+  NonNullable<AnalyticsEmptyStateProps["variant"]>,
+  { title: string; message: string }
+> = {
+  no_data: {
+    title: "Nema podataka za izabrani period.",
+    message: "Sistem nije pronasao zapise koji odgovaraju trenutnim filterima.",
+  },
+  insufficient_data: {
+    title: "Nema dovoljno podataka za pouzdanu analizu.",
+    message: "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak.",
+  },
+  filtered_out: {
+    title: "Nema rezultata za trenutne filtere.",
+    message: "Promenite filtere ili prosirite period.",
+  },
 };
 
 export default function AnalyticsEmptyState({
@@ -12,14 +41,24 @@ export default function AnalyticsEmptyState({
   message,
   reasons,
   actions,
+  emptyReason,
+  dataQualityHref,
+  refreshStatusHref,
+  variant,
 }: AnalyticsEmptyStateProps) {
+  const defaults = variant ? VARIANT_DEFAULTS[variant] : null;
+  const displayTitle = title ?? defaults?.title ?? "Nema podataka.";
+  const displayMessage = message ?? defaults?.message ?? null;
+  const variantClass = variant ? ` aes-${variant.replace(/_/g, "-")}` : "";
+
   return (
-    <section className="analytics-empty-state" role="status" aria-live="polite">
-      <h2>{title}</h2>
-      {message ? <p>{message}</p> : null}
+    <section className={`analytics-empty-state${variantClass}`} role="status" aria-live="polite">
+      <h2>{displayTitle}</h2>
+      {displayMessage ? <p>{displayMessage}</p> : null}
+      {emptyReason ? <p className="aes-empty-reason">{emptyReason}</p> : null}
 
       {reasons && reasons.length > 0 ? (
-        <div>
+        <div className="aes-reasons">
           <h3>Moguci razlozi</h3>
           <ul>
             {reasons.map((reason) => (
@@ -30,17 +69,32 @@ export default function AnalyticsEmptyState({
       ) : null}
 
       {actions && actions.length > 0 ? (
-        <div>
+        <div className="aes-actions">
           <h3>Predlog akcija</h3>
           <ul>
             {actions.map((action) => (
-              <li key={action}>{action}</li>
+              <li key={action.label}>
+                {action.href ? (
+                  <Link to={action.href} className="aes-action-link">{action.label}</Link>
+                ) : action.onClick ? (
+                  <button type="button" className="aes-action-btn" onClick={action.onClick}>{action.label}</button>
+                ) : (
+                  action.label
+                )}
+              </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {(dataQualityHref || refreshStatusHref) ? (
+        <div className="aes-footer-links">
+          {dataQualityHref ? <Link to={dataQualityHref} className="aes-footer-link">Data Quality</Link> : null}
+          {refreshStatusHref ? <Link to={refreshStatusHref} className="aes-footer-link">Refresh Status</Link> : null}
         </div>
       ) : null}
     </section>
   );
 }
 
-export type { AnalyticsEmptyStateProps };
+export type { AnalyticsEmptyStateProps, EmptyStateAction };
