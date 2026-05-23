@@ -7,6 +7,9 @@ type AnalyticsTrustHeaderProps = {
   periodFrom?: string | null;
   periodTo?: string | null;
   lastRefreshAt?: string | null;
+  dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
+  refreshIsRunning?: boolean;
+  refreshCurrentStep?: string | null;
   dataSource?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   dataQualitySummary?: {
@@ -35,12 +38,31 @@ const STATUS_LABELS: Record<string, string> = {
   insufficient_data: "Nedovoljno podataka",
 };
 
+const FRESHNESS_LABELS: Record<string, string> = {
+  fresh: "Sveze",
+  stale: "Zastarelo",
+  critical: "Kriticno",
+  unknown: "Nije poznato",
+};
+
+function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
+  if (value === "fresh" || value === "stale" || value === "critical") {
+    return value;
+  }
+
+  return "unknown";
+}
+
 function normalizeStatus(value: string | null | undefined): "good" | "warning" | "critical" | "insufficient_data" | null {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
+
   const normalized = value.trim().toLowerCase();
   if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "insufficient_data") {
     return normalized;
   }
+
   return null;
 }
 
@@ -48,13 +70,31 @@ function statusTone(status: ReturnType<typeof normalizeStatus>): "good" | "warni
   if (status === "good") return "good";
   if (status === "warning") return "warning";
   if (status === "critical") return "critical";
-  if (status === "insufficient_data") return "neutral";
   return "neutral";
 }
 
 function renderSummaryValue(value: number | null | undefined): string {
-  if (value == null) return "-";
+  if (value == null) {
+    return "-";
+  }
+
   return value.toLocaleString("sr-RS");
+}
+
+function hasSummaryValues(
+  summary: AnalyticsTrustHeaderProps["dataQualitySummary"],
+): summary is NonNullable<AnalyticsTrustHeaderProps["dataQualitySummary"]> {
+  if (!summary) {
+    return false;
+  }
+
+  return [
+    summary.missingSupplierCount,
+    summary.missingCostCount,
+    summary.missingCategoryCount,
+    summary.insufficientSignalCount,
+    summary.ignoredRowsCount,
+  ].some((value) => value != null);
 }
 
 export default function AnalyticsTrustHeader({
@@ -63,6 +103,9 @@ export default function AnalyticsTrustHeader({
   periodFrom,
   periodTo,
   lastRefreshAt,
+  dataFreshnessStatus,
+  refreshIsRunning,
+  refreshCurrentStep,
   dataSource,
   dataQualityStatus,
   dataQualitySummary,
@@ -74,8 +117,9 @@ export default function AnalyticsTrustHeader({
   const normalizedStatus = normalizeStatus(dataQualityStatus);
   const tone = statusTone(normalizedStatus);
   const statusLabel = normalizedStatus ? STATUS_LABELS[normalizedStatus] : "Status kvaliteta nije dostupan";
+  const freshness = normalizeFreshness(dataFreshnessStatus);
   const hasPeriod = Boolean(periodFrom && periodTo);
-  const hasSummary = Boolean(dataQualitySummary);
+  const hasSummary = hasSummaryValues(dataQualitySummary);
 
   return (
     <section className="analytics-trust-header" aria-label="Kontekst pouzdanosti analitike">
@@ -84,6 +128,9 @@ export default function AnalyticsTrustHeader({
           <p className="ath-overline">{MODE_LABELS[mode]}</p>
           <h1 className="ath-title">{title}</h1>
           <p className="ath-description">{description}</p>
+          {refreshIsRunning ? (
+            <p className="ath-live">Osvezavanje je u toku{refreshCurrentStep ? ` (${refreshCurrentStep})` : ""}</p>
+          ) : null}
         </div>
         <div className={`ath-status ath-status-${tone}`}>
           <span className="ath-status-label">{statusLabel}</span>
@@ -102,6 +149,9 @@ export default function AnalyticsTrustHeader({
           <strong className="ath-meta-value">
             {lastRefreshAt ? formatDateTime(lastRefreshAt) : "Vreme osvezenja nije dostupno"}
           </strong>
+          <span className={`ath-freshness-badge ath-freshness-${freshness}`}>
+            {FRESHNESS_LABELS[freshness]}
+          </span>
         </div>
         <div className="ath-meta-item">
           <span className="ath-meta-key">Izvor podataka</span>
@@ -111,23 +161,18 @@ export default function AnalyticsTrustHeader({
         </div>
       </div>
 
-      {recommendationNote ? (
-        <p className="ath-note">{recommendationNote}</p>
-      ) : null}
-
-      {emptyStateReason ? (
-        <p className="ath-empty-reason">{emptyStateReason}</p>
-      ) : null}
+      {recommendationNote ? <p className="ath-note">{recommendationNote}</p> : null}
+      {emptyStateReason ? <p className="ath-empty-reason">{emptyStateReason}</p> : null}
 
       <div className="ath-summary">
-        <h2>Sažetak kvaliteta podataka</h2>
+        <h2>Sazetak kvaliteta podataka</h2>
         {hasSummary ? (
           <div className="ath-summary-grid">
-            <div><span>Artikli bez dobavljaca</span><strong>{renderSummaryValue(dataQualitySummary?.missingSupplierCount)}</strong></div>
-            <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary?.missingCostCount)}</strong></div>
-            <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary?.missingCategoryCount)}</strong></div>
-            <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary?.insufficientSignalCount)}</strong></div>
-            <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary?.ignoredRowsCount)}</strong></div>
+            <div><span>Artikli bez dobavljaca</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
+            <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
+            <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
+            <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary.insufficientSignalCount)}</strong></div>
+            <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
           </div>
         ) : (
           <p className="ath-summary-missing">Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
@@ -136,7 +181,7 @@ export default function AnalyticsTrustHeader({
 
       {methodologyHref ? (
         <div className="ath-footer">
-          <a href={methodologyHref}>Metodologija i tumačenje signala</a>
+          <a href={methodologyHref}>Metodologija i tumacenje signala</a>
         </div>
       ) : null}
     </section>

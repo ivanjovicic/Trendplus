@@ -155,4 +155,72 @@ describe("SupplierDecisionHubPage", () => {
     });
     expect(await screen.findByText("Dobavljač 101")).toBeInTheDocument();
   });
+
+  it("shows explicit no-silent-fallback empty state when trust metadata says requested range has no rows", async () => {
+    const trustMetadata = {
+      requestedFrom: "2026-05-01T00:00:00Z",
+      requestedTo: "2026-05-12T00:00:00Z",
+      effectiveFrom: "2026-05-01T00:00:00Z",
+      effectiveTo: "2026-05-12T00:00:00Z",
+      requestedDataset: "30d",
+      effectiveDataset: "30d",
+      effectivePeriodLabel: "Poslednjih 30 dana",
+      dataCoverageStatus: "insufficient_data",
+      usedFallback: false,
+      fallbackReason: null,
+      lastRefreshAtUtc: "2026-05-12T00:00:00Z",
+      rowCount: 0,
+      ignoredRowCount: 0,
+      zeroRevenueRowsExcluded: true,
+      missingSupplierNameCount: 0,
+      hasData: false,
+      hasExplicitDateRange: true,
+      recommendationAllowed: false,
+      noSilentFallback: true,
+      windowDays: 90,
+      dataScope: "all",
+      coverage: "window_90d",
+      dataNote: "Metrike su izračunate za traženi period od 30 dana, uz striktan opseg bez tihog fallback-a.",
+    };
+
+    const summaryWithTrust = {
+      ...summaryResponse,
+      supplierCount: 0,
+      trustMetadata,
+    };
+
+    const rankingWithTrust = {
+      page: 1,
+      pageSize: 100,
+      totalCount: 0,
+      items: [],
+      dataNote: summaryResponse.dataNote,
+      trustMetadata,
+    };
+
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse(summaryWithTrust);
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse(rankingWithTrust);
+      }
+
+      if (url.pathname === "/api/sezone") {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+
+    const messages = await screen.findAllByText(/Sistem nije koristio siri period kao fallback/i);
+    expect(messages.length).toBeGreaterThan(0);
+  });
 });

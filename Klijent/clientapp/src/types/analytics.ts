@@ -9,7 +9,11 @@ export interface SalesSummary {
 export interface AnalyticsResponseMeta {
   success: boolean;
   warningCode?: string | null;
+  warningMessage?: string | null;
   errorCode?: string | null;
+  errorMessage?: string | null;
+  emptyReason?: string | null;
+  correlationId?: string | null;
   message?: string | null;
   generatedAtUtc?: string | null;
   lastRefreshAtUtc?: string | null;
@@ -29,8 +33,8 @@ export interface AnalyticsRefreshJobStatus {
   isRunning: boolean;
   lastErrorMessage?: string | null;
   currentStep?: string | null;
-  refreshedObjects: number;
-  failedObjects: number;
+  refreshedObjects: string[];
+  failedObjects: string[];
   durationSeconds?: number | null;
   dataFreshnessStatus: AnalyticsFreshnessStatus | string;
   statusReason?: string | null;
@@ -43,12 +47,14 @@ export interface AnalyticsRefreshStatus {
   isRunning: boolean;
   lastErrorMessage?: string | null;
   currentStep?: string | null;
-  refreshedObjects: number;
-  failedObjects: number;
+  refreshedObjects: string[];
+  failedObjects: string[];
   durationSeconds?: number | null;
   dataFreshnessStatus: AnalyticsFreshnessStatus | string;
+  processMode: "web" | "worker" | "unknown" | string;
   processType: "web" | "worker" | string;
   workersEnabled: boolean;
+  workerWarning?: string | null;
   workerProcessWarning?: string | null;
   generatedAtUtc: string;
   jobs: AnalyticsRefreshJobStatus[];

@@ -28,14 +28,44 @@ public sealed class AnalyticsRefreshStatusServiceTests
 
         Assert.Equal("unknown", status.DataFreshnessStatus);
         Assert.All(status.Jobs, job => Assert.Equal("unknown", job.DataFreshnessStatus));
-        Assert.Null(status.WorkerProcessWarning);
+        Assert.Equal("worker", status.ProcessMode);
+        Assert.False(status.IsRunning);
+        Assert.Null(status.WorkerWarning);
     }
 
     [Fact]
-    public void GetStatus_ReturnsStale_WhenLastSuccessfulRefreshIsOlderThanFreshThreshold()
+    public void GetStatus_ReturnsFresh_WhenLastSuccessfulRefreshIsWithin24Hours()
     {
         var health = new WorkerHealthService();
-        var staleSuccessUtc = DateTime.UtcNow.AddHours(-40);
+        var freshSuccessUtc = DateTime.UtcNow.AddHours(-2);
+        var successLabel = freshSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
+        health.ReportHealthy(
+            "NightlyAnalyticsRefreshWorker",
+            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
+
+        var service = CreateService(
+            configValues: new Dictionary<string, string?>
+            {
+                ["PROCESS_TYPE"] = "worker",
+                ["Workers:Enabled"] = "true"
+            },
+            healthService: health,
+            runtimeControlService: new WorkerRuntimeControlService(
+                initialEnabled: true,
+                runtimeToggleAllowed: true,
+                initialSource: "test"));
+
+        var status = service.GetStatus();
+
+        Assert.Equal("fresh", status.DataFreshnessStatus);
+        Assert.NotEmpty(status.RefreshedObjects);
+    }
+
+    [Fact]
+    public void GetStatus_ReturnsStale_WhenLastSuccessfulRefreshIs30HoursOld()
+    {
+        var health = new WorkerHealthService();
+        var staleSuccessUtc = DateTime.UtcNow.AddHours(-30);
         var successLabel = staleSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
         health.ReportHealthy(
             "NightlyAnalyticsRefreshWorker",
@@ -60,7 +90,63 @@ public sealed class AnalyticsRefreshStatusServiceTests
     }
 
     [Fact]
-    public void GetStatus_ReturnsProcessWarning_WhenWorkersEnabledInWebProcess()
+    public void GetStatus_ReturnsCritical_WhenLastSuccessIsOlderThan72Hours()
+    {
+        var health = new WorkerHealthService();
+        var oldSuccessUtc = DateTime.UtcNow.AddHours(-80);
+        var successLabel = oldSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
+        health.ReportHealthy(
+            "NightlyAnalyticsRefreshWorker",
+            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
+
+        var service = CreateService(
+            configValues: new Dictionary<string, string?>
+            {
+                ["PROCESS_TYPE"] = "worker",
+                ["Workers:Enabled"] = "true"
+            },
+            healthService: health,
+            runtimeControlService: new WorkerRuntimeControlService(
+                initialEnabled: true,
+                runtimeToggleAllowed: true,
+                initialSource: "test"));
+
+        var status = service.GetStatus();
+
+        Assert.Equal("critical", status.DataFreshnessStatus);
+    }
+
+    [Fact]
+    public void GetStatus_ReturnsCritical_WhenFailureIsNewerThanSuccess()
+    {
+        var health = new WorkerHealthService();
+        var successUtc = DateTime.UtcNow.AddHours(-2);
+        var successLabel = successUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
+        health.ReportHealthy(
+            "NightlyAnalyticsRefreshWorker",
+            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
+        health.ReportError("NightlyAnalyticsRefreshWorker", new InvalidOperationException("refresh failed"));
+
+        var service = CreateService(
+            configValues: new Dictionary<string, string?>
+            {
+                ["PROCESS_TYPE"] = "worker",
+                ["Workers:Enabled"] = "true"
+            },
+            healthService: health,
+            runtimeControlService: new WorkerRuntimeControlService(
+                initialEnabled: true,
+                runtimeToggleAllowed: true,
+                initialSource: "test"));
+
+        var status = service.GetStatus();
+
+        Assert.Equal("critical", status.DataFreshnessStatus);
+        Assert.NotEmpty(status.FailedObjects);
+    }
+
+    [Fact]
+    public void GetStatus_ReturnsWorkerWarning_WhenWorkersEnabledInWebProcessButInactive()
     {
         var service = CreateService(
             configValues: new Dictionary<string, string?>
@@ -77,8 +163,9 @@ public sealed class AnalyticsRefreshStatusServiceTests
         var status = service.GetStatus();
         var dataQualityJob = Assert.Single(status.Jobs, job => job.Key == "data_quality_snapshot");
 
-        Assert.Equal("web", status.ProcessType);
-        Assert.False(string.IsNullOrWhiteSpace(status.WorkerProcessWarning));
+        Assert.Equal("web", status.ProcessMode);
+        Assert.True(status.WorkersEnabled);
+        Assert.False(string.IsNullOrWhiteSpace(status.WorkerWarning));
         Assert.Equal("unknown", dataQualityJob.DataFreshnessStatus);
         Assert.Contains("web procesu", dataQualityJob.StatusReason ?? string.Empty);
     }

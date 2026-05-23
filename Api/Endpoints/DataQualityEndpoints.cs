@@ -13,6 +13,7 @@ public static class DataQualityEndpoints
     public static void MapDataQualityEndpoints(this WebApplication app)
     {
         app.MapGet("/api/analytics/data-quality/health", async (
+            HttpContext httpContext,
             AnalyticsDataQualityHealthService healthService,
             IOptions<AnalyticsDataQualityHealthOptions> options,
             int? lookbackDays,
@@ -44,6 +45,7 @@ public static class DataQualityEndpoints
                 new AnalyticsResponseMetaDto
                 {
                     Success = true,
+                    CorrelationId = ResolveCorrelationId(httpContext),
                     GeneratedAtUtc = DateTime.UtcNow,
                     LastRefreshAtUtc = snapshot.GeneratedAtUtc,
                     DataQualityStatus = score.Status switch
@@ -54,6 +56,7 @@ public static class DataQualityEndpoints
                         _ => "insufficient_data"
                     },
                     Message = snapshot.TotalRevenue <= 0 ? "Nema dovoljno podataka za score data quality-ja u ovom prozoru." : null,
+                    EmptyReason = snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : null,
                     IsPartial = false
                 }));
         })
@@ -61,6 +64,7 @@ public static class DataQualityEndpoints
         .RequireRateLimiting("analytics");
 
         app.MapGet("/api/analytics/data-quality/list", async (
+            HttpContext httpContext,
             [AsParameters] DataQualityListRequest request,
             IMediator mediator,
             IOptions<AnalyticsDataQualityHealthOptions> options,
@@ -87,9 +91,11 @@ public static class DataQualityEndpoints
             var meta = new AnalyticsResponseMetaDto
             {
                 Success = true,
+                CorrelationId = ResolveCorrelationId(httpContext),
                 GeneratedAtUtc = DateTime.UtcNow,
                 DataQualityStatus = result.Total == 0 ? "insufficient_data" : "warning",
-                Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null
+                Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null,
+                EmptyReason = result.Total == 0 ? "no_open_issues" : null
             };
 
             return Results.Ok(new DataQualityIssueListResponse(
@@ -103,6 +109,7 @@ public static class DataQualityEndpoints
         .RequireRateLimiting("analytics");
 
         app.MapGet("/api/analytics/data-quality/top-offenders", async (
+            HttpContext httpContext,
             AnalyticsDataQualityHealthService healthService,
             IOptions<AnalyticsDataQualityHealthOptions> options,
             string? issueType,
@@ -128,15 +135,18 @@ public static class DataQualityEndpoints
                 new AnalyticsResponseMetaDto
                 {
                     Success = true,
+                    CorrelationId = ResolveCorrelationId(httpContext),
                     GeneratedAtUtc = DateTime.UtcNow,
                     DataQualityStatus = items.Count == 0 ? "insufficient_data" : "warning",
-                    Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null
+                    Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null,
+                    EmptyReason = items.Count == 0 ? "no_top_offenders" : null
                 }));
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
 
         app.MapGet("/api/analytics/data-quality/trend", async (
+            HttpContext httpContext,
             AnalyticsDataQualityHistoryService historyService,
             int? days,
             string? dataScope,
@@ -152,9 +162,11 @@ public static class DataQualityEndpoints
                 new AnalyticsResponseMetaDto
                 {
                     Success = true,
+                    CorrelationId = ResolveCorrelationId(httpContext),
                     GeneratedAtUtc = DateTime.UtcNow,
                     DataQualityStatus = points.Count == 0 ? "insufficient_data" : "warning",
-                    Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null
+                    Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null,
+                    EmptyReason = points.Count == 0 ? "no_trend_points" : null
                 }));
         })
         .WithTags("Analytics")
@@ -211,6 +223,23 @@ public static class DataQualityEndpoints
         string ScoreSummary,
         DataQualityHealthThresholds Thresholds,
         AnalyticsResponseMetaDto? Meta = null);
+
+    private static string ResolveCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader))
+        {
+            return responseHeader;
+        }
+
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader))
+        {
+            return requestHeader;
+        }
+
+        return httpContext.TraceIdentifier;
+    }
 
     private static DataQualityScoreDto BuildScore(
         AnalyticsDataQualityHealthSnapshot snapshot,

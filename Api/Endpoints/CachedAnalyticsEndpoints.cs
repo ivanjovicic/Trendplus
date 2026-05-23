@@ -1055,6 +1055,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             ILogger<Program> logger,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -1080,6 +1081,9 @@ public static class CachedAnalyticsEndpoints
                     CacheExpiration.Short,
                     ct);
 
+                result.Meta ??= BuildSuccessMeta();
+                result.Meta.CorrelationId = ResolveCorrelationId(httpContext);
+
                 return Results.Ok(result);
             }
             catch (OperationCanceledException ex)
@@ -1087,7 +1091,10 @@ public static class CachedAnalyticsEndpoints
                 logger.LogWarning(ex, "Product decision center fallback due to timeout.");
                 return Results.Ok(new ProductDecisionCenterResponseDto
                 {
-                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Product Decision Center podaci trenutno nisu dostupni zbog isteka vremena."),
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_TIMEOUT",
+                        "Product Decision Center podaci trenutno nisu dostupni zbog isteka vremena.",
+                        ResolveCorrelationId(httpContext)),
                 });
             }
             catch (NpgsqlException ex)
@@ -1095,7 +1102,10 @@ public static class CachedAnalyticsEndpoints
                 logger.LogWarning(ex, "Product decision center fallback due to database issue.");
                 return Results.Ok(new ProductDecisionCenterResponseDto
                 {
-                    Meta = BuildErrorMeta("ANALYTICS_DB_UNAVAILABLE", "Product Decision Center podaci trenutno nisu dostupni zbog greske baze."),
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_DB_UNAVAILABLE",
+                        "Product Decision Center podaci trenutno nisu dostupni zbog greske baze.",
+                        ResolveCorrelationId(httpContext)),
                 });
             }
             catch (Exception ex)
@@ -1103,7 +1113,10 @@ public static class CachedAnalyticsEndpoints
                 logger.LogError(ex, "Product decision center fallback due to unexpected issue.");
                 return Results.Ok(new ProductDecisionCenterResponseDto
                 {
-                    Meta = BuildErrorMeta("ANALYTICS_UNEXPECTED_ERROR", "Product Decision Center podaci trenutno nisu dostupni."),
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_UNEXPECTED_ERROR",
+                        "Product Decision Center podaci trenutno nisu dostupni.",
+                        ResolveCorrelationId(httpContext)),
                 });
             }
         });
@@ -1197,6 +1210,7 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             IMediator mediator,
             ILogger<Program> logger,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -1404,6 +1418,9 @@ public static class CachedAnalyticsEndpoints
                     CacheExpiration.Short,
                     ct);
 
+                result.Meta ??= BuildSuccessMeta();
+                result.Meta.CorrelationId = ResolveCorrelationId(httpContext);
+
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (requestAborted.IsCancellationRequested)
@@ -1417,7 +1434,10 @@ public static class CachedAnalyticsEndpoints
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
                     Errors = ["Dashboard bootstrap fallback: request timed out."],
-                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.")
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_TIMEOUT",
+                        "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.",
+                        ResolveCorrelationId(httpContext))
                 });
             }
             catch (NpgsqlException ex)
@@ -1426,7 +1446,10 @@ public static class CachedAnalyticsEndpoints
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
                     Errors = ["Dashboard bootstrap fallback: database temporarily unavailable."],
-                    Meta = BuildErrorMeta("ANALYTICS_DB_UNAVAILABLE", "Dashboard podaci trenutno nisu dostupni zbog greske baze.")
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_DB_UNAVAILABLE",
+                        "Dashboard podaci trenutno nisu dostupni zbog greske baze.",
+                        ResolveCorrelationId(httpContext))
                 });
             }
             catch (TimeoutException ex)
@@ -1435,7 +1458,10 @@ public static class CachedAnalyticsEndpoints
                 return Results.Ok(new AnalyticsDashboardBootstrapDto
                 {
                     Errors = ["Dashboard bootstrap fallback: request timed out."],
-                    Meta = BuildErrorMeta("ANALYTICS_TIMEOUT", "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.")
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_TIMEOUT",
+                        "Dashboard podaci trenutno nisu dostupni zbog isteka vremena.",
+                        ResolveCorrelationId(httpContext))
                 });
             }
         });
@@ -4331,13 +4357,18 @@ public static class CachedAnalyticsEndpoints
         bool isPartial = false,
         string? warningCode = null,
         string? message = null,
-        DateTime? lastRefreshAtUtc = null)
+        DateTime? lastRefreshAtUtc = null,
+        string? correlationId = null,
+        string? warningMessage = null)
     {
+        var resolvedMessage = message ?? warningMessage;
         return new AnalyticsResponseMetaDto
         {
             Success = true,
             WarningCode = warningCode,
-            Message = message,
+            WarningMessage = warningMessage,
+            Message = resolvedMessage,
+            CorrelationId = correlationId,
             GeneratedAtUtc = DateTime.UtcNow,
             LastRefreshAtUtc = lastRefreshAtUtc,
             DataQualityStatus = dataQualityStatus,
@@ -4345,12 +4376,14 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message)
+    private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message, string? correlationId = null)
     {
         return new AnalyticsResponseMetaDto
         {
             Success = false,
             ErrorCode = errorCode,
+            ErrorMessage = message,
+            CorrelationId = correlationId,
             Message = message,
             GeneratedAtUtc = DateTime.UtcNow,
             DataQualityStatus = "insufficient_data",
@@ -4529,6 +4562,23 @@ public static class CachedAnalyticsEndpoints
     {
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
         return normalized is "all" or "imported" or "existing" ? normalized : "all";
+    }
+
+    private static string ResolveCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader))
+        {
+            return responseHeader;
+        }
+
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader))
+        {
+            return requestHeader;
+        }
+
+        return httpContext.TraceIdentifier;
     }
 
     private static string GetErrorMessage(Exception ex, string fallbackMessage)

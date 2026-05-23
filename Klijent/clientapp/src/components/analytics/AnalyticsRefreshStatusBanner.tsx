@@ -50,7 +50,11 @@ export default function AnalyticsRefreshStatusBanner({
     );
   }
 
+  const processMode = (status.processMode || status.processType || "unknown").toLowerCase();
+  const workerWarning = status.workerWarning ?? status.workerProcessWarning;
   const failedJobs = status.jobs.filter((job) => normalizeFreshness(job.dataFreshnessStatus) === "critical");
+  const refreshedObjects = status.refreshedObjects ?? [];
+  const failedObjects = status.failedObjects ?? [];
 
   return (
     <section className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`} aria-live="polite">
@@ -64,7 +68,16 @@ export default function AnalyticsRefreshStatusBanner({
           <strong>Poslednji pokusaj:</strong>
           <span>{status.lastAttemptAtUtc ? formatDateTime(status.lastAttemptAtUtc) : "Nema pokusaja u istoriji"}</span>
         </div>
-        {status.isRunning ? <div className="arb-row"><strong>Refresh:</strong><span>U toku</span></div> : null}
+        <div className="arb-row">
+          <strong>Proces:</strong>
+          <span>{processMode}</span>
+        </div>
+        {status.isRunning ? (
+          <div className="arb-row">
+            <strong>Refresh:</strong>
+            <span>Osvezavanje u toku{status.currentStep ? ` (${status.currentStep})` : ""}</span>
+          </div>
+        ) : null}
         {status.lastFailureAtUtc ? (
           <div className="arb-row">
             <strong>Poslednji pad:</strong>
@@ -77,10 +90,34 @@ export default function AnalyticsRefreshStatusBanner({
             <span>{status.lastErrorMessage}</span>
           </div>
         ) : null}
-        {status.workerProcessWarning ? (
+        {status.durationSeconds != null ? (
+          <div className="arb-row">
+            <strong>Trajanje:</strong>
+            <span>{Math.round(status.durationSeconds)} s</span>
+          </div>
+        ) : null}
+        {refreshedObjects.length > 0 ? (
+          <div className="arb-row">
+            <strong>Osvezeni objekti:</strong>
+            <span>{refreshedObjects.join(", ")}</span>
+          </div>
+        ) : null}
+        {failedObjects.length > 0 ? (
+          <div className="arb-row arb-error">
+            <strong>Neuspesni objekti:</strong>
+            <span>{failedObjects.join(", ")}</span>
+          </div>
+        ) : null}
+        {workerWarning ? (
           <div className="arb-row arb-warning">
             <strong>Napomena:</strong>
-            <span>{status.workerProcessWarning}</span>
+            <span>{workerWarning}</span>
+          </div>
+        ) : null}
+        {!workerWarning && processMode === "web" && status.workersEnabled ? (
+          <div className="arb-row arb-warning">
+            <strong>Upozorenje:</strong>
+            <span>Automatsko osvezavanje nije aktivno u web procesu. Potrebna je deployacija radnika (worker).</span>
           </div>
         ) : null}
         {failedJobs.length > 0 ? (

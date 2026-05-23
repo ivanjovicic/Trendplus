@@ -773,7 +773,10 @@ export default function AnalyticsDashboard() {
         description="Decision cockpit za KPI, trendove i prioritetne preporuke na nivou prodaje, proizvoda i zaliha."
         periodFrom={fromDate}
         periodTo={toDate}
-        lastRefreshAt={advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
+        lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
+        dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
+        refreshIsRunning={refreshStatus?.isRunning ?? false}
+        refreshCurrentStep={refreshStatus?.currentStep ?? null}
         dataSource="Analytics dashboard bootstrap (cached read model)"
         dataQualityStatus={
           dashboardMeta?.dataQualityStatus
@@ -876,6 +879,7 @@ export default function AnalyticsDashboard() {
           title="Podaci trenutno nisu dostupni"
           message={dashboardMeta?.message || errors[0] || "Dashboard trenutno nije dostupan."}
           errorCode={dashboardMeta?.errorCode ?? null}
+          correlationId={dashboardMeta?.correlationId ?? null}
           suggestions={[
             "Pokrenite osvezavanje analytics podataka i probajte ponovo.",
             "Ako problem traje, proverite data quality i backend logove.",

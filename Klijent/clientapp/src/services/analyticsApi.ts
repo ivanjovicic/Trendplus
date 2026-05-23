@@ -69,10 +69,27 @@ type FailoverAwareWindow = Window & {
 type AnalyticsMetaCarrier = {
   meta?: {
     success?: boolean;
+    warningCode?: string | null;
+    warningMessage?: string | null;
     message?: string | null;
     errorCode?: string | null;
+    errorMessage?: string | null;
+    emptyReason?: string | null;
+    correlationId?: string | null;
   } | null;
 };
+
+export class AnalyticsMetaError extends Error {
+  readonly errorCode?: string | null;
+  readonly correlationId?: string | null;
+
+  constructor(message: string, errorCode?: string | null, correlationId?: string | null) {
+    super(message);
+    this.name = "AnalyticsMetaError";
+    this.errorCode = errorCode;
+    this.correlationId = correlationId;
+  }
+}
 
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
@@ -361,8 +378,16 @@ function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T 
   }
 
   if (meta.success === false) {
-    const detail = meta.message?.trim() || fallbackMessage || "Podaci trenutno nisu dostupni.";
-    throw new Error(detail);
+    const detail = meta.errorMessage?.trim() || meta.message?.trim() || fallbackMessage || "Podaci trenutno nisu dostupni.";
+    const suffixParts: string[] = [];
+    if (meta.errorCode) {
+      suffixParts.push(`sifra: ${meta.errorCode}`);
+    }
+    if (meta.correlationId) {
+      suffixParts.push(`correlation: ${meta.correlationId}`);
+    }
+    const suffix = suffixParts.length > 0 ? ` (${suffixParts.join(", ")})` : "";
+    throw new AnalyticsMetaError(`${detail}${suffix}`, meta.errorCode, meta.correlationId);
   }
 
   return payload;

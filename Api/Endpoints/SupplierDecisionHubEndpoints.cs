@@ -1,4 +1,4 @@
-using Api.Config;
+﻿using Api.Config;
 using Application.Analytics;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +17,17 @@ public static class SupplierDecisionHubEndpoints
     private const int MaxPageSize = 100;
     private const decimal HighConfidenceThreshold = 60m;
 
+    private sealed class SupplierDecisionUnavailableException : Exception
+    {
+        public SupplierDecisionUnavailableException(string errorCode, string message, Exception? innerException = null)
+            : base(message, innerException)
+        {
+            ErrorCode = errorCode;
+        }
+
+        public string ErrorCode { get; }
+    }
+
     public static void MapSupplierDecisionHubEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/analytics/suppliers/decision-hub")
@@ -24,6 +35,7 @@ public static class SupplierDecisionHubEndpoints
             .RequireRateLimiting("analytics");
 
         group.MapGet("/summary", async (
+            HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
             DateTime? fromDate = null,
@@ -72,20 +84,43 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.StoreId,
                 activeFilters.DataScope);
 
-            var response = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                    return BuildSummaryResponse(rows, activeFilters);
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+            try
+            {
+                var response = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        return BuildSummaryResponse(rows, activeFilters);
+                    },
+                    CacheExpiration.HeavyAnalytics,
+                    ct);
 
-            return Results.Ok(response);
+                response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
+                return Results.Ok(response);
+            }
+            catch (SupplierDecisionUnavailableException ex)
+            {
+                return Results.Ok(new SummaryResponse(
+                    activeFilters.FromDate,
+                    activeFilters.ToDate,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    [],
+                    [],
+                    [],
+                    BuildDecisionScoreDataNote(activeFilters),
+                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+            }
         });
 
         group.MapGet("/quadrant", async (
+            HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
             DateTime? fromDate = null,
@@ -134,34 +169,52 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.StoreId,
                 activeFilters.DataScope);
 
-            var response = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                    return new QuadrantResponse(
-                        rows
-                            .OrderByDescending(x => x.Revenue)
-                            .Select(x => new QuadrantItem(
-                                x.SupplierId,
-                                x.SupplierName,
-                                x.Revenue,
-                                x.MarkdownDependencyScore,
-                                x.FullPriceSellthrough,
-                                x.PreMarkdownMarginPct,
-                                x.SupplierQualityIndex,
-                                x.RecommendationCode,
-                                x.ConfidenceScore))
-                            .ToList(),
-                        BuildResponseMeta(rows));
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+            try
+            {
+                var response = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var trustMetadata = BuildScorecardTrustMetadata(rows, activeFilters);
+                        return new QuadrantResponse(
+                            rows
+                                .OrderByDescending(x => x.Revenue)
+                                .Select(x => new QuadrantItem(
+                                    x.SupplierId,
+                                    x.SupplierName,
+                                    x.Revenue,
+                                    x.MarkdownDependencyScore,
+                                    x.FullPriceSellthrough,
+                                    x.PreMarkdownMarginPct,
+                                    x.SupplierQualityIndex,
+                                    x.RecommendationCode,
+                                        x.ConfidenceScore,
+                                        x.ReliabilityPct,
+                                        x.DataQualityStatus,
+                                        x.StatusReason,
+                                        x.ReasonCodes))
+                                .ToList(),
+                                    trustMetadata,
+                                    BuildResponseMeta(rows, trustMetadata));
+                    },
+                    CacheExpiration.HeavyAnalytics,
+                    ct);
 
-            return Results.Ok(response);
+                response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
+                return Results.Ok(response);
+            }
+            catch (SupplierDecisionUnavailableException ex)
+            {
+                return Results.Ok(new QuadrantResponse(
+                    [],
+                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+            }
         });
 
         group.MapGet("/ranking", async (
+            HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
             DateTime? fromDate = null,
@@ -223,50 +276,71 @@ public static class SupplierDecisionHubEndpoints
                 normalizedSortBy,
                 normalizedSortDir);
 
-            var response = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                    var ordered = ApplyRankingSort(rows, normalizedSortBy, normalizedSortDir).ToList();
-                    var paged = ordered
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(x => new RankingItem(
-                            x.SupplierId,
-                            x.SupplierName,
-                            x.Revenue,
-                            x.Units,
-                            x.FullPriceRevenueShare,
-                            x.FullPriceSellthrough,
-                            x.PreMarkdownMarginPct,
-                            x.MarkdownRevenueShare,
-                            x.DeadStockRate,
-                            x.UnsoldStockValue,
-                            x.RepeatWinnerRate,
-                            x.MlSupplierScore,
-                            x.SupplierQualityIndex,
-                            x.RecommendationCode,
-                            x.ConfidenceScore))
-                        .ToList();
+            try
+            {
+                var response = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var ordered = ApplyRankingSort(rows, normalizedSortBy, normalizedSortDir).ToList();
+                        var trustMetadata = BuildScorecardTrustMetadata(ordered, activeFilters);
+                        var paged = ordered
+                            .Skip((page - 1) * pageSize)
+                            .Take(pageSize)
+                            .Select(x => new RankingItem(
+                                x.SupplierId,
+                                x.SupplierName,
+                                x.Revenue,
+                                x.Units,
+                                x.FullPriceRevenueShare,
+                                x.FullPriceSellthrough,
+                                x.PreMarkdownMarginPct,
+                                x.MarkdownRevenueShare,
+                                x.DeadStockRate,
+                                x.UnsoldStockValue,
+                                x.RepeatWinnerRate,
+                                x.MlSupplierScore,
+                                x.SupplierQualityIndex,
+                                x.RecommendationCode,
+                                x.ConfidenceScore,
+                                x.ReliabilityPct,
+                                x.DataQualityStatus,
+                                x.StatusReason,
+                                x.ReasonCodes))
+                            .ToList();
 
-                    return new RankingResponse(
-                        page,
-                        pageSize,
-                        ordered.Count,
-                        paged,
-                        BuildDecisionScoreDataNote(activeFilters),
-                        BuildScorecardTrustMetadata(ordered, activeFilters),
-                        BuildResponseMeta(ordered));
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+                        return new RankingResponse(
+                            page,
+                            pageSize,
+                            ordered.Count,
+                            paged,
+                            BuildDecisionScoreDataNote(activeFilters),
+                            trustMetadata,
+                            BuildResponseMeta(ordered, trustMetadata));
+                    },
+                    CacheExpiration.HeavyAnalytics,
+                    ct);
 
-            return Results.Ok(response);
+                response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
+                return Results.Ok(response);
+            }
+            catch (SupplierDecisionUnavailableException ex)
+            {
+                return Results.Ok(new RankingResponse(
+                    page,
+                    pageSize,
+                    0,
+                    [],
+                    BuildDecisionScoreDataNote(activeFilters),
+                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+            }
         });
 
         group.MapGet("/{supplierId:int}/details", async (
             int supplierId,
+            HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
             DateTime? fromDate = null,
@@ -314,22 +388,38 @@ public static class SupplierDecisionHubEndpoints
                 activeFilters.StoreId,
                 activeFilters.DataScope);
 
-            var response = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                    var supplier = rows.FirstOrDefault();
-                    if (supplier is null)
+            SupplierDecisionHubDetailsCacheEntry response;
+            try
+            {
+                response = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
                     {
-                        return new SupplierDecisionHubDetailsCacheEntry(false, null);
-                    }
+                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var supplier = rows.FirstOrDefault();
+                        if (supplier is null)
+                        {
+                            return new SupplierDecisionHubDetailsCacheEntry(false, null);
+                        }
 
-                    var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, supplier, ct);
-                    return new SupplierDecisionHubDetailsCacheEntry(true, details);
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+                        var details = await BuildDetailsResponseAsync(analyticsConnectionString, activeFilters, supplier, ct);
+                        return new SupplierDecisionHubDetailsCacheEntry(true, details);
+                    },
+                    CacheExpiration.HeavyAnalytics,
+                    ct);
+            }
+            catch (SupplierDecisionUnavailableException ex)
+            {
+                return Results.Problem(
+                    title: "Supplier details trenutno nisu dostupni.",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["errorCode"] = ex.ErrorCode,
+                        ["correlationId"] = ResolveCorrelationId(httpContext)
+                    });
+            }
 
             if (!response.Found || response.Response is null)
             {
@@ -383,7 +473,12 @@ public static class SupplierDecisionHubEndpoints
         string TopFeature3,
         decimal SupplierQualityIndex,
         string RecommendationCode,
-        decimal ConfidenceScore);
+        decimal ConfidenceScore,
+        bool SupplierNameMissing,
+        decimal ReliabilityPct,
+        string DataQualityStatus,
+        string StatusReason,
+        IReadOnlyList<string> ReasonCodes);
 
     private static bool TryCreateFilters(
         DateTime? fromDate,
@@ -519,26 +614,27 @@ public static class SupplierDecisionHubEndpoints
                 "Kandidat za rast",
                 bestGrow?.SupplierName ?? "Nema jasnog kandidata",
                 bestGrow is null
-                    ? "Trenutni skup filtera ne izdvaja dobavljača za sigurno širenje saradnje."
-                    : $"Vodeći kandidat ima indeks kvaliteta {bestGrow.SupplierQualityIndex.ToString("0.##", CultureInfo.InvariantCulture)} i udeo prihoda bez sniženja {FormatPercent(rows.First(x => x.SupplierId == bestGrow.SupplierId).FullPriceRevenueShare)}.",
+                    ? "Trenutni skup filtera ne izdvaja dobavljaÄa za sigurno Å¡irenje saradnje."
+                    : $"VodeÄ‡i kandidat ima indeks kvaliteta {bestGrow.SupplierQualityIndex.ToString("0.##", CultureInfo.InvariantCulture)} i udeo prihoda bez sniÅ¾enja {FormatPercent(rows.First(x => x.SupplierId == bestGrow.SupplierId).FullPriceRevenueShare)}.",
                 bestGrow is null ? "neutral" : "positive"),
             new(
-                "Zavisnost od sniženja",
+                "Zavisnost od sniÅ¾enja",
                 totalRevenue <= 0
                     ? "0%"
                     : FormatPercent(rows.Sum(x => x.MarkdownRevenueShare * x.Revenue) / totalRevenue),
-                "Signal je ponderisan prihodom, pa najveći dobavljači najviše utiču na ukupnu sliku.",
+                "Signal je ponderisan prihodom, pa najveÄ‡i dobavljaÄi najviÅ¡e utiÄu na ukupnu sliku.",
                 totalRevenue > 0 && rows.Sum(x => x.MarkdownRevenueShare * x.Revenue) / totalRevenue >= 0.5m ? "warning" : "neutral"),
             new(
                 "Kapital u riziku",
                 rows.Sum(x => x.UnsoldStockValue).ToString("0.##", CultureInfo.InvariantCulture),
                 worstRisk is null
-                    ? "Nijedan dobavljač se trenutno ne izdvaja kao ekstreman stock-risk problem."
-                    : $"Najveći vidljiv rizik trenutno dolazi od dobavljača {worstRisk.SupplierName}.",
+                    ? "Nijedan dobavljaÄ se trenutno ne izdvaja kao ekstreman stock-risk problem."
+                    : $"NajveÄ‡i vidljiv rizik trenutno dolazi od dobavljaÄa {worstRisk.SupplierName}.",
                 worstRisk is null ? "neutral" : "warning")
         };
 
         var dataNote = BuildDecisionScoreDataNote(filters);
+        var trustMetadata = BuildScorecardTrustMetadata(rows, filters);
 
         return new SummaryResponse(
             from,
@@ -552,20 +648,23 @@ public static class SupplierDecisionHubEndpoints
             topGrow,
             topRisk,
             insights,
-                dataNote,
-                BuildScorecardTrustMetadata(rows, filters),
-                BuildResponseMeta(rows));
+            dataNote,
+            trustMetadata,
+            BuildResponseMeta(rows, trustMetadata));
     }
 
-    private static AnalyticsResponseMetaDto BuildResponseMeta(IReadOnlyCollection<SupplierScoreRow> rows)
+    private static AnalyticsResponseMetaDto BuildResponseMeta(
+        IReadOnlyCollection<SupplierScoreRow> rows,
+        ScorecardTrustMetadata? trustMetadata = null)
     {
         if (rows.Count == 0)
         {
             return new AnalyticsResponseMetaDto
             {
                 Success = true,
+                EmptyReason = "no_data_in_period",
                 Message = "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
-                DataQualityStatus = "insufficient_data",
+                DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "insufficient_data",
                 GeneratedAtUtc = DateTime.UtcNow
             };
         }
@@ -573,9 +672,34 @@ public static class SupplierDecisionHubEndpoints
         return new AnalyticsResponseMetaDto
         {
             Success = true,
-            DataQualityStatus = "good",
+            DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "good",
             GeneratedAtUtc = DateTime.UtcNow
         };
+    }
+
+    private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message, string correlationId)
+    {
+        return new AnalyticsResponseMetaDto
+        {
+            Success = false,
+            ErrorCode = errorCode,
+            ErrorMessage = message,
+            Message = message,
+            CorrelationId = correlationId,
+            DataQualityStatus = "insufficient_data",
+            GeneratedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static AnalyticsResponseMetaDto ApplyCorrelationId(AnalyticsResponseMetaDto? meta, string correlationId)
+    {
+        var resolved = meta ?? new AnalyticsResponseMetaDto
+        {
+            Success = true,
+            GeneratedAtUtc = DateTime.UtcNow
+        };
+        resolved.CorrelationId = correlationId;
+        return resolved;
     }
 
     private static SummarySupplierItem MapSummarySupplier(SupplierScoreRow row) =>
@@ -586,7 +710,11 @@ public static class SupplierDecisionHubEndpoints
             row.MlSupplierScore,
             row.SupplierQualityIndex,
             row.RecommendationCode,
-            row.ConfidenceScore);
+            row.ConfidenceScore,
+            row.ReliabilityPct,
+            row.DataQualityStatus,
+            row.StatusReason,
+            row.ReasonCodes);
 
     private static IOrderedEnumerable<SupplierScoreRow> ApplyRankingSort(
         IEnumerable<SupplierScoreRow> rows,
@@ -686,8 +814,8 @@ public static class SupplierDecisionHubEndpoints
         }
 
         return supplierId > 0
-            ? $"Dobavljač #{supplierId.ToString(CultureInfo.InvariantCulture)}"
-            : "Nepoznat dobavljač";
+            ? $"DobavljaÄ #{supplierId.ToString(CultureInfo.InvariantCulture)}"
+            : "Nepoznat dobavljaÄ";
     }
 
     private static async Task<List<SupplierScoreRow>> QuerySupplierRowsAsync(
@@ -700,8 +828,9 @@ public static class SupplierDecisionHubEndpoints
             var capabilities = await GetPrecomputedQueryCapabilitiesAsync(analyticsConnectionString, ct);
             if (!capabilities.HasDecisionScoreCache)
             {
-                // Supplier caches are still building in the background.
-                return [];
+                throw new SupplierDecisionUnavailableException(
+                    "MISSING_TABLE",
+                    "Supplier decision cache nije dostupan. Pokusajte ponovo nakon osvezavanja analitike.");
             }
 
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
@@ -711,7 +840,7 @@ public static class SupplierDecisionHubEndpoints
 
                 // Do NOT fall back to a wider window when an explicit date range was given
                 // (30d / 90d / 180d period presets all set HasExplicitDateRange = true).
-                // Silently returning 180d data for a 30d request is misleading — show empty
+                // Silently returning 180d data for a 30d request is misleading â€” show empty
                 // results instead so the user knows there are no metrics for that period.
                 if (rows.Count == 0 && !filters.HasExplicitDateRange)
                 {
@@ -725,9 +854,10 @@ public static class SupplierDecisionHubEndpoints
             }
             catch (PostgresException ex) when (IsMissingPrecomputedDependency(ex))
             {
-                // Startup recreates supplier decision objects in multiple batches.
-                // If a request lands mid-build, prefer an empty payload over a multi-minute live fallback.
-                return [];
+                throw new SupplierDecisionUnavailableException(
+                    ex.SqlState == "42P01" ? "MISSING_TABLE" : "SQL_ERROR",
+                    "Supplier decision podaci trenutno nisu spremni. Pokusajte ponovo uskoro.",
+                    ex);
             }
         }
 
@@ -739,13 +869,13 @@ public static class SupplierDecisionHubEndpoints
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
-            // Base supplier decision views are not ready yet.
-            // Return empty results until the first 018 batches complete.
-            return [];
+            throw new SupplierDecisionUnavailableException(
+                "MISSING_TABLE",
+                "Supplier decision podaci trenutno nisu spremni. Pokusajte ponovo uskoro.",
+                ex);
         }
         catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
         {
-            // Live query timed out — return empty rather than a 500.
             Infrastructure.Logging.SqlCommandLoggingHelper.LogSqlExecution(
                 dbSource: "analytics",
                 commandKind: "ExecuteReader",
@@ -757,8 +887,29 @@ public static class SupplierDecisionHubEndpoints
                 exception: ex,
                 requestId: Application.Logging.RequestLogContext.Current.RequestId,
                 traceId: Application.Logging.RequestLogContext.Current.TraceId);
-            return [];
+
+            throw new SupplierDecisionUnavailableException(
+                "SQL_TIMEOUT",
+                "Supplier decision podaci trenutno nisu dostupni zbog isteka vremena.",
+                ex);
         }
+    }
+
+    private static string ResolveCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader))
+        {
+            return responseHeader;
+        }
+
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader))
+        {
+            return requestHeader;
+        }
+
+        return httpContext.TraceIdentifier;
     }
 
     private static async Task<List<SupplierScoreRow>> ExecuteSupplierRowsQueryAsync(
@@ -782,7 +933,12 @@ public static class SupplierDecisionHubEndpoints
             while (await reader.ReadAsync(ct))
             {
                 var supplierId = GetInt32(reader, "supplier_id");
-                var supplierName = NormalizeSupplierName(supplierId, GetString(reader, "supplier_name"));
+                var sourceSupplierName = GetString(reader, "supplier_name");
+                var supplierNameMissing = string.IsNullOrWhiteSpace(sourceSupplierName);
+                var supplierName = NormalizeSupplierName(supplierId, sourceSupplierName);
+                var recommendationCode = GetString(reader, "recommendation_code");
+                var confidenceScore = GetDecimal(reader, "confidence_score");
+                var recommendationSignal = BuildRecommendationSignal(recommendationCode, confidenceScore);
 
                 results.Add(new SupplierScoreRow(
                     supplierId,
@@ -808,8 +964,13 @@ public static class SupplierDecisionHubEndpoints
                     GetString(reader, "top_feature_2"),
                     GetString(reader, "top_feature_3"),
                     GetDecimal(reader, "supplier_quality_index"),
-                    GetString(reader, "recommendation_code"),
-                    GetDecimal(reader, "confidence_score")));
+                        recommendationCode,
+                        confidenceScore,
+                        supplierNameMissing,
+                        recommendationSignal.ReliabilityPct,
+                        recommendationSignal.DataQualityStatus,
+                        recommendationSignal.StatusReason,
+                        recommendationSignal.ReasonCodes));
             }
 
             sw.Stop();
@@ -852,6 +1013,65 @@ public static class SupplierDecisionHubEndpoints
         }
 
         return results;
+    }
+
+    private sealed record RecommendationSignal(
+        decimal ReliabilityPct,
+        string DataQualityStatus,
+        string StatusReason,
+        IReadOnlyList<string> ReasonCodes);
+
+    private static RecommendationSignal BuildRecommendationSignal(string recommendationCode, decimal confidenceScore)
+    {
+        var normalizedCode = (recommendationCode ?? string.Empty).Trim().ToUpperInvariant();
+        var reliabilityPct = Math.Clamp(confidenceScore, 0m, 100m);
+
+        var dataQualityStatus = reliabilityPct switch
+        {
+            >= 70m => "good",
+            >= 45m => "warning",
+            > 0m => "critical",
+            _ => "insufficient_data"
+        };
+
+        var statusReason = normalizedCode switch
+        {
+            "EXPAND" => "Jak signal rasta uz stabilan kvalitet i marginu.",
+            "EXPAND_SELECTIVELY" => "Pozitivan signal uz preporuku za selektivno Å¡irenje.",
+            "HOLD" => "Stabilan uÄinak; zadrÅ¾ati trenutni nivo fokusa.",
+            "PRICE_NEGOTIATE" => "Signal ukazuje na pritisak margine; potreban pregovor o ceni.",
+            "ASSORTMENT_REDUCE" => "PoviÅ¡en stock-risk i niÅ¾a isplativost; razmotriti suÅ¾avanje asortimana.",
+            "OOS_FALSE_NEGATIVE" => "Signal je meÅ¡ovit zbog OOS efekata; potrebno ruÄno tumaÄenje.",
+            "REVIEW_QUALITY" => "Kvalitet signala zahteva dodatnu proveru pre odluke.",
+            _ => "Nedovoljno podataka za pouzdanu preporuku."
+        };
+
+        var reasonCodes = normalizedCode switch
+        {
+            "EXPAND" => new[] { "strong_growth_signal" },
+            "EXPAND_SELECTIVELY" => new[] { "selective_growth_signal" },
+            "HOLD" => new[] { "stable_performance" },
+            "PRICE_NEGOTIATE" => new[] { "margin_pressure" },
+            "ASSORTMENT_REDUCE" => new[] { "assortment_risk" },
+            "OOS_FALSE_NEGATIVE" => new[] { "oos_false_negative" },
+            "REVIEW_QUALITY" => new[] { "review_required" },
+            _ => new[] { "insufficient_signal" }
+        };
+
+        if (reliabilityPct <= 0m)
+        {
+            return new RecommendationSignal(
+                0m,
+                "insufficient_data",
+                "Nedovoljno podataka za pouzdanu preporuku.",
+                new[] { "insufficient_signal" });
+        }
+
+        return new RecommendationSignal(
+            reliabilityPct,
+            dataQualityStatus,
+            statusReason,
+            reasonCodes);
     }
 
     private static bool CanUsePrecomputedSupplierRows(SupplierDecisionHubFilters filters) =>
@@ -992,10 +1212,51 @@ SELECT
         if (!filters.HasExplicitDateRange)
             return 0;
 
-        var days = (filters.ToDate - filters.FromDate).TotalDays;
+        var days = GetRequestedRangeDays(filters);
         if (days <= 90) return 90;
         if (days <= 180) return 180;
         return 0;
+    }
+
+    private static int GetRequestedRangeDays(SupplierDecisionHubFilters filters)
+    {
+        if (!filters.HasExplicitDateRange)
+        {
+            return DefaultLookbackDays;
+        }
+
+        var days = (int)Math.Floor((filters.ToDate - filters.FromDate).TotalDays) + 1;
+        return Math.Max(1, days);
+    }
+
+    private static string ResolveRequestedDataset(SupplierDecisionHubFilters filters)
+    {
+        if (!filters.HasExplicitDateRange)
+        {
+            return "all_history";
+        }
+
+        var days = GetRequestedRangeDays(filters);
+        if (days <= 30) return "30d";
+        if (days <= 90) return "90d";
+        if (days <= 180) return "180d";
+        return "custom_range";
+    }
+
+    private static string BuildEffectivePeriodLabel(SupplierDecisionHubFilters filters, string dataset)
+    {
+        if (dataset == "custom_range")
+        {
+            return $"{filters.FromDate:dd.MM.yyyy} - {filters.ToDate:dd.MM.yyyy}";
+        }
+
+        return dataset switch
+        {
+            "30d" => "Poslednjih 30 dana",
+            "90d" => "Poslednjih 90 dana",
+            "180d" => "Poslednjih 180 dana",
+            _ => "Cela istorija"
+        };
     }
 
     private static string SelectDecisionScoreMv(int windowDays) => windowDays switch
@@ -1007,13 +1268,14 @@ SELECT
 
     private static string? BuildDecisionScoreDataNote(SupplierDecisionHubFilters filters)
     {
-        var window = GetDecisionScoreWindowDays(filters);
-        return window switch
+        var requestedDataset = ResolveRequestedDataset(filters);
+        return requestedDataset switch
         {
-            90 => "Metrike su izračunate na osnovu nivelacija iz poslednjih 90 dana.",
-            180 => "Metrike su izračunate na osnovu nivelacija iz poslednjih 180 dana.",
+            "30d" => "Metrike su izracunate za trazeni period od 30 dana, uz striktan opseg bez tihog fallback-a.",
+            "90d" => "Metrike su izracunate na osnovu nivelacija iz poslednjih 90 dana.",
+            "180d" => "Metrike su izracunate na osnovu nivelacija iz poslednjih 180 dana.",
             _ => filters.HasExplicitDateRange
-                ? "Odabrani period prelazi 180 dana — prikazani su ukupni podaci iz cele istorije nivelacija."
+                ? "Metrike su izracunate za odabrani period preko 180 dana, uz all-history cache kao izvor i striktan filter bez tihog fallback-a."
                 : null
         };
     }
@@ -1023,9 +1285,17 @@ SELECT
         SupplierDecisionHubFilters filters)
     {
         var hasData = rows.Count > 0;
+        var requestedDataset = ResolveRequestedDataset(filters);
+        var effectiveDataset = requestedDataset;
+        var usedFallback = false;
         var windowDays = GetDecisionScoreWindowDays(filters);
         var effectiveFrom = hasData ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
         var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
+        var missingSupplierNameCount = rows.Count(x => x.SupplierNameMissing);
+        var dataCoverageStatus = !hasData
+            ? "insufficient_data"
+            : (missingSupplierNameCount > 0 || rows.Count < 3 ? "warning" : "good");
+        var recommendationAllowed = hasData && dataCoverageStatus is "good" or "warning";
         var coverage = windowDays switch
         {
             90 => "window_90d",
@@ -1038,13 +1308,25 @@ SELECT
             filters.ToDate,
             effectiveFrom,
             effectiveTo,
+                requestedDataset,
+                effectiveDataset,
+                BuildEffectivePeriodLabel(filters, effectiveDataset),
+                dataCoverageStatus,
+                usedFallback,
+                usedFallback ? "Nema dovoljno podataka u uzem opsegu." : null,
+                null,
+                rows.Count,
+                0,
+                true,
+                missingSupplierNameCount,
             hasData,
             filters.HasExplicitDateRange,
-            hasData,
+                recommendationAllowed,
             true,
             windowDays,
             filters.DataScope,
-            coverage);
+                coverage,
+                BuildDecisionScoreDataNote(filters));
     }
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
@@ -1106,12 +1388,10 @@ LEFT JOIN vw_supplier_ml_latest_predictions ml
             parameters.Add(new NpgsqlParameter("supplierId", filters.SupplierId.Value));
         }
 
-        if (applyDateRangeFilter && filters.HasExplicitDateRange && windowDays == 0)
+        if (applyDateRangeFilter && filters.HasExplicitDateRange)
         {
-            // For all-time MV, filter by period overlap. Windowed MVs are already pre-filtered
-            // by the rolling window so this filter is not needed (and would over-restrict results).
-            // applyDateRangeFilter=false is used for fallback queries where recent date ranges
-            // would otherwise exclude all historical data.
+            // Always enforce explicit period overlap to avoid silently widening requested ranges.
+            // applyDateRangeFilter=false is reserved for explicit fallback queries.
             where.Append(" AND ds.period_to >= @fromDate AND ds.period_from <= @toDate");
             parameters.Add(new NpgsqlParameter("fromDate", filters.FromDate));
             parameters.Add(new NpgsqlParameter("toDate", filters.ToDate));
@@ -2015,25 +2295,25 @@ LIMIT 6;
     private static string RecommendationTitle(string recommendationCode) =>
         recommendationCode switch
         {
-            "EXPAND" => "Povećati saradnju",
-            "EXPAND_SELECTIVELY" => "Povećati selektivno",
+            "EXPAND" => "PoveÄ‡ati saradnju",
+            "EXPAND_SELECTIVELY" => "PoveÄ‡ati selektivno",
             "PRICE_NEGOTIATE" => "Pregovarati o ceni",
             "ASSORTMENT_REDUCE" => "Smanjiti nabavku",
             "OOS_FALSE_NEGATIVE" => "Prvo proveriti zalihe",
-            "REVIEW_QUALITY" => "Proveriti kvalitet i povraćaje",
-            _ => "Zadržati trenutni nivo"
+            "REVIEW_QUALITY" => "Proveriti kvalitet i povraÄ‡aje",
+            _ => "ZadrÅ¾ati trenutni nivo"
         };
 
     private static string RecommendationReason(string recommendationCode) =>
         recommendationCode switch
         {
-            "EXPAND" => "Jak sell-through bez sniženja i zdrava marža ukazuju na kvalitetnu saradnju sa dobavljačem.",
-            "EXPAND_SELECTIVELY" => "Dobavljač ima najbolje rezultate u užem skupu kategorija, a ne kroz ceo asortiman.",
-            "PRICE_NEGOTIATE" => "Tražnja se otvara tek posle sniženja, što sugeriše previsoku ulaznu cenu.",
-            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniženja i stock risk nepotrebno vezuju kapital.",
-            "OOS_FALSE_NEGATIVE" => "Slabiji rezultat može biti posledica nedostatka zaliha pre prvog sniženja.",
-            "REVIEW_QUALITY" => "Povraćaji ili kvalitet su dovoljno loši da blokiraju bezbedno širenje saradnje.",
-            _ => "Signali su mešoviti, pa je najbezbednije zadržati trenutni nivo saradnje."
+            "EXPAND" => "Jak sell-through bez sniÅ¾enja i zdrava marÅ¾a ukazuju na kvalitetnu saradnju sa dobavljaÄem.",
+            "EXPAND_SELECTIVELY" => "DobavljaÄ ima najbolje rezultate u uÅ¾em skupu kategorija, a ne kroz ceo asortiman.",
+            "PRICE_NEGOTIATE" => "TraÅ¾nja se otvara tek posle sniÅ¾enja, Å¡to sugeriÅ¡e previsoku ulaznu cenu.",
+            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniÅ¾enja i stock risk nepotrebno vezuju kapital.",
+            "OOS_FALSE_NEGATIVE" => "Slabiji rezultat moÅ¾e biti posledica nedostatka zaliha pre prvog sniÅ¾enja.",
+            "REVIEW_QUALITY" => "PovraÄ‡aji ili kvalitet su dovoljno loÅ¡i da blokiraju bezbedno Å¡irenje saradnje.",
+            _ => "Signali su meÅ¡oviti, pa je najbezbednije zadrÅ¾ati trenutni nivo saradnje."
         };
 
     private static string GetAnalyticsConnectionString(IConfiguration configuration) =>
@@ -2091,13 +2371,25 @@ public sealed record ScorecardTrustMetadata(
     DateTime RequestedTo,
     DateTime EffectiveFrom,
     DateTime EffectiveTo,
+    string RequestedDataset,
+    string EffectiveDataset,
+    string EffectivePeriodLabel,
+    string DataCoverageStatus,
+    bool UsedFallback,
+    string? FallbackReason,
+    DateTime? LastRefreshAtUtc,
+    int RowCount,
+    int IgnoredRowCount,
+    bool ZeroRevenueRowsExcluded,
+    int MissingSupplierNameCount,
     bool HasData,
     bool HasExplicitDateRange,
     bool RecommendationAllowed,
     bool NoSilentFallback,
     int WindowDays,
     string DataScope,
-    string Coverage);
+    string Coverage,
+    string? DataNote);
 
 // TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
 // ReliabilityPct, DataQualityStatus, StatusReason and ReasonCodes so the UI can
@@ -2109,7 +2401,11 @@ public sealed record SummarySupplierItem(
     decimal MlSupplierScore,
     decimal SupplierQualityIndex,
     string RecommendationCode,
-    decimal ConfidenceScore);
+    decimal ConfidenceScore,
+    decimal ReliabilityPct,
+    string DataQualityStatus,
+    string StatusReason,
+    IReadOnlyList<string> ReasonCodes);
 
 public sealed record KeyInsightItem(
     string Title,
@@ -2119,6 +2415,7 @@ public sealed record KeyInsightItem(
 
 public sealed record QuadrantResponse(
     IReadOnlyList<QuadrantItem> Items,
+    ScorecardTrustMetadata? TrustMetadata = null,
     AnalyticsResponseMetaDto? Meta = null);
 
 // TODO(backend-dto): include recommendation quality payload on quadrant items too.
@@ -2131,7 +2428,11 @@ public sealed record QuadrantItem(
     decimal PreMarkdownMarginPct,
     decimal SupplierQualityIndex,
     string RecommendationCode,
-    decimal ConfidenceScore);
+    decimal ConfidenceScore,
+    decimal ReliabilityPct,
+    string DataQualityStatus,
+    string StatusReason,
+    IReadOnlyList<string> ReasonCodes);
 
 public sealed record RankingResponse(
     int Page,
@@ -2158,7 +2459,11 @@ public sealed record RankingItem(
     decimal MlSupplierScore,
     decimal SupplierQualityIndex,
     string RecommendationCode,
-    decimal ConfidenceScore);
+    decimal ConfidenceScore,
+    decimal ReliabilityPct,
+    string DataQualityStatus,
+    string StatusReason,
+    IReadOnlyList<string> ReasonCodes);
 
 public sealed record SupplierDecisionDetailsResponse(
     SupplierHeaderDto SupplierHeader,

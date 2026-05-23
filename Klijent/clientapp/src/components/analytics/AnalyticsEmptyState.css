@@ -1,0 +1,27 @@
+.analytics-empty-state {
+  border: 1px solid var(--border-default, #d1d5db);
+  border-radius: 16px;
+  background: var(--surface-elevated, #ffffff);
+  padding: 16px;
+  color: var(--text-primary, #111827);
+}
+
+.analytics-empty-state h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.analytics-empty-state h3 {
+  margin: 12px 0 6px;
+  font-size: 0.92rem;
+  color: var(--text-secondary, #374151);
+}
+
+.analytics-empty-state p {
+  margin: 0;
+}
+
+.analytics-empty-state ul {
+  margin: 0;
+  padding-left: 18px;
+}

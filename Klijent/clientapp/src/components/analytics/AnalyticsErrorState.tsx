@@ -5,6 +5,7 @@ type AnalyticsErrorStateProps = {
   title: string;
   message: string;
   errorCode?: string | null;
+  correlationId?: string | null;
   suggestions?: string[];
   retryLabel?: string;
   onRetry?: () => void;
@@ -16,6 +17,7 @@ export default function AnalyticsErrorState({
   title,
   message,
   errorCode,
+  correlationId,
   suggestions,
   retryLabel = "Pokusaj ponovo",
   onRetry,
@@ -27,6 +29,7 @@ export default function AnalyticsErrorState({
       <h2>{title}</h2>
       <p>{message || "Podaci trenutno nisu dostupni."}</p>
       {errorCode ? <p className="aes-code">Sifra greske: {errorCode}</p> : null}
+      {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
       {suggestions && suggestions.length > 0 ? (
         <ul className="aes-suggestions">
           {suggestions.map((item) => (

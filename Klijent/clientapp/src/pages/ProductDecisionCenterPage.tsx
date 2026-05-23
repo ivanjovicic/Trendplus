@@ -1,10 +1,12 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import {
+  AnalyticsMetaError,
   getAnalyticsActions,
   getProductDecisionCenter,
   getStores,
@@ -232,8 +234,10 @@ export default function ProductDecisionCenterPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [payload, setPayload] = useState<ProductDecisionCenterResponse | null>(null);
+  const payloadRef = useRef<ProductDecisionCenterResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
+  const [staleWarning, setStaleWarning] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
@@ -306,6 +310,7 @@ export default function ProductDecisionCenterPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setStaleWarning(null);
     try {
       const response = await getProductDecisionCenter({
         fromDate,
@@ -315,14 +320,28 @@ export default function ProductDecisionCenterPage() {
         top: 1200,
       });
       setPayload(response);
+      payloadRef.current = response;
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Greska pri ucitavanju Product Decision Center podataka.";
-      setError(message);
-      setPayload(null);
+      const hasPreviousPayload = payloadRef.current != null;
+      if (reason instanceof AnalyticsMetaError) {
+        setError({
+          message: reason.message,
+          errorCode: reason.errorCode,
+          correlationId: reason.correlationId,
+        });
+      } else {
+        const message = reason instanceof Error ? reason.message : "Greska pri ucitavanju Product Decision Center podataka.";
+        setError({ message });
+      }
+      if (hasPreviousPayload) {
+        setStaleWarning("Prikazujemo prethodno učitane podatke. Novi upit nije uspeo i podaci mogu biti zastareli.");
+      } else {
+        setPayload(null);
+      }
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate, storeId, supplierId]);
+  }, [fromDate, supplierId, storeId, toDate]);
 
   useEffect(() => {
     loadData();
@@ -497,6 +516,13 @@ export default function ProductDecisionCenterPage() {
         emptyStateReason={!loading && !error && sortedRows.length === 0 ? (responseMeta?.message ?? "Nema kandidata za izabrane filtere i period.") : null}
         methodologyHref="/analytics/data-quality"
       />
+
+      {!loading && !error && responseMeta?.isPartial ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          Prikazani podaci su delimični ili fallback. {responseMeta.warningMessage ?? responseMeta.message ?? "Proverite status osvežavanja analitike."}
+        </div>
+      ) : null}
+
       <header className="product-decision-header">
         <div>
           <h1>Odluke o proizvodima</h1>
@@ -512,6 +538,7 @@ export default function ProductDecisionCenterPage() {
         />
       </header>
 
+      {!error ? (
       <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>
@@ -542,6 +569,7 @@ export default function ProductDecisionCenterPage() {
           <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
         </article>
       </section>
+      ) : null}
 
       <section className="product-decision-filters">
         <div className="filter-grid">
@@ -647,11 +675,14 @@ export default function ProductDecisionCenterPage() {
       </section>
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}
+      {staleWarning ? <div className="product-decision-message product-decision-message-info">{staleWarning}</div> : null}
       {loading ? <div className="product-decision-message">Ucitavanje Product Decision Center podataka...</div> : null}
       {error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error}
+          message={error.message}
+          errorCode={error.errorCode ?? undefined}
+          correlationId={error.correlationId ?? undefined}
           suggestions={[
             "Proverite da li je analytics refresh zavrsen.",
             "Probajte ponovo za nekoliko trenutaka.",
@@ -660,6 +691,23 @@ export default function ProductDecisionCenterPage() {
             void loadData();
           }}
           helpHref="/analytics/data-quality"
+        />
+      ) : null}
+
+      {!loading && !error && responseMeta?.dataQualityStatus === "insufficient_data" ? (
+        <AnalyticsEmptyState
+          title="Nema dovoljno podataka za izabrani period."
+          message={responseMeta.message ?? "Dataset je uspešno učitan, ali nema dovoljno signalnih redova za odluke."}
+          reasons={[
+            "U periodu nema dovoljno prodajnih događaja za recommendation signal.",
+            "Filteri su previše uski (prodavnica/dobavljač).",
+            "Nedostaju ključni ulazi (nabavna cena, dobavljač).",
+          ]}
+          actions={[
+            "Proširite period (npr. 60 ili 90 dana).",
+            "Uklonite uske filtere i pokušajte ponovo.",
+            "Otvorite Data Quality i proverite blokere signala.",
+          ]}
         />
       ) : null}
 

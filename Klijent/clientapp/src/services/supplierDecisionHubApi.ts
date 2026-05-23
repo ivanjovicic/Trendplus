@@ -74,6 +74,17 @@ export type ScorecardTrustMetadata = {
   requestedTo: string;
   effectiveFrom: string;
   effectiveTo: string;
+  requestedDataset: "30d" | "90d" | "180d" | "all_history" | string;
+  effectiveDataset: "30d" | "90d" | "180d" | "all_history" | string;
+  effectivePeriodLabel: string;
+  dataCoverageStatus: "good" | "warning" | "critical" | "insufficient_data" | string;
+  usedFallback: boolean;
+  fallbackReason?: string | null;
+  lastRefreshAtUtc?: string | null;
+  rowCount?: number;
+  ignoredRowCount?: number;
+  zeroRevenueRowsExcluded?: boolean;
+  missingSupplierNameCount?: number;
   hasData: boolean;
   hasExplicitDateRange: boolean;
   recommendationAllowed: boolean;
@@ -81,6 +92,7 @@ export type ScorecardTrustMetadata = {
   windowDays: number;
   dataScope: string;
   coverage: "window_90d" | "window_180d" | "all_history" | string;
+  dataNote?: string | null;
 };
 
 export type SummaryResponse = {
@@ -118,6 +130,7 @@ export type QuadrantItem = {
 
 export type QuadrantResponse = {
   items: QuadrantItem[];
+  trustMetadata?: ScorecardTrustMetadata | null;
   meta?: AnalyticsResponseMeta | null;
 };
 
@@ -257,15 +270,46 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
 
 async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {
   const response = await fetch(makeUrl(path, params));
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  const meta = (payload as { meta?: AnalyticsResponseMeta | null } | null)?.meta;
+
   if (!response.ok) {
-    throw new Error(errorMessage);
+    throw new SupplierDecisionApiError(
+      meta?.errorMessage?.trim() || meta?.message?.trim() || errorMessage,
+      meta?.errorCode ?? null,
+      meta?.correlationId ?? null
+    );
   }
-  const data = (await response.json()) as T;
-  const meta = (data as { meta?: AnalyticsResponseMeta | null })?.meta;
+
+  const data = payload as T;
+
   if (meta && meta.success === false) {
-    throw new Error(meta.message?.trim() || errorMessage);
+    throw new SupplierDecisionApiError(
+      meta.errorMessage?.trim() || meta.message?.trim() || errorMessage,
+      meta.errorCode ?? null,
+      meta.correlationId ?? null
+    );
   }
+
   return data;
+}
+
+export class SupplierDecisionApiError extends Error {
+  errorCode: string | null;
+  correlationId: string | null;
+
+  constructor(message: string, errorCode: string | null, correlationId: string | null) {
+    super(message);
+    this.name = "SupplierDecisionApiError";
+    this.errorCode = errorCode;
+    this.correlationId = correlationId;
+  }
 }
 
 export async function getSupplierDecisionSummary(

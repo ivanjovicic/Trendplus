@@ -19,9 +19,7 @@ public sealed class AnalyticsRefreshStatusService
         @"(?:completed in|Duration:\s*)(?<seconds>\d+(?:\.\d+)?)s",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly Regex ErrorCountRegex = new(
-        @"with\s+(?<count>\d+)\s+errors?",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly TimeSpan ActiveWorkerHeartbeatThreshold = TimeSpan.FromMinutes(15);
 
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
@@ -51,13 +49,16 @@ public sealed class AnalyticsRefreshStatusService
             _hostEnvironment.IsDevelopment());
         var workersEnabledInRuntime = workersEnabled && _workerRuntimeControlService.IsEnabled;
 
+        var processMode = ResolveProcessMode(processType);
+
         var jobs = new List<AnalyticsRefreshJobStatusDto>
         {
             BuildJobStatus(
                 key: "sales_facts_refresh",
                 displayName: "Sales facts refresh",
                 workerName: NightlyWorkerName,
-                freshHours: 26,
+                refreshedObjectNames: ["sales_facts_mv"],
+                freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
@@ -66,7 +67,8 @@ public sealed class AnalyticsRefreshStatusService
                 key: "product_dim_refresh",
                 displayName: "Product dim refresh",
                 workerName: NightlyWorkerName,
-                freshHours: 26,
+                refreshedObjectNames: ["product_dim_mv"],
+                freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
@@ -75,7 +77,13 @@ public sealed class AnalyticsRefreshStatusService
                 key: "supplier_decision_mvs",
                 displayName: "Supplier decision MVs",
                 workerName: NightlyWorkerName,
-                freshHours: 26,
+                refreshedObjectNames:
+                [
+                    "mv_supplier_decision_score_cache_90d",
+                    "mv_supplier_decision_score_cache_180d",
+                    "mv_supplier_decision_score_cache"
+                ],
+                freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
@@ -84,7 +92,8 @@ public sealed class AnalyticsRefreshStatusService
                 key: "product_decision_snapshot",
                 displayName: "Product decision snapshot",
                 workerName: NightlyWorkerName,
-                freshHours: 26,
+                refreshedObjectNames: ["mv_product_decision_snapshot"],
+                freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
@@ -93,7 +102,8 @@ public sealed class AnalyticsRefreshStatusService
                 key: "inventory_recommendations",
                 displayName: "Inventory recommendations",
                 workerName: NightlyWorkerName,
-                freshHours: 26,
+                refreshedObjectNames: ["mv_inventory_recommendations"],
+                freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
@@ -102,8 +112,9 @@ public sealed class AnalyticsRefreshStatusService
                 key: "data_quality_snapshot",
                 displayName: "Data quality snapshot",
                 workerName: DataQualityWorkerName,
-                freshHours: 3,
-                staleHours: 12,
+                refreshedObjectNames: ["analytics_data_quality_history"],
+                freshHours: 24,
+                staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc)
@@ -131,8 +142,8 @@ public sealed class AnalyticsRefreshStatusService
 
         var status = new AnalyticsRefreshStatusDto
         {
-            ProcessType = processType.ToString().ToLowerInvariant(),
-            WorkersEnabled = workersEnabledInRuntime,
+            ProcessMode = processMode,
+            WorkersEnabled = workersEnabled,
             LastSuccessfulRefreshAtUtc = hasLastSuccess ? lastSuccess : null,
             LastAttemptAtUtc = hasLastAttempt ? lastAttempt : null,
             LastFailureAtUtc = hasLastFailure ? lastFailure : null,
@@ -144,21 +155,30 @@ public sealed class AnalyticsRefreshStatusService
             CurrentStep = jobs
                 .Select(j => j.CurrentStep)
                 .FirstOrDefault(step => !string.IsNullOrWhiteSpace(step)),
-            RefreshedObjects = jobs.Count(j => j.DataFreshnessStatus == "fresh"),
-            FailedObjects = jobs.Count(j => j.DataFreshnessStatus == "critical"),
+            RefreshedObjects = jobs
+                .SelectMany(j => j.RefreshedObjects)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            FailedObjects = jobs
+                .SelectMany(j => j.FailedObjects)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             DurationSeconds = jobs
                 .Where(j => j.DurationSeconds.HasValue)
                 .Select(j => j.DurationSeconds!.Value)
                 .DefaultIfEmpty()
                 .Max(),
-            DataFreshnessStatus = ResolveOverallFreshness(jobs),
+            DataFreshnessStatus = ResolveOverallFreshness(
+                hasLastSuccess ? lastSuccess : null,
+                hasLastFailure ? lastFailure : null,
+                nowUtc),
             Jobs = jobs
         };
 
-        if (processType == ProcessType.Web && workersEnabledInRuntime)
+        if (processMode == "web" && workersEnabled && !HasAnyAnalyticsWorkerActive(nowUtc))
         {
-            status.WorkerProcessWarning =
-                "Worker nije aktivan u ovom procesu. Podaci se nece automatski osvezavati osim ako postoji poseban worker deploy.";
+            status.WorkerWarning =
+                "Worker nije aktivan u ovom procesu. Automatsko osvezavanje nije aktivno; potreban je poseban worker deploy.";
         }
 
         return status;
@@ -168,6 +188,7 @@ public sealed class AnalyticsRefreshStatusService
         string key,
         string displayName,
         string workerName,
+        IReadOnlyList<string> refreshedObjectNames,
         int freshHours,
         int staleHours,
         ProcessType processType,
@@ -188,7 +209,8 @@ public sealed class AnalyticsRefreshStatusService
         var lastAttempt = workerHealth?.LastHeartbeat;
         var lastFailure = workerHealth?.LastErrorTime;
         var durationSeconds = ResolveDurationSeconds(workerHealth?.Message, workerHealth?.LastError);
-        var failedObjects = ResolveFailedObjects(workerHealth?.LastError);
+        var refreshSucceeded = lastSuccess.HasValue && (!lastFailure.HasValue || lastSuccess.Value >= lastFailure.Value);
+        var refreshFailed = lastFailure.HasValue && (!lastSuccess.HasValue || lastFailure.Value > lastSuccess.Value);
 
         var freshnessStatus = ResolveFreshnessStatus(
             lastSuccess,
@@ -223,8 +245,8 @@ public sealed class AnalyticsRefreshStatusService
             IsRunning = isRunning,
             LastErrorMessage = workerHealth?.LastError,
             CurrentStep = workerHealth?.Message,
-            RefreshedObjects = freshnessStatus == "fresh" ? 1 : 0,
-            FailedObjects = failedObjects,
+            RefreshedObjects = refreshSucceeded ? refreshedObjectNames.ToList() : [],
+            FailedObjects = refreshFailed ? refreshedObjectNames.ToList() : [],
             DurationSeconds = durationSeconds,
             DataFreshnessStatus = freshnessStatus,
             StatusReason = reason
@@ -296,22 +318,6 @@ public sealed class AnalyticsRefreshStatusService
             : null;
     }
 
-    private static int ResolveFailedObjects(string? errorMessage)
-    {
-        if (string.IsNullOrWhiteSpace(errorMessage))
-        {
-            return 0;
-        }
-
-        var match = ErrorCountRegex.Match(errorMessage);
-        if (match.Success && int.TryParse(match.Groups["count"].Value, out var count))
-        {
-            return count;
-        }
-
-        return 1;
-    }
-
     private static string ResolveFreshnessStatus(
         DateTime? lastSuccess,
         DateTime? lastFailure,
@@ -349,23 +355,62 @@ public sealed class AnalyticsRefreshStatusService
         return "critical";
     }
 
-    private static string ResolveOverallFreshness(IReadOnlyCollection<AnalyticsRefreshJobStatusDto> jobs)
+    private static string ResolveOverallFreshness(DateTime? lastSuccess, DateTime? lastFailure, DateTime nowUtc)
     {
-        if (jobs.Any(j => j.DataFreshnessStatus == "critical"))
+        if (!lastSuccess.HasValue)
+        {
+            return "unknown";
+        }
+
+        if (lastFailure.HasValue && lastFailure.Value > lastSuccess.Value)
         {
             return "critical";
         }
 
-        if (jobs.Any(j => j.DataFreshnessStatus == "stale"))
-        {
-            return "stale";
-        }
-
-        if (jobs.Any(j => j.DataFreshnessStatus == "fresh"))
+        var age = nowUtc - lastSuccess.Value;
+        if (age <= TimeSpan.FromHours(24))
         {
             return "fresh";
         }
 
-        return "unknown";
+        if (age <= TimeSpan.FromHours(72))
+        {
+            return "stale";
+        }
+
+        return "critical";
+    }
+
+    private bool HasAnyAnalyticsWorkerActive(DateTime nowUtc)
+    {
+        var workerNames = new[] { NightlyWorkerName, DataQualityWorkerName };
+        foreach (var workerName in workerNames)
+        {
+            var status = _workerHealthService.GetStatus(workerName);
+            if (status is null)
+            {
+                continue;
+            }
+
+            var isActiveStatus = status.Status is WorkerStatusType.Running or WorkerStatusType.Healthy;
+            var hasRecentHeartbeat = status.LastHeartbeat >= nowUtc.Subtract(ActiveWorkerHeartbeatThreshold);
+
+            if (isActiveStatus && hasRecentHeartbeat)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string ResolveProcessMode(ProcessType processType)
+    {
+        return processType switch
+        {
+            ProcessType.Web => "web",
+            ProcessType.Worker => "worker",
+            _ => "unknown"
+        };
     }
 }

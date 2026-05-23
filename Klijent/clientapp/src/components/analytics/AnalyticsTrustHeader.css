@@ -34,6 +34,12 @@
   font-size: 0.92rem;
 }
 
+.ath-live {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--warning, #f59f00);
+}
+
 .ath-status {
   padding: 0.4rem 0.7rem;
   border-radius: 999px;
@@ -90,6 +96,41 @@
 .ath-meta-value {
   font-size: 0.86rem;
   color: var(--color-text-primary, #111);
+}
+
+.ath-freshness-badge {
+  margin-top: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.ath-freshness-fresh {
+  color: #0f5132;
+  background: #eaf8ef;
+  border-color: #b7e4c7;
+}
+
+.ath-freshness-stale {
+  color: #7a5600;
+  background: #fff7e0;
+  border-color: #ffe08a;
+}
+
+.ath-freshness-critical {
+  color: #842029;
+  background: #fdecec;
+  border-color: #f5c2c7;
+}
+
+.ath-freshness-unknown {
+  color: #495057;
+  background: #eef1f5;
+  border-color: #d5dbe3;
 }
 
 .ath-note,

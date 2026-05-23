@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import {
+  AnalyticsMetaError,
   getAnalyticsRefreshStatus,
   getAnalyticsDataQualityHealth,
   getAnalyticsDataQualityTrend,
@@ -313,7 +315,7 @@ export default function DataQualityPage() {
   const [data, setData] = useState<DataQualityIssueListResult | null>(null);
   const [health, setHealth] = useState<AnalyticsDataQualityHealth | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
@@ -400,11 +402,19 @@ export default function DataQualityPage() {
       setData(issuesResult.value);
     } else {
       setData(null);
-      setError(
-        issuesResult.reason instanceof Error
-          ? issuesResult.reason.message
-          : "Data quality podaci nisu dostupni."
-      );
+      if (issuesResult.reason instanceof AnalyticsMetaError) {
+        setError({
+          message: issuesResult.reason.message,
+          errorCode: issuesResult.reason.errorCode,
+          correlationId: issuesResult.reason.correlationId,
+        });
+      } else {
+        setError({
+          message: issuesResult.reason instanceof Error
+            ? issuesResult.reason.message
+            : "Data quality podaci nisu dostupni.",
+        });
+      }
     }
 
     if (healthResult.status === "fulfilled") {
@@ -503,7 +513,10 @@ export default function DataQualityPage() {
         description="Centralni pregled problema koji direktno uticu na pouzdanost analitike i preporuka."
         periodFrom={contextFromDate ?? health?.windowFrom ?? null}
         periodTo={contextToDate ?? health?.windowTo ?? null}
-        lastRefreshAt={health?.meta?.lastRefreshAtUtc ?? health?.generatedAt ?? null}
+        lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? health?.meta?.lastRefreshAtUtc ?? health?.generatedAt ?? null}
+        dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
+        refreshIsRunning={refreshStatus?.isRunning ?? false}
+        refreshCurrentStep={refreshStatus?.currentStep ?? null}
         dataSource={contextDataScope ? `Data quality (${contextDataScope})` : "Data quality read model"}
         dataQualityStatus={trustDataQualityStatus}
         dataQualitySummary={{
@@ -540,6 +553,12 @@ export default function DataQualityPage() {
         loading={loading}
         error={refreshStatusError}
       />
+
+      {!loading && !error && data?.meta?.isPartial ? (
+        <div className="data-quality-loading" role="status">
+          Prikazani podaci su delimični. {data.meta.warningMessage ?? data.meta.message ?? "Proverite analytics refresh status."}
+        </div>
+      ) : null}
 
       {health ? (
         <section className="data-quality-health-grid">
@@ -688,7 +707,9 @@ export default function DataQualityPage() {
       {error ? (
         <AnalyticsErrorState
           title="Data quality podaci trenutno nisu dostupni"
-          message={error}
+          message={error.message}
+          errorCode={error.errorCode ?? undefined}
+          correlationId={error.correlationId ?? undefined}
           suggestions={[
             "Proverite konekciju sa analytics bazom i pokrenite refresh.",
             "Probajte ponovo za nekoliko trenutaka.",
@@ -697,6 +718,22 @@ export default function DataQualityPage() {
             void load();
           }}
           helpHref="/analytics/data-quality"
+        />
+      ) : null}
+
+      {!loading && !error && data?.items.length === 0 && data?.meta?.dataQualityStatus === "insufficient_data" ? (
+        <AnalyticsEmptyState
+          title="Nema dovoljno podataka za izabrani filter."
+          message={data.meta.message ?? "Nema otvorenih data quality problema u izabranom opsegu."}
+          reasons={[
+            "U izabranom periodu nema problema koji prolaze prag signalnog prometa.",
+            "Scope ili tip problema je suzio rezultat na prazan skup.",
+          ]}
+          actions={[
+            "Proverite drugi tip problema.",
+            "Proširite period i osvežite listu.",
+            "Pokrenite analytics refresh i pokušajte ponovo.",
+          ]}
         />
       ) : null}
       {healthError ? <div className="data-quality-loading">{healthError}</div> : null}

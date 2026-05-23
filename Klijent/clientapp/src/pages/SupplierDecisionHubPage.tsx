@@ -9,12 +9,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import SupplierDecisionReportActions from "../components/analytics/SupplierDecisionReportActions";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
 import { getSezone } from "../services/sezoneApi";
+import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
+import type { AnalyticsRefreshStatus } from "../types/analytics";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
+import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
 import {
   getAllSupplierDecisionRanking,
   getSupplierDecisionSummary,
@@ -22,6 +27,7 @@ import {
   type RankingItem,
   type RankingResponse,
   type SummaryResponse,
+  SupplierDecisionApiError,
   type SupplierDecisionHubFilters,
 } from "../services/supplierDecisionHubApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
@@ -130,6 +136,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
+  const hasSummaryRef = useRef(false);
+  const hasRankingRef = useRef(false);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
 
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(sharedFilters?.periodPreset ?? "30d");
@@ -154,10 +162,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [previousSummary, setPreviousSummary] = useState<SummaryResponse | null>(null);
   const [ranking, setRanking] = useState<RankingResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
+  const [staleWarning, setStaleWarning] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierId, setExpandedSupplierId] = useState<number | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
 
   const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
 
@@ -196,6 +206,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setStaleWarning(null);
     try {
       const baseFilters: SupplierDecisionHubFilters = {
         fromDate: filters.fromDate,
@@ -210,29 +221,64 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       const prevRange = buildPreviousRange(filters.fromDate, filters.toDate);
       const prevFilters: SupplierDecisionHubFilters = { ...baseFilters, fromDate: prevRange.fromDate, toDate: prevRange.toDate };
 
-      const [summaryResult, rankingResult, previousResult] = await Promise.allSettled([
+      const [summaryResult, rankingResult, previousResult, refreshStatusResult] = await Promise.allSettled([
         getSupplierDecisionSummary(baseFilters),
         getAllSupplierDecisionRanking(baseFilters, { pageSize: 100, sortBy: "supplierQualityIndex", sortDir: "desc" }),
         getSupplierDecisionSummary(prevFilters),
+        getAnalyticsRefreshStatus(),
       ]);
       if (requestId !== requestIdRef.current) return;
-      if (summaryResult.status === "rejected" || rankingResult.status === "rejected") throw new Error("NeuspeÅ¡no uÄitavanje podataka skorkarte dobavljaÄa.");
+      if (summaryResult.status === "rejected" || rankingResult.status === "rejected") {
+        const reason = summaryResult.status === "rejected"
+          ? summaryResult.reason
+          : rankingResult.status === "rejected"
+            ? rankingResult.reason
+            : new Error("Neuspesno ucitavanje podataka skorkarte dobavljaca.");
+        if (reason instanceof SupplierDecisionApiError) {
+          throw reason;
+        }
+        throw new Error("Neuspesno ucitavanje podataka skorkarte dobavljaca.");
+      }
       setSummary(summaryResult.value);
+      hasSummaryRef.current = true;
       setRanking(rankingResult.value);
+      hasRankingRef.current = true;
       setPreviousSummary(previousResult.status === "fulfilled" ? previousResult.value : null);
+      setRefreshStatus(refreshStatusResult.status === "fulfilled" ? refreshStatusResult.value : null);
       setExpandedSupplierId(null);
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
-      setSummary(null);
-      setPreviousSummary(null);
-      setRanking(null);
-      setError(reason instanceof Error ? reason.message : "GreÅ¡ka pri uÄitavanju skorkarte dobavljaÄa.");
+      const hasPreviousData = hasSummaryRef.current || hasRankingRef.current;
+      if (!hasPreviousData) {
+        setSummary(null);
+        setPreviousSummary(null);
+        setRanking(null);
+      } else {
+        setStaleWarning("Prikazujemo prethodno učitane podatke. Novi upit nije uspeo i podaci mogu biti zastareli.");
+      }
+      if (reason instanceof SupplierDecisionApiError) {
+        setError({
+          message: reason.message,
+          errorCode: reason.errorCode,
+          correlationId: reason.correlationId,
+        });
+      } else {
+        setError({
+          message: reason instanceof Error ? reason.message : "Greska pri ucitavanju skorkarte dobavljaca.",
+        });
+      }
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
+
+  const trustMetadata = summary?.trustMetadata ?? ranking?.trustMetadata ?? null;
+  const scorecardMeta = ranking?.meta ?? summary?.meta ?? null;
+  const hasVisibleData = Boolean(summary && ranking);
+  const showBlockingError = Boolean(error && !hasVisibleData);
+  const resolvedLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? trustMetadata?.lastRefreshAtUtc ?? null;
 
   const decisionRows = useMemo<DecisionRow[]>(() => {
     const rows = ranking?.items ?? [];
@@ -246,8 +292,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
       const normalizedConfidence = confidencePctValue ?? 0;
 
-      const status = recommendationToStatus(item.recommendationCode);
-      const statusReason = item.statusReason?.trim() || "Backend nije dostavio obrazlozenje za ovaj scorecard signal.";
+      const recommendationAllowed = trustMetadata?.recommendationAllowed !== false;
+      const status = recommendationAllowed
+        ? recommendationToStatus(item.recommendationCode)
+        : "insufficient_data";
+      const statusReason = recommendationAllowed
+        ? item.statusReason?.trim() || "Backend nije dostavio obrazlozenje za ovaj scorecard signal."
+        : "Nedovoljno podataka u izabranom periodu; scorecard preporuka je onemogucena.";
       const reliabilityPctValue = normalizeRecommendationPct(item.reliabilityPct);
 
       return {
@@ -260,12 +311,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         normalizedConfidence,
         confidenceAvailable: confidencePctValue != null,
         reliabilityPct: reliabilityPctValue ?? 0,
-        reliabilityAvailable: reliabilityPctValue != null,
+        reliabilityAvailable: recommendationAllowed && reliabilityPctValue != null,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.dataQualityStatus),
         reasonCodes: item.reasonCodes ?? [],
       };
     });
-  }, [ranking?.items]);
+  }, [ranking?.items, trustMetadata?.recommendationAllowed]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -300,7 +351,6 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     reduce: sortedRows.filter((row) => row.status === "do_not_trust").length,
     insufficient: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
-  const trustMetadata = summary?.trustMetadata ?? ranking?.trustMetadata ?? null;
   const zeroStateExplanation = useMemo(() => {
     if (!summary || !ranking) return null;
 
@@ -348,6 +398,56 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     { key: "supplierCount", label: "DobavljaÄa", value: summary?.supplierCount ?? 0 },
     { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? 0 },
   ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
+
+  const supplierLabel = useMemo(() => {
+    if (activeFilters.supplierId == null) {
+      return "Svi dobavljaci";
+    }
+
+    const matched = sortedRows.find((row) => row.supplierId === activeFilters.supplierId);
+    return matched?.supplierName ?? `Dobavljac #${activeFilters.supplierId}`;
+  }, [activeFilters.supplierId, sortedRows]);
+
+  const reportPayload = useMemo(() => {
+    if (!summary || !ranking) {
+      return null;
+    }
+
+    return buildSupplierDecisionReportPayload({
+      periodLabel: periodPreset,
+      fromDate: activeFilters.fromDate,
+      toDate: activeFilters.toDate,
+      supplierLabel,
+      dataScopeLabel: activeFilters.dataScope ?? "all",
+      freshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
+      lastRefreshAtUtc: resolvedLastRefreshAt,
+      summary,
+      trustMetadata,
+      scorecardMeta,
+      totalRevenue,
+      totalMarginContribution,
+      top5SharePct,
+      supplierCounts,
+      rows: sortedRows,
+    });
+  }, [
+    activeFilters.dataScope,
+    activeFilters.fromDate,
+    activeFilters.toDate,
+    periodPreset,
+    ranking,
+    refreshStatus?.dataFreshnessStatus,
+    resolvedLastRefreshAt,
+    scorecardMeta,
+    sortedRows,
+    summary,
+    supplierCounts,
+    supplierLabel,
+    top5SharePct,
+    totalMarginContribution,
+    totalRevenue,
+    trustMetadata,
+  ]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
@@ -443,12 +543,23 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           description="Scorecard signal za dobavljace; finalna poslovna preporuka ostaje u tabu Pregled."
           periodFrom={trustMetadata?.effectiveFrom ?? summary?.from ?? activeFilters.fromDate}
           periodTo={trustMetadata?.effectiveTo ?? summary?.to ?? activeFilters.toDate}
-          lastRefreshAt={null}
-          dataSource={`Supplier decision scorecard (${trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`}
-          dataQualityStatus={trustMetadata?.recommendationAllowed ? "good" : "insufficient_data"}
+          lastRefreshAt={resolvedLastRefreshAt}
+          dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? "unknown"}
+          refreshIsRunning={refreshStatus?.isRunning ?? false}
+          refreshCurrentStep={refreshStatus?.currentStep ?? null}
+          dataSource={`Supplier decision scorecard (${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`}
+          dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
+          dataQualitySummary={{
+            missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
+            ignoredRowsCount: trustMetadata?.ignoredRowCount ?? null,
+          }}
           mode="signal"
-          recommendationNote="Skorkarta je dodatni signal. Finalna preporuka dolazi iz taba Pregled."
-          emptyStateReason={!loading && !error && sortedRows.length === 0 ? zeroStateExplanation : null}
+          recommendationNote={
+            trustMetadata?.usedFallback
+              ? `Prikazan je fallback period: ${trustMetadata.effectivePeriodLabel}.`
+              : "Skorkarta je dodatni signal. Finalna preporuka dolazi iz taba Pregled."
+          }
+          emptyStateReason={!loading && !showBlockingError && sortedRows.length === 0 ? zeroStateExplanation : null}
           methodologyHref="/analytics/data-quality"
         />
       ) : null}
@@ -529,10 +640,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       ) : null}
 
       {invalidRange ? <div className="sdh-decision-message error" role="alert">Datum 'od' ne moÅ¾e biti posle datuma 'do'.</div> : null}
-      {error ? (
+      {showBlockingError ? (
         <AnalyticsErrorState
           title="Skorkarta dobavljaca trenutno nije dostupna"
-          message={error}
+          message={error?.message ?? "Podaci trenutno nisu dostupni."}
+          errorCode={error?.errorCode ?? undefined}
+          correlationId={error?.correlationId ?? undefined}
           suggestions={[
             "Proverite analytics refresh ili suzite broj aktivnih filtera.",
             "Probajte ponovo za nekoliko trenutaka.",
@@ -543,9 +656,36 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           helpHref="/analytics/data-quality"
         />
       ) : null}
+
+      {staleWarning ? (
+        <div className="sdh-decision-message warning" role="note">{staleWarning}</div>
+      ) : null}
+
+      {!loading && !showBlockingError && scorecardMeta?.isPartial ? (
+        <div className="sdh-decision-message warning" role="note">
+          Prikazani podaci su delimični ili fallback. {scorecardMeta.warningMessage ?? scorecardMeta.message ?? "Proverite analytics refresh status."}
+        </div>
+      ) : null}
+
+      {!loading && !showBlockingError && sortedRows.length === 0 && scorecardMeta?.dataQualityStatus === "insufficient_data" ? (
+        <AnalyticsEmptyState
+          title="Nema dovoljno podataka za izabrani period."
+          message={scorecardMeta.message ?? zeroStateExplanation ?? "Za ovaj opseg nema scorecard signala."}
+          reasons={[
+            "U traženom periodu nema dovoljno nivo signalnih podataka.",
+            "Filteri su suzili skup dobavljača na prazan rezultat.",
+            "Nedostaju ulazni podaci za pouzdanu preporuku.",
+          ]}
+          actions={[
+            "Proširite period na 90d ili 180d.",
+            "Uklonite uske filtere (objekat/dobavljač).",
+            "Otvorite Data Quality radi provere blokera.",
+          ]}
+        />
+      ) : null}
       {loading ? <div className="sdh-decision-message loading" role="status" aria-live="polite">UÄitavam skorkarte dobavljaÄa...</div> : null}
       
-      {!loading && !error && zeroStateExplanation ? (
+      {!loading && !showBlockingError && zeroStateExplanation ? (
         <div className="sdh-decision-message warning">
           <strong>Nema pronaÄ‘enih podataka za izabrane filtere</strong>
           <p>{zeroStateExplanation}</p>
@@ -562,11 +702,17 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         </div>
       ) : null}
 
+      {!loading && !showBlockingError && trustMetadata?.usedFallback ? (
+        <div className="sdh-decision-message warning" role="note">
+          <strong>Fallback period je primenjen:</strong> zahtevani opseg nema dovoljno podataka, prikazan je {trustMetadata.effectivePeriodLabel}. {trustMetadata.fallbackReason ?? ""}
+        </div>
+      ) : null}
+
       {!loading && summary && ranking ? (
         <>
-          {(summary.dataNote ?? ranking.dataNote) ? (
+          {(trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote) ? (
             <div className="sdh-decision-message info" role="note">
-              <strong>Obuhvat podataka:</strong> {summary.dataNote ?? ranking.dataNote}
+              <strong>Obuhvat podataka:</strong> {trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote}
             </div>
           ) : null}
           <section className="sdh-decision-kpis">
@@ -638,7 +784,16 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   <p>Pojacaj: <strong>{supplierCounts.boost}</strong> | Zadrzi: <strong>{supplierCounts.keep}</strong> | Oprez: <strong>{supplierCounts.caution}</strong> | Smanji / Ne veruj: <strong>{supplierCounts.reduce}</strong> | Nedovoljno podataka: <strong>{supplierCounts.insufficient}</strong></p>
                   <p className="sdh-decision-table-subtitle">Lista koristi backend recommendation signal i backend confidence/reliability payload bez lokalnog izracunavanja finalnog statusa.</p>
                 </div>
-                <AnalyticsTableToolbar tableKey="supplier-decision-hub" tableTitle="Skorkarta dobavljaÄa - kompaktni prikaz" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+                <AnalyticsTableToolbar
+                  tableKey="supplier-decision-hub"
+                  tableTitle="Skorkarta dobavljaÄa - kompaktni prikaz"
+                  columns={decisionColumns}
+                  rows={sortedRows}
+                  filters={toolbarFilters}
+                  metadata={toolbarMetadata}
+                  defaultOrientation="landscape"
+                  extraActions={<SupplierDecisionReportActions payload={reportPayload} disabled={loading || showBlockingError || !summary || !ranking} />}
+                />
               </div>
               <div className="sdh-decision-table-wrap">
                 <table className="sdh-decision-table">
