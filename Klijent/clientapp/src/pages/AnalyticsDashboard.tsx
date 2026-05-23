@@ -7,6 +7,7 @@ import {
   getStores,
   upsertAnalyticsAction,
 } from "../services/analyticsApi";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import type {
@@ -20,6 +21,7 @@ import type {
   DashboardDecisionAction,
   DashboardMetricCard,
   DashboardValidationEndpoint,
+  ExecutiveDashboardSnapshot,
   GenderData,
   HourData,
   InventoryStatus,
@@ -390,6 +392,7 @@ export default function AnalyticsDashboard() {
   const [validFreshness, setValidFreshness] = useState<DashboardValidationEndpoint | null>(null);
   const [validLostSales, setValidLostSales] = useState<DashboardValidationEndpoint | null>(null);
   const [decisionActions, setDecisionActions] = useState<DashboardDecisionAction[]>([]);
+  const [executive, setExecutive] = useState<ExecutiveDashboardSnapshot | null>(null);
   const [dashboardMeta, setDashboardMeta] = useState<AnalyticsResponseMeta | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
@@ -482,6 +485,7 @@ export default function AnalyticsDashboard() {
           ? [...(bootstrapR.value.decisionActions ?? [])]
           : buildFallbackDecisionActionsFromAdvanced(bootstrapR.value.advanced)
       );
+      setExecutive(bootstrapR.value.executive ?? null);
       setDashboardMeta(bootstrapR.value.meta ?? null);
       nextErrors.push(...bootstrapR.value.errors);
     } else {
@@ -503,6 +507,7 @@ export default function AnalyticsDashboard() {
       setValidFreshness(null);
       setValidLostSales(null);
       setDecisionActions([]);
+      setExecutive(null);
       setDashboardMeta(null);
       nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
     }
@@ -533,32 +538,6 @@ export default function AnalyticsDashboard() {
     if (supplierOptions.some((item) => item.supplierId === supplierId)) return;
     setSelectedSupplier("");
   }, [selectedSupplier, supplierId, supplierOptions]);
-
-  useEffect(() => {
-    if (loading || !summary) return;
-
-    let cancelled = false;
-    const show = () => {
-      if (!cancelled) setShowDetailedAnalysis(true);
-    };
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    const usedIdleCallback = typeof idleWindow.requestIdleCallback === "function";
-    const idleId = usedIdleCallback
-      ? idleWindow.requestIdleCallback(show, { timeout: 900 })
-      : window.setTimeout(show, 180);
-
-    return () => {
-      cancelled = true;
-      if (usedIdleCallback && typeof idleWindow.cancelIdleCallback === "function") {
-        idleWindow.cancelIdleCallback(idleId);
-      } else {
-        window.clearTimeout(idleId);
-      }
-    };
-  }, [loading, summary]);
 
   const movingStats = useMemo(() => {
     if (dailySales.length === 0) return {
@@ -610,6 +589,17 @@ export default function AnalyticsDashboard() {
     return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
   const hasFatalLoadError = !loading && errors.length > 0 && summary == null;
+  const emptyVariant = useMemo(() => {
+    if (loading || hasFatalLoadError) return null;
+    if (dashboardMeta?.dataQualityStatus === "insufficient_data") return "insufficient_data" as const;
+    if (dashboardMeta?.emptyReason) return "no_data" as const;
+    if (summary && summary.totalTransactions === 0 && summary.totalUnits === 0) return "no_data" as const;
+    return null;
+  }, [dashboardMeta?.dataQualityStatus, dashboardMeta?.emptyReason, hasFatalLoadError, loading, summary]);
+  const showEmptyState = emptyVariant !== null;
+  const executiveDataQualityTone = normalizeDataQualityStatus(
+    dashboardMeta?.dataQualityStatus ?? executive?.dataQualitySummary?.freshnessStatus ?? null
+  );
 
   const topGainers = useMemo(
     () =>
@@ -648,7 +638,7 @@ export default function AnalyticsDashboard() {
           if (byPriority !== 0) return byPriority;
           return (b.confidencePct ?? -1) - (a.confidencePct ?? -1);
         })
-        .slice(0, 8),
+        .slice(0, 5),
     [decisionActions]
   );
 
@@ -769,8 +759,8 @@ export default function AnalyticsDashboard() {
   return (
     <div className="analytics-dashboard">
       <AnalyticsTrustHeader
-        title="Pregled analitike"
-        description="Decision cockpit za KPI, trendove i prioritetne preporuke na nivou prodaje, proizvoda i zaliha."
+        title="Pregled poslovanja"
+        description="Executive dashboard: kljucni KPI-jevi, najvaznije odluke i pouzdanost podataka za izabrani period."
         periodFrom={fromDate}
         periodTo={toDate}
         lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
@@ -786,11 +776,11 @@ export default function AnalyticsDashboard() {
             )
         }
         dataQualitySummary={{
-          missingSupplierCount: validCompleteness?.affectedSku ?? null,
-          missingCostCount: validLostSales?.negativeQtyCount ?? null,
-          ignoredRowsCount: validCompleteness?.totalSku != null && validCompleteness.affectedSku != null
-            ? Math.max(validCompleteness.totalSku - validCompleteness.affectedSku, 0)
-            : null,
+          missingSupplierCount: executive?.dataQualitySummary?.missingSupplierCount ?? null,
+          missingCostCount: executive?.dataQualitySummary?.missingCostCount ?? null,
+          missingCategoryCount: null,
+          insufficientSignalCount: executive?.dataQualitySummary?.insufficientSignalCount ?? null,
+          ignoredRowsCount: executive?.dataQualitySummary?.ignoredRowsCount ?? null,
         }}
         mode="recommendation"
         recommendationNote="Dashboard prikazuje prioritetne preporuke sistema i operativne signale. Potvrdi odluku na ciljnom ekranu."
@@ -798,11 +788,10 @@ export default function AnalyticsDashboard() {
       />
       <header className="analytics-header">
         <div>
-          <h1>Pregled analitike</h1>
-          <p className="with-tip">
-            <span>KPI, trendovi i preporuke za odluke</span>
-            <InfoTip text="Dashboard je fokusiran na promet, raspodelu prodaje i brze operativne odluke." />
-          </p>
+          <h2 className="with-tip">
+            <span>Executive Dashboard</span>
+            <InfoTip text="Fokus na kljucne KPI-jeve, najvaznije akcije i pouzdanost podataka. Grafici i detalji su nize na stranici." />
+          </h2>
         </div>
         <div className="analytics-controls">
           <button onClick={() => void load()} disabled={loading}>{loading ? "Ucitavanje..." : "Osvezi"}</button>
@@ -893,155 +882,322 @@ export default function AnalyticsDashboard() {
 
       {!hasFatalLoadError ? (
       <>
-      <section className="analytics-panel analytics-decision-cockpit">
-        <div className="decision-cockpit-head">
-          <div>
-            <h2>Najvaznije odluke</h2>
-            <p>Prioriteti generisani iz prodaje, zaliha, marze i kvaliteta podataka.</p>
-          </div>
-          <Link to="/analytics/actions" className="decision-all-actions-link">Vidi sve akcije</Link>
-        </div>
-        {loading ? (
-          <div className="analytics-skeleton-grid">
-            {Array.from({ length: 4 }).map((_, i) => <div key={`decision-skeleton-${i}`} className="analytics-skeleton-card" />)}
-          </div>
-        ) : prioritizedDecisionActions.length === 0 ? (
-          <div className="analytics-empty warning">Nema dovoljno pouzdanih podataka za automatske odluke.</div>
-        ) : (
-          <div className="decision-action-list">
-            {prioritizedDecisionActions.map((action, index) => {
-              const cardKey = getDecisionActionCardKey(action, index);
-              const isQueued = addedToQueueKeys.has(cardKey);
-              const isQueueBusy = queueBusyKeys.has(cardKey);
-              const queueError = queueErrorsByKey[cardKey];
-              const actionLink = resolveDashboardActionUrl(action);
+      {showEmptyState ? (
+        <AnalyticsEmptyState
+          variant={emptyVariant ?? undefined}
+          emptyReason={dashboardMeta?.emptyReason ?? dashboardMeta?.message ?? null}
+          actions={[
+            { label: "Prosiri period na 90 dana", onClick: () => applyPreset("90d") },
+            { label: "Otvori Data Quality", href: "/analytics/data-quality" },
+          ]}
+          dataQualityHref="/analytics/data-quality"
+        />
+      ) : (
+        <>
+          <section className="analytics-section">
+            <h2 className="with-tip"><span>Ključni KPI-jevi</span><InfoTip text="4-5 metrika za brzu procenu: prihod, marzni doprinos, jedinice, rizicna zaliha i kvalitet podataka." /></h2>
+            {loading ? (
+              <div className="analytics-skeleton-grid">
+                {Array.from({ length: 5 }).map((_, i) => <div key={`exec-kpi-${i}`} className="analytics-skeleton-card" />)}
+              </div>
+            ) : (
+              <div className="analytics-card-grid analytics-exec-kpi-grid">
+                <MetricCard label="Prihod" value={summary ? fmtRsd(summary.totalRevenue) : "N/A"} tone="good" infoTip={HELP.promet} />
+                <MetricCard label="Maržni doprinos" value={executive ? fmtRsd(executive.totalMarginContributionRsd) : "N/A"} tone="neutral" infoTip="Zbir marznog doprinosa (procenjeno) za artikle sa dostupnim signalom." />
+                <MetricCard label="Prodate jedinice" value={summary ? fmtNumber(summary.totalUnits) : "N/A"} tone="neutral" infoTip={HELP.jedinice} />
+                <MetricCard label="Lager u riziku" value={executive ? fmtRsd(executive.inventoryDangerValueRsd) : "N/A"} tone={executive && executive.inventoryDangerValueRsd > 0 ? "warning" : "neutral"} infoTip="Procena kapitala u sporoj ili rizicnoj zalihi (indikativno)." />
+                <article className={`metric-card ${executiveDataQualityTone}`}>
+                  <span className="metric-label">
+                    <span>Data quality</span>
+                    <InfoTip text="Bez pouzdanih podataka nema pouzdane preporuke. Klik vodi na detaljan Data Quality." />
+                  </span>
+                  <strong>{dataQualityStatusLabel(dashboardMeta?.dataQualityStatus ?? executive?.dataQualitySummary?.freshnessStatus ?? null)}</strong>
+                  <small className="exec-dq-sub">
+                    Bez dobavljaca: {executive?.dataQualitySummary?.missingSupplierCount?.toLocaleString("sr-RS") ?? "-"} | Bez cene: {executive?.dataQualitySummary?.missingCostCount?.toLocaleString("sr-RS") ?? "-"}
+                  </small>
+                  <Link to="/analytics/data-quality" className="exec-dq-link">Otvori Data Quality</Link>
+                </article>
+              </div>
+            )}
+          </section>
 
-              return (
-              <article
-                key={cardKey}
-                className={`decision-action-card priority-${(action.priority || "P3").toLowerCase()}`}
-              >
-                <div className="decision-action-top">
-                  <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
-                  <strong>{action.title}</strong>
+          <section className="analytics-exec-fold">
+            <section className="analytics-panel analytics-decision-cockpit">
+              <div className="decision-cockpit-head">
+                <div>
+                  <h2>Šta treba uraditi ove nedelje?</h2>
+                  <p>Top akcije generisane iz prodaje, zaliha, marže i kvaliteta podataka.</p>
                 </div>
-                <p className="decision-action-reason">{action.reason}</p>
-                {action.expectedImpact
-                  ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p>
-                  : action.impactEstimateRsd != null
-                    ? <p className="decision-action-impact">Procenjeni uticaj: {fmtRsd(action.impactEstimateRsd, 0, "N/A")}</p>
-                    : null}
-                <div className="decision-action-foot">
-                  <div className="decision-quality-stack">
-                    <span className="decision-confidence">
-                      Sigurnost preporuke: {formatDecisionConfidence(action.confidencePct)}
-                    </span>
-                    <span className="decision-confidence">
-                      Pouzdanost signala: {formatDecisionReliability(action.reliabilityPct)}
-                    </span>
-                    <span className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}>
-                      Data quality: {dataQualityStatusLabel(action.dataQualityStatus)}
-                    </span>
-                    {normalizeDataQualityStatus(action.dataQualityStatus) !== "good" ? (
-                      <Link to="/analytics/data-quality" className="decision-quality-link">
-                        Otvori kvalitet podataka
-                      </Link>
-                    ) : null}
-                    {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
-                  </div>
-                  <div className="decision-action-links">
-                    <Link to={actionLink} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
-                    <button
-                      type="button"
-                      className={`btn-add-to-queue${isQueued ? " added" : ""}`}
-                      title="Dodaj u centralni red akcija"
-                      disabled={isQueueBusy || isQueued}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (isQueueBusy || isQueued) return;
-                        setQueueBusyKeys((prev) => {
-                          const next = new Set(prev);
-                          next.add(cardKey);
-                          return next;
-                        });
-                        setQueueErrorsByKey((prev) => {
-                          if (!(cardKey in prev)) return prev;
-                          const { [cardKey]: _discard, ...rest } = prev;
-                          return rest;
-                        });
-                        try {
-                          const actionInput = buildAnalyticsActionFromDashboardAction(action, currentActionFilters);
-                          await upsertAnalyticsAction(actionInput);
-                          setAddedToQueueKeys((prev) => {
-                            const next = new Set(prev);
-                            next.add(cardKey);
-                            return next;
-                          });
-                        } catch (reason) {
-                          setQueueErrorsByKey((prev) => ({
-                            ...prev,
-                            [cardKey]: getErrorText(reason, "Akcija nije dodata u centralni red."),
-                          }));
-                        } finally {
-                          setQueueBusyKeys((prev) => {
-                            const next = new Set(prev);
-                            next.delete(cardKey);
-                            return next;
-                          });
-                        }
-                      }}
-                    >
-                      {isQueueBusy ? "Dodajem..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
-                    </button>
-                    {queueError ? <small className="decision-action-error">{queueError}</small> : null}
-                  </div>
+                <Link to="/analytics/actions" className="decision-all-actions-link">Akcije i preporuke</Link>
+              </div>
+              {loading ? (
+                <div className="analytics-skeleton-grid">
+                  {Array.from({ length: 3 }).map((_, i) => <div key={`decision-skeleton-${i}`} className="analytics-skeleton-card" />)}
                 </div>
-              </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+              ) : prioritizedDecisionActions.length === 0 ? (
+                <div className="analytics-empty warning">Nema dovoljno pouzdanih podataka za automatske odluke.</div>
+              ) : (
+                <div className="decision-action-list">
+                  {prioritizedDecisionActions.map((action, index) => {
+                    const cardKey = getDecisionActionCardKey(action, index);
+                    const isQueued = addedToQueueKeys.has(cardKey);
+                    const isQueueBusy = queueBusyKeys.has(cardKey);
+                    const queueError = queueErrorsByKey[cardKey];
+                    const actionLink = resolveDashboardActionUrl(action);
+
+                    return (
+                      <article
+                        key={cardKey}
+                        className={`decision-action-card priority-${(action.priority || "P3").toLowerCase()}`}
+                      >
+                        <div className="decision-action-top">
+                          <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
+                          <strong>{action.title}</strong>
+                        </div>
+                        <p className="decision-action-reason">{action.reason}</p>
+                        {action.expectedImpact
+                          ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p>
+                          : action.impactEstimateRsd != null
+                            ? <p className="decision-action-impact">Procenjeni uticaj: {fmtRsd(action.impactEstimateRsd, 0, "N/A")}</p>
+                            : null}
+                        <div className="decision-action-foot">
+                          <div className="decision-quality-stack">
+                            <span className="decision-confidence">
+                              Sigurnost preporuke: {formatDecisionConfidence(action.confidencePct)}
+                            </span>
+                            <span className="decision-confidence">
+                              Pouzdanost signala: {formatDecisionReliability(action.reliabilityPct)}
+                            </span>
+                            <span className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}>
+                              Data quality: {dataQualityStatusLabel(action.dataQualityStatus)}
+                            </span>
+                            {normalizeDataQualityStatus(action.dataQualityStatus) !== "good" ? (
+                              <Link to="/analytics/data-quality" className="decision-quality-link">
+                                Otvori kvalitet podataka
+                              </Link>
+                            ) : null}
+                            {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
+                          </div>
+                          <div className="decision-action-links">
+                            <Link to={actionLink} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                            <button
+                              type="button"
+                              className={`btn-add-to-queue${isQueued ? " added" : ""}`}
+                              title="Dodaj u centralni red akcija"
+                              disabled={isQueueBusy || isQueued}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (isQueueBusy || isQueued) return;
+                                setQueueBusyKeys((prev) => {
+                                  const next = new Set(prev);
+                                  next.add(cardKey);
+                                  return next;
+                                });
+                                setQueueErrorsByKey((prev) => {
+                                  if (!(cardKey in prev)) return prev;
+                                  const { [cardKey]: _discard, ...rest } = prev;
+                                  return rest;
+                                });
+                                try {
+                                  const actionInput = buildAnalyticsActionFromDashboardAction(action, currentActionFilters);
+                                  await upsertAnalyticsAction(actionInput);
+                                  setAddedToQueueKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(cardKey);
+                                    return next;
+                                  });
+                                } catch (reason) {
+                                  setQueueErrorsByKey((prev) => ({
+                                    ...prev,
+                                    [cardKey]: getErrorText(reason, "Akcija nije dodata u centralni red."),
+                                  }));
+                                } finally {
+                                  setQueueBusyKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(cardKey);
+                                    return next;
+                                  });
+                                }
+                              }}
+                            >
+                              {isQueueBusy ? "Dodajem..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
+                            </button>
+                            {queueError ? <small className="decision-action-error">{queueError}</small> : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <div className="analytics-exec-side">
+              <section className="analytics-panel analytics-exec-earn">
+                <h2>Gde zarađujemo?</h2>
+                <p className="section-note">Top dobavljaci i artikli po marznom doprinosu (top 5).</p>
+                {!executive || (executive.topSuppliers.length === 0 && executive.topMarginProducts.length === 0) ? (
+                  <div className="analytics-empty">Nema dovoljno signala za prikaz top lista.</div>
+                ) : (
+                  <div className="exec-two-tables">
+                    <div className="exec-table-wrap">
+                      <h3>Top dobavljaci</h3>
+                      <table className="exec-table">
+                        <thead>
+                          <tr>
+                            <th>Dobavljac</th>
+                            <th className="num">Prihod</th>
+                            <th className="num">Marzni doprinos</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(executive?.topSuppliers ?? []).slice(0, 5).map((item) => (
+                            <tr key={`${item.supplierId ?? "unknown"}:${item.supplierName}`}>
+                              <td><Link to={item.link}>{item.supplierName}</Link></td>
+                              <td className="num">{fmtRsd(item.revenue)}</td>
+                              <td className="num">{fmtRsd(item.marginContribution)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="exec-table-wrap">
+                      <h3>Top artikli</h3>
+                      <table className="exec-table">
+                        <thead>
+                          <tr>
+                            <th>Artikal</th>
+                            <th className="num">Marzni doprinos</th>
+                            <th className="num">Confidence</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(executive?.topMarginProducts ?? []).slice(0, 5).map((item) => (
+                            <tr key={item.key}>
+                              <td>
+                                <Link to={item.link} title={item.supplierName ? `Dobavljac: ${item.supplierName}` : undefined}>
+                                  {item.label}
+                                </Link>
+                              </td>
+                              <td className="num">{fmtRsd(item.marginContribution)}</td>
+                              <td className="num">
+                                <span className={`exec-pill dq-${normalizeDataQualityStatus(item.dataQualityStatus)}`}>{formatDecisionConfidence(item.confidencePct ?? null)}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="analytics-panel analytics-exec-lose">
+                <h2>Gde gubimo novac?</h2>
+                <p className="section-note">Najkriticniji negativni signali (top 5).</p>
+                {!executive || (executive.negativeSignals ?? []).length === 0 ? (
+                  <div className="analytics-empty">Nema dovoljno pouzdanih negativnih signala za prikaz.</div>
+                ) : (
+                  <div className="exec-signal-list">
+                    {(executive.negativeSignals ?? []).slice(0, 5).map((signal, idx) => (
+                      <article key={`${signal.signalType}-${idx}`} className={`exec-signal priority-${(signal.priority || "P3").toLowerCase()}`}>
+                        <div className="exec-signal-top">
+                          <span className={`priority ${(signal.priority || "P3").toLowerCase()}`}>{signal.priority || "P3"}</span>
+                          <strong>{signal.title}</strong>
+                        </div>
+                        <p>{signal.description}</p>
+                        <div className="exec-signal-foot">
+                          <span className={`exec-pill dq-${normalizeDataQualityStatus(signal.dataQualityStatus)}`}>
+                            Data quality: {dataQualityStatusLabel(signal.dataQualityStatus)}
+                          </span>
+                          <span className="exec-pill">{formatDecisionConfidence(signal.confidencePct ?? null)}</span>
+                          {signal.impactEstimateRsd != null ? <span className="exec-pill">Uticaj: {fmtRsd(signal.impactEstimateRsd, 0, "N/A")}</span> : null}
+                          <Link to={signal.link} className="exec-signal-link">Otvori</Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="analytics-panel analytics-exec-data-quality">
+                <h2>Kvalitet podataka</h2>
+                <p className="section-note">Sazetak problema koji blokiraju pouzdane preporuke.</p>
+                <div className="exec-dq-grid">
+                  <div><span>Bez dobavljaca</span><strong>{executive?.dataQualitySummary?.missingSupplierCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
+                  <div><span>Bez nabavne cene</span><strong>{executive?.dataQualitySummary?.missingCostCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
+                  <div><span>Nedovoljni signali</span><strong>{executive?.dataQualitySummary?.insufficientSignalCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
+                  <div><span>Ignorisani redovi</span><strong>{executive?.dataQualitySummary?.ignoredRowsCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
+                </div>
+                <Link to="/analytics/data-quality" className="exec-dq-cta">Otvori Data Quality</Link>
+              </section>
+            </div>
+          </section>
+        </>
+      )}
 
       <section className="analytics-section">
-        <h2 className="with-tip"><span>Pregledni dashboard</span><InfoTip text="Kljucne metrike za brzo poslovno odlucivanje." /></h2>
-        {loading && <div className="analytics-skeleton-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}</div>}
+        <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, raspodeli prodaje, zalihama i top proizvodima." /></h2>
+        {!showDetailedAnalysis ? (
+          <section className="analytics-panel analytics-details-collapsed">
+            <div className="details-collapsed-row">
+              <div>
+                <h3>Detalji i grafici</h3>
+                <p className="section-note">Napredne metrike, trendovi, top proizvodi i grafici su ispod ovog dugmeta.</p>
+              </div>
+              <button type="button" className="details-expand" onClick={() => setShowDetailedAnalysis(true)} disabled={loading}>
+                Prikazi detaljnu analizu
+              </button>
+            </div>
+          </section>
+        ) : null}
+        {showDetailedAnalysis && (
+          <>
         {!loading && summary && (
-          <div className="analytics-card-grid">
-            <MetricCard label="Ukupan promet" value={fmtRsd(summary.totalRevenue)} tone="good" infoTip={HELP.promet} />
-            <MetricCard label="Transakcije" value={fmtNumber(summary.totalTransactions)} infoTip={HELP.transakcije} />
-            <MetricCard label="Prodate jedinice" value={fmtNumber(summary.totalUnits)} infoTip={HELP.jedinice} />
-            <MetricCard label="Promet po danu" value={fmtRsd(derived.revenuePerDay)} />
-            <MetricCard label="Transakcije po danu" value={fmtNumber(derived.transactionsPerDay, 1)} />
-            <MetricCard label="Dostupnost SKU" value={fmtPct(derived.availablePct)} tone="good" infoTip={HELP.sku} />
-            <MetricCard label="Crvena zona zaliha" value={fmtPct(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
-            <MetricCard label="MA7 + Momentum" value={fmtRsd(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
-            <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
-            <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
-          </div>
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Dodatne metrike</span><InfoTip text="Ostali KPI-jevi i signali koji ne moraju biti iznad folda, ali su korisni za dublji uvid." /></h3>
+            <div className="analytics-card-grid compact">
+              <MetricCard label="Ukupan promet" value={fmtRsd(summary.totalRevenue)} tone="good" infoTip={HELP.promet} />
+              <MetricCard label="Transakcije" value={fmtNumber(summary.totalTransactions)} infoTip={HELP.transakcije} />
+              <MetricCard label="Prodate jedinice" value={fmtNumber(summary.totalUnits)} infoTip={HELP.jedinice} />
+              <MetricCard label="Promet po danu" value={fmtRsd(derived.revenuePerDay)} />
+              <MetricCard label="Transakcije po danu" value={fmtNumber(derived.transactionsPerDay, 1)} />
+              <MetricCard label="Dostupnost SKU" value={fmtPct(derived.availablePct)} tone="good" infoTip={HELP.sku} />
+              <MetricCard label="Crvena zona zaliha" value={fmtPct(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
+              <MetricCard label="MA7 + Momentum" value={fmtRsd(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
+              <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
+              <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
+            </div>
+          </section>
         )}
 
         {!loading && (quickInsights || transactionStats) && (
-          <div className="analytics-card-grid compact">
-            <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvecim prometom." />
-            <MetricCard label="Promet najboljeg dana" value={fmtRsd(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
-            <MetricCard label="Top proizvod" value={quickInsights?.topProduct ?? "N/A"} tone="neutral" />
-            <MetricCard label="Stavki po transakciji" value={transactionStats ? fmtNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
-            <MetricCard label="Vrednost transakcije" value={transactionStats ? fmtRsd(transactionStats.avgTransactionValue) : "N/A"} tone="neutral" />
-          </div>
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Brzi uvidi</span><InfoTip text="Kratki signali za kontekst (nisu finalna preporuka)." /></h3>
+            <div className="analytics-card-grid compact">
+              <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvecim prometom." />
+              <MetricCard label="Promet najboljeg dana" value={fmtRsd(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
+              <MetricCard label="Top proizvod" value={quickInsights?.topProduct ?? "N/A"} tone="neutral" />
+              <MetricCard label="Stavki po transakciji" value={transactionStats ? fmtNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
+              <MetricCard label="Vrednost transakcije" value={transactionStats ? fmtRsd(transactionStats.avgTransactionValue) : "N/A"} tone="neutral" />
+            </div>
+          </section>
         )}
 
         {!loading && advanced && (
-          <div className="analytics-card-grid compact">
-            {advanced.cards.map((card: DashboardMetricCard) => (
-              <article key={card.key} className={`metric-card ${statusTone(card.status)}`}>
-                <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svezina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
-                <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
-                <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${fmtPct(card.trendPct)}` : statusLabel(card.status)}</small>
-                {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top sifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
-              </article>
-            ))}
-          </div>
+          <section className="analytics-panel">
+            <h3 className="with-tip"><span>Napredne kartice</span><InfoTip text="Napredne BI metrike (velocity, pareto, data health...). Koristi za analizu, ne kao jedini izvor odluke." /></h3>
+            <div className="analytics-card-grid compact">
+              {advanced.cards.map((card: DashboardMetricCard) => (
+                <article key={card.key} className={`metric-card ${statusTone(card.status)}`}>
+                  <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svezina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
+                  <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
+                  <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${fmtPct(card.trendPct)}` : statusLabel(card.status)}</small>
+                  {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top sifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         {!loading && advanced && (
@@ -1078,19 +1234,6 @@ export default function AnalyticsDashboard() {
             </div>
           </section>
         )}
-      </section>
-
-      <section className="analytics-section">
-        <h2 className="with-tip"><span>Detaljna analiza</span><InfoTip text="Detaljniji pogled po trendu, raspodeli prodaje, zalihama i top proizvodima." /></h2>
-        {!loading && summary && !showDetailedAnalysis && (
-          <section className="analytics-panel">
-            <div className="analytics-skeleton-grid">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="analytics-skeleton-card" />)}
-            </div>
-          </section>
-        )}
-        {showDetailedAnalysis && (
-          <>
         {!loading && (
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Trend i promene</span><InfoTip text="Brz pregled dinamike prodaje kroz MA7, MA30 i momentum poslednjih 7 dana." /></h3>

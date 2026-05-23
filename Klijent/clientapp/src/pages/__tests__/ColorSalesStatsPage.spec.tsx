@@ -89,8 +89,9 @@ describe("ColorSalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByText(/Prodaja po boji/i);
-    expect(title).toBeInTheDocument();
+    // Title is rendered both in AnalyticsTrustHeader and page header.
+    const titles = screen.getAllByRole("heading", { name: /Prodaja po boji/i });
+    expect(titles.length).toBeGreaterThan(0);
   });
 
   it("renders filter controls", () => {
@@ -105,7 +106,7 @@ describe("ColorSalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabel = screen.getByText("Period");
-    expect(periodLabel).toBeInTheDocument();
+    const periodLabels = screen.getAllByText("Period");
+    expect(periodLabels.length).toBeGreaterThan(0);
   });
 });

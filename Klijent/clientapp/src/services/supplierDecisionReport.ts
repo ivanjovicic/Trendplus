@@ -239,3 +239,71 @@ export async function openSupplierDecisionPrintPreview(
     window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
   }
 }
+
+function escapeCsv(value: unknown): string {
+  if (value == null) return "";
+  const text = String(value);
+  if (/[",\n;]/.test(text)) {
+    return `"${text.replace(/"/g, "\"\"")}"`;
+  }
+  return text;
+}
+
+function downloadTextFile(fileName: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export function exportSupplierDecisionReportCsv(payload: ResolvedAnalyticsTablePayload, fileName?: string) {
+  const columns = payload.columns.map((c) => c.key);
+  const header = payload.columns.map((c) => c.header || c.key);
+  const lines = [
+    header.map(escapeCsv).join(","),
+    ...payload.rows.map((row) => columns.map((key) => escapeCsv((row as Record<string, unknown>)[key])).join(",")),
+  ];
+
+  const safeName = (fileName ?? `supplier-decision-report-${new Date().toISOString().slice(0, 10)}.csv`)
+    .replace(/[^\w.-]+/g, "_");
+
+  downloadTextFile(safeName, lines.join("\n"), "text/csv");
+}
+
+export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalyticsTablePayload): string {
+  const get = (section: string, item: string) => {
+    const found = payload.rows.find((row) => String(row.section) === section && String(row.item) === item);
+    if (!found) return null;
+    const value = found.value == null ? "" : String(found.value);
+    return value.trim() ? value : null;
+  };
+
+  const supplier = get("Header", "Dobavljac") ?? payload.filters.find((f) => f.key === "supplier")?.value ?? "Dobavljac";
+  const period = get("Header", "Period") ?? payload.filters.find((f) => f.key === "period")?.value ?? "";
+  const revenue = get("KPI", "Prihod");
+  const margin = get("KPI", "Marzni doprinos");
+  const top5 = get("KPI", "Top 5 udeo");
+  const distribution = get("Preporuke", "Raspodela");
+
+  const dataQuality = payload.metadata.find((m) => m.key === "dataQualityStatus")?.value ?? null;
+  const freshness = payload.metadata.find((m) => m.key === "dataFreshness")?.value ?? null;
+  const recommendationAllowed = payload.metadata.find((m) => m.key === "recommendationAllowed")?.value ?? null;
+
+  const lines = [
+    `Supplier Decision Report`,
+    `Dobavljac: ${String(supplier)}`,
+    period ? `Period: ${String(period)}` : null,
+    revenue ? `Prihod: ${revenue}` : null,
+    margin ? `Marzni doprinos: ${margin}` : null,
+    top5 ? `Top 5 udeo: ${top5}` : null,
+    distribution ? `Preporuke (raspodela): ${distribution}` : null,
+    dataQuality != null ? `Data quality: ${String(dataQuality)}` : null,
+    freshness != null ? `Freshness: ${String(freshness)}` : null,
+    recommendationAllowed != null ? `Preporuke dozvoljene: ${String(recommendationAllowed)}` : null,
+  ].filter((line): line is string => Boolean(line && line.trim()));
+
+  return lines.join("\n");
+}

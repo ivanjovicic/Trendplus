@@ -1370,6 +1370,15 @@ public static class CachedAnalyticsEndpoints
                             storeId,
                             supplierId);
 
+                        response.Executive = BuildExecutiveDashboardSnapshot(
+                            productDecisionSnapshot,
+                            response.Summary,
+                            response.ValidationFreshness,
+                            fromDate,
+                            toDate,
+                            storeId,
+                            supplierId);
+
                         response.TopAdvanced = await TrySectionAsync(
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId, normalizedDataScope),
@@ -3018,6 +3027,321 @@ public static class CachedAnalyticsEndpoints
             .ToList();
     }
 
+    private static ExecutiveDashboardSnapshotDto BuildExecutiveDashboardSnapshot(
+        ProductDecisionCenterResponseDto? productDecisionSnapshot,
+        SalesSummaryDto? salesSummary,
+        DashboardValidationEndpointDto? validationFreshness,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var snapshot = new ExecutiveDashboardSnapshotDto();
+
+        var rows = productDecisionSnapshot?.Rows ?? [];
+        if (rows.Count == 0)
+        {
+            snapshot.TotalMarginContributionRsd = 0m;
+            snapshot.InventoryDangerValueRsd = 0m;
+            snapshot.DataQualitySummary = new ExecutiveDataQualitySummaryDto
+            {
+                MissingSupplierCount = 0,
+                MissingCostCount = 0,
+                InsufficientSignalCount = 0,
+                IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
+                FreshnessStatus = validationFreshness?.Status ?? "unknown"
+            };
+            return snapshot;
+        }
+
+        snapshot.TotalMarginContributionRsd = rows.Sum(x => x.MarginContribution);
+        snapshot.InventoryDangerValueRsd = productDecisionSnapshot?.Summary?.SlowStockCapital
+            ?? rows.Sum(x => x.SlowStockCapital);
+
+        // Kvalitet podataka: brojimo eksplicitno "rupe" (dobavljac, nabavna cena) i redove koji nemaju signal.
+        snapshot.DataQualitySummary = new ExecutiveDataQualitySummaryDto
+        {
+            MissingSupplierCount = rows.Count(x => !x.SupplierId.HasValue || string.IsNullOrWhiteSpace(x.SupplierName)),
+            MissingCostCount = rows.Count(x => x.MarginCoveragePct <= 1m),
+            InsufficientSignalCount = rows.Count(x =>
+                x.RecommendationStatus == "INSUFFICIENT_DATA" || x.RecommendationStatus == "FIX_DATA"),
+            IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
+            FreshnessStatus = validationFreshness?.Status ?? "unknown"
+        };
+
+        snapshot.TopSuppliers = rows
+            .GroupBy(x => new { x.SupplierId, SupplierName = (x.SupplierName ?? string.Empty).Trim() })
+            .Select(group =>
+            {
+                var supplierIdValue = group.Key.SupplierId;
+                var supplierNameValue = string.IsNullOrWhiteSpace(group.Key.SupplierName) ? "Nepoznat dobavljac" : group.Key.SupplierName;
+                var linkSupplierId = supplierIdValue;
+
+                var link = linkSupplierId.HasValue
+                    ? BuildDashboardActionLink("/analytics/supplier", fromDate, toDate, storeId, linkSupplierId.Value)
+                    : BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId);
+
+                return new ExecutiveTopSupplierDto
+                {
+                    SupplierId = supplierIdValue,
+                    SupplierName = supplierNameValue,
+                    Revenue = group.Sum(x => x.Revenue),
+                    MarginContribution = group.Sum(x => x.MarginContribution),
+                    Link = link
+                };
+            })
+            .OrderByDescending(x => x.MarginContribution)
+            .Take(5)
+            .ToList();
+
+        snapshot.TopMarginProducts = rows
+            .OrderByDescending(x => x.MarginContribution)
+            .Take(5)
+            .Select(row => new ExecutiveTopMarginItemDto
+            {
+                Key = row.ProductId.ToString(CultureInfo.InvariantCulture),
+                Label = string.IsNullOrWhiteSpace(row.Sku)
+                    ? row.ProductName
+                    : $"{row.Sku} - {row.ProductName}",
+                ItemType = "product",
+                ProductId = row.ProductId,
+                SupplierId = row.SupplierId,
+                SupplierName = row.SupplierName,
+                Revenue = row.Revenue,
+                MarginContribution = row.MarginContribution,
+                MarginPct = row.MarginPct,
+                DataQualityStatus = row.DataQualityStatus,
+                ConfidencePct = row.ConfidencePct,
+                Link = BuildExecutiveProductLink(row.ProductId, fromDate, toDate, storeId, supplierId)
+            })
+            .ToList();
+
+        snapshot.TopMarginCategories = rows
+            .GroupBy(x =>
+            {
+                var category = (x.Category ?? x.TipObuce ?? string.Empty).Trim();
+                return string.IsNullOrWhiteSpace(category) ? "Nepoznata kategorija" : category;
+            }, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new ExecutiveTopMarginItemDto
+            {
+                Key = group.Key,
+                Label = group.Key,
+                ItemType = "category",
+                ProductId = null,
+                SupplierId = null,
+                SupplierName = null,
+                Revenue = group.Sum(x => x.Revenue),
+                MarginContribution = group.Sum(x => x.MarginContribution),
+                MarginPct = null,
+                DataQualityStatus = ResolveWorstDataQualityStatus(group.Select(x => x.DataQualityStatus)),
+                ConfidencePct = (int)Math.Round(group.Average(x => (double)Math.Clamp(x.ConfidencePct, 0, 100))),
+                Link = BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId)
+            })
+            .OrderByDescending(x => x.MarginContribution)
+            .Take(5)
+            .ToList();
+
+        snapshot.NegativeSignals = BuildExecutiveNegativeSignals(rows, fromDate, toDate, storeId, supplierId);
+
+        return snapshot;
+    }
+
+    private static string BuildExecutiveProductLink(
+        int productId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var basePath = $"/analitika/top-products/{productId}";
+        var query = new List<string>();
+        if (fromDate.HasValue) query.Add($"fromDate={Uri.EscapeDataString(fromDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+        if (toDate.HasValue) query.Add($"toDate={Uri.EscapeDataString(toDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}");
+        if (storeId.HasValue) query.Add($"storeId={storeId.Value}");
+        if (supplierId.HasValue) query.Add($"supplierId={supplierId.Value}");
+        return query.Count == 0 ? basePath : $"{basePath}?{string.Join("&", query)}";
+    }
+
+    private static List<ExecutiveNegativeSignalDto> BuildExecutiveNegativeSignals(
+        List<ProductDecisionCenterRowDto> rows,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId)
+    {
+        var signals = new List<ExecutiveNegativeSignalDto>();
+
+        // Kandidati za snizenje / spora zaliha (kapital vezan)
+        foreach (var row in rows
+            .Where(x => x.RecommendationStatus == "MARKDOWN")
+            .OrderByDescending(x => x.SlowStockCapital)
+            .ThenByDescending(x => x.Revenue)
+            .Take(2))
+        {
+            signals.Add(new ExecutiveNegativeSignalDto
+            {
+                SignalType = "markdown",
+                Priority = "P1",
+                Title = $"Snizi: {row.Sku} {row.ProductName}",
+                Description = string.IsNullOrWhiteSpace(row.RecommendationReason)
+                    ? "Spor obrt i kapital vezan u zalihama."
+                    : row.RecommendationReason,
+                ImpactEstimateRsd = row.SlowStockCapital > 0 ? row.SlowStockCapital : null,
+                ConfidencePct = row.ConfidencePct,
+                DataQualityStatus = row.DataQualityStatus,
+                RecommendationStatus = row.RecommendationStatus,
+                RecommendationReason = row.RecommendationReason,
+                ProductId = row.ProductId,
+                Sku = row.Sku,
+                ProductName = row.ProductName,
+                SupplierName = row.SupplierName,
+                Link = BuildDashboardActionLink("/analytics/pre-nivelacija-prioriteti", fromDate, toDate, storeId, supplierId)
+            });
+        }
+
+        // Dead stock / 90+ dana bez prodaje (ili eksplicitno nema prodaje u periodu)
+        foreach (var row in rows
+            .Where(x => x.CurrentStock > 0 && (x.UnitsSold <= 0 || (x.DaysSinceLastSale.HasValue && x.DaysSinceLastSale.Value >= 90)))
+            .OrderByDescending(x => x.SlowStockCapital)
+            .ThenByDescending(x => x.Revenue)
+            .Take(1))
+        {
+            signals.Add(new ExecutiveNegativeSignalDto
+            {
+                SignalType = "dead_stock",
+                Priority = "P2",
+                Title = $"Mrtva zaliha: {row.Sku} {row.ProductName}",
+                Description = row.DaysSinceLastSale.HasValue
+                    ? $"Nema prodaje {row.DaysSinceLastSale.Value} dana, a zaliha je {row.CurrentStock} kom."
+                    : "Nema prodaje u periodu, a zaliha je i dalje prisutna.",
+                ImpactEstimateRsd = row.SlowStockCapital > 0 ? row.SlowStockCapital : null,
+                ConfidencePct = row.ConfidencePct,
+                DataQualityStatus = row.DataQualityStatus,
+                RecommendationStatus = row.RecommendationStatus,
+                RecommendationReason = row.RecommendationReason,
+                ProductId = row.ProductId,
+                Sku = row.Sku,
+                ProductName = row.ProductName,
+                SupplierName = row.SupplierName,
+                Link = BuildDashboardActionLink("/analytics/inventory", fromDate, toDate, storeId, supplierId)
+            });
+        }
+
+        // Lost sales / OOS rizik (replenish + lostSalesEstimate)
+        foreach (var row in rows
+            .Where(x => x.RecommendationStatus == "REPLENISH" && x.LostSalesEstimate > 0m)
+            .OrderByDescending(x => x.LostSalesEstimate)
+            .ThenByDescending(x => x.VelocityUnitsPerDay)
+            .Take(1))
+        {
+            signals.Add(new ExecutiveNegativeSignalDto
+            {
+                SignalType = "lost_sales",
+                Priority = "P1",
+                Title = $"Rizik rasprodaje: {row.Sku} {row.ProductName}",
+                Description = string.IsNullOrWhiteSpace(row.RecommendationReason)
+                    ? "Visok velocity i manjak zalihe; procenjena izgubljena prodaja raste."
+                    : row.RecommendationReason,
+                ImpactEstimateRsd = row.LostSalesEstimate > 0 ? row.LostSalesEstimate : null,
+                ConfidencePct = row.ConfidencePct,
+                DataQualityStatus = row.DataQualityStatus,
+                RecommendationStatus = row.RecommendationStatus,
+                RecommendationReason = row.RecommendationReason,
+                ProductId = row.ProductId,
+                Sku = row.Sku,
+                ProductName = row.ProductName,
+                SupplierName = row.SupplierName,
+                Link = BuildDashboardActionLink("/analytics/inventory", fromDate, toDate, storeId, supplierId)
+            });
+        }
+
+        // Veliki prihod ali niska marza (signal za pregovor / portfolio)
+        foreach (var row in rows
+            .Where(x => x.Revenue > 0m && x.MarginPct.HasValue && x.MarginPct.Value <= 5m && x.DataQualityStatus != "critical")
+            .OrderByDescending(x => x.Revenue)
+            .ThenByDescending(x => x.MarginPct)
+            .Take(1))
+        {
+            signals.Add(new ExecutiveNegativeSignalDto
+            {
+                SignalType = "low_margin_high_revenue",
+                Priority = "P2",
+                Title = $"Niska marza: {row.Sku} {row.ProductName}",
+                Description = $"Visok prihod ({row.Revenue.ToString("0.##", CultureInfo.InvariantCulture)} RSD) uz nisku marzu. Pregledaj cenu / nabavku.",
+                ImpactEstimateRsd = null,
+                ConfidencePct = row.ConfidencePct,
+                DataQualityStatus = row.DataQualityStatus,
+                RecommendationStatus = row.RecommendationStatus,
+                RecommendationReason = row.RecommendationReason,
+                ProductId = row.ProductId,
+                Sku = row.Sku,
+                ProductName = row.ProductName,
+                SupplierName = row.SupplierName,
+                Link = BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId)
+            });
+        }
+
+        // Fix data (ako postoji) - direktno vodi na data-quality
+        foreach (var row in rows
+            .Where(x => x.RecommendationStatus == "FIX_DATA")
+            .OrderByDescending(x => x.Revenue)
+            .Take(1))
+        {
+            signals.Add(new ExecutiveNegativeSignalDto
+            {
+                SignalType = "fix_data",
+                Priority = "P1",
+                Title = $"Proveri podatke: {row.Sku} {row.ProductName}",
+                Description = string.IsNullOrWhiteSpace(row.RecommendationReason)
+                    ? "Nedostaju kljucni atributi (dobavljac, nabavna cena, kategorija) - preporuke nisu pouzdane."
+                    : row.RecommendationReason,
+                ImpactEstimateRsd = row.Revenue > 0 ? row.Revenue : null,
+                ConfidencePct = row.ConfidencePct,
+                DataQualityStatus = row.DataQualityStatus,
+                RecommendationStatus = row.RecommendationStatus,
+                RecommendationReason = row.RecommendationReason,
+                ProductId = row.ProductId,
+                Sku = row.Sku,
+                ProductName = row.ProductName,
+                SupplierName = row.SupplierName,
+                Link = BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId)
+            });
+        }
+
+        return signals
+            .OrderBy(x => DecisionPriorityRank(x.Priority))
+            .ThenByDescending(x => x.ImpactEstimateRsd ?? 0m)
+            .Take(5)
+            .ToList();
+    }
+
+    private static string ResolveWorstDataQualityStatus(IEnumerable<string> statuses)
+    {
+        // Statuses are already normalized to: good|warning|critical|insufficient_data|unknown.
+        var worstRank = 0;
+        string worst = "unknown";
+        foreach (var status in statuses)
+        {
+            var normalized = (status ?? string.Empty).Trim();
+            var rank = normalized switch
+            {
+                "critical" => 4,
+                "warning" => 3,
+                "good" => 2,
+                "insufficient_data" => 1,
+                _ => 0
+            };
+
+            if (rank > worstRank)
+            {
+                worstRank = rank;
+                worst = string.IsNullOrWhiteSpace(normalized) ? "unknown" : normalized;
+            }
+        }
+
+        return worst;
+    }
+
     private static void TryAddDecisionActionFromRows(
         List<DashboardDecisionActionDto> actions,
         List<ProductDecisionCenterRowDto> rows,
@@ -4094,6 +4418,9 @@ public static class CachedAnalyticsEndpoints
                 PeriodFromUtc = periodFromUtc,
                 PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
                 Summary = new ProductDecisionCenterSummaryDto(),
+                TotalRows = 0,
+                AnalyzedRows = 0,
+                IgnoredRowsCount = 0,
                 Rows = [],
                 Meta = BuildSuccessMeta(
                     dataQualityStatus: "insufficient_data",
@@ -4335,6 +4662,8 @@ public static class CachedAnalyticsEndpoints
             PeriodFromUtc = periodFromUtc,
             PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
             TotalRows = sortedRows.Count,
+            AnalyzedRows = rows.Count,
+            IgnoredRowsCount = Math.Max(0, rows.Count - sortedRows.Count),
             Summary = new ProductDecisionCenterSummaryDto
             {
                 ReplenishCount = sortedRows.Count(x => x.RecommendationStatus == "REPLENISH"),
@@ -4758,6 +5087,8 @@ public class ProductDecisionCenterResponseDto
     public DateTime PeriodFromUtc { get; set; }
     public DateTime PeriodToUtc { get; set; }
     public int TotalRows { get; set; }
+    public int AnalyzedRows { get; set; }
+    public int IgnoredRowsCount { get; set; }
     public ProductDecisionCenterSummaryDto Summary { get; set; } = new();
     public List<ProductDecisionCenterRowDto> Rows { get; set; } = [];
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
@@ -4813,6 +5144,69 @@ public class DashboardDecisionActionDto
     public string? LinkLabel { get; set; }
 }
 
+public class ExecutiveTopSupplierDto
+{
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = string.Empty;
+    public decimal Revenue { get; set; }
+    public decimal MarginContribution { get; set; }
+    public string Link { get; set; } = "/analytics/supplier";
+}
+
+public class ExecutiveTopMarginItemDto
+{
+    public string Key { get; set; } = string.Empty; // productId or category name
+    public string Label { get; set; } = string.Empty;
+    public string ItemType { get; set; } = "product"; // product|category
+    public int? ProductId { get; set; }
+    public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal MarginContribution { get; set; }
+    public decimal? MarginPct { get; set; }
+    public string DataQualityStatus { get; set; } = "insufficient_data";
+    public int? ConfidencePct { get; set; }
+    public string Link { get; set; } = "/analytics";
+}
+
+public class ExecutiveNegativeSignalDto
+{
+    public string SignalType { get; set; } = "unknown";
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Priority { get; set; } = "P3";
+    public decimal? ImpactEstimateRsd { get; set; }
+    public int? ConfidencePct { get; set; }
+    public string DataQualityStatus { get; set; } = "insufficient_data";
+    public string? RecommendationStatus { get; set; }
+    public string? RecommendationReason { get; set; }
+    public int? ProductId { get; set; }
+    public string? Sku { get; set; }
+    public string? ProductName { get; set; }
+    public string? SupplierName { get; set; }
+    public string Link { get; set; } = "/analytics";
+}
+
+public class ExecutiveDataQualitySummaryDto
+{
+    public int MissingSupplierCount { get; set; }
+    public int MissingCostCount { get; set; }
+    public int InsufficientSignalCount { get; set; }
+    public int IgnoredRowsCount { get; set; }
+    public string FreshnessStatus { get; set; } = "unknown";
+}
+
+public class ExecutiveDashboardSnapshotDto
+{
+    public decimal TotalMarginContributionRsd { get; set; }
+    public decimal InventoryDangerValueRsd { get; set; }
+    public List<ExecutiveTopSupplierDto> TopSuppliers { get; set; } = [];
+    public List<ExecutiveTopMarginItemDto> TopMarginProducts { get; set; } = [];
+    public List<ExecutiveTopMarginItemDto> TopMarginCategories { get; set; } = [];
+    public List<ExecutiveNegativeSignalDto> NegativeSignals { get; set; } = [];
+    public ExecutiveDataQualitySummaryDto DataQualitySummary { get; set; } = new();
+}
+
 public class DashboardValidationDto
 {
     public string Severity { get; set; } = "info";
@@ -4862,6 +5256,7 @@ public class AnalyticsDashboardBootstrapDto
     public DashboardValidationEndpointDto? ValidationFreshness { get; set; }
     public DashboardValidationEndpointDto? ValidationLostSales { get; set; }
     public List<DashboardDecisionActionDto> DecisionActions { get; set; } = [];
+    public ExecutiveDashboardSnapshotDto? Executive { get; set; }
     public List<string> Errors { get; set; } = [];
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
     {

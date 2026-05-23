@@ -10,6 +10,7 @@ import type {
   DataQualitySortDir,
   DataQualityTopOffendersResult,
   DataQualityTrendResult,
+  PilotDataQualityIntakeReport,
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardValidationEndpoint,
@@ -857,6 +858,27 @@ export async function getAnalyticsDataQualityTrend(
     "/api/analytics/data-quality/trend",
     params,
     "Greska pri ucitavanju data quality trenda"
+  );
+}
+
+export async function getPilotDataQualityIntakeReport(paramsInput: {
+  fromDate?: string | null;
+  toDate?: string | null;
+  storeId?: number | null;
+  supplierId?: number | null;
+  dataScope?: string | null;
+}): Promise<PilotDataQualityIntakeReport> {
+  const params = new URLSearchParams();
+  if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
+  if (paramsInput.toDate) params.set("toDate", paramsInput.toDate);
+  if (paramsInput.storeId != null) params.set("storeId", String(paramsInput.storeId));
+  if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
+  if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
+
+  return fetchJson(
+    "/api/analytics/data-quality/intake-report",
+    params,
+    "Greska pri ucitavanju pilot intake report-a"
   );
 }
 

@@ -1,0 +1,66 @@
+.supplier-decision-report-page {
+  padding: 18px 0;
+}
+
+.sdrp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sdrp-head h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.sdrp-head p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.sdrp-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sdrp-back {
+  text-decoration: none;
+  color: var(--text-primary);
+  border: 1px solid var(--border-muted);
+  background: var(--surface-elevated);
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.sdrp-print {
+  border: 1px solid var(--border-muted);
+  background: var(--accent-primary, #2563eb);
+  color: var(--text-on-primary, #ffffff);
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+@media print {
+  .sdrp-head,
+  .sdrp-actions,
+  .sdrp-back,
+  .sdrp-print {
+    display: none !important;
+  }
+
+  .supplier-decision-report-page {
+    padding: 0 !important;
+  }
+}
+

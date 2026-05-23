@@ -13,8 +13,8 @@ vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
 
 describe("AnalyticsDashboard (integration)", () => {
   const bootstrapResponse = {
-    summary: { totalRevenue: 12345, totalItems: 10, supplierCount: 5 },
-    inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+    summary: { totalRevenue: 12345, totalTransactions: 42, totalUnits: 120, avgBasketValue: 345, avgItemPrice: 102 },
+    inventory: { totalSkuCount: 100, totalOnHand: 250, outOfStockCount: 5, lowStockCount: 10 },
     dailySales: [],
     categoryData: [],
     genderData: [],
@@ -30,6 +30,16 @@ describe("AnalyticsDashboard (integration)", () => {
     validationCompleteness: null,
     validationFreshness: null,
     validationLostSales: null,
+    decisionActions: [],
+    executive: {
+      totalMarginContributionRsd: 2200,
+      inventoryDangerValueRsd: 1100,
+      topSuppliers: [],
+      topMarginProducts: [],
+      topMarginCategories: [],
+      negativeSignals: [],
+      dataQualitySummary: { missingSupplierCount: 0, missingCostCount: 0, insufficientSignalCount: 0, ignoredRowsCount: 0, freshnessStatus: "unknown" },
+    },
     errors: [],
   };
 
@@ -60,7 +70,7 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const titleMatches = screen.getAllByText("Pregled analitike");
+    const titleMatches = screen.getAllByText("Pregled poslovanja");
     expect(titleMatches.length).toBeGreaterThan(0);
   });
 
@@ -82,7 +92,7 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const dashboardHeader = screen.getByText("Pregledni dashboard");
+    const dashboardHeader = screen.getByText("Ključni KPI-jevi");
     expect(dashboardHeader).toBeInTheDocument();
   });
 

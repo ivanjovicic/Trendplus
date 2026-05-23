@@ -328,9 +328,69 @@ export interface ProductDecisionCenterResponse {
   periodFromUtc: string;
   periodToUtc: string;
   totalRows: number;
+  analyzedRows?: number;
+  ignoredRowsCount?: number;
   summary: ProductDecisionCenterSummary;
   rows: ProductDecisionCenterItem[];
   meta?: AnalyticsResponseMeta | null;
+}
+
+export interface ExecutiveTopSupplier {
+  supplierId?: number | null;
+  supplierName: string;
+  revenue: number;
+  marginContribution: number;
+  link: string;
+}
+
+export interface ExecutiveTopMarginItem {
+  key: string;
+  label: string;
+  itemType: "product" | "category" | string;
+  productId?: number | null;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  revenue: number;
+  marginContribution: number;
+  marginPct?: number | null;
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  confidencePct?: number | null;
+  link: string;
+}
+
+export interface ExecutiveNegativeSignal {
+  signalType: string;
+  title: string;
+  description: string;
+  priority: "P1" | "P2" | "P3" | string;
+  impactEstimateRsd?: number | null;
+  confidencePct?: number | null;
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  recommendationStatus?: string | null;
+  recommendationReason?: string | null;
+  productId?: number | null;
+  sku?: string | null;
+  productName?: string | null;
+  supplierName?: string | null;
+  link: string;
+}
+
+export interface ExecutiveDataQualitySummary {
+  missingSupplierCount: number;
+  missingCostCount: number;
+  insufficientSignalCount: number;
+  ignoredRowsCount: number;
+  freshnessStatus: string;
+}
+
+export interface ExecutiveDashboardSnapshot {
+  totalMarginContributionRsd: number;
+  inventoryDangerValueRsd: number;
+  topSuppliers: ExecutiveTopSupplier[];
+  topMarginProducts: ExecutiveTopMarginItem[];
+  topMarginCategories: ExecutiveTopMarginItem[];
+  negativeSignals: ExecutiveNegativeSignal[];
+  dataQualitySummary: ExecutiveDataQualitySummary;
 }
 
 export interface AnalyticsDashboardBootstrap {
@@ -352,6 +412,7 @@ export interface AnalyticsDashboardBootstrap {
   validationFreshness: DashboardValidationEndpoint | null;
   validationLostSales: DashboardValidationEndpoint | null;
   decisionActions: DashboardDecisionAction[];
+  executive?: ExecutiveDashboardSnapshot | null;
   errors: string[];
   meta?: AnalyticsResponseMeta | null;
 }
@@ -435,6 +496,90 @@ export interface DataQualityTrendResult {
   days: number;
   dataScope: string;
   points: DataQualityTrendPoint[];
+  meta?: AnalyticsResponseMeta | null;
+}
+
+export type PilotDataQualityReadinessStatus = "Ready" | "UsableWithWarnings" | "PilotLimited" | "FixDataFirst" | string;
+
+export interface PilotDataQualityIntakeLoadedData {
+  articleCount: number;
+  supplierCount: number;
+  storeCount: number;
+  salesReceiptCount: number;
+  salesLineCount: number;
+  lastImportSourceFile?: string | null;
+  lastImportSourcePath?: string | null;
+  rowsRead: number;
+  rowsAccepted: number;
+  rowsWritten: number;
+  ignoredRows: number;
+  totalErrors: number;
+}
+
+export interface PilotDataQualityIntakeIssueItem {
+  key: string;
+  label: string;
+  severity: "critical" | "warning" | string;
+  count: number;
+  impact: string;
+}
+
+export interface PilotDataQualityIntakeIssues {
+  missingSupplierCount: number;
+  missingShoeTypeCount: number;
+  missingCostCount: number;
+  missingCategoryCount: number;
+  missingSizeCount: number;
+  missingColorCount: number;
+  invalidNameCount: number;
+  duplicateSkuCount: number;
+  blockedRecommendationsCount: number;
+  items: PilotDataQualityIntakeIssueItem[];
+}
+
+export interface PilotDataQualityIntakeImpactItem {
+  key: string;
+  label: string;
+  value: string;
+  description: string;
+}
+
+export interface PilotDataQualityIntakeImpact {
+  revenueAtRiskRsd: number;
+  reliabilityPct: number;
+  orphanArticleCount: number;
+  missingCostRevenueSharePct: number;
+  unknownSupplierRevenueSharePct: number;
+  items: PilotDataQualityIntakeImpactItem[];
+}
+
+export interface PilotDataQualityIntakeActionItem {
+  priority: string;
+  title: string;
+  reason: string;
+  nextStep: string;
+}
+
+export interface PilotDataQualityIntakeActions {
+  items: PilotDataQualityIntakeActionItem[];
+}
+
+export interface PilotDataQualityIntakeReport {
+  generatedAtUtc: string;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  dataScope: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  lastImportAtUtc?: string | null;
+  readinessStatus: PilotDataQualityReadinessStatus;
+  readinessLabel: string;
+  readinessScore: number;
+  summary: string;
+  loadedData: PilotDataQualityIntakeLoadedData;
+  issues: PilotDataQualityIntakeIssues;
+  impact: PilotDataQualityIntakeImpact;
+  recommendedActions: PilotDataQualityIntakeActions;
   meta?: AnalyticsResponseMeta | null;
 }
 

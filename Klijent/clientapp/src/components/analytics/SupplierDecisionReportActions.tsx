@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import {
+  buildSupplierDecisionReportSummaryText,
+  exportSupplierDecisionReportCsv,
   exportSupplierDecisionReportExcel,
   exportSupplierDecisionReportPdf,
   openSupplierDecisionPrintPreview,
 } from "../../services/supplierDecisionReport";
+import { savePrintPayload } from "../../services/analyticsTableState";
 
 type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
@@ -12,16 +16,52 @@ type SupplierDecisionReportActionsProps = {
 };
 
 export default function SupplierDecisionReportActions({ payload, disabled = false }: SupplierDecisionReportActionsProps) {
-  const [busy, setBusy] = useState<"print" | "excel" | "pdf" | null>(null);
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState<"preview" | "copy" | "csv" | "print" | "excel" | "pdf" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   const actionDisabled = disabled || !payload || busy !== null;
 
-  const run = async (type: "print" | "excel" | "pdf") => {
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
+  const run = async (type: "preview" | "copy" | "csv" | "print" | "excel" | "pdf") => {
     if (!payload || actionDisabled) return;
     setBusy(type);
     setStatus(null);
     try {
+      if (type === "preview") {
+        const stateKey = savePrintPayload(payload);
+        navigate(`/analytics/supplier/report?stateKey=${encodeURIComponent(stateKey)}`);
+        return;
+      }
+
+      if (type === "copy") {
+        const text = buildSupplierDecisionReportSummaryText(payload);
+        await copyToClipboard(text);
+        setStatus("Sazetak je kopiran u clipboard.");
+        return;
+      }
+
+      if (type === "csv") {
+        exportSupplierDecisionReportCsv(payload);
+        setStatus("CSV izvestaj je preuzet.");
+        return;
+      }
+
       if (type === "print") {
         await openSupplierDecisionPrintPreview(payload);
         setStatus("Print preview je otvoren u novom tabu.");
@@ -48,10 +88,35 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       <button
         type="button"
         className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+        onClick={() => void run("preview")}
+        disabled={actionDisabled}
+      >
+        {busy === "preview" ? "Otvaram..." : "Pregled u aplikaciji"}
+      </button>
+      <button
+        type="button"
+        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
         onClick={() => void run("print")}
         disabled={actionDisabled}
       >
         {busy === "print" ? "Otvaram..." : "Print izvestaj"}
+      </button>
+      <button
+        type="button"
+        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+        onClick={() => void run("copy")}
+        disabled={actionDisabled}
+        title="Kopira executive sazetak izvestaja"
+      >
+        {busy === "copy" ? "Kopiram..." : "Kopiraj sazetak"}
+      </button>
+      <button
+        type="button"
+        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+        onClick={() => void run("csv")}
+        disabled={actionDisabled}
+      >
+        {busy === "csv" ? "Izvoz..." : "Export CSV"}
       </button>
       <button
         type="button"

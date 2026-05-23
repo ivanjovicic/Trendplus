@@ -11,6 +11,7 @@ import {
   getAnalyticsRefreshStatus,
   getAnalyticsDataQualityHealth,
   getAnalyticsDataQualityTrend,
+  getPilotDataQualityIntakeReport,
   getDataQualityIssues,
   getDataQualityTopOffenders,
 } from "../services/analyticsApi";
@@ -22,6 +23,7 @@ import type {
   DataQualityIssueType,
   DataQualitySortBy,
   DataQualitySortDir,
+  PilotDataQualityIntakeReport,
   DataQualityTopOffendersResult,
   DataQualityTrendPoint,
   DataQualityTrendResult,
@@ -37,6 +39,11 @@ const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "dange
 const LOW_PRIORITY_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
   { key: "invalidName", label: "Neispravni nazivi", tone: "neutral" },
 ];
+
+const VIEW_TABS = [
+  { key: "issues", label: "Detalji problema" },
+  { key: "intake", label: "Pilot intake report" },
+] as const;
 
 const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
@@ -91,6 +98,188 @@ function formatDateOnly(value: string | null): string {
 
 function formatShortDate(value: string): string {
   return new Date(value).toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString("sr-RS");
+}
+
+function escapeCsv(value: string | number | null | undefined): string {
+  const text = value == null ? "" : String(value);
+  if (/[",\n;]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  return text;
+}
+
+function downloadTextFile(fileName: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildReportCsv(report: PilotDataQualityIntakeReport): string {
+  const rows = [
+    ["Field", "Value"],
+    ["Readiness status", report.readinessStatus],
+    ["Readiness label", report.readinessLabel],
+    ["Readiness score", report.readinessScore],
+    ["Summary", report.summary],
+    ["Last import", report.lastImportAtUtc ?? ""],
+    ["Articles", report.loadedData.articleCount],
+    ["Suppliers", report.loadedData.supplierCount],
+    ["Stores", report.loadedData.storeCount],
+    ["Sales receipts", report.loadedData.salesReceiptCount],
+    ["Sales lines", report.loadedData.salesLineCount],
+    ["Missing supplier", report.issues.missingSupplierCount],
+    ["Missing cost", report.issues.missingCostCount],
+    ["Missing category", report.issues.missingCategoryCount],
+    ["Missing shoe type", report.issues.missingShoeTypeCount],
+    ["Missing size", report.issues.missingSizeCount],
+    ["Missing color", report.issues.missingColorCount],
+    ["Invalid names", report.issues.invalidNameCount],
+    ["Duplicate PLU", report.issues.duplicateSkuCount],
+  ];
+
+  return rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+}
+
+function buildReportSummary(report: PilotDataQualityIntakeReport): string {
+  return [
+    `Pilot intake report: ${report.readinessLabel} (${report.readinessScore}/100)`,
+    `Last import: ${report.lastImportAtUtc ? formatDateTime(report.lastImportAtUtc) : "-"}`,
+    `Loaded articles: ${formatCount(report.loadedData.articleCount)}`,
+    `Missing supplier: ${formatCount(report.issues.missingSupplierCount)}`,
+    `Missing cost: ${formatCount(report.issues.missingCostCount)}`,
+    `Blocked recommendations: ${formatCount(report.issues.blockedRecommendationsCount)}`,
+    `Revenue at risk: ${formatCurrency(report.impact.revenueAtRiskRsd)}`,
+  ].join("\n");
+}
+
+function PilotIntakeReportPanel({
+  report,
+  loading,
+  error,
+  onPrint,
+  onExportCsv,
+  onCopy,
+}: {
+  report: PilotDataQualityIntakeReport | null;
+  loading: boolean;
+  error: string | null;
+  onPrint: () => void;
+  onExportCsv: () => void;
+  onCopy: () => void;
+}) {
+  if (error) {
+    return <div className="data-quality-inline-error">{error}</div>;
+  }
+
+  if (loading && !report) {
+    return <div className="data-quality-loading">Ucitavam pilot intake report...</div>;
+  }
+
+  if (!report) {
+    return null;
+  }
+
+  return (
+    <section className="data-quality-intake-report">
+      <div className="data-quality-section-head">
+        <div>
+          <h2>Pilot Data Quality Intake Report</h2>
+          <p>{report.summary}</p>
+        </div>
+        <div className="data-quality-intake-actions">
+          <button type="button" onClick={onPrint}>Stampaj</button>
+          <button type="button" onClick={onExportCsv}>Izvezi CSV</button>
+          <button type="button" onClick={onCopy}>Kopiraj sazetak</button>
+        </div>
+      </div>
+
+      <div className={`data-quality-score-card ${report.readinessStatus === "Ready" ? "excellent" : report.readinessStatus === "FixDataFirst" ? "critical" : "warning"}`}>
+        <span className="data-quality-score-label">Readiness</span>
+        <strong>{report.readinessScore}</strong>
+        <span className="data-quality-score-status">{report.readinessLabel}</span>
+        <p>{report.summary}</p>
+      </div>
+
+      <div className="data-quality-health-grid">
+        <article className="data-quality-health-card ok">
+          <span className="data-quality-health-label">Ucitanо</span>
+          <strong>{formatCount(report.loadedData.articleCount)} artikala</strong>
+          <p>{formatCount(report.loadedData.supplierCount)} dobavljaca, {formatCount(report.loadedData.storeCount)} objekata</p>
+        </article>
+        <article className="data-quality-health-card">
+          <span className="data-quality-health-label">Prodaja u prozoru</span>
+          <strong>{formatCount(report.loadedData.salesReceiptCount)} racuna</strong>
+          <p>{formatCount(report.loadedData.salesLineCount)} stavki</p>
+        </article>
+        <article className="data-quality-health-card">
+          <span className="data-quality-health-label">Poslednji import</span>
+          <strong>{report.lastImportAtUtc ? formatDateTime(report.lastImportAtUtc) : "-"}</strong>
+          <p>{report.loadedData.lastImportSourceFile ?? report.loadedData.lastImportSourcePath ?? "Nema ucitanog batch-a"}</p>
+        </article>
+        <article className="data-quality-health-card warning">
+          <span className="data-quality-health-label">Ignorisani redovi</span>
+          <strong>{formatCount(report.loadedData.ignoredRows)}</strong>
+          <p>{formatCount(report.loadedData.totalErrors)} total errors</p>
+        </article>
+      </div>
+
+      <div className="data-quality-intake-grid">
+        <section className="data-quality-card">
+          <div className="data-quality-section-head">
+            <div><h3>Issues</h3><p>Sta nedostaje i sta blokira pilot.</p></div>
+          </div>
+          <div className="data-quality-intake-list">
+            {report.issues.items.map((item) => (
+              <article key={item.key} className={`data-quality-intake-chip ${item.severity}`}>
+                <strong>{item.label}</strong>
+                <span>{formatCount(item.count)}</span>
+                <p>{item.impact}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="data-quality-card">
+          <div className="data-quality-section-head">
+            <div><h3>Uticaj</h3><p>Kako problemi uticu na pouzdanost.</p></div>
+          </div>
+          <div className="data-quality-intake-list">
+            {report.impact.items.map((item) => (
+              <article key={item.key} className="data-quality-intake-chip neutral">
+                <strong>{item.label}</strong>
+                <span>{item.value}</span>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="data-quality-card">
+          <div className="data-quality-section-head">
+            <div><h3>Preporucene akcije</h3><p>Sta treba uraditi pre prikaza glavnih dashboarda.</p></div>
+          </div>
+          <div className="data-quality-report-actions">
+            {report.recommendedActions.items.map((action) => (
+              <article key={`${action.priority}-${action.title}`}>
+                <strong>{action.priority} {action.title}</strong>
+                <p>{action.reason}</p>
+                <span>{action.nextStep}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
 }
 
 function issueLabel(issueType: DataQualityIssueType): string {
@@ -314,9 +503,11 @@ export default function DataQualityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<DataQualityIssueListResult | null>(null);
   const [health, setHealth] = useState<AnalyticsDataQualityHealth | null>(null);
+  const [intakeReport, setIntakeReport] = useState<PilotDataQualityIntakeReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
+  const [intakeReportError, setIntakeReportError] = useState<string | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
   const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
@@ -338,6 +529,7 @@ export default function DataQualityPage() {
   const contextFocus = searchParams.get("focus");
   const contextSupplierId = searchParams.get("supplierId");
   const returnTo = searchParams.get("returnTo");
+  const viewMode = searchParams.get("view") === "intake" ? "intake" : "issues";
 
   const supplierContextQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -383,8 +575,9 @@ export default function DataQualityPage() {
     setLoading(true);
     setError(null);
     setHealthError(null);
+    setIntakeReportError(null);
 
-    const [issuesResult, healthResult, refreshResult] = await Promise.allSettled([
+    const [issuesResult, healthResult, refreshResult, intakeResult] = await Promise.allSettled([
       getDataQualityIssues({
         type: issueType,
         page,
@@ -396,6 +589,13 @@ export default function DataQualityPage() {
       }),
       getAnalyticsDataQualityHealth(undefined, contextDataScope),
       getAnalyticsRefreshStatus(),
+      getPilotDataQualityIntakeReport({
+        fromDate: contextFromDate,
+        toDate: contextToDate,
+        storeId: contextStoreId ? Number(contextStoreId) : null,
+        supplierId: contextSupplierId ? Number(contextSupplierId) : null,
+        dataScope: contextDataScope,
+      }),
     ]);
 
     if (issuesResult.status === "fulfilled") {
@@ -440,8 +640,20 @@ export default function DataQualityPage() {
       );
     }
 
+    if (intakeResult.status === "fulfilled") {
+      setIntakeReport(intakeResult.value);
+      setIntakeReportError(null);
+    } else {
+      setIntakeReport(null);
+      setIntakeReportError(
+        intakeResult.reason instanceof Error
+          ? intakeResult.reason.message
+          : "Pilot intake report nije dostupan."
+      );
+    }
+
     setLoading(false);
-  }, [contextDataScope, issueType, page, pageSize, q, sortBy, sortDir]);
+  }, [contextDataScope, contextFromDate, contextStoreId, contextSupplierId, contextToDate, issueType, page, pageSize, q, sortBy, sortDir]);
 
   useEffect(() => {
     void load();
@@ -498,13 +710,46 @@ export default function DataQualityPage() {
   };
 
   const showAdvancedContext = Boolean(contextIncludeUnknown || contextFocus || contextSupplierId || contextSezonaId);
-  const trustDataQualityStatus = health?.scoreStatus === "critical"
-    ? "critical"
-    : health?.scoreStatus === "warning"
-      ? "warning"
-      : health?.scoreStatus === "good" || health?.scoreStatus === "excellent"
+  const trustDataQualityStatus = intakeReport
+    ? intakeReport.readinessStatus === "FixDataFirst"
+      ? "critical"
+      : intakeReport.readinessStatus === "Ready"
         ? "good"
-        : health?.meta?.dataQualityStatus ?? null;
+        : "warning"
+    : health?.scoreStatus === "critical"
+      ? "critical"
+      : health?.scoreStatus === "warning"
+        ? "warning"
+        : health?.scoreStatus === "good" || health?.scoreStatus === "excellent"
+          ? "good"
+          : health?.meta?.dataQualityStatus ?? null;
+
+  const trustSummary = intakeReport
+    ? {
+        missingSupplierCount: intakeReport.issues.missingSupplierCount,
+        missingCostCount: intakeReport.issues.missingCostCount,
+        missingCategoryCount: intakeReport.issues.missingCategoryCount,
+        insufficientSignalCount: intakeReport.issues.blockedRecommendationsCount,
+        ignoredRowsCount: intakeReport.loadedData.ignoredRows,
+      }
+    : {
+        missingSupplierCount: health?.orphanArticleCount ?? null,
+      };
+
+  const reportClipboardText = intakeReport ? buildReportSummary(intakeReport) : "";
+
+  const handlePrintReport = () => window.print();
+  const handleExportReportCsv = () => {
+    if (!intakeReport) return;
+    downloadTextFile(`pilot-data-quality-intake-${intakeReport.generatedAtUtc.slice(0, 10)}.csv`, buildReportCsv(intakeReport), "text/csv");
+  };
+  const handleCopyReport = async () => {
+    if (!reportClipboardText) return;
+    await navigator.clipboard.writeText(reportClipboardText);
+  };
+  const changeView = (nextView: "issues" | "intake") => {
+    updateParams({ view: nextView, page: 1 });
+  };
 
   return (
     <div className="data-quality-page">
@@ -519,9 +764,7 @@ export default function DataQualityPage() {
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
         dataSource={contextDataScope ? `Data quality (${contextDataScope})` : "Data quality read model"}
         dataQualityStatus={trustDataQualityStatus}
-        dataQualitySummary={{
-          missingSupplierCount: health?.orphanArticleCount ?? null,
-        }}
+        dataQualitySummary={trustSummary}
         mode="report"
         emptyStateReason={!loading && !error && data?.items.length === 0 ? (data?.meta?.message ?? "Nema otvorenih data quality problema za izabrani filter.") : null}
         methodologyHref="/analytics/data-quality"
@@ -553,6 +796,32 @@ export default function DataQualityPage() {
         loading={loading}
         error={refreshStatusError}
       />
+
+      <div className="data-quality-tabs" role="tablist" aria-label="Data quality views">
+        {VIEW_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={viewMode === tab.key}
+            className={`data-quality-tab ${viewMode === tab.key ? "active" : ""} neutral`}
+            onClick={() => changeView(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "intake" ? (
+        <PilotIntakeReportPanel
+          report={intakeReport}
+          loading={loading}
+          error={intakeReportError}
+          onPrint={handlePrintReport}
+          onExportCsv={handleExportReportCsv}
+          onCopy={handleCopyReport}
+        />
+      ) : null}
 
       {!loading && !error && data?.meta?.isPartial ? (
         <div className="data-quality-loading" role="status">
