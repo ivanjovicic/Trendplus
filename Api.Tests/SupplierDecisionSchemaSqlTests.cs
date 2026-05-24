@@ -122,6 +122,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("string EffectivePeriodLabel", endpoint);
         Assert.Contains("string DataCoverageStatus", endpoint);
         Assert.Contains("bool UsedFallback", endpoint);
+        Assert.Contains("string? FallbackReasonCode", endpoint);
         Assert.Contains("DateTime? LastRefreshAtUtc", endpoint);
         Assert.Contains("int RowCount", endpoint);
         Assert.Contains("int IgnoredRowCount", endpoint);
@@ -132,8 +133,8 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("string Coverage", endpoint);
 
         Assert.Contains("ScorecardTrustMetadata? TrustMetadata = null", endpoint);
-        Assert.Contains("BuildScorecardTrustMetadata(rows, filters)", endpoint);
-        Assert.Contains("BuildScorecardTrustMetadata(ordered, activeFilters)", endpoint);
+        Assert.Contains("BuildScorecardTrustMetadata(dataset, filters)", endpoint);
+        Assert.Contains("BuildScorecardTrustMetadata(orderedDataset, activeFilters)", endpoint);
         Assert.Contains("bool RecommendationAllowed", endpoint);
         Assert.Contains("ResolveRequestedDataset", endpoint);
         Assert.Contains("BuildEffectivePeriodLabel", endpoint);
@@ -172,6 +173,13 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))", endpoint);
         Assert.Contains("MISSING_TABLE", endpoint);
         Assert.Contains("SQL_TIMEOUT", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionDatasetCacheKeyIsVersionedWhenPayloadChanges()
+    {
+        var keys = ReadRepoFile("Infrastructure/Services/Caching/IAnalyticsCacheService.cs");
+        Assert.Contains("supplier-decision-hub:dataset:v2:", keys);
     }
 
     private static void AssertInOrder(string text, params string[] fragments)

@@ -43,6 +43,24 @@ If backend omits recommendation
 -------------------------------
 - UI must show either "Nedovoljno podataka" / "Preporuka nije dostupna" rather than inventing a recommendation.
 
+Period Semantics, Fallback, And Recommendation Gating
+-----------------------------------------------------
+Many analytics surfaces operate on a *requested* period (what the user selected) but may use a wider *effective dataset* under the hood (precomputed cache/MV window) as a helper signal.
+
+Rules:
+- Backend MUST always expose both `requestedDataset` and `effectiveDataset` and explicitly signal `usedFallback=true` when they differ.
+- Backend MUST include `fallbackReasonCode` + `fallbackReason` whenever `usedFallback=true`.
+- UI MUST render the effective dataset label (and a visible fallback banner) when `usedFallback=true`.
+- Backend MUST set `recommendationAllowed=false` whenever:
+  - `usedFallback=true`, or
+  - `dataCoverageStatus=insufficient_data`, or
+  - signal quality is not "good" (low sample, missing master data, etc).
+- UI MUST NOT render a final recommendation label when `recommendationAllowed=false`. Instead show "Nedovoljno podataka" or clearly mark it as "Pomocni signal" (scorecard-only).
+
+Supplier scorecard specifics:
+- `/analytics/supplier` "Pregled" is the canonical decision surface for supplier recommendations.
+- The supplier scorecard tab is a supporting signal; it may use an effective dataset (e.g. 90d MV) for a 30d request, but that MUST be visible and gated (`recommendationAllowed=false`) to avoid silent drift.
+
 How to add a new analytics screen without drift
 ----------------------------------------------
 1. Design the DTO(s) that the backend will return: include `recommendation` object with `Status`, `Label`, `ConfidencePct`, `ReliabilityPct`, `DataQualityStatus`, `ReasonCodes`.

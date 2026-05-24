@@ -80,6 +80,7 @@ export type ScorecardTrustMetadata = {
   dataCoverageStatus: "good" | "warning" | "critical" | "insufficient_data" | string;
   usedFallback: boolean;
   fallbackReason?: string | null;
+  fallbackReasonCode?: string | null;
   lastRefreshAtUtc?: string | null;
   rowCount?: number;
   ignoredRowCount?: number;

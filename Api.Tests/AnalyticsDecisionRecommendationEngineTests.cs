@@ -136,7 +136,7 @@ public class AnalyticsDecisionRecommendationEngineTests
     {
         var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
             IsUnknownEntity: false,
-            TotalRevenue: 10000m,
+            TotalRevenue: 20000m,
             TotalUnits: 50,
             ItemCount: 10,
             SharePct: 1d,

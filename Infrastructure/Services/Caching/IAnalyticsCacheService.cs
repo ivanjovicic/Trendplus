@@ -317,7 +317,8 @@ public static class AnalyticsCacheKeys
         int? supplierId,
         int? storeId = null,
         string? dataScope = null) =>
-        $"{Prefix}supplier-decision-hub:dataset:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
+        // v2: payload includes diagnostic counters (excluded/ignored rows, generatedAt)
+        $"{Prefix}supplier-decision-hub:dataset:v2:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string SupplierDecisionHubQuadrant(
         DateTime? from,

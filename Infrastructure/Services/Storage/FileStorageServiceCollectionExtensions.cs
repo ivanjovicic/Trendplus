@@ -12,6 +12,9 @@ public static class FileStorageServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Ensure ILogger<T> is always available for storage implementations in minimal DI setups (tests).
+        services.AddLogging();
+
         services.AddOptions<StorageOptions>()
             .Bind(configuration.GetSection(StorageOptions.Section))
             .ValidateOnStart();

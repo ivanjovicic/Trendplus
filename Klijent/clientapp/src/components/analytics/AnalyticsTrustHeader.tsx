@@ -26,6 +26,13 @@ type AnalyticsTrustHeaderProps = {
   methodologyLabel?: string;
   dataQualityHref?: string;
   refreshStatusHref?: string;
+  requestedDataset?: string | null;
+  effectiveDataset?: string | null;
+  effectivePeriodLabel?: string | null;
+  usedFallback?: boolean;
+  fallbackReason?: string | null;
+  fallbackReasonCode?: string | null;
+  recommendationAllowed?: boolean | null;
 };
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
@@ -119,6 +126,13 @@ export default function AnalyticsTrustHeader({
   methodologyLabel,
   dataQualityHref,
   refreshStatusHref,
+  requestedDataset,
+  effectiveDataset,
+  effectivePeriodLabel,
+  usedFallback,
+  fallbackReason,
+  fallbackReasonCode,
+  recommendationAllowed,
 }: AnalyticsTrustHeaderProps) {
   const normalizedStatus = normalizeStatus(dataQualityStatus);
   const tone = statusTone(normalizedStatus);
@@ -126,6 +140,15 @@ export default function AnalyticsTrustHeader({
   const freshness = normalizeFreshness(dataFreshnessStatus);
   const hasPeriod = Boolean(periodFrom && periodTo);
   const hasSummary = hasSummaryValues(dataQualitySummary);
+  const hasDataset = Boolean((requestedDataset && requestedDataset.trim()) || (effectiveDataset && effectiveDataset.trim()));
+  const normalizedRequestedDataset = requestedDataset?.trim() || null;
+  const normalizedEffectiveDataset = effectiveDataset?.trim() || null;
+  const datasetValue = normalizedRequestedDataset && normalizedEffectiveDataset
+    ? `${normalizedRequestedDataset} → ${normalizedEffectiveDataset}`
+    : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
+  const effectiveLabel = effectivePeriodLabel?.trim() || null;
+  const showFallbackBanner = Boolean(usedFallback);
+  const showGatedBanner = recommendationAllowed === false && !showFallbackBanner;
 
   return (
     <section className="analytics-trust-header" aria-label="Kontekst pouzdanosti analitike">
@@ -165,7 +188,29 @@ export default function AnalyticsTrustHeader({
             {dataSource?.trim() || "Izvor podataka nije naveden"}
           </strong>
         </div>
+        {hasDataset ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Dataset</span>
+            <strong className="ath-meta-value">{datasetValue ?? "-"}</strong>
+            {effectiveLabel ? <span className="ath-meta-subtle">{effectiveLabel}</span> : null}
+          </div>
+        ) : null}
       </div>
+
+      {showFallbackBanner ? (
+        <div className="ath-banner ath-banner-warning" role="note">
+          <strong>Fallback aktiviran.</strong>{" "}
+          Za trazeni period nema dovoljno podataka. Koriscen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomocni signal.
+          {fallbackReason ? ` ${fallbackReason}` : null}
+          {fallbackReasonCode ? <span className="ath-banner-code"> ({fallbackReasonCode})</span> : null}
+        </div>
+      ) : null}
+
+      {showGatedBanner ? (
+        <div className="ath-banner ath-banner-neutral" role="note">
+          <strong>Preporuka je gated.</strong> Sistem ne prikazuje konacnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
+        </div>
+      ) : null}
 
       {recommendationNote ? <p className="ath-note">{recommendationNote}</p> : null}
       {emptyStateReason ? <p className="ath-empty-reason">{emptyStateReason}</p> : null}

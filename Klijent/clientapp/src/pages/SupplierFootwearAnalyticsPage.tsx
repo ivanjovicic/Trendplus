@@ -171,7 +171,7 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   return { byVendor, globalTypeShare };
 }
 
-export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
@@ -303,6 +303,27 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
   }, []);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
+
+  useEffect(() => {
+    if (!embedded || !onTrustMetadataChange) return;
+    if (!data) {
+      onTrustMetadataChange(null);
+      return;
+    }
+
+    onTrustMetadataChange({
+      periodFrom: activeFilters.fromDate,
+      periodTo: activeFilters.toDate,
+      lastRefreshAt: data.generatedAt ?? null,
+      dataFreshnessStatus: "unknown",
+      dataSource: "Supplier assortment (tipovi obuce)",
+      dataQualityStatus: data.dataQuality.analyzedRows <= 0
+        ? "insufficient_data"
+        : (data.dataQuality.analyzedSharePercent < 50 ? "warning" : "good"),
+      recommendationAllowed: data.dataQuality.analyzedRows > 0 && data.dataQuality.analyzedSharePercent >= 50,
+      recommendationNote: "Asortiman tab prikazuje strukturu prometa po tipu obuce (drilldown), bez paralelne finalne preporuke.",
+    });
+  }, [activeFilters.fromDate, activeFilters.toDate, data, embedded, onTrustMetadataChange]);
 
   const typeInsights = useMemo(() => buildTypeInsights(data?.articleStats ?? []), [data?.articleStats]);
 

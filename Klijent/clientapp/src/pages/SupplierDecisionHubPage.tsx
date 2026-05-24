@@ -132,7 +132,7 @@ function buildStatusTooltip(row: DecisionRow): string {
   return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
-export default function SupplierDecisionHubPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
@@ -378,6 +378,87 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
     return "Postoje zapisi za Skorkartu, ali su kljuÄni pokazatelji trenutno 0. Proveri period, objekat, dobavljaÄa i minimalni prihod; ako Pregled ima promet, a Skorkarta ostaje na nuli, potreban je refresh analytics scorecard podataka.";
   }, [ranking, summary, top5SharePct, totalMarginContribution, totalRevenue, trustMetadata?.hasData, trustMetadata?.hasExplicitDateRange]);
+
+  useEffect(() => {
+    if (!embedded || !onTrustMetadataChange) return;
+
+    if (showBlockingError) {
+      onTrustMetadataChange({
+        periodFrom: activeFilters.fromDate,
+        periodTo: activeFilters.toDate,
+        lastRefreshAt: resolvedLastRefreshAt,
+        dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
+        refreshIsRunning: refreshStatus?.isRunning ?? false,
+        refreshCurrentStep: refreshStatus?.currentStep ?? null,
+        dataSource: "Supplier decision scorecard",
+        dataQualityStatus: "critical",
+        recommendationAllowed: false,
+        recommendationNote: error?.message ?? "Skorkarta dobavljaca trenutno nije dostupna.",
+      });
+      return;
+    }
+
+    if (!trustMetadata) {
+      onTrustMetadataChange(null);
+      return;
+    }
+
+    onTrustMetadataChange({
+      periodFrom: trustMetadata?.effectiveFrom ?? summary?.from ?? activeFilters.fromDate,
+      periodTo: trustMetadata?.effectiveTo ?? summary?.to ?? activeFilters.toDate,
+      lastRefreshAt: resolvedLastRefreshAt,
+      dataFreshnessStatus: refreshStatus?.dataFreshnessStatus ?? "unknown",
+      refreshIsRunning: refreshStatus?.isRunning ?? false,
+      refreshCurrentStep: refreshStatus?.currentStep ?? null,
+      dataSource: `Supplier decision scorecard (request: ${trustMetadata?.requestedDataset ?? "n/a"}, effective: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`,
+      dataQualityStatus: trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data"),
+      dataQualitySummary: {
+        missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
+        ignoredRowsCount: trustMetadata?.ignoredRowCount ?? null,
+      },
+      requestedDataset: trustMetadata?.requestedDataset ?? null,
+      effectiveDataset: trustMetadata?.effectiveDataset ?? null,
+      effectivePeriodLabel: trustMetadata?.effectivePeriodLabel ?? null,
+      usedFallback: trustMetadata?.usedFallback ?? false,
+      fallbackReason: trustMetadata?.fallbackReason ?? null,
+      fallbackReasonCode: trustMetadata?.fallbackReasonCode ?? null,
+      recommendationAllowed: trustMetadata?.recommendationAllowed ?? null,
+      recommendationNote: "Skorkarta je dodatni signal. Finalna preporuka dobavljaca dolazi iz taba Pregled.",
+      emptyStateReason: !loading && sortedRows.length === 0 ? zeroStateExplanation : null,
+    });
+  }, [
+    activeFilters.dataScope,
+    activeFilters.fromDate,
+    activeFilters.toDate,
+    embedded,
+    error?.message,
+    loading,
+    onTrustMetadataChange,
+    refreshStatus?.currentStep,
+    refreshStatus?.dataFreshnessStatus,
+    refreshStatus?.isRunning,
+    resolvedLastRefreshAt,
+    showBlockingError,
+    sortedRows.length,
+    summary?.from,
+    summary?.to,
+    trustMetadata?.coverage,
+    trustMetadata?.dataCoverageStatus,
+    trustMetadata?.dataScope,
+    trustMetadata?.effectiveDataset,
+    trustMetadata?.effectiveFrom,
+    trustMetadata?.effectivePeriodLabel,
+    trustMetadata?.effectiveTo,
+    trustMetadata?.fallbackReason,
+    trustMetadata?.fallbackReasonCode,
+    trustMetadata?.ignoredRowCount,
+    trustMetadata?.missingSupplierNameCount,
+    trustMetadata?.recommendationAllowed,
+    trustMetadata?.requestedDataset,
+    trustMetadata?.usedFallback,
+    trustMetadata,
+    zeroStateExplanation,
+  ]);
   const concentrationData = useMemo(() => {
     const top = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct).slice(0, 8).map((row) => ({ name: row.supplierName, sharePct: row.sharePct }));
     const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
@@ -559,12 +640,15 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
             ignoredRowsCount: trustMetadata?.ignoredRowCount ?? null,
           }}
+          requestedDataset={trustMetadata?.requestedDataset ?? null}
+          effectiveDataset={trustMetadata?.effectiveDataset ?? null}
+          effectivePeriodLabel={trustMetadata?.effectivePeriodLabel ?? null}
+          usedFallback={trustMetadata?.usedFallback ?? false}
+          fallbackReason={trustMetadata?.fallbackReason ?? null}
+          fallbackReasonCode={trustMetadata?.fallbackReasonCode ?? null}
+          recommendationAllowed={trustMetadata?.recommendationAllowed ?? null}
           mode="recommendation"
-          recommendationNote={
-            trustMetadata?.usedFallback
-              ? `Za izabrani period nema dovoljno podataka. Koriscen je dataset ${trustMetadata.effectivePeriodLabel} kao pomocni signal.`
-              : "Skorkarta je dodatni signal. Finalna preporuka dolazi iz taba Pregled."
-          }
+          recommendationNote="Skorkarta je dodatni signal. Finalna preporuka dolazi iz taba Pregled."
           emptyStateReason={!loading && !showBlockingError && sortedRows.length === 0 ? zeroStateExplanation : null}
           methodologyHref="/analytics/data-quality"
         />
@@ -710,12 +794,6 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
               <li>Ako Pregled ima podatke, a Skorkarta je prazna za viÅ¡e perioda, proveri analytics refresh u Konfiguracija â†’ Radnici</li>
             </ul>
           </div>
-        </div>
-      ) : null}
-
-      {!loading && !showBlockingError && trustMetadata?.usedFallback ? (
-        <div className="sdh-decision-message warning" role="note">
-          Za izabrani period nema dovoljno podataka. Koriscen je dataset {trustMetadata.effectivePeriodLabel} kao pomocni signal. {trustMetadata.fallbackReason ?? ""}
         </div>
       ) : null}
 

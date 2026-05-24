@@ -18,6 +18,8 @@ import {
   type SupplierSalesStatsResponse,
 } from "../services/supplierSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import InfoTip from "../components/ui/InfoTip";
@@ -455,7 +457,7 @@ function supplierKey(supplier: { dobavljacId: number | null; dobavljacNaziv: str
   return `name:${normalizeName(supplier.dobavljacNaziv)}`;
 }
 
-export default function SupplierSalesStatsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierSalesStatsPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -900,6 +902,36 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return notes;
   }, [data]);
 
+  const headerDataQualityStatus = useMemo(() => {
+    if (!data) return null;
+    if ((data.suppliers ?? []).length === 0) return "insufficient_data";
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct ?? 0;
+    const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct ?? 0;
+    if (missingCostShare >= 50 || unknownShare >= 20) return "critical";
+    if (qualityNotes.length > 0) return "warning";
+    return "good";
+  }, [data, qualityNotes.length]);
+
+  useEffect(() => {
+    if (!embedded || !onTrustMetadataChange) return;
+    if (!data) {
+      onTrustMetadataChange(null);
+      return;
+    }
+
+    onTrustMetadataChange({
+      periodFrom: data.fromDate ?? activeFilters.fromDate,
+      periodTo: data.toDate ?? activeFilters.toDate,
+      lastRefreshAt: data.generatedAt ?? null,
+      dataFreshnessStatus: "unknown",
+      dataSource: `Supplier sales stats (scope: ${activeDataScope})`,
+      dataQualityStatus: headerDataQualityStatus,
+      recommendationAllowed: headerDataQualityStatus === "good" || headerDataQualityStatus === "warning",
+      recommendationNote: "Pregled je canonical decision surface za dobavljace. Preporuke dolaze iz backenda.",
+      emptyStateReason: emptyStateHint,
+    });
+  }, [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data, embedded, emptyStateHint, headerDataQualityStatus, onTrustMetadataChange]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -1107,19 +1139,20 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   return (
     <div className={`supplier-decision-page ${embedded ? "supplier-decision-page--embedded" : ""}`}>
       {!embedded ? (
-      <header className="supplier-decision-header">
-        <div>
-          <h1 className="supplier-decision-title">Prodaja po dobavljaÄima</h1>
-          <p className="supplier-decision-subtitle">
-            Pregled prodaje po dobavljaÄima s podrÅ¡kom za odluku: promet, marÅ¾ni doprinos i akcija.
-          </p>
-        </div>
-        {data?.generatedAt ? (
-          <div className="supplier-decision-generated">
-            Generisano: {new Date(data.generatedAt).toLocaleString("sr-RS")}
-          </div>
-        ) : null}
-      </header>
+        <AnalyticsTrustHeader
+          title="Dobavljaci: Pregled"
+          description="Canonical pregled prodaje po dobavljacima za poslovnu odluku. Preporuke dolaze iz backenda."
+          periodFrom={data?.fromDate ?? activeFilters.fromDate}
+          periodTo={data?.toDate ?? activeFilters.toDate}
+          lastRefreshAt={data?.generatedAt ?? null}
+          dataFreshnessStatus="unknown"
+          dataSource={`Supplier sales stats (scope: ${activeDataScope})`}
+          dataQualityStatus={headerDataQualityStatus ?? null}
+          mode="recommendation"
+          recommendationNote="Ovo je glavni recommendation pogled. Skorkarta je dodatni signal u odvojenom tabu."
+          emptyStateReason={!loading && !error && emptyStateHint ? emptyStateHint : null}
+          dataQualityHref="/analytics/data-quality"
+        />
       ) : null}
 
       {!embedded ? (
@@ -1228,7 +1261,24 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         </div>
       ) : null}
       {!loading && !error && emptyStateHint ? (
-        <div className="supplier-decision-message info" role="status" aria-live="polite">{emptyStateHint}</div>
+        embedded ? (
+          <div className="supplier-decision-message info" role="status" aria-live="polite">{emptyStateHint}</div>
+        ) : (
+          <AnalyticsEmptyState
+            variant="insufficient_data"
+            title="Nema dovoljno podataka za izabrani period"
+            message={emptyStateHint}
+            reasons={[
+              "Nije bilo prodaje u periodu",
+              "Period je van dostupnog raspona prodaje",
+              "Filteri (objekat/sezona) su previse uski",
+              "Dobavljaci nisu pravilno povezani",
+            ]}
+            actions={[
+              { label: "Otvori Data Quality", href: "/analytics/data-quality" },
+            ]}
+          />
+        )
       ) : null}
 
 

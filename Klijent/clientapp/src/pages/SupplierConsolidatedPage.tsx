@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
@@ -6,6 +6,7 @@ import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
 import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
 import SupplierFootwearAnalyticsPage from "./SupplierFootwearAnalyticsPage";
 import type { SupplierPeriodPreset, SupplierTab } from "./supplierSharedState";
+import type { SupplierTrustHeaderPayload } from "./supplierSharedState";
 import { SUPPLIER_TABS } from "./supplierSharedState";
 import { useSupplierCanonicalState } from "./useSupplierCanonicalState";
 import "./SupplierConsolidatedPage.css";
@@ -29,6 +30,8 @@ function buildStoreLabel(store: StoreOption): string {
 export default function SupplierConsolidatedPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
+  const [trustPayload, setTrustPayload] = useState<SupplierTrustHeaderPayload | null>(null);
+  const didInitTrustResetRef = useRef(false);
   const {
     currentTab,
     canonicalFilters,
@@ -58,18 +61,41 @@ export default function SupplierConsolidatedPage() {
     return () => { cancelled = true; };
   }, [canonicalFilters.fromDate, canonicalFilters.storeId, canonicalFilters.toDate, canonicalFilters.dataScope]);
 
+  useEffect(() => {
+    // Avoid stale trust metadata while switching tabs/filters.
+    if (!didInitTrustResetRef.current)
+    {
+      didInitTrustResetRef.current = true;
+      return;
+    }
+
+    setTrustPayload(null);
+  }, [currentTab, canonicalFilters.fromDate, canonicalFilters.toDate, canonicalFilters.storeId, canonicalFilters.supplierId, canonicalFilters.dataScope]);
+
   return (
     <div className="supplier-consolidated-page">
       <AnalyticsTrustHeader
         title="Dobavljaci"
         description="Jedinstveni ekran za overview preporuku, scorecard signal i analizu asortimana dobavljaca."
-        periodFrom={canonicalFilters.fromDate}
-        periodTo={canonicalFilters.toDate}
-        lastRefreshAt={null}
-        dataSource={`Supplier analytics (${canonicalFilters.dataScope})`}
-        dataQualityStatus={null}
+        periodFrom={trustPayload?.periodFrom ?? canonicalFilters.fromDate}
+        periodTo={trustPayload?.periodTo ?? canonicalFilters.toDate}
+        lastRefreshAt={trustPayload?.lastRefreshAt ?? null}
+        dataFreshnessStatus={trustPayload?.dataFreshnessStatus ?? "unknown"}
+        refreshIsRunning={trustPayload?.refreshIsRunning ?? false}
+        refreshCurrentStep={trustPayload?.refreshCurrentStep ?? null}
+        dataSource={trustPayload?.dataSource ?? `Supplier analytics (${canonicalFilters.dataScope})`}
+        dataQualityStatus={trustPayload?.dataQualityStatus ?? null}
+        dataQualitySummary={trustPayload?.dataQualitySummary}
+        requestedDataset={trustPayload?.requestedDataset ?? null}
+        effectiveDataset={trustPayload?.effectiveDataset ?? null}
+        effectivePeriodLabel={trustPayload?.effectivePeriodLabel ?? null}
+        usedFallback={trustPayload?.usedFallback ?? false}
+        fallbackReason={trustPayload?.fallbackReason ?? null}
+        fallbackReasonCode={trustPayload?.fallbackReasonCode ?? null}
+        recommendationAllowed={trustPayload?.recommendationAllowed ?? null}
         mode={currentTab === "overview" ? "recommendation" : "signal"}
-        recommendationNote={currentTab === "overview" ? "Overview tab je glavni recommendation pogled za odluku o dobavljacu." : undefined}
+        recommendationNote={trustPayload?.recommendationNote ?? (currentTab === "overview" ? "Overview tab je glavni recommendation pogled za odluku o dobavljacu." : undefined)}
+        emptyStateReason={trustPayload?.emptyStateReason ?? null}
         methodologyHref="/analytics/data-quality"
       />
       <header className="supplier-consolidated-header">
@@ -159,17 +185,17 @@ export default function SupplierConsolidatedPage() {
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (
           <div className="supplier-embedded-container supplier-embedded-overview">
-            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} />
+            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
           </div>
         )}
         {currentTab === "scorecard" && (
           <div className="supplier-embedded-container supplier-embedded-scorecard">
-            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} />
+            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
           </div>
         )}
         {currentTab === "assortment" && (
           <div className="supplier-embedded-container supplier-embedded-assortment">
-            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} />
+            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} onTrustMetadataChange={setTrustPayload} />
           </div>
         )}
       </div>

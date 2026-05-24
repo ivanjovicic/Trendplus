@@ -59,4 +59,25 @@ describe("AnalyticsTrustHeader", () => {
 
     expect(screen.getByText("Detaljan kvalitet podataka nije dostupan za ovaj ekran.")).toBeInTheDocument();
   });
+
+  it("shows dataset and fallback banner when usedFallback is true", () => {
+    render(
+      <AnalyticsTrustHeader
+        title="Kontekst"
+        description="Opis"
+        mode="recommendation"
+        requestedDataset="30d"
+        effectiveDataset="90d"
+        effectivePeriodLabel="Poslednjih 90 dana"
+        usedFallback
+        fallbackReason="Trazeni 30d nema zaseban scorecard dataset."
+        fallbackReasonCode="no_mv_30d"
+      />
+    );
+
+    expect(screen.getByText("Dataset")).toBeInTheDocument();
+    expect(screen.getByText(/30d → 90d/)).toBeInTheDocument();
+    expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
+    expect(screen.getByText(/\(no_mv_30d\)/)).toBeInTheDocument();
+  });
 });

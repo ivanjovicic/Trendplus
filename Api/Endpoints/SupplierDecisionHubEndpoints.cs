@@ -90,8 +90,8 @@ public static class SupplierDecisionHubEndpoints
                     cacheKey,
                     async () =>
                     {
-                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        return BuildSummaryResponse(rows, activeFilters);
+                        var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        return BuildSummaryResponse(dataset, activeFilters);
                     },
                     CacheExpiration.HeavyAnalytics,
                     ct);
@@ -101,6 +101,7 @@ public static class SupplierDecisionHubEndpoints
             }
             catch (SupplierDecisionUnavailableException ex)
             {
+                var emptyDataset = new SupplierRowsDataset(Array.Empty<SupplierScoreRow>(), 0, 0, DateTime.UtcNow);
                 return Results.Ok(new SummaryResponse(
                     activeFilters.FromDate,
                     activeFilters.ToDate,
@@ -114,7 +115,7 @@ public static class SupplierDecisionHubEndpoints
                     [],
                     [],
                     BuildDecisionScoreDataNote(activeFilters),
-                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildScorecardTrustMetadata(emptyDataset, activeFilters),
                     BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
             }
         });
@@ -175,8 +176,9 @@ public static class SupplierDecisionHubEndpoints
                     cacheKey,
                     async () =>
                     {
-                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        var trustMetadata = BuildScorecardTrustMetadata(rows, activeFilters);
+                        var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var rows = dataset.Rows;
+                        var trustMetadata = BuildScorecardTrustMetadata(dataset, activeFilters);
                         return new QuadrantResponse(
                             rows
                                 .OrderByDescending(x => x.Revenue)
@@ -206,9 +208,10 @@ public static class SupplierDecisionHubEndpoints
             }
             catch (SupplierDecisionUnavailableException ex)
             {
+                var emptyDataset = new SupplierRowsDataset(Array.Empty<SupplierScoreRow>(), 0, 0, DateTime.UtcNow);
                 return Results.Ok(new QuadrantResponse(
                     [],
-                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildScorecardTrustMetadata(emptyDataset, activeFilters),
                     BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
             }
         });
@@ -282,9 +285,10 @@ public static class SupplierDecisionHubEndpoints
                     cacheKey,
                     async () =>
                     {
-                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        var ordered = ApplyRankingSort(rows, normalizedSortBy, normalizedSortDir).ToList();
-                        var trustMetadata = BuildScorecardTrustMetadata(ordered, activeFilters);
+                        var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var ordered = ApplyRankingSort(dataset.Rows, normalizedSortBy, normalizedSortDir).ToList();
+                        var orderedDataset = dataset with { Rows = ordered };
+                        var trustMetadata = BuildScorecardTrustMetadata(orderedDataset, activeFilters);
                         var paged = ordered
                             .Skip((page - 1) * pageSize)
                             .Take(pageSize)
@@ -327,13 +331,14 @@ public static class SupplierDecisionHubEndpoints
             }
             catch (SupplierDecisionUnavailableException ex)
             {
+                var emptyDataset = new SupplierRowsDataset(Array.Empty<SupplierScoreRow>(), 0, 0, DateTime.UtcNow);
                 return Results.Ok(new RankingResponse(
                     page,
                     pageSize,
                     0,
                     [],
                     BuildDecisionScoreDataNote(activeFilters),
-                    BuildScorecardTrustMetadata(Array.Empty<SupplierScoreRow>(), activeFilters),
+                    BuildScorecardTrustMetadata(emptyDataset, activeFilters),
                     BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
             }
         });
@@ -395,8 +400,8 @@ public static class SupplierDecisionHubEndpoints
                     cacheKey,
                     async () =>
                     {
-                        var rows = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        var supplier = rows.FirstOrDefault();
+                        var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                        var supplier = dataset.Rows.FirstOrDefault();
                         if (supplier is null)
                         {
                             return new SupplierDecisionHubDetailsCacheEntry(false, null);
@@ -480,6 +485,12 @@ public static class SupplierDecisionHubEndpoints
         string StatusReason,
         IReadOnlyList<string> ReasonCodes);
 
+    private sealed record SupplierRowsDataset(
+        IReadOnlyList<SupplierScoreRow> Rows,
+        int ZeroRevenueRowsExcludedCount,
+        int IgnoredRowCount,
+        DateTime GeneratedAtUtc);
+
     private static bool TryCreateFilters(
         DateTime? fromDate,
         DateTime? toDate,
@@ -560,9 +571,10 @@ public static class SupplierDecisionHubEndpoints
     }
 
     private static SummaryResponse BuildSummaryResponse(
-        IReadOnlyList<SupplierScoreRow> rows,
+        SupplierRowsDataset dataset,
         SupplierDecisionHubFilters filters)
     {
+        var rows = dataset.Rows;
         var from = rows.Count > 0 ? rows.Min(x => x.PeriodFrom) : filters.FromDate;
         var to = rows.Count > 0 ? rows.Max(x => x.PeriodTo) : filters.ToDate;
         var totalRevenue = rows.Sum(x => x.Revenue);
@@ -634,7 +646,7 @@ public static class SupplierDecisionHubEndpoints
         };
 
         var dataNote = BuildDecisionScoreDataNote(filters);
-        var trustMetadata = BuildScorecardTrustMetadata(rows, filters);
+        var trustMetadata = BuildScorecardTrustMetadata(dataset, filters);
 
         return new SummaryResponse(
             from,
@@ -672,6 +684,7 @@ public static class SupplierDecisionHubEndpoints
                 IsPartial = trustMetadata?.UsedFallback == true,
                 WarningCode = trustMetadata?.UsedFallback == true ? "FALLBACK_DATASET_USED" : null,
                 WarningMessage = fallbackWarningMessage,
+                LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
                 GeneratedAtUtc = DateTime.UtcNow
             };
         }
@@ -691,6 +704,7 @@ public static class SupplierDecisionHubEndpoints
             IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
             WarningCode = warningCode,
             WarningMessage = warningMessage,
+            LastRefreshAtUtc = trustMetadata?.LastRefreshAtUtc,
             GeneratedAtUtc = DateTime.UtcNow
         };
     }
@@ -792,7 +806,7 @@ public static class SupplierDecisionHubEndpoints
     private static string NormalizeRankingSortDir(string? sortDir) =>
         string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
 
-    private static Task<List<SupplierScoreRow>> GetSupplierRowsCachedAsync(
+    private static Task<SupplierRowsDataset> GetSupplierRowsCachedAsync(
         IAnalyticsCacheService cache,
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
@@ -836,7 +850,7 @@ public static class SupplierDecisionHubEndpoints
             : "Nepoznat dobavljaÄ";
     }
 
-    private static async Task<List<SupplierScoreRow>> QuerySupplierRowsAsync(
+    private static async Task<SupplierRowsDataset> QuerySupplierRowsAsync(
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
         CancellationToken ct)
@@ -854,7 +868,8 @@ public static class SupplierDecisionHubEndpoints
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
             try
             {
-                var rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
+                var rawRows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, precomputedSql, precomputedParameters, ct);
+                var (rows, zeroRevenueRowsExcludedCount) = FilterRevenueRows(rawRows);
 
                 // Do NOT fall back to a wider window when an explicit date range was given
                 // (30d / 90d / 180d period presets all set HasExplicitDateRange = true).
@@ -865,10 +880,15 @@ public static class SupplierDecisionHubEndpoints
                     // Only reached when no date range is specified at all AND the windowed MV
                     // is somehow empty. Fall back to all-time cache as a last resort.
                     var (sqlAll, pAll) = BuildPrecomputedSupplierRowsSql(filters, capabilities, windowOverride: 0, applyDateRangeFilter: false);
-                    rows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sqlAll, pAll, ct);
+                    rawRows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sqlAll, pAll, ct);
+                    (rows, zeroRevenueRowsExcludedCount) = FilterRevenueRows(rawRows);
                 }
 
-                return rows;
+                return new SupplierRowsDataset(
+                    Rows: rows,
+                    ZeroRevenueRowsExcludedCount: zeroRevenueRowsExcludedCount,
+                    IgnoredRowCount: zeroRevenueRowsExcludedCount,
+                    GeneratedAtUtc: DateTime.UtcNow);
             }
             catch (PostgresException ex) when (IsMissingPrecomputedDependency(ex))
             {
@@ -883,7 +903,13 @@ public static class SupplierDecisionHubEndpoints
         var (sql, parameters) = BuildSupplierRowsSql(filters, mlCapabilities);
         try
         {
-            return await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql, parameters, ct);
+            var rawRows = await ExecuteSupplierRowsQueryAsync(analyticsConnectionString, sql, parameters, ct);
+            var (rows, zeroRevenueRowsExcludedCount) = FilterRevenueRows(rawRows);
+            return new SupplierRowsDataset(
+                Rows: rows,
+                ZeroRevenueRowsExcludedCount: zeroRevenueRowsExcludedCount,
+                IgnoredRowCount: zeroRevenueRowsExcludedCount,
+                GeneratedAtUtc: DateTime.UtcNow);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
@@ -911,6 +937,22 @@ public static class SupplierDecisionHubEndpoints
                 "Supplier decision podaci trenutno nisu dostupni zbog isteka vremena.",
                 ex);
         }
+    }
+
+    private static (List<SupplierScoreRow> Rows, int ZeroRevenueRowsExcludedCount) FilterRevenueRows(List<SupplierScoreRow> rows)
+    {
+        if (rows.Count == 0)
+        {
+            return (rows, 0);
+        }
+
+        var excluded = rows.Count(x => x.Revenue <= 0);
+        if (excluded == 0)
+        {
+            return (rows, 0);
+        }
+
+        return (rows.Where(x => x.Revenue > 0).ToList(), excluded);
     }
 
     private static string ResolveCorrelationId(HttpContext httpContext)
@@ -1316,9 +1358,10 @@ SELECT
     }
 
     private static ScorecardTrustMetadata BuildScorecardTrustMetadata(
-        IReadOnlyList<SupplierScoreRow> rows,
+        SupplierRowsDataset dataset,
         SupplierDecisionHubFilters filters)
     {
+        var rows = dataset.Rows;
         var hasData = rows.Count > 0;
         var requestedDataset = ResolveRequestedDataset(filters);
         var windowDays = GetDecisionScoreWindowDays(filters);
@@ -1328,11 +1371,14 @@ SELECT
         var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
         var missingSupplierNameCount = rows.Count(x => x.SupplierNameMissing);
         var hasLowSampleSize = rows.Count > 0 && rows.Count < 3;
-        var zeroRevenueRowsExcludedCount = 0;
-        var ignoredRowCount = zeroRevenueRowsExcludedCount;
+        var zeroRevenueRowsExcludedCount = dataset.ZeroRevenueRowsExcludedCount;
+        var ignoredRowCount = dataset.IgnoredRowCount;
+        var lastRefreshAtUtc = dataset.GeneratedAtUtc;
         var dataCoverageStatus = !hasData
             ? "insufficient_data"
-            : (usedFallback || missingSupplierNameCount > 0 || hasLowSampleSize ? "warning" : "good");
+            : (missingSupplierNameCount > 0
+                ? "critical"
+                : (usedFallback || hasLowSampleSize ? "warning" : "good"));
         var recommendationAllowed = hasData
             && !usedFallback
             && !hasLowSampleSize
@@ -1344,36 +1390,52 @@ SELECT
             180 => "window_180d",
             _ => "all_history"
         };
-        var fallbackReason = usedFallback
-            ? requestedDataset == "30d"
-                ? "Trazeni 30d nema zaseban scorecard dataset; koristi se 90d kao pomocni signal."
-                : "Uzi dataset nije dostupan; prikazan je siri helper dataset."
-            : null;
+        var fallbackReasonCode = (string?)null;
+        var fallbackReason = (string?)null;
+        if (usedFallback)
+        {
+            if (requestedDataset == "30d" && effectiveDataset == "90d")
+            {
+                fallbackReasonCode = "no_mv_30d";
+                fallbackReason = "Trazeni 30d nema zaseban scorecard dataset; koristi se 90d kao pomocni signal (bez tihog fallback-a za finalnu preporuku).";
+            }
+            else if (requestedDataset == "custom_range" && effectiveDataset == "all_history")
+            {
+                fallbackReasonCode = "range_uses_all_history";
+                fallbackReason = "Odabrani period je siri od 180 dana; koristi se all-history cache kao helper dataset uz striktan filter opsega (bez tihog fallback-a).";
+            }
+            else
+            {
+                fallbackReasonCode = "fallback_dataset_used";
+                fallbackReason = "Trazeni dataset nije dostupan; prikazan je siri helper dataset uz striktan filter opsega (bez tihog fallback-a).";
+            }
+        }
 
         return new ScorecardTrustMetadata(
             filters.FromDate,
             filters.ToDate,
             effectiveFrom,
             effectiveTo,
-                requestedDataset,
-                effectiveDataset,
-                BuildEffectivePeriodLabel(filters, effectiveDataset),
-                dataCoverageStatus,
-                usedFallback,
-                fallbackReason,
-                null,
-                rows.Count,
-                ignoredRowCount,
-                zeroRevenueRowsExcludedCount,
-                missingSupplierNameCount,
+            requestedDataset,
+            effectiveDataset,
+            BuildEffectivePeriodLabel(filters, effectiveDataset),
+            dataCoverageStatus,
+            usedFallback,
+            fallbackReason,
+            fallbackReasonCode,
+            lastRefreshAtUtc,
+            rows.Count,
+            ignoredRowCount,
+            zeroRevenueRowsExcludedCount,
+            missingSupplierNameCount,
             hasData,
             filters.HasExplicitDateRange,
-                recommendationAllowed,
+            recommendationAllowed,
             true,
             windowDays,
             filters.DataScope,
-                coverage,
-                BuildDecisionScoreDataNote(filters));
+            coverage,
+            BuildDecisionScoreDataNote(filters));
     }
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
@@ -1386,7 +1448,6 @@ SELECT
         var mvName = SelectDecisionScoreMv(windowDays);
         var parameters = new List<NpgsqlParameter>();
         var where = new StringBuilder("WHERE 1 = 1");
-        where.Append(" AND ds.revenue > 0");
         var markdownSelect = capabilities.HasMarkdownDependencyCache
             ? """
     COALESCE(md.markdown_revenue_share, 0) AS markdown_revenue_share,
@@ -1950,7 +2011,6 @@ FROM final_suppliers;
         List<NpgsqlParameter> parameters)
     {
         var where = new StringBuilder("WHERE 1 = 1");
-        where.Append(" AND sr.revenue > 0");
 
         if (filters.MinRevenue.HasValue)
         {
@@ -2424,6 +2484,7 @@ public sealed record ScorecardTrustMetadata(
     string DataCoverageStatus,
     bool UsedFallback,
     string? FallbackReason,
+    string? FallbackReasonCode,
     DateTime? LastRefreshAtUtc,
     int RowCount,
     int IgnoredRowCount,
