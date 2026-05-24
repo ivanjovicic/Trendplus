@@ -585,6 +585,7 @@ export interface InventoryBalance {
   lowStockCount: number;
   outOfStockCount: number;
   estimatedInventoryValue?: number | null;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface InventoryListItem {
@@ -606,6 +607,7 @@ export interface InventoryPagedResponse {
   totalCount: number;
   pageNumber: number;
   pageSize: number;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface InventoryHistoryItem {
@@ -691,6 +693,7 @@ export interface InventoryInsights {
   abc: InventoryAbcBucket[];
   topAgedItems: InventoryInsightItem[];
   topCapitalLockedItems: InventoryInsightItem[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 // ── Inventory Forecast ────────────────────────────────────────────────────────
@@ -810,6 +813,7 @@ export interface InventoryStoreComparison {
   stores: InventoryStoreComparisonItem[];
   sharedRisks: InventoryStoreComparisonFocus[];
   summary: string;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface InventoryActionSuggestion {
@@ -838,6 +842,7 @@ export interface InventoryActionWorkflow {
   deferredCount: number;
   closedCount: number;
   items: InventoryActionSuggestion[];
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface InventoryActionDecisionInput {

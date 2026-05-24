@@ -82,7 +82,8 @@ public sealed record InventoryInsightsDto(
     IReadOnlyList<InventoryAgingBucketDto> Aging,
     IReadOnlyList<InventoryAbcBucketDto> Abc,
     IReadOnlyList<InventoryInsightItemDto> TopAgedItems,
-    IReadOnlyList<InventoryInsightItemDto> TopCapitalLockedItems
+    IReadOnlyList<InventoryInsightItemDto> TopCapitalLockedItems,
+    AnalyticsResponseMetaDto? Meta = null
 );
 
 public sealed class InventoryExportRequestDto
@@ -122,7 +123,8 @@ public sealed record InventoryStoreComparisonDto(
     DateTime GeneratedAtUtc,
     IReadOnlyList<InventoryStoreComparisonItemDto> Stores,
     IReadOnlyList<InventoryStoreComparisonFocusDto> SharedRisks,
-    string Summary
+    string Summary,
+    AnalyticsResponseMetaDto? Meta = null
 );
 
 public sealed record InventoryActionSuggestionDto(
@@ -150,7 +152,8 @@ public sealed record InventoryActionWorkflowDto(
     int ApprovedCount,
     int DeferredCount,
     int ClosedCount,
-    IReadOnlyList<InventoryActionSuggestionDto> Items
+    IReadOnlyList<InventoryActionSuggestionDto> Items,
+    AnalyticsResponseMetaDto? Meta = null
 );
 
 public sealed class InventoryActionDecisionRequestDto

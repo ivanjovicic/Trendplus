@@ -327,85 +327,138 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int lowStockThreshold = 2,
             CancellationToken ct = default) =>
         {
-            var cacheKey = AnalyticsCacheKeys.Inventory(lowStockThreshold);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryStatus");
+            try
+            {
+                var cacheKey = AnalyticsCacheKeys.Inventory(lowStockThreshold);
 
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        try
+                        {
+                            return await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold), ct);
+                        }
+                        catch (Exception ex) when (IsMissingRelation(ex))
+                        {
+                            var inventoryData = await trendDb.Artikli.AsNoTracking()
+                                .GroupBy(a => 1)
+                                .Select(g => new
+                                {
+                                    TotalSku = g.Count(),
+                                    TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
+                                    OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
+                                    LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
+                                })
+                                .SingleOrDefaultAsync(ct);
+
+                            return new InventoryStatusDto(
+                                inventoryData?.TotalSku ?? 0,
+                                inventoryData?.TotalOnHand ?? 0,
+                                inventoryData?.LowStock ?? 0,
+                                inventoryData?.OutOfStock ?? 0
+                            );
+                        }
+                    },
+                    CacheExpiration.Short, // Inventory se brzo menja
+                    ct);
+
+                var meta = result.TotalSkuCount == 0
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new { result.TotalSkuCount, result.TotalOnHand, result.LowStockCount, result.OutOfStockCount, Meta = meta });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory status.");
+                return Results.Ok(new
                 {
-                    try
-                    {
-                        return await mediator.Send(new GetInventoryStatusQuery(lowStockThreshold), ct);
-                    }
-                    catch (Exception ex) when (IsMissingRelation(ex))
-                    {
-                        var inventoryData = await trendDb.Artikli.AsNoTracking()
-                            .GroupBy(a => 1)
-                            .Select(g => new
-                            {
-                                TotalSku = g.Count(),
-                                TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
-                                OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
-                                LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
-                            })
-                            .SingleOrDefaultAsync(ct);
-
-                        return new InventoryStatusDto(
-                            inventoryData?.TotalSku ?? 0,
-                            inventoryData?.TotalOnHand ?? 0,
-                            inventoryData?.LowStock ?? 0,
-                            inventoryData?.OutOfStock ?? 0
-                        );
-                    }
-                },
-                CacheExpiration.Short, // Inventory se brzo menja
-                ct);
-
-            return Results.Ok(result);
+                    TotalSkuCount = 0, TotalOnHand = 0, LowStockCount = 0, OutOfStockCount = 0,
+                    Meta = AnalyticsResponseMetaFactory.Error("inventory_status_error", "Status zaliha trenutno nije dostupan.", correlationId)
+                });
+            }
         });
 
         // ========== INVENTORY BALANCE (CACHED) ==========
         group.MapGet("/inventory/balance", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             CancellationToken ct = default) =>
         {
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
             var cacheKey = $"analytics:inventory:balance:{storeId}:{supplierId}";
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        var query = db.Artikli.AsNoTracking().AsQueryable();
 
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var query = db.Artikli.AsNoTracking().AsQueryable();
+                        if (storeId.HasValue)
+                            query = query.Where(a => a.IDObjekat == storeId.Value);
+                        if (supplierId.HasValue)
+                            query = query.Where(a => a.IDDobavljac == supplierId.Value);
 
-                    if (storeId.HasValue)
-                        query = query.Where(a => a.IDObjekat == storeId.Value);
-                    if (supplierId.HasValue)
-                        query = query.Where(a => a.IDDobavljac == supplierId.Value);
+                        var totalSku = await query.CountAsync(ct);
+                        var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
+                        var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) > 0 && (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0), ct);
+                        var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
+                        var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
+                        var meta = totalSku == 0
+                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                            : AnalyticsResponseMetaFactory.Success();
+                        meta.CorrelationId = correlationId;
 
-                    var totalSku = await query.CountAsync(ct);
-                    var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
-                    var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) > 0 && (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0), ct);
-                    var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-                    var estimatedValue = await query.SumAsync(a => (decimal?)( (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0) ), ct) ?? 0m;
+                        return new InventoryBalanceDto((int)totalSku, (int)totalOnHand, (int)lowStock, (int)outOfStock, Math.Round(estimatedValue, 2), meta);
+                    },
+                    CacheExpiration.Short,
+                    ct);
 
-                    return new InventoryBalanceDto((int)totalSku, (int)totalOnHand, (int)lowStock, (int)outOfStock, Math.Round(estimatedValue, 2));
-                },
-                CacheExpiration.Short,
-                ct);
-
-            return Results.Ok(result);
+                var insightsMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
+                insightsMeta.CorrelationId = correlationId;
+                return Results.Ok(result with { Meta = insightsMeta });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory balance query failed due to database issue.");
+                return Results.Ok(new InventoryBalanceDto(
+                    0, 0, 0, 0, 0m,
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_balance_db_error", "Zalihe trenutno nisu dostupne.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory balance.");
+                return Results.Ok(new InventoryBalanceDto(
+                    0, 0, 0, 0, 0m,
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_balance_error", "Neocekivana greska pri ucitavanju zaliha.", correlationId)));
+            }
         });
 
         // ========== INVENTORY LIST (CACHED) ==========
         group.MapGet("/inventory/list", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int page = 1,
             int pageSize = 50,
             int? storeId = null,
@@ -414,56 +467,90 @@ public static class CachedAnalyticsEndpoints
             string? sortBy = null,
             CancellationToken ct = default) =>
         {
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 1000);
 
             var cacheKey = $"analytics:inventory:list:{page}:{pageSize}:{storeId}:{supplierId}:{search}:{sortBy}";
-
-            var paged = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    var query = db.Artikli.AsNoTracking().AsQueryable();
-
-                    if (storeId.HasValue)
-                        query = query.Where(a => a.IDObjekat == storeId.Value);
-                    if (supplierId.HasValue)
-                        query = query.Where(a => a.IDDobavljac == supplierId.Value);
-                    if (!string.IsNullOrWhiteSpace(search))
-                        query = query.Where(a => (a.Naziv ?? "").Contains(search) || (a.PLU ?? "").Contains(search));
-
-                    query = sortBy?.ToLowerInvariant() switch
+            try
+            {
+                var paged = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
                     {
-                        "kolicina" => query.OrderByDescending(a => a.Kolicina),
-                        "naziv" => query.OrderBy(a => a.Naziv),
-                        "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
-                        "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
-                        _ => query.OrderByDescending(a => (a.Kolicina ?? 0))
-                    };
+                        var query = db.Artikli.AsNoTracking().AsQueryable();
 
-                    var total = await query.CountAsync(ct);
-                    var items = await query
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(a => new InventoryListItemDto(
-                            a.Id,
-                            a.PLU,
-                            a.Naziv ?? string.Empty,
-                            a.Kolicina,
-                            a.MinimalnaKolicina,
-                            a.NabavnaCena,
-                            (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
-                            a.IDObjekat,
-                            a.IDDobavljac
-                        ))
-                        .ToListAsync(ct);
+                        if (storeId.HasValue)
+                            query = query.Where(a => a.IDObjekat == storeId.Value);
+                        if (supplierId.HasValue)
+                            query = query.Where(a => a.IDDobavljac == supplierId.Value);
+                        if (!string.IsNullOrWhiteSpace(search))
+                            query = query.Where(a => (a.Naziv ?? "").Contains(search) || (a.PLU ?? "").Contains(search));
 
-                    return new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize);
-                },
-                CacheExpiration.Short,
-                ct);
+                        query = sortBy?.ToLowerInvariant() switch
+                        {
+                            "kolicina" => query.OrderByDescending(a => a.Kolicina),
+                            "naziv" => query.OrderBy(a => a.Naziv),
+                            "vrednost" => query.OrderByDescending(a => (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)).ThenBy(a => a.Naziv),
+                            "azuriranje" => query.OrderByDescending(a => a.UpdatedAt).ThenBy(a => a.Naziv),
+                            _ => query.OrderByDescending(a => (a.Kolicina ?? 0))
+                        };
 
-            return Results.Ok(paged);
+                        var total = await query.CountAsync(ct);
+                        var items = await query
+                            .Skip((page - 1) * pageSize)
+                            .Take(pageSize)
+                            .Select(a => new InventoryListItemDto(
+                                a.Id,
+                                a.PLU,
+                                a.Naziv ?? string.Empty,
+                                a.Kolicina,
+                                a.MinimalnaKolicina,
+                                a.NabavnaCena,
+                                (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
+                                a.IDObjekat,
+                                a.IDDobavljac
+                            ))
+                            .ToListAsync(ct);
+                        var meta = total == 0
+                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", null)
+                            : AnalyticsResponseMetaFactory.Success();
+                        meta.CorrelationId = correlationId;
+
+                        return new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta);
+                    },
+                    CacheExpiration.Short,
+                    ct);
+
+                var listMeta = paged.Meta ?? AnalyticsResponseMetaFactory.Success();
+                listMeta.CorrelationId = correlationId;
+                return Results.Ok(paged with { Meta = listMeta });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory list query failed due to database issue.");
+                return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(
+                    [],
+                    0,
+                    page,
+                    pageSize,
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_list_db_error", "Lista artikala trenutno nije dostupna.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory list.");
+                return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(
+                    [],
+                    0,
+                    page,
+                    pageSize,
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_list_error", "Neocekivana greska pri ucitavanju liste artikala.", correlationId)));
+            }
         });
 
         // ========== INVENTORY INSIGHTS (CACHED) ==========
@@ -471,6 +558,8 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             string? search = null,
@@ -478,15 +567,40 @@ public static class CachedAnalyticsEndpoints
             string? dataScope = null,
             CancellationToken ct = default) =>
         {
-            var cacheKey = AnalyticsCacheKeys.InventoryInsights(storeId, supplierId, search, sortBy, dataScope);
+            var correlationId = ResolveCorrelationId(httpContext);
+            var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints.InventoryInsights");
+            try
+            {
+                var cacheKey = AnalyticsCacheKeys.InventoryInsights(storeId, supplierId, search, sortBy, dataScope);
 
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () => await InventoryEndpoints.GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct),
-                CacheExpiration.Short,
-                ct);
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () => await InventoryEndpoints.GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct),
+                    CacheExpiration.Short,
+                    ct);
 
-            return Results.Ok(result);
+                var balanceMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
+                balanceMeta.CorrelationId = correlationId;
+                return Results.Ok(result with { Meta = balanceMeta });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Cached inventory insights query failed due to database issue.");
+                return Results.Ok(new InventoryInsightsDto(
+                    0, 0m, [], [], [], [],
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_insights_db_error", "Inventory uvidi trenutno nisu dostupni.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading cached inventory insights.");
+                return Results.Ok(new InventoryInsightsDto(
+                    0, 0m, [], [], [], [],
+                    AnalyticsResponseMetaFactory.Error("inventory_cached_insights_error", "Neocekivana greska pri ucitavanju inventory uvida.", correlationId)));
+            }
         });
 
         // ========== INVENTORY STORE COMPARISON (CACHED) ==========
@@ -494,6 +608,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
             int[]? compareStoreIds,
             int? supplierId,
             string? search,
@@ -513,7 +628,9 @@ public static class CachedAnalyticsEndpoints
                 CacheExpiration.Short,
                 ct);
 
-            return Results.Ok(result);
+            var storeCmpMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
+            storeCmpMeta.CorrelationId = ResolveCorrelationId(httpContext);
+            return Results.Ok(result with { Meta = storeCmpMeta });
         });
 
         // ========== INVENTORY FORECAST (CACHED) ==========
@@ -4815,10 +4932,15 @@ public static class CachedAnalyticsEndpoints
                 SlowStockCapital = Math.Round(totalSlowStockCapital, 2)
             },
             Rows = sortedRows,
-            Meta = BuildSuccessMeta(
-                dataQualityStatus: ResolveDataQualityFromRows(sortedRows),
-                message: sortedRows.Count == 0 ? "Nema dovoljno podataka za preporuke u ovom periodu." : null,
-                lastRefreshAtUtc: nowUtc)
+            Meta = sortedRows.Count == 0
+                ? BuildSuccessMeta(
+                    dataQualityStatus: "insufficient_data",
+                    message: "Nema dovoljno podataka za preporuke u ovom periodu.",
+                    lastRefreshAtUtc: nowUtc,
+                    emptyReason: "no_rows_for_period")
+                : BuildSuccessMeta(
+                    dataQualityStatus: ResolveDataQualityFromRows(sortedRows),
+                    lastRefreshAtUtc: nowUtc)
         };
     }
 
@@ -4829,7 +4951,8 @@ public static class CachedAnalyticsEndpoints
         string? message = null,
         DateTime? lastRefreshAtUtc = null,
         string? correlationId = null,
-        string? warningMessage = null)
+        string? warningMessage = null,
+        string? emptyReason = null)
     {
         var resolvedMessage = message ?? warningMessage;
         return new AnalyticsResponseMetaDto
@@ -4842,7 +4965,8 @@ public static class CachedAnalyticsEndpoints
             GeneratedAtUtc = DateTime.UtcNow,
             LastRefreshAtUtc = lastRefreshAtUtc,
             DataQualityStatus = dataQualityStatus,
-            IsPartial = isPartial
+            IsPartial = isPartial,
+            EmptyReason = emptyReason
         };
     }
 

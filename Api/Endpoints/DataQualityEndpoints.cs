@@ -24,45 +24,62 @@ public static class DataQualityEndpoints
             string? dataScope,
             CancellationToken ct) =>
         {
-            var requestedLookback = lookbackDays ?? options.Value.LookbackDays;
-            var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
-            var score = BuildScore(snapshot, options.Value);
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var requestedLookback = lookbackDays ?? options.Value.LookbackDays;
+                var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
+                var score = BuildScore(snapshot, options.Value);
 
-            return Results.Ok(new DataQualityHealthResponse(
-                snapshot.GeneratedAtUtc,
-                snapshot.LookbackDays,
-                snapshot.WindowFromUtc,
-                snapshot.WindowToUtc,
-                snapshot.OrphanArticleCount,
-                snapshot.TotalRevenue,
-                snapshot.MissingCostRevenue,
-                snapshot.MissingCostRevenueSharePct,
-                snapshot.UnknownSupplierRevenue,
-                snapshot.UnknownSupplierRevenueSharePct,
-                score.Value,
-                score.Status,
-                score.Summary,
-                new DataQualityHealthThresholds(
-                    options.Value.WarningOrphanArticleCount,
-                    options.Value.WarningMissingCostRevenueSharePct,
-                    options.Value.WarningUnknownSupplierRevenueSharePct),
-                new AnalyticsResponseMetaDto
-                {
-                    Success = true,
-                    CorrelationId = ResolveCorrelationId(httpContext),
-                    GeneratedAtUtc = DateTime.UtcNow,
-                    LastRefreshAtUtc = snapshot.GeneratedAtUtc,
-                    DataQualityStatus = score.Status switch
+                return Results.Ok(new DataQualityHealthResponse(
+                    snapshot.GeneratedAtUtc,
+                    snapshot.LookbackDays,
+                    snapshot.WindowFromUtc,
+                    snapshot.WindowToUtc,
+                    snapshot.OrphanArticleCount,
+                    snapshot.TotalRevenue,
+                    snapshot.MissingCostRevenue,
+                    snapshot.MissingCostRevenueSharePct,
+                    snapshot.UnknownSupplierRevenue,
+                    snapshot.UnknownSupplierRevenueSharePct,
+                    score.Value,
+                    score.Status,
+                    score.Summary,
+                    new DataQualityHealthThresholds(
+                        options.Value.WarningOrphanArticleCount,
+                        options.Value.WarningMissingCostRevenueSharePct,
+                        options.Value.WarningUnknownSupplierRevenueSharePct),
+                    new AnalyticsResponseMetaDto
                     {
-                        "critical" => "critical",
-                        "warning" => "warning",
-                        "good" or "excellent" => "good",
-                        _ => "insufficient_data"
-                    },
-                    Message = snapshot.TotalRevenue <= 0 ? "Nema dovoljno podataka za score data quality-ja u ovom prozoru." : null,
-                    EmptyReason = snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : null,
-                    IsPartial = false
-                }));
+                        Success = true,
+                        CorrelationId = correlationId,
+                        GeneratedAtUtc = DateTime.UtcNow,
+                        LastRefreshAtUtc = snapshot.GeneratedAtUtc,
+                        DataQualityStatus = score.Status switch
+                        {
+                            "critical" => "critical",
+                            "warning" => "warning",
+                            "good" or "excellent" => "good",
+                            _ => "insufficient_data"
+                        },
+                        Message = snapshot.TotalRevenue <= 0 ? "Nema dovoljno podataka za score data quality-ja u ovom prozoru." : null,
+                        EmptyReason = snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : null,
+                        IsPartial = false
+                    }));
+            }
+            catch (Exception)
+            {
+                return Results.Ok(new DataQualityHealthResponse(
+                    DateTime.UtcNow, 0,
+                    DateTime.UtcNow, DateTime.UtcNow,
+                    0, 0m, 0m, 0d, 0m, 0d,
+                    0, "error", "Data quality health nije dostupan.",
+                    new DataQualityHealthThresholds(0, 0d, 0d),
+                    AnalyticsResponseMetaFactory.Error(
+                        "data_quality_health_error",
+                        "Data quality health nije dostupan zbog greske.",
+                        correlationId)));
+            }
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -75,39 +92,52 @@ public static class DataQualityEndpoints
             ILogger<Program> logger,
             CancellationToken ct) =>
         {
-            logger.LogInformation(
-                "Data quality issues requested {Type} page {Page} pageSize {PageSize} sortBy {SortBy}",
-                request.Type,
-                request.Page,
-                request.PageSize,
-                request.SortBy);
-
-            var result = await mediator.Send(new GetDataQualityIssuesQuery(
-                request.Type,
-                request.Page,
-                request.PageSize,
-                request.Q,
-                request.SortBy,
-                request.SortDir,
-                request.DataScope,
-                options.Value.MinSalesForNoisyIssuesRsd), ct);
-
-            var meta = new AnalyticsResponseMetaDto
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
             {
-                Success = true,
-                CorrelationId = ResolveCorrelationId(httpContext),
-                GeneratedAtUtc = DateTime.UtcNow,
-                DataQualityStatus = result.Total == 0 ? "insufficient_data" : "warning",
-                Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null,
-                EmptyReason = result.Total == 0 ? "no_open_issues" : null
-            };
+                logger.LogInformation(
+                    "Data quality issues requested {Type} page {Page} pageSize {PageSize} sortBy {SortBy}",
+                    request.Type,
+                    request.Page,
+                    request.PageSize,
+                    request.SortBy);
 
-            return Results.Ok(new DataQualityIssueListResponse(
-                result.Page,
-                result.PageSize,
-                result.Total,
-                result.Items,
-                meta));
+                var result = await mediator.Send(new GetDataQualityIssuesQuery(
+                    request.Type,
+                    request.Page,
+                    request.PageSize,
+                    request.Q,
+                    request.SortBy,
+                    request.SortDir,
+                    request.DataScope,
+                    options.Value.MinSalesForNoisyIssuesRsd), ct);
+
+                var meta = new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    CorrelationId = correlationId,
+                    GeneratedAtUtc = DateTime.UtcNow,
+                    DataQualityStatus = result.Total == 0 ? "insufficient_data" : "warning",
+                    Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null,
+                    EmptyReason = result.Total == 0 ? "no_open_issues" : null
+                };
+
+                return Results.Ok(new DataQualityIssueListResponse(
+                    result.Page,
+                    result.PageSize,
+                    result.Total,
+                    result.Items,
+                    meta));
+            }
+            catch (Exception)
+            {
+                return Results.Ok(new DataQualityIssueListResponse(
+                    request.Page, request.PageSize, 0, [],
+                    AnalyticsResponseMetaFactory.Error(
+                        "data_quality_list_error",
+                        "Lista data quality problema trenutno nije dostupna.",
+                        correlationId)));
+            }
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -121,30 +151,45 @@ public static class DataQualityEndpoints
             string? dataScope,
             CancellationToken ct) =>
         {
-            var normalizedIssueType = DataQualityIssueTypes.Normalize(issueType);
-            var resolvedLimit = Math.Clamp(limit ?? options.Value.TopOffenderLimit, 1, 100);
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var normalizedIssueType = DataQualityIssueTypes.Normalize(issueType);
+                var resolvedLimit = Math.Clamp(limit ?? options.Value.TopOffenderLimit, 1, 100);
 
-            var items = await healthService.GetTopOffendersAsync(
-                normalizedIssueType,
-                resolvedLimit,
-                options.Value.MinSalesForNoisyIssuesRsd,
-                dataScope,
-                ct);
+                var items = await healthService.GetTopOffendersAsync(
+                    normalizedIssueType,
+                    resolvedLimit,
+                    options.Value.MinSalesForNoisyIssuesRsd,
+                    dataScope,
+                    ct);
 
-            return Results.Ok(new DataQualityTopOffendersResponse(
-                normalizedIssueType,
-                resolvedLimit,
-                items.Count,
-                items,
-                new AnalyticsResponseMetaDto
-                {
-                    Success = true,
-                    CorrelationId = ResolveCorrelationId(httpContext),
-                    GeneratedAtUtc = DateTime.UtcNow,
-                    DataQualityStatus = items.Count == 0 ? "insufficient_data" : "warning",
-                    Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null,
-                    EmptyReason = items.Count == 0 ? "no_top_offenders" : null
-                }));
+                return Results.Ok(new DataQualityTopOffendersResponse(
+                    normalizedIssueType,
+                    resolvedLimit,
+                    items.Count,
+                    items,
+                    new AnalyticsResponseMetaDto
+                    {
+                        Success = true,
+                        CorrelationId = correlationId,
+                        GeneratedAtUtc = DateTime.UtcNow,
+                        DataQualityStatus = items.Count == 0 ? "insufficient_data" : "warning",
+                        Message = items.Count == 0 ? "Nema top offender zapisa za izabrani tip problema." : null,
+                        EmptyReason = items.Count == 0 ? "no_top_offenders" : null
+                    }));
+            }
+            catch (Exception)
+            {
+                return Results.Ok(new DataQualityTopOffendersResponse(
+                    DataQualityIssueTypes.Normalize(issueType),
+                    Math.Clamp(limit ?? 10, 1, 100),
+                    0, [],
+                    AnalyticsResponseMetaFactory.Error(
+                        "data_quality_top_offenders_error",
+                        "Top offenders trenutno nisu dostupni.",
+                        correlationId)));
+            }
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -156,22 +201,37 @@ public static class DataQualityEndpoints
             string? dataScope,
             CancellationToken ct) =>
         {
+            var correlationId = ResolveCorrelationId(httpContext);
             var resolvedDays = Math.Clamp(days ?? 7, 2, 90);
-            var points = await historyService.GetTrendAsync(resolvedDays, dataScope, ct);
+            try
+            {
+                var points = await historyService.GetTrendAsync(resolvedDays, dataScope, ct);
 
-            return Results.Ok(new DataQualityTrendResponse(
-                resolvedDays,
-                string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
-                points,
-                new AnalyticsResponseMetaDto
-                {
-                    Success = true,
-                    CorrelationId = ResolveCorrelationId(httpContext),
-                    GeneratedAtUtc = DateTime.UtcNow,
-                    DataQualityStatus = points.Count == 0 ? "insufficient_data" : "warning",
-                    Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null,
-                    EmptyReason = points.Count == 0 ? "no_trend_points" : null
-                }));
+                return Results.Ok(new DataQualityTrendResponse(
+                    resolvedDays,
+                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+                    points,
+                    new AnalyticsResponseMetaDto
+                    {
+                        Success = true,
+                        CorrelationId = correlationId,
+                        GeneratedAtUtc = DateTime.UtcNow,
+                        DataQualityStatus = points.Count == 0 ? "insufficient_data" : "warning",
+                        Message = points.Count == 0 ? "Trend data quality-ja nije dostupan za izabrani opseg." : null,
+                        EmptyReason = points.Count == 0 ? "no_trend_points" : null
+                    }));
+            }
+            catch (Exception)
+            {
+                return Results.Ok(new DataQualityTrendResponse(
+                    resolvedDays,
+                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+                    [],
+                    AnalyticsResponseMetaFactory.Error(
+                        "data_quality_trend_error",
+                        "Trend data quality-ja trenutno nije dostupan.",
+                        correlationId)));
+            }
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
@@ -189,6 +249,9 @@ public static class DataQualityEndpoints
             [FromQuery] string? dataScope,
             CancellationToken ct) =>
         {
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
             var period = ResolveIntakePeriod(fromDate, toDate);
             var lookbackDays = Math.Clamp((int)Math.Ceiling((period.ToUtc.Date - period.FromUtc.Date).TotalDays) + 1, 2, 90);
             var health = await healthService.CaptureAsync(lookbackDays, dataScope, ct);
@@ -370,7 +433,7 @@ public static class DataQualityEndpoints
                 new AnalyticsResponseMetaDto
                 {
                     Success = true,
-                    CorrelationId = ResolveCorrelationId(httpContext),
+                    CorrelationId = correlationId,
                     GeneratedAtUtc = generatedAtUtc,
                     LastRefreshAtUtc = lastRefreshAtUtc,
                     DataQualityStatus = readiness.MetaStatus,
@@ -378,6 +441,26 @@ public static class DataQualityEndpoints
                     EmptyReason = latestBatch is null ? "no_import" : null,
                     IsPartial = false
                 }));
+            }
+            catch (Exception)
+            {
+                var generatedAtUtcErr = DateTime.UtcNow;
+                var periodErr = ResolveIntakePeriod(fromDate, toDate);
+                return Results.Ok(new PilotDataQualityIntakeReportDto(
+                    generatedAtUtcErr, periodErr.FromUtc, periodErr.ToUtc,
+                    string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
+                    storeId?.ToString(CultureInfo.InvariantCulture),
+                    supplierId?.ToString(CultureInfo.InvariantCulture),
+                    null, null, 0, "error", "Greska",
+                    new PilotDataQualityIntakeLoadedDataDto(0, 0, 0, 0, 0, null, null),
+                    new PilotDataQualityIntakeIssuesDto(0, 0, 0, null, null, 0, 0, 0, 0),
+                    new PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
+                    [],
+                    AnalyticsResponseMetaFactory.Error(
+                        "intake_report_error",
+                        "Pilot intake izvestaj trenutno nije dostupan.",
+                        correlationId)));
+            }
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");

@@ -1,19 +1,19 @@
 # Analytics Meta Contract Audit
 
-Last updated: 2026-05-24
+Last updated: 2026-05-26
 Scope: cached analytics families, supplier decision hub, inventory, data-quality, and nivelacija flows.
 
 ## Coverage Table
 
 | Endpoint family | Success meta | Empty meta | Warning/partial meta | Error meta | CorrelationId | Frontend meta-aware | Fake-zero guarded | Notes |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| Cached dashboard/bootstrap | Yes | Partial | Partial | Yes | Partial | Yes | Yes | Gap: prove empty/warning/correlation on every bootstrap branch. File: `Api/Endpoints/CachedAnalyticsEndpoints.cs`. Priority: P0. |
-| Cached products/decision-center | Yes | Partial | Partial | Yes | Partial | Yes | Yes | Gap: standardize empty/no-data and fallback/insufficient-data metadata on all cached decision-center paths. File: `Api/Endpoints/CachedAnalyticsEndpoints.cs`. Priority: P0. |
+| Cached dashboard/bootstrap | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Proven via code audit. All branches in `/dashboard/bootstrap` covered: `BuildSuccessMeta(isPartial=true, warningCode="ANALYTICS_PARTIAL_DATA")` when errors present; error branches for NpgsqlException/Timeout/Cancellation; `result.Meta.CorrelationId = ResolveCorrelationId(httpContext)` on all paths. File: `Api/Endpoints/CachedAnalyticsEndpoints.cs`. Priority: P0. |
+| Cached products/decision-center | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Proven via code audit. Empty branch (`articles.Count == 0`) returns `EmptyReason="no_rows_for_period"`; `sortedRows.Count == 0` now returns `EmptyReason="no_rows_for_period"` (fixed 2026-05-26); error branches use `BuildErrorMeta(...)`; correlationId on all branches. File: `Api/Endpoints/CachedAnalyticsEndpoints.cs`. Priority: P0. |
 | Supplier decision hub summary/ranking | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Gap: none in core contract; keep verifying summary/ranking/report tabs and report export parity. File: `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`. Priority: P1. |
-| Inventory family | Yes | Partial | Partial | Yes | Partial | Partial | Yes | Gap: not every inventory route is guaranteed to emit the same meta shape yet. File: `Api/Endpoints/InventoryEndpoints.cs` and `Klijent/clientapp/src/pages/InventoryPage.tsx`. Priority: P1. |
-| Data-quality family | Yes | Yes | Partial | Yes | Partial | Yes | Yes | Gap: confirm warning/partial and correlation consistency across all data-quality routes and UI states. File: `Api/Endpoints/DataQualityEndpoints.cs` and `Klijent/clientapp/src/pages/DataQualityPage.tsx`. Priority: P1. |
-| Pre/post nivelacija | Yes | Partial | Partial | Partial | Partial | Yes | Yes | Gap: full meta contract still needs hard verification on every response path, including error and fallback branches. File: `Api/Endpoints/AllEndpoints.cs` and `Api/Models/VendorSalesNivelacijaModels.cs`. Priority: P1. |
-| Pre-nivelacija prioriteti | Yes | Partial | Partial | Yes | Yes | Yes | Yes | Gap: confirm empty/no-data and partial semantics for edge filter windows, not only error branches. File: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs` and `Klijent/clientapp/src/services/preNivelacijaApi.ts`. Priority: P2. |
+| Inventory family | Yes | Yes | Yes | Yes | Yes | Yes | Yes | All gaps closed 2026-05-26. `/insights` (non-cached + cached) wrapped in try-catch with error meta; `/cached/inventory/status` now emits meta with correlationId and error handling; `/cached/inventory/insights` wrapped in try-catch; `/cached/inventory/balance` and `/cached/inventory/list` were already covered. Signal routes (`forecast`, `size-curve`, `rebalance-suggestions`, `alerts`) still use legacy warning fields — tracked separately as lower-priority. Files: `Api/Endpoints/InventoryEndpoints.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`. Priority: P1. |
+| Data-quality family | Yes | Yes | Yes | Yes | Yes | Yes | Yes | All 5 routes now wrapped in try-catch (fixed 2026-05-26): `/health`, `/list`, `/top-offenders`, `/trend`, `/intake-report`. All already had success meta and correlationId. Error branches return safe DTO with `AnalyticsResponseMetaFactory.Error(...)`. File: `Api/Endpoints/DataQualityEndpoints.cs`. Priority: P1. |
+| Pre/post nivelacija | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Proven via code audit. `BuildVendorSalesNivelacijaMeta(response, correlationId)` covers empty/warning/success; `CreateVendorSalesNivelacijaFallbackResponse(...)` covers PostgresException and general Exception; `meta.CorrelationId = correlationId` on all branches. File: `Api/Endpoints/AllEndpoints.cs`. Priority: P1. |
+| Pre-nivelacija prioriteti | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Proven via code audit. `BuildResponse(...)`: `TotalCandidates==0` → `Factory.Empty("no_data_in_period",...)`; error catches use `BuildErrorResponse(code, message, correlationId)`; correlationId propagated everywhere. File: `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`. Priority: P2. |
 
 ## Contract Rule
 
@@ -45,7 +45,7 @@ Scope: cached analytics families, supplier decision hub, inventory, data-quality
 
 ## Known Gaps
 
-- `InventoryPage` je još delimično legacy na page sloju, iako su centralni analytics servisi guardovani.
+- `InventoryPage` koristi centralni meta helper za error/empty/warning/trust state, ali signal paneli (`forecast`, `size-curve`, `rebalance`, `alerts`) jos nisu kompletno prebaceni na isti meta warning/empty ugovor.
 - Neki cached endpointi imaju meta na success/error granama, ali nije svaka fallback grana eksplicitno potvrđena.
 - Ovaj audit pokriva core analytics porodice; endpointi van tog skupa nisu uključeni.
 

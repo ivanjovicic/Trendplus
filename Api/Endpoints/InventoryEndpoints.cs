@@ -46,7 +46,7 @@ public static class InventoryEndpoints
                 var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
 
                 AnalyticsResponseMetaDto meta = totalSku == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", "insufficient_data")
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
                     : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
@@ -81,13 +81,49 @@ public static class InventoryEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId = null,
             int? supplierId = null,
             string? search = null,
             string? sortBy = null,
             CancellationToken ct = default) =>
         {
-            return Results.Ok(await GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct));
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var result = await GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct);
+                return Results.Ok(result with { Meta = ApplyCorrelationId(result.Meta, correlationId) });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Inventory insights query failed due to database issue.");
+                return Results.Ok(new InventoryInsightsDto(
+                    0,
+                    0m,
+                    [],
+                    [],
+                    [],
+                    [],
+                    AnalyticsResponseMetaFactory.Error("inventory_insights_db_error", "Inventory uvidi trenutno nisu dostupni.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading inventory insights.");
+                return Results.Ok(new InventoryInsightsDto(
+                    0,
+                    0m,
+                    [],
+                    [],
+                    [],
+                    [],
+                    AnalyticsResponseMetaFactory.Error("inventory_insights_error", "Neocekivana greska pri ucitavanju inventory uvida.", correlationId)));
+            }
         })
         .WithName("GetInventoryInsights");
 
@@ -392,7 +428,7 @@ public static class InventoryEndpoints
                     .ToListAsync(ct);
 
                 AnalyticsResponseMetaDto meta = total == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", "insufficient_data")
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", null)
                     : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
@@ -421,13 +457,44 @@ public static class InventoryEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int[]? compareStoreIds,
             int? supplierId,
             string? search,
             CancellationToken ct) =>
         {
-            var comparison = await GetInventoryStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
-            return Results.Ok(comparison);
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var comparison = await GetInventoryStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
+                return Results.Ok(comparison with { Meta = ApplyCorrelationId(comparison.Meta, correlationId) });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Inventory store comparison query failed due to database issue.");
+                return Results.Ok(new InventoryStoreComparisonDto(
+                    DateTime.UtcNow,
+                    [],
+                    [],
+                    "Poredjenje prodavnica trenutno nije dostupno.",
+                    AnalyticsResponseMetaFactory.Error("inventory_store_comparison_db_error", "Poredjenje prodavnica trenutno nije dostupno.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading inventory store comparison.");
+                return Results.Ok(new InventoryStoreComparisonDto(
+                    DateTime.UtcNow,
+                    [],
+                    [],
+                    "Poredjenje prodavnica trenutno nije dostupno.",
+                    AnalyticsResponseMetaFactory.Error("inventory_store_comparison_error", "Neocekivana greska pri ucitavanju poredjenja prodavnica.", correlationId)));
+            }
         })
         .WithName("GetInventoryStoreComparison");
 
@@ -436,13 +503,48 @@ public static class InventoryEndpoints
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
             IInventoryActionDecisionService actionDecisionService,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId,
             int? supplierId,
             string? search,
             CancellationToken ct) =>
         {
-            var workflow = await GetInventoryActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
-            return Results.Ok(workflow);
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var workflow = await GetInventoryActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+                return Results.Ok(workflow with { Meta = ApplyCorrelationId(workflow.Meta, correlationId) });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogWarning(ex, "Inventory action workflow query failed due to database issue.");
+                return Results.Ok(new InventoryActionWorkflowDto(
+                    DateTime.UtcNow,
+                    0,
+                    0,
+                    0,
+                    0,
+                    [],
+                    AnalyticsResponseMetaFactory.Error("inventory_action_workflow_db_error", "Workflow akcije trenutno nisu dostupne.", correlationId)));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error loading inventory action workflow.");
+                return Results.Ok(new InventoryActionWorkflowDto(
+                    DateTime.UtcNow,
+                    0,
+                    0,
+                    0,
+                    0,
+                    [],
+                    AnalyticsResponseMetaFactory.Error("inventory_action_workflow_error", "Neocekivana greska pri ucitavanju workflow akcija.", correlationId)));
+            }
         })
         .WithName("GetInventoryActionSuggestions");
 
@@ -840,6 +942,10 @@ public static class InventoryEndpoints
             .OrderBy(x => x.BucketKey)
             .ToList();
 
+        var meta = items.Count == 0
+            ? AnalyticsResponseMetaFactory.Empty("no_inventory_insights", "Nema dovoljno podataka za inventory uvide.", null)
+            : AnalyticsResponseMetaFactory.Success();
+
         return new InventoryInsightsDto(
             items.Count,
             Math.Round(totalValue, 2),
@@ -856,7 +962,8 @@ public static class InventoryEndpoints
                 .ThenByDescending(x => x.Quantity)
                 .Take(5)
                 .Select(ToInsightItem)
-                .ToList());
+                .ToList(),
+            meta);
     }
 
     private static InventoryInsightItemDto ToInsightItem(InventoryDatasetItem item)
@@ -980,11 +1087,25 @@ public static class InventoryEndpoints
                 ? $"Prikazane su {stores.Count} lokacije za poreÄ‘enje."
                 : $"Najveci operativni pritisak je u lokaciji {worstStore.StoreName}, dok {bestStore.StoreName} trenutno ima najbolji udeo zdravih SKU.";
 
+        var requestedStoreCount = (compareStoreIds ?? [])
+            .Where(id => id > 0)
+            .Distinct()
+            .Count();
+        var meta = stores.Count == 0
+            ? AnalyticsResponseMetaFactory.Empty("no_inventory_store_comparison", "Nema dovoljno podataka za poredjenje prodavnica.", null)
+            : requestedStoreCount > 0 && stores.Count < requestedStoreCount
+                ? AnalyticsResponseMetaFactory.Warning(
+                    "inventory_store_subset",
+                    "Deo izabranih prodavnica nema dovoljno podataka u trenutno dostupnom datasetu.",
+                    "warning")
+                : AnalyticsResponseMetaFactory.Success();
+
         return new InventoryStoreComparisonDto(
             DateTime.UtcNow,
             stores,
             sharedRisks,
-            summary);
+            summary,
+            meta);
     }
 
     private static async Task<InventoryActionWorkflowDto> BuildActionWorkflowAsync(
@@ -1107,13 +1228,25 @@ public static class InventoryEndpoints
             .Take(24)
             .ToList();
 
+        var meta = distinctSuggestions.Count == 0
+            ? AnalyticsResponseMetaFactory.Empty("no_inventory_action_suggestions", "Nema akcija za izabrane filtere.", null)
+            : AnalyticsResponseMetaFactory.Success();
+
         return new InventoryActionWorkflowDto(
             DateTime.UtcNow,
             distinctSuggestions.Count(item => item.Status == "pending"),
             distinctSuggestions.Count(item => item.Status == "approved"),
             distinctSuggestions.Count(item => item.Status == "deferred"),
             distinctSuggestions.Count(item => item.Status == "closed"),
-            distinctSuggestions);
+            distinctSuggestions,
+            meta);
+    }
+
+    private static AnalyticsResponseMetaDto ApplyCorrelationId(AnalyticsResponseMetaDto? meta, string correlationId)
+    {
+        var resolved = meta ?? AnalyticsResponseMetaFactory.Success();
+        resolved.CorrelationId = correlationId;
+        return resolved;
     }
 
     private static InventoryActionSuggestionDto ToSuggestion(
