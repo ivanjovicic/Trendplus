@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Trendplus2.Dtos;
 
 namespace Api.Models;
 
@@ -166,6 +167,7 @@ public sealed class VendorSalesNivelacijaResponseDto
     public decimal? AvgLostSalesOOS { get; set; }
     public decimal? OOSRate { get; set; }
     public string? MetricsStatus { get; set; } // null if all metrics valid, else reason
+    public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaOptionDto

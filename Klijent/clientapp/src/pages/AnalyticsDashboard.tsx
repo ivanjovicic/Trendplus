@@ -53,9 +53,14 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import {
+  getAnalyticsMetaMessage,
+  isAnalyticsMetaEmpty,
+  isAnalyticsMetaError,
+  isAnalyticsMetaWarning,
+} from "../utils/analyticsResponseMeta";
+import {
   dataQualityStatusLabel,
   formatConfidence as formatDecisionConfidence,
-  formatReliability as formatDecisionReliability,
   normalizeDataQualityStatus,
 } from "../utils/analyticsQuality";
 import "./AnalyticsDashboard.css";
@@ -103,7 +108,6 @@ function formatInputDateTime(value: Date): string {
   const minute = String(value.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
-
 function parseInputDate(value: string): Date {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
@@ -354,6 +358,20 @@ function compactErrorMessages(messages: string[]): string[] {
   return stable;
 }
 
+function formatDecisionPctOrUnavailable(value: number | null | undefined): string {
+  const normalized = normalizeRecommendationPct(value);
+  if (normalized == null) return "nije dostupno";
+  return fmtPct(normalized, 0);
+}
+
+function freshnessStatusLabel(value?: string | null): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "fresh") return "Sve\u017Ee";
+  if (normalized === "stale") return "Zastarelo";
+  if (normalized === "critical") return "Kriti\u010Dno";
+  return "Nepoznato";
+}
+
 function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?: string }) {
   return (
     <article className={`metric-card ${props.tone ?? "neutral"}`}>
@@ -365,7 +383,6 @@ function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?
     </article>
   );
 }
-
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -591,14 +608,18 @@ export default function AnalyticsDashboard() {
     if (topTab === "velocity") return topAdvanced.byVelocity ?? [];
     return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
-  const hasFatalLoadError = !loading && ((errors.length > 0 && summary == null) || dashboardMeta?.success === false);
+  const dashboardMetaMessage = getAnalyticsMetaMessage(dashboardMeta);
+  const hasFatalLoadError = !loading && ((errors.length > 0 && summary == null) || isAnalyticsMetaError(dashboardMeta));
+  const showMetaWarning = !loading && !hasFatalLoadError && isAnalyticsMetaWarning(dashboardMeta);
   const emptyVariant = useMemo(() => {
     if (loading || hasFatalLoadError) return null;
     if (dashboardMeta?.dataQualityStatus === "insufficient_data") return "insufficient_data" as const;
-    if (dashboardMeta?.emptyReason) return "no_data" as const;
+    if (isAnalyticsMetaEmpty(dashboardMeta)) {
+      return dashboardMeta?.dataQualityStatus === "insufficient_data" ? "insufficient_data" as const : "no_data" as const;
+    }
     if (summary && summary.totalTransactions === 0 && summary.totalUnits === 0) return "no_data" as const;
     return null;
-  }, [dashboardMeta?.dataQualityStatus, dashboardMeta?.emptyReason, hasFatalLoadError, loading, summary]);
+  }, [dashboardMeta, dashboardMeta?.dataQualityStatus, hasFatalLoadError, loading, summary]);
   const showEmptyState = emptyVariant !== null;
   const executiveDataQualityTone = normalizeDataQualityStatus(
     dashboardMeta?.dataQualityStatus ?? executive?.dataQualitySummary?.freshnessStatus ?? null
@@ -648,6 +669,18 @@ export default function AnalyticsDashboard() {
     () => prioritizedDecisionActions.length > 0 && prioritizedDecisionActions.every((action) => action.recommendationAllowed === false),
     [prioritizedDecisionActions]
   );
+  const executiveDataQualityHighlights = useMemo(() => {
+    const summary = executive?.dataQualitySummary;
+    if (!summary) return [] as Array<{ key: string; label: string; value: number }>;
+
+    return [
+      { key: "missingSupplierCount", label: "Bez dobavlja\u010Da", value: summary.missingSupplierCount ?? 0 },
+      { key: "missingCostCount", label: "Bez nabavne cene", value: summary.missingCostCount ?? 0 },
+      { key: "insufficientSignalCount", label: "Nedovoljni signali", value: summary.insufficientSignalCount ?? 0 },
+      { key: "ignoredRowsCount", label: "Ignorisani redovi", value: summary.ignoredRowsCount ?? 0 },
+      { key: "zeroRevenueRowsCount", label: "Nulti prihod", value: summary.zeroRevenueRowsCount ?? 0 },
+    ].filter((item) => item.value > 0);
+  }, [executive?.dataQualitySummary]);
 
   const currentActionFilters = useMemo<DashboardActionFilters>(() => ({
     fromDate,
@@ -726,7 +759,7 @@ export default function AnalyticsDashboard() {
       { key: "fromDate", label: "Od", value: fromDate },
       { key: "toDate", label: "Do", value: toDate },
       { key: "storeId", label: "Prodavnica", value: storeId ?? "" },
-      { key: "supplierId", label: "Dobavljac", value: supplierId ?? "" },
+      { key: "supplierId", label: "Dobavlja\u010D", value: supplierId ?? "" },
     ],
     [fromDate, supplierId, storeId, toDate]
   );
@@ -767,7 +800,7 @@ export default function AnalyticsDashboard() {
     <div className="analytics-dashboard">
       <AnalyticsTrustHeader
         title="Pregled poslovanja"
-        description="Executive dashboard: kljucni KPI-jevi, najvaznije odluke i pouzdanost podataka za izabrani period."
+        description="Executive cockpit za prodaju i profit: prihod, mar\u017Eni doprinos, rizici i prioritetne odluke za izabrani period."
         periodFrom={fromDate}
         periodTo={toDate}
         lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
@@ -805,11 +838,11 @@ export default function AnalyticsDashboard() {
         <div>
           <h2 className="with-tip">
             <span>Executive Dashboard</span>
-            <InfoTip text="Fokus na kljucne KPI-jeve, najvaznije akcije i pouzdanost podataka. Grafici i detalji su nize na stranici." />
+            <InfoTip text="Fokus na klju\u010Dne KPI-jeve, najva\u017Enije akcije i pouzdanost podataka. Grafikoni i detalji su ni\u017Ee na stranici." />
           </h2>
         </div>
         <div className="analytics-controls">
-          <button onClick={() => void load()} disabled={loading}>{loading ? "Ucitavanje..." : "Osvezi"}</button>
+          <button onClick={() => void load()} disabled={loading}>{loading ? "U\u010Ditavanje..." : "Osve\u017Ei"}</button>
         </div>
       </header>
 
@@ -847,9 +880,9 @@ export default function AnalyticsDashboard() {
             </select>
           </label>
           <label>
-            Dobavljac
+            Dobavlja\u010D
             <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
-              <option value="">Svi dobavljaci</option>
+              <option value="">Svi dobavlja\u010Di</option>
               {supplierOptions.map((supplier) => (
                 <option key={supplier.supplierId} value={supplier.supplierId}>
                   {supplier.supplierName}
@@ -861,7 +894,7 @@ export default function AnalyticsDashboard() {
         <div className="filter-chip-row">
           <span className="filter-chip">Opseg: {selectedDays} dana</span>
           <span className="filter-chip">Prodavnica: {storeId == null ? "Sve" : buildStoreLabel(stores.find((item) => item.storeId === storeId) ?? { storeId, storeName: `Prodavnica ${storeId}` })}</span>
-          <span className="filter-chip">Dobavljac: {selectedSupplier ? supplierOptions.find((item) => item.supplierId === supplierId)?.supplierName ?? `ID ${supplierId}` : "Svi"}</span>
+          <span className="filter-chip">Dobavlja\u010D: {selectedSupplier ? supplierOptions.find((item) => item.supplierId === supplierId)?.supplierName ?? `ID ${supplierId}` : "Svi"}</span>
         </div>
       </section>
       {healthText && <div className="analytics-health">{healthText}</div>}
@@ -872,14 +905,19 @@ export default function AnalyticsDashboard() {
           <ul>{errors.map((error, index) => <li key={`err-${index}`}>{error}</li>)}</ul>
         </section>
       )}
+      {showMetaWarning ? (
+        <div className="analytics-empty warning" role="status">
+          {dashboardMetaMessage ?? "Prikazani podaci su delimicni ili fallback. Proverite status osvezavanja analitike."}
+        </div>
+      ) : null}
       {hasFatalLoadError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={dashboardMeta?.message || errors[0] || "Dashboard trenutno nije dostupan."}
+          message={dashboardMetaMessage || errors[0] || "Dashboard trenutno nije dostupan."}
           errorCode={dashboardMeta?.errorCode ?? null}
           correlationId={dashboardMeta?.correlationId ?? null}
           suggestions={[
-            "Pokrenite osvezavanje analytics podataka i probajte ponovo.",
+            "Pokrenite osve\u017Eavanje analytics podataka i probajte ponovo.",
             "Ako problem traje, proverite data quality i backend logove.",
           ]}
           onRetry={() => {
@@ -894,9 +932,9 @@ export default function AnalyticsDashboard() {
       {showEmptyState ? (
         <AnalyticsEmptyState
           variant={emptyVariant ?? undefined}
-          emptyReason={dashboardMeta?.emptyReason ?? dashboardMeta?.message ?? null}
+          emptyReason={dashboardMeta?.emptyReason ?? dashboardMetaMessage ?? null}
           actions={[
-            { label: "Prosiri period na 90 dana", onClick: () => applyPreset("90d") },
+            { label: "Pro\u0161iri period na 90 dana", onClick: () => applyPreset("90d") },
             { label: "Otvori Data Quality", href: "/analytics/data-quality" },
           ]}
           dataQualityHref="/analytics/data-quality"
@@ -904,7 +942,8 @@ export default function AnalyticsDashboard() {
       ) : (
         <>
           <section className="analytics-section">
-            <h2 className="with-tip"><span>Ključni KPI-jevi</span><InfoTip text="4-5 metrika za brzu procenu: prihod, marzni doprinos, jedinice, rizicna zaliha i kvalitet podataka." /></h2>
+            <h2 className="with-tip"><span>Klju\u010Dni KPI-jevi</span><InfoTip text="4-5 metrika za brzu procenu: prihod, mar\u017Eni doprinos, jedinice, rizi\u010Dna zaliha i kvalitet podataka." /></h2>
+            <p className="section-note">Transakcije u periodu: <strong>{summary == null ? "N/A" : fmtNumber(summary.totalTransactions)}</strong></p>
             <ExecutiveKpiRow
               loading={loading}
               totalRevenue={summary?.totalRevenue ?? null}
@@ -925,14 +964,12 @@ export default function AnalyticsDashboard() {
               onClick={() => setShowOverviewHelp((prev) => !prev)}
               aria-expanded={showOverviewHelp}
             >
-              Kako citati ovaj pregled?
+              Kako \u010Ditati ovaj pregled?
             </button>
             {showOverviewHelp ? (
               <div className="overview-help-body">
-                <p>1) Krenite od KPI reda i proverite da li je data quality zelen ili barem zuto stanje.</p>
-                <p>2) U panelu "Sta treba uraditi ove nedelje" prvo resavajte P1 akcije sa dobrom pouzdanoscu.</p>
-                <p>3) "Gde zaradjujemo" i "Gde gubimo novac" daju prioritet gde se fokusirate odmah nakon akcija.</p>
-                <p>4) Ako su preporuke blokirane, prvo otvorite Data Quality i zatvorite rupe u podacima.</p>
+                <p>Pregled kombinuje prihod, mar\u017Eni doprinos, zalihe, dobavlja\u010De, kvalitet podataka i preporuke sistema.</p>
+                <p>Koristite ga za nedeljni pregled odluka: \u0161ta poja\u010Dati, \u0161ta proveriti i gde smanjiti rizik.</p>
               </div>
             ) : null}
           </section>
@@ -941,8 +978,8 @@ export default function AnalyticsDashboard() {
             <section className="analytics-panel analytics-decision-cockpit">
               <div className="decision-cockpit-head">
                 <div>
-                  <h2>Šta treba uraditi ove nedelje?</h2>
-                  <p>Top akcije generisane iz prodaje, zaliha, marže i kvaliteta podataka.</p>
+                  <h2>\u0160ta treba uraditi ove nedelje?</h2>
+                  <p>Top akcije generisane iz prodaje, zaliha, mar\u017Ee i kvaliteta podataka.</p>
                 </div>
                 <Link to="/analytics/actions" className="decision-all-actions-link">Akcije i preporuke</Link>
               </div>
@@ -972,6 +1009,9 @@ export default function AnalyticsDashboard() {
                         <div className="decision-action-top">
                           <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
                           <strong>{action.title}</strong>
+                          {action.recommendationAllowed === false ? (
+                            <span className="decision-limited-badge">Signal ograni\u010Den</span>
+                          ) : null}
                         </div>
                         <p className="decision-action-reason">{action.reason}</p>
                         {action.expectedImpact
@@ -982,14 +1022,17 @@ export default function AnalyticsDashboard() {
                         <div className="decision-action-foot">
                           <div className="decision-quality-stack">
                             <span className="decision-confidence">
-                              Sigurnost preporuke: {formatDecisionConfidence(action.confidencePct)}
+                              Sigurnost preporuke: {formatDecisionPctOrUnavailable(action.confidencePct)}
                             </span>
                             <span className="decision-confidence">
-                              Pouzdanost signala: {formatDecisionReliability(action.reliabilityPct)}
+                              Pouzdanost signala: {formatDecisionPctOrUnavailable(action.reliabilityPct)}
                             </span>
                             <span className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}>
                               Data quality: {dataQualityStatusLabel(action.dataQualityStatus)}
                             </span>
+                            {action.recommendationAllowed === false ? (
+                              <small className="decision-status-reason">Signal je informativan; finalna preporuka je blokirana zbog kvaliteta ili pokrivenosti podataka.</small>
+                            ) : null}
                             {normalizeDataQualityStatus(action.dataQualityStatus) !== "good" ? (
                               <Link to="/analytics/data-quality" className="decision-quality-link">
                                 Otvori kvalitet podataka
@@ -1054,7 +1097,7 @@ export default function AnalyticsDashboard() {
             <div className="analytics-exec-side">
               <section className="analytics-panel analytics-exec-earn">
                 <h2>Gde zarađujemo?</h2>
-                <p className="section-note">Top dobavljaci i artikli po marznom doprinosu (top 5).</p>
+                <p className="section-note">Top dobavljači i artikli po maržnom doprinosu (top 5).</p>
                 {(executive?.topMarginCategories?.length ?? 0) > 0 ? (
                   <div className="exec-top-categories">
                     {(executive?.topMarginCategories ?? []).slice(0, 3).map((item) => (
@@ -1070,13 +1113,13 @@ export default function AnalyticsDashboard() {
                 ) : (
                   <div className="exec-two-tables">
                     <div className="exec-table-wrap">
-                      <h3>Top dobavljaci</h3>
+                      <h3>Top dobavljači</h3>
                       <table className="exec-table">
                         <thead>
                           <tr>
-                            <th>Dobavljac</th>
+                            <th>Dobavljač</th>
                             <th className="num">Prihod</th>
-                            <th className="num">Marzni doprinos</th>
+                            <th className="num">Maržni doprinos</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1096,7 +1139,7 @@ export default function AnalyticsDashboard() {
                         <thead>
                           <tr>
                             <th>Artikal</th>
-                            <th className="num">Marzni doprinos</th>
+                            <th className="num">Maržni doprinos</th>
                             <th className="num">Confidence</th>
                           </tr>
                         </thead>
@@ -1104,7 +1147,7 @@ export default function AnalyticsDashboard() {
                           {(executive?.topMarginProducts ?? []).slice(0, 5).map((item) => (
                             <tr key={item.key}>
                               <td>
-                                <Link to={item.link} title={item.supplierName ? `Dobavljac: ${item.supplierName}` : undefined}>
+                                <Link to={item.link} title={item.supplierName ? `Dobavljač: ${item.supplierName}` : undefined}>
                                   {item.label}
                                 </Link>
                               </td>
@@ -1123,7 +1166,7 @@ export default function AnalyticsDashboard() {
 
               <section className="analytics-panel analytics-exec-lose">
                 <h2>Gde gubimo novac?</h2>
-                <p className="section-note">Najkriticniji negativni signali (top 5).</p>
+                <p className="section-note">Najkritičniji negativni signali (top 5).</p>
                 {!executive || (executive.negativeSignals ?? []).length === 0 ? (
                   <div className="analytics-empty">Nema dovoljno pouzdanih negativnih signala za prikaz.</div>
                 ) : (
@@ -1151,14 +1194,22 @@ export default function AnalyticsDashboard() {
 
               <section className="analytics-panel analytics-exec-data-quality">
                 <h2>Kvalitet podataka</h2>
-                <p className="section-note">Sazetak problema koji blokiraju pouzdane preporuke.</p>
+                <p className="section-note">Sa\u017Eetak problema koji blokiraju pouzdane preporuke.</p>
                 <div className="exec-dq-grid">
-                  <div><span>Bez dobavljaca</span><strong>{executive?.dataQualitySummary?.missingSupplierCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
-                  <div><span>Bez nabavne cene</span><strong>{executive?.dataQualitySummary?.missingCostCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
-                  <div><span>Nedovoljni signali</span><strong>{executive?.dataQualitySummary?.insufficientSignalCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
-                  <div><span>Nulti prihod</span><strong>{executive?.dataQualitySummary?.zeroRevenueRowsCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
-                  <div><span>Ignorisani redovi</span><strong>{executive?.dataQualitySummary?.ignoredRowsCount?.toLocaleString("sr-RS") ?? "-"}</strong></div>
+                  {executiveDataQualityHighlights.length === 0 ? (
+                    <div className="exec-dq-ok">Nema kriti\u010Dnih count signala u ovom preseku. Proverite ipak trend osve\u017Eavanja.</div>
+                  ) : (
+                    executiveDataQualityHighlights.map((item) => (
+                      <div key={item.key}>
+                        <span>{item.label}</span>
+                        <strong>{item.value.toLocaleString("sr-RS")}</strong>
+                      </div>
+                    ))
+                  )}
                 </div>
+                <p className="section-note">
+                  Sve\u017Eina podataka: <strong>{freshnessStatusLabel(refreshStatus?.dataFreshnessStatus)}</strong>
+                </p>
                 <Link to="/analytics/data-quality" className="exec-dq-cta">Otvori Data Quality</Link>
               </section>
             </div>

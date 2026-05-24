@@ -46,34 +46,34 @@ export default function ExecutiveKpiRow(props: Props) {
         label="Prihod"
         value={props.totalRevenue == null ? "N/A" : fmtRsd(props.totalRevenue)}
         tone="good"
-        infoTip="Ukupan novac od prodaje u izabranom periodu."
+        infoTip="Formula: zbir prodajne vrednosti svih prodaja u izabranom periodu."
       />
       <MetricCard
-        label="Marzni doprinos"
+        label="Mar\u017Eni doprinos"
         value={props.marginContributionRsd == null ? "N/A" : fmtRsd(props.marginContributionRsd)}
         tone="neutral"
-        infoTip="Zbir marznog doprinosa (procenjeno) za artikle sa dostupnim signalom."
+        infoTip="Formula: zbir (prodajna vrednost - nabavna vrednost) za stavke sa dostupnim tro\u0161kom."
       />
       <MetricCard
         label="Prodate jedinice"
         value={props.totalUnits == null ? "N/A" : fmtNumber(props.totalUnits)}
         tone="neutral"
-        infoTip="Ukupan broj prodatih komada."
+        infoTip="Formula: zbir prodatih komada u izabranom periodu."
       />
       <MetricCard
         label="Lager u riziku"
         value={props.inventoryDangerValueRsd == null ? "N/A" : fmtRsd(props.inventoryDangerValueRsd)}
         tone={props.inventoryDangerValueRsd != null && props.inventoryDangerValueRsd > 0 ? "warning" : "neutral"}
-        infoTip="Procena kapitala u sporoj ili rizicnoj zalihi (indikativno)."
+        infoTip="Procena kapitala vezanog u sporoj i rizi\u010Dnoj zalihi (indikativno)."
       />
       <article className={`metric-card ${qualityCardTone}`}>
         <span className="metric-label">
           <span>Kvalitet podataka</span>
-          <InfoTip text="Bez pouzdanih podataka nema pouzdane preporuke. Klik vodi na detaljan Data Quality." />
+          <InfoTip text="Sa\u017Eetak kvaliteta podataka koji uti\u010De na pouzdanost preporuka i signala." />
         </span>
         <strong>{dataQualityStatusLabel(props.dataQualityStatus)}</strong>
         <small className="exec-dq-sub">
-          Bez dobavljaca: {props.missingSupplierCount == null ? "-" : props.missingSupplierCount.toLocaleString("sr-RS")} | Bez cene: {props.missingCostCount == null ? "-" : props.missingCostCount.toLocaleString("sr-RS")}
+          Bez dobavlja\u010Da: {props.missingSupplierCount == null ? "-" : props.missingSupplierCount.toLocaleString("sr-RS")} | Bez cene: {props.missingCostCount == null ? "-" : props.missingCostCount.toLocaleString("sr-RS")}
         </small>
         <Link to="/analytics/data-quality" className="exec-dq-link">Otvori Data Quality</Link>
       </article>

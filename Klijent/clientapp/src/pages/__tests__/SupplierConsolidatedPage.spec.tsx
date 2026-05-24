@@ -49,7 +49,7 @@ describe("SupplierConsolidatedPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Dobavljaci")).toBeInTheDocument();
+    expect(screen.getAllByText("Dobavljači").length).toBeGreaterThan(0);
 
     await waitFor(() => {
       expect(screen.getByText("Dataset")).toBeInTheDocument();

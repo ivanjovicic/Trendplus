@@ -31,13 +31,25 @@
   border-color: var(--border-default, #d1d5db);
 }
 
+.aes-no-data h2::before {
+  content: "[ ] ";
+}
+
 .aes-insufficient-data {
   border-color: var(--warning, #f59e0b);
   background: var(--surface-warning, #fffbeb);
 }
 
+.aes-insufficient-data h2::before {
+  content: "! ";
+}
+
 .aes-filtered-out {
   border-color: var(--info, #3b82f6);
+}
+
+.aes-filtered-out h2::before {
+  content: "~ ";
 }
 
 /* Reasons and actions sections */

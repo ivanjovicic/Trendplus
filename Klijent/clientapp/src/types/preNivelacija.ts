@@ -1,3 +1,5 @@
+import type { AnalyticsResponseMeta } from "./analytics";
+
 export interface PreNivelacijaScoreBreakdown {
   stockPressure: number;
   velocityRisk: number;
@@ -114,4 +116,5 @@ export interface PreNivelacijaPriorityResponse {
   page: number;
   pageSize: number;
   totalCandidates: number;
+  meta?: AnalyticsResponseMeta | null;
 }

@@ -46,6 +46,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -60,48 +61,113 @@ public static class CachedAnalyticsEndpoints
 
             var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId);
 
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    if (!storeId.HasValue && !supplierId.HasValue)
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
                     {
-                        var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
-                        if (aggregated is not null)
+                        if (!storeId.HasValue && !supplierId.HasValue)
                         {
-                            return aggregated;
+                            var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
+                            if (aggregated is not null)
+                            {
+                                return aggregated;
+                            }
                         }
-                    }
 
-                    var baseQuery = from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                                    join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                                    join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
-                                    group ps by p.Id into g
-                                    select new
-                                    {
-                                        TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
-                                        TotalUnits = g.Sum(x => x.Kolicina),
-                                        TransactionCount = g.Key
-                                    };
+                        var baseQuery = from p in trendDb.ProdajaZaglavlja.AsNoTracking()
+                                        join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                                        group ps by p.Id into g
+                                        select new
+                                        {
+                                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
+                                            TotalUnits = g.Sum(x => x.Kolicina),
+                                            TransactionCount = g.Key
+                                        };
 
-                    var aggregatedResult = await baseQuery.ToListAsync(ct);
+                        var aggregatedResult = await baseQuery.ToListAsync(ct);
 
-                    var totalRevenue = aggregatedResult.Sum(x => x.TotalRevenue);
-                    var totalUnits = aggregatedResult.Sum(x => x.TotalUnits);
-                    var totalTransactions = aggregatedResult.Count;
-                    var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
-                    var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
+                        var totalRevenue = aggregatedResult.Sum(x => x.TotalRevenue);
+                        var totalUnits = aggregatedResult.Sum(x => x.TotalUnits);
+                        var totalTransactions = aggregatedResult.Count;
+                        var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
+                        var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
 
-                    return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
-                },
-                CacheExpiration.Medium,
-                ct);
+                        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+                    },
+                    CacheExpiration.Medium,
+                    ct);
 
-            return Results.Ok(result);
+                var correlationId = ResolveCorrelationId(httpContext);
+                var meta = result.TotalTransactions == 0
+                    ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new
+                {
+                    result.TotalRevenue,
+                    result.TotalTransactions,
+                    result.TotalUnits,
+                    result.AvgBasketValue,
+                    result.AvgItemPrice,
+                    Meta = meta
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState is "42P01" or "42703")
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "missing_table",
+                    "Prodajni sazetak trenutno nije dostupan zbog nedostajuce analiticke relacije.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    TotalRevenue = 0m,
+                    TotalTransactions = 0,
+                    TotalUnits = 0,
+                    AvgBasketValue = 0m,
+                    AvgItemPrice = 0m,
+                    Meta = meta
+                });
+            }
+            catch (TimeoutException)
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "sql_timeout",
+                    "Prodajni sazetak trenutno nije dostupan zbog isteka vremena.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    TotalRevenue = 0m,
+                    TotalTransactions = 0,
+                    TotalUnits = 0,
+                    AvgBasketValue = 0m,
+                    AvgItemPrice = 0m,
+                    Meta = meta
+                });
+            }
+            catch (NpgsqlException)
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "analytics_db_unavailable",
+                    "Prodajni sazetak trenutno nije dostupan zbog greske baze.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    TotalRevenue = 0m,
+                    TotalTransactions = 0,
+                    TotalUnits = 0,
+                    AvgBasketValue = 0m,
+                    AvgItemPrice = 0m,
+                    Meta = meta
+                });
+            }
         });
 
         // ========== TOP PRODUCTS (CACHED) ==========
@@ -109,6 +175,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int top = 20,
@@ -124,53 +191,107 @@ public static class CachedAnalyticsEndpoints
 
             var cacheKey = AnalyticsCacheKeys.TopProducts(top, fromDate, toDate, storeId, supplierId);
 
-            var result = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
-                    if (!storeId.HasValue && !supplierId.HasValue)
+            try
+            {
+                var result = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
                     {
-                        var aggregated = await TryGetTopProductsFromAggregatesAsync(trendDb, top, fromDate, toDate, ct);
-                        if (aggregated is not null)
+                        if (!storeId.HasValue && !supplierId.HasValue)
                         {
-                            return aggregated;
+                            var aggregated = await TryGetTopProductsFromAggregatesAsync(trendDb, top, fromDate, toDate, ct);
+                            if (aggregated is not null)
+                            {
+                                return aggregated;
+                            }
                         }
-                    }
 
-                    var baseQuery = from ps in trendDb.ProdajaStavke.AsNoTracking()
-                                    join p in trendDb.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
-                                    join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                          (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                                          (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
-                                    group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
-                                    orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
-                                    select new TopProductDto(
-                                        g.Key.IdArtikal,
-                                        g.Key.Naziv,
-                                        g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                                        g.Sum(x => x.ps.Kolicina),
-                                        g.Key.Velicina,
-                                        g.Key.Boja
-                                    );
+                        var baseQuery = from ps in trendDb.ProdajaStavke.AsNoTracking()
+                                        join p in trendDb.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                                        group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
+                                        orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
+                                        select new TopProductDto(
+                                            g.Key.IdArtikal,
+                                            g.Key.Naziv,
+                                            g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                                            g.Sum(x => x.ps.Kolicina),
+                                            g.Key.Velicina,
+                                            g.Key.Boja
+                                        );
 
-                    var topRevenue = await baseQuery
-                        .OrderByDescending(x => x.TotalRevenue)
-                        .Take(top)
-                        .ToListAsync(ct);
+                        var topRevenue = await baseQuery
+                            .OrderByDescending(x => x.TotalRevenue)
+                            .Take(top)
+                            .ToListAsync(ct);
 
-                    var topUnits = await baseQuery
-                        .OrderByDescending(x => x.TotalUnits)
-                        .Take(top)
-                        .ToListAsync(ct);
+                        var topUnits = await baseQuery
+                            .OrderByDescending(x => x.TotalUnits)
+                            .Take(top)
+                            .ToListAsync(ct);
 
-                    return new TopProductsResult(topRevenue, topUnits);
-                },
-                CacheExpiration.Medium,
-                ct);
+                        return new TopProductsResult(topRevenue, topUnits);
+                    },
+                    CacheExpiration.Medium,
+                    ct);
 
-            return Results.Ok(result);
+                var correlationId = ResolveCorrelationId(httpContext);
+                var isEmpty = result.ByRevenue.Count == 0 && result.ByUnits.Count == 0;
+                var meta = isEmpty
+                    ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new
+                {
+                    result.ByRevenue,
+                    result.ByUnits,
+                    Meta = meta
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState is "42P01" or "42703")
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "missing_table",
+                    "Top proizvodi trenutno nisu dostupni zbog nedostajuce analiticke relacije.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    ByRevenue = Array.Empty<TopProductDto>(),
+                    ByUnits = Array.Empty<TopProductDto>(),
+                    Meta = meta
+                });
+            }
+            catch (TimeoutException)
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "sql_timeout",
+                    "Top proizvodi trenutno nisu dostupni zbog isteka vremena.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    ByRevenue = Array.Empty<TopProductDto>(),
+                    ByUnits = Array.Empty<TopProductDto>(),
+                    Meta = meta
+                });
+            }
+            catch (NpgsqlException)
+            {
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "analytics_db_unavailable",
+                    "Top proizvodi trenutno nisu dostupni zbog greske baze.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    ByRevenue = Array.Empty<TopProductDto>(),
+                    ByUnits = Array.Empty<TopProductDto>(),
+                    Meta = meta
+                });
+            }
         });
 
         // ========== TOP PRODUCTS ADVANCED (CACHED) ==========

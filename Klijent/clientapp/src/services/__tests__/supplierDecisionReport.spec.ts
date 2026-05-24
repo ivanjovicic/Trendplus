@@ -151,7 +151,7 @@ describe("buildSupplierDecisionReportPayload", () => {
 
     const warningRows = payload.rows.filter((row) => row.section === "Upozorenje");
     expect(warningRows.length).toBeGreaterThan(0);
-    expect(warningRows.some((row) => String(row.value).includes("Preporuka je ogranicena zbog nedovoljnih ili fallback podataka"))).toBe(true);
+    expect(warningRows.some((row) => String(row.value).includes("Report prikazuje pomoćni scorecard signal, ne finalnu preporuku."))).toBe(true);
     expect(warningRows.some((row) => String(row.item).includes("Delimicni/fallback podaci"))).toBe(true);
     expect(payload.metadata.some((item) => item.key === "usedFallback" && item.value === true)).toBe(true);
   });

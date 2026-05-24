@@ -1,4 +1,5 @@
 import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
+import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 import { makeUrl } from "./analyticsApi";
 
@@ -33,5 +34,11 @@ export async function getPreNivelacijaPrioriteti(query: PreNivelacijaQuery): Pro
     const text = await res.text();
     throw new Error(`Neuspesno ucitavanje pre-nivelacija prioriteta: ${text}`);
   }
-  return res.json() as Promise<PreNivelacijaPriorityResponse>;
+
+  const payload = (await res.json()) as PreNivelacijaPriorityResponse;
+  return assertAnalyticsMetaSuccess(
+    payload,
+    (response) => response.meta,
+    "Pre-nivelacija prioriteti trenutno nisu dostupni."
+  );
 }

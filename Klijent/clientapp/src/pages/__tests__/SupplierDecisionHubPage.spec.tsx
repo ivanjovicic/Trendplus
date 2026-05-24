@@ -124,7 +124,7 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    expect(screen.getAllByText(/Skorkarta dobavljac/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Skorkarta dobavljač/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/meri Skorkarta/i)).toBeInTheDocument();
     expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
     expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
@@ -220,9 +220,9 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    const messages = await screen.findAllByText(/Sistem nije koristio siri period kao fallback/i);
+    const messages = await screen.findAllByText(/Sistem nije koristio širi period kao fallback/i);
     expect(messages.length).toBeGreaterThan(0);
-    expect(screen.getByText(/Prosirite period na 90d ili 180d/i)).toBeInTheDocument();
+    expect(screen.getByText(/Proširite period na 90d ili 180d/i)).toBeInTheDocument();
   });
 
   it("shows fallback banner and helper signal label when recommendation is gated", async () => {
@@ -290,7 +290,7 @@ describe("SupplierDecisionHubPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText(/Koriscen je dataset Poslednjih 90 dana kao pomocni signal/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Pomocni signal").length).toBeGreaterThan(0);
+    expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
+    expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
   });
 });

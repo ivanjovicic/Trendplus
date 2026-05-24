@@ -16,6 +16,7 @@ type AnalyticsEmptyStateProps = {
   dataQualityHref?: string;
   refreshStatusHref?: string;
   variant?: "no_data" | "insufficient_data" | "filtered_out";
+  onRetry?: () => void;
 };
 
 const VARIANT_DEFAULTS: Record<
@@ -45,6 +46,7 @@ export default function AnalyticsEmptyState({
   dataQualityHref,
   refreshStatusHref,
   variant,
+  onRetry,
 }: AnalyticsEmptyStateProps) {
   const defaults = variant ? VARIANT_DEFAULTS[variant] : null;
   const displayTitle = title ?? defaults?.title ?? "Nema podataka.";
@@ -56,14 +58,16 @@ export default function AnalyticsEmptyState({
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
   const defaultActions: EmptyStateAction[] = variant === "filtered_out"
     ? [
-      { label: "Ublazite filtere i pokusajte ponovo." },
+      { label: "Promenite filtere ili prosirite period." },
       { label: "Otvori kvalitet podataka", href: resolvedDataQualityHref },
       { label: "Proveri refresh status", href: resolvedRefreshStatusHref },
+      ...(onRetry ? [{ label: "Pokusaj ponovo.", onClick: onRetry }] : []),
     ]
     : [
       { label: "Prosiri period." },
       { label: "Otvori kvalitet podataka", href: resolvedDataQualityHref },
       { label: "Proveri refresh status", href: resolvedRefreshStatusHref },
+      ...(onRetry ? [{ label: "Pokusaj ponovo.", onClick: onRetry }] : []),
     ];
   const resolvedActions = actions && actions.length > 0 ? actions : defaultActions;
 

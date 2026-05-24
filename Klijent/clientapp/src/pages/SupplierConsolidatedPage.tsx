@@ -18,9 +18,9 @@ const tabLabels: Record<SupplierTab, string> = {
 };
 
 const tabDescriptions: Record<SupplierTab, string> = {
-  overview: "Pregled: glavna preporuka za dobavljaca i centralni ekran za poslovnu odluku.",
-  scorecard: "Skorkarta: dodatni scorecard signal (nije paralelna finalna preporuka).",
-  assortment: "Asortiman: drilldown strukture prometa po tipu obuce, bez posebne finalne preporuke.",
+  overview: "Pregled: glavna preporuka za dobavljača i centralni ekran za poslovnu odluku.",
+  scorecard: "Skorkarta dobavljača — pomoćni signal. Skorkarta poredi dobavljače po scorecard signalu. Koristi se za proveru i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled.",
+  assortment: "Asortiman: drilldown strukture prometa po tipu obuće, bez posebne finalne preporuke.",
 };
 
 function buildStoreLabel(store: StoreOption): string {
@@ -75,8 +75,8 @@ export default function SupplierConsolidatedPage() {
   return (
     <div className="supplier-consolidated-page">
       <AnalyticsTrustHeader
-        title="Dobavljaci"
-        description="Jedinstveni ekran za overview preporuku, scorecard signal i analizu asortimana dobavljaca."
+        title="Dobavljači"
+        description="Jedinstveni ekran za overview preporuku, scorecard signal i analizu asortimana dobavljača."
         periodFrom={trustPayload?.periodFrom ?? canonicalFilters.fromDate}
         periodTo={trustPayload?.periodTo ?? canonicalFilters.toDate}
         lastRefreshAt={trustPayload?.lastRefreshAt ?? null}
@@ -93,8 +93,20 @@ export default function SupplierConsolidatedPage() {
         fallbackReason={trustPayload?.fallbackReason ?? null}
         fallbackReasonCode={trustPayload?.fallbackReasonCode ?? null}
         recommendationAllowed={trustPayload?.recommendationAllowed ?? null}
-        mode={currentTab === "assortment" ? "signal" : "recommendation"}
-        recommendationNote={trustPayload?.recommendationNote ?? (currentTab !== "assortment" ? "Pregled i skorkarta su recommendation surface; asortiman je signalni drilldown." : undefined)}
+        mode={
+          currentTab === "assortment"
+            ? "signal"
+            : currentTab === "scorecard"
+              ? (trustPayload?.recommendationAllowed === true ? "recommendation" : "signal")
+              : "recommendation"
+        }
+        recommendationNote={trustPayload?.recommendationNote ?? (
+          currentTab === "scorecard"
+            ? (trustPayload?.recommendationAllowed === true
+              ? "Skorkarta je signalni sloj uz aktivnu finalnu preporuku."
+              : "Ovo je analitički signal. Finalna preporuka je u tabu Pregled.")
+            : (currentTab !== "assortment" ? "Pregled je finalna preporuka; asortiman i skorkarta su signalni slojevi." : undefined)
+        )}
         emptyStateReason={trustPayload?.emptyStateReason ?? null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"

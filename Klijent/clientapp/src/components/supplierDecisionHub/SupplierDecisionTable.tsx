@@ -42,7 +42,7 @@ const sortableColumns: Array<{
   { key: "preMarkdownMarginPct", label: "Marža" },
   { key: "markdownRevenueShare", label: "Udeo sniženja" },
   { key: "deadStockRate", label: "Dead stock" },
-  { key: "mlSupplierScore", label: "AI procena dobavljaca" },
+  { key: "mlSupplierScore", label: "AI procena dobavljača" },
   { key: "supplierQualityIndex", label: "Indeks kvaliteta" },
   { key: "confidenceScore", label: "Pouzdanost" },
 ];
@@ -89,7 +89,7 @@ export default function SupplierDecisionTable({
       <div className="mb-3">
         <AnalyticsTableToolbar
           tableKey="supplier-decision-hub"
-          tableTitle="Supplier Decision Hub - rangiranje dobavljaca"
+          tableTitle="Supplier Decision Hub - rangiranje dobavljača"
           columns={columns}
           rows={items}
           filters={analyticsFilters}

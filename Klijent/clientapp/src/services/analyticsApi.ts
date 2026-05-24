@@ -47,6 +47,7 @@ import type {
   AnalyticsActionUpsertInput,
   AnalyticsActionStatusUpdateInput,
   AnalyticsActionFilters,
+  AnalyticsResponseMeta,
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
@@ -57,6 +58,10 @@ import {
 } from "../utils/apiFailover";
 import { fetchWithTimeout, FetchTimeoutError } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS, getRetryTimeouts } from "../utils/apiTimeouts";
+import {
+  AnalyticsMetaError,
+  assertAnalyticsMetaSuccess as assertAnalyticsMetaSuccessShared,
+} from "../utils/analyticsResponseMeta";
 
 const DEFAULT_CLIENT_CACHE_TTL_MS = 15_000;
 const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
@@ -67,30 +72,7 @@ type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
 };
 
-type AnalyticsMetaCarrier = {
-  meta?: {
-    success?: boolean;
-    warningCode?: string | null;
-    warningMessage?: string | null;
-    message?: string | null;
-    errorCode?: string | null;
-    errorMessage?: string | null;
-    emptyReason?: string | null;
-    correlationId?: string | null;
-  } | null;
-};
-
-export class AnalyticsMetaError extends Error {
-  readonly errorCode?: string | null;
-  readonly correlationId?: string | null;
-
-  constructor(message: string, errorCode?: string | null, correlationId?: string | null) {
-    super(message);
-    this.name = "AnalyticsMetaError";
-    this.errorCode = errorCode;
-    this.correlationId = correlationId;
-  }
-}
+export { AnalyticsMetaError };
 
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
@@ -345,6 +327,23 @@ function resolveClientCacheTtl(path: string): number {
   return 0;
 }
 
+function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T {
+  return assertAnalyticsMetaSuccessShared(
+    payload,
+    (candidate) => {
+      if (!candidate || typeof candidate !== "object") {
+        return null;
+      }
+
+      const meta = (candidate as { meta?: unknown }).meta;
+      return meta && typeof meta === "object"
+        ? (meta as AnalyticsResponseMeta)
+        : null;
+    },
+    fallbackMessage ?? "Podaci trenutno nisu dostupni."
+  );
+}
+
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
   const contentType = res.headers.get("content-type") ?? "";
 
@@ -366,32 +365,6 @@ async function parseApiError(res: Response, fallbackMessage?: string): Promise<s
 
   if (text) return text;
   return fallbackMessage ?? `HTTP ${res.status}`;
-}
-
-function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T {
-  if (!payload || typeof payload !== "object") {
-    return payload;
-  }
-
-  const meta = (payload as AnalyticsMetaCarrier).meta;
-  if (!meta) {
-    return payload;
-  }
-
-  if (meta.success === false) {
-    const detail = meta.errorMessage?.trim() || meta.message?.trim() || fallbackMessage || "Podaci trenutno nisu dostupni.";
-    const suffixParts: string[] = [];
-    if (meta.errorCode) {
-      suffixParts.push(`sifra: ${meta.errorCode}`);
-    }
-    if (meta.correlationId) {
-      suffixParts.push(`correlation: ${meta.correlationId}`);
-    }
-    const suffix = suffixParts.length > 0 ? ` (${suffixParts.join(", ")})` : "";
-    throw new AnalyticsMetaError(`${detail}${suffix}`, meta.errorCode, meta.correlationId);
-  }
-
-  return payload;
 }
 
 export async function checkAnalyticsHealth(): Promise<{

@@ -20,11 +20,11 @@ export default function SupplierDecisionReportPage() {
     return (
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
-          title="Report nije pronadjen"
-          message="Privremeni podaci su istekli (preview traje oko 10 minuta). Pregled izvestaja je privremen. Za trajni izvoz koristite PDF/Excel."
+          title="Report nije pronađen"
+          message="Privremeni podaci su istekli (preview traje oko 10 minuta). Pregled izveštaja je privremen. Za trajni izvoz koristite PDF/Excel."
           actions={[
-            { label: "Vrati se na dobavljace", href: "/analytics/supplier" },
-            { label: "Ponovo generisi report", href: "/analytics/supplier" },
+            { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
+            { label: "Ponovo generiši report", href: "/analytics/supplier" },
             { label: "Otvori scorecard", href: "/analytics/supplier?tab=scorecard" },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -39,12 +39,12 @@ export default function SupplierDecisionReportPage() {
     <div className="supplier-decision-report-page">
       {exportError ? (
         <AnalyticsErrorState
-          title="Izvoz izvestaja nije uspeo"
+          title="Izvoz izveštaja nije uspeo"
           message={exportError}
           suggestions={[
             "Proverite refresh status.",
             "Proverite kvalitet podataka.",
-            "Pokusajte ponovo.",
+            "Pokušajte ponovo.",
           ]}
           helpHref="/analytics/data-quality"
         />
@@ -52,13 +52,13 @@ export default function SupplierDecisionReportPage() {
 
       <header className="sdrp-head no-print">
         <div>
-          <h1>Trendplus izvestaj dobavljaca</h1>
-          <p>Pregled izvestaja u HTML formi (print-friendly). Preview se cuva privremeno (oko 10 minuta).</p>
+          <h1>Trendplus izveštaj dobavljača</h1>
+          <p>Pregled izveštaja u HTML formi (print-friendly). Preview se čuva privremeno (oko 10 minuta).</p>
         </div>
         <div className="sdrp-actions">
           <Link to="/analytics/supplier" className="sdrp-back">Nazad</Link>
           <SupplierDecisionReportActions payload={payload} onError={setExportError} />
-          <button type="button" className="sdrp-print" onClick={() => window.print()}>Stampaj (browser)</button>
+          <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj (browser)</button>
         </div>
       </header>
 

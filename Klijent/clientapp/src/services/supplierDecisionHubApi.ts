@@ -1,5 +1,10 @@
 import { makeUrl } from "./analyticsApi";
 import type { AnalyticsResponseMeta } from "../types/analytics";
+import {
+  AnalyticsMetaError,
+  getAnalyticsMetaMessage,
+  isAnalyticsMetaError,
+} from "../utils/analyticsResponseMeta";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -281,22 +286,27 @@ async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage:
   }
 
   const meta = (payload as { meta?: AnalyticsResponseMeta | null } | null)?.meta;
+  const resolvedMessage = getAnalyticsMetaMessage(meta) || errorMessage;
 
   if (!response.ok) {
     throw new SupplierDecisionApiError(
-      meta?.errorMessage?.trim() || meta?.message?.trim() || errorMessage,
+      resolvedMessage,
       meta?.errorCode ?? null,
-      meta?.correlationId ?? null
+      meta?.correlationId ?? null,
+      errorMessage,
+      meta
     );
   }
 
   const data = payload as T;
 
-  if (meta && meta.success === false) {
+  if (isAnalyticsMetaError(meta)) {
     throw new SupplierDecisionApiError(
-      meta.errorMessage?.trim() || meta.message?.trim() || errorMessage,
-      meta.errorCode ?? null,
-      meta.correlationId ?? null
+      resolvedMessage,
+      meta?.errorCode ?? null,
+      meta?.correlationId ?? null,
+      errorMessage,
+      meta
     );
   }
 
@@ -346,8 +356,8 @@ function normalizeScorecardTrustMetadata(raw: unknown): ScorecardTrustMetadata |
     effectiveTo,
     requestedDataset: normalizeDataset(trust.requestedDataset),
     effectiveDataset: normalizeDataset(trust.effectiveDataset),
-    effectivePeriodLabel: toIsoString(trust.effectivePeriodLabel) || "Neograniceno",
-    dataCoverageStatus: toIsoString(trust.dataCoverageStatus) || "insufficient_data",
+    effectivePeriodLabel: toOptionalString(trust.effectivePeriodLabel) ?? "Neograničeno",
+    dataCoverageStatus: toOptionalString(trust.dataCoverageStatus) ?? "insufficient_data",
     usedFallback: toBoolean(trust.usedFallback),
     fallbackReason: toOptionalString(trust.fallbackReason),
     fallbackReasonCode: toOptionalString(trust.fallbackReasonCode),
@@ -361,8 +371,8 @@ function normalizeScorecardTrustMetadata(raw: unknown): ScorecardTrustMetadata |
     recommendationAllowed: toBoolean(trust.recommendationAllowed),
     noSilentFallback: toBoolean(trust.noSilentFallback, true),
     windowDays: toNumber(trust.windowDays),
-    dataScope: toIsoString(trust.dataScope) || "all",
-    coverage: toIsoString(trust.coverage) || "all_history",
+    dataScope: toOptionalString(trust.dataScope) ?? "all",
+    coverage: toOptionalString(trust.coverage) ?? "all_history",
     dataNote: toOptionalString(trust.dataNote),
   };
 }
@@ -388,15 +398,16 @@ function normalizeRankingResponse(data: RankingResponse): RankingResponse {
   };
 }
 
-export class SupplierDecisionApiError extends Error {
-  errorCode: string | null;
-  correlationId: string | null;
-
-  constructor(message: string, errorCode: string | null, correlationId: string | null) {
-    super(message);
+export class SupplierDecisionApiError extends AnalyticsMetaError {
+  constructor(
+    message: string,
+    errorCode: string | null,
+    correlationId: string | null,
+    context?: string,
+    meta?: AnalyticsResponseMeta | null
+  ) {
+    super(message, { errorCode, correlationId, context, meta });
     this.name = "SupplierDecisionApiError";
-    this.errorCode = errorCode;
-    this.correlationId = correlationId;
   }
 }
 

@@ -82,19 +82,19 @@ function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: st
 export default function SupplierDecisionReport({ payload }: SupplierDecisionReportProps) {
   const grouped = useMemo(() => groupRows(payload), [payload]);
 
-  const supplierLabel = rowValueAny(payload, [{ section: "Header", item: "Dobavljac" }]) ?? filterValue(payload, "supplier") ?? "Dobavljac";
+  const supplierLabel = rowValueAny(payload, [{ section: "Header", item: "Dobavljač" }]) ?? filterValue(payload, "supplier") ?? "Dobavljač";
   const period = rowValue(payload, "Header", "Period") ?? filterValue(payload, "period") ?? "-";
   const reportTitle = rowValueAny(payload, [
-    { section: "Header", item: "Naziv izvestaja" },
+    { section: "Header", item: "Naziv izveštaja" },
     { section: "Header", item: "Report" },
-  ]) ?? payload.tableTitle ?? "Trendplus izvestaj dobavljaca";
+  ]) ?? payload.tableTitle ?? "Trendplus izveštaj dobavljača";
   const dataScope = rowValueAny(payload, [
     { section: "Header", item: "Opseg podataka" },
     { section: "Header", item: "Data scope" },
   ]) ?? filterValue(payload, "dataScope") ?? "-";
-  const reportDate = rowValue(payload, "Header", "Datum izvestaja") ?? metaValue(payload, "generatedAtUtc") ?? "-";
+  const reportDate = rowValue(payload, "Header", "Datum izveštaja") ?? metaValue(payload, "generatedAtUtc") ?? "-";
   const lastRefresh = rowValueAny(payload, [
-    { section: "Header", item: "Poslednje osvezenje" },
+    { section: "Header", item: "Poslednje osveženje" },
     { section: "Header", item: "Poslednji refresh" },
   ]) ?? metaValue(payload, "lastRefreshAtUtc") ?? "-";
   const freshnessLabel = metaValue(payload, "dataFreshness");
@@ -105,9 +105,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const warnings = grouped.get("Upozorenje") ?? [];
   const kpi = grouped.get("KPI") ?? [];
   const recommendations = grouped.get("Preporuke") ?? [];
-  const topRevenue = grouped.get("Top artikli / dobavljaci") ?? [];
+  const topRevenue = grouped.get("Top artikli / dobavljači") ?? [];
   const risk = grouped.get("Rizik zalihe") ?? [];
-  const boost = grouped.get("Pojacaj") ?? [];
+  const boost = grouped.get("Pojačaj") ?? [];
   const reduce = grouped.get("Smanji") ?? [];
   const dataQuality = grouped.get("Kvalitet podataka") ?? grouped.get("Data quality") ?? [];
   const methodology = grouped.get("Metodologija") ?? grouped.get("Methodology") ?? [];
@@ -118,7 +118,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         <div className="sdr-title">
           <h1>{reportTitle}</h1>
           <p className="sdr-subtitle">
-            Dobavljac: <strong>{supplierLabel}</strong> | Period: <strong>{period}</strong>
+            Dobavljač: <strong>{supplierLabel}</strong> | Period: <strong>{period}</strong>
           </p>
         </div>
         <div className="sdr-badges">
@@ -126,10 +126,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
             {metaDQ ? `Kvalitet podataka: ${metaDQ}` : `Kvalitet podataka: ${dataQualityStatusLabel(metaDQ)}`}
           </span>
           {freshnessLabel ? (
-            <span className="sdr-badge neutral">Svezina podataka: {freshnessLabel}</span>
+            <span className="sdr-badge neutral">Svežina podataka: {freshnessLabel}</span>
           ) : null}
           {recommendationAllowed != null ? (
-            <span className="sdr-badge neutral">Preporuke: {String(recommendationAllowed) === "true" ? "dozvoljene" : "ogranicene"}</span>
+            <span className="sdr-badge neutral">Preporuke: {String(recommendationAllowed) === "true" ? "dozvoljene" : "ograničene"}</span>
           ) : null}
         </div>
       </div>
@@ -137,15 +137,15 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       <section className="sdr-meta">
         <div className="sdr-meta-grid">
           <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
-          <div className="sdr-meta-item"><span>Datum izvestaja</span><strong>{reportDate}</strong></div>
-          <div className="sdr-meta-item"><span>Poslednje osvezenje</span><strong>{lastRefresh}</strong></div>
+          <div className="sdr-meta-item"><span>Datum izveštaja</span><strong>{reportDate}</strong></div>
+          <div className="sdr-meta-item"><span>Poslednje osveženje</span><strong>{lastRefresh}</strong></div>
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
       </section>
 
       {warnings.length > 0 ? (
         <section className="sdr-section sdr-warnings">
-          <h2>Upozorenja i ogranicenja</h2>
+          <h2>Upozorenja i ograničenja</h2>
           <div className="sdr-warning-list">
             {warnings.map((w, idx) => (
               <article key={`${w.item}-${idx}`} className="sdr-warning">
@@ -159,7 +159,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       ) : null}
 
       <section className="sdr-section">
-        <h2>Izvrsni sazetak</h2>
+        <h2>Izvršni sažetak</h2>
         <div className="sdr-kpi-grid">
           {kpi.map((row) => (
             <article key={`${row.item}-${row.value}`} className="sdr-kpi">
@@ -189,10 +189,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       </section>
 
       <section className="sdr-section">
-        <h2>Top artikli / dobavljaci</h2>
+        <h2>Top artikli / dobavljači</h2>
         <div className="sdr-two-col">
           <div>
-            <h3>Najveci prihod</h3>
+            <h3>Najveći prihod</h3>
             {topRevenue.length === 0 ? <p className="sdr-empty">Nema stavki.</p> : (
               <ul className="sdr-list">
                 {topRevenue.map((row, idx) => (
@@ -232,7 +232,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         <h2>Akcije po signalu</h2>
         <div className="sdr-two-col">
           <div>
-            <h3>Pojacaj</h3>
+            <h3>Pojačaj</h3>
             {boost.length === 0 ? <p className="sdr-empty">Nema stavki.</p> : (
               <ul className="sdr-list">
                 {boost.map((row, idx) => (
@@ -271,7 +271,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       <section className="sdr-section">
         <h2>Kvalitet podataka</h2>
         {dataQuality.length === 0 ? (
-          <p className="sdr-empty">Detaljan sazetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.</p>
+          <p className="sdr-empty">Detaljan sažetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.</p>
         ) : (
           <div className="sdr-dq-grid">
             {dataQuality.map((row, idx) => (

@@ -1,5 +1,7 @@
 namespace Api.Models;
 
+using Trendplus2.Dtos;
+
 public sealed class PreNivelacijaPriorityResponseDto
 {
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
@@ -13,6 +15,7 @@ public sealed class PreNivelacijaPriorityResponseDto
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public int TotalCandidates { get; set; }
+    public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 
 public sealed class PreNivelacijaSummaryDto

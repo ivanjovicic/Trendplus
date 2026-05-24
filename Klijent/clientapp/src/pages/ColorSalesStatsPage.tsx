@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -94,7 +94,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "boja", header: "Boja", dataType: "text" },
   { key: "ukupanPromet", header: "Promet", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "marginContribution", header: "MarÅ¾ni doprinos", dataType: "currency" },
+  { key: "marginContribution", header: "Maržni doprinos", dataType: "currency" },
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
@@ -307,7 +307,7 @@ export default function ColorSalesStatsPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "GreÅ¡ka pri uÄitavanju podataka po boji.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -682,7 +682,7 @@ export default function ColorSalesStatsPage() {
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">PrilagoÄ‘eno</option>
+            <option value="custom">PrilagoÃ„â€˜eno</option>
           </select>
         </label>
 
@@ -762,7 +762,7 @@ export default function ColorSalesStatsPage() {
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
           onRetry={() => void load(activeFilters)}
           helpHref="/analytics/data-quality"
         />
@@ -776,7 +776,13 @@ export default function ColorSalesStatsPage() {
       {!loading && !showBlockingError && emptyStateHint ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? "no_data"}
-          message={emptyStateHint}
+          message={
+            emptyStateVariant === "insufficient_data"
+              ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
+              : emptyStateVariant === "filtered_out"
+                ? "Promenite filtere ili prosirite period."
+                : emptyStateHint
+          }
           actions={[
             { label: "Proširite period pretrage." },
             { label: "Uklonite filter prodavnice ili sezone." },
@@ -784,6 +790,7 @@ export default function ColorSalesStatsPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={emptyStateHint}
+          onRetry={() => void load(activeFilters)}
         />
       ) : null}
       {!loading && !showBlockingError && qualityNotes.length > 0 ? (
@@ -816,7 +823,7 @@ export default function ColorSalesStatsPage() {
           <section className="color-decision-panels">
             <article className="color-decision-card">
               <h2>Koncentracija prometa po bojama</h2>
-              <p>Top boje koje nose najveÄ‡i deo prodaje.</p>
+              <p>Top boje koje nose najveÃ„â€¡i deo prodaje.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -847,7 +854,7 @@ export default function ColorSalesStatsPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="color-sales-stats"
-                  tableTitle="PodrÅ¡ka odluci - boje artikala"
+                  tableTitle="Podrška odluci - boje artikala"
                   columns={decisionColumns}
                   rows={sortedRows}
                   filters={toolbarFilters}
@@ -877,7 +884,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          MarÅ¾ni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marÅ¾e: razlika izmeÄ‘u prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                          MarÃ…Â¾ni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marÃ…Â¾e: razlika izmeÃ„â€˜u prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
                       <th className="align-right">

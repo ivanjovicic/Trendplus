@@ -15,7 +15,7 @@ vi.mock("../../components/analytics/SupplierDecisionReport", () => ({
 
 vi.mock("../../components/analytics/SupplierDecisionReportActions", () => ({
   default: ({ onError }: { onError?: (message: string) => void }) => (
-    <button type="button" onClick={() => onError?.("PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel.")}>
+    <button type="button" onClick={() => onError?.("PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel.")}>
       trigger-export-error
     </button>
   ),
@@ -37,19 +37,19 @@ describe("SupplierDecisionReportPage", () => {
 
     renderPage();
 
-    expect(screen.getByText("Report nije pronadjen")).toBeInTheDocument();
+    expect(screen.getByText("Report nije pronađen")).toBeInTheDocument();
     expect(screen.getByText(/Privremeni podaci su istekli/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Vrati se na dobavljace" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ponovo generisi report" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ponovo generiši report" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Otvori scorecard" })).toBeInTheDocument();
   });
 
   it("shows export error state when actions report PDF failure", () => {
     getPrintPayloadMock.mockReturnValueOnce({
       tableKey: "supplier-decision-report",
-      tableTitle: "Trendplus izvestaj dobavljaca",
+      tableTitle: "Trendplus izveštaj dobavljača",
       columns: [{ key: "section", header: "Sekcija", dataType: "text" }],
-      rows: [{ section: "Header", item: "Naziv izvestaja", value: "Trendplus izvestaj dobavljaca" }],
+      rows: [{ section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" }],
       filters: [],
       metadata: [],
       locale: "sr-RS",
@@ -59,7 +59,7 @@ describe("SupplierDecisionReportPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "trigger-export-error" }));
 
-    expect(screen.getByText("Izvoz izvestaja nije uspeo")).toBeInTheDocument();
+    expect(screen.getByText("Izvoz izveštaja nije uspeo")).toBeInTheDocument();
     expect(screen.getByText(/PDF export trenutno nije dostupan/i)).toBeInTheDocument();
   });
 });

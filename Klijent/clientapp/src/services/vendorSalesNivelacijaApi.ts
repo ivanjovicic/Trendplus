@@ -1,5 +1,7 @@
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { apiUrl } from "../utils/apiUrl";
+import type { AnalyticsResponseMeta } from "../types/analytics";
+import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -152,6 +154,7 @@ export interface VendorSalesNivelacijaResponse {
     avgLostSalesOOS?: number | null;
     oosRate?: number | null;
     metricsStatus?: string | null;
+    meta?: AnalyticsResponseMeta | null;
 }
 
 export interface VendorSalesNivelacijaQuery {
@@ -209,7 +212,12 @@ export async function getVendorSalesNivelacija(
         throw new Error(`Neuspesno ucitavanje pre/post nivelacija analitike: ${text}`);
     }
 
-    return response.json() as Promise<VendorSalesNivelacijaResponse>;
+    const payload = (await response.json()) as VendorSalesNivelacijaResponse;
+    return assertAnalyticsMetaSuccess(
+        payload,
+        (result) => result.meta,
+        "Pre/post nivelacija podaci trenutno nisu dostupni."
+    );
 }
 
 export async function getVendorSalesNivelacijaOptions(

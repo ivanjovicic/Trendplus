@@ -2,6 +2,7 @@ using Application.Analytics.Queries.GetDataQualityIssues;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Api.Services;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -180,6 +181,7 @@ public static class DataQualityEndpoints
             TrendplusDbContext trendDb,
             AnalyticsDbContext analyticsDb,
             AnalyticsDataQualityHealthService healthService,
+            AnalyticsRefreshStatusService refreshStatusService,
             [FromQuery] string? fromDate,
             [FromQuery] string? toDate,
             [FromQuery] int? storeId,
@@ -190,6 +192,7 @@ public static class DataQualityEndpoints
             var period = ResolveIntakePeriod(fromDate, toDate);
             var lookbackDays = Math.Clamp((int)Math.Ceiling((period.ToUtc.Date - period.FromUtc.Date).TotalDays) + 1, 2, 90);
             var health = await healthService.CaptureAsync(lookbackDays, dataScope, ct);
+            var refreshStatus = refreshStatusService.GetStatus();
 
             IQueryable<Domain.Model.Artikli> articleQuery = trendDb.Artikli.AsNoTracking();
             if (storeId.HasValue)
@@ -203,37 +206,72 @@ public static class DataQualityEndpoints
             }
 
             var totalArticles = await articleQuery.CountAsync(ct);
-            var totalSuppliers = await trendDb.Dobavljaci.AsNoTracking().CountAsync(ct);
+            var totalSuppliers = await articleQuery
+                .Where(x => x.IDDobavljac.HasValue && x.IDDobavljac.Value > 0)
+                .Select(x => x.IDDobavljac!.Value)
+                .Distinct()
+                .CountAsync(ct);
             var totalStores = await analyticsDb.StoresDim.AsNoTracking().CountAsync(ct);
 
-            var salesHeaderQuery = trendDb.ProdajaZaglavlja.AsNoTracking()
-                .Where(x => x.DatumProdaje >= period.FromUtc && x.DatumProdaje < period.ToExclusiveUtc);
-
-            if (storeId.HasValue)
-            {
-                salesHeaderQuery = salesHeaderQuery.Where(x => x.IDObjekat == storeId.Value);
-            }
-
-            var salesReceiptCount = await salesHeaderQuery.CountAsync(ct);
-            var salesLineCount = await (
+            var salesLinesScoped =
                 from line in trendDb.ProdajaStavke.AsNoTracking()
                 join header in trendDb.ProdajaZaglavlja.AsNoTracking() on line.IdProdaja equals header.Id
                 where header.DatumProdaje >= period.FromUtc && header.DatumProdaje < period.ToExclusiveUtc
-                select line)
-                .CountAsync(ct);
+                select new { line.Id, line.IdProdaja, line.IdArtikal, line.Cena, header.DatumProdaje, header.IDObjekat };
+
+            if (storeId.HasValue)
+            {
+                salesLinesScoped = salesLinesScoped.Where(x => x.IDObjekat == storeId.Value);
+            }
+
+            if (supplierId.HasValue)
+            {
+                salesLinesScoped =
+                    from line in salesLinesScoped
+                    join article in trendDb.Artikli.AsNoTracking() on line.IdArtikal equals article.Id
+                    where article.IDDobavljac == supplierId.Value
+                    select line;
+            }
+
+            var salesLineCount = await salesLinesScoped.CountAsync(ct);
+            var salesReceiptCount = await salesLinesScoped.Select(x => x.IdProdaja).Distinct().CountAsync(ct);
+            var firstSaleDate = await salesLinesScoped.MinAsync(x => (DateTime?)x.DatumProdaje, ct);
+            var lastSaleDate = await salesLinesScoped.MaxAsync(x => (DateTime?)x.DatumProdaje, ct);
 
             var missingSupplierCount = await articleQuery.CountAsync(x => x.IDDobavljac == null || x.IDDobavljac == 0, ct);
-            var missingShoeTypeCount = await articleQuery.CountAsync(x => x.IDTipObuce == null || x.IDTipObuce == 0, ct);
             var missingCostCount = await articleQuery.CountAsync(x => x.NabavnaCena == null || x.NabavnaCena <= 0m, ct);
             var missingCategoryCount = await articleQuery.CountAsync(x => string.IsNullOrWhiteSpace(x.Kategorija), ct);
             var missingSizeCount = await articleQuery.CountAsync(x => string.IsNullOrWhiteSpace(x.Velicina), ct);
             var missingColorCount = await articleQuery.CountAsync(x => string.IsNullOrWhiteSpace(x.Boja), ct);
-            var invalidNameCount = await articleQuery.CountAsync(x => string.IsNullOrWhiteSpace(x.Naziv) || x.Naziv.Trim().Length < 3, ct);
             var duplicateSkuCount = await articleQuery
                 .Where(x => !string.IsNullOrWhiteSpace(x.PLU))
                 .GroupBy(x => x.PLU)
                 .Where(group => group.Count() > 1)
                 .CountAsync(ct);
+            var missingSupplierNameCount = await (
+                from article in articleQuery
+                where article.IDDobavljac.HasValue && article.IDDobavljac.Value > 0
+                join supplier in trendDb.Dobavljaci.AsNoTracking() on article.IDDobavljac equals supplier.Id into supplierJoin
+                from supplier in supplierJoin.DefaultIfEmpty()
+                where supplier == null || string.IsNullOrWhiteSpace(supplier.Naziv)
+                select article.Id)
+                .CountAsync(ct);
+
+            var saleWithoutArticleCount = supplierId.HasValue
+                ? 0
+                : await (
+                    from line in salesLinesScoped
+                    join article in trendDb.Artikli.AsNoTracking() on line.IdArtikal equals article.Id into articleJoin
+                    from article in articleJoin.DefaultIfEmpty()
+                    where article == null
+                    select line.Id)
+                    .CountAsync(ct);
+
+            var zeroOrNegativePriceCount = await salesLinesScoped.CountAsync(x => x.Cena <= 0m, ct);
+            var soldArticleIds = salesLinesScoped.Select(x => x.IdArtikal).Distinct();
+            var insufficientSignalCount = totalArticles == 0
+                ? 0
+                : await articleQuery.CountAsync(x => !soldArticleIds.Contains(x.Id), ct);
 
             var latestBatch = await trendDb.DataImportBatches
                 .AsNoTracking()
@@ -265,98 +303,78 @@ public static class DataQualityEndpoints
             var readinessScore = CalculateIntakeScore(
                 totalArticles,
                 missingSupplierCount,
-                missingShoeTypeCount,
                 missingCostCount,
                 missingCategoryCount,
                 missingSizeCount,
                 missingColorCount,
-                invalidNameCount,
+                missingSupplierNameCount,
                 duplicateSkuCount,
+                saleWithoutArticleCount,
+                zeroOrNegativePriceCount,
                 ignoredRows,
                 latestBatch?.RowsRead ?? 0,
                 health);
 
             var readiness = ResolveReadiness(readinessScore);
-            var revenueAtRisk = health.MissingCostRevenue + health.UnknownSupplierRevenue;
-            var blockedRecommendationsCount = missingSupplierCount + missingCostCount + invalidNameCount + duplicateSkuCount;
+            var blockedRecommendationsCount = missingSupplierCount + missingCostCount + missingSupplierNameCount + saleWithoutArticleCount;
             var latestImportAtUtc = latestBatch?.CompletedAtUtc ?? latestBatch?.StartedAtUtc ?? latestBatch?.QueuedAtUtc;
             var generatedAtUtc = DateTime.UtcNow;
+            var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc;
+            var articlesWithoutSupplierPercent = totalArticles <= 0 ? 0d : (double)missingSupplierCount / totalArticles;
 
             return Results.Ok(new PilotDataQualityIntakeReportDto(
                 generatedAtUtc,
                 period.FromUtc,
                 period.ToUtc,
                 string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
-                storeId,
-                supplierId,
+                storeId?.ToString(CultureInfo.InvariantCulture),
+                supplierId?.ToString(CultureInfo.InvariantCulture),
                 latestImportAtUtc,
+                lastRefreshAtUtc,
+                readinessScore,
                 readiness.Code,
                 readiness.Label,
-                readinessScore,
-                BuildIntakeSummary(totalArticles, totalSuppliers, totalStores, salesReceiptCount, salesLineCount, latestBatch, readinessScore, readiness.Label),
                 new PilotDataQualityIntakeLoadedDataDto(
-                    totalArticles,
-                    totalSuppliers,
-                    totalStores,
-                    salesReceiptCount,
-                    salesLineCount,
-                    latestBatch?.SourceFileName,
-                    latestBatch?.SourceFilePath,
-                    latestBatch?.RowsRead ?? 0,
-                    latestBatch?.RowsAccepted ?? 0,
-                    latestBatch?.RowsWritten ?? 0,
-                    ignoredRows,
-                    latestBatch?.TotalErrors ?? 0),
+                    ArticlesCount: totalArticles,
+                    SaleItemsCount: salesLineCount,
+                    ReceiptsCount: salesReceiptCount,
+                    SuppliersCount: totalSuppliers,
+                    StoresCount: storeId.HasValue ? 1 : totalStores,
+                    FirstSaleDate: firstSaleDate,
+                    LastSaleDate: lastSaleDate),
                 new PilotDataQualityIntakeIssuesDto(
-                    missingSupplierCount,
-                    missingShoeTypeCount,
-                    missingCostCount,
-                    missingCategoryCount,
-                    missingSizeCount,
-                    missingColorCount,
-                    invalidNameCount,
-                    duplicateSkuCount,
-                    blockedRecommendationsCount,
-                    new[]
-                    {
-                        new PilotDataQualityIntakeIssueItemDto("missingSupplier", "Nedostaje dobavljac", "critical", missingSupplierCount, "Blokira supplier signale i cini deo preporuka neupotrebljivim."),
-                        new PilotDataQualityIntakeIssueItemDto("missingShoeType", "Nedostaje tip obuce", "warning", missingShoeTypeCount, "Smanjuje segmentaciju i filtriranje u dashboardima."),
-                        new PilotDataQualityIntakeIssueItemDto("missingCost", "Nedostaje nabavna cena", "critical", missingCostCount, "Onemogucava pouzdanu marzu i profitne signale."),
-                        new PilotDataQualityIntakeIssueItemDto("missingCategory", "Nedostaje kategorija", "warning", missingCategoryCount, "Slabi klasifikaciju i reporting kroz kategorije."),
-                        new PilotDataQualityIntakeIssueItemDto("missingSize", "Nedostaje velicina", "warning", missingSizeCount, "Smanjuje kvalitet preporuka po veličini."),
-                        new PilotDataQualityIntakeIssueItemDto("missingColor", "Nedostaje boja", "warning", missingColorCount, "Smanjuje detaljnost kataloga."),
-                        new PilotDataQualityIntakeIssueItemDto("invalidName", "Neispravan naziv", "warning", invalidNameCount, "Kvari pretragu i usability u vizualizacijama."),
-                        new PilotDataQualityIntakeIssueItemDto("duplicateSku", "Duplirani PLU", "critical", duplicateSkuCount, "Moze izazvati sudare identiteta i pogresne agregacije."),
-                    }),
+                    MissingSupplierCount: missingSupplierCount,
+                    MissingCostCount: missingCostCount,
+                    MissingCategoryCount: missingCategoryCount,
+                    MissingColorCount: missingColorCount,
+                    MissingSizeCount: missingSizeCount,
+                    SaleWithoutArticleCount: saleWithoutArticleCount,
+                    ZeroOrNegativePriceCount: zeroOrNegativePriceCount,
+                    DuplicateSkuCount: duplicateSkuCount,
+                    MissingSupplierNameCount: missingSupplierNameCount),
                 new PilotDataQualityIntakeImpactDto(
-                    revenueAtRisk,
-                    Math.Max(0d, Math.Min(100d, readinessScore)),
-                    health.OrphanArticleCount,
-                    health.MissingCostRevenueSharePct,
-                    health.UnknownSupplierRevenueSharePct,
-                    new[]
-                    {
-                        new PilotDataQualityIntakeImpactItemDto("revenue-at-risk", "Promet u riziku", $"{revenueAtRisk:N2} RSD", "Promet bez nabavne cene i nepoznatog dobavljaca je najosetljiviji signal."),
-                        new PilotDataQualityIntakeImpactItemDto("orphan-articles", "Orphan artikli", health.OrphanArticleCount.ToString("N0"), "Artikli bez veza ka normalizovanim dimenzijama slabe preporuke i filtere."),
-                        new PilotDataQualityIntakeImpactItemDto("reliability", "Pouzdanost", $"{readinessScore:N1}%", "Sto je score visi, to je pilot spremniji za prikaz glavnih dashboarda."),
-                        new PilotDataQualityIntakeImpactItemDto("ignored-rows", "Ignorisani redovi", ignoredRows.ToString("N0"), "Redovi koje import nije prihvatio treba proveriti pre handoff-a."),
-                    }),
-                new PilotDataQualityIntakeActionsDto(
-                    new[]
-                    {
-                        new PilotDataQualityIntakeActionItemDto("P1", "Popuniti dobavljace i nabavne cene", "Critical podaci blokiraju signal za preporuke i marzu.", "Korigovati master podatke i ponoviti import."),
-                        new PilotDataQualityIntakeActionItemDto("P2", "Ocistiti PLU, nazive i duplikate", "Neuredni identifikatori razbijaju matching i filtriranje.", "Deduplicirati artikle i standardizovati nazive."),
-                        new PilotDataQualityIntakeActionItemDto("P2", "Potvrditi poslednji import batch", latestBatch is null ? "Nema potvrđenog batch-a za onboarding." : $"Poslednji import: {latestBatch.SourceFileName ?? latestBatch.SourceFilePath ?? "(unknown)"}.", "Proveriti poslednji upload i greske u batch logu."),
-                        new PilotDataQualityIntakeActionItemDto("P3", "Pokazati pilot kupcu samo spremne segmente", "Report omogucava selektivno otvaranje dashboarda kada je data quality nizak.", "Koristiti readiness score kao gate za onboarding."),
-                    }),
+                    RevenueWithoutCostPercent: Math.Max(0d, health.MissingCostRevenueSharePct) / 100d,
+                    ArticlesWithoutSupplierPercent: articlesWithoutSupplierPercent,
+                    RecommendationsBlockedCount: blockedRecommendationsCount,
+                    IgnoredRowsCount: ignoredRows,
+                    InsufficientSignalCount: insufficientSignalCount),
+                new[]
+                {
+                    "Povezi dobavljace",
+                    "Dopuni nabavne cene",
+                    "Proveri artikle bez kategorije",
+                    "Proveri redove prodaje bez artikla",
+                    "Pokreni osvezavanje analitike",
+                    "Proveri import mapu",
+                },
                 new AnalyticsResponseMetaDto
                 {
                     Success = true,
                     CorrelationId = ResolveCorrelationId(httpContext),
                     GeneratedAtUtc = generatedAtUtc,
-                    LastRefreshAtUtc = latestImportAtUtc ?? health.GeneratedAtUtc,
+                    LastRefreshAtUtc = lastRefreshAtUtc,
                     DataQualityStatus = readiness.MetaStatus,
-                    Message = latestBatch is null ? "Pilot intake report nema import batch u periodu." : null,
+                    Message = latestBatch is null ? "Pilot intake izvestaj nema import batch u periodu." : null,
                     EmptyReason = latestBatch is null ? "no_import" : null,
                     IsPartial = false
                 }));
@@ -399,74 +417,45 @@ public static class DataQualityEndpoints
         DateTime? PeriodFromUtc,
         DateTime? PeriodToUtc,
         string DataScope,
-        int? StoreId,
-        int? SupplierId,
+        string? StoreId,
+        string? SupplierId,
         DateTime? LastImportAtUtc,
+        DateTime? LastRefreshAtUtc,
+        int ReadinessScore,
         string ReadinessStatus,
         string ReadinessLabel,
-        int ReadinessScore,
-        string Summary,
         PilotDataQualityIntakeLoadedDataDto LoadedData,
         PilotDataQualityIntakeIssuesDto Issues,
         PilotDataQualityIntakeImpactDto Impact,
-        PilotDataQualityIntakeActionsDto RecommendedActions,
+        IReadOnlyList<string> RecommendedActions,
         AnalyticsResponseMetaDto? Meta = null);
 
     public sealed record PilotDataQualityIntakeLoadedDataDto(
-        int ArticleCount,
-        int SupplierCount,
-        int StoreCount,
-        int SalesReceiptCount,
-        int SalesLineCount,
-        string? LastImportSourceFile,
-        string? LastImportSourcePath,
-        int RowsRead,
-        int RowsAccepted,
-        int RowsWritten,
-        int IgnoredRows,
-        int TotalErrors);
-
-    public sealed record PilotDataQualityIntakeIssueItemDto(
-        string Key,
-        string Label,
-        string Severity,
-        int Count,
-        string Impact);
+        int ArticlesCount,
+        int SaleItemsCount,
+        int ReceiptsCount,
+        int SuppliersCount,
+        int StoresCount,
+        DateTime? FirstSaleDate,
+        DateTime? LastSaleDate);
 
     public sealed record PilotDataQualityIntakeIssuesDto(
         int MissingSupplierCount,
-        int MissingShoeTypeCount,
         int MissingCostCount,
         int MissingCategoryCount,
-        int MissingSizeCount,
-        int MissingColorCount,
-        int InvalidNameCount,
+        int? MissingColorCount,
+        int? MissingSizeCount,
+        int SaleWithoutArticleCount,
+        int ZeroOrNegativePriceCount,
         int DuplicateSkuCount,
-        int BlockedRecommendationsCount,
-        IReadOnlyList<PilotDataQualityIntakeIssueItemDto> Items);
-
-    public sealed record PilotDataQualityIntakeImpactItemDto(
-        string Key,
-        string Label,
-        string Value,
-        string Description);
+        int MissingSupplierNameCount);
 
     public sealed record PilotDataQualityIntakeImpactDto(
-        decimal RevenueAtRiskRsd,
-        double ReliabilityPct,
-        int OrphanArticleCount,
-        double MissingCostRevenueSharePct,
-        double UnknownSupplierRevenueSharePct,
-        IReadOnlyList<PilotDataQualityIntakeImpactItemDto> Items);
-
-    public sealed record PilotDataQualityIntakeActionItemDto(
-        string Priority,
-        string Title,
-        string Reason,
-        string NextStep);
-
-    public sealed record PilotDataQualityIntakeActionsDto(
-        IReadOnlyList<PilotDataQualityIntakeActionItemDto> Items);
+        double RevenueWithoutCostPercent,
+        double ArticlesWithoutSupplierPercent,
+        int RecommendationsBlockedCount,
+        int IgnoredRowsCount,
+        int InsufficientSignalCount);
 
     public sealed record DataQualityHealthThresholds(
         int OrphanArticleCount,
@@ -593,23 +582,24 @@ public static class DataQualityEndpoints
     {
         return readinessScore switch
         {
-            >= 85 => new IntakeReadinessDto("Ready", "Spremno za pilot", "good"),
-            >= 70 => new IntakeReadinessDto("UsableWithWarnings", "Upotrebljivo uz upozorenja", "warning"),
-            >= 50 => new IntakeReadinessDto("PilotLimited", "Pilot ogranicen", "warning"),
-            _ => new IntakeReadinessDto("FixDataFirst", "Prvo popravi podatke", "critical"),
+            >= 90 => new IntakeReadinessDto("excellent", "Spremno za pouzdanu analitiku", "good"),
+            >= 70 => new IntakeReadinessDto("good", "Upotrebljivo uz upozorenja", "warning"),
+            >= 40 => new IntakeReadinessDto("warning", "Pilot moze, ali preporuke ogranicene", "warning"),
+            _ => new IntakeReadinessDto("critical", "Prvo srediti podatke", "critical"),
         };
     }
 
     private static int CalculateIntakeScore(
         int totalArticles,
         int missingSupplierCount,
-        int missingShoeTypeCount,
         int missingCostCount,
         int missingCategoryCount,
         int missingSizeCount,
         int missingColorCount,
-        int invalidNameCount,
+        int missingSupplierNameCount,
         int duplicateSkuCount,
+        int saleWithoutArticleCount,
+        int zeroOrNegativePriceCount,
         int ignoredRows,
         int rowsRead,
         AnalyticsDataQualityHealthSnapshot health)
@@ -623,33 +613,17 @@ public static class DataQualityEndpoints
         penalty += Ratio(missingSupplierCount, articleBase) * 30d;
         penalty += Ratio(missingCostCount, articleBase) * 24d;
         penalty += Ratio(missingCategoryCount, articleBase) * 10d;
-        penalty += Ratio(missingShoeTypeCount, articleBase) * 10d;
         penalty += Ratio(missingSizeCount, articleBase) * 5d;
         penalty += Ratio(missingColorCount, articleBase) * 5d;
-        penalty += Ratio(invalidNameCount, articleBase) * 6d;
+        penalty += Ratio(missingSupplierNameCount, articleBase) * 8d;
         penalty += Ratio(duplicateSkuCount, articleBase) * 8d;
+        penalty += Math.Min(15d, Ratio(saleWithoutArticleCount, rowBase) * 15d);
+        penalty += Math.Min(10d, Ratio(zeroOrNegativePriceCount, rowBase) * 10d);
         penalty += Math.Min(20d, Ratio(ignoredRows, rowBase) * 20d);
         penalty += Math.Min(20d, Math.Max(0d, health.MissingCostRevenueSharePct) / 100d * 20d);
         penalty += Math.Min(15d, Math.Max(0d, health.UnknownSupplierRevenueSharePct) / 100d * 15d);
 
         return Math.Clamp((int)Math.Round(100d - penalty), 0, 100);
-    }
-
-    private static string BuildIntakeSummary(
-        int totalArticles,
-        int totalSuppliers,
-        int totalStores,
-        int salesReceiptCount,
-        int salesLineCount,
-        IntakeBatchSnapshot? latestBatch,
-        int readinessScore,
-        string readinessLabel)
-    {
-        var importLabel = latestBatch is null
-            ? "nema ucitanog import batch-a"
-            : $"poslednji import {latestBatch.SourceFileName ?? latestBatch.SourceFilePath ?? "(unknown)"}";
-
-        return $"{readinessLabel} ({readinessScore}/100). Artikli: {totalArticles:N0}, dobavljaci: {totalSuppliers:N0}, objekti: {totalStores:N0}, racuni: {salesReceiptCount:N0}, stavke: {salesLineCount:N0}. {importLabel}.";
     }
 
     private static (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) ResolveIntakePeriod(string? fromDate, string? toDate)

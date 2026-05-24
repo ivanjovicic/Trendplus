@@ -1,8 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
-import { createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
+import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
@@ -41,6 +42,27 @@ const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
 const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
 
 type PreviousLoadState = { pageNumber: number; pageSize: number; selectedStoreId: number | null; selectedSupplierId: number | null; sortBy: string; trimmedSearch: string; compareStoreIdsKey: string };
+type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
+
+function toInventoryPageError(reason: unknown, fallback: string): InventoryPageError {
+  if (reason instanceof AnalyticsMetaError) {
+    return {
+      message: reason.message,
+      errorCode: reason.errorCode,
+      correlationId: reason.correlationId,
+    };
+  }
+
+  if (reason instanceof Error) {
+    return { message: reason.message || fallback };
+  }
+
+  if (typeof reason === "string" && reason.trim()) {
+    return { message: reason };
+  }
+
+  return { message: fallback };
+}
 
 export default function InventoryPage() {
   const [balance, setBalance] = useState<InventoryBalance | null>(null);
@@ -55,7 +77,7 @@ export default function InventoryPage() {
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [operationsLoading, setOperationsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InventoryPageError | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
@@ -90,6 +112,7 @@ export default function InventoryPage() {
   const [sizeCurve, setSizeCurve] = useState<SizeCurveDto | null>(null);
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
   const serverSortBy = sortBy === "oosRisk" || sortBy === "overstockRisk" ? "kolicina" : sortBy;
@@ -201,8 +224,8 @@ export default function InventoryPage() {
       setForecastError(null);
     }
 
-    const setFirstError = (message: string) => {
-      setError((current) => current ?? message);
+    const setFirstError = (reason: unknown, fallback: string) => {
+      setError((current) => current ?? toInventoryPageError(reason, fallback));
     };
 
     const primaryTasks = [
@@ -216,8 +239,7 @@ export default function InventoryPage() {
         results.forEach((result, index) => {
           const task = primaryTasks[index];
           if (result.status === "rejected") {
-            const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
-            setFirstError(message);
+            setFirstError(result.reason, "Bilans zaliha trenutno nije dostupan.");
             return;
           }
           switch (task.key) {
@@ -237,8 +259,7 @@ export default function InventoryPage() {
       })
       .catch((reason) => {
         if (!cancelled) {
-          const message = reason instanceof Error ? reason.message : String(reason);
-          setFirstError(message);
+          setFirstError(reason, "Inventory uvidi trenutno nisu dostupni.");
         }
       })
       .finally(() => {
@@ -258,8 +279,7 @@ export default function InventoryPage() {
           results.forEach((result, index) => {
             const task = operationTasks[index];
             if (result.status === "rejected") {
-              const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
-              setFirstError(message);
+              setFirstError(result.reason, "Operativni inventory paneli trenutno nisu dostupni.");
               return;
             }
 
@@ -292,11 +312,11 @@ export default function InventoryPage() {
           results.forEach((result, index) => {
             const task = signalTasks[index];
             if (result.status === "rejected") {
-              const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
               if (task.key === "forecast") {
-                setForecastError(message);
+                const nextError = toInventoryPageError(result.reason, "Forecast podaci trenutno nisu dostupni.");
+                setForecastError(nextError.message);
               } else {
-                setFirstError(message);
+                setFirstError(result.reason, "Signalni inventory paneli trenutno nisu dostupni.");
               }
               return;
             }
@@ -323,7 +343,7 @@ export default function InventoryPage() {
     }
 
     return () => { cancelled = true; };
-  }, [compareStoreIds, pageNumber, pageSize, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
+  }, [compareStoreIds, pageNumber, pageSize, reloadNonce, selectedStoreId, selectedSupplierId, sortBy, trimmedSearch]);
 
   useEffect(() => {
     if (!detailRow) {
@@ -697,20 +717,41 @@ export default function InventoryPage() {
     scrollToSection(STORE_COMPARISON_SECTION_ID);
   }
 
+  function retryPageLoad() {
+    setReloadNonce((current) => current + 1);
+  }
+
   if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Ucitavanje bilansa stanja...</div>;
   if (error && !pageData) {
     return (
       <AnalyticsErrorState
         title="Podaci trenutno nisu dostupni"
-        message={error}
-        suggestions={[
-          "Proverite backend stanje i osvezite stranicu.",
-          "Ako je analytics refresh u toku, sacekajte par minuta.",
-        ]}
+        message={error.message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+        errorCode={error.errorCode ?? undefined}
+        correlationId={error.correlationId ?? undefined}
         onRetry={() => {
-          window.location.reload();
+          retryPageLoad();
         }}
         helpHref="/analytics/data-quality"
+      />
+    );
+  }
+
+  if (!loading && !error && pageData && totalCount === 0) {
+    return (
+      <AnalyticsEmptyState
+        variant="no_data"
+        message="Nije bilo prodaje u izabranom periodu."
+        reasons={[
+          "Izabrani period je preuzak.",
+          "Filteri su suzili rezultat na prazan skup.",
+          "Analytics refresh jos nije zavrsen.",
+        ]}
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        onRetry={() => {
+          retryPageLoad();
+        }}
       />
     );
   }
@@ -834,7 +875,7 @@ export default function InventoryPage() {
           </div>
 
           {exportStatus ? <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
-          {error ? <div className="rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error}</div> : null}
+          {error ? <div className="rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
         </div>
       </section>
 

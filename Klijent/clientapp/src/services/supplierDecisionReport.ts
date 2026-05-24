@@ -128,8 +128,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
       "Preporuke",
       "Preporuka",
       trust?.recommendationAllowed === false
-        ? "Preporuka je ogranicena zbog nedovoljnih/fallback podataka"
-        : "Preporuka aktivna",
+        ? "Finalna preporuka je blokirana; prikazan je pomoćni scorecard signal."
+        : "Finalna preporuka aktivna",
       trust?.dataCoverageStatus ?? "",
       trust?.fallbackReason ?? trust?.dataNote ?? ""
     ),
@@ -182,9 +182,21 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
       buildSectionRow(
         "Upozorenje",
         "Nedovoljno podataka",
-        "Preporuka je ogranicena zbog nedovoljnih ili fallback podataka.",
+        "Report prikazuje pomoćni scorecard signal, ne finalnu preporuku.",
         "",
         meta?.message ?? trust?.dataNote ?? "Nedovoljno podataka za pouzdanu preporuku."
+      )
+    );
+  }
+
+  if (trust?.recommendationAllowed === false) {
+    detailRows.push(
+      buildSectionRow(
+        "Upozorenje",
+        "Pomoćni scorecard signal",
+        "Report prikazuje pomoćni scorecard signal, ne finalnu preporuku.",
+        trust?.effectivePeriodLabel ?? trust?.effectiveDataset ?? "",
+        trust?.fallbackReason ?? ""
       )
     );
   }
@@ -365,7 +377,7 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
     usedFallback != null ? `Fallback aktivan: ${String(usedFallback)}` : null,
     fallbackReason != null && String(fallbackReason).trim() ? `Fallback razlog: ${String(fallbackReason)}` : null,
     recommendationAllowed != null ? `Preporuke dozvoljene: ${String(recommendationAllowed)}` : null,
-    recommendationAllowed === false ? "Preporuka je ogranicena zbog nedovoljnih ili fallback podataka." : null,
+    recommendationAllowed === false ? "Report prikazuje pomoćni scorecard signal, ne finalnu preporuku." : null,
   ].filter((line): line is string => Boolean(line && line.trim()));
 
   return lines.join("\n");

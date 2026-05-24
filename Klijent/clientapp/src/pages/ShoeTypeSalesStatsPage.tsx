@@ -886,7 +886,7 @@ export default function ShoeTypeSalesStatsPage() {
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
           onRetry={() => void load(activeFilters)}
           helpHref="/analytics/data-quality"
         />
@@ -905,7 +905,13 @@ export default function ShoeTypeSalesStatsPage() {
       {!loading && !showBlockingError && emptyStateHint ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? "no_data"}
-          message={emptyStateHint}
+          message={
+            emptyStateVariant === "insufficient_data"
+              ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
+              : emptyStateVariant === "filtered_out"
+                ? "Promenite filtere ili prosirite period."
+                : emptyStateHint
+          }
           actions={[
             { label: "Proširite period pretrage." },
             { label: "Uklonite filter prodavnice ili sezone." },
@@ -913,6 +919,7 @@ export default function ShoeTypeSalesStatsPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={emptyStateHint}
+          onRetry={() => void load(activeFilters)}
         />
       ) : null}
 

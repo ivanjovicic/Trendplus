@@ -149,7 +149,7 @@ export default function SupplierDetailDrawer({
                   {recommendation.label}
                 </div>
                 <div className="supplier-decision-detail-stats">
-                  <span>AI procena dobavljaca: {formatScore(details.supplierHeader.mlSupplierScore)}</span>
+                  <span>AI procena dobavljača: {formatScore(details.supplierHeader.mlSupplierScore)}</span>
                   <span>Indeks kvaliteta: {formatScore(details.supplierHeader.supplierQualityIndex)}</span>
                   <span>Pouzdanost: {confidenceLabel(details.supplierHeader.confidenceScore)}</span>
                 </div>

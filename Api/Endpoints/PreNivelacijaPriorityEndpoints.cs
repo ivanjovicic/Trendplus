@@ -4,6 +4,8 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -40,6 +42,7 @@ public static class PreNivelacijaPriorityEndpoints
     public static void MapPreNivelacijaPriorityEndpoints(this WebApplication app)
     {
         app.MapGet("/api/analytics/pre-nivelacija-prioriteti", async (
+            HttpContext httpContext,
             TrendplusDbContext db,
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
@@ -58,20 +61,22 @@ public static class PreNivelacijaPriorityEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
-                supplierId,
-                seasonId,
-                footwearTypeId,
-                stockMin,
-                stockMax,
-                noSaleDaysMin,
-                minScore,
-                marginFloor);
+            try
+            {
+                var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
+                    supplierId,
+                    seasonId,
+                    footwearTypeId,
+                    stockMin,
+                    stockMax,
+                    noSaleDaysMin,
+                    minScore,
+                    marginFloor);
 
-            var baseEntry = await cache.GetOrSetAsync(
-                cacheKey,
-                async () =>
-                {
+                var baseEntry = await cache.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
                     var nowUtc = DateTime.UtcNow;
                     var todayUtc = nowUtc.Date;
                     var from180Utc = todayUtc.AddDays(-180);
@@ -426,13 +431,34 @@ public static class PreNivelacijaPriorityEndpoints
                         Alerts = alerts,
                         TotalCandidates = totalCandidates
                     };
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+                    },
+                    CacheExpiration.HeavyAnalytics,
+                    ct);
 
-            var response = BuildResponse(baseEntry, page, pageSize);
-
-            return Results.Ok(response);
+                var response = BuildResponse(baseEntry, page, pageSize, ResolveCorrelationId(httpContext));
+                return Results.Ok(response);
+            }
+            catch (PostgresException ex) when (ex.SqlState is "42P01" or "42703")
+            {
+                return Results.Ok(BuildErrorResponse(
+                    "missing_table",
+                    "Pre-nivelacija prioriteti trenutno nisu dostupni zbog nedostajuce analiticke relacije.",
+                    ResolveCorrelationId(httpContext)));
+            }
+            catch (TimeoutException)
+            {
+                return Results.Ok(BuildErrorResponse(
+                    "sql_timeout",
+                    "Pre-nivelacija prioriteti trenutno nisu dostupni zbog isteka vremena.",
+                    ResolveCorrelationId(httpContext)));
+            }
+            catch (NpgsqlException)
+            {
+                return Results.Ok(BuildErrorResponse(
+                    "analytics_db_unavailable",
+                    "Pre-nivelacija prioriteti trenutno nisu dostupni zbog greske baze.",
+                    ResolveCorrelationId(httpContext)));
+            }
         })
         .WithName("GetPreNivelacijaPrioriteti")
         .WithTags("Analytics")
@@ -472,12 +498,18 @@ public static class PreNivelacijaPriorityEndpoints
     private static PreNivelacijaPriorityResponseDto BuildResponse(
         PreNivelacijaPriorityBaseCacheEntry baseEntry,
         int page,
-        int pageSize)
+        int pageSize,
+        string correlationId)
     {
         var pagedCandidates = baseEntry.Candidates
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
+
+        var meta = baseEntry.TotalCandidates == 0
+            ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
+            : AnalyticsResponseMetaFactory.Success();
+        meta.CorrelationId = correlationId;
 
         return new PreNivelacijaPriorityResponseDto
         {
@@ -491,8 +523,44 @@ public static class PreNivelacijaPriorityEndpoints
             Alerts = baseEntry.Alerts,
             Page = page,
             PageSize = pageSize,
-            TotalCandidates = baseEntry.TotalCandidates
+            TotalCandidates = baseEntry.TotalCandidates,
+            Meta = meta
         };
+    }
+
+    private static PreNivelacijaPriorityResponseDto BuildErrorResponse(string errorCode, string message, string correlationId)
+    {
+        return new PreNivelacijaPriorityResponseDto
+        {
+            FormulaVersion = "pre_nivelacija_v2",
+            FormulaDescription = BuildFormulaDescription(),
+            Summary = new PreNivelacijaSummaryDto(),
+            SupplierLeaderboard = [],
+            Candidates = [],
+            Queues = new PreNivelacijaQueuesDto(),
+            Alerts = [],
+            Page = 1,
+            PageSize = 20,
+            TotalCandidates = 0,
+            Meta = AnalyticsResponseMetaFactory.Error(errorCode, message, correlationId)
+        };
+    }
+
+    private static string ResolveCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader))
+        {
+            return responseHeader;
+        }
+
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader))
+        {
+            return requestHeader;
+        }
+
+        return httpContext.TraceIdentifier;
     }
 
     private static string ResolvePriorityBand(decimal score)

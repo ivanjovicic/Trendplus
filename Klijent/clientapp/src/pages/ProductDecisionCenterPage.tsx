@@ -18,6 +18,11 @@ import {
   fmtPct,
   fmtRsd,
 } from "../utils/analyticsFormatters";
+import {
+  getAnalyticsMetaMessage,
+  isAnalyticsMetaEmpty,
+  isAnalyticsMetaWarning,
+} from "../utils/analyticsResponseMeta";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import type {
   AnalyticsActionStatus,
@@ -349,6 +354,7 @@ export default function ProductDecisionCenterPage() {
 
   const rows = payload?.rows ?? [];
   const responseMeta = payload?.meta ?? null;
+  const responseMetaMessage = getAnalyticsMetaMessage(responseMeta);
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -385,9 +391,11 @@ export default function ProductDecisionCenterPage() {
     return copy;
   }, [filteredRows, sortDir, sortField]);
   const hasBlockingError = Boolean(error && !payload);
+  const showMetaWarning = !loading && !hasBlockingError && isAnalyticsMetaWarning(responseMeta);
   const showInsufficientState = !loading
     && !hasBlockingError
     && (responseMeta?.dataQualityStatus === "insufficient_data"
+      || (isAnalyticsMetaEmpty(responseMeta) && responseMeta?.dataQualityStatus === "insufficient_data")
       || (sortedRows.length > 0 && sortedRows.every((row) => row.recommendationStatus === "INSUFFICIENT_DATA")));
   const showNoDataState = !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
   const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
@@ -519,18 +527,18 @@ export default function ProductDecisionCenterPage() {
         dataQualityStatus={responseMeta?.dataQualityStatus ?? null}
         dataQualitySummary={trustQualitySummary}
         mode="recommendation"
-        isPartial={responseMeta?.isPartial ?? false}
+        isPartial={isAnalyticsMetaWarning(responseMeta)}
         recommendationNote="Finalni recommendation status dolazi iz backend decision engine-a."
-        emptyStateReason={!loading && !hasBlockingError && sortedRows.length === 0 ? (responseMeta?.message ?? "Nema kandidata za izabrane filtere i period.") : null}
+        emptyStateReason={!loading && !hasBlockingError && sortedRows.length === 0 ? (responseMetaMessage ?? "Nema kandidata za izabrane filtere i period.") : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
 
-      {!loading && !hasBlockingError && responseMeta?.isPartial ? (
+      {showMetaWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
-          Prikazani podaci su delimični ili fallback. {responseMeta.warningMessage ?? responseMeta.message ?? "Proverite status osvežavanja analitike."}
+          Prikazani podaci su delimicni ili fallback. {responseMetaMessage ?? "Proverite status osvezavanja analitike."}
         </div>
       ) : null}
 
@@ -696,7 +704,7 @@ export default function ProductDecisionCenterPage() {
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error?.message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error?.message ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
           errorCode={error?.errorCode ?? undefined}
           correlationId={error?.correlationId ?? undefined}
           onRetry={() => {
@@ -709,7 +717,7 @@ export default function ProductDecisionCenterPage() {
       {showInsufficientState ? (
         <AnalyticsEmptyState
           variant="insufficient_data"
-          message={responseMeta?.message ?? "Dataset je uspešno učitan, ali nema dovoljno signalnih redova za odluke."}
+          message="Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
           reasons={[
             "U periodu nema dovoljno prodajnih događaja za recommendation signal.",
             "Filteri su previše uski (prodavnica/dobavljač).",
@@ -722,14 +730,17 @@ export default function ProductDecisionCenterPage() {
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={responseMeta?.emptyReason ?? null}
+          emptyReason={responseMeta?.emptyReason ?? responseMetaMessage ?? null}
+          onRetry={() => {
+            void loadData();
+          }}
         />
       ) : null}
 
       {showNoDataState ? (
         <AnalyticsEmptyState
           variant="no_data"
-          message={responseMeta?.message ?? "Nema podataka za izabrani period."}
+          message={responseMetaMessage ?? "Nema podataka za izabrani period."}
           reasons={[
             "Nije bilo prodaje u trazenom periodu.",
             "Izabrani period je preuzak.",
@@ -737,20 +748,23 @@ export default function ProductDecisionCenterPage() {
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={responseMeta?.emptyReason ?? null}
+          emptyReason={responseMeta?.emptyReason ?? responseMetaMessage ?? null}
         />
       ) : null}
 
       {showFilteredOutState ? (
         <AnalyticsEmptyState
           variant="filtered_out"
-          message="Trenutni filteri su suzili rezultat na 0 redova."
+          message="Promenite filtere ili prosirite period."
           reasons={[
             "Pretraga, recommendation filter ili data quality filter su previse restriktivni.",
             "Kombinacija prodavnice i dobavljaca trenutno nema kandidate.",
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
+          onRetry={() => {
+            void loadData();
+          }}
         />
       ) : null}
 

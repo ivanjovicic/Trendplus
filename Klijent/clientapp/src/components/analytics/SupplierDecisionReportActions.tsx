@@ -54,13 +54,13 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       if (type === "copy") {
         const text = buildSupplierDecisionReportSummaryText(payload);
         await copyToClipboard(text);
-        setStatus("Sazetak je kopiran u clipboard.");
+        setStatus("Sažetak je kopiran u clipboard.");
         return;
       }
 
       if (type === "csv") {
         exportSupplierDecisionReportCsv(payload);
-        setStatus("CSV izvestaj je preuzet.");
+        setStatus("CSV izveštaj je preuzet.");
         return;
       }
 
@@ -72,21 +72,21 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
       if (type === "excel") {
         await exportSupplierDecisionReportExcel(payload);
-        setStatus("Excel izvestaj je preuzet.");
+        setStatus("Excel izveštaj je preuzet.");
         return;
       }
 
       if (!pdfExportEnabled) {
-        throw new Error("PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel.");
+        throw new Error("PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel.");
       }
 
       await exportSupplierDecisionReportPdf(payload);
-      setStatus("PDF izvestaj je preuzet.");
+      setStatus("PDF izveštaj je preuzet.");
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Izvoz izvestaja nije uspeo.";
+      const message = reason instanceof Error ? reason.message : "Izvoz izveštaja nije uspeo.";
       setStatus(message);
       onError?.(type === "pdf"
-        ? "PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel."
+        ? "PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel."
         : message);
     } finally {
       setBusy(null);
@@ -109,16 +109,16 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         onClick={() => void run("print")}
         disabled={actionDisabled}
       >
-        {busy === "print" ? "Otvaram..." : "Print izvestaj"}
+        {busy === "print" ? "Otvaram..." : "Print izveštaj"}
       </button>
       <button
         type="button"
         className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
         onClick={() => void run("copy")}
         disabled={actionDisabled}
-        title="Kopira executive sazetak izvestaja"
+        title="Kopira executive sažetak izveštaja"
       >
-        {busy === "copy" ? "Kopiram..." : "Kopiraj sazetak"}
+        {busy === "copy" ? "Kopiram..." : "Kopiraj sažetak"}
       </button>
       <button
         type="button"

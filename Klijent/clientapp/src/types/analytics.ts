@@ -502,21 +502,16 @@ export interface DataQualityTrendResult {
   meta?: AnalyticsResponseMeta | null;
 }
 
-export type PilotDataQualityReadinessStatus = "Ready" | "UsableWithWarnings" | "PilotLimited" | "FixDataFirst" | string;
+export type PilotDataQualityReadinessStatus = "excellent" | "good" | "warning" | "critical" | string;
 
 export interface PilotDataQualityIntakeLoadedData {
-  articleCount: number;
-  supplierCount: number;
-  storeCount: number;
-  salesReceiptCount: number;
-  salesLineCount: number;
-  lastImportSourceFile?: string | null;
-  lastImportSourcePath?: string | null;
-  rowsRead: number;
-  rowsAccepted: number;
-  rowsWritten: number;
-  ignoredRows: number;
-  totalErrors: number;
+  articlesCount: number;
+  saleItemsCount: number;
+  receiptsCount: number;
+  suppliersCount: number;
+  storesCount: number;
+  firstSaleDate: string | null;
+  lastSaleDate: string | null;
 }
 
 export interface PilotDataQualityIntakeIssueItem {
@@ -529,15 +524,14 @@ export interface PilotDataQualityIntakeIssueItem {
 
 export interface PilotDataQualityIntakeIssues {
   missingSupplierCount: number;
-  missingShoeTypeCount: number;
   missingCostCount: number;
   missingCategoryCount: number;
-  missingSizeCount: number;
-  missingColorCount: number;
-  invalidNameCount: number;
-  duplicateSkuCount: number;
-  blockedRecommendationsCount: number;
-  items: PilotDataQualityIntakeIssueItem[];
+  missingColorCount?: number;
+  missingSizeCount?: number;
+  saleWithoutArticleCount: number;
+  zeroOrNegativePriceCount: number;
+  duplicateSkuCount?: number;
+  missingSupplierNameCount: number;
 }
 
 export interface PilotDataQualityIntakeImpactItem {
@@ -548,12 +542,11 @@ export interface PilotDataQualityIntakeImpactItem {
 }
 
 export interface PilotDataQualityIntakeImpact {
-  revenueAtRiskRsd: number;
-  reliabilityPct: number;
-  orphanArticleCount: number;
-  missingCostRevenueSharePct: number;
-  unknownSupplierRevenueSharePct: number;
-  items: PilotDataQualityIntakeImpactItem[];
+  revenueWithoutCostPercent: number;
+  articlesWithoutSupplierPercent: number;
+  recommendationsBlockedCount: number;
+  ignoredRowsCount: number;
+  insufficientSignalCount: number;
 }
 
 export interface PilotDataQualityIntakeActionItem {
@@ -572,17 +565,17 @@ export interface PilotDataQualityIntakeReport {
   periodFromUtc?: string | null;
   periodToUtc?: string | null;
   dataScope: string;
-  storeId?: number | null;
-  supplierId?: number | null;
+  storeId?: string | null;
+  supplierId?: string | null;
   lastImportAtUtc?: string | null;
+  lastRefreshAtUtc?: string | null;
   readinessStatus: PilotDataQualityReadinessStatus;
   readinessLabel: string;
   readinessScore: number;
-  summary: string;
   loadedData: PilotDataQualityIntakeLoadedData;
   issues: PilotDataQualityIntakeIssues;
   impact: PilotDataQualityIntakeImpact;
-  recommendedActions: PilotDataQualityIntakeActions;
+  recommendedActions: string[];
   meta?: AnalyticsResponseMeta | null;
 }
 
