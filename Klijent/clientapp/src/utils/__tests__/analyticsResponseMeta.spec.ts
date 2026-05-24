@@ -6,7 +6,9 @@ import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaEmpty,
   isAnalyticsMetaError,
+  isAnalyticsMetaInsufficient,
   isAnalyticsMetaWarning,
+  shouldShowAnalyticsEmptyState,
 } from "../analyticsResponseMeta";
 
 describe("analyticsResponseMeta", () => {
@@ -45,9 +47,25 @@ describe("analyticsResponseMeta", () => {
     expect(isAnalyticsMetaWarning({ success: true, isPartial: true })).toBe(true);
   });
 
-  it("empty meta is classified as empty", () => {
+  it("emptyReason response is classified as empty", () => {
     expect(isAnalyticsMetaEmpty({ success: true, emptyReason: "no_data_in_period" })).toBe(true);
-    expect(isAnalyticsMetaEmpty({ success: true, dataQualityStatus: "insufficient_data" })).toBe(true);
+  });
+
+  it("insufficient_data is not treated as empty by default", () => {
+    const meta: AnalyticsResponseMeta = { success: true, dataQualityStatus: "insufficient_data" };
+    expect(isAnalyticsMetaInsufficient(meta)).toBe(true);
+    expect(isAnalyticsMetaEmpty(meta)).toBe(false);
+  });
+
+  it("empty state helper separates insufficient signal from true empty data", () => {
+    const insufficientMeta: AnalyticsResponseMeta = {
+      success: true,
+      dataQualityStatus: "insufficient_data",
+    };
+
+    expect(shouldShowAnalyticsEmptyState(insufficientMeta, 0)).toBe(true);
+    expect(shouldShowAnalyticsEmptyState(insufficientMeta, 5)).toBe(false);
+    expect(shouldShowAnalyticsEmptyState({ success: true, emptyReason: "no_data_in_period" }, 12)).toBe(true);
   });
 
   it("missing meta is neutral and does not throw", () => {

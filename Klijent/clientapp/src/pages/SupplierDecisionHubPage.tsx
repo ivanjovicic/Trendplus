@@ -35,9 +35,10 @@ import type { Sezona } from "../types/Sezona";
 import { fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import {
   getAnalyticsMetaMessage,
-  isAnalyticsMetaEmpty,
+  isAnalyticsMetaInsufficient,
   isAnalyticsMetaError,
   isAnalyticsMetaWarning,
+  shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import {
@@ -392,10 +393,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   }, [ranking, summary, top5SharePct, totalMarginContribution, totalRevenue, trustMetadata?.hasData, trustMetadata?.hasExplicitDateRange]);
 
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out">(() => {
+    const scorecardRowCount = ranking?.items.length ?? 0;
     if (
       trustMetadata?.dataCoverageStatus === "insufficient_data"
       || recommendationAllowed === false
-      || (isAnalyticsMetaEmpty(scorecardMeta) && scorecardMeta?.dataQualityStatus === "insufficient_data")
+      || (shouldShowAnalyticsEmptyState(scorecardMeta, scorecardRowCount) && isAnalyticsMetaInsufficient(scorecardMeta))
     ) {
       return "insufficient_data";
     }
@@ -412,8 +414,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     activeFilters.storeId,
     activeFilters.supplierId,
     recommendationAllowed,
+    ranking?.items.length,
     scorecardMeta,
-    scorecardMeta?.dataQualityStatus,
     trustMetadata?.dataCoverageStatus,
   ]);
 

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import "./AnalyticsTrustHeader.css";
 
@@ -39,8 +40,8 @@ type AnalyticsTrustHeaderProps = {
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
   recommendation: "Preporuka sistema",
-  signal: "Analiticki signal",
-  report: "Izvestaj",
+  signal: "Analitički signal",
+  report: "Izveštaj",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -51,11 +52,19 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const FRESHNESS_LABELS: Record<string, string> = {
-  fresh: "Sveze",
+  fresh: "Sveže",
   stale: "Zastarelo",
-  critical: "Kriticno",
+  critical: "Kritično",
   unknown: "Nije poznato",
 };
+
+function renderLink(href: string, label: string, className: string) {
+  if (href.startsWith("/")) {
+    return <Link to={href} className={className}>{label}</Link>;
+  }
+
+  return <a href={href} className={className}>{label}</a>;
+}
 
 function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
   if (value === "fresh" || value === "stale" || value === "critical") {
@@ -182,9 +191,9 @@ export default function AnalyticsTrustHeader({
           </strong>
         </div>
         <div className="ath-meta-item">
-          <span className="ath-meta-key">Poslednje osvezenje</span>
+          <span className="ath-meta-key">Poslednje osveženje</span>
           <strong className="ath-meta-value">
-            {lastRefreshAt ? formatDateTime(lastRefreshAt) : "Vreme osvezenja nije dostupno"}
+            {lastRefreshAt ? formatDateTime(lastRefreshAt) : "Vreme osveženja nije dostupno"}
           </strong>
           <span className={`ath-freshness-badge ath-freshness-${freshness}`}>
             {FRESHNESS_LABELS[freshness]}
@@ -208,7 +217,7 @@ export default function AnalyticsTrustHeader({
       {showFallbackBanner ? (
         <div className="ath-banner ath-banner-warning" role="note">
           <strong>Fallback aktiviran.</strong>{" "}
-          Za trazeni period nema dovoljno podataka. Koriscen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomocni signal.
+          Za traženi period nema dovoljno podataka. Korišćen je dataset {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
           {fallbackReason ? ` ${fallbackReason}` : null}
           {fallbackReasonCode ? <span className="ath-banner-code"> ({fallbackReasonCode})</span> : null}
         </div>
@@ -216,13 +225,13 @@ export default function AnalyticsTrustHeader({
 
       {showGatedBanner ? (
         <div className="ath-banner ath-banner-neutral" role="note">
-          <strong>Preporuka je gated.</strong> Sistem ne prikazuje konacnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
+          <strong>Preporuka je gated.</strong> Sistem ne prikazuje konačnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
         </div>
       ) : null}
 
       {showPartialBanner ? (
         <div className="ath-banner ath-banner-warning" role="note">
-          <strong>Upozorenje:</strong> Prikaz moze biti delimican ili zastareo.
+          <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
         </div>
       ) : null}
 
@@ -230,10 +239,10 @@ export default function AnalyticsTrustHeader({
       {emptyStateReason ? <p className="ath-empty-reason">{emptyStateReason}</p> : null}
 
       <div className={`ath-summary ${compact ? "ath-summary-compact" : ""}`}>
-        {compact ? null : <h2>Sazetak kvaliteta podataka</h2>}
+        {compact ? null : <h2>Sažetak kvaliteta podataka</h2>}
         {hasSummary ? (
           <div className={compact ? "ath-summary-chips" : "ath-summary-grid"}>
-            <div><span>Artikli bez dobavljaca</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
+            <div><span>Artikli bez dobavljača</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
             <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
             <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
             <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary.insufficientSignalCount)}</strong></div>
@@ -245,9 +254,9 @@ export default function AnalyticsTrustHeader({
       </div>
 
       <div className="ath-footer">
-        <a href={resolvedDataQualityHref}>Kvalitet podataka</a>
-        <a href={resolvedRefreshStatusHref}>Worker status</a>
-        {methodologyHref ? <a href={methodologyHref}>{methodologyLabel ?? "Metodologija i tumacenje signala"}</a> : null}
+        {renderLink(resolvedDataQualityHref, "Kvalitet podataka", "ath-footer-link")}
+        {renderLink(resolvedRefreshStatusHref, "Status osvežavanja", "ath-footer-link")}
+        {methodologyHref ? renderLink(methodologyHref, methodologyLabel ?? "Metodologija i tumačenje signala", "ath-footer-link") : null}
       </div>
     </section>
   );

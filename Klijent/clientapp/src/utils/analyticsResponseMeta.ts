@@ -46,7 +46,23 @@ export function isAnalyticsMetaWarning(meta?: AnalyticsResponseMeta | null): boo
 export function isAnalyticsMetaEmpty(meta?: AnalyticsResponseMeta | null): boolean {
   if (!meta) return false;
   if (meta.success !== true) return false;
-  return Boolean(meta.emptyReason) || meta.dataQualityStatus === "insufficient_data";
+  return Boolean(meta.emptyReason);
+}
+
+export function isAnalyticsMetaInsufficient(meta?: AnalyticsResponseMeta | null): boolean {
+  if (!meta) return false;
+  if (meta.success !== true) return false;
+  return meta.dataQualityStatus === "insufficient_data";
+}
+
+export function shouldShowAnalyticsEmptyState(
+  meta: AnalyticsResponseMeta | null | undefined,
+  rowCount?: number | null
+): boolean {
+  if (isAnalyticsMetaError(meta)) return false;
+  if (!meta || meta.success !== true) return false;
+  if (meta.emptyReason) return true;
+  return rowCount === 0 && meta.dataQualityStatus === "insufficient_data";
 }
 
 export function getAnalyticsMetaMessage(meta?: AnalyticsResponseMeta | null): string | null {

@@ -20,8 +20,9 @@ import {
 } from "../utils/analyticsFormatters";
 import {
   getAnalyticsMetaMessage,
-  isAnalyticsMetaEmpty,
+  isAnalyticsMetaInsufficient,
   isAnalyticsMetaWarning,
+  shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import type {
@@ -394,9 +395,8 @@ export default function ProductDecisionCenterPage() {
   const showMetaWarning = !loading && !hasBlockingError && isAnalyticsMetaWarning(responseMeta);
   const showInsufficientState = !loading
     && !hasBlockingError
-    && (responseMeta?.dataQualityStatus === "insufficient_data"
-      || (isAnalyticsMetaEmpty(responseMeta) && responseMeta?.dataQualityStatus === "insufficient_data")
-      || (sortedRows.length > 0 && sortedRows.every((row) => row.recommendationStatus === "INSUFFICIENT_DATA")));
+    && shouldShowAnalyticsEmptyState(responseMeta, rows.length)
+    && isAnalyticsMetaInsufficient(responseMeta);
   const showNoDataState = !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
   const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
 

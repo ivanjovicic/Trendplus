@@ -14,11 +14,19 @@ type AnalyticsErrorStateProps = {
 };
 
 const DEFAULT_SUGGESTIONS = [
-  "Proverite refresh status.",
+  "Proverite status osvežavanja.",
   "Proverite kvalitet podataka.",
-  "Pokusajte ponovo.",
-  "Ako se greska ponavlja, sacuvajte correlation ID i kontaktirajte podrsku.",
+  "Pokušajte ponovo.",
+  "Ako se greška ponavlja, sačuvajte correlation ID i kontaktirajte podršku.",
 ];
+
+function renderLink(href: string, label: string, className?: string) {
+  if (href.startsWith("/")) {
+    return <Link to={href} className={className}>{label}</Link>;
+  }
+
+  return <a href={href} className={className}>{label}</a>;
+}
 
 export default function AnalyticsErrorState({
   title,
@@ -26,19 +34,19 @@ export default function AnalyticsErrorState({
   errorCode,
   correlationId,
   suggestions,
-  retryLabel = "Pokusaj ponovo",
+  retryLabel = "Pokušaj ponovo",
   onRetry,
   helpHref,
   helpLabel,
 }: AnalyticsErrorStateProps) {
   const resolvedSuggestions = suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS;
-  const displayMessage = message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan.";
+  const displayMessage = message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan.";
 
   return (
     <section className="analytics-error-state" role="alert" aria-live="assertive">
       <h2>{title}</h2>
       <p>{displayMessage}</p>
-      {errorCode ? <p className="aes-code">Sifra greske: {errorCode}</p> : null}
+      {errorCode ? <p className="aes-code">Šifra greške: {errorCode}</p> : null}
       {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
       {resolvedSuggestions.length > 0 ? (
         <ul className="aes-suggestions">
@@ -53,7 +61,7 @@ export default function AnalyticsErrorState({
             {retryLabel}
           </button>
         ) : null}
-        {helpHref ? <Link to={helpHref}>{helpLabel || "Otvori data quality"}</Link> : null}
+        {helpHref ? renderLink(helpHref, helpLabel || "Otvori kvalitet podataka") : null}
       </div>
     </section>
   );

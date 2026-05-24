@@ -54,9 +54,10 @@ import {
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import {
   getAnalyticsMetaMessage,
-  isAnalyticsMetaEmpty,
+  isAnalyticsMetaInsufficient,
   isAnalyticsMetaError,
   isAnalyticsMetaWarning,
+  shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import {
   dataQualityStatusLabel,
@@ -609,17 +610,17 @@ export default function AnalyticsDashboard() {
     return topAdvanced.byMarginImpact ?? [];
   }, [topAdvanced, topTab]);
   const dashboardMetaMessage = getAnalyticsMetaMessage(dashboardMeta);
+  const dashboardRowCount = summary?.totalTransactions ?? dailySales.length ?? null;
   const hasFatalLoadError = !loading && ((errors.length > 0 && summary == null) || isAnalyticsMetaError(dashboardMeta));
   const showMetaWarning = !loading && !hasFatalLoadError && isAnalyticsMetaWarning(dashboardMeta);
   const emptyVariant = useMemo(() => {
     if (loading || hasFatalLoadError) return null;
-    if (dashboardMeta?.dataQualityStatus === "insufficient_data") return "insufficient_data" as const;
-    if (isAnalyticsMetaEmpty(dashboardMeta)) {
-      return dashboardMeta?.dataQualityStatus === "insufficient_data" ? "insufficient_data" as const : "no_data" as const;
+    if (shouldShowAnalyticsEmptyState(dashboardMeta, dashboardRowCount)) {
+      return isAnalyticsMetaInsufficient(dashboardMeta) ? "insufficient_data" as const : "no_data" as const;
     }
     if (summary && summary.totalTransactions === 0 && summary.totalUnits === 0) return "no_data" as const;
     return null;
-  }, [dashboardMeta, dashboardMeta?.dataQualityStatus, hasFatalLoadError, loading, summary]);
+  }, [dashboardMeta, dashboardRowCount, hasFatalLoadError, loading, summary]);
   const showEmptyState = emptyVariant !== null;
   const executiveDataQualityTone = normalizeDataQualityStatus(
     dashboardMeta?.dataQualityStatus ?? executive?.dataQualitySummary?.freshnessStatus ?? null

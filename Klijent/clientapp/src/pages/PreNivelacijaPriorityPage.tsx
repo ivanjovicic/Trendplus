@@ -23,8 +23,9 @@ import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   getAnalyticsMetaMessage,
-  isAnalyticsMetaEmpty,
+  isAnalyticsMetaInsufficient,
   isAnalyticsMetaWarning,
+  shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import {
   RECOMMENDATION_CONFIDENCE_LABEL,
@@ -360,8 +361,9 @@ export default function PreNivelacijaPriorityPage() {
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
   const showEmptyState = !loading && !error && Boolean(data) && decisionRows.length === 0;
+  const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
-    dataMeta?.dataQualityStatus === "insufficient_data" || (isAnalyticsMetaEmpty(dataMeta) && dataMeta?.dataQualityStatus === "insufficient_data")
+    showInsufficientEmptyState
       ? "insufficient_data"
       : focusFilter !== "all"
         ? "filtered_out"
