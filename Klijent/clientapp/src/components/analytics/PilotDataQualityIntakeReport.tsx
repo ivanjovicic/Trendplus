@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AnalyticsNamedValue } from "../../types/analyticsTable";
 import type { PilotDataQualityIntakeReport } from "../../types/analytics";
@@ -64,11 +64,11 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Ucitano", "Artikli", String(report.loadedData.articlesCount)],
     ["Ucitano", "Stavke prodaje", String(report.loadedData.saleItemsCount)],
     ["Ucitano", "Racuni", String(report.loadedData.receiptsCount)],
-    ["Ucitano", "Dobavljaci", String(report.loadedData.suppliersCount)],
+    ["Ucitano", "Dobavljači", String(report.loadedData.suppliersCount)],
     ["Ucitano", "Prodajni objekti", String(report.loadedData.storesCount)],
     ["Ucitano", "Prva prodaja", report.loadedData.firstSaleDate ?? ""],
     ["Ucitano", "Poslednja prodaja", report.loadedData.lastSaleDate ?? ""],
-    ["Problemi", "Bez dobavljaca", String(report.issues.missingSupplierCount)],
+    ["Problemi", "Bez dobavljača", String(report.issues.missingSupplierCount)],
     ["Problemi", "Bez nabavne cene", String(report.issues.missingCostCount)],
     ["Problemi", "Bez kategorije", String(report.issues.missingCategoryCount)],
     ["Problemi", "Bez boje", String(report.issues.missingColorCount ?? 0)],
@@ -76,9 +76,9 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Problemi", "Prodaja bez artikla", String(report.issues.saleWithoutArticleCount)],
     ["Problemi", "Nulta/negativna cena", String(report.issues.zeroOrNegativePriceCount)],
     ["Problemi", "Dupliran SKU", String(report.issues.duplicateSkuCount ?? 0)],
-    ["Problemi", "Dobavljac bez naziva", String(report.issues.missingSupplierNameCount)],
+    ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
     ["Uticaj", "Prihod bez cene", String(report.impact.revenueWithoutCostPercent)],
-    ["Uticaj", "Artikli bez dobavljaca", String(report.impact.articlesWithoutSupplierPercent)],
+    ["Uticaj", "Artikli bez dobavljača", String(report.impact.articlesWithoutSupplierPercent)],
     ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
     ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
@@ -98,11 +98,11 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
 
 function buildSummary(report: PilotDataQualityIntakeReport): string {
   return [
-    `Trendplus pilot izvestaj kvaliteta podataka`,
+    `Trendplus pilot izveštaj kvaliteta podataka`,
     `Skor spremnosti: ${report.readinessLabel} (${report.readinessScore}/100)`,
-    `Ucitano: ${formatNumber(report.loadedData.articlesCount)} artikala, ${formatNumber(report.loadedData.saleItemsCount)} stavki prodaje, ${formatNumber(report.loadedData.receiptsCount)} racuna`,
-    `Top problemi: bez dobavljaca ${formatNumber(report.issues.missingSupplierCount)}, bez nabavne cene ${formatNumber(report.issues.missingCostCount)}, bez kategorije ${formatNumber(report.issues.missingCategoryCount)}`,
-    `Uticaj: prihod bez cene ${formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}, artikli bez dobavljaca ${formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}, blokirane preporuke ${formatNumber(report.impact.recommendationsBlockedCount)}`,
+    `Ucitano: ${formatNumber(report.loadedData.articlesCount)} artikala, ${formatNumber(report.loadedData.saleItemsCount)} stavki prodaje, ${formatNumber(report.loadedData.receiptsCount)} računa`,
+    `Top problemi: bez dobavljača ${formatNumber(report.issues.missingSupplierCount)}, bez nabavne cene ${formatNumber(report.issues.missingCostCount)}, bez kategorije ${formatNumber(report.issues.missingCategoryCount)}`,
+    `Uticaj: prihod bez cene ${formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}, artikli bez dobavljača ${formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}, blokirane preporuke ${formatNumber(report.impact.recommendationsBlockedCount)}`,
     `Preporucene akcije: ${report.recommendedActions.join("; ")}`,
   ].join("\n");
 }
@@ -115,11 +115,11 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     { section: "Ucitano", item: "Artikli", value: String(report.loadedData.articlesCount) },
     { section: "Ucitano", item: "Stavke prodaje", value: String(report.loadedData.saleItemsCount) },
     { section: "Ucitano", item: "Racuni", value: String(report.loadedData.receiptsCount) },
-    { section: "Ucitano", item: "Dobavljaci", value: String(report.loadedData.suppliersCount) },
+    { section: "Ucitano", item: "Dobavljači", value: String(report.loadedData.suppliersCount) },
     { section: "Ucitano", item: "Prodajni objekti", value: String(report.loadedData.storesCount) },
     { section: "Ucitano", item: "Prva prodaja", value: report.loadedData.firstSaleDate ?? "-" },
     { section: "Ucitano", item: "Poslednja prodaja", value: report.loadedData.lastSaleDate ?? "-" },
-    { section: "Problemi", item: "Bez dobavljaca", value: String(report.issues.missingSupplierCount) },
+    { section: "Problemi", item: "Bez dobavljača", value: String(report.issues.missingSupplierCount) },
     { section: "Problemi", item: "Bez nabavne cene", value: String(report.issues.missingCostCount) },
     { section: "Problemi", item: "Bez kategorije", value: String(report.issues.missingCategoryCount) },
     { section: "Problemi", item: "Bez boje", value: String(report.issues.missingColorCount ?? 0) },
@@ -127,9 +127,9 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     { section: "Problemi", item: "Prodaja bez artikla", value: String(report.issues.saleWithoutArticleCount) },
     { section: "Problemi", item: "Nulta/negativna cena", value: String(report.issues.zeroOrNegativePriceCount) },
     { section: "Problemi", item: "Dupliran SKU", value: String(report.issues.duplicateSkuCount ?? 0) },
-    { section: "Problemi", item: "Dobavljac bez naziva", value: String(report.issues.missingSupplierNameCount) },
+    { section: "Problemi", item: "Dobavljač bez naziva", value: String(report.issues.missingSupplierNameCount) },
     { section: "Uticaj", item: "Prihod bez cene", value: formatPercentFromRatio(report.impact.revenueWithoutCostPercent) },
-    { section: "Uticaj", item: "Artikli bez dobavljaca", value: formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent) },
+    { section: "Uticaj", item: "Artikli bez dobavljača", value: formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent) },
     { section: "Uticaj", item: "Blokirane preporuke", value: String(report.impact.recommendationsBlockedCount) },
     { section: "Uticaj", item: "Ignorisani redovi", value: String(report.impact.ignoredRowsCount) },
     { section: "Uticaj", item: "Nedovoljni signali", value: String(report.impact.insufficientSignalCount) },
@@ -141,7 +141,7 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
 
   return resolveAnalyticsTablePayload({
     tableKey: "pilot-data-quality-intake",
-    tableTitle: "Trendplus pilot izvestaj kvaliteta podataka",
+    tableTitle: "Trendplus pilot izveštaj kvaliteta podataka",
     documentType: "pilot-data-quality-intake",
     templateName: "analytics-table-default",
     columns: [
@@ -154,7 +154,7 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     metadata: [
       { key: "generatedAtUtc", label: "Generisano", value: report.generatedAtUtc },
       { key: "lastImportAtUtc", label: "Poslednji import", value: report.lastImportAtUtc ?? null },
-      { key: "lastRefreshAtUtc", label: "Poslednje osvezenje", value: report.lastRefreshAtUtc ?? null },
+      { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
       { key: "dataScope", label: "Scope", value: report.dataScope },
     ],
     locale: "sr-RS",
@@ -174,8 +174,8 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
         message={error}
         suggestions={[
           "Proverite da li je import zavrsen.",
-          "Pokrenite osvezavanje analytics podataka.",
-          "Pokusajte ponovo za nekoliko trenutaka.",
+          "Pokrenite osvežavanje analytics podataka.",
+          "Pokušajte ponovo za nekoliko trenutaka.",
         ]}
         onRetry={onRetry}
         helpHref="/analytics/data-quality"
@@ -194,10 +194,10 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
         message="Pilot intake report nije moguce generisati za trenutni opseg."
         reasons={[
           "Import nije zavrsen ili nema podataka u periodu.",
-          "Filter opseg je previse uzak.",
+          "Filter opseg je previše uzak.",
         ]}
         actions={[
-          { label: "Prosirite period." },
+          { label: "Proširite period." },
           { label: "Proverite Data Quality", href: "/analytics/data-quality" },
           { label: "Proverite worker status", href: "/admin/configuration?panel=workers" },
         ]}
@@ -259,7 +259,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setExportState("Link ka izvestaju je kopiran.");
+      setExportState("Link ka izveštaju je kopiran.");
     } catch {
       setExportState("Kopiranje linka nije uspelo.");
     }
@@ -269,11 +269,11 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     <section className="pilot-intake-report">
       <div className="pilot-intake-head">
         <div>
-          <h2>Trendplus pilot izvestaj kvaliteta podataka</h2>
+          <h2>Trendplus pilot izveštaj kvaliteta podataka</h2>
           <p>Ucitavanje podataka za analitiku pre otvaranja dashboard-a.</p>
         </div>
         <div className="pilot-intake-actions no-print">
-          <button type="button" onClick={handlePrint}>Stampaj izvestaj</button>
+          <button type="button" onClick={handlePrint}>Stampaj izveštaj</button>
           <button type="button" onClick={handleCsv}>Izvezi CSV</button>
           <button type="button" onClick={() => void handleExcel()}>Izvezi Excel</button>
           <button type="button" onClick={() => void handleCopySummary()}>Kopiraj sazetak</button>
@@ -305,19 +305,19 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
             <li>Artikli: {formatNumber(report.loadedData.articlesCount)}</li>
             <li>Stavke prodaje: {formatNumber(report.loadedData.saleItemsCount)}</li>
             <li>Racuni: {formatNumber(report.loadedData.receiptsCount)}</li>
-            <li>Dobavljaci: {formatNumber(report.loadedData.suppliersCount)}</li>
+            <li>Dobavljači: {formatNumber(report.loadedData.suppliersCount)}</li>
             <li>Objekti: {formatNumber(report.loadedData.storesCount)}</li>
             <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate)}</li>
             <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate)}</li>
             <li>Poslednji import: {formatDateTime(report.lastImportAtUtc)}</li>
-            <li>Poslednje osvezenje analitike: {formatDateTime(report.lastRefreshAtUtc)}</li>
+            <li>Poslednje osveženje analitike: {formatDateTime(report.lastRefreshAtUtc)}</li>
           </ul>
         </section>
 
         <section className="pilot-card">
           <h3>Problemi</h3>
           <ul>
-            <li className="critical">Bez dobavljaca: {formatNumber(report.issues.missingSupplierCount)}</li>
+            <li className="critical">Bez dobavljača: {formatNumber(report.issues.missingSupplierCount)}</li>
             <li className="critical">Bez nabavne cene: {formatNumber(report.issues.missingCostCount)}</li>
             <li className="warning">Bez kategorije: {formatNumber(report.issues.missingCategoryCount)}</li>
             <li className="warning">Bez boje: {formatNumber(report.issues.missingColorCount ?? 0)}</li>
@@ -325,7 +325,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
             <li className="critical">Prodaja bez artikla: {formatNumber(report.issues.saleWithoutArticleCount)}</li>
             <li className="critical">Nulta/negativna cena: {formatNumber(report.issues.zeroOrNegativePriceCount)}</li>
             <li className="warning">Dupliran SKU: {formatNumber(report.issues.duplicateSkuCount ?? 0)}</li>
-            <li className="warning">Dobavljac bez naziva: {formatNumber(report.issues.missingSupplierNameCount)}</li>
+            <li className="warning">Dobavljač bez naziva: {formatNumber(report.issues.missingSupplierNameCount)}</li>
           </ul>
         </section>
 
@@ -333,7 +333,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
           <h3>Uticaj</h3>
           <ul>
             <li>Prihod bez nabavne cene: {formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}</li>
-            <li>Artikli bez dobavljaca: {formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}</li>
+            <li>Artikli bez dobavljača: {formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}</li>
             <li>Blokirane preporuke: {formatNumber(report.impact.recommendationsBlockedCount)}</li>
             <li>Ignorisani redovi: {formatNumber(report.impact.ignoredRowsCount)}</li>
             <li>Nedovoljni signali: {formatNumber(report.impact.insufficientSignalCount)}</li>
@@ -356,11 +356,11 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
       <section className="pilot-methodology no-print">
         <button type="button" onClick={() => setShowMethodology((prev) => !prev)} aria-expanded={showMethodology}>
-          Kako citati ovaj izvestaj?
+          Kako citati ovaj izveštaj?
         </button>
         {showMethodology ? (
           <p>
-            Ovaj izvestaj prikazuje koliko podataka je ucitano i koji nedostaci uticu na pouzdanost analitike. Preporuke su zasnovane na kvalitetu signala,
+            Ovaj izveštaj prikazuje koliko podataka je ucitano i koji nedostaci uticu na pouzdanost analitike. Preporuke su zasnovane na kvalitetu signala,
             marznom doprinosu, zalihama i zavisnosti od nivoa cene.
           </p>
         ) : null}
@@ -368,3 +368,5 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     </section>
   );
 }
+
+

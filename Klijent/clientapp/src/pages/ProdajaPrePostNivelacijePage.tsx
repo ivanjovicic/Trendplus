@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -131,7 +131,7 @@ const COMMAND_TOOLTIP_LABEL_STYLE = {
 };
 
 const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
-  { key: "vendorName", header: "Dobavljac", dataType: "text" },
+  { key: "vendorName", header: "Dobavljač", dataType: "text" },
   { key: "preRevenue", header: "Promet pre", dataType: "currency" },
   { key: "postRevenue", header: "Promet posle", dataType: "currency" },
   { key: "sharePct", header: "Udeo promene %", dataType: "percent" },
@@ -510,7 +510,7 @@ export default function ProdajaPrePostNivelacijePage() {
       setData(null);
       setPreviousData(null);
       setPreviousRevenue(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju pre/post analitike.");
+      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju pre/post analitike.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -792,7 +792,7 @@ const advancedSignals = useMemo(
         label: "Elasticnost",
         value: fmtNumber(data?.avgElasticity, 2),
         hint: "avg",
-        tip: "ProseÃ„Âna cenovana elastiÃ„Ânost po artiklima dobavljaÃ„Âa. Vrednost < 0 znaÃ„Âi da rast cene smanjuje prodaju. RaÃ„Âuna se kao %ÃŽâ€qty / %ÃŽâ€cena za svaki artikal.",
+        tip: "Prosečna cenovna elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
       },
       {
         label: "DID",
@@ -864,9 +864,9 @@ const advancedSignals = useMemo(
     return {
       dominantCategory: dominantCategoryEntry[0],
       dominantCategoryRevenue: dominantCategoryEntry[1],
-      topWinnerLabel: topWinner ? `${topWinner.sku || "-"} Ã¢â‚¬Â¢ ${topWinner.articleName}` : "N/A",
+      topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
       topWinnerRevenue: topWinner?.changeRevenue ?? 0,
-      topRiskLabel: topRisk ? `${topRisk.sku || "-"} Ã¢â‚¬Â¢ ${topRisk.articleName}` : "N/A",
+      topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
       topRiskRevenue: topRisk?.changeRevenue ?? 0,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
@@ -883,7 +883,7 @@ const advancedSignals = useMemo(
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       {
         key: "vendorId",
-        label: "Dobavljac",
+        label: "Dobavljač",
         value: activeFilters.vendorId != null
           ? vendors.find((vendor) => vendor.id === activeFilters.vendorId)?.naziv ?? activeFilters.vendorId
           : "Svi",
@@ -897,7 +897,7 @@ const advancedSignals = useMemo(
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "vendorsCount", label: "Dobavljaca", value: data?.totals.vendorsCount ?? 0 },
+      { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
       { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
       { key: "windowDays", label: "Prozor analize", value: data?.windowDays ?? 0 },
       { key: "rowsExported", label: "Vidljivih redova", value: focusedRows.length },
@@ -971,7 +971,7 @@ const advancedSignals = useMemo(
         table: "nivelacije-pre-post",
         recordId: String(row.vendorId ?? row.vendorName),
         title: row.vendorName,
-        subtitle: "Decision support po dobavljacu",
+        subtitle: "Decision support po dobavljaču",
         columns: decisionColumns,
         row,
         metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -998,7 +998,7 @@ const advancedSignals = useMemo(
     <div className="ppn-decision-page">
       <AnalyticsTrustHeader
         title="Prodaja pre/posle nivelacije"
-        description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljacu."
+        description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={data?.generatedAt ?? null}
@@ -1017,7 +1017,7 @@ const advancedSignals = useMemo(
           <h1 className="ppn-decision-title">Prodaja pre/posle nivelacije</h1>
           <p className="ppn-decision-subtitle">
             Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
-            Nije izolovani profit, veÃ„â€¡ poslovni signal za prioritet nabavke i nadzor cene.
+            Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.
           </p>
         </div>
         <div className="ppn-decision-generated">
@@ -1033,7 +1033,7 @@ const advancedSignals = useMemo(
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">PrilagoÃ„â€˜eno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -1080,14 +1080,14 @@ const advancedSignals = useMemo(
       {error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           onRetry={() => void load(activeFilters)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
       {showMetaWarning ? (
         <div className="ppn-decision-message warning" role="status">
-          Prikazani podaci su delimicni. {dataMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite analytics refresh status."}
         </div>
       ) : null}
       {showEmptyState ? (
@@ -1097,7 +1097,7 @@ const advancedSignals = useMemo(
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili prosirite period."
+                ? "Promenite filtere ili proširite period."
                 : (dataMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           actions={[
@@ -1115,7 +1115,7 @@ const advancedSignals = useMemo(
 
       {!loading && data ? (
         <>
-          {/* Compact Data Health badge Ã¢â‚¬â€ collapsible trust/quality layer */}
+          {/* Compact Data Health badge – collapsible trust/quality layer */}
           <div className="ppn-data-health-bar">
             <button
               type="button"
@@ -1124,8 +1124,8 @@ const advancedSignals = useMemo(
               aria-expanded={trustPanelOpen}
               title={trustPanelOpen ? "Sakrij detalje kvaliteta signala" : "Prikaži detalje kvaliteta signala"}
             >
-              {dataTrustSummary.tone === "strong" ? "Ã¢Å“â€œ" : "Ã¢Å¡Â "} Kvalitet signala: {dataTrustSummary.label}
-              <span className="ppn-health-caret">{trustPanelOpen ? " Ã¢â€“Â²" : " Ã¢â€“Â¼"}</span>
+              {dataTrustSummary.tone === "strong" ? "✓" : "⚠"} Kvalitet signala: {dataTrustSummary.label}
+              <span className="ppn-health-caret">{trustPanelOpen ? " ▾" : " ▸"}</span>
             </button>
             <span className="ppn-data-health-hint">
               Analiza poredjena po nivelacionom prozoru od {data.windowDays ?? 30} dana.
@@ -1180,7 +1180,7 @@ const advancedSignals = useMemo(
               </div>
               <p>
                 {leadingPriceDirection
-                  ? `${leadingPriceDirection.segment} trenutno nosi najveci doprinos promeni prometa.`
+                  ? `${leadingPriceDirection.segment} trenutno nosi najveći doprinos promeni prometa.`
                   : "Nema dovoljno price-direction signala za izabrani opseg."}
               </p>
               <div className="ppn-stat-pair">
@@ -1206,7 +1206,7 @@ const advancedSignals = useMemo(
             <section className="ppn-advanced-signals-secondary">
               <h3 className="ppn-section-label">
                 Dodatni analitički signali
-                <InfoTip text="Dodatni signali izraÃ„Âunati iz naprednih pogleda. Dostupni su samo ako su potrebni pogledi kreirani u bazi Ã¢â‚¬â€ osnovna analiza ostaje ispravna i kada su ovi signali nedostupni." />
+                <InfoTip text="Dodatni signali izračunati iz naprednih pogleda. Dostupni su samo ako su potrebni pogledi kreirani u bazi – osnovna analiza ostaje ispravna i kada su ovi signali nedostupni." />
               </h3>
               <div className="ppn-mini-metrics ppn-mini-metrics--secondary">
                 {advancedSignals.filter((item) => item.value !== "N/A").map((item) => (
@@ -1228,7 +1228,7 @@ const advancedSignals = useMemo(
               <span>Post-window promet posle nivelacije</span>
               <strong>{fmtRsd(totalRevenue)}</strong>
             </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko top 5 dobavljaca nosi ukupnu promenu signala.">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koliko top 5 dobavljača nosi ukupnu promenu signala.">
               <span>Top 5 udeo u promeni</span>
               <strong>{fmtPct(top5SharePct)}</strong>
             </article>
@@ -1246,8 +1246,8 @@ const advancedSignals = useMemo(
             <article className="ppn-decision-card analytics-surface-panel">
               <div className="ppn-decision-card-heading">
                 <div>
-                  <h2>Koncentracija promena po dobavljacima</h2>
-                  <p>Udeo dobavljaca u apsolutnoj promeni prometa: |promena dobavljaca| / zbir |promena svih dobavljaca|.</p>
+                  <h2>Koncentracija promena po dobavljačima</h2>
+                  <p>Udeo dobavljača u apsolutnoj promeni prometa: |promena dobavljača| / zbir |promena svih dobavljača|.</p>
                 </div>
                 <span className={confidenceClass(concentrationQuality.tone)}>
                   {concentrationQuality.label}
@@ -1323,7 +1323,7 @@ const advancedSignals = useMemo(
                     <tr>
                       <th>
                         <button type="button" onClick={() => handleSort("vendorName")}>
-                          Dobavljac{sortMarker("vendorName", sortField, sortDir)}
+                          Dobavljač{sortMarker("vendorName", sortField, sortDir)}
                         </button>
                       </th>
                       <th className="align-right">
@@ -1346,19 +1346,19 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("trendPct")}>
                           Trend{sortMarker("trendPct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Procentualna promena prometa: (postRevenue Ã¢Ë†â€™ preRevenue) / preRevenue. Pozitivno = rast posle nivelacije." />
+                        <InfoTip text="Procentualna promena prometa: (postRevenue − preRevenue) / preRevenue. Pozitivno = rast posle nivelacije." />
                       </th>
                       <th className="align-center">
                         <button type="button" onClick={() => handleSort("volatilityPct")}>
                           Volatilnost{sortMarker("volatilityPct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Variranje post-window prometa vs prethodni event-opseg istog perioda. Visoka volatilnost znaÃ„Âi nestabilan signal Ã¢â‚¬â€ preporuku treba uzeti s rezervom." />
+                        <InfoTip text="Variranje post-window prometa vs prethodni event-opseg istog perioda. Visoka volatilnost znači nestabilan signal – preporuku treba uzeti s rezervom." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
                           Preporuka{sortMarker("status", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i sigurnost preporuke dolaze iz server-side analytics recommendation engine-a; frontend vise ne racuna lokalne threshold odluke." />
+                        <InfoTip text="Backend-authoritative recommendation za ovaj pre/post red. Status, razlog i sigurnost preporuke dolaze iz server-side analytics recommendation engine-a; frontend više ne računa lokalne threshold odluke." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -1378,7 +1378,7 @@ const advancedSignals = useMemo(
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>
                               <div className="ppn-vendor-cell">
-                                <strong title={row.vendorName || "Nepoznat dobavljac"}>{row.vendorName || "Nepoznat dobavljac"}</strong>
+                                <strong title={row.vendorName || "Nepoznat dobavljač"}>{row.vendorName || "Nepoznat dobavljač"}</strong>
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
@@ -1428,7 +1428,7 @@ const advancedSignals = useMemo(
           {selectedRow ? (
             <section className="ppn-decision-detail">
               <div className="ppn-decision-detail-head">
-                <h3 title={selectedRow.vendorName || "Nepoznat dobavljac"}>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljac"}</h3>
+                <h3 title={selectedRow.vendorName || "Nepoznat dobavljač"}>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3>
                 <button type="button" onClick={() => openVendorDetail(selectedRow)}>
                   Otvori puni detalj
                 </button>
@@ -1469,7 +1469,7 @@ const advancedSignals = useMemo(
                 <article>
                   <span>
                     Volatilnost vs prethodni period
-                    <InfoTip text="Procentualna razlika post-window prometa ovog perioda vs prethodnog event-opsega. Visoka volatilnost (>30%) znaÃ„Âi nestabilan signal Ã¢â‚¬â€ preporuka je manje sigurna." />
+                    <InfoTip text="Procentualna razlika post-window prometa ovog perioda vs prethodnog event-opsega. Visoka volatilnost (>30%) znači nestabilan signal – preporuka je manje sigurna." />
                   </span>
                   <strong>{selectedRow.volatilityPct == null ? selectedRow.volatilityLabel : fmtSignedPct(selectedRow.volatilityPct, 1)}</strong>
                 </article>
@@ -1478,7 +1478,7 @@ const advancedSignals = useMemo(
                   <strong>{selectedRow.increasedPriceArticlesCount}</strong>
                 </article>
                 <article>
-                  <span>SKU sa snizenjem cene</span>
+                  <span>SKU sa sniženjem cene</span>
                   <strong>{selectedRow.decreasedPriceArticlesCount}</strong>
                 </article>
                 <article>
@@ -1520,7 +1520,7 @@ const advancedSignals = useMemo(
                   <article>
                     <span>
                       Najcesci metric reason
-                      <InfoTip text="Interni razlog zaÃ…Â¡to neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). ObiÃ„Âno se radi o nedostajuÃ„â€¡im analytics view-ovima Ã¢â‚¬â€ ne utiÃ„Âe na ispravnost osnovne pre/post analize." />
+                      <InfoTip text="Interni razlog zašto neki artikli nemaju sve metrike (rolling, momentum, OOS, DiD). Obično se radi o nedostajućim analytics view-ovima – ne utiče na ispravnost osnovne pre/post analize." />
                     </span>
                     <strong>{selectedDriverSummary.topMetricReasons[0] ? getMetricWarningMeta(selectedDriverSummary.topMetricReasons[0].split(" (")[0]).label : "N/A"}</strong>
                     <small>{selectedDriverSummary.topMetricReasons.slice(1).map((r) => getMetricWarningMeta(r.split(" (")[0]).label).join(" | ") || "Bez dodatnih upozorenja"}</small>
@@ -1553,3 +1553,5 @@ const advancedSignals = useMemo(
     </div>
   );
 }
+
+

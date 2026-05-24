@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -92,7 +92,7 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
 
 const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
@@ -218,7 +218,7 @@ export default function PreNivelacijaPriorityPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju pre-nivelacija prioriteta.");
+      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju pre-nivelacija prioriteta.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -373,7 +373,7 @@ export default function PreNivelacijaPriorityPage() {
     () => [
       { key: "supplierId", label: "Dobavljač", value: activeFilters.supplierId ?? "" },
       { key: "seasonId", label: "Sezona", value: activeFilters.seasonId ?? "" },
-      { key: "footwearTypeId", label: "Tip obuÃ„â€¡e", value: activeFilters.footwearTypeId ?? "" },
+      { key: "footwearTypeId", label: "Tip obuće", value: activeFilters.footwearTypeId ?? "" },
       { key: "minScore", label: "Min. skor", value: activeFilters.minScore },
       { key: "noSaleDaysMin", label: "Min. dana bez prodaje", value: activeFilters.noSaleDaysMin },
       { key: "page", label: "Strana", value: page },
@@ -450,7 +450,7 @@ export default function PreNivelacijaPriorityPage() {
     <div className="pnp-decision-page">
       <AnalyticsTrustHeader
         title="Prioriteti pre-nivelacije"
-        description="Operativna podrska za odluke po SKU pre faze snizenja."
+        description="Operativna podrška za odluke po SKU pre faze sniženja."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={data?.generatedAtUtc ?? null}
@@ -499,7 +499,7 @@ export default function PreNivelacijaPriorityPage() {
         </label>
 
         <label className="pnp-decision-field">
-          <span>Tip obuce</span>
+          <span>Tip obuće</span>
           <select value={footwearTypeId ?? ""} onChange={(e) => setFootwearTypeId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Svi</option>
             {footwearTypeOptions.map((item) => (
@@ -528,14 +528,14 @@ export default function PreNivelacijaPriorityPage() {
       {error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           onRetry={() => void load(activeFilters, page)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
       {showMetaWarning ? (
         <div className="pnp-decision-message warning" role="status">
-          Prikazani podaci su delimicni. {dataMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite analytics refresh status."}
         </div>
       ) : null}
       {showEmptyState ? (
@@ -545,7 +545,7 @@ export default function PreNivelacijaPriorityPage() {
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili prosirite period."
+                ? "Promenite filtere ili proširite period."
                 : (dataMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           actions={[
@@ -567,7 +567,7 @@ export default function PreNivelacijaPriorityPage() {
               {data.alerts.map((alert, i) => (
                 <div key={i} className={`pnp-alert pnp-alert--${alert.severity}`}>
                   <span className="pnp-alert-icon">
-                    {alert.severity === "critical" ? "Ã¢Å¡Â " : alert.severity === "warning" ? "Ã¢Å¡Â¡" : "Ã¢â€žÂ¹"}
+                    {alert.severity === "critical" ? "⚠" : alert.severity === "warning" ? "⚡" : "ℹ"}
                   </span>
                   <span>
                     {alert.message}
@@ -580,24 +580,24 @@ export default function PreNivelacijaPriorityPage() {
 
           <section className="pnp-decision-kpis">
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora.">
-              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor Ã¢â€°Â¥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
+              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
               <strong>{data.summary.candidatesCount}</strong>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjacim signalom za brzu intervenciju.">
-              <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' Ã¢â‚¬â€ imaju najjaÃ„Âi kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
+              <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' – imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
               <strong>{data.summary.highPriorityCount}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
-              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. VeÃ„â€¡a zaliha bez prodaje = veÃ„â€¡i operativni rizik." /></span>
+              <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>
               <strong>{data.summary.totalStockAtRisk}</strong>
               <em>kom ukupno</em>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto snize.">
-              <span>Projekcija poveÃ„â€¡anja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniÃ…Â¾enja za sve 'PojaÃ„Âaj' kandidate. PROCENA Ã¢â‚¬â€ bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
+              <span>Projekcija povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji moze da se izbegne pre nivelacije.">
-              <span>Izbegljivi gubitak od sniÃ…Â¾enja <InfoTip text="Procenjeni gubitak prihoda koji se moÃ…Â¾e izbeÃ„â€¡i pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniÃ…Â¾enje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena Ã¢â‚¬â€ relativni odnos izmeÃ„â€˜u SKU-ova je relevantniji." /></span>
+              <span>Izbegljivi gubitak od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
           </section>
@@ -634,7 +634,7 @@ export default function PreNivelacijaPriorityPage() {
                 <div className="pnp-decision-table-controls">
                   <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
                   <span>Strana {page}</span>
-                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>SledeÃ„â€¡a</button>
+                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeća</button>
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="pre-nivelacija-prioriteti"
@@ -685,15 +685,15 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("preNivelacijaScore")}>Skor{sortMarker("preNivelacijaScore", sortField, sortDir)}</button>
-                        <InfoTip text="Skor nivelacije (0Ã¢â‚¬â€œ100): kompozitni signal od pritiska zalihe, brzine prodaje (sell-through), dana bez prodaje, Ã…Â¡anse za sniÃ…Â¾enje i marÃ…Â¾e potencijala. ViÃ…Â¡i skor = veÃ„â€¡i prioritet za intervenciju." />
+                        <InfoTip text="Skor nivelacije (0–100): kompozitni signal od pritiska zalihe, brzine prodaje (sell-through), dana bez prodaje, šanse za sniženje i marže potencijala. Viši skor = veći prioritet za intervenciju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("stockUnits")}>Zaliha{sortMarker("stockUnits", sortField, sortDir)}</button>
-                        <InfoTip text="TekuÃ„â€¡a raspoloÃ…Â¾iva zaliha ovog SKU u komadima. ViÃ…Â¡a zaliha uz nisku prodaju = veÃ„â€¡i rizik i veÃ„â€¡i prioritet za akciju." />
+                        <InfoTip text="Tekuća raspoloživa zaliha ovog SKU u komadima. Viša zaliha uz nisku prodaju = veći rizik i veći prioritet za akciju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("daysSinceLastSale")}>Dana bez prod.{sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
-                        <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. VeÃ„â€¡i broj = jaÃ„Âi signal stagnacije zalihe. Vrednosti > 30 dana zasluÃ…Â¾uju prioritetnu paÃ…Â¾nju." />
+                        <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. Veći broj = jači signal stagnacije zalihe. Vrednosti > 30 dana zaslužuju prioritetnu pažnju." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje{sortMarker("revenueDelta", sortField, sortDir)}</button>
@@ -777,7 +777,7 @@ export default function PreNivelacijaPriorityPage() {
 
               <div className="pnp-decision-detail-grid">
                 <article>
-                  <span>Dobavljac</span>
+                  <span>Dobavljač</span>
                   <strong title={selectedRow.supplierName}>{selectedRow.supplierName}</strong>
                 </article>
                 <article>
@@ -789,7 +789,7 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Scenario snizenje (30d prihod)</span>
+                  <span>Scenario sniženje (30d prihod)</span>
                   <strong>{fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
@@ -938,3 +938,5 @@ export default function PreNivelacijaPriorityPage() {
     </div>
   );
 }
+
+

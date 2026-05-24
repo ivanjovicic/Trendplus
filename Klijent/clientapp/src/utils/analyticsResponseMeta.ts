@@ -1,4 +1,4 @@
-import type { AnalyticsResponseMeta } from "../types/analytics";
+﻿import type { AnalyticsResponseMeta } from "../types/analytics";
 
 const EMPTY_REASON_MESSAGES: Record<string, string> = {
   no_data_in_period: "Nema podataka za izabrani period.",
@@ -49,6 +49,12 @@ export function isAnalyticsMetaEmpty(meta?: AnalyticsResponseMeta | null): boole
   return Boolean(meta.emptyReason);
 }
 
+export function hasAnalyticsMetaEmptyReason(meta?: AnalyticsResponseMeta | null): boolean {
+  if (!meta) return false;
+  if (meta.success !== true) return false;
+  return Boolean(meta.emptyReason);
+}
+
 export function isAnalyticsMetaInsufficient(meta?: AnalyticsResponseMeta | null): boolean {
   if (!meta) return false;
   if (meta.success !== true) return false;
@@ -57,11 +63,19 @@ export function isAnalyticsMetaInsufficient(meta?: AnalyticsResponseMeta | null)
 
 export function shouldShowAnalyticsEmptyState(
   meta: AnalyticsResponseMeta | null | undefined,
-  rowCount?: number | null
+  rowCount?: number | null,
+  options?: {
+    allowEmptyReasonWithRows?: boolean;
+  }
 ): boolean {
+  const allowEmptyReasonWithRows = options?.allowEmptyReasonWithRows ?? false;
   if (isAnalyticsMetaError(meta)) return false;
   if (!meta || meta.success !== true) return false;
-  if (meta.emptyReason) return true;
+  if (hasAnalyticsMetaEmptyReason(meta)) {
+    if (rowCount == null) return true;
+    if (rowCount === 0) return true;
+    return allowEmptyReasonWithRows;
+  }
   return rowCount === 0 && meta.dataQualityStatus === "insufficient_data";
 }
 
@@ -98,7 +112,7 @@ export function assertAnalyticsMetaSuccess<T>(
   const detail = getAnalyticsMetaMessage(meta) || "Podaci trenutno nisu dostupni.";
   const suffixParts: string[] = [];
   if (meta?.errorCode) {
-    suffixParts.push(`sifra: ${meta.errorCode}`);
+    suffixParts.push(`šifra: ${meta.errorCode}`);
   }
   if (meta?.correlationId) {
     suffixParts.push(`correlation: ${meta.correlationId}`);
@@ -111,3 +125,4 @@ export function assertAnalyticsMetaSuccess<T>(
     meta,
   });
 }
+

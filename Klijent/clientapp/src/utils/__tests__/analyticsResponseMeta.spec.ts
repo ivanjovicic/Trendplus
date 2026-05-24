@@ -4,6 +4,7 @@ import {
   AnalyticsMetaError,
   assertAnalyticsMetaSuccess,
   getAnalyticsMetaMessage,
+  hasAnalyticsMetaEmptyReason,
   isAnalyticsMetaEmpty,
   isAnalyticsMetaError,
   isAnalyticsMetaInsufficient,
@@ -62,10 +63,19 @@ describe("analyticsResponseMeta", () => {
       success: true,
       dataQualityStatus: "insufficient_data",
     };
+    const emptyMeta: AnalyticsResponseMeta = { success: true, emptyReason: "no_data_in_period" };
 
     expect(shouldShowAnalyticsEmptyState(insufficientMeta, 0)).toBe(true);
     expect(shouldShowAnalyticsEmptyState(insufficientMeta, 5)).toBe(false);
-    expect(shouldShowAnalyticsEmptyState({ success: true, emptyReason: "no_data_in_period" }, 12)).toBe(true);
+    expect(shouldShowAnalyticsEmptyState(emptyMeta, 5)).toBe(false);
+    expect(shouldShowAnalyticsEmptyState(emptyMeta, 5, { allowEmptyReasonWithRows: true })).toBe(true);
+    expect(shouldShowAnalyticsEmptyState(emptyMeta, 0)).toBe(true);
+  });
+
+  it("has empty reason helper returns true only for success + emptyReason", () => {
+    expect(hasAnalyticsMetaEmptyReason({ success: true, emptyReason: "no_data_in_period" })).toBe(true);
+    expect(hasAnalyticsMetaEmptyReason({ success: false, emptyReason: "no_data_in_period" })).toBe(false);
+    expect(hasAnalyticsMetaEmptyReason({ success: true })).toBe(false);
   });
 
   it("missing meta is neutral and does not throw", () => {

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -105,7 +105,7 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   poor_margin: "Marza je ispod zeljenog nivoa.",
   stale_stock: "Artikal dugo nema prodaju.",
   missing_cost: "Nedostaje nabavna cena.",
-  missing_supplier: "Nedostaje dobavljac.",
+  missing_supplier: "Nedostaje dobavljač.",
   insufficient_history: "Nema dovoljno istorije za sigurnu preporuku.",
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
   high_stock_risk: "Postoji rizik od viska zalihe.",
@@ -114,7 +114,7 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
 
 const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "productName", header: "Artikal", dataType: "text" },
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prodaja / komadi", dataType: "currency" },
   { key: "velocityUnitsPerDay", header: "Velocity", dataType: "number" },
   { key: "marginPct", header: "Marza", dataType: "percent" },
@@ -336,7 +336,7 @@ export default function ProductDecisionCenterPage() {
           correlationId: reason.correlationId,
         });
       } else {
-        const message = reason instanceof Error ? reason.message : "Greska pri ucitavanju Product Decision Center podataka.";
+        const message = reason instanceof Error ? reason.message : "Greška pri ucitavanju Product Decision Center podataka.";
         setError({ message });
       }
       if (hasPreviousPayload) {
@@ -432,7 +432,7 @@ export default function ProductDecisionCenterPage() {
     { key: "fromDate", label: "Od datuma", value: fromDate },
     { key: "toDate", label: "Do datuma", value: toDate },
     { key: "storeId", label: "Prodavnica", value: storeId ?? "Sve" },
-    { key: "supplierId", label: "Dobavljac", value: supplierId ?? "Svi" },
+    { key: "supplierId", label: "Dobavljač", value: supplierId ?? "Svi" },
     { key: "recommendationFilter", label: "Preporuka", value: recommendationFilter },
     { key: "dataQualityFilter", label: "Data quality", value: dataQualityFilter },
     { key: "search", label: "Pretraga", value: search || "-" },
@@ -519,7 +519,7 @@ export default function ProductDecisionCenterPage() {
     <section className="product-decision-page">
       <AnalyticsTrustHeader
         title="Odluke o proizvodima"
-        description="Jedan ekran za dopunu, pojacanje, pracenje, snizenje, zaustavljanje narudzbine i proveru podataka."
+        description="Jedan ekran za dopunu, pojačanje, praćenje, sniženje, zaustavljanje narudžbine i proveru podataka."
         periodFrom={payload?.periodFromUtc ?? fromDate}
         periodTo={payload?.periodToUtc ?? toDate}
         lastRefreshAt={payload?.generatedAtUtc ?? null}
@@ -538,14 +538,14 @@ export default function ProductDecisionCenterPage() {
 
       {showMetaWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
-          Prikazani podaci su delimicni ili fallback. {responseMetaMessage ?? "Proverite status osvezavanja analitike."}
+          Prikazani podaci su delimični ili fallback. {responseMetaMessage ?? "Proverite status osvežavanja analitike."}
         </div>
       ) : null}
 
       <header className="product-decision-header">
         <div>
           <h1>Odluke o proizvodima</h1>
-          <p>Jedan ekran za dopunu, pojacanje, pracenje, snizenje, zaustavljanje narudzbine i proveru podataka.</p>
+          <p>Jedan ekran za dopunu, pojačanje, praćenje, sniženje, zaustavljanje narudžbine i proveru podataka.</p>
         </div>
         <AnalyticsTableToolbar
           tableKey="product-decision-center"
@@ -564,11 +564,11 @@ export default function ProductDecisionCenterPage() {
           <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
         </article>
         <article className="kpi-card">
-          <span>Za pojacanje</span>
+          <span>Za pojačanje</span>
           <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
         </article>
         <article className="kpi-card">
-          <span>Za snizenje</span>
+          <span>Za sniženje</span>
           <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
         </article>
         <article className="kpi-card">
@@ -635,9 +635,9 @@ export default function ProductDecisionCenterPage() {
             </select>
           </label>
           <label>
-            Dobavljac
+            Dobavljač
             <select value={supplierId ?? ""} onChange={(event) => setSupplierId(event.target.value ? Number(event.target.value) : null)}>
-              <option value="">Svi dobavljaci</option>
+              <option value="">Svi dobavljači</option>
               {suppliers.map((supplier) => (
                 <option key={supplier.supplierId} value={supplier.supplierId}>
                   {supplier.supplierName}
@@ -704,7 +704,7 @@ export default function ProductDecisionCenterPage() {
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error?.message ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error?.message ?? "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           errorCode={error?.errorCode ?? undefined}
           correlationId={error?.correlationId ?? undefined}
           onRetry={() => {
@@ -744,7 +744,7 @@ export default function ProductDecisionCenterPage() {
           reasons={[
             "Nije bilo prodaje u trazenom periodu.",
             "Izabrani period je preuzak.",
-            "Analytics osvezavanje jos nije zavrseno.",
+            "Analytics osvežavanje jos nije zavrseno.",
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -755,10 +755,10 @@ export default function ProductDecisionCenterPage() {
       {showFilteredOutState ? (
         <AnalyticsEmptyState
           variant="filtered_out"
-          message="Promenite filtere ili prosirite period."
+          message="Promenite filtere ili proširite period."
           reasons={[
-            "Pretraga, recommendation filter ili data quality filter su previse restriktivni.",
-            "Kombinacija prodavnice i dobavljaca trenutno nema kandidate.",
+            "Pretraga, recommendation filter ili data quality filter su previše restriktivni.",
+            "Kombinacija prodavnice i dobavljača trenutno nema kandidate.",
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -774,7 +774,7 @@ export default function ProductDecisionCenterPage() {
             <thead>
               <tr>
                 <th onClick={() => setSort("productName")}>Artikal</th>
-                <th onClick={() => setSort("supplierName")}>Dobavljac</th>
+                <th onClick={() => setSort("supplierName")}>Dobavljač</th>
                 <th onClick={() => setSort("revenue")}>Prodaja / komadi</th>
                 <th onClick={() => setSort("velocityUnitsPerDay")}>Velocity</th>
                 <th onClick={() => setSort("marginPct")}>Marza</th>
@@ -868,7 +868,7 @@ export default function ProductDecisionCenterPage() {
                               <div className="reason-headline">
                                 <div>
                                   <h4>{row.productName}</h4>
-                                  <p>{row.supplierName ?? "Dobavljac nije dodeljen"}</p>
+                                  <p>{row.supplierName ?? "Dobavljač nije dodeljen"}</p>
                                 </div>
                                 <div className="reason-statuses">
                                   <span className={recommendationToneClass(row.recommendationStatus)}>
@@ -927,7 +927,7 @@ export default function ProductDecisionCenterPage() {
                                 >
                                   {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                                 </button>
-                                {supplierUrl ? <Link className="reason-link-btn" to={supplierUrl}>Otvori dobavljaca</Link> : null}
+                                {supplierUrl ? <Link className="reason-link-btn" to={supplierUrl}>Otvori dobavljača</Link> : null}
                                 {inventoryUrl ? <Link className="reason-link-btn" to={inventoryUrl}>Otvori zalihe</Link> : null}
                                 <span>
                                   <InfoTip text={analyticsMetricDescriptions.recommendationReason} />
@@ -947,3 +947,5 @@ export default function ProductDecisionCenterPage() {
     </section>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -793,7 +793,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       {showBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error?.message ?? scorecardMetaMessage ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error?.message ?? scorecardMetaMessage ?? "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           errorCode={error?.errorCode ?? undefined}
           correlationId={error?.correlationId ?? undefined}
           onRetry={() => {
@@ -809,7 +809,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {showMetaWarning ? (
         <div className="sdh-decision-message warning" role="note">
-          Prikazani podaci su delimicni ili fallback. {scorecardMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični ili fallback. {scorecardMetaMessage ?? "Proverite analytics refresh status."}
         </div>
       ) : null}
 
@@ -1105,4 +1105,5 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     </div>
   );
 }
+
 

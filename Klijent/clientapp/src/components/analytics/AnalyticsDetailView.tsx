@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Copy, RefreshCw } from "lucide-react";
 import InfoTip from "../ui/InfoTip";
 import { getAnalyticsDetail } from "../../services/analyticsDetailApi";
@@ -79,7 +79,7 @@ export default function AnalyticsDetailView(props: {
         return;
       }
 
-      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju detalja.");
+      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju detalja.");
       setDetail(null);
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ export default function AnalyticsDetailView(props: {
             className="inline-flex items-center gap-2 rounded-lg border border-info bg-info/10 px-3 py-2 text-xs font-semibold text-info"
           >
             <RefreshCw size={14} />
-            Pokusaj ponovo
+            Pokušaj ponovo
           </button>
         </div>
       </div>
@@ -160,3 +160,4 @@ export default function AnalyticsDetailView(props: {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import type { AnalyticsRefreshStatus } from "../../types/analytics";
 import { formatDateTime } from "../../utils/analyticsFormatters";
 import "./AnalyticsRefreshStatusBanner.css";
@@ -18,7 +18,7 @@ function normalizeFreshness(value: string | null | undefined): "fresh" | "stale"
 function freshnessLabel(value: "fresh" | "stale" | "critical" | "unknown"): string {
   if (value === "fresh") return "Sveze";
   if (value === "stale") return "Zastarelo";
-  if (value === "critical") return "Kriticno";
+  if (value === "critical") return "Kritično";
   return "Nepoznato";
 }
 
@@ -33,7 +33,7 @@ export default function AnalyticsRefreshStatusBanner({
   if (loading && !status) {
     return (
       <section className="analytics-refresh-banner" aria-live="polite">
-        <span className="arb-loading">Ucitavam status osvezavanja analitike...</span>
+        <span className="arb-loading">Ucitavam status osvežavanja analitike...</span>
       </section>
     );
   }
@@ -42,7 +42,7 @@ export default function AnalyticsRefreshStatusBanner({
     return (
       <section className="analytics-refresh-banner analytics-refresh-banner-unknown" aria-live="polite">
         <div className="arb-main">
-          <strong>Status osvezavanja nije dostupan.</strong>
+          <strong>Status osvežavanja nije dostupan.</strong>
           {error ? <span>{error}</span> : null}
         </div>
         <Link to={adminHref} className="arb-link">Otvori worker panel</Link>
@@ -65,8 +65,8 @@ export default function AnalyticsRefreshStatusBanner({
           <span className={`arb-badge arb-badge-${freshness}`}>{freshnessLabel(freshness)}</span>
         </div>
         <div className="arb-row">
-          <strong>Poslednji pokusaj:</strong>
-          <span>{status.lastAttemptAtUtc ? formatDateTime(status.lastAttemptAtUtc) : "Nema pokusaja u istoriji"}</span>
+          <strong>Poslednji pokušaj:</strong>
+          <span>{status.lastAttemptAtUtc ? formatDateTime(status.lastAttemptAtUtc) : "Nema pokušaja u istoriji"}</span>
         </div>
         <div className="arb-row">
           <strong>Proces:</strong>
@@ -75,7 +75,7 @@ export default function AnalyticsRefreshStatusBanner({
         {status.isRunning ? (
           <div className="arb-row">
             <strong>Refresh:</strong>
-            <span>Osvezavanje u toku{status.currentStep ? ` (${status.currentStep})` : ""}</span>
+            <span>Osvežavanje u toku{status.currentStep ? ` (${status.currentStep})` : ""}</span>
           </div>
         ) : null}
         {status.lastFailureAtUtc ? (
@@ -86,7 +86,7 @@ export default function AnalyticsRefreshStatusBanner({
         ) : null}
         {status.lastErrorMessage ? (
           <div className="arb-row arb-error">
-            <strong>Greska:</strong>
+            <strong>Greška:</strong>
             <span>{status.lastErrorMessage}</span>
           </div>
         ) : null}
@@ -117,7 +117,7 @@ export default function AnalyticsRefreshStatusBanner({
         {!workerWarning && processMode === "web" && status.workersEnabled ? (
           <div className="arb-row arb-warning">
             <strong>Upozorenje:</strong>
-            <span>Automatsko osvezavanje nije aktivno u web procesu. Potrebna je deployacija radnika (worker).</span>
+            <span>Automatsko osvežavanje nije aktivno u web procesu. Potrebna je deployacija radnika (worker).</span>
           </div>
         ) : null}
         {failedJobs.length > 0 ? (
@@ -132,3 +132,5 @@ export default function AnalyticsRefreshStatusBanner({
     </section>
   );
 }
+
+

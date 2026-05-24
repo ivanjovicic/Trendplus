@@ -1,4 +1,4 @@
-import {
+﻿import {
   Area,
   AreaChart,
   Bar,
@@ -127,7 +127,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
 
         <section className="analytics-panel">
           <h3>Prodaja po polu</h3>
-          <p className="section-note">Donut prikaz pokazuje kome je prodaja najvise usmerena.</p>
+          <p className="section-note">Donut prikaz pokazuje kome je prodaja najviše usmerena.</p>
           {genderPieData.length === 0 ? <div className="analytics-empty">Nema podataka za pol.</div> : (
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height={320}>
@@ -147,9 +147,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
         </section>
 
         <section className="analytics-panel">
-          <h3>Top dobavljaci po prometu</h3>
-          <p className="section-note">Horizontalni pregled top 10 dobavljaca po prihodu.</p>
-          {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljace.</div> : (
+          <h3>Top dobavljači po prometu</h3>
+          <p className="section-note">Horizontalni pregled top 10 dobavljača po prihodu.</p>
+          {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljače.</div> : (
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height={340}>
                 <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
@@ -169,7 +169,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
 
         <section className="analytics-panel">
           <h3>Prodaja po danima u nedelji</h3>
-          <p className="section-note">Koji dan u nedelji pravi najvise prihoda.</p>
+          <p className="section-note">Koji dan u nedelji pravi najviše prihoda.</p>
           {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height={340}>
@@ -239,3 +239,5 @@ export default function AnalyticsDashboardCharts(props: Props) {
     </>
   );
 }
+
+

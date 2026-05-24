@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AnalyticsRefreshStatusBanner from "../AnalyticsRefreshStatusBanner";
@@ -38,7 +38,7 @@ function buildStatus(overrides: Partial<AnalyticsRefreshStatus>): AnalyticsRefre
 describe("AnalyticsRefreshStatusBanner", () => {
   it("shows unknown state when status is missing", () => {
     renderBanner(null);
-    expect(screen.getByText("Status osvezavanja nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("Status osvežavanja nije dostupan.")).toBeInTheDocument();
     expect(screen.getByText("Otvori worker panel")).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe("AnalyticsRefreshStatusBanner", () => {
       })
     );
 
-    expect(screen.getByText("Kriticno")).toBeInTheDocument();
+    expect(screen.getByText("Kritično")).toBeInTheDocument();
     expect(screen.getByText(/supplier_decision_mv failed/i)).toBeInTheDocument();
     expect(screen.getByText(/Neuspesni objekti:/)).toBeInTheDocument();
   });
@@ -75,7 +75,7 @@ describe("AnalyticsRefreshStatusBanner", () => {
       })
     );
 
-    expect(screen.getByText(/Osvezavanje u toku \(product_dim_refresh\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Osvežavanje u toku \(product_dim_refresh\)/)).toBeInTheDocument();
   });
 
   it("shows worker warning", () => {
@@ -91,3 +91,5 @@ describe("AnalyticsRefreshStatusBanner", () => {
     expect(screen.getByText(/Worker nije aktivan u ovom procesu/i)).toBeInTheDocument();
   });
 });
+
+

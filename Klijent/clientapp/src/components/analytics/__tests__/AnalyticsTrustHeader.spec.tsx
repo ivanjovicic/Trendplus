@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import AnalyticsTrustHeader from "../AnalyticsTrustHeader";
 
@@ -17,7 +17,7 @@ describe("AnalyticsTrustHeader", () => {
     );
 
     expect(screen.getByText("Sveze")).toBeInTheDocument();
-    expect(screen.getByText("Poslednje osvezenje")).toBeInTheDocument();
+    expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
   });
 
   it("shows running subtitle when refresh is active", () => {
@@ -31,7 +31,7 @@ describe("AnalyticsTrustHeader", () => {
       />
     );
 
-    expect(screen.getByText(/Osvezavanje je u toku \(supplier_decision_mvs\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Osvežavanje je u toku \(supplier_decision_mvs\)/)).toBeInTheDocument();
   });
 
   it("shows unknown freshness badge", () => {
@@ -97,3 +97,4 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByRole("link", { name: "Worker status" })).toHaveAttribute("href", "/admin/configuration?panel=workers");
   });
 });
+

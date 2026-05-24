@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import "./AnalyticsTrustHeader.css";
 
@@ -175,7 +175,7 @@ export default function AnalyticsTrustHeader({
           <h1 className="ath-title">{title}</h1>
           <p className="ath-description">{description}</p>
           {refreshIsRunning ? (
-            <p className="ath-live">Osvezavanje je u toku{refreshCurrentStep ? ` (${refreshCurrentStep})` : ""}</p>
+            <p className="ath-live">Osvežavanje je u toku{refreshCurrentStep ? ` (${refreshCurrentStep})` : ""}</p>
           ) : null}
         </div>
         <div className={`ath-status ath-status-${tone}`}>
@@ -263,4 +263,5 @@ export default function AnalyticsTrustHeader({
 }
 
 export type { AnalyticsTrustHeaderProps };
+
 

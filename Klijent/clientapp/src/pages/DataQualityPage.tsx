@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+﻿import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -39,8 +39,8 @@ import {
 import "./DataQualityPage.css";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
-  { key: "missingSupplier", label: "Nedostajuci dobavljac", tone: "danger" },
-  { key: "missingShoeType", label: "Nedostajuci tip obuce", tone: "warning" },
+  { key: "missingSupplier", label: "Nedostajuci dobavljač", tone: "danger" },
+  { key: "missingShoeType", label: "Nedostajuci tip obuće", tone: "warning" },
 ];
 
 const LOW_PRIORITY_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
@@ -49,15 +49,15 @@ const LOW_PRIORITY_TABS: Array<{ key: DataQualityIssueType; label: string; tone:
 
 const VIEW_TABS = [
   { key: "issues", label: "Detalji problema" },
-  { key: "intake", label: "Pilot intake izvestaj" },
+  { key: "intake", label: "Pilot intake izveštaj" },
 ] as const;
 
 const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "productId", header: "Artikal ID", dataType: "text" },
   { key: "name", header: "Naziv artikla", dataType: "text" },
-  { key: "supplierName", header: "Dobavljac", dataType: "text" },
-  { key: "shoeTypeName", header: "Tip obuce", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
+  { key: "shoeTypeName", header: "Tip obuće", dataType: "text" },
   { key: "sales30d", header: "Pogodjeni promet 30d", dataType: "currency" },
   { key: "stock", header: "Stanje", dataType: "number" },
   { key: "lastUpdated", header: "Azurirano", dataType: "datetime" },
@@ -184,7 +184,7 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
             <tr>
               <th>SKU</th>
               <th>Artikal</th>
-              <th>Dobavljac</th>
+              <th>Dobavljač</th>
               <th className="align-right">Promet 30d</th>
               <th className="align-right">Impact (RSD)</th>
               <th className="align-right">Impact (%)</th>
@@ -437,7 +437,7 @@ export default function DataQualityPage() {
       setRefreshStatusError(
         refreshResult.reason instanceof Error
           ? refreshResult.reason.message
-          : "Status osvezavanja analitike nije dostupan."
+          : "Status osvežavanja analitike nije dostupan."
       );
     }
 
@@ -595,7 +595,7 @@ export default function DataQualityPage() {
             </section>
           ) : null}
           <div className="data-quality-meta">
-            <span>Signal filter: samo artikli sa vise od 1.000 RSD prometa u 30 dana</span>
+            <span>Signal filter: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
           </div>
         </div>
       </header>
@@ -635,7 +635,7 @@ export default function DataQualityPage() {
 
       {showIssuesMetaWarning ? (
         <div className="data-quality-loading" role="status">
-          Prikazani podaci su delimicni. {issuesMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {issuesMetaMessage ?? "Proverite analytics refresh status."}
         </div>
       ) : null}
 
@@ -650,7 +650,7 @@ export default function DataQualityPage() {
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Artikli bez dobavljaca</span>
+            <span className="data-quality-health-label">Artikli bez dobavljača</span>
             <strong>{fmtNumber(health.orphanArticleCount)}</strong>
             <p>Warning threshold: {health.thresholds.orphanArticleCount}</p>
           </article>
@@ -662,7 +662,7 @@ export default function DataQualityPage() {
           </article>
 
           <article className="data-quality-health-card">
-            <span className="data-quality-health-label">Promet nepoznatog dobavljaca</span>
+            <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
             <strong>{fmtPct(health.unknownSupplierRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.unknownSupplierRevenue, 2)} u unknown bucket-u</p>
           </article>
@@ -674,7 +674,7 @@ export default function DataQualityPage() {
       {viewMode === "issues" && health ? (
         <section className="data-quality-quick-actions">
           <button type="button" onClick={() => changeTab("missingSupplier")}>
-            Artikli bez dobavljaca
+            Artikli bez dobavljača
           </button>
           <Link to={`/analytics/supplier${supplierContextQuery ? `?tab=overview&${supplierContextQuery}` : "?tab=overview"}`}>
             Otvori supplier analitiku
@@ -722,7 +722,7 @@ export default function DataQualityPage() {
             type="search"
             value={searchDraft}
             onChange={(event) => setSearchDraft(event.target.value)}
-            placeholder="Pretraga po SKU, artiklu, dobavljacu, tipu..."
+            placeholder="Pretraga po SKU, artiklu, dobavljaču, tipu..."
           />
           <button type="submit">Pretrazi</button>
         </form>
@@ -786,7 +786,7 @@ export default function DataQualityPage() {
       {viewMode === "issues" && error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error.message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           errorCode={error.errorCode ?? undefined}
           correlationId={error.correlationId ?? undefined}
           onRetry={() => {
@@ -803,7 +803,7 @@ export default function DataQualityPage() {
             emptyStateVariant === "insufficient_data"
               ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
               : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili prosirite period."
+                ? "Promenite filtere ili proširite period."
                 : (issuesMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
           }
           reasons={[
@@ -852,8 +852,8 @@ export default function DataQualityPage() {
                 <tr>
                   <th>SKU</th>
                   <th>Artikal</th>
-                  <th>Dobavljac</th>
-                  <th>Tip obuce</th>
+                  <th>Dobavljač</th>
+                  <th>Tip obuće</th>
                   <th className="align-right">Pogodjeni promet 30d</th>
                   <th className="align-right">Stanje</th>
                   <th>Azurirano</th>
@@ -920,3 +920,5 @@ export default function DataQualityPage() {
     </div>
   );
 }
+
+

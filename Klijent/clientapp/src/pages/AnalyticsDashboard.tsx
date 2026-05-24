@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   checkAnalyticsHealth,
@@ -73,17 +73,17 @@ const AnalyticsDashboardCharts = lazy(() => import("../components/analytics/Anal
 
 const HELP: Record<string, string> = {
   promet: "Ukupan novac od prodaje u izabranom periodu.",
-  transakcije: "Jedan racun = jedna transakcija.",
+  transakcije: "Jedan račun = jedna transakcija.",
   jedinice: "Ukupan broj prodatih komada.",
-  sku: "Jedinstvena interna sifra artikla.",
+  sku: "Jedinstvena interna šifra artikla.",
   velocity: "Prosecno prodata kolicina po danu.",
   oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
   pareto: "Koliko mali broj artikala pravi vecinu prometa.",
   ma7: "7-dnevni pokretni prosek smanjuje dnevni sum i prikazuje realniji trend.",
   momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
   elasticnost: "Pokazuje koliko se traznja menja kada se menja cena.",
-  completeness: "Da li artikli imaju kljucna polja (naziv, sifra, kategorija).",
-  freshness: "Koliko je vremena proslo od poslednjeg osvezavanja podataka.",
+  completeness: "Da li artikli imaju kljucna polja (naziv, šifra, kategorija).",
+  freshness: "Koliko je vremena proslo od poslednjeg osvežavanja podataka.",
   margin: "Procenjeni uticaj na marzu (prodajna - nabavna cena).",
   trend: "Smer promene u odnosu na prethodni uporediv period.",
 };
@@ -126,7 +126,7 @@ function statusLabel(value?: string | null): string {
   const tone = statusTone(value);
   if (tone === "good") return "Dobro";
   if (tone === "warning") return "Upozorenje";
-  if (tone === "critical") return "Kriticno";
+  if (tone === "critical") return "Kritično";
   return "Neutralno";
 }
 
@@ -318,7 +318,7 @@ function getErrorText(reason: unknown, fallback: string): string {
       || signature.includes("request timeout")
       || signature.includes("timed out")
     ) {
-      return "Analytics endpoint trenutno odgovara sporo (timeout). Pokusajte osvezavanje za 30-60 sekundi.";
+      return "Analytics endpoint trenutno odgovara sporo (timeout). Pokušajte osvežavanje za 30-60 sekundi.";
     }
 
     if (message) return message;
@@ -353,7 +353,7 @@ function compactErrorMessages(messages: string[]): string[] {
   }
 
   if (transientCancelCount > 0) {
-    stable.push("Neki analytics upiti su privremeno prekinuti. Osvezite stranicu za kompletne podatke.");
+    stable.push("Neki analytics upiti su privremeno prekinuti. Osvežite stranicu za kompletne podatke.");
   }
 
   return stable;
@@ -538,7 +538,7 @@ export default function AnalyticsDashboard() {
       setRefreshStatusError(null);
     } else {
       setRefreshStatus(null);
-      setRefreshStatusError(getErrorText(refreshStatusR.reason, "Status osvezavanja analitike nije dostupan."));
+      setRefreshStatusError(getErrorText(refreshStatusR.reason, "Status osvežavanja analitike nije dostupan."));
     }
 
     setErrors(compactErrorMessages(nextErrors));
@@ -648,7 +648,7 @@ export default function AnalyticsDashboard() {
     () =>
       [
         validCompleteness ? { name: "Kompletnost", ...validCompleteness } : null,
-        validFreshness ? { name: "Svezina", ...validFreshness } : null,
+        validFreshness ? { name: "Svežina", ...validFreshness } : null,
         validLostSales ? { name: "Izgubljena prodaja", ...validLostSales } : null,
       ].filter((item): item is { name: string } & DashboardValidationEndpoint => item !== null),
     [validCompleteness, validFreshness, validLostSales]
@@ -703,7 +703,7 @@ export default function AnalyticsDashboard() {
   }, [categoryData]);
 
   const genderPieData = useMemo(
-    () => genderData.map((item) => ({ name: item.pol || "Neodredjeno", value: item.totalRevenue })).sort((a, b) => b.value - a.value),
+    () => genderData.map((item) => ({ name: item.pol || "Neodređeno", value: item.totalRevenue })).sort((a, b) => b.value - a.value),
     [genderData]
   );
 
@@ -908,7 +908,7 @@ export default function AnalyticsDashboard() {
       )}
       {showMetaWarning ? (
         <div className="analytics-empty warning" role="status">
-          {dashboardMetaMessage ?? "Prikazani podaci su delimicni ili fallback. Proverite status osvezavanja analitike."}
+          {dashboardMetaMessage ?? "Prikazani podaci su delimični ili fallback. Proverite status osvežavanja analitike."}
         </div>
       ) : null}
       {hasFatalLoadError ? (
@@ -1248,7 +1248,7 @@ export default function AnalyticsDashboard() {
               <MetricCard label="Crvena zona zaliha" value={fmtPct(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
               <MetricCard label="MA7 + Momentum" value={fmtRsd(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
               <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
-              <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog racuna." />
+              <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog računa." />
             </div>
           </section>
         )}
@@ -1257,7 +1257,7 @@ export default function AnalyticsDashboard() {
           <section className="analytics-panel">
             <h3 className="with-tip"><span>Brzi uvidi</span><InfoTip text="Kratki signali za kontekst (nisu finalna preporuka)." /></h3>
             <div className="analytics-card-grid compact">
-              <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvecim prometom." />
+              <MetricCard label="Najjaci dan" value={quickInsights?.bestDay ?? "N/A"} tone="good" infoTip="Dan u nedelji sa najvećim prometom." />
               <MetricCard label="Promet najboljeg dana" value={fmtRsd(quickInsights?.bestDayRevenue ?? 0)} tone="good" />
               <MetricCard label="Top proizvod" value={quickInsights?.topProduct ?? "N/A"} tone="neutral" />
               <MetricCard label="Stavki po transakciji" value={transactionStats ? fmtNumber(transactionStats.avgItemsPerTransaction, 2) : "N/A"} tone="neutral" />
@@ -1272,10 +1272,10 @@ export default function AnalyticsDashboard() {
             <div className="analytics-card-grid compact">
               {advanced.cards.map((card: DashboardMetricCard) => (
                 <article key={card.key} className={`metric-card ${statusTone(card.status)}`}>
-                  <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svezina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
-                  <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvezavanja" : card.unit}</strong>
+                  <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svežina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
+                  <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvežavanja" : card.unit}</strong>
                   <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${fmtPct(card.trendPct)}` : statusLabel(card.status)}</small>
-                  {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top sifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
+                  {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top šifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
                 </article>
               ))}
             </div>
@@ -1404,7 +1404,7 @@ export default function AnalyticsDashboard() {
           <section className="analytics-panel">
             <div className="panel-head">
               <div>
-                <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa vise pogleda: promet, komada, brzina prodaje i marza." /></h3>
+                <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa više pogleda: promet, komada, brzina prodaje i marza." /></h3>
                 <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -1442,7 +1442,7 @@ export default function AnalyticsDashboard() {
                       <th><span className="with-tip"><span>Brzina prodaje</span><InfoTip text={HELP.velocity} /></span></th>
                       <th><span className="with-tip"><span>Uticaj na marzu</span><InfoTip text={HELP.margin} /></span></th>
                       <th><span className="with-tip"><span>Trend</span><InfoTip text={HELP.trend} /></span></th>
-                      <th><span className="with-tip"><span>Status zalihe</span><InfoTip text="Dobro = stabilno, Upozorenje = niska zaliha, Kriticno = rasprodato." /></span></th>
+                      <th><span className="with-tip"><span>Status zalihe</span><InfoTip text="Dobro = stabilno, Upozorenje = niska zaliha, Kritično = rasprodato." /></span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1495,7 +1495,7 @@ export default function AnalyticsDashboard() {
                 ["Momentum", HELP.momentum],
                 ["Elasticnost", HELP.elasticnost],
                 ["Kompletnost (Completeness)", HELP.completeness],
-                ["Svezina podataka (Data Health)", HELP.freshness],
+                ["Svežina podataka (Data Health)", HELP.freshness],
                 ["Uticaj na marzu (Margin impact)", HELP.margin],
                 ["SKU", HELP.sku],
               ].map(([term, text]) => (
@@ -1515,3 +1515,5 @@ export default function AnalyticsDashboard() {
     </div>
   );
 }
+
+

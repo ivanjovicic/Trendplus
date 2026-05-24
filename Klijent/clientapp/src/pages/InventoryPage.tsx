@@ -1,8 +1,8 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
-import type { ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import type { AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -23,6 +23,7 @@ import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
+import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
 const DEFAULT_COMPARE_STORES = 3;
@@ -470,6 +471,23 @@ export default function InventoryPage() {
         : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
     });
   }, [forecastMetricsByRowKey, rows, sortBy]);
+  const inventoryMetas = useMemo(
+    () => ([pageData?.meta, balance?.meta, insights?.meta, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+    [actionWorkflow?.meta, balance?.meta, insights?.meta, pageData?.meta, storeComparison?.meta]
+  );
+  const primaryMeta = inventoryMetas[0] ?? null;
+  const warningMeta = inventoryMetas.find((meta) => isAnalyticsMetaWarning(meta)) ?? null;
+  const inventoryMetaMessage = getAnalyticsMetaMessage(warningMeta ?? primaryMeta);
+  const showMetaWarning = !loading && !error && warningMeta != null;
+  const showInsufficientEmptyState = !loading
+    && !error
+    && shouldShowAnalyticsEmptyState(primaryMeta, totalCount)
+    && isAnalyticsMetaInsufficient(primaryMeta);
+  const hasActivePrimaryFilters = Boolean(trimmedSearch) || selectedStoreId != null || selectedSupplierId != null;
+  const emptyReasonCode = primaryMeta?.emptyReason?.trim().toLowerCase() ?? "";
+  const showFilteredEmptyState = !showInsufficientEmptyState
+    && (hasActivePrimaryFilters || emptyReasonCode.includes("filter"));
+  const showEmptyState = !loading && !error && pageData != null && (showInsufficientEmptyState || totalCount === 0);
 
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
@@ -525,7 +543,7 @@ export default function InventoryPage() {
 
   function exportVisibleCsv() {
     const lines = [
-      ["PLU", "Naziv", "Dobavljac", "Prodavnica", "Status", "Kolicina", "Minimum", "Gap", "NabavnaCena", "Vrednost"].join(";"),
+      ["PLU", "Naziv", "Dobavljač", "Prodavnica", "Status", "Kolicina", "Minimum", "Gap", "NabavnaCena", "Vrednost"].join(";"),
       ...rows.map((row) => [csvEscape(row.plu ?? ""), csvEscape(row.naziv), csvEscape(row.supplierName), csvEscape(row.storeName), csvEscape(row.stockStateLabel), row.quantity, row.minimum, row.reorderGap, row.unitCost.toFixed(2), row.estimatedValueAmount.toFixed(2)].join(";")),
     ];
     const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8;" });
@@ -722,11 +740,11 @@ export default function InventoryPage() {
   }
 
   if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Ucitavanje bilansa stanja...</div>;
-  if (error && !pageData) {
+  if (error && (!pageData || !balance)) {
     return (
       <AnalyticsErrorState
         title="Podaci trenutno nisu dostupni"
-        message={error.message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+        message={error.message || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
         errorCode={error.errorCode ?? undefined}
         correlationId={error.correlationId ?? undefined}
         onRetry={() => {
@@ -737,15 +755,19 @@ export default function InventoryPage() {
     );
   }
 
-  if (!loading && !error && pageData && totalCount === 0) {
+  if (showEmptyState) {
     return (
       <AnalyticsEmptyState
-        variant="no_data"
-        message="Nije bilo prodaje u izabranom periodu."
+        variant={showInsufficientEmptyState ? "insufficient_data" : (showFilteredEmptyState ? "filtered_out" : "no_data")}
+        message={inventoryMetaMessage ?? (showInsufficientEmptyState
+          ? "Nema dovoljno signala za pouzdan inventory prikaz."
+          : "Nema inventory podataka za izabrani opseg.")}
         reasons={[
-          "Izabrani period je preuzak.",
-          "Filteri su suzili rezultat na prazan skup.",
-          "Analytics refresh jos nije zavrsen.",
+          showInsufficientEmptyState
+            ? "Podaci jos nisu dovoljno kompletni za odluku."
+            : "Izabrani filteri suzavaju rezultat na prazan skup.",
+          "Proverite refresh status i data quality signal.",
+          "Proširite opseg ili uklonite deo filtera.",
         ]}
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
@@ -757,23 +779,30 @@ export default function InventoryPage() {
   }
 
   return (
-    <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaze. Osvezi stranicu ili pokusaj ponovo za nekoliko trenutaka.</div>}>
+    <ErrorBoundary fallback={<div className="rounded-3xl border border-[var(--error)] bg-[var(--surface-darker)] p-8 text-center text-[var(--error)]">Bilans stanja trenutno nije mogao da se prikaže. Osveži stranicu ili pokušaj ponovo za nekoliko trenutaka.</div>}>
       <div className="space-y-6">
       <AnalyticsTrustHeader
         title="Inventory analytics"
         description="Decision cockpit za zalihe: dopuna, OOS rizik, visak zalihe, transferi i workflow odluka."
         periodFrom={null}
         periodTo={null}
-        lastRefreshAt={inventoryLastRefreshAt}
+        lastRefreshAt={primaryMeta?.lastRefreshAtUtc ?? primaryMeta?.generatedAtUtc ?? inventoryLastRefreshAt}
         dataSource="Inventory analytics snapshot"
-        dataQualityStatus={null}
+        dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
         mode="recommendation"
+        isPartial={isAnalyticsMetaWarning(primaryMeta)}
         recommendationNote="Workflow akcije su korisnicki vodjene; backend recommendation payload ostaje izvor istine."
+        emptyStateReason={showEmptyState ? (inventoryMetaMessage ?? null) : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      {showMetaWarning ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
+          Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}
+        </div>
+      ) : null}
       <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
@@ -795,7 +824,7 @@ export default function InventoryPage() {
                 </svg>
               </div>
               <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></div>
-              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno pracenje kriticnih SKU." : "Povecan rizik od praznih polica."}</div>
+              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kriticnih SKU." : "Povecan rizik od praznih polica."}</div>
             </div>
           </div>
         </div>
@@ -825,14 +854,14 @@ export default function InventoryPage() {
                   title="Vertikalno (A4 portrait)"
                 >↕ Ver.</button>
               </span>
-              <button type="button" aria-label="Otvori print preview filtriranog izvestaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
+              <button type="button" aria-label="Otvori print preview filtriranog izveštaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
               <button type="button" aria-label="Odštampaj prazan obrazac bilansa stanja" onClick={() => void runBlankPrint()} disabled={exportBusy} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--warning)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Prazan obrazac</button>
               <button type="button" aria-label="Izvezi CSV za trenutni ekran" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>
               <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
               <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--success)] transition-all duration-200 hover:border-[var(--success)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
               <button type="button" aria-label="Izvezi PDF filtrirano" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--error)] transition-all duration-200 hover:border-[var(--error)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
               <a href={INVENTORY_ACTIONS_QUEUE_URL} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md">Otvori centralni red akcija</a>
-              <button type="button" aria-label="Osvezi stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-secondary hover:shadow-md"><RefreshCw size={14} />Osvezi</button>
+              <button type="button" aria-label="Osveži stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-secondary hover:shadow-md"><RefreshCw size={14} />Osveži</button>
             </div>
           </div>
 
@@ -849,9 +878,9 @@ export default function InventoryPage() {
               </select>
             </label>
             <label className={`rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 ${filtersLoading ? 'opacity-60 cursor-not-allowed' : 'hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30'}`}>
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Dobavljac</span>
-              <select aria-label="Filter po dobavljacu" value={selectedSupplierId ?? ""} onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={filtersLoading}>
-                <option value="">Svi dobavljaci</option>
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Dobavljač</span>
+              <select aria-label="Filter po dobavljaču" value={selectedSupplierId ?? ""} onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={filtersLoading}>
+                <option value="">Svi dobavljači</option>
                 {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
               </select>
             </label>
@@ -894,7 +923,7 @@ export default function InventoryPage() {
       />
 
       {/* Decision-Critical Workflow Panel */}
-      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osvezi stranicu.</div>}>
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Workflow panel nije mogao da se prikaže. Osveži stranicu.</div>}>
         <ActionWorkflowPanel
           sectionId={ACTION_WORKFLOW_SECTION_ID}
           actionWorkflow={actionWorkflow}
@@ -914,16 +943,16 @@ export default function InventoryPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osvezi stranicu.</div>}>
+        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osveži stranicu.</div>}>
           <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
         </ErrorBoundary>
-        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osvezi stranicu.</div>}>
+        <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osveži stranicu.</div>}>
           <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
         </ErrorBoundary>
       </div>
 
       {/* Rebalancing & Transfer Suggestions */}
-      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osvezi stranicu.</div>}>
+      <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osveži stranicu.</div>}>
         <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
       </ErrorBoundary>
 
@@ -945,7 +974,7 @@ export default function InventoryPage() {
       <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
 
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izvestaja</h2>
+        <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>
         <p className="text-sm text-muted">Operativne opcije za stampu, eksport i scheduler su dostupne po potrebi.</p>
       </div>
 
@@ -986,3 +1015,5 @@ export default function InventoryPage() {
     </ErrorBoundary>
   );
 }
+
+
