@@ -76,19 +76,19 @@ const HELP: Record<string, string> = {
   transakcije: "Jedan račun = jedna transakcija.",
   jedinice: "Ukupan broj prodatih komada.",
   sku: "Jedinstvena interna šifra artikla.",
-  velocity: "Prosecno prodata kolicina po danu.",
+  velocity: "Prosečno prodata količina po danu.",
   oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
-  pareto: "Koliko mali broj artikala pravi vecinu prometa.",
-  ma7: "7-dnevni pokretni prosek smanjuje dnevni sum i prikazuje realniji trend.",
+  pareto: "Koliko mali broj artikala pravi većinu prometa.",
+  ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend.",
   momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
-  elasticnost: "Pokazuje koliko se traznja menja kada se menja cena.",
-  completeness: "Da li artikli imaju kljucna polja (naziv, šifra, kategorija).",
-  freshness: "Koliko je vremena proslo od poslednjeg osvežavanja podataka.",
-  margin: "Procenjeni uticaj na marzu (prodajna - nabavna cena).",
+  elasticnost: "Pokazuje koliko se tražnja menja kada se menja cena.",
+  completeness: "Da li artikli imaju ključna polja (naziv, šifra, kategorija).",
+  freshness: "Koliko je vremena prošlo od poslednjeg osvežavanja podataka.",
+  margin: "Procenjeni uticaj na maržu (prodajna - nabavna cena).",
   trend: "Smer promene u odnosu na prethodni uporediv period.",
 };
 
-const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Cetvrtak", "Petak", "Subota"];
+const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota"];
 
 const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
@@ -96,7 +96,7 @@ const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
   { key: "revenue", header: "Promet", dataType: "currency" },
   { key: "units", header: "Kom", dataType: "number" },
   { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
-  { key: "marginImpact", header: "Uticaj na marzu", dataType: "currency" },
+  { key: "marginImpact", header: "Uticaj na maržu", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "stockStatus", header: "Status zalihe", dataType: "text" },
 ];
@@ -469,7 +469,7 @@ export default function AnalyticsDashboard() {
 
   const load = useCallback(async () => {
     if (isInvalidFilterRange) {
-      setErrors(["Proverite filtere: datum od ne moze biti posle datuma do."]);
+      setErrors(["Proverite filtere: datum od ne može biti posle datuma do."]);
       return;
     }
 
@@ -674,14 +674,17 @@ export default function AnalyticsDashboard() {
     const summary = executive?.dataQualitySummary;
     if (!summary) return [] as Array<{ key: string; label: string; value: number }>;
 
+    const hasRefreshWarning = normalizeDataQualityStatus(refreshStatus?.dataFreshnessStatus) !== "good";
+
     return [
       { key: "missingSupplierCount", label: "Bez dobavlja\u010Da", value: summary.missingSupplierCount ?? 0 },
       { key: "missingCostCount", label: "Bez nabavne cene", value: summary.missingCostCount ?? 0 },
       { key: "insufficientSignalCount", label: "Nedovoljni signali", value: summary.insufficientSignalCount ?? 0 },
       { key: "ignoredRowsCount", label: "Ignorisani redovi", value: summary.ignoredRowsCount ?? 0 },
       { key: "zeroRevenueRowsCount", label: "Nulti prihod", value: summary.zeroRevenueRowsCount ?? 0 },
+      { key: "refreshWarning", label: "Refresh warning", value: hasRefreshWarning ? 1 : 0 },
     ].filter((item) => item.value > 0);
-  }, [executive?.dataQualitySummary]);
+  }, [executive?.dataQualitySummary, refreshStatus?.dataFreshnessStatus]);
 
   const currentActionFilters = useMemo<DashboardActionFilters>(() => ({
     fromDate,
@@ -740,7 +743,7 @@ export default function AnalyticsDashboard() {
   const exportTopRows = useCallback(() => {
     if (topRows.length === 0) return;
     const lines = [
-      ["SKU", "Artikal", "Promet", "Komadi", "Brzina prodaje", "Uticaj na marzu", "Trend", "Status zalihe"],
+      ["SKU", "Artikal", "Promet", "Komadi", "Brzina prodaje", "Uticaj na maržu", "Trend", "Status zalihe"],
       ...topRows.map((row) => [
         row.sku,
         row.productName,
@@ -992,7 +995,22 @@ export default function AnalyticsDashboard() {
                   {Array.from({ length: 3 }).map((_, i) => <div key={`decision-skeleton-${i}`} className="analytics-skeleton-card" />)}
                 </div>
               ) : prioritizedDecisionActions.length === 0 ? (
-                <div className="analytics-empty warning">Nema dovoljno pouzdanih podataka za automatske odluke.</div>
+                <AnalyticsEmptyState
+                  variant="insufficient_data"
+                  title="Nema prioritetnih akcija za ovu nedelju"
+                  message="Sistem trenutno nema dovoljno pouzdan signal za P1/P2/P3 preporuke."
+                  emptyReason={dashboardMeta?.emptyReason ?? "Nedovoljno podataka za automatske odluke."}
+                  reasons={[
+                    "Nedostaju ključni ulazni podaci (dobavljač, cena ili pokrivenost).",
+                    "Signal je ispod praga pouzdanosti za prodajnu odluku.",
+                  ]}
+                  actions={[
+                    { label: "Proširi period na 90 dana", onClick: () => applyPreset("90d") },
+                    { label: "Otvori Data Quality", href: "/analytics/data-quality" },
+                  ]}
+                  dataQualityHref="/analytics/data-quality"
+                  refreshStatusHref="/admin/configuration?panel=workers"
+                />
               ) : (
                 <div className="decision-action-list">
                   {prioritizedDecisionActions.map((action, index) => {
@@ -1010,13 +1028,16 @@ export default function AnalyticsDashboard() {
                         <div className="decision-action-top">
                           <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
                           <strong>{action.title}</strong>
+                          {action.priority === "P1" ? (
+                            <span className="decision-priority-spotlight" aria-label="Hitna nedeljna akcija">Hitno ove nedelje</span>
+                          ) : null}
                           {action.recommendationAllowed === false ? (
                             <span className="decision-limited-badge">Signal ograni\u010Den</span>
                           ) : null}
                         </div>
-                        <p className="decision-action-reason">{action.reason}</p>
+                        <p className="decision-action-reason"><strong>Zašto?</strong> {action.reason}</p>
                         {action.expectedImpact
-                          ? <p className="decision-action-impact">Ocekivani uticaj: {action.expectedImpact}</p>
+                          ? <p className="decision-action-impact">Očekivani uticaj: {action.expectedImpact}</p>
                           : action.impactEstimateRsd != null
                             ? <p className="decision-action-impact">Procenjeni uticaj: {fmtRsd(action.impactEstimateRsd, 0, "N/A")}</p>
                             : null}
@@ -1228,7 +1249,7 @@ export default function AnalyticsDashboard() {
                 <p className="section-note">Napredne metrike, trendovi, top proizvodi i grafici su ispod ovog dugmeta.</p>
               </div>
               <button type="button" className="details-expand" onClick={() => setShowDetailedAnalysis(true)} disabled={loading}>
-                Prikazi detaljnu analizu
+                Prikaži detaljnu analizu
               </button>
             </div>
           </section>
@@ -1248,7 +1269,7 @@ export default function AnalyticsDashboard() {
               <MetricCard label="Crvena zona zaliha" value={fmtPct(derived.redZonePct)} tone="warning" infoTip={HELP.oos} />
               <MetricCard label="MA7 + Momentum" value={fmtRsd(movingStats.ma7Revenue)} tone="good" infoTip={HELP.ma7} />
               <MetricCard label="Elasticnost (aproks.)" value={movingStats.elasticity == null ? "N/A" : fmtNumber(movingStats.elasticity, 2)} tone="neutral" infoTip={HELP.elasticnost} />
-              <MetricCard label="Prosecna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosecna vrednost jednog računa." />
+              <MetricCard label="Prosečna korpa" value={fmtRsd(summary.avgBasketValue)} tone="neutral" infoTip="Prosečna vrednost jednog računa." />
             </div>
           </section>
         )}
@@ -1275,7 +1296,7 @@ export default function AnalyticsDashboard() {
                   <span className="metric-label"><span>{card.key === "velocity" ? "Brzina prodaje (velocity)" : card.key === "oos" ? "Rasprodato (OOS)" : card.key === "pareto" ? "Pareto koncentracija" : card.key === "data_health" ? "Svežina podataka" : card.key === "completeness" ? "Kompletnost podataka" : card.label}</span><InfoTip text={HELP[card.key] ?? "Napredna BI metrika."} /></span>
                   <strong>{fmtNumber(card.value, card.unit === "%" ? 1 : 2)} {card.unit === "units/day" ? "kom/dan" : card.unit === "hours old" ? "sati od osvežavanja" : card.unit}</strong>
                   <small>{card.trendPct != null ? `${trendLabel(card.trendPct)} ${fmtPct(card.trendPct)}` : statusLabel(card.status)}</small>
-                  {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top šifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuca polja:")}</small>}
+                  {card.subtitle && <small>{card.subtitle.replace("Top SKU:", "Top šifra:").replace("Lost sales estimate:", "Procena izgubljene prodaje:").replace("Top 50 share:", "Udeo top 50:").replace("Last import:", "Poslednji import:").replace("Missing:", "Nedostajuća polja:")}</small>}
                 </article>
               ))}
             </div>
@@ -1284,13 +1305,13 @@ export default function AnalyticsDashboard() {
 
         {!loading && advanced && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvazniji signali iz podataka." /></h3>
-            <p className="section-note">Kratko objasnjenje sta se desava i zasto je vazno za posao.</p>
+            <h3 className="with-tip"><span>Uvidi</span><InfoTip text="Automatski izdvojeni najvažniji signali iz podataka." /></h3>
+            <p className="section-note">Kratko objašnjenje šta se dešava i zašto je važno za posao.</p>
             {advanced.insights.length === 0 && <div className="analytics-empty">Nema podataka za panel uvida.</div>}
             {advanced.insights.map((item, index) => (
               <div key={`ins-${index}`} className={`insight-row ${item.color}`}>
                 <span className="badge">{item.badge}</span>
-                <p>{item.description.replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.").replace("Pareto concentration is elevated.", "Pareto koncentracija je povecana.")}</p>
+                <p>{item.description.replace("Lost sales estimate indicates stock-out pressure.", "Procena izgubljene prodaje ukazuje na pritisak rasprodatosti.").replace("Pareto concentration is elevated.", "Pareto koncentracija je povećana.")}</p>
               </div>
             ))}
           </section>
@@ -1298,8 +1319,8 @@ export default function AnalyticsDashboard() {
 
         {!loading && validationRows.length > 0 && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Kvalitet podataka</span><InfoTip text="Pouzdanost podataka koji hrane preporuke: kompletnost, svezina i procena izgubljene prodaje." /></h3>
-            <p className="section-note">Ako je signal kritican, prvo resite kvalitet podataka pa tek onda donesite poslovnu odluku.</p>
+            <h3 className="with-tip"><span>Kvalitet podataka</span><InfoTip text="Pouzdanost podataka koji hrane preporuke: kompletnost, svežina i procena izgubljene prodaje." /></h3>
+            <p className="section-note">Ako je signal kritičan, prvo rešite kvalitet podataka pa tek onda donesite poslovnu odluku.</p>
             <div className="validation-grid">
               {validationRows.map((row) => (
                 <article key={row.name} className={`validation-card ${statusTone(row.status)}`}>
@@ -1404,8 +1425,8 @@ export default function AnalyticsDashboard() {
           <section className="analytics-panel">
             <div className="panel-head">
               <div>
-                <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa više pogleda: promet, komada, brzina prodaje i marza." /></h3>
-                <p className="section-note">Hover na red prikazuje sazetak trenda. Status zalihe je obojen radi brzeg skeniranja.</p>
+                <h3 className="with-tip"><span>Top proizvodi</span><InfoTip text="Tabela sa više pogleda: promet, komada, brzina prodaje i marža." /></h3>
+                <p className="section-note">Hover na red prikazuje sažetak trenda. Status zalihe je obojen radi bržeg skeniranja.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button className="analytics-export-button" onClick={exportTopRows} disabled={topRows.length === 0}>Izvezi CSV</button>
@@ -1424,11 +1445,11 @@ export default function AnalyticsDashboard() {
               <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Top po prometu</button>
               <button className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Top po komadima</button>
               <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>Top po brzini prodaje</button>
-              <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marzi</button>
+              <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Top po marži</button>
             </div>
-            {topTab === "margin" && !topAdvanced.marginAvailable && <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na marzu. <Link to="/analytics/data-quality">Data Quality</Link></div>}
+            {topTab === "margin" && !topAdvanced.marginAvailable && <div className="analytics-empty warning">Nema dovoljno podataka za prikaz uticaja na maržu. <Link to="/analytics/data-quality">Data Quality</Link></div>}
             <p className="section-note">
-              {topAdvanced.marginMessage ?? "Kvalitet marze po artiklu nije dostupan na ovom dashboard pogledu; backend jos ne vraca cost coverage / margin quality tier po redu."}{" "}
+              {topAdvanced.marginMessage ?? "Kvalitet marže po artiklu nije dostupan na ovom dashboard pogledu; backend još ne vraća cost coverage / margin quality tier po redu."}{" "}
               <Link to="/analytics/data-quality">Data Quality</Link>
             </p>
             {topRows.length === 0 ? <div className="analytics-empty">Nema podataka.</div> : (
@@ -1440,7 +1461,7 @@ export default function AnalyticsDashboard() {
                       <th><span className="with-tip"><span>Promet</span><InfoTip text={HELP.promet} /></span></th>
                       <th><span className="with-tip"><span>Kom</span><InfoTip text={HELP.jedinice} /></span></th>
                       <th><span className="with-tip"><span>Brzina prodaje</span><InfoTip text={HELP.velocity} /></span></th>
-                      <th><span className="with-tip"><span>Uticaj na marzu</span><InfoTip text={HELP.margin} /></span></th>
+                      <th><span className="with-tip"><span>Uticaj na maržu</span><InfoTip text={HELP.margin} /></span></th>
                       <th><span className="with-tip"><span>Trend</span><InfoTip text={HELP.trend} /></span></th>
                       <th><span className="with-tip"><span>Status zalihe</span><InfoTip text="Dobro = stabilno, Upozorenje = niska zaliha, Kritično = rasprodato." /></span></th>
                     </tr>
@@ -1467,11 +1488,11 @@ export default function AnalyticsDashboard() {
                         <td>{fmtNumber(row.velocityUnitsPerDay, 2)}</td>
                         <td>
                           <div>{row.marginImpact == null ? "N/A" : fmtRsd(row.marginImpact)}</div>
-                          <small>{row.marginQualityLabel ?? "Kvalitet marze nije dostupan"}</small>
+                          <small>{row.marginQualityLabel ?? "Kvalitet marže nije dostupan"}</small>
                         </td>
                         <td className={row.trendPct != null && row.trendPct < 0 ? "trend down" : "trend up"}>
                           <div>{trendLabel(row.trendPct)} {fmtPct(row.trendPct)}</div>
-                          {row.trendPct == null ? <small>Nema prethodnog perioda za PoP poredjenje.</small> : null}
+                          {row.trendPct == null ? <small>Nema prethodnog perioda za PoP poređenje.</small> : null}
                         </td>
                         <td><span className={`stock-pill ${statusTone(row.stockStatus)}`}>{statusLabel(row.stockStatus)}</span></td>
                       </tr>
@@ -1485,7 +1506,7 @@ export default function AnalyticsDashboard() {
 
         {!loading && (
           <section className="analytics-panel">
-            <h3 className="with-tip"><span>Pojmovnik za laike</span><InfoTip text="Kratka objasnjenja manje poznatih analitickih izraza." /></h3>
+            <h3 className="with-tip"><span>Pojmovnik za laike</span><InfoTip text="Kratka objašnjenja manje poznatih analitičkih izraza." /></h3>
             <div className="glossary-grid">
               {[
                 ["Brzina prodaje (Velocity)", HELP.velocity],
@@ -1496,7 +1517,7 @@ export default function AnalyticsDashboard() {
                 ["Elasticnost", HELP.elasticnost],
                 ["Kompletnost (Completeness)", HELP.completeness],
                 ["Svežina podataka (Data Health)", HELP.freshness],
-                ["Uticaj na marzu (Margin impact)", HELP.margin],
+                ["Uticaj na maržu (Margin impact)", HELP.margin],
                 ["SKU", HELP.sku],
               ].map(([term, text]) => (
                 <article key={term} className="glossary-card">

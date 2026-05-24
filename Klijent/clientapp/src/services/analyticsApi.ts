@@ -48,6 +48,8 @@ import type {
   AnalyticsActionStatusUpdateInput,
   AnalyticsActionFilters,
   AnalyticsResponseMeta,
+  SupplierDecisionDurableReport,
+  PilotIntakeDurableReport,
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
@@ -852,6 +854,52 @@ export async function getPilotDataQualityIntakeReport(paramsInput: {
     "/api/analytics/data-quality/intake-report",
     params,
     "Greska pri ucitavanju pilot intake report-a"
+  );
+}
+
+export async function getSupplierDecisionDurableReport(paramsInput: {
+  fromDate?: string | null;
+  toDate?: string | null;
+  storeId?: number | null;
+  supplierId?: number | null;
+  scope?: string | null;
+  dataScope?: string | null;
+}): Promise<SupplierDecisionDurableReport> {
+  const params = new URLSearchParams();
+  if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
+  if (paramsInput.toDate) params.set("toDate", paramsInput.toDate);
+  if (paramsInput.storeId != null) params.set("storeId", String(paramsInput.storeId));
+  if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
+  if (paramsInput.scope) params.set("scope", paramsInput.scope);
+  if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
+
+  return fetchJson(
+    "/api/analytics/reports/supplier-decision",
+    params,
+    "Greska pri ucitavanju trajnog supplier report-a"
+  );
+}
+
+export async function getPilotIntakeDurableReport(paramsInput: {
+  fromDate?: string | null;
+  toDate?: string | null;
+  storeId?: number | null;
+  supplierId?: number | null;
+  scope?: string | null;
+  dataScope?: string | null;
+}): Promise<PilotIntakeDurableReport> {
+  const params = new URLSearchParams();
+  if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
+  if (paramsInput.toDate) params.set("toDate", paramsInput.toDate);
+  if (paramsInput.storeId != null) params.set("storeId", String(paramsInput.storeId));
+  if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
+  if (paramsInput.scope) params.set("scope", paramsInput.scope);
+  if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
+
+  return fetchJson(
+    "/api/analytics/reports/pilot-intake",
+    params,
+    "Greska pri ucitavanju trajnog pilot intake report-a"
   );
 }
 

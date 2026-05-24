@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
+import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefinitions";
+import KpiExplainButton from "./KpiExplainButton";
 import "./SupplierDecisionReport.css";
 
 type SupplierDecisionReportProps = {
@@ -161,13 +163,17 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       <section className="sdr-section">
         <h2>Izvršni sažetak</h2>
         <div className="sdr-kpi-grid">
-          {kpi.map((row) => (
-            <article key={`${row.item}-${row.value}`} className="sdr-kpi">
-              <span>{row.item}</span>
-              <strong>{row.value}</strong>
-              {row.secondary ? <small>{row.secondary}</small> : null}
-            </article>
-          ))}
+          {kpi.map((row) => {
+            const metricKey = findAnalyticsMetricKeyByLabel(row.item);
+            return (
+              <article key={`${row.item}-${row.value}`} className="sdr-kpi">
+                <span>{row.item}</span>
+                <strong>{row.value}</strong>
+                {row.secondary ? <small>{row.secondary}</small> : null}
+                {metricKey ? <KpiExplainButton metricKey={metricKey} /> : null}
+              </article>
+            );
+          })}
         </div>
       </section>
 

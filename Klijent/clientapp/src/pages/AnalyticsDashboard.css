@@ -478,8 +478,14 @@
 }
 
 .decision-action-card.priority-p1 {
-  border-color: rgba(255, 108, 108, 0.55);
-  box-shadow: 0 0 0 1px rgba(255, 108, 108, 0.22) inset;
+  border-color: color-mix(in srgb, var(--error, #ff6c6c) 58%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--error, #ff6c6c) 12%, var(--surface-light, var(--panel))),
+    var(--surface-light, var(--panel))
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--error, #ff6c6c) 24%, transparent) inset;
+  animation: decision-p1-pulse 2.2s ease-in-out infinite;
 }
 
 .decision-action-top {
@@ -491,6 +497,20 @@
 .decision-action-top strong {
   font-size: 14px;
   line-height: 1.3;
+}
+
+.decision-priority-spotlight {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--error, #ff6c6c);
+  border: 1px solid color-mix(in srgb, var(--error, #ff6c6c) 60%, transparent);
+  background: color-mix(in srgb, var(--error, #ff6c6c) 12%, transparent);
 }
 
 .decision-limited-badge {
@@ -518,6 +538,25 @@
   margin: 0;
   font-size: 12px;
   color: var(--text-secondary, var(--muted));
+}
+
+@keyframes decision-p1-pulse {
+  0% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--error, #ff6c6c) 24%, transparent) inset;
+  }
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--error, #ff6c6c) 24%, transparent) inset,
+      0 0 0 3px color-mix(in srgb, var(--error, #ff6c6c) 16%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--error, #ff6c6c) 24%, transparent) inset;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decision-action-card.priority-p1 {
+    animation: none;
+  }
 }
 
 .decision-action-foot {

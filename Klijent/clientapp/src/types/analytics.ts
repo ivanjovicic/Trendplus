@@ -40,6 +40,25 @@ export interface AnalyticsRefreshJobStatus {
   statusReason?: string | null;
 }
 
+export interface AnalyticsRefreshRun {
+  id: number;
+  jobKey: string;
+  jobName: string;
+  status: "running" | "succeeded" | "failed" | "partial" | string;
+  startedAtUtc: string;
+  finishedAtUtc?: string | null;
+  durationSeconds?: number | null;
+  refreshedObjects: string[];
+  failedObjects: string[];
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  correlationId?: string | null;
+  triggeredBy: "nightly" | "manual" | "import" | "system" | string;
+  processMode: "web" | "worker" | "unknown" | string;
+  workerName?: string | null;
+  createdAtUtc: string;
+}
+
 export interface AnalyticsRefreshStatus {
   lastSuccessfulRefreshAtUtc?: string | null;
   lastAttemptAtUtc?: string | null;
@@ -58,6 +77,7 @@ export interface AnalyticsRefreshStatus {
   workerProcessWarning?: string | null;
   generatedAtUtc: string;
   jobs: AnalyticsRefreshJobStatus[];
+  recentRuns?: AnalyticsRefreshRun[];
 }
 
 export interface TopProduct {
@@ -576,6 +596,81 @@ export interface PilotDataQualityIntakeReport {
   issues: PilotDataQualityIntakeIssues;
   impact: PilotDataQualityIntakeImpact;
   recommendedActions: string[];
+  meta?: AnalyticsResponseMeta | null;
+}
+
+export interface DurableReportRow {
+  section: string;
+  item: string;
+  value: string;
+  secondary?: string | null;
+  note?: string | null;
+}
+
+export interface DurableReportSection {
+  key: string;
+  title?: string | null;
+  rowCount: number;
+}
+
+export interface DurableReportPayloadColumn {
+  key: string;
+  header: string;
+  dataType?: string;
+}
+
+export interface DurableReportNamedValue {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface DurableResolvedReportPayload {
+  tableKey: string;
+  tableTitle: string;
+  documentType: string;
+  templateName: string;
+  locale: string;
+  columns: DurableReportPayloadColumn[];
+  rows: DurableReportRow[];
+  filters: DurableReportNamedValue[];
+  metadata: DurableReportNamedValue[];
+  templateVersion?: number;
+}
+
+export interface DurableReportPeriod {
+  fromUtc: string;
+  toUtc: string;
+  label: string;
+}
+
+export interface SupplierDecisionDurableReport {
+  reportId: string;
+  stableQueryUrl: string;
+  generatedAtUtc: string;
+  period: DurableReportPeriod;
+  lastRefreshAtUtc?: string | null;
+  dataQualityStatus: string;
+  recommendationAllowed: boolean;
+  usedFallback: boolean;
+  methodology: string;
+  rows: DurableReportRow[];
+  sections: DurableReportSection[];
+  payload: DurableResolvedReportPayload;
+  meta?: AnalyticsResponseMeta | null;
+}
+
+export interface PilotIntakeDurableReport {
+  reportId: string;
+  stableQueryUrl: string;
+  generatedAtUtc: string;
+  period: DurableReportPeriod;
+  lastRefreshAtUtc?: string | null;
+  dataQualityStatus: string;
+  methodology: string;
+  rows: DurableReportRow[];
+  sections: DurableReportSection[];
+  payload: DurableResolvedReportPayload;
   meta?: AnalyticsResponseMeta | null;
 }
 

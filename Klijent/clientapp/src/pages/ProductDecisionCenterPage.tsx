@@ -4,6 +4,7 @@ import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
 import {
   AnalyticsMetaError,
@@ -562,30 +563,37 @@ export default function ProductDecisionCenterPage() {
         <article className="kpi-card">
           <span>Za dopunu</span>
           <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="replenishCount" />
         </article>
         <article className="kpi-card">
           <span>Za pojačanje</span>
           <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="boostCount" />
         </article>
         <article className="kpi-card">
           <span>Za sniženje</span>
           <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="markdownCount" />
         </article>
         <article className="kpi-card">
           <span>Ne narucivati</span>
           <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="doNotOrderCount" />
         </article>
         <article className="kpi-card">
           <span>Proveriti podatke</span>
           <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="fixDataCount" />
         </article>
         <article className="kpi-card">
           <span>Procena izgubljene prodaje</span>
           <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
+          <KpiExplainButton metricKey="lostSalesEstimate" />
         </article>
         <article className="kpi-card">
           <span>Kapital u sporoj zalihi</span>
           <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
+          <KpiExplainButton metricKey="slowStockCapital" />
         </article>
       </section>
       ) : null}

@@ -434,6 +434,74 @@ public static class SupplierDecisionHubEndpoints
 
             return Results.Ok(response.Response);
         });
+
+        app.MapGet("/api/analytics/reports/supplier-decision", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IAnalyticsCacheService cache,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? category = null,
+            string? gender = null,
+            int? seasonId = null,
+            decimal? minRevenue = null,
+            bool onlyHighConfidence = false,
+            bool excludeOosBeforeMarkdown = false,
+            int? supplierId = null,
+            int? storeId = null,
+            string? scope = null,
+            string? dataScope = null,
+            CancellationToken ct = default) =>
+        {
+            var resolvedScope = !string.IsNullOrWhiteSpace(scope)
+                ? scope
+                : (string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope);
+
+            if (!TryCreateFilters(
+                    fromDate,
+                    toDate,
+                    category,
+                    gender,
+                    seasonId,
+                    minRevenue,
+                    onlyHighConfidence,
+                    excludeOosBeforeMarkdown,
+                    supplierId,
+                    storeId,
+                    resolvedScope,
+                    out var filters,
+                    out var validationError))
+            {
+                return Results.ValidationProblem(validationError!);
+            }
+
+            var activeFilters = filters!;
+            var correlationId = ResolveCorrelationId(httpContext);
+            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+
+            try
+            {
+                var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                var summary = BuildSummaryResponse(dataset, activeFilters);
+                var report = BuildSupplierDecisionReportResponse(summary, dataset, activeFilters);
+                return Results.Ok(report with
+                {
+                    Meta = ApplyCorrelationId(report.Meta, correlationId)
+                });
+            }
+            catch (SupplierDecisionUnavailableException ex)
+            {
+                var emptyDataset = new SupplierRowsDataset(Array.Empty<SupplierScoreRow>(), 0, 0, DateTime.UtcNow);
+                var summary = BuildSummaryResponse(emptyDataset, activeFilters);
+                var report = BuildSupplierDecisionReportResponse(summary, emptyDataset, activeFilters);
+                return Results.Ok(report with
+                {
+                    Meta = BuildErrorMeta(ex.ErrorCode, ex.Message, correlationId)
+                });
+            }
+        })
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
     }
 
     private sealed record SupplierDecisionHubFilters(
@@ -664,6 +732,141 @@ public static class SupplierDecisionHubEndpoints
             dataNote,
             trustMetadata,
             BuildResponseMeta(rows, trustMetadata));
+    }
+
+    private static SupplierDecisionReportResponse BuildSupplierDecisionReportResponse(
+        SummaryResponse summary,
+        SupplierRowsDataset dataset,
+        SupplierDecisionHubFilters filters)
+    {
+        var trust = summary.TrustMetadata;
+        var generatedAtUtc = DateTime.UtcNow;
+        var methodology = "Preporuka kombinuje promet, marzni doprinos, zavisnost od snizenja, rizik zaliha i pouzdanost signala.";
+        var reportId = BuildSupplierDecisionReportId(filters);
+        var stableQueryUrl = BuildSupplierDecisionStableQueryUrl(filters);
+        var periodLabel = BuildEffectivePeriodLabel(filters, ResolveEffectiveDataset(GetDecisionScoreWindowDays(filters)));
+        var dataQualityStatus = summary.Meta?.DataQualityStatus ?? trust?.DataCoverageStatus ?? "insufficient_data";
+
+        var rows = new List<SupplierDecisionReportRowContract>
+        {
+            new("Header", "Naziv izvestaja", "Trendplus izvestaj dobavljaca", null, null),
+            new("Header", "Period", $"{summary.From:yyyy-MM-dd} - {summary.To:yyyy-MM-dd}", periodLabel, null),
+            new("Header", "Kvalitet podataka", dataQualityStatus, trust?.DataCoverageStatus, null),
+            new("Header", "Preporuka dozvoljena", trust?.RecommendationAllowed == true ? "Da" : "Ne", trust?.EffectivePeriodLabel, trust?.FallbackReason),
+            new("KPI", "Prihod", summary.TopGrowSuppliers.Sum(x => x.Revenue).ToString("0.##", CultureInfo.InvariantCulture), null, null),
+            new("KPI", "Broj dobavljaca", summary.SupplierCount.ToString(CultureInfo.InvariantCulture), null, null),
+            new("KPI", "Kapital u riziku", summary.CapitalAtRisk.ToString("0.##", CultureInfo.InvariantCulture), null, null),
+            new("Metodologija", "Opis", methodology, null, "Kako citati ovaj izvestaj: /analytics/data-quality")
+        };
+
+        foreach (var supplier in summary.TopGrowSuppliers.Take(5))
+        {
+            rows.Add(new SupplierDecisionReportRowContract(
+                "Top dobavljaci",
+                supplier.SupplierName,
+                supplier.Revenue.ToString("0.##", CultureInfo.InvariantCulture),
+                $"Signal: {supplier.RecommendationCode}",
+                supplier.StatusReason));
+        }
+
+        foreach (var supplier in summary.TopRiskSuppliers.Take(5))
+        {
+            rows.Add(new SupplierDecisionReportRowContract(
+                "Rizik",
+                supplier.SupplierName,
+                supplier.Revenue.ToString("0.##", CultureInfo.InvariantCulture),
+                $"Signal: {supplier.RecommendationCode}",
+                supplier.StatusReason));
+        }
+
+        if (trust?.RecommendationAllowed == false || trust?.UsedFallback == true)
+        {
+            rows.Add(new SupplierDecisionReportRowContract(
+                "Upozorenje",
+                "Pomocni signal",
+                "Report prikazuje pomocni scorecard signal, ne finalnu preporuku.",
+                trust?.EffectivePeriodLabel,
+                trust?.FallbackReason));
+        }
+
+        var sections = rows
+            .GroupBy(x => x.Section)
+            .Select(group => new SupplierDecisionReportSectionContract(group.Key, group.Count()))
+            .ToList();
+
+        var payload = new SupplierDecisionReportPayloadContract(
+            "supplier-decision-report",
+            "Trendplus izvestaj dobavljaca",
+            "supplier-decision-report",
+            "analytics-table-default",
+            "sr-RS",
+            new List<SupplierDecisionReportPayloadColumnContract>
+            {
+                new("section", "Sekcija", "text"),
+                new("item", "Stavka", "text"),
+                new("value", "Vrednost", "text"),
+                new("secondary", "Kontekst", "text"),
+                new("note", "Napomena", "text")
+            },
+            rows,
+            new List<SupplierDecisionReportPayloadNamedValueContract>
+            {
+                new("period", "Period", $"{filters.FromDate:yyyy-MM-dd} - {filters.ToDate:yyyy-MM-dd}"),
+                new("dataScope", "Opseg podataka", filters.DataScope),
+                new("supplier", "Dobavljac", filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all")
+            },
+            new List<SupplierDecisionReportPayloadNamedValueContract>
+            {
+                new("reportId", "Report ID", reportId),
+                new("generatedAtUtc", "Generisano", generatedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
+                new("lastRefreshAtUtc", "Poslednje osvezenje", trust?.LastRefreshAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("dataQualityStatus", "Kvalitet podataka", dataQualityStatus),
+                new("recommendationAllowed", "Preporuka dozvoljena", (trust?.RecommendationAllowed ?? false).ToString()),
+                new("usedFallback", "Koriscen fallback", (trust?.UsedFallback ?? false).ToString()),
+                new("methodology", "Metodologija", methodology)
+            });
+
+        return new SupplierDecisionReportResponse(
+            reportId,
+            stableQueryUrl,
+            generatedAtUtc,
+            new SupplierDecisionReportPeriodContract(filters.FromDate, filters.ToDate, periodLabel),
+            trust?.LastRefreshAtUtc,
+            dataQualityStatus,
+            trust?.RecommendationAllowed ?? false,
+            trust?.UsedFallback ?? false,
+            methodology,
+            rows,
+            sections,
+            payload,
+            summary.Meta);
+    }
+
+    private static string BuildSupplierDecisionReportId(SupplierDecisionHubFilters filters)
+    {
+        return $"sdr-{filters.FromDate:yyyyMMdd}-{filters.ToDate:yyyyMMdd}-{filters.SupplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.StoreId?.ToString(CultureInfo.InvariantCulture) ?? "all"}-{filters.DataScope}";
+    }
+
+    private static string BuildSupplierDecisionStableQueryUrl(SupplierDecisionHubFilters filters)
+    {
+        var query = new List<string>
+        {
+            $"fromDate={Uri.EscapeDataString(filters.FromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}",
+            $"toDate={Uri.EscapeDataString(filters.ToDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))}",
+            $"scope={Uri.EscapeDataString(filters.DataScope)}"
+        };
+
+        if (filters.SupplierId.HasValue)
+        {
+            query.Add($"supplierId={filters.SupplierId.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (filters.StoreId.HasValue)
+        {
+            query.Add($"storeId={filters.StoreId.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        return $"/analytics/supplier/report?{string.Join("&", query)}";
     }
 
     private static AnalyticsResponseMetaDto BuildResponseMeta(
@@ -2589,6 +2792,58 @@ public sealed record SupplierDecisionDetailsResponse(
     IReadOnlyList<ArticleDecisionItem> MarkdownDependentArticles,
     IReadOnlyList<ArticleDecisionItem> BlockedByOosArticles,
     IReadOnlyList<RecommendationHistoryItem> RecommendationHistory);
+
+public sealed record SupplierDecisionReportResponse(
+    string ReportId,
+    string StableQueryUrl,
+    DateTime GeneratedAtUtc,
+    SupplierDecisionReportPeriodContract Period,
+    DateTime? LastRefreshAtUtc,
+    string DataQualityStatus,
+    bool RecommendationAllowed,
+    bool UsedFallback,
+    string Methodology,
+    IReadOnlyList<SupplierDecisionReportRowContract> Rows,
+    IReadOnlyList<SupplierDecisionReportSectionContract> Sections,
+    SupplierDecisionReportPayloadContract Payload,
+    AnalyticsResponseMetaDto? Meta = null);
+
+public sealed record SupplierDecisionReportPeriodContract(
+    DateTime FromUtc,
+    DateTime ToUtc,
+    string Label);
+
+public sealed record SupplierDecisionReportRowContract(
+    string Section,
+    string Item,
+    string Value,
+    string? Secondary,
+    string? Note);
+
+public sealed record SupplierDecisionReportSectionContract(
+    string Key,
+    int RowCount);
+
+public sealed record SupplierDecisionReportPayloadContract(
+    string TableKey,
+    string TableTitle,
+    string DocumentType,
+    string TemplateName,
+    string Locale,
+    IReadOnlyList<SupplierDecisionReportPayloadColumnContract> Columns,
+    IReadOnlyList<SupplierDecisionReportRowContract> Rows,
+    IReadOnlyList<SupplierDecisionReportPayloadNamedValueContract> Filters,
+    IReadOnlyList<SupplierDecisionReportPayloadNamedValueContract> Metadata);
+
+public sealed record SupplierDecisionReportPayloadColumnContract(
+    string Key,
+    string Header,
+    string DataType);
+
+public sealed record SupplierDecisionReportPayloadNamedValueContract(
+    string Key,
+    string Label,
+    string Value);
 
 // TODO(backend-dto): expose recommendation quality payload on supplier details header.
 public sealed record SupplierHeaderDto(

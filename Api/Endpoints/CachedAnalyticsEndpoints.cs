@@ -1,4 +1,4 @@
-using Application.Analytics.Queries.GetInventoryStatus;
+﻿using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetInventoryForecast;
 using Application.Analytics.Queries.GetInventoryAlerts;
@@ -20,7 +20,7 @@ namespace Trendplus2.Endpoints;
 
 /// <summary>
 /// Analytics endpointi sa hibridnim caching-om.
-/// Cache smanjuje opterećenje baze i ubrzava response za 10-100x.
+/// Cache smanjuje optereÄ‡enje baze i ubrzava response za 10-100x.
 /// </summary>
 public static class CachedAnalyticsEndpoints
 {
@@ -30,7 +30,7 @@ public static class CachedAnalyticsEndpoints
         "Ponedeljak",
         "Utorak",
         "Sreda",
-        "Četvrtak",
+        "ÄŒetvrtak",
         "Petak",
         "Subota"
     };
@@ -101,7 +101,7 @@ public static class CachedAnalyticsEndpoints
 
                         return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
                     },
-                    CacheExpiration.Medium,
+                    AnalyticsCachePolicy.DashboardBootstrap.Ttl,
                     ct);
 
                 var correlationId = ResolveCorrelationId(httpContext);
@@ -236,7 +236,7 @@ public static class CachedAnalyticsEndpoints
 
                         return new TopProductsResult(topRevenue, topUnits);
                     },
-                    CacheExpiration.Medium,
+                    AnalyticsCachePolicy.DashboardBootstrap.Ttl,
                     ct);
 
                 var correlationId = ResolveCorrelationId(httpContext);
@@ -367,7 +367,7 @@ public static class CachedAnalyticsEndpoints
                             );
                         }
                     },
-                    CacheExpiration.Short, // Inventory se brzo menja
+                    AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
                 var meta = result.TotalSkuCount == 0
@@ -426,7 +426,7 @@ public static class CachedAnalyticsEndpoints
 
                         return new InventoryBalanceDto((int)totalSku, (int)totalOnHand, (int)lowStock, (int)outOfStock, Math.Round(estimatedValue, 2), meta);
                     },
-                    CacheExpiration.Short,
+                    AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
                 var insightsMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
@@ -520,7 +520,7 @@ public static class CachedAnalyticsEndpoints
 
                         return new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta);
                     },
-                    CacheExpiration.Short,
+                    AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
                 var listMeta = paged.Meta ?? AnalyticsResponseMetaFactory.Success();
@@ -576,7 +576,7 @@ public static class CachedAnalyticsEndpoints
                 var result = await cache.GetOrSetAsync(
                     cacheKey,
                     async () => await InventoryEndpoints.GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct),
-                    CacheExpiration.Short,
+                    AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
                 var balanceMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
@@ -625,7 +625,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await InventoryEndpoints.GetInventoryStoreComparisonAsync(cache, db, analyticsDb, effectiveCompareStoreIds, supplierId, search, ct),
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
             var storeCmpMeta = result.Meta ?? AnalyticsResponseMetaFactory.Success();
@@ -649,7 +649,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top), ct),
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -670,7 +670,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await mediator.Send(new GetInventorySizeCurveQuery(storeId, supplierId, skuId, top), ct),
-                CacheExpiration.Medium,
+                AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -692,7 +692,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await mediator.Send(new GetRebalanceSuggestionsQuery(fromStoreId, toStoreId, supplierId, urgency, top), ct),
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -713,7 +713,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await mediator.Send(new GetInventoryAlertsQuery(storeId, supplierId, severity, top), ct),
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -866,7 +866,7 @@ public static class CachedAnalyticsEndpoints
                                 select new CategoryDataDto
                                 {
                                     Kategorija = g.Key.Kategorija ?? "Ostalo",
-                                    Pol = g.Key.Pol ?? "Neodređeno",
+                                    Pol = g.Key.Pol ?? "NeodreÄ‘eno",
                                     TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                                     TotalUnits = g.Sum(x => x.Kolicina),
                                     TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count()
@@ -921,7 +921,7 @@ public static class CachedAnalyticsEndpoints
                                 group ps by a.Pol into g
                                 select new GenderDataDto
                                 {
-                                    Pol = g.Key ?? "Neodređeno",
+                                    Pol = g.Key ?? "NeodreÄ‘eno",
                                     TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                                     TotalUnits = g.Sum(x => x.Kolicina)
                                 };
@@ -1316,7 +1316,7 @@ public static class CachedAnalyticsEndpoints
                 var result = await cache.GetOrSetAsync(
                     cacheKey,
                     async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
-                    CacheExpiration.Short,
+                    AnalyticsCachePolicy.ProductDecisionCenter.Ttl,
                     ct);
 
                 result.Meta ??= BuildSuccessMeta();
@@ -1662,7 +1662,7 @@ public static class CachedAnalyticsEndpoints
 
                         return response;
                     },
-                    CacheExpiration.Short,
+                    AnalyticsCachePolicy.DashboardBootstrap.Ttl,
                     ct);
 
                 result.Meta ??= BuildSuccessMeta();
@@ -1875,7 +1875,7 @@ public static class CachedAnalyticsEndpoints
                         AffectedSku = missingSku
                     };
                 },
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -1907,7 +1907,7 @@ public static class CachedAnalyticsEndpoints
                         FreshnessHours = freshnessHours
                     };
                 },
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -1939,7 +1939,7 @@ public static class CachedAnalyticsEndpoints
                         LostSalesEstimate = lostSalesEstimate
                     };
                 },
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
 
             return Results.Ok(result);
@@ -1985,31 +1985,47 @@ public static class CachedAnalyticsEndpoints
                         Score = totalRows <= 0 ? null : Math.Round(1m - ((decimal)negativeQtyCount / totalRows), 6)
                     };
                 },
-                CacheExpiration.Short,
+                AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
 
             return Results.Ok(result);
         });
 
         // ========== CACHE STATUS ENDPOINT ==========
-        group.MapGet("/cache/status", (IAnalyticsCacheService cache) =>
+        // ========== CACHE STATUS ENDPOINT ==========
+        group.MapGet("/cache/status", (IAnalyticsCacheService cache, AnalyticsCacheAdminService cacheAdmin) =>
         {
+            var clearState = cacheAdmin.GetState();
             return Results.Ok(new
             {
+                provider = cache.GetType().Name.Replace("CacheService", string.Empty),
                 redisAvailable = cache.IsRedisAvailable,
+                redisEnabled = cache.IsRedisEnabled,
                 cacheType = cache.IsRedisAvailable ? "Hybrid (In-Memory + Redis)" : "In-Memory only",
-                message = cache.IsRedisAvailable 
-                    ? "Cache radi u hibridnom modu - podaci su deljeni između instanci" 
-                    : "Cache radi samo u In-Memory modu - brz ali nije deljen"
+                message = cache.IsRedisAvailable
+                    ? "Cache radi u hibridnom modu - podaci su deljeni izmedju instanci"
+                    : "Cache radi samo u In-Memory modu - brz ali nije deljen",
+                lastClearAtUtc = clearState.LastClearAtUtc,
+                lastClearFamily = clearState.LastClearFamily
             });
         });
 
         // ========== CACHE INVALIDATE ENDPOINT (za admin) ==========
-        group.MapPost("/cache/invalidate", async (IAnalyticsCacheService cache, CancellationToken ct) =>
+        group.MapPost("/cache/invalidate", async (
+            AnalyticsCacheAdminService cacheAdmin,
+            string? family,
+            CancellationToken ct) =>
         {
-            await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
-            return Results.Ok(new { success = true, message = "Analytics cache invalidiran" });
+            var state = await cacheAdmin.ClearAsync(family, ct);
+            return Results.Ok(new
+            {
+                success = true,
+                message = "Analytics cache invalidiran",
+                lastClearAtUtc = state.LastClearAtUtc,
+                lastClearFamily = state.LastClearFamily
+            });
         });
+
     }
 
     private static async Task<NpgsqlConnection?> OpenTrendplusConnectionAsync(ITrendplusDbContext db, CancellationToken ct)
@@ -2029,6 +2045,97 @@ public static class CachedAnalyticsEndpoints
         {
             Value = value.HasValue ? value.Value.Date : DBNull.Value
         });
+    }
+
+    private static async Task<CacheReadResult<T>> GetOrSetWithPolicyAsync<T>(
+        IAnalyticsCacheService cache,
+        string cacheKey,
+        string family,
+        AnalyticsCachePolicyEntry policy,
+        Func<Task<T>> factory,
+        ILogger logger,
+        CancellationToken ct) where T : class
+    {
+        var sw = Stopwatch.StartNew();
+        var metadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
+        var provider = ResolveCacheProvider(cache);
+
+        var cached = await cache.GetAsync<T>(cacheKey, ct);
+        if (cached is not null)
+        {
+            var metadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(metadataKey, ct)
+                ?? new AnalyticsCacheEntryMetadata
+                {
+                    CreatedAtUtc = DateTime.UtcNow,
+                    Family = family,
+                    Provider = provider
+                };
+
+            sw.Stop();
+            logger.LogInformation(
+                "Analytics cache HIT family={Family} provider={Provider} durationMs={DurationMs} key={CacheKey}",
+                family,
+                provider,
+                sw.ElapsedMilliseconds,
+                cacheKey);
+            return new CacheReadResult<T>(cached, true, metadata);
+        }
+
+        var value = await factory();
+        var entryMetadata = new AnalyticsCacheEntryMetadata
+        {
+            CreatedAtUtc = DateTime.UtcNow,
+            Family = family,
+            Provider = provider
+        };
+        await cache.SetAsync(cacheKey, value, policy.Ttl, ct);
+        await cache.SetAsync(metadataKey, entryMetadata, policy.Ttl, ct);
+
+        sw.Stop();
+        logger.LogInformation(
+            "Analytics cache MISS family={Family} provider={Provider} durationMs={DurationMs} key={CacheKey} ttlSec={TtlSeconds}",
+            family,
+            provider,
+            sw.ElapsedMilliseconds,
+            cacheKey,
+            policy.Ttl.TotalSeconds);
+
+        return new CacheReadResult<T>(value, false, entryMetadata);
+    }
+
+    private static void ApplyStaleCacheWarning(
+        AnalyticsResponseMetaDto meta,
+        AnalyticsCacheEntryMetadata metadata,
+        AnalyticsCachePolicyEntry policy)
+    {
+        meta.LastRefreshAtUtc = metadata.CreatedAtUtc;
+
+        var age = DateTime.UtcNow - metadata.CreatedAtUtc;
+        if (age <= policy.StaleAfter)
+        {
+            return;
+        }
+
+        var staleWarning = AnalyticsResponseMetaFactory.StaleCacheWarning(
+            "Prikazani su kesirani podaci. Pokrenite osvezavanje ako su potrebni najnoviji rezultati.");
+        meta.IsPartial = true;
+        meta.WarningCode = staleWarning.WarningCode;
+        meta.WarningMessage = staleWarning.WarningMessage;
+        meta.Message = staleWarning.Message;
+        if (string.IsNullOrWhiteSpace(meta.DataQualityStatus))
+        {
+            meta.DataQualityStatus = staleWarning.DataQualityStatus;
+        }
+    }
+
+    private static string ResolveCacheProvider(IAnalyticsCacheService cache)
+    {
+        if (cache is DisabledAnalyticsCacheService)
+        {
+            return "disabled";
+        }
+
+        return cache.IsRedisEnabled && cache.IsRedisAvailable ? "redis" : "memory";
     }
 
     private static async Task<SalesSummaryDto?> TryGetSalesSummaryFromAggregatesAsync(
@@ -2238,13 +2345,13 @@ public static class CachedAnalyticsEndpoints
 
             const string sql = """
                 SELECT
-                    COALESCE("Pol", 'Neodređeno') AS pol,
+                    COALESCE("Pol", 'NeodreÄ‘eno') AS pol,
                     COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
                     COALESCE(SUM("TotalUnits"), 0)::int AS total_units
                 FROM "AnalyticsGenderSummary"
                 WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
                   AND (@toDate IS NULL OR "Date" <= @toDate::date)
-                GROUP BY COALESCE("Pol", 'Neodređeno')
+                GROUP BY COALESCE("Pol", 'NeodreÄ‘eno')
                 ORDER BY total_revenue DESC;
                 """;
             await using var cmd = new NpgsqlCommand(sql, conn);
@@ -2257,7 +2364,7 @@ public static class CachedAnalyticsEndpoints
             {
                 list.Add(new GenderDataDto
                 {
-                    Pol = reader.IsDBNull(0) ? "Neodređeno" : reader.GetString(0),
+                    Pol = reader.IsDBNull(0) ? "NeodreÄ‘eno" : reader.GetString(0),
                     TotalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1),
                     TotalUnits = reader.IsDBNull(2) ? 0 : reader.GetInt32(2)
                 });
@@ -3140,7 +3247,7 @@ public static class CachedAnalyticsEndpoints
                 minRows: 1,
                 minConfidence: 0,
                 priority: "P1",
-                title: "Proveri artikle bez dobavljača, nabavne cene ili kategorije",
+                title: "Proveri artikle bez dobavljaÄa, nabavne cene ili kategorije",
                 impactTemplate: "Bez ispravke podataka preporuke ostaju nepouzdane za {0} RSD prometa.",
                 sourceType: "data_quality",
                 actionPath: "/analytics/data-quality",
@@ -3174,7 +3281,7 @@ public static class CachedAnalyticsEndpoints
                 minRows: 1,
                 minConfidence: 60,
                 priority: "P2",
-                title: "Pojačaj artikle sa rastom i zdravom maržom",
+                title: "PojaÄaj artikle sa rastom i zdravom marÅ¾om",
                 impactTemplate: "Potencijal dodatnog rasta kroz artikle sa prometom oko {0} RSD.",
                 sourceType: "product",
                 actionPath: "/analytics/products",
@@ -3191,7 +3298,7 @@ public static class CachedAnalyticsEndpoints
                 minRows: 2,
                 minConfidence: 55,
                 priority: "P2",
-                title: "Zaustavi porudžbine artikala sa padom i viškom zalihe",
+                title: "Zaustavi porudÅ¾bine artikala sa padom i viÅ¡kom zalihe",
                 impactTemplate: "Smanjenje vezanog kapitala na artiklima vrednim oko {0} RSD.",
                 sourceType: "product",
                 actionPath: "/analytics/products",
@@ -3209,7 +3316,7 @@ public static class CachedAnalyticsEndpoints
                 minConfidence: 0,
                 priority: "P3",
                 title: "Proveri artikle sa velikim padom ili nedovoljno signala",
-                impactTemplate: "Potrebna ručna provera za grupu artikala sa prometom oko {0} RSD.",
+                impactTemplate: "Potrebna ruÄna provera za grupu artikala sa prometom oko {0} RSD.",
                 sourceType: "product",
                 actionPath: "/analytics/products",
                 actionTypeKey: "insufficient_data",
@@ -3772,11 +3879,11 @@ public static class CachedAnalyticsEndpoints
     {
         return (title ?? string.Empty).Trim() switch
         {
-            "Replenishment" => "Dopuni kritične artikle",
+            "Replenishment" => "Dopuni kritiÄne artikle",
             "Data quality fix" => "Proveri kvalitet podataka",
             "Portfolio balance" => "Balansiraj portfolio artikala",
-            "Refresh pipeline" => "Osveži pipeline podataka",
-            "Monitor" => "Nastavi praćenje ključnih signala",
+            "Refresh pipeline" => "OsveÅ¾i pipeline podataka",
+            "Monitor" => "Nastavi praÄ‡enje kljuÄnih signala",
             var value when !string.IsNullOrWhiteSpace(value) => value,
             _ => "Operativna akcija"
         };
@@ -4018,7 +4125,7 @@ public static class CachedAnalyticsEndpoints
                     select new CategoryDataDto
                     {
                         Kategorija = g.Key.Kategorija ?? "Ostalo",
-                        Pol = g.Key.Pol ?? "Neodređeno",
+                        Pol = g.Key.Pol ?? "NeodreÄ‘eno",
                         TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                         TotalUnits = g.Sum(x => x.Kolicina),
                         TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count()
@@ -4061,7 +4168,7 @@ public static class CachedAnalyticsEndpoints
                     group ps by a.Pol into g
                     select new GenderDataDto
                     {
-                        Pol = g.Key ?? "Neodređeno",
+                        Pol = g.Key ?? "NeodreÄ‘eno",
                         TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                         TotalUnits = g.Sum(x => x.Kolicina)
                     };
@@ -5109,13 +5216,13 @@ public static class CachedAnalyticsEndpoints
 
         return recommendationStatus switch
         {
-            "BOOST" => $"Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan i gap zalihe {stockGap}.",
+            "BOOST" => $"Trend {trendText}, marÅ¾a {marginText}, velocity {velocityUnitsPerDay:0.00}/dan i gap zalihe {stockGap}.",
             "REPLENISH" => $"Brza rotacija ({velocityUnitsPerDay:0.00}/dan) uz manjak zalihe ({currentStock}/{minStock}).",
             "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/dan), trend {trendText} i starost bez prodaje {staleText}.",
-            "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marža {marginText}.",
-            "FIX_DATA" => $"Kritični problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
+            "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marÅ¾a {marginText}.",
+            "FIX_DATA" => $"KritiÄni problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
             "INSUFFICIENT_DATA" => $"Nedovoljno signala: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.",
-            _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
+            _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marÅ¾a {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
         };
     }
 
@@ -5132,24 +5239,24 @@ public static class CachedAnalyticsEndpoints
 
     private static string RecommendationLabel(string status) => status switch
     {
-        "BOOST" => "Pojačaj",
+        "BOOST" => "PojaÄaj",
         "REPLENISH" => "Dopuni",
         "WATCH" => "Prati",
         "MARKDOWN" => "Snizi cenu",
-        "DO_NOT_ORDER" => "Ne naručuj",
+        "DO_NOT_ORDER" => "Ne naruÄuj",
         "FIX_DATA" => "Proveri podatke",
         _ => "Nedovoljno podataka"
     };
 
     private static string RecommendedAction(string status) => status switch
     {
-        "BOOST" => "Povećaj vidljivost artikla i planiraj brzu dopunu.",
+        "BOOST" => "PoveÄ‡aj vidljivost artikla i planiraj brzu dopunu.",
         "REPLENISH" => "Aktiviraj dopunu prema minimalnoj zalihi.",
-        "WATCH" => "Nastavi praćenje bez hitne intervencije.",
-        "MARKDOWN" => "Pokreni ciljano sniženje i testiraj elastičnost cene.",
-        "DO_NOT_ORDER" => "Zaustavi novu narudžbinu dok se signal ne oporavi.",
-        "FIX_DATA" => "Ispravi dobavljača, nabavnu cenu ili kategoriju pre odluke.",
-        _ => "Sačekaj dodatne podatke pre poslovne odluke."
+        "WATCH" => "Nastavi praÄ‡enje bez hitne intervencije.",
+        "MARKDOWN" => "Pokreni ciljano sniÅ¾enje i testiraj elastiÄnost cene.",
+        "DO_NOT_ORDER" => "Zaustavi novu narudÅ¾binu dok se signal ne oporavi.",
+        "FIX_DATA" => "Ispravi dobavljaÄa, nabavnu cenu ili kategoriju pre odluke.",
+        _ => "SaÄekaj dodatne podatke pre poslovne odluke."
     };
 
     private static string NormalizeDataScope(string? dataScope)
@@ -5189,6 +5296,8 @@ public static class CachedAnalyticsEndpoints
     private static bool IsMissingRelation(Exception ex) =>
         ex is PostgresException pg && pg.SqlState == "42P01"
         || ex.InnerException is PostgresException innerPg && innerPg.SqlState == "42P01";
+
+    private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
 }
 
 // DTOs za cache (moraju biti klase za JSON serijalizaciju)

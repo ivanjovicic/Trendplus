@@ -14,6 +14,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import SupplierDecisionReportActions from "../components/analytics/SupplierDecisionReportActions";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
 import { getSezone } from "../services/sezoneApi";
 import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
@@ -586,6 +587,23 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     trustMetadata,
   ]);
 
+  const durableReportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("fromDate", activeFilters.fromDate);
+    params.set("toDate", activeFilters.toDate);
+    params.set("scope", activeFilters.dataScope ?? "all");
+
+    if (activeFilters.supplierId != null) {
+      params.set("supplierId", String(activeFilters.supplierId));
+    }
+
+    if (activeFilters.storeId != null) {
+      params.set("storeId", String(activeFilters.storeId));
+    }
+
+    return `/analytics/supplier/report?${params.toString()}`;
+  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.supplierId, activeFilters.toDate]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
     setSortField(field);
@@ -864,6 +882,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Zbir prihoda za sve učitane scorecard dobavljače. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
               </span>
               <strong>{fmtRsd(totalRevenue)}</strong>
+              <KpiExplainButton metricKey="revenue" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -871,6 +890,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Udeo prihoda koji donosi pet najvećih dobavljača u scorecard skupu. Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera." />
               </span>
               <strong>{fmtPct(top5SharePct)}</strong>
+              <KpiExplainButton metricKey="topSupplierRevenueShare" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -878,6 +898,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Procena maržnog doprinosa za prikazane dobavljače: prihod ponderisan pre-markdown maržom. Viša vrednost je bolja, ali je proveri zajedno sa rizikom zaliha." />
               </span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <KpiExplainButton metricKey="marginContribution" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -885,6 +906,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Procena vrednosti neprodate ili sporo rotirajuće zalihe kod prikazanih dobavljača. Niža vrednost je bolja; visoka vrednost traži proveru nabavke i zaliha." />
               </span>
               <strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong>
+              <KpiExplainButton metricKey="stockRiskCapital" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -892,6 +914,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Razlika u udelu prodaje po punoj ceni u odnosu na prethodni isti period. Pozitivno znači zdraviji signal; negativno znači veću zavisnost od sniženja." />
               </span>
               <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong>
+              <KpiExplainButton metricKey="fullPriceShareChange" />
             </article>
           </section>
 
@@ -938,7 +961,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   filters={toolbarFilters}
                   metadata={toolbarMetadata}
                   defaultOrientation="landscape"
-                  extraActions={<SupplierDecisionReportActions payload={reportPayload} disabled={loading || showBlockingError || !summary || !ranking} />}
+                  extraActions={<SupplierDecisionReportActions payload={reportPayload} durableReportHref={durableReportHref} disabled={loading || showBlockingError || !summary || !ranking} />}
                 />
               </div>
               <div className="sdh-decision-table-wrap">

@@ -54,6 +54,19 @@ public static class AnalyticsResponseMetaFactory
             GeneratedAtUtc = DateTime.UtcNow
         };
 
+    public static AnalyticsResponseMetaDto StaleCacheWarning(
+        string warningMessage = "Prikazani su keširani podaci koji mogu biti zastareli.")
+        => new()
+        {
+            Success = true,
+            IsPartial = true,
+            WarningCode = "STALE_CACHE",
+            WarningMessage = warningMessage,
+            Message = warningMessage,
+            DataQualityStatus = "warning",
+            GeneratedAtUtc = DateTime.UtcNow
+        };
+
     public static AnalyticsResponseMetaDto Error(
         string errorCode,
         string errorMessage,

@@ -1,7 +1,11 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Api.Config;
+using Domain.Model.Analytics;
+using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Trendplus2.Dtos;
 
 namespace Api.Services;
@@ -10,10 +14,8 @@ public sealed class AnalyticsRefreshStatusService
 {
     private const string NightlyWorkerName = "NightlyAnalyticsRefreshWorker";
     private const string DataQualityWorkerName = "AnalyticsDataQualityHealthWorker";
-
-    private static readonly Regex LastSuccessRegex = new(
-        @"Last success:\s*(?<value>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}Z|n\/a)",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private const string NightlyHistoryJobKey = "nightly_analytics_refresh";
+    private const string DataQualityHistoryJobKey = "data_quality_snapshot";
 
     private static readonly Regex DurationRegex = new(
         @"(?:completed in|Duration:\s*)(?<seconds>\d+(?:\.\d+)?)s",
@@ -23,22 +25,31 @@ public sealed class AnalyticsRefreshStatusService
 
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly AnalyticsDbContext _analyticsDbContext;
     private readonly WorkerHealthService _workerHealthService;
     private readonly WorkerRuntimeControlService _workerRuntimeControlService;
+    private readonly ILogger<AnalyticsRefreshStatusService> _logger;
 
     public AnalyticsRefreshStatusService(
         IConfiguration configuration,
         IHostEnvironment hostEnvironment,
+        AnalyticsDbContext analyticsDbContext,
         WorkerHealthService workerHealthService,
-        WorkerRuntimeControlService workerRuntimeControlService)
+        WorkerRuntimeControlService workerRuntimeControlService,
+        ILogger<AnalyticsRefreshStatusService> logger)
     {
         _configuration = configuration;
         _hostEnvironment = hostEnvironment;
+        _analyticsDbContext = analyticsDbContext;
         _workerHealthService = workerHealthService;
         _workerRuntimeControlService = workerRuntimeControlService;
+        _logger = logger;
     }
 
     public AnalyticsRefreshStatusDto GetStatus()
+        => GetStatusAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+    public async Task<AnalyticsRefreshStatusDto> GetStatusAsync(CancellationToken ct = default)
     {
         var nowUtc = DateTime.UtcNow;
         var processType = WorkerRuntimeConfig.ResolveProcessType(_configuration, out _);
@@ -48,8 +59,9 @@ public sealed class AnalyticsRefreshStatusService
             processType,
             _hostEnvironment.IsDevelopment());
         var workersEnabledInRuntime = workersEnabled && _workerRuntimeControlService.IsEnabled;
-
         var processMode = ResolveProcessMode(processType);
+
+        var runs = await LoadRecentRunsAsync(ct);
 
         var jobs = new List<AnalyticsRefreshJobStatusDto>
         {
@@ -57,26 +69,31 @@ public sealed class AnalyticsRefreshStatusService
                 key: "sales_facts_refresh",
                 displayName: "Sales facts refresh",
                 workerName: NightlyWorkerName,
+                historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["sales_facts_mv"],
                 freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc),
+                nowUtc,
+                runs),
             BuildJobStatus(
                 key: "product_dim_refresh",
                 displayName: "Product dim refresh",
                 workerName: NightlyWorkerName,
+                historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["product_dim_mv"],
                 freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc),
+                nowUtc,
+                runs),
             BuildJobStatus(
                 key: "supplier_decision_mvs",
                 displayName: "Supplier decision MVs",
                 workerName: NightlyWorkerName,
+                historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames:
                 [
                     "mv_supplier_decision_score_cache_90d",
@@ -87,37 +104,44 @@ public sealed class AnalyticsRefreshStatusService
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc),
+                nowUtc,
+                runs),
             BuildJobStatus(
                 key: "product_decision_snapshot",
                 displayName: "Product decision snapshot",
                 workerName: NightlyWorkerName,
+                historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["mv_product_decision_snapshot"],
                 freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc),
+                nowUtc,
+                runs),
             BuildJobStatus(
                 key: "inventory_recommendations",
                 displayName: "Inventory recommendations",
                 workerName: NightlyWorkerName,
+                historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["mv_inventory_recommendations"],
                 freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc),
+                nowUtc,
+                runs),
             BuildJobStatus(
-                key: "data_quality_snapshot",
+                key: DataQualityHistoryJobKey,
                 displayName: "Data quality snapshot",
                 workerName: DataQualityWorkerName,
+                historyFallbackJobKey: null,
                 refreshedObjectNames: ["analytics_data_quality_history"],
                 freshHours: 24,
                 staleHours: 72,
                 processType,
                 workersEnabledInRuntime,
-                nowUtc)
+                nowUtc,
+                runs)
         };
 
         var lastSuccess = jobs
@@ -172,7 +196,12 @@ public sealed class AnalyticsRefreshStatusService
                 hasLastSuccess ? lastSuccess : null,
                 hasLastFailure ? lastFailure : null,
                 nowUtc),
-            Jobs = jobs
+            Jobs = jobs,
+            RecentRuns = runs
+                .OrderByDescending(r => r.StartedAtUtc)
+                .Take(10)
+                .Select(MapRecentRun)
+                .ToList()
         };
 
         if (processMode == "web" && workersEnabled && !HasAnyAnalyticsWorkerActive(nowUtc))
@@ -188,50 +217,88 @@ public sealed class AnalyticsRefreshStatusService
         string key,
         string displayName,
         string workerName,
+        string? historyFallbackJobKey,
         IReadOnlyList<string> refreshedObjectNames,
         int freshHours,
         int staleHours,
         ProcessType processType,
         bool workersEnabledInRuntime,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        IReadOnlyList<AnalyticsRefreshRun> runs)
     {
         var workerDefinition = WorkerRegistryCatalog.Find(workerName);
-        var workerHealth = _workerHealthService.GetStatus(workerName);
         var canRegisterInProcess = workerDefinition is not null &&
             WorkerRuntimeConfig.IsRegisteredInCurrentProcess(
                 workerDefinition,
                 processType,
                 registerAccessImportWorkerInWebProcess: false);
         var workerIsExpectedToRun = canRegisterInProcess && workersEnabledInRuntime;
-        var isRunning = workerHealth?.Status == WorkerStatusType.Running;
+        var latestJobRun = FindLatestRun(runs, key, historyFallbackJobKey, workerName);
 
-        var lastSuccess = ResolveLastSuccess(workerName, workerHealth);
-        var lastAttempt = workerHealth?.LastHeartbeat;
-        var lastFailure = workerHealth?.LastErrorTime;
-        var durationSeconds = ResolveDurationSeconds(workerHealth?.Message, workerHealth?.LastError);
-        var refreshSucceeded = lastSuccess.HasValue && (!lastFailure.HasValue || lastSuccess.Value >= lastFailure.Value);
-        var refreshFailed = lastFailure.HasValue && (!lastSuccess.HasValue || lastFailure.Value > lastSuccess.Value);
+        if (latestJobRun is not null)
+        {
+            var successRun = FindLatestSuccessfulRun(runs, key, historyFallbackJobKey, workerName);
+            var failureRun = FindLatestFailedRun(runs, key, historyFallbackJobKey, workerName);
+            var lastSuccess = successRun?.FinishedAtUtc ?? successRun?.StartedAtUtc;
+            var lastFailure = failureRun?.FinishedAtUtc ?? failureRun?.StartedAtUtc;
+            var lastAttempt = latestJobRun.StartedAtUtc;
+            var isRunning = string.Equals(latestJobRun.Status, "running", StringComparison.OrdinalIgnoreCase);
 
-        var freshnessStatus = ResolveFreshnessStatus(
-            lastSuccess,
-            lastFailure,
-            workerHealth?.Status,
-            nowUtc,
-            freshHours,
-            staleHours);
+            var refreshedObjects = ParseObjects(latestJobRun.RefreshedObjectsJson);
+            var failedObjects = ParseObjects(latestJobRun.FailedObjectsJson);
 
-        string? reason = null;
+            if (refreshedObjects.Count == 0 &&
+                !isRunning &&
+                string.Equals(latestJobRun.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            {
+                refreshedObjects = refreshedObjectNames.ToList();
+            }
+
+            if (failedObjects.Count == 0 &&
+                string.Equals(latestJobRun.Status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                failedObjects = refreshedObjectNames.ToList();
+            }
+
+            var freshnessStatus = ResolveFreshnessStatus(
+                lastSuccess,
+                lastFailure,
+                ResolveWorkerStatusFromRun(latestJobRun.Status),
+                nowUtc,
+                freshHours,
+                staleHours);
+
+            return new AnalyticsRefreshJobStatusDto
+            {
+                Key = key,
+                DisplayName = displayName,
+                WorkerName = workerName,
+                LastSuccessfulRefreshAtUtc = lastSuccess,
+                LastAttemptAtUtc = lastAttempt,
+                LastFailureAtUtc = lastFailure,
+                IsRunning = isRunning,
+                LastErrorMessage = latestJobRun.ErrorMessage,
+                CurrentStep = isRunning ? "Refresh u toku..." : null,
+                RefreshedObjects = refreshedObjects,
+                FailedObjects = failedObjects,
+                DurationSeconds = latestJobRun.DurationSeconds,
+                DataFreshnessStatus = freshnessStatus,
+                StatusReason = null
+            };
+        }
+
+        var workerHealth = _workerHealthService.GetStatus(workerName);
+        var isRunningFromFallback = workerHealth?.Status == WorkerStatusType.Running;
+        string? reason;
         if (!workerIsExpectedToRun)
         {
-            freshnessStatus = "unknown";
             reason = processType == ProcessType.Web
                 ? "Worker nije registrovan u web procesu."
                 : "Worker je iskljucen runtime kontrolom.";
         }
-        else if (lastSuccess is null && lastFailure is null)
+        else
         {
-            freshnessStatus = "unknown";
-            reason = "Nema istorije osvezavanja za ovaj posao.";
+            reason = "Nema durable istorije osvezavanja za ovaj posao.";
         }
 
         return new AnalyticsRefreshJobStatusDto
@@ -239,57 +306,154 @@ public sealed class AnalyticsRefreshStatusService
             Key = key,
             DisplayName = displayName,
             WorkerName = workerName,
-            LastSuccessfulRefreshAtUtc = lastSuccess,
-            LastAttemptAtUtc = lastAttempt,
-            LastFailureAtUtc = lastFailure,
-            IsRunning = isRunning,
+            LastSuccessfulRefreshAtUtc = null,
+            LastAttemptAtUtc = workerHealth?.LastHeartbeat,
+            LastFailureAtUtc = workerHealth?.LastErrorTime,
+            IsRunning = isRunningFromFallback,
             LastErrorMessage = workerHealth?.LastError,
             CurrentStep = workerHealth?.Message,
-            RefreshedObjects = refreshSucceeded ? refreshedObjectNames.ToList() : [],
-            FailedObjects = refreshFailed ? refreshedObjectNames.ToList() : [],
-            DurationSeconds = durationSeconds,
-            DataFreshnessStatus = freshnessStatus,
+            RefreshedObjects = [],
+            FailedObjects = [],
+            DurationSeconds = ResolveDurationSeconds(workerHealth?.Message, workerHealth?.LastError),
+            DataFreshnessStatus = "unknown",
             StatusReason = reason
         };
     }
 
-    private static DateTime? ResolveLastSuccess(string workerName, WorkerStatus? workerHealth)
+    private async Task<List<AnalyticsRefreshRun>> LoadRecentRunsAsync(CancellationToken ct)
     {
-        if (workerHealth is null)
+        try
         {
-            return null;
+            return await _analyticsDbContext.AnalyticsRefreshRuns
+                .AsNoTracking()
+                .Where(run =>
+                    run.WorkerName == NightlyWorkerName ||
+                    run.WorkerName == DataQualityWorkerName ||
+                    run.JobKey == NightlyHistoryJobKey ||
+                    run.JobKey == DataQualityHistoryJobKey)
+                .OrderByDescending(run => run.StartedAtUtc)
+                .Take(300)
+                .ToListAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load durable analytics refresh history. Falling back to worker health.");
+            return [];
+        }
+    }
+
+    private static AnalyticsRefreshRun? FindLatestRun(
+        IReadOnlyList<AnalyticsRefreshRun> runs,
+        string jobKey,
+        string? historyFallbackJobKey,
+        string workerName)
+    {
+        return runs
+            .Where(run =>
+                string.Equals(run.WorkerName, workerName, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(run.JobKey, jobKey, StringComparison.OrdinalIgnoreCase)
+                 || (!string.IsNullOrWhiteSpace(historyFallbackJobKey)
+                     && string.Equals(run.JobKey, historyFallbackJobKey, StringComparison.OrdinalIgnoreCase))))
+            .OrderByDescending(run => run.StartedAtUtc)
+            .FirstOrDefault();
+    }
+
+    private static AnalyticsRefreshRun? FindLatestSuccessfulRun(
+        IReadOnlyList<AnalyticsRefreshRun> runs,
+        string jobKey,
+        string? historyFallbackJobKey,
+        string workerName)
+    {
+        return runs
+            .Where(run =>
+                string.Equals(run.WorkerName, workerName, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(run.Status, "succeeded", StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(run.Status, "partial", StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(run.JobKey, jobKey, StringComparison.OrdinalIgnoreCase)
+                 || (!string.IsNullOrWhiteSpace(historyFallbackJobKey)
+                     && string.Equals(run.JobKey, historyFallbackJobKey, StringComparison.OrdinalIgnoreCase))))
+            .OrderByDescending(run => run.StartedAtUtc)
+            .FirstOrDefault();
+    }
+
+    private static AnalyticsRefreshRun? FindLatestFailedRun(
+        IReadOnlyList<AnalyticsRefreshRun> runs,
+        string jobKey,
+        string? historyFallbackJobKey,
+        string workerName)
+    {
+        return runs
+            .Where(run =>
+                string.Equals(run.WorkerName, workerName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(run.Status, "failed", StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(run.JobKey, jobKey, StringComparison.OrdinalIgnoreCase)
+                 || (!string.IsNullOrWhiteSpace(historyFallbackJobKey)
+                     && string.Equals(run.JobKey, historyFallbackJobKey, StringComparison.OrdinalIgnoreCase))))
+            .OrderByDescending(run => run.StartedAtUtc)
+            .FirstOrDefault();
+    }
+
+    private static List<string> ParseObjects(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
         }
 
-        if (string.Equals(workerName, NightlyWorkerName, StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var message = workerHealth.Message;
-            if (!string.IsNullOrWhiteSpace(message))
-            {
-                var match = LastSuccessRegex.Match(message);
-                if (match.Success)
-                {
-                    var value = match.Groups["value"].Value.Trim();
-                    if (string.Equals(value, "n/a", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return null;
-                    }
+            var parsed = JsonSerializer.Deserialize<List<string>>(json) ?? [];
+            return parsed
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
-                    if (DateTime.TryParseExact(
-                        value,
-                        "yyyy-MM-dd HH:mm:ss'Z'",
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                        out var parsed))
-                    {
-                        return parsed;
-                    }
-                }
-            }
+    private static AnalyticsRefreshRunDto MapRecentRun(AnalyticsRefreshRun run)
+    {
+        return new AnalyticsRefreshRunDto
+        {
+            Id = run.Id,
+            JobKey = run.JobKey,
+            JobName = run.JobName,
+            Status = run.Status,
+            StartedAtUtc = run.StartedAtUtc,
+            FinishedAtUtc = run.FinishedAtUtc,
+            DurationSeconds = run.DurationSeconds,
+            RefreshedObjects = ParseObjects(run.RefreshedObjectsJson),
+            FailedObjects = ParseObjects(run.FailedObjectsJson),
+            ErrorCode = run.ErrorCode,
+            ErrorMessage = run.ErrorMessage,
+            CorrelationId = run.CorrelationId,
+            TriggeredBy = run.TriggeredBy,
+            ProcessMode = run.ProcessMode,
+            WorkerName = run.WorkerName,
+            CreatedAtUtc = run.CreatedAtUtc
+        };
+    }
+
+    private static WorkerStatusType? ResolveWorkerStatusFromRun(string? status)
+    {
+        if (string.Equals(status, "running", StringComparison.OrdinalIgnoreCase))
+        {
+            return WorkerStatusType.Running;
         }
 
-        if (workerHealth.Status == WorkerStatusType.Healthy && workerHealth.LastErrorTime is null)
+        if (string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase))
         {
-            return workerHealth.LastHeartbeat;
+            return WorkerStatusType.Error;
+        }
+
+        if (string.Equals(status, "succeeded", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(status, "partial", StringComparison.OrdinalIgnoreCase))
+        {
+            return WorkerStatusType.Healthy;
         }
 
         return null;

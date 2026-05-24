@@ -412,6 +412,7 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
+builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
@@ -629,16 +630,15 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     // Cache wiring:
-    // - Development default: In-Memory only (unless explicitly enabled via Caching:UseRedis=true)
-    // - Production default: Hybrid (In-Memory + Redis)
-    //
-    // NOTE: Some scoped clients (e.g. CommonMatchesClient) depend on IDistributedCache.
-    // Ensure a safe default is always available even when Redis is disabled.
+    // AnalyticsCache:Provider = Redis | Memory | Disabled
+    // Legacy fallback: Caching:UseRedis (for backward compatibility)
     builder.Services.AddDistributedMemoryCache();
-    var useRedisCache = builder.Configuration.GetValue<bool?>("Caching:UseRedis")
-        ?? !builder.Environment.IsDevelopment();
+    var configuredCacheProvider = builder.Configuration["AnalyticsCache:Provider"];
+    var resolvedCacheProvider = string.IsNullOrWhiteSpace(configuredCacheProvider)
+        ? ((builder.Configuration.GetValue<bool?>("Caching:UseRedis") ?? !builder.Environment.IsDevelopment()) ? "redis" : "memory")
+        : configuredCacheProvider.Trim().ToLowerInvariant();
 
-    if (useRedisCache)
+    if (resolvedCacheProvider == "redis")
     {
         builder.Services.AddStackExchangeRedisCache(options =>
         {
@@ -647,12 +647,24 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             options.InstanceName = "trendplus:";
         });
         builder.Services.AddSingleton<IAnalyticsCacheService, HybridCacheService>();
+        Console.WriteLine("Analytics cache provider: Redis/Hybrid");
+    }
+    else if (resolvedCacheProvider == "disabled")
+    {
+        builder.Services.AddSingleton<IAnalyticsCacheService, DisabledAnalyticsCacheService>();
+        Console.WriteLine("Analytics cache provider: Disabled");
     }
     else
     {
-        Console.WriteLine("Caching: Redis disabled (using In-Memory cache only).");
         builder.Services.AddSingleton<IAnalyticsCacheService, InMemoryCacheService>();
+        Console.WriteLine("Analytics cache provider: Memory");
+        if (builder.Environment.IsProduction())
+        {
+            Console.WriteLine("WARNING: Analytics cache provider is Memory in production. Multi-instance deployments can serve inconsistent cache data.");
+        }
     }
+
+    builder.Services.AddSingleton<AnalyticsCacheAdminService>();
 
     // Register Api.Services.CommonMatchesClient (implementation in Api project)
     builder.Services.AddScoped<ICommonMatchesClient, CommonMatchesClient>();

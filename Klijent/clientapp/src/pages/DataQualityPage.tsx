@@ -5,6 +5,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import PilotDataQualityIntakeReportPanel from "../components/analytics/PilotDataQualityIntakeReport";
 import InfoTip from "../components/ui/InfoTip";
 import {
@@ -13,6 +14,7 @@ import {
   getAnalyticsDataQualityHealth,
   getAnalyticsDataQualityTrend,
   getPilotDataQualityIntakeReport,
+  getPilotIntakeDurableReport,
   getDataQualityIssues,
   getDataQualityTopOffenders,
 } from "../services/analyticsApi";
@@ -25,6 +27,7 @@ import type {
   DataQualitySortBy,
   DataQualitySortDir,
   PilotDataQualityIntakeReport as PilotDataQualityIntakeReportDto,
+  PilotIntakeDurableReport,
   DataQualityTopOffendersResult,
   DataQualityTrendPoint,
   DataQualityTrendResult,
@@ -305,6 +308,7 @@ export default function DataQualityPage() {
   const [data, setData] = useState<DataQualityIssueListResult | null>(null);
   const [health, setHealth] = useState<AnalyticsDataQualityHealth | null>(null);
   const [intakeReport, setIntakeReport] = useState<PilotDataQualityIntakeReportDto | null>(null);
+  const [durableIntakeReport, setDurableIntakeReport] = useState<PilotIntakeDurableReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -378,7 +382,7 @@ export default function DataQualityPage() {
     setHealthError(null);
     setIntakeReportError(null);
 
-    const [issuesResult, healthResult, refreshResult, intakeResult] = await Promise.allSettled([
+    const [issuesResult, healthResult, refreshResult, intakeResult, durableIntakeResult] = await Promise.allSettled([
       getDataQualityIssues({
         type: issueType,
         page,
@@ -391,6 +395,13 @@ export default function DataQualityPage() {
       getAnalyticsDataQualityHealth(undefined, contextDataScope),
       getAnalyticsRefreshStatus(),
       getPilotDataQualityIntakeReport({
+        fromDate: contextFromDate,
+        toDate: contextToDate,
+        storeId: contextStoreId ? Number(contextStoreId) : null,
+        supplierId: contextSupplierId ? Number(contextSupplierId) : null,
+        dataScope: contextDataScope,
+      }),
+      getPilotIntakeDurableReport({
         fromDate: contextFromDate,
         toDate: contextToDate,
         storeId: contextStoreId ? Number(contextStoreId) : null,
@@ -451,6 +462,12 @@ export default function DataQualityPage() {
           ? intakeResult.reason.message
           : "Pilot intake report nije dostupan."
       );
+    }
+
+    if (durableIntakeResult.status === "fulfilled") {
+      setDurableIntakeReport(durableIntakeResult.value);
+    } else {
+      setDurableIntakeReport(null);
     }
 
     setLoading(false);
@@ -592,6 +609,7 @@ export default function DataQualityPage() {
               <strong>{health.score}</strong>
               <span className="data-quality-score-status">{health.scoreStatus}</span>
               <p>{health.scoreSummary}</p>
+              <KpiExplainButton metricKey="dataReadinessScore" />
             </section>
           ) : null}
           <div className="data-quality-meta">
@@ -627,6 +645,7 @@ export default function DataQualityPage() {
           loading={loading}
           error={intakeReportError}
           filters={toolbarFilters}
+          durableReport={durableIntakeReport}
           onRetry={() => {
             void load();
           }}
@@ -659,12 +678,14 @@ export default function DataQualityPage() {
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{fmtPct(health.missingCostRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.missingCostRevenue, 2)} bez pouzdane marze</p>
+            <KpiExplainButton metricKey="missingCostRevenueShare" />
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
             <strong>{fmtPct(health.unknownSupplierRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.unknownSupplierRevenue, 2)} u unknown bucket-u</p>
+            <KpiExplainButton metricKey="unknownSupplierRevenueShare" />
           </article>
         </section>
       ) : null}

@@ -1,8 +1,12 @@
 using Api.Services;
+using Domain.Model.Analytics;
+using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Api.Tests;
@@ -10,180 +14,198 @@ namespace Api.Tests;
 public sealed class AnalyticsRefreshStatusServiceTests
 {
     [Fact]
-    public void GetStatus_ReturnsUnknown_WhenNoRefreshHistoryExists()
+    public async Task GetStatus_ReturnsUnknown_WhenNoRefreshHistoryExists()
     {
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
-            {
-                ["PROCESS_TYPE"] = "worker",
-                ["Workers:Enabled"] = "true"
-            },
-            healthService: new WorkerHealthService(),
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
+        await using var db = CreateAnalyticsDbContext();
+        var service = CreateService(db);
 
-        var status = service.GetStatus();
+        var status = await service.GetStatusAsync();
 
         Assert.Equal("unknown", status.DataFreshnessStatus);
         Assert.All(status.Jobs, job => Assert.Equal("unknown", job.DataFreshnessStatus));
-        Assert.Equal("worker", status.ProcessMode);
-        Assert.False(status.IsRunning);
-        Assert.Null(status.WorkerWarning);
     }
 
     [Fact]
-    public void GetStatus_ReturnsFresh_WhenLastSuccessfulRefreshIsWithin24Hours()
+    public async Task GetStatus_ReturnsFresh_WhenLastSuccessfulRefreshIsWithin24Hours()
     {
-        var health = new WorkerHealthService();
-        var freshSuccessUtc = DateTime.UtcNow.AddHours(-2);
-        var successLabel = freshSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
-        health.ReportHealthy(
-            "NightlyAnalyticsRefreshWorker",
-            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "nightly_analytics_refresh",
+            JobName = "Nightly analytics refresh",
+            Status = "succeeded",
+            StartedAtUtc = nowUtc.AddHours(-2),
+            FinishedAtUtc = nowUtc.AddHours(-2).AddMinutes(12),
+            DurationSeconds = 720,
+            RefreshedObjectsJson = "[\"sales_facts_mv\"]",
+            TriggeredBy = "nightly",
+            ProcessMode = "worker",
+            WorkerName = "NightlyAnalyticsRefreshWorker",
+            CreatedAtUtc = nowUtc.AddHours(-2)
+        });
+        await db.SaveChangesAsync();
 
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
-            {
-                ["PROCESS_TYPE"] = "worker",
-                ["Workers:Enabled"] = "true"
-            },
-            healthService: health,
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
-
-        var status = service.GetStatus();
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
 
         Assert.Equal("fresh", status.DataFreshnessStatus);
-        Assert.NotEmpty(status.RefreshedObjects);
+        Assert.Contains(status.Jobs, job => job.Key == "sales_facts_refresh" && job.DataFreshnessStatus == "fresh");
     }
 
     [Fact]
-    public void GetStatus_ReturnsStale_WhenLastSuccessfulRefreshIs30HoursOld()
+    public async Task GetStatus_ReturnsStale_WhenLastSuccessfulRefreshIs30HoursOld()
     {
-        var health = new WorkerHealthService();
-        var staleSuccessUtc = DateTime.UtcNow.AddHours(-30);
-        var successLabel = staleSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
-        health.ReportHealthy(
-            "NightlyAnalyticsRefreshWorker",
-            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "nightly_analytics_refresh",
+            JobName = "Nightly analytics refresh",
+            Status = "succeeded",
+            StartedAtUtc = nowUtc.AddHours(-30),
+            FinishedAtUtc = nowUtc.AddHours(-30).AddMinutes(10),
+            DurationSeconds = 600,
+            TriggeredBy = "nightly",
+            ProcessMode = "worker",
+            WorkerName = "NightlyAnalyticsRefreshWorker",
+            CreatedAtUtc = nowUtc.AddHours(-30)
+        });
+        await db.SaveChangesAsync();
 
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
-            {
-                ["PROCESS_TYPE"] = "worker",
-                ["Workers:Enabled"] = "true"
-            },
-            healthService: health,
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
-
-        var status = service.GetStatus();
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
 
         Assert.Equal("stale", status.DataFreshnessStatus);
         Assert.Contains(status.Jobs, job => job.Key == "sales_facts_refresh" && job.DataFreshnessStatus == "stale");
     }
 
     [Fact]
-    public void GetStatus_ReturnsCritical_WhenLastSuccessIsOlderThan72Hours()
+    public async Task GetStatus_ReturnsCritical_WhenFailureIsNewerThanSuccess()
     {
-        var health = new WorkerHealthService();
-        var oldSuccessUtc = DateTime.UtcNow.AddHours(-80);
-        var successLabel = oldSuccessUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
-        health.ReportHealthy(
-            "NightlyAnalyticsRefreshWorker",
-            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
-
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.AddRange(
+            new AnalyticsRefreshRun
             {
-                ["PROCESS_TYPE"] = "worker",
-                ["Workers:Enabled"] = "true"
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "succeeded",
+                StartedAtUtc = nowUtc.AddHours(-10),
+                FinishedAtUtc = nowUtc.AddHours(-10).AddMinutes(9),
+                DurationSeconds = 540,
+                TriggeredBy = "nightly",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = nowUtc.AddHours(-10)
             },
-            healthService: health,
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
+            new AnalyticsRefreshRun
+            {
+                JobKey = "nightly_analytics_refresh",
+                JobName = "Nightly analytics refresh",
+                Status = "failed",
+                StartedAtUtc = nowUtc.AddHours(-2),
+                FinishedAtUtc = nowUtc.AddHours(-2).AddMinutes(2),
+                DurationSeconds = 120,
+                FailedObjectsJson = "[\"mv_product_decision_snapshot\"]",
+                ErrorMessage = "timeout",
+                TriggeredBy = "nightly",
+                ProcessMode = "worker",
+                WorkerName = "NightlyAnalyticsRefreshWorker",
+                CreatedAtUtc = nowUtc.AddHours(-2)
+            });
+        await db.SaveChangesAsync();
 
-        var status = service.GetStatus();
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
 
         Assert.Equal("critical", status.DataFreshnessStatus);
+        Assert.Contains(status.FailedObjects, value => value == "mv_product_decision_snapshot");
     }
 
     [Fact]
-    public void GetStatus_ReturnsCritical_WhenFailureIsNewerThanSuccess()
+    public async Task GetStatus_ReturnsIsRunningTrue_WhenRunningJobExists()
     {
-        var health = new WorkerHealthService();
-        var successUtc = DateTime.UtcNow.AddHours(-2);
-        var successLabel = successUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'");
-        health.ReportHealthy(
-            "NightlyAnalyticsRefreshWorker",
-            $"Idle. Next run (UTC): 2099-01-01 01:00:00Z | Last success: {successLabel}");
-        health.ReportError("NightlyAnalyticsRefreshWorker", new InvalidOperationException("refresh failed"));
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "data_quality_snapshot",
+            JobName = "Data quality snapshot",
+            Status = "running",
+            StartedAtUtc = nowUtc.AddMinutes(-2),
+            TriggeredBy = "system",
+            ProcessMode = "worker",
+            WorkerName = "AnalyticsDataQualityHealthWorker",
+            CreatedAtUtc = nowUtc.AddMinutes(-2)
+        });
+        await db.SaveChangesAsync();
 
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
-            {
-                ["PROCESS_TYPE"] = "worker",
-                ["Workers:Enabled"] = "true"
-            },
-            healthService: health,
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
-
-        var status = service.GetStatus();
-
-        Assert.Equal("critical", status.DataFreshnessStatus);
-        Assert.NotEmpty(status.FailedObjects);
-    }
-
-    [Fact]
-    public void GetStatus_ReturnsWorkerWarning_WhenWorkersEnabledInWebProcessButInactive()
-    {
-        var service = CreateService(
-            configValues: new Dictionary<string, string?>
-            {
-                ["PROCESS_TYPE"] = "web",
-                ["Workers:Enabled"] = "true"
-            },
-            healthService: new WorkerHealthService(),
-            runtimeControlService: new WorkerRuntimeControlService(
-                initialEnabled: true,
-                runtimeToggleAllowed: true,
-                initialSource: "test"));
-
-        var status = service.GetStatus();
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
         var dataQualityJob = Assert.Single(status.Jobs, job => job.Key == "data_quality_snapshot");
 
-        Assert.Equal("web", status.ProcessMode);
-        Assert.True(status.WorkersEnabled);
-        Assert.False(string.IsNullOrWhiteSpace(status.WorkerWarning));
-        Assert.Equal("unknown", dataQualityJob.DataFreshnessStatus);
-        Assert.Contains("web procesu", dataQualityJob.StatusReason ?? string.Empty);
+        Assert.True(status.IsRunning);
+        Assert.True(dataQualityJob.IsRunning);
     }
 
-    private static AnalyticsRefreshStatusService CreateService(
-        Dictionary<string, string?> configValues,
-        WorkerHealthService healthService,
-        WorkerRuntimeControlService runtimeControlService)
+    [Fact]
+    public async Task GetStatus_UsesFailedObjects_FromDurableHistory()
+    {
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "nightly_analytics_refresh",
+            JobName = "Nightly analytics refresh",
+            Status = "failed",
+            StartedAtUtc = nowUtc.AddHours(-1),
+            FinishedAtUtc = nowUtc.AddMinutes(-50),
+            DurationSeconds = 600,
+            FailedObjectsJson = "[\"mv_inventory_recommendations\",\"sales_facts_mv\"]",
+            ErrorMessage = "refresh error",
+            TriggeredBy = "manual",
+            ProcessMode = "worker",
+            WorkerName = "NightlyAnalyticsRefreshWorker",
+            CreatedAtUtc = nowUtc.AddHours(-1)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
+
+        Assert.Contains("mv_inventory_recommendations", status.FailedObjects);
+        Assert.Contains("sales_facts_mv", status.FailedObjects);
+    }
+
+    private static AnalyticsDbContext CreateAnalyticsDbContext()
+    {
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        return new AnalyticsDbContext(options);
+    }
+
+    private static AnalyticsRefreshStatusService CreateService(AnalyticsDbContext analyticsDbContext)
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(configValues)
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PROCESS_TYPE"] = "worker",
+                ["Workers:Enabled"] = "true"
+            })
             .Build();
 
         return new AnalyticsRefreshStatusService(
             configuration,
             new TestHostEnvironment(),
-            healthService,
-            runtimeControlService);
+            analyticsDbContext,
+            new WorkerHealthService(),
+            new WorkerRuntimeControlService(
+                initialEnabled: true,
+                runtimeToggleAllowed: true,
+                initialSource: "test"),
+            NullLogger<AnalyticsRefreshStatusService>.Instance);
     }
 
     private sealed class TestHostEnvironment : IHostEnvironment

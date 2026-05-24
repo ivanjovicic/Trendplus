@@ -27,7 +27,8 @@
   gap: 8px;
 }
 
-.pilot-intake-actions button {
+.pilot-intake-actions button,
+.pilot-intake-action-link {
   border: 1px solid var(--border-default, rgba(138, 160, 214, 0.3));
   background: var(--surface-light, var(--panel));
   color: var(--text-primary);
@@ -36,6 +37,7 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .pilot-intake-muted {

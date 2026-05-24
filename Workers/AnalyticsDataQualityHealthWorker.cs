@@ -1,5 +1,6 @@
-using Infrastructure.Configuration;
+﻿using Infrastructure.Configuration;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,10 +11,13 @@ namespace Workers;
 public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
 {
     private const string WorkerName = "AnalyticsDataQualityHealthWorker";
+    private const string RefreshJobKey = "data_quality_snapshot";
+    private const string RefreshJobName = "Data quality snapshot";
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalyticsDataQualityHealthWorker> _logger;
     private readonly WorkerHealthService _healthService;
+    private readonly AnalyticsRefreshRunRecorder _refreshRunRecorder;
     private readonly WorkerRuntimeControlService _controlService;
     private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly AnalyticsDataQualityHealthOptions _options;
@@ -22,6 +26,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<AnalyticsDataQualityHealthWorker> logger,
         WorkerHealthService healthService,
+        AnalyticsRefreshRunRecorder refreshRunRecorder,
         WorkerRuntimeControlService controlService,
         WorkerRuntimePolicyService runtimePolicyService,
         IOptions<AnalyticsDataQualityHealthOptions> options)
@@ -29,6 +34,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
+        _refreshRunRecorder = refreshRunRecorder;
         _controlService = controlService;
         _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
@@ -128,6 +134,16 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 paused = false;
             }
 
+            var correlationId = System.Diagnostics.Activity.Current?.Id;
+            var runId = await _refreshRunRecorder.StartRunAsync(
+                jobKey: RefreshJobKey,
+                jobName: RefreshJobName,
+                triggeredBy: manualRunRequested ? "manual" : "system",
+                processMode: "worker",
+                workerName: WorkerName,
+                correlationId: correlationId,
+                stoppingToken);
+
             try
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
@@ -164,15 +180,34 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 }
 
                 _healthService.ReportHealthy(WorkerName, summary);
+                await _refreshRunRecorder.MarkSucceededAsync(
+                    runId,
+                    ["analytics_data_quality_history"],
+                    correlationId,
+                    stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                await _refreshRunRecorder.MarkFailedAsync(
+                    runId,
+                    "cancelled",
+                    "Analytics data-quality run was cancelled.",
+                    ["analytics_data_quality_history"],
+                    correlationId,
+                    CancellationToken.None);
                 break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Analytics data-quality health worker failed.");
                 _healthService.ReportError(WorkerName, ex);
+                await _refreshRunRecorder.MarkFailedAsync(
+                    runId,
+                    "data_quality_worker_failed",
+                    ex.Message,
+                    ["analytics_data_quality_history"],
+                    correlationId,
+                    stoppingToken);
             }
 
             try
@@ -192,3 +227,5 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         _logger.LogInformation("{WorkerName} stopped.", WorkerName);
     }
 }
+
+

@@ -304,3 +304,22 @@
   font-size: 0.75rem;
   color: var(--color-muted, #9ca3af);
 }
+
+.wp-history {
+  margin-top: 1rem;
+}
+
+.wp-history-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-foreground, #111827);
+}
+
+.wp-empty--compact {
+  padding: 0.8rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.wp-table--history {
+  min-width: 760px;
+}

@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workerApi, type WorkerConfigurationItem } from "../services/workerApi";
+import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
+import type { AnalyticsRefreshRun } from "../types/analytics";
 import {
   AlertCircle,
   CheckCircle2,
@@ -23,8 +25,10 @@ type ActionMessages = Record<string, { type: "success" | "error"; text: string }
 
 export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 5000 }) => {
   const [workers, setWorkers] = useState<WorkerConfigurationItem[]>([]);
+  const [refreshRuns, setRefreshRuns] = useState<AnalyticsRefreshRun[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshRunsError, setRefreshRunsError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [actionMessages, setActionMessages] = useState<ActionMessages>({});
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
@@ -54,11 +58,28 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
         setLoading(true);
         setLoadError(null);
       }
-      const response = await workerApi.getWorkersConfiguration();
-      setWorkers(response.workers);
+
+      const [workersResponse, refreshStatus] = await Promise.all([
+        workerApi.getWorkersConfiguration(),
+        getAnalyticsRefreshStatus().catch((error) => {
+          setRefreshRuns([]);
+          setRefreshRunsError(
+            error instanceof Error
+              ? error.message
+              : "Status analytics osvezavanja nije dostupan.",
+          );
+          return null;
+        }),
+      ]);
+
+      setWorkers(workersResponse.workers);
+      setRefreshRuns(refreshStatus?.recentRuns ?? []);
+      if (refreshStatus) {
+        setRefreshRunsError(null);
+      }
       setLastRefreshedAt(new Date());
     } catch (err) {
-      if (isManual) setLoadError(err instanceof Error ? err.message : "Greška pri učitavanju radnika.");
+      if (isManual) setLoadError(err instanceof Error ? err.message : "Greska pri ucitavanju radnika.");
     } finally {
       if (isManual) setLoading(false);
     }
@@ -103,7 +124,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
             responseMessage = (await workerApi.disableSchedule(worker.workerName)).message;
             break;
         }
-        setActionMessage(worker.workerName, "success", responseMessage || "Uspešno.");
+        setActionMessage(worker.workerName, "success", responseMessage || "Uspesno.");
         await fetchWorkers(false);
       } catch (err) {
         setActionMessage(
@@ -141,6 +162,20 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
     return d.toLocaleString("sr-RS");
   };
 
+  const formatDuration = (value?: number | null) => {
+    if (value == null || Number.isNaN(value)) return "-";
+    return `${Math.round(value)} s`;
+  };
+
+  const refreshRunBadgeClass = (status: string) => {
+    const normalized = status.toLowerCase();
+    if (normalized === "succeeded") return "wp-badge wp-badge--healthy";
+    if (normalized === "running") return "wp-badge wp-badge--schedule-on";
+    if (normalized === "partial") return "wp-badge wp-badge--stopped";
+    if (normalized === "failed") return "wp-badge wp-badge--error";
+    return "wp-badge wp-badge--muted";
+  };
+
   const orderedWorkers = useMemo(
     () => [...workers].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     [workers],
@@ -155,7 +190,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           </span>
           {lastRefreshedAt && (
             <span className="wp-refreshed-at">
-              Osveženo: {lastRefreshedAt.toLocaleTimeString("sr-RS")}
+              Osvezeno: {lastRefreshedAt.toLocaleTimeString("sr-RS")}
             </span>
           )}
         </div>
@@ -166,7 +201,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           className="wp-btn wp-btn--primary"
         >
           <RefreshCw className={`wp-icon-sm ${loading ? "wp-spin" : ""}`} />
-          Osveži
+          Osvezi
         </button>
       </div>
 
@@ -178,7 +213,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
       )}
 
       {loading && orderedWorkers.length === 0 ? (
-        <div className="wp-empty">Učitavanje radnika...</div>
+        <div className="wp-empty">Ucitavanje radnika...</div>
       ) : orderedWorkers.length === 0 ? (
         <div className="wp-empty">Nema registrovanih radnika.</div>
       ) : (
@@ -191,10 +226,10 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                 <th className="wp-th wp-col-schedule">Raspored</th>
                 <th className="wp-th wp-col-heartbeat">Heartbeat</th>
                 <th className="wp-th wp-col-lastrun">Poslednje pokretanje</th>
-                <th className="wp-th wp-col-nextrun">Sledeće pokretanje</th>
+                <th className="wp-th wp-col-nextrun">Sledece pokretanje</th>
                 <th className="wp-th wp-col-success">Uspeh</th>
                 <th className="wp-th wp-col-failure">Neuspeh</th>
-                <th className="wp-th wp-col-error">Greška</th>
+                <th className="wp-th wp-col-error">Greska</th>
                 <th className="wp-th wp-col-actions wp-col-sticky">Akcije</th>
               </tr>
             </thead>
@@ -206,10 +241,10 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                   ["start", "stop", "restart", "enableSchedule", "disableSchedule"] as WorkerAction[]
                 ).some((a) => isRunning(a));
                 const runtimeDisabled = !worker.isRuntimeControllable
-                  ? (worker.runtimeControlReason ?? "Akcija nije podržana.")
+                  ? (worker.runtimeControlReason ?? "Akcija nije podrzana.")
                   : undefined;
                 const scheduleDisabled = !worker.isScheduleControllable
-                  ? (worker.scheduleControlReason ?? "Akcija nije podržana.")
+                  ? (worker.scheduleControlReason ?? "Akcija nije podrzana.")
                   : undefined;
                 const msg = actionMessages[worker.workerName];
                 return (
@@ -224,7 +259,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                         </div>
                       )}
                       {worker.isManuallyStopped && (
-                        <div className="wp-worker-note wp-worker-note--stopped">Ručno zaustavljen.</div>
+                        <div className="wp-worker-note wp-worker-note--stopped">Rucno zaustavljen.</div>
                       )}
                     </td>
                     <td className="wp-td wp-col-status">
@@ -235,9 +270,9 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                     </td>
                     <td className="wp-td wp-col-schedule">
                       {worker.scheduleEnabled ? (
-                        <span className="wp-badge wp-badge--schedule-on">Omogućen</span>
+                        <span className="wp-badge wp-badge--schedule-on">Omogucen</span>
                       ) : (
-                        <span className="wp-badge wp-badge--schedule-off">Onemogućen</span>
+                        <span className="wp-badge wp-badge--schedule-off">Onemogucen</span>
                       )}
                     </td>
                     <td className="wp-td wp-col-heartbeat wp-td--date">{formatDate(worker.lastHeartbeat)}</td>
@@ -249,7 +284,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                       {worker.lastError ? (
                         <span className="wp-error-text" title={worker.lastError}>
                           {worker.lastError.length > 80
-                            ? `${worker.lastError.slice(0, 80)}…`
+                            ? `${worker.lastError.slice(0, 80)}...`
                             : worker.lastError}
                         </span>
                       ) : (
@@ -315,7 +350,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                             type="button"
                             onClick={() => void runAction(worker, "disableSchedule")}
                             disabled={!!scheduleDisabled || anyRunning}
-                            title={scheduleDisabled ?? "Onemogući raspored"}
+                            title={scheduleDisabled ?? "Onemoguci raspored"}
                             className="wp-btn wp-btn--sched-off"
                           >
                             {isRunning("disableSchedule") ? (
@@ -323,14 +358,14 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                             ) : (
                               <CalendarOff className="wp-icon-xs" />
                             )}
-                            {isRunning("disableSchedule") ? "..." : "Onemogući raspored"}
+                            {isRunning("disableSchedule") ? "..." : "Onemoguci raspored"}
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void runAction(worker, "enableSchedule")}
                             disabled={!!scheduleDisabled || anyRunning}
-                            title={scheduleDisabled ?? "Omogući raspored"}
+                            title={scheduleDisabled ?? "Omoguci raspored"}
                             className="wp-btn wp-btn--sched-on"
                           >
                             {isRunning("enableSchedule") ? (
@@ -338,7 +373,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                             ) : (
                               <CalendarCheck className="wp-icon-xs" />
                             )}
-                            {isRunning("enableSchedule") ? "..." : "Omogući raspored"}
+                            {isRunning("enableSchedule") ? "..." : "Omoguci raspored"}
                           </button>
                         )}
                       </div>
@@ -355,8 +390,61 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
       )}
 
       {orderedWorkers.length > 0 && (
-        <div className="wp-footer">Auto-osvežavanje svaki {refreshInterval / 1000}s.</div>
+        <div className="wp-footer">Auto-osvezavanje svaki {refreshInterval / 1000}s.</div>
       )}
+
+      <section className="wp-history">
+        <h3 className="wp-history-title">Istorija analytics osvezavanja</h3>
+        {refreshRunsError ? (
+          <div className="wp-alert wp-alert--error">
+            <AlertCircle className="wp-icon-sm" />
+            {refreshRunsError}
+          </div>
+        ) : null}
+        {refreshRuns.length === 0 ? (
+          <div className="wp-empty wp-empty--compact">Nema sacuvanih refresh run-ova.</div>
+        ) : (
+          <div className="wp-table-scroll">
+            <table className="wp-table wp-table--history">
+              <thead>
+                <tr>
+                  <th className="wp-th">Pocetak</th>
+                  <th className="wp-th">Status</th>
+                  <th className="wp-th">Posao</th>
+                  <th className="wp-th">Trajanje</th>
+                  <th className="wp-th">Neuspesni objekti</th>
+                  <th className="wp-th">Greska</th>
+                </tr>
+              </thead>
+              <tbody>
+                {refreshRuns.map((run) => (
+                  <tr key={run.id} className="wp-row">
+                    <td className="wp-td wp-td--date">{formatDate(run.startedAtUtc)}</td>
+                    <td className="wp-td">
+                      <span className={refreshRunBadgeClass(run.status)}>{run.status}</span>
+                    </td>
+                    <td className="wp-td">
+                      <div className="wp-worker-name">{run.jobName}</div>
+                      <div className="wp-worker-key">{run.jobKey}</div>
+                    </td>
+                    <td className="wp-td">{formatDuration(run.durationSeconds)}</td>
+                    <td className="wp-td">{run.failedObjects.length > 0 ? run.failedObjects.join(", ") : "-"}</td>
+                    <td className="wp-td">
+                      {run.errorMessage ? (
+                        <span className="wp-error-text" title={run.errorMessage}>
+                          {run.errorMessage.length > 120 ? `${run.errorMessage.slice(0, 120)}...` : run.errorMessage}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 };

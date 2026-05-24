@@ -309,6 +309,61 @@ namespace Infrastructure.DbContexts
                       .HasDatabaseName("idx_inv_rec_product");
             });
 
+            modelBuilder.Entity<AnalyticsRefreshRun>(entity =>
+            {
+                entity.ToTable("analytics_refresh_runs");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.JobKey)
+                    .IsRequired()
+                    .HasMaxLength(128);
+                entity.Property(e => e.JobName)
+                    .IsRequired()
+                    .HasMaxLength(200);
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasMaxLength(32);
+
+                entity.Property(e => e.StartedAtUtc)
+                    .IsRequired();
+                entity.Property(e => e.FinishedAtUtc);
+                entity.Property(e => e.DurationSeconds);
+
+                entity.Property(e => e.RefreshedObjectsJson)
+                    .HasColumnType("jsonb");
+                entity.Property(e => e.FailedObjectsJson)
+                    .HasColumnType("jsonb");
+
+                entity.Property(e => e.ErrorCode)
+                    .HasMaxLength(120);
+                entity.Property(e => e.ErrorMessage)
+                    .HasMaxLength(4000);
+                entity.Property(e => e.CorrelationId)
+                    .HasMaxLength(120);
+
+                entity.Property(e => e.TriggeredBy)
+                    .IsRequired()
+                    .HasMaxLength(32);
+                entity.Property(e => e.ProcessMode)
+                    .IsRequired()
+                    .HasMaxLength(16);
+                entity.Property(e => e.WorkerName)
+                    .HasMaxLength(128);
+
+                entity.Property(e => e.CreatedAtUtc)
+                    .IsRequired()
+                    .HasDefaultValueSql("now()");
+
+                entity.HasIndex(e => new { e.JobKey, e.StartedAtUtc })
+                    .HasDatabaseName("idx_analytics_refresh_runs_job_started");
+                entity.HasIndex(e => e.Status)
+                    .HasDatabaseName("idx_analytics_refresh_runs_status");
+                entity.HasIndex(e => e.WorkerName)
+                    .HasDatabaseName("idx_analytics_refresh_runs_worker");
+                entity.HasIndex(e => e.StartedAtUtc)
+                    .HasDatabaseName("idx_analytics_refresh_runs_started");
+            });
+
             // ── Analytics Action Queue ───────────────────────────────────
             modelBuilder.Entity<AnalyticsActionItem>(entity =>
             {
@@ -453,6 +508,7 @@ namespace Infrastructure.DbContexts
         public DbSet<TrendProductMomentum> TrendProductMomentums => Set<TrendProductMomentum>();
         public DbSet<TrendplusIndexRecord> TrendplusIndexRecords => Set<TrendplusIndexRecord>();
         public DbSet<InventoryRecommendation> InventoryRecommendations => Set<InventoryRecommendation>();
+        public DbSet<AnalyticsRefreshRun> AnalyticsRefreshRuns => Set<AnalyticsRefreshRun>();
 
         // ── Analytics Action Queue ───────────────────────────────────────
         public DbSet<AnalyticsActionItem> AnalyticsActionItems => Set<AnalyticsActionItem>();

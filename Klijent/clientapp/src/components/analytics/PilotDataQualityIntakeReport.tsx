@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AnalyticsNamedValue } from "../../types/analyticsTable";
-import type { PilotDataQualityIntakeReport } from "../../types/analytics";
+import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../../types/analytics";
 import { resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 import { downloadExport, generateExport, waitForExport } from "../../services/exportApi";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
@@ -13,6 +13,7 @@ type Props = {
   loading: boolean;
   error: string | null;
   filters: AnalyticsNamedValue[];
+  durableReport?: PilotIntakeDurableReport | null;
   onRetry: () => void;
 };
 
@@ -161,7 +162,18 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
   });
 }
 
-export default function PilotDataQualityIntakeReport({ report, loading, error, filters, onRetry }: Props) {
+function normalizeColumnType(value: string | undefined) {
+  return value === "number"
+    || value === "currency"
+    || value === "percent"
+    || value === "date"
+    || value === "datetime"
+    || value === "text"
+    ? value
+    : "text";
+}
+
+export default function PilotDataQualityIntakeReport({ report, loading, error, filters, durableReport, onRetry }: Props) {
   const [exportState, setExportState] = useState<string | null>(null);
   const [showMethodology, setShowMethodology] = useState(false);
 
@@ -225,7 +237,22 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
   const handleExcel = async () => {
     try {
       setExportState("Pripremam Excel izvoz...");
-      const payload = buildExportPayload(report, filters);
+      const payload = durableReport
+        ? resolveAnalyticsTablePayload({
+            tableKey: durableReport.payload.tableKey,
+            tableTitle: durableReport.payload.tableTitle,
+            documentType: durableReport.payload.documentType,
+            templateName: durableReport.payload.templateName,
+            locale: durableReport.payload.locale,
+            columns: durableReport.payload.columns.map((column) => ({
+              ...column,
+              dataType: normalizeColumnType(column.dataType),
+            })),
+            rows: durableReport.payload.rows,
+            filters: durableReport.payload.filters,
+            metadata: durableReport.payload.metadata,
+          })
+        : buildExportPayload(report, filters);
       const result = await generateExport(payload, {
         format: "xlsx",
         orientation: "landscape",
@@ -258,7 +285,10 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const targetUrl = durableReport?.stableQueryUrl
+        ? new URL(durableReport.stableQueryUrl, window.location.origin).toString()
+        : window.location.href;
+      await navigator.clipboard.writeText(targetUrl);
       setExportState("Link ka izveštaju je kopiran.");
     } catch {
       setExportState("Kopiranje linka nije uspelo.");
@@ -273,6 +303,9 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
           <p>Ucitavanje podataka za analitiku pre otvaranja dashboard-a.</p>
         </div>
         <div className="pilot-intake-actions no-print">
+          {durableReport?.stableQueryUrl ? (
+            <Link to={durableReport.stableQueryUrl} className="pilot-intake-action-link">Otvori trajni report</Link>
+          ) : null}
           <button type="button" onClick={handlePrint}>Stampaj izveštaj</button>
           <button type="button" onClick={handleCsv}>Izvezi CSV</button>
           <button type="button" onClick={() => void handleExcel()}>Izvezi Excel</button>

@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkersPanel } from "../WorkersPanel";
 import * as workerApiModule from "../../services/workerApi";
+import * as analyticsApiModule from "../../services/analyticsApi";
 
 vi.mock("../../services/workerApi", () => ({
   workerApi: {
@@ -12,6 +13,10 @@ vi.mock("../../services/workerApi", () => ({
     enableSchedule: vi.fn(),
     disableSchedule: vi.fn(),
   },
+}));
+
+vi.mock("../../services/analyticsApi", () => ({
+  getAnalyticsRefreshStatus: vi.fn(),
 }));
 
 describe("WorkersPanel", () => {
@@ -83,12 +88,32 @@ describe("WorkersPanel", () => {
     });
     vi.mocked(workerApiModule.workerApi.enableSchedule).mockResolvedValue({
       success: true,
-      message: "Omogućen raspored",
+      message: "Omogucen raspored",
     });
     vi.mocked(workerApiModule.workerApi.disableSchedule).mockResolvedValue({
       success: true,
-      message: "Onemogućen raspored",
+      message: "Onemogucen raspored",
     });
+    vi.mocked(analyticsApiModule.getAnalyticsRefreshStatus).mockResolvedValue({
+      lastSuccessfulRefreshAtUtc: null,
+      lastAttemptAtUtc: null,
+      lastFailureAtUtc: null,
+      isRunning: false,
+      lastErrorMessage: null,
+      currentStep: null,
+      refreshedObjects: [],
+      failedObjects: [],
+      durationSeconds: null,
+      dataFreshnessStatus: "unknown",
+      processMode: "worker",
+      processType: "worker",
+      workersEnabled: true,
+      workerWarning: null,
+      workerProcessWarning: null,
+      generatedAtUtc: new Date().toISOString(),
+      jobs: [],
+      recentRuns: [],
+    } as any);
   });
 
   it("renders all workers returned by backend", async () => {
@@ -97,7 +122,7 @@ describe("WorkersPanel", () => {
     expect(await screen.findByText("Access Import")).toBeInTheDocument();
     expect(await screen.findByText("Readiness Warmup")).toBeInTheDocument();
     expect(screen.getByText("2 radnik(a)")).toBeInTheDocument();
-    expect(screen.getByText("Auto-osvežavanje svaki 5s.")).toBeInTheDocument();
+    expect(screen.getByText("Auto-osvezavanje svaki 5s.")).toBeInTheDocument();
   });
 
   it("uses Serbian labels and keeps one refresh button", async () => {
@@ -110,11 +135,11 @@ describe("WorkersPanel", () => {
     expect(screen.getByText("Raspored")).toBeInTheDocument();
     expect(screen.getByText("Heartbeat")).toBeInTheDocument();
     expect(screen.getByText("Poslednje pokretanje")).toBeInTheDocument();
-    expect(screen.getByText("Sledeće pokretanje")).toBeInTheDocument();
-    expect(screen.getByText("Greška")).toBeInTheDocument();
+    expect(screen.getByText("Sledece pokretanje")).toBeInTheDocument();
+    expect(screen.getByText("Greska")).toBeInTheDocument();
     expect(screen.getByText("Akcije")).toBeInTheDocument();
 
-    expect(screen.getAllByRole("button", { name: "Osveži" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Osvezi" })).toHaveLength(1);
     expect(screen.queryByText("Worker Management")).not.toBeInTheDocument();
     expect(screen.queryByText("Refresh")).not.toBeInTheDocument();
   });

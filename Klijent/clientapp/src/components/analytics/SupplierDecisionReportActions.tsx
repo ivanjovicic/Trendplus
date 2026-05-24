@@ -14,15 +14,17 @@ type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
   disabled?: boolean;
   onError?: (message: string) => void;
+  durableReportHref?: string | null;
 };
 
-export default function SupplierDecisionReportActions({ payload, disabled = false, onError }: SupplierDecisionReportActionsProps) {
+export default function SupplierDecisionReportActions({ payload, disabled = false, onError, durableReportHref }: SupplierDecisionReportActionsProps) {
   const navigate = useNavigate();
-  const [busy, setBusy] = useState<"preview" | "copy" | "csv" | "print" | "excel" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const pdfExportEnabled = String(import.meta.env.VITE_ENABLE_PDF_EXPORT ?? "false").toLowerCase() === "true";
 
   const actionDisabled = disabled || !payload || busy !== null;
+  const durableActionDisabled = disabled || !durableReportHref || busy !== null;
 
   const copyToClipboard = async (text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -40,7 +42,19 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     document.body.removeChild(textarea);
   };
 
-  const run = async (type: "preview" | "copy" | "csv" | "print" | "excel" | "pdf") => {
+  const run = async (type: "durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf") => {
+    if (type === "durable") {
+      if (durableActionDisabled || !durableReportHref) return;
+      setBusy(type);
+      setStatus(null);
+      try {
+        navigate(durableReportHref);
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
+
     if (!payload || actionDisabled) return;
     setBusy(type);
     setStatus(null);
@@ -95,6 +109,14 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
   return (
     <div className="inline-flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+        onClick={() => void run("durable")}
+        disabled={durableActionDisabled}
+      >
+        {busy === "durable" ? "Otvaram..." : "Trajni report"}
+      </button>
       <button
         type="button"
         className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
