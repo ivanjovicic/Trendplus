@@ -13,6 +13,13 @@ type AnalyticsErrorStateProps = {
   helpLabel?: string;
 };
 
+const DEFAULT_SUGGESTIONS = [
+  "Proverite refresh status.",
+  "Proverite kvalitet podataka.",
+  "Pokusajte ponovo.",
+  "Ako se greska ponavlja, sacuvajte correlation ID i kontaktirajte podrsku.",
+];
+
 export default function AnalyticsErrorState({
   title,
   message,
@@ -24,15 +31,18 @@ export default function AnalyticsErrorState({
   helpHref,
   helpLabel,
 }: AnalyticsErrorStateProps) {
+  const resolvedSuggestions = suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS;
+  const displayMessage = message || "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan.";
+
   return (
     <section className="analytics-error-state" role="alert" aria-live="assertive">
       <h2>{title}</h2>
-      <p>{message || "Podaci trenutno nisu dostupni."}</p>
+      <p>{displayMessage}</p>
       {errorCode ? <p className="aes-code">Sifra greske: {errorCode}</p> : null}
       {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
-      {suggestions && suggestions.length > 0 ? (
+      {resolvedSuggestions.length > 0 ? (
         <ul className="aes-suggestions">
-          {suggestions.map((item) => (
+          {resolvedSuggestions.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>

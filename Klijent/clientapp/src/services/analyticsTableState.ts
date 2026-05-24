@@ -9,7 +9,7 @@ import type {
 
 const PRINT_PREFIX = "analytics-print:";
 const DETAIL_PREFIX = "analytics-detail:";
-const PRINT_TTL_MS = 15 * 60 * 1000;
+const PRINT_TTL_MS = 10 * 60 * 1000;
 
 type StoredPrintPayload = {
   savedAtUtc: string;

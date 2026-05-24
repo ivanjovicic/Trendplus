@@ -19,6 +19,7 @@ import {
 } from "../services/supplierSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
@@ -868,6 +869,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return "Nema podataka za izabrane filtere.";
   }, [activeFilters.fromDate, activeFilters.toDate, data, visibleSuppliers.length]);
 
+  const showBlockingError = Boolean(error && !data);
+  const showStaleError = Boolean(error && data);
+
   const qualityNotes = useMemo(() => {
     if (!data) return [] as string[];
 
@@ -911,6 +915,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     if (qualityNotes.length > 0) return "warning";
     return "good";
   }, [data, qualityNotes.length]);
+
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+    if (!data || visibleSuppliers.length > 0) return null;
+    if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
+    if ((data.suppliers ?? []).length > 0) return "filtered_out";
+    return "no_data";
+  }, [data, headerDataQualityStatus, visibleSuppliers.length]);
 
   useEffect(() => {
     if (!embedded || !onTrustMetadataChange) return;
@@ -1146,12 +1157,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           periodTo={data?.toDate ?? activeFilters.toDate}
           lastRefreshAt={data?.generatedAt ?? null}
           dataFreshnessStatus="unknown"
-          dataSource={`Supplier sales stats (scope: ${activeDataScope})`}
+          dataSource="Supplier decision materialized view"
           dataQualityStatus={headerDataQualityStatus ?? null}
           mode="recommendation"
           recommendationNote="Ovo je glavni recommendation pogled. Skorkarta je dodatni signal u odvojenom tabu."
-          emptyStateReason={!loading && !error && emptyStateHint ? emptyStateHint : null}
+          emptyStateReason={!loading && !showBlockingError && emptyStateHint ? emptyStateHint : null}
           dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          compact
         />
       ) : null}
 
@@ -1253,19 +1266,33 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       {invalidRange ? (
         <div className="supplier-decision-message error" role="alert">Datum 'od' ne moÅ¾e biti posle datuma 'do'.</div>
       ) : null}
-      {error ? <div className="supplier-decision-message error" role="alert">{error}</div> : null}
+      {showBlockingError ? (
+        <AnalyticsErrorState
+          title="Podaci trenutno nisu dostupni"
+          message={error ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
+          onRetry={() => {
+            void load(activeFilters);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {showStaleError ? (
+        <div className="supplier-decision-message info" role="status" aria-live="polite">
+          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
+        </div>
+      ) : null}
       {loading && !data ? (
         <div className="supplier-decision-loading" role="status" aria-live="polite">
           <UltraSpinner size="md" label="UÄitavam podatke o dobavljaÄima" />
           <span>UÄitavam podatke o dobavljaÄima...</span>
         </div>
       ) : null}
-      {!loading && !error && emptyStateHint ? (
+      {!loading && !showBlockingError && emptyStateHint ? (
         embedded ? (
           <div className="supplier-decision-message info" role="status" aria-live="polite">{emptyStateHint}</div>
         ) : (
           <AnalyticsEmptyState
-            variant="insufficient_data"
+            variant={emptyStateVariant ?? "no_data"}
             title="Nema dovoljno podataka za izabrani period"
             message={emptyStateHint}
             reasons={[
@@ -1275,8 +1302,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               "Dobavljaci nisu pravilno povezani",
             ]}
             actions={[
+              { label: "Prosirite period." },
+              { label: "Uklonite uske filtere i pokusajte ponovo." },
               { label: "Otvori Data Quality", href: "/analytics/data-quality" },
             ]}
+            dataQualityHref="/analytics/data-quality"
+            refreshStatusHref="/admin/configuration?panel=workers"
+            emptyReason={emptyStateHint}
           />
         )
       ) : null}

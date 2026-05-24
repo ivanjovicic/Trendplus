@@ -50,12 +50,28 @@ export default function AnalyticsEmptyState({
   const displayTitle = title ?? defaults?.title ?? "Nema podataka.";
   const displayMessage = message ?? defaults?.message ?? null;
   const variantClass = variant ? ` aes-${variant.replace(/_/g, "-")}` : "";
+  const normalizedEmptyReason = emptyReason?.trim();
+  const showEmptyReason = emptyReason !== undefined && emptyReason !== null;
+  const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
+  const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
+  const defaultActions: EmptyStateAction[] = variant === "filtered_out"
+    ? [
+      { label: "Ublazite filtere i pokusajte ponovo." },
+      { label: "Otvori kvalitet podataka", href: resolvedDataQualityHref },
+      { label: "Proveri refresh status", href: resolvedRefreshStatusHref },
+    ]
+    : [
+      { label: "Prosiri period." },
+      { label: "Otvori kvalitet podataka", href: resolvedDataQualityHref },
+      { label: "Proveri refresh status", href: resolvedRefreshStatusHref },
+    ];
+  const resolvedActions = actions && actions.length > 0 ? actions : defaultActions;
 
   return (
     <section className={`analytics-empty-state${variantClass}`} role="status" aria-live="polite">
       <h2>{displayTitle}</h2>
       {displayMessage ? <p>{displayMessage}</p> : null}
-      {emptyReason ? <p className="aes-empty-reason">{emptyReason}</p> : null}
+      {showEmptyReason ? <p className="aes-empty-reason">{normalizedEmptyReason || "Nije specificirano"}</p> : null}
 
       {reasons && reasons.length > 0 ? (
         <div className="aes-reasons">
@@ -68,11 +84,11 @@ export default function AnalyticsEmptyState({
         </div>
       ) : null}
 
-      {actions && actions.length > 0 ? (
+      {resolvedActions.length > 0 ? (
         <div className="aes-actions">
           <h3>Predlog akcija</h3>
           <ul>
-            {actions.map((action) => (
+            {resolvedActions.map((action) => (
               <li key={action.label}>
                 {action.href ? (
                   <Link to={action.href} className="aes-action-link">{action.label}</Link>
@@ -87,10 +103,10 @@ export default function AnalyticsEmptyState({
         </div>
       ) : null}
 
-      {(dataQualityHref || refreshStatusHref) ? (
+      {(resolvedDataQualityHref || resolvedRefreshStatusHref) ? (
         <div className="aes-footer-links">
-          {dataQualityHref ? <Link to={dataQualityHref} className="aes-footer-link">Data Quality</Link> : null}
-          {refreshStatusHref ? <Link to={refreshStatusHref} className="aes-footer-link">Refresh Status</Link> : null}
+          {resolvedDataQualityHref ? <Link to={resolvedDataQualityHref} className="aes-footer-link">Data Quality</Link> : null}
+          {resolvedRefreshStatusHref ? <Link to={resolvedRefreshStatusHref} className="aes-footer-link">Refresh Status</Link> : null}
         </div>
       ) : null}
     </section>

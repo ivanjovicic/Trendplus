@@ -29,7 +29,21 @@ const payload = {
 };
 
 describe("SupplierDecisionReportActions", () => {
+  it("hides PDF export action when feature is disabled", () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole("button", { name: "Export PDF" })).not.toBeInTheDocument();
+  });
+
   it("calls print preview action", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "true");
+
     render(
       <MemoryRouter>
         <SupplierDecisionReportActions payload={payload} />
@@ -45,6 +59,8 @@ describe("SupplierDecisionReportActions", () => {
   });
 
   it("calls excel and pdf export actions", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "true");
+
     render(
       <MemoryRouter>
         <SupplierDecisionReportActions payload={payload} />
@@ -59,6 +75,8 @@ describe("SupplierDecisionReportActions", () => {
   });
 
   it("disables actions when payload is missing", () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "true");
+
     render(
       <MemoryRouter>
         <SupplierDecisionReportActions payload={null} />
@@ -70,5 +88,23 @@ describe("SupplierDecisionReportActions", () => {
     expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Export Excel" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  });
+
+  it("notifies caller on PDF export errors", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "true");
+    exportPdfMock.mockRejectedValueOnce(new Error("PDF servis nije dostupan"));
+    const onError = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} onError={onError} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith("PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel.");
+    });
   });
 });

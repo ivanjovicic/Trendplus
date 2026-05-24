@@ -51,16 +51,50 @@
   font-size: 12px;
 }
 
+.no-print {
+  display: flex;
+}
+
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  .no-print,
   .sdrp-head,
   .sdrp-actions,
   .sdrp-back,
-  .sdrp-print {
+  .sdrp-print,
+  button,
+  nav,
+  aside,
+  .sidebar,
+  .top-nav,
+  .filter,
+  .filters {
     display: none !important;
   }
 
   .supplier-decision-report-page {
     padding: 0 !important;
+  }
+
+  .supplier-decision-report-page .supplier-decision-report {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  .supplier-decision-report-page .sdr-section,
+  .supplier-decision-report-page .sdr-warning,
+  .supplier-decision-report-page .sdr-kpi,
+  .supplier-decision-report-page .sdr-reco,
+  .supplier-decision-report-page .sdr-list li,
+  .supplier-decision-report-page .sdr-dq,
+  .supplier-decision-report-page .sdr-method {
+    page-break-inside: avoid;
   }
 }
 

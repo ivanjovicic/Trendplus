@@ -37,6 +37,23 @@ public static class AnalyticsResponseMetaFactory
             GeneratedAtUtc = DateTime.UtcNow
         };
 
+    public static AnalyticsResponseMetaDto Warning(
+        string warningCode,
+        string warningMessage,
+        string? dataQualityStatus = null,
+        DateTime? lastRefreshAtUtc = null)
+        => new()
+        {
+            Success = true,
+            IsPartial = true,
+            WarningCode = warningCode,
+            WarningMessage = warningMessage,
+            Message = warningMessage,
+            DataQualityStatus = dataQualityStatus,
+            LastRefreshAtUtc = lastRefreshAtUtc,
+            GeneratedAtUtc = DateTime.UtcNow
+        };
+
     public static AnalyticsResponseMetaDto Error(
         string errorCode,
         string errorMessage,

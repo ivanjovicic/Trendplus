@@ -10,6 +10,7 @@ type AnalyticsTrustHeaderProps = {
   dataFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   refreshIsRunning?: boolean;
   refreshCurrentStep?: string | null;
+  isPartial?: boolean;
   dataSource?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   dataQualitySummary?: {
@@ -26,6 +27,7 @@ type AnalyticsTrustHeaderProps = {
   methodologyLabel?: string;
   dataQualityHref?: string;
   refreshStatusHref?: string;
+  compact?: boolean;
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
@@ -76,10 +78,11 @@ function normalizeStatus(value: string | null | undefined): "good" | "warning" |
   return null;
 }
 
-function statusTone(status: ReturnType<typeof normalizeStatus>): "good" | "warning" | "critical" | "neutral" {
+function statusTone(status: ReturnType<typeof normalizeStatus>): "good" | "warning" | "critical" | "insufficient" | "neutral" {
   if (status === "good") return "good";
   if (status === "warning") return "warning";
   if (status === "critical") return "critical";
+  if (status === "insufficient_data") return "insufficient";
   return "neutral";
 }
 
@@ -116,6 +119,7 @@ export default function AnalyticsTrustHeader({
   dataFreshnessStatus,
   refreshIsRunning,
   refreshCurrentStep,
+  isPartial,
   dataSource,
   dataQualityStatus,
   dataQualitySummary,
@@ -126,6 +130,7 @@ export default function AnalyticsTrustHeader({
   methodologyLabel,
   dataQualityHref,
   refreshStatusHref,
+  compact = false,
   requestedDataset,
   effectiveDataset,
   effectivePeriodLabel,
@@ -144,11 +149,14 @@ export default function AnalyticsTrustHeader({
   const normalizedRequestedDataset = requestedDataset?.trim() || null;
   const normalizedEffectiveDataset = effectiveDataset?.trim() || null;
   const datasetValue = normalizedRequestedDataset && normalizedEffectiveDataset
-    ? `${normalizedRequestedDataset} → ${normalizedEffectiveDataset}`
+    ? `${normalizedRequestedDataset} -> ${normalizedEffectiveDataset}`
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
   const effectiveLabel = effectivePeriodLabel?.trim() || null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = recommendationAllowed === false && !showFallbackBanner;
+  const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
+  const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
+  const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
 
   return (
     <section className="analytics-trust-header" aria-label="Kontekst pouzdanosti analitike">
@@ -212,13 +220,19 @@ export default function AnalyticsTrustHeader({
         </div>
       ) : null}
 
+      {showPartialBanner ? (
+        <div className="ath-banner ath-banner-warning" role="note">
+          <strong>Upozorenje:</strong> Prikaz moze biti delimican ili zastareo.
+        </div>
+      ) : null}
+
       {recommendationNote ? <p className="ath-note">{recommendationNote}</p> : null}
       {emptyStateReason ? <p className="ath-empty-reason">{emptyStateReason}</p> : null}
 
-      <div className="ath-summary">
-        <h2>Sazetak kvaliteta podataka</h2>
+      <div className={`ath-summary ${compact ? "ath-summary-compact" : ""}`}>
+        {compact ? null : <h2>Sazetak kvaliteta podataka</h2>}
         {hasSummary ? (
-          <div className="ath-summary-grid">
+          <div className={compact ? "ath-summary-chips" : "ath-summary-grid"}>
             <div><span>Artikli bez dobavljaca</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
             <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
             <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
@@ -226,19 +240,18 @@ export default function AnalyticsTrustHeader({
             <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
           </div>
         ) : (
-          <p className="ath-summary-missing">Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
+          <p className={`ath-summary-missing ${compact ? "ath-summary-missing-compact" : ""}`}>Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
         )}
       </div>
 
-      {(methodologyHref || dataQualityHref || refreshStatusHref) ? (
-        <div className="ath-footer">
-          {methodologyHref ? <a href={methodologyHref}>{methodologyLabel ?? "Metodologija i tumacenje signala"}</a> : null}
-          {dataQualityHref ? <a href={dataQualityHref}>Kvalitet podataka</a> : null}
-          {refreshStatusHref ? <a href={refreshStatusHref}>Status osvezavanja</a> : null}
-        </div>
-      ) : null}
+      <div className="ath-footer">
+        <a href={resolvedDataQualityHref}>Kvalitet podataka</a>
+        <a href={resolvedRefreshStatusHref}>Worker status</a>
+        {methodologyHref ? <a href={methodologyHref}>{methodologyLabel ?? "Metodologija i tumacenje signala"}</a> : null}
+      </div>
     </section>
   );
 }
 
 export type { AnalyticsTrustHeaderProps };
+

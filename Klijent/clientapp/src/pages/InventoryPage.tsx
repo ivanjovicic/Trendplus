@@ -663,11 +663,10 @@ export default function InventoryPage() {
     }, stores, suppliers);
     const suggestionKey = `forecast-${item.skuId}-${item.storeId}-${item.sizeCode}`;
     setActionWorkflow((current) => {
-      const base = current ?? { generatedAtUtc: new Date().toISOString(), pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
+      const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
       if (base.items.some((entry) => entry.suggestionKey === suggestionKey)) return base;
       return {
         ...base,
-        generatedAtUtc: new Date().toISOString(),
         pendingCount: base.pendingCount + 1,
         items: [{
           suggestionKey,
@@ -725,11 +724,14 @@ export default function InventoryPage() {
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={inventoryLastRefreshAt}
-        dataSource="Inventory cached snapshots + operational workflow"
+        dataSource="Inventory analytics snapshot"
         dataQualityStatus={null}
         mode="recommendation"
         recommendationNote="Workflow akcije su korisnicki vodjene; backend recommendation payload ostaje izvor istine."
         methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">

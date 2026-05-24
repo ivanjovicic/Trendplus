@@ -22,6 +22,15 @@ function rowValue(payload: ResolvedAnalyticsTablePayload, section: string, item:
   return value.trim() ? value : null;
 }
 
+function rowValueAny(payload: ResolvedAnalyticsTablePayload, candidates: Array<{ section: string; item: string }>): string | null {
+  for (const candidate of candidates) {
+    const value = rowValue(payload, candidate.section, candidate.item);
+    if (value) return value;
+  }
+
+  return null;
+}
+
 function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRow[]> {
   const grouped = new Map<string, ReportRow[]>();
   for (const raw of payload.rows) {
@@ -73,12 +82,21 @@ function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: st
 export default function SupplierDecisionReport({ payload }: SupplierDecisionReportProps) {
   const grouped = useMemo(() => groupRows(payload), [payload]);
 
-  const supplierLabel = rowValue(payload, "Header", "Dobavljac") ?? filterValue(payload, "supplier") ?? "Dobavljac";
+  const supplierLabel = rowValueAny(payload, [{ section: "Header", item: "Dobavljac" }]) ?? filterValue(payload, "supplier") ?? "Dobavljac";
   const period = rowValue(payload, "Header", "Period") ?? filterValue(payload, "period") ?? "-";
-  const reportTitle = rowValue(payload, "Header", "Report") ?? payload.tableTitle ?? "Supplier Decision Report";
-  const dataScope = rowValue(payload, "Header", "Data scope") ?? filterValue(payload, "dataScope") ?? "-";
+  const reportTitle = rowValueAny(payload, [
+    { section: "Header", item: "Naziv izvestaja" },
+    { section: "Header", item: "Report" },
+  ]) ?? payload.tableTitle ?? "Trendplus izvestaj dobavljaca";
+  const dataScope = rowValueAny(payload, [
+    { section: "Header", item: "Opseg podataka" },
+    { section: "Header", item: "Data scope" },
+  ]) ?? filterValue(payload, "dataScope") ?? "-";
   const reportDate = rowValue(payload, "Header", "Datum izvestaja") ?? metaValue(payload, "generatedAtUtc") ?? "-";
-  const lastRefresh = rowValue(payload, "Header", "Poslednji refresh") ?? metaValue(payload, "lastRefreshAtUtc") ?? "-";
+  const lastRefresh = rowValueAny(payload, [
+    { section: "Header", item: "Poslednje osvezenje" },
+    { section: "Header", item: "Poslednji refresh" },
+  ]) ?? metaValue(payload, "lastRefreshAtUtc") ?? "-";
   const freshnessLabel = metaValue(payload, "dataFreshness");
   const metaDQ = metaValue(payload, "dataQualityStatus");
   const normalizedDQ = normalizeDataQualityStatus(metaValue(payload, "dataQualityStatus"));
@@ -91,8 +109,8 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const risk = grouped.get("Rizik zalihe") ?? [];
   const boost = grouped.get("Pojacaj") ?? [];
   const reduce = grouped.get("Smanji") ?? [];
-  const dataQuality = grouped.get("Data quality") ?? [];
-  const methodology = grouped.get("Methodology") ?? [];
+  const dataQuality = grouped.get("Kvalitet podataka") ?? grouped.get("Data quality") ?? [];
+  const methodology = grouped.get("Metodologija") ?? grouped.get("Methodology") ?? [];
 
   return (
     <article className={`supplier-decision-report dq-${normalizedDQ}`}>
@@ -105,10 +123,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
         <div className="sdr-badges">
           <span className={`sdr-badge dq-${normalizedDQ}`}>
-            {metaDQ ? `Data quality: ${metaDQ}` : `Data quality: ${dataQualityStatusLabel(metaDQ)}`}
+            {metaDQ ? `Kvalitet podataka: ${metaDQ}` : `Kvalitet podataka: ${dataQualityStatusLabel(metaDQ)}`}
           </span>
           {freshnessLabel ? (
-            <span className="sdr-badge neutral">Freshness: {freshnessLabel}</span>
+            <span className="sdr-badge neutral">Svezina podataka: {freshnessLabel}</span>
           ) : null}
           {recommendationAllowed != null ? (
             <span className="sdr-badge neutral">Preporuke: {String(recommendationAllowed) === "true" ? "dozvoljene" : "ogranicene"}</span>
@@ -118,9 +136,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
 
       <section className="sdr-meta">
         <div className="sdr-meta-grid">
-          <div className="sdr-meta-item"><span>Data scope</span><strong>{dataScope}</strong></div>
+          <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
           <div className="sdr-meta-item"><span>Datum izvestaja</span><strong>{reportDate}</strong></div>
-          <div className="sdr-meta-item"><span>Poslednji refresh</span><strong>{lastRefresh}</strong></div>
+          <div className="sdr-meta-item"><span>Poslednje osvezenje</span><strong>{lastRefresh}</strong></div>
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
       </section>
@@ -141,7 +159,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       ) : null}
 
       <section className="sdr-section">
-        <h2>Executive summary</h2>
+        <h2>Izvrsni sazetak</h2>
         <div className="sdr-kpi-grid">
           {kpi.map((row) => (
             <article key={`${row.item}-${row.value}`} className="sdr-kpi">
@@ -253,7 +271,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
       <section className="sdr-section">
         <h2>Kvalitet podataka</h2>
         {dataQuality.length === 0 ? (
-          <p className="sdr-empty">Sazetak data quality nije dostupan.</p>
+          <p className="sdr-empty">Detaljan sazetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.</p>
         ) : (
           <div className="sdr-dq-grid">
             {dataQuality.map((row, idx) => (

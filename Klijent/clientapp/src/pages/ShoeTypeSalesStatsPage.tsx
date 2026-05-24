@@ -619,6 +619,25 @@ export default function ShoeTypeSalesStatsPage() {
     return notes;
   }, [data]);
 
+  const headerDataQualityStatus = useMemo<"good" | "warning" | "critical" | "insufficient_data" | null>(() => {
+    if (!data) return null;
+    if ((data.shoeTypes ?? []).length === 0) return "insufficient_data";
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct ?? 0;
+    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct ?? 100;
+    if (missingCostShare >= 50 || splitCoverage < 30) return "critical";
+    if (qualityNotes.length > 0) return "warning";
+    return "good";
+  }, [data, qualityNotes.length]);
+
+  const showBlockingError = Boolean(error && !data);
+  const showStaleError = Boolean(error && data);
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+    if (!data || sortedRows.length > 0) return null;
+    if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
+    if (decisionRows.length > 0) return "filtered_out";
+    return "no_data";
+  }, [data, decisionRows.length, headerDataQualityStatus, sortedRows.length]);
+
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -758,9 +777,12 @@ export default function ShoeTypeSalesStatsPage() {
         periodTo={activeFilters.toDate}
         lastRefreshAt={data?.generatedAt ?? null}
         dataSource="Sales facts analytics"
+        dataQualityStatus={headerDataQualityStatus}
         mode="signal"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="shoetype-decision-header">
         <div>
@@ -861,13 +883,18 @@ export default function ShoeTypeSalesStatsPage() {
       {invalidRange ? (
         <div className="shoetype-decision-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
-      {error ? (
+      {showBlockingError ? (
         <AnalyticsErrorState
-          title="Greška pri učitavanju podataka po tipu obuće"
-          message={error}
+          title="Podaci trenutno nisu dostupni"
+          message={error ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
           onRetry={() => void load(activeFilters)}
           helpHref="/analytics/data-quality"
         />
+      ) : null}
+      {showStaleError ? (
+        <div className="shoetype-decision-message info" role="status" aria-live="polite">
+          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
+        </div>
       ) : null}
       {loading && !data ? (
         <div className="shoetype-decision-loading" role="status" aria-live="polite">
@@ -875,14 +902,17 @@ export default function ShoeTypeSalesStatsPage() {
           <span>Učitavam tipove obuće...</span>
         </div>
       ) : null}
-      {!loading && !error && emptyStateHint ? (
+      {!loading && !showBlockingError && emptyStateHint ? (
         <AnalyticsEmptyState
-          variant="filtered_out"
+          variant={emptyStateVariant ?? "no_data"}
           message={emptyStateHint}
           actions={[
             { label: "Proširite period pretrage." },
             { label: "Uklonite filter prodavnice ili sezone." },
           ]}
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          emptyReason={emptyStateHint}
         />
       ) : null}
 

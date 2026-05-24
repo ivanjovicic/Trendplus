@@ -46,6 +46,8 @@ describe("buildSupplierDecisionReportPayload", () => {
         keyInsights: [],
       },
       trustMetadata: {
+        requestedPeriodFrom: "2026-05-01T00:00:00Z",
+        requestedPeriodTo: "2026-07-30T23:59:59Z",
         requestedFrom: "2026-05-01T00:00:00Z",
         requestedTo: "2026-07-30T23:59:59Z",
         effectiveFrom: "2026-05-01T00:00:00Z",
@@ -89,7 +91,9 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.documentType).toBe("supplier-decision-report");
     expect(payload.rows.some((row) => row.section === "Header" && row.item === "Dobavljac")).toBe(true);
     expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Prihod")).toBe(true);
-    expect(payload.rows.some((row) => row.section === "Data quality")).toBe(true);
+    expect(payload.rows.some((row) => row.section === "Kvalitet podataka")).toBe(true);
+    expect(payload.rows.some((row) => row.section === "Header" && row.item === "Efektivni dataset")).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "effectiveDataset" && item.value === "90d")).toBe(true);
     expect(payload.metadata.some((item) => item.key === "dataFreshness" && item.value === "Sveze")).toBe(true);
   });
 
@@ -103,6 +107,8 @@ describe("buildSupplierDecisionReportPayload", () => {
       freshnessStatus: "stale",
       summary: null,
       trustMetadata: {
+        requestedPeriodFrom: "2026-07-01T00:00:00Z",
+        requestedPeriodTo: "2026-07-30T23:59:59Z",
         requestedFrom: "2026-07-01T00:00:00Z",
         requestedTo: "2026-07-30T23:59:59Z",
         effectiveFrom: "2026-06-01T00:00:00Z",
@@ -145,7 +151,8 @@ describe("buildSupplierDecisionReportPayload", () => {
 
     const warningRows = payload.rows.filter((row) => row.section === "Upozorenje");
     expect(warningRows.length).toBeGreaterThan(0);
-    expect(warningRows.some((row) => String(row.value).includes("Sistem ne daje finalnu preporuku"))).toBe(true);
+    expect(warningRows.some((row) => String(row.value).includes("Preporuka je ogranicena zbog nedovoljnih ili fallback podataka"))).toBe(true);
     expect(warningRows.some((row) => String(row.item).includes("Delimicni/fallback podaci"))).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "usedFallback" && item.value === true)).toBe(true);
   });
 });

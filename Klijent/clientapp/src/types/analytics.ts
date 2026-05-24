@@ -191,6 +191,7 @@ export interface DashboardAction {
   // TODO(backend-dto): add confidence/reliability/dataQualityStatus/statusReason to dashboard actions.
   confidencePct?: number | null;
   reliabilityPct?: number | null;
+  recommendationAllowed?: boolean | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   statusReason?: string | null;
   reasonCodes?: string[] | null;
@@ -209,6 +210,7 @@ export interface DashboardDecisionAction {
   impactEstimateRsd?: number | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
+  recommendationAllowed?: boolean | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   actionUrl?: string | null;
   metadata?: Record<string, unknown> | null;
@@ -380,6 +382,7 @@ export interface ExecutiveDataQualitySummary {
   missingCostCount: number;
   insufficientSignalCount: number;
   ignoredRowsCount: number;
+  zeroRevenueRowsCount?: number;
   freshnessStatus: string;
 }
 

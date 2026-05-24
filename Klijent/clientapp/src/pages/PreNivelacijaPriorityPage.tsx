@@ -441,6 +441,8 @@ export default function PreNivelacijaPriorityPage() {
         mode="recommendation"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="pnp-decision-header">
         <div>

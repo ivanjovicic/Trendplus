@@ -986,9 +986,11 @@ const advancedSignals = useMemo(
         periodTo={activeFilters.toDate}
         lastRefreshAt={data?.generatedAt ?? null}
         dataSource="Nivelacija analytics"
-        mode="signal"
+        mode="report"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="ppn-decision-header">
         <div>

@@ -687,6 +687,14 @@ export default function DataQualityPage() {
     { key: "issueType", label: "Issue type", value: issueType },
   ], [data?.total, issueType]);
 
+  const showEmptyState = !loading && !error && (data?.items.length ?? 0) === 0;
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+    if (!showEmptyState) return null;
+    if (data?.meta?.dataQualityStatus === "insufficient_data") return "insufficient_data";
+    if (q.trim().length > 0) return "filtered_out";
+    return "no_data";
+  }, [data?.meta?.dataQualityStatus, q, showEmptyState]);
+
   const healthStatus = useMemo(() => {
     if (!health) return { label: "Snapshot nije dostupan", tone: "neutral" as const };
 
@@ -762,12 +770,15 @@ export default function DataQualityPage() {
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
-        dataSource={contextDataScope ? `Data quality (${contextDataScope})` : "Data quality read model"}
+        dataSource="Data quality checks"
         dataQualityStatus={trustDataQualityStatus}
         dataQualitySummary={trustSummary}
         mode="report"
         emptyStateReason={!loading && !error && data?.items.length === 0 ? (data?.meta?.message ?? "Nema otvorenih data quality problema za izabrani filter.") : null}
         methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="data-quality-header">
         <div>
@@ -990,10 +1001,10 @@ export default function DataQualityPage() {
         />
       ) : null}
 
-      {!loading && !error && data?.items.length === 0 && data?.meta?.dataQualityStatus === "insufficient_data" ? (
+      {showEmptyState ? (
         <AnalyticsEmptyState
-          variant="insufficient_data"
-          message={data.meta.message ?? "Nema otvorenih data quality problema u izabranom opsegu."}
+          variant={emptyStateVariant ?? "no_data"}
+          message={data?.meta?.message ?? "Nema otvorenih data quality problema u izabranom opsegu."}
           reasons={[
             "U izabranom periodu nema problema koji prolaze prag signalnog prometa.",
             "Scope ili tip problema je suzio rezultat na prazan skup.",
@@ -1004,6 +1015,8 @@ export default function DataQualityPage() {
             { label: "Pokrenite analytics refresh i pokušajte ponovo." },
           ]}
           dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          emptyReason={data?.meta?.emptyReason ?? data?.meta?.message ?? null}
         />
       ) : null}
       {healthError ? <div className="data-quality-loading">{healthError}</div> : null}
@@ -1011,7 +1024,7 @@ export default function DataQualityPage() {
 
       {!loading && data ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 
-      {!loading && data ? (
+      {!loading && data && !showEmptyState ? (
         <section className="data-quality-card">
           <div className="data-quality-table-head">
             <div>

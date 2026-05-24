@@ -265,10 +265,12 @@ export default function AnalyticsActionsPage() {
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={null}
-        dataSource="Analytics actions log"
+        dataSource="Action queue"
         mode="report"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <div className="aaq-header">
         <h1 className="aaq-title">Akcije i preporuke</h1>

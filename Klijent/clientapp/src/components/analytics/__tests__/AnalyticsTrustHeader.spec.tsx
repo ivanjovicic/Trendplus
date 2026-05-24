@@ -76,8 +76,24 @@ describe("AnalyticsTrustHeader", () => {
     );
 
     expect(screen.getByText("Dataset")).toBeInTheDocument();
-    expect(screen.getByText(/30d → 90d/)).toBeInTheDocument();
+    expect(screen.getByText(/30d -> 90d/)).toBeInTheDocument();
     expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
     expect(screen.getByText(/\(no_mv_30d\)/)).toBeInTheDocument();
+  });
+
+  it("shows default footer links and highlights insufficient data", () => {
+    render(
+      <AnalyticsTrustHeader
+        title="Kontekst"
+        description="Opis"
+        mode="recommendation"
+        dataQualityStatus="insufficient_data"
+        compact
+      />
+    );
+
+    expect(screen.getByText("Nedovoljno podataka")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(screen.getByRole("link", { name: "Worker status" })).toHaveAttribute("href", "/admin/configuration?panel=workers");
   });
 });

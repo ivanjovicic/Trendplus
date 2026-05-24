@@ -3003,6 +3003,7 @@ public static class CachedAnalyticsEndpoints
                     ImpactEstimateRsd = null,
                     ConfidencePct = null,
                     ReliabilityPct = null,
+                    RecommendationAllowed = false,
                     DataQualityStatus = "insufficient_data",
                     ActionUrl = mappedLink,
                     Metadata = new Dictionary<string, object?>
@@ -3021,6 +3022,17 @@ public static class CachedAnalyticsEndpoints
         }
 
         return actions
+            .Select(action =>
+            {
+                action.RecommendationAllowed = action.RecommendationStatus switch
+                {
+                    "INSUFFICIENT_DATA" => false,
+                    "FIX_DATA" => false,
+                    null => action.RecommendationAllowed,
+                    _ => true
+                };
+                return action;
+            })
             .OrderBy(a => DecisionPriorityRank(a.Priority))
             .ThenByDescending(a => a.ConfidencePct ?? 0)
             .Take(8)
@@ -3049,6 +3061,7 @@ public static class CachedAnalyticsEndpoints
                 MissingCostCount = 0,
                 InsufficientSignalCount = 0,
                 IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
+                ZeroRevenueRowsCount = 0,
                 FreshnessStatus = validationFreshness?.Status ?? "unknown"
             };
             return snapshot;
@@ -3066,6 +3079,7 @@ public static class CachedAnalyticsEndpoints
             InsufficientSignalCount = rows.Count(x =>
                 x.RecommendationStatus == "INSUFFICIENT_DATA" || x.RecommendationStatus == "FIX_DATA"),
             IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
+            ZeroRevenueRowsCount = rows.Count(x => x.Revenue <= 0m),
             FreshnessStatus = validationFreshness?.Status ?? "unknown"
         };
 
@@ -3406,6 +3420,7 @@ public static class CachedAnalyticsEndpoints
             ImpactEstimateRsd = impactEstimateRsd,
             ConfidencePct = avgConfidence,
             ReliabilityPct = avgReliability,
+            RecommendationAllowed = recommendationStatus is not "INSUFFICIENT_DATA" and not "FIX_DATA",
             DataQualityStatus = string.IsNullOrWhiteSpace(exemplar.DataQualityStatus) ? "insufficient_data" : exemplar.DataQualityStatus,
             ActionUrl = actionUrl,
             Metadata = new Dictionary<string, object?>
@@ -4422,9 +4437,14 @@ public static class CachedAnalyticsEndpoints
                 AnalyzedRows = 0,
                 IgnoredRowsCount = 0,
                 Rows = [],
-                Meta = BuildSuccessMeta(
-                    dataQualityStatus: "insufficient_data",
-                    message: "Nema podataka za izabrani period i filtere.")
+                Meta = new AnalyticsResponseMetaDto
+                {
+                    Success = true,
+                    DataQualityStatus = "insufficient_data",
+                    EmptyReason = "no_rows_for_period",
+                    Message = "Nema podataka za izabrani period i filtere.",
+                    GeneratedAtUtc = nowUtc
+                }
             };
         }
 
@@ -5137,6 +5157,7 @@ public class DashboardDecisionActionDto
     public decimal? ImpactEstimateRsd { get; set; }
     public int? ConfidencePct { get; set; }
     public int? ReliabilityPct { get; set; }
+    public bool RecommendationAllowed { get; set; } = true;
     public string DataQualityStatus { get; set; } = "insufficient_data";
     public string ActionUrl { get; set; } = "/analytics";
     public Dictionary<string, object?> Metadata { get; set; } = new();
@@ -5193,6 +5214,7 @@ public class ExecutiveDataQualitySummaryDto
     public int MissingCostCount { get; set; }
     public int InsufficientSignalCount { get; set; }
     public int IgnoredRowsCount { get; set; }
+    public int ZeroRevenueRowsCount { get; set; }
     public string FreshnessStatus { get; set; } = "unknown";
 }
 

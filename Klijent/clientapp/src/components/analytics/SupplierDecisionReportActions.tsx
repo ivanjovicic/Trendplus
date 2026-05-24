@@ -13,12 +13,14 @@ import { savePrintPayload } from "../../services/analyticsTableState";
 type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
   disabled?: boolean;
+  onError?: (message: string) => void;
 };
 
-export default function SupplierDecisionReportActions({ payload, disabled = false }: SupplierDecisionReportActionsProps) {
+export default function SupplierDecisionReportActions({ payload, disabled = false, onError }: SupplierDecisionReportActionsProps) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState<"preview" | "copy" | "csv" | "print" | "excel" | "pdf" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const pdfExportEnabled = String(import.meta.env.VITE_ENABLE_PDF_EXPORT ?? "false").toLowerCase() === "true";
 
   const actionDisabled = disabled || !payload || busy !== null;
 
@@ -74,10 +76,18 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         return;
       }
 
+      if (!pdfExportEnabled) {
+        throw new Error("PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel.");
+      }
+
       await exportSupplierDecisionReportPdf(payload);
       setStatus("PDF izvestaj je preuzet.");
     } catch (reason) {
-      setStatus(reason instanceof Error ? reason.message : "Izvoz izvestaja nije uspeo.");
+      const message = reason instanceof Error ? reason.message : "Izvoz izvestaja nije uspeo.";
+      setStatus(message);
+      onError?.(type === "pdf"
+        ? "PDF export trenutno nije dostupan. Koristite Print izvestaj ili Export Excel."
+        : message);
     } finally {
       setBusy(null);
     }
@@ -126,14 +136,16 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       >
         {busy === "excel" ? "Izvoz..." : "Export Excel"}
       </button>
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("pdf")}
-        disabled={actionDisabled}
-      >
-        {busy === "pdf" ? "Izvoz..." : "Export PDF"}
-      </button>
+      {pdfExportEnabled ? (
+        <button
+          type="button"
+          className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+          onClick={() => void run("pdf")}
+          disabled={actionDisabled}
+        >
+          {busy === "pdf" ? "Izvoz..." : "Export PDF"}
+        </button>
+      ) : null}
       {status ? <span className="text-xs text-[var(--accent-success)]">{status}</span> : null}
     </div>
   );

@@ -83,7 +83,7 @@ export default function SupplierConsolidatedPage() {
         dataFreshnessStatus={trustPayload?.dataFreshnessStatus ?? "unknown"}
         refreshIsRunning={trustPayload?.refreshIsRunning ?? false}
         refreshCurrentStep={trustPayload?.refreshCurrentStep ?? null}
-        dataSource={trustPayload?.dataSource ?? `Supplier analytics (${canonicalFilters.dataScope})`}
+        dataSource={trustPayload?.dataSource ?? "Supplier decision materialized view"}
         dataQualityStatus={trustPayload?.dataQualityStatus ?? null}
         dataQualitySummary={trustPayload?.dataQualitySummary}
         requestedDataset={trustPayload?.requestedDataset ?? null}
@@ -93,10 +93,13 @@ export default function SupplierConsolidatedPage() {
         fallbackReason={trustPayload?.fallbackReason ?? null}
         fallbackReasonCode={trustPayload?.fallbackReasonCode ?? null}
         recommendationAllowed={trustPayload?.recommendationAllowed ?? null}
-        mode={currentTab === "overview" ? "recommendation" : "signal"}
-        recommendationNote={trustPayload?.recommendationNote ?? (currentTab === "overview" ? "Overview tab je glavni recommendation pogled za odluku o dobavljacu." : undefined)}
+        mode={currentTab === "assortment" ? "signal" : "recommendation"}
+        recommendationNote={trustPayload?.recommendationNote ?? (currentTab !== "assortment" ? "Pregled i skorkarta su recommendation surface; asortiman je signalni drilldown." : undefined)}
         emptyStateReason={trustPayload?.emptyStateReason ?? null}
         methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">

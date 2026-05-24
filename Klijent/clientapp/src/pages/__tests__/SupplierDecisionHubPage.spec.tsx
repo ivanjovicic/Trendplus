@@ -222,5 +222,75 @@ describe("SupplierDecisionHubPage", () => {
 
     const messages = await screen.findAllByText(/Sistem nije koristio siri period kao fallback/i);
     expect(messages.length).toBeGreaterThan(0);
+    expect(screen.getByText(/Prosirite period na 90d ili 180d/i)).toBeInTheDocument();
+  });
+
+  it("shows fallback banner and helper signal label when recommendation is gated", async () => {
+    const trustMetadata = {
+      requestedFrom: "2026-05-01T00:00:00Z",
+      requestedTo: "2026-05-12T00:00:00Z",
+      requestedPeriodFrom: "2026-05-01T00:00:00Z",
+      requestedPeriodTo: "2026-05-12T00:00:00Z",
+      effectiveFrom: "2026-02-01T00:00:00Z",
+      effectiveTo: "2026-05-12T00:00:00Z",
+      requestedDataset: "30d",
+      effectiveDataset: "90d",
+      effectivePeriodLabel: "Poslednjih 90 dana",
+      dataCoverageStatus: "warning",
+      usedFallback: true,
+      fallbackReason: "no_data_30d",
+      lastRefreshAtUtc: "2026-05-12T00:00:00Z",
+      rowCount: 1,
+      ignoredRowCount: 0,
+      zeroRevenueRowsExcludedCount: 0,
+      missingSupplierNameCount: 0,
+      hasData: true,
+      hasExplicitDateRange: true,
+      recommendationAllowed: false,
+      noSilentFallback: true,
+      windowDays: 90,
+      dataScope: "all",
+      coverage: "window_90d",
+    };
+
+    const summaryWithTrust = {
+      ...summaryResponse,
+      supplierCount: 1,
+      trustMetadata,
+    };
+
+    const rankingWithTrust = {
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      items: [rankingItem(1, 100_000)],
+      dataNote: summaryResponse.dataNote,
+      trustMetadata,
+    };
+
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse(summaryWithTrust);
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse(rankingWithTrust);
+      }
+
+      if (url.pathname === "/api/sezone") {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+
+    expect(await screen.findByText(/Koriscen je dataset Poslednjih 90 dana kao pomocni signal/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Pomocni signal").length).toBeGreaterThan(0);
   });
 });

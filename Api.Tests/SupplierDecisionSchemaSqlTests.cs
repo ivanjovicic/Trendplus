@@ -89,6 +89,23 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionWindowedMvAudit_Confirms90d180dAndAllTimeContract()
+    {
+        var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("mv_supplier_decision_score_cache_90d", sql);
+        Assert.Contains("mv_supplier_decision_score_cache_180d", sql);
+        Assert.DoesNotContain("mv_supplier_decision_score_cache_30d", sql);
+
+        Assert.Contains("return \"30d\"", endpoint);
+        Assert.Contains("return \"90d\"", endpoint);
+        Assert.Contains("return \"180d\"", endpoint);
+        Assert.Contains("return \"all_time\"", endpoint);
+        Assert.Contains("no_mv_30d", endpoint);
+    }
+
+    [Fact]
     public void SupplierDecisionHeavyRefreshIsNotOwnedByWebStartupRepair()
     {
         var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
@@ -119,6 +136,8 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("public sealed record ScorecardTrustMetadata(", endpoint);
         Assert.Contains("string RequestedDataset", endpoint);
         Assert.Contains("string EffectiveDataset", endpoint);
+        Assert.Contains("RequestedPeriodFrom", endpoint);
+        Assert.Contains("RequestedPeriodTo", endpoint);
         Assert.Contains("string EffectivePeriodLabel", endpoint);
         Assert.Contains("string DataCoverageStatus", endpoint);
         Assert.Contains("bool UsedFallback", endpoint);

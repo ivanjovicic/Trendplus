@@ -1112,6 +1112,9 @@ export default function DailySalesStatsPage() {
     );
   }, []);
 
+  const showBlockingError = Boolean(error && !data);
+  const showStaleError = Boolean(error && data);
+
   return (
     <div className="daily-sales-page">
       <AnalyticsTrustHeader
@@ -1124,6 +1127,8 @@ export default function DailySalesStatsPage() {
         mode="signal"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
       />
       <header className="daily-sales-header">
         <div>
@@ -1212,22 +1217,29 @@ export default function DailySalesStatsPage() {
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {error ? (
+      {showBlockingError ? (
         <AnalyticsErrorState
           title="Greška pri učitavanju dnevne prodaje"
-          message={error}
+          message={error ?? "Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."}
           onRetry={() => void load(activeFilters)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
-      {!loading && !error && data && (data.dateRows?.length ?? 0) === 0 ? (
+      {showStaleError ? (
+        <div className="daily-sales-message info" role="status" aria-live="polite">
+          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
+        </div>
+      ) : null}
+      {!loading && !showBlockingError && data && (data.dateRows?.length ?? 0) === 0 ? (
         <AnalyticsEmptyState
-          variant="no_data"
+          variant={data.metadata.totalItemsInRange > 0 ? "filtered_out" : "no_data"}
           actions={[
             { label: "Proširite period pretrage." },
             { label: "Uklonite filter prodavnice." },
             { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
           ]}
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
         />
       ) : null}
       {loading ? (

@@ -53,7 +53,7 @@ describe("SupplierConsolidatedPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Dataset")).toBeInTheDocument();
-      expect(screen.getByText(/30d → 90d/)).toBeInTheDocument();
+      expect(screen.getByText(/30d\s*(→|->)\s*90d/)).toBeInTheDocument();
       expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
     });
   });

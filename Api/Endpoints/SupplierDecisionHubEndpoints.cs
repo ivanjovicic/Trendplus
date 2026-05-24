@@ -6,6 +6,7 @@ using Npgsql;
 using System.Data;
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Serialization;
 using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
@@ -1293,7 +1294,7 @@ SELECT
     {
         if (!filters.HasExplicitDateRange)
         {
-            return "all_history";
+            return "all_time";
         }
 
         var days = GetRequestedRangeDays(filters);
@@ -1307,7 +1308,7 @@ SELECT
     {
         90 => "90d",
         180 => "180d",
-        _ => "all_history"
+        _ => "all_time"
     };
 
     private static string BuildEffectivePeriodLabel(SupplierDecisionHubFilters filters, string dataset)
@@ -1322,7 +1323,7 @@ SELECT
             "30d" => "Poslednjih 30 dana",
             "90d" => "Poslednjih 90 dana",
             "180d" => "Poslednjih 180 dana",
-            _ => "Cela istorija"
+            _ => "Neograniceno"
         };
     }
 
@@ -1383,7 +1384,7 @@ SELECT
             && !usedFallback
             && !hasLowSampleSize
             && missingSupplierNameCount == 0
-            && dataCoverageStatus == "good";
+            && (dataCoverageStatus == "good" || dataCoverageStatus == "warning");
         var coverage = windowDays switch
         {
             90 => "window_90d",
@@ -1399,10 +1400,10 @@ SELECT
                 fallbackReasonCode = "no_mv_30d";
                 fallbackReason = "Trazeni 30d nema zaseban scorecard dataset; koristi se 90d kao pomocni signal (bez tihog fallback-a za finalnu preporuku).";
             }
-            else if (requestedDataset == "custom_range" && effectiveDataset == "all_history")
+            else if (requestedDataset == "custom_range" && effectiveDataset == "all_time")
             {
-                fallbackReasonCode = "range_uses_all_history";
-                fallbackReason = "Odabrani period je siri od 180 dana; koristi se all-history cache kao helper dataset uz striktan filter opsega (bez tihog fallback-a).";
+                fallbackReasonCode = "range_uses_all_time";
+                fallbackReason = "Odabrani period je siri od 180 dana; koristi se all-time cache kao helper dataset uz striktan filter opsega (bez tihog fallback-a).";
             }
             else
             {
@@ -2497,7 +2498,14 @@ public sealed record ScorecardTrustMetadata(
     int WindowDays,
     string DataScope,
     string Coverage,
-    string? DataNote);
+    string? DataNote)
+{
+    [JsonPropertyName("requestedPeriodFrom")]
+    public DateTime RequestedPeriodFrom => RequestedFrom;
+
+    [JsonPropertyName("requestedPeriodTo")]
+    public DateTime RequestedPeriodTo => RequestedTo;
+}
 
 // TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
 // ReliabilityPct, DataQualityStatus, StatusReason and ReasonCodes so the UI can
