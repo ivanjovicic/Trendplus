@@ -7,6 +7,7 @@ const getPrintPayloadMock = vi.fn();
 
 vi.mock("../../services/analyticsTableState", () => ({
   getPrintPayload: (...args: unknown[]) => getPrintPayloadMock(...args),
+  resolveAnalyticsTablePayload: vi.fn(),
 }));
 
 vi.mock("../../components/analytics/SupplierDecisionReport", () => ({
@@ -37,11 +38,11 @@ describe("SupplierDecisionReportPage", () => {
 
     renderPage();
 
-    expect(screen.getByText("Report nije pronađen")).toBeInTheDocument();
-    expect(screen.getByText(/Privremeni podaci su istekli/i)).toBeInTheDocument();
+    expect(screen.getByText("Izveštaj nije dostupan")).toBeInTheDocument();
+    expect(screen.getByText(/Pregled izveštaja je istekao/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ponovo generiši report" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Otvori scorecard" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Otvori Scorecard" }).length).toBeGreaterThan(0);
   });
 
   it("shows export error state when actions report PDF failure", () => {

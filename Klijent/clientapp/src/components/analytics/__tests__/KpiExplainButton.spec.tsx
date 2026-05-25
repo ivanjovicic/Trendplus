@@ -4,6 +4,16 @@ import { MemoryRouter } from "react-router-dom";
 import KpiExplainButton from "../KpiExplainButton";
 
 describe("KpiExplainButton", () => {
+  it("uses generated aria-label when custom one is missing", () => {
+    render(
+      <MemoryRouter>
+        <KpiExplainButton metricKey="totalRevenue" />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("button", { name: /Kako je izračunato: Prihod/i })).toBeInTheDocument();
+  });
+
   it("closes on Escape and restores focus to the trigger", async () => {
     render(
       <MemoryRouter>

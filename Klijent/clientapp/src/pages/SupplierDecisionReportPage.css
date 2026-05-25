@@ -29,6 +29,17 @@
   justify-content: flex-end;
 }
 
+.sdrp-warning-banner {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .sdrp-back {
   text-decoration: none;
   color: var(--text-primary);
@@ -38,6 +49,16 @@
   border-radius: 12px;
   font-weight: 800;
   font-size: 12px;
+}
+
+.sdrp-expired-actions {
+  margin-top: 12px;
+}
+
+.sdrp-expired-note {
+  margin-top: 12px;
+  color: var(--text-secondary, #9eb1d9);
+  font-size: 13px;
 }
 
 .sdrp-print {

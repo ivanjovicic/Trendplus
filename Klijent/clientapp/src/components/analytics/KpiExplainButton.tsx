@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  getAnalyticsMetricDefinition,
+  getMetricLabel,
   type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
@@ -27,8 +27,7 @@ export default function KpiExplainButton({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  const definition = getAnalyticsMetricDefinition(metricKey);
-  const resolvedAriaLabel = ariaLabel ?? `Kako je izračunat ${definition.label}`;
+  const resolvedAriaLabel = ariaLabel ?? `Kako je izračunato: ${getMetricLabel(metricKey)}`;
 
   useEffect(() => {
     if (!open) return undefined;

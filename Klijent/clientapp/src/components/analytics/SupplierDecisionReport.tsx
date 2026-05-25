@@ -3,7 +3,8 @@ import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../t
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
 import {
   findAnalyticsMetricKeyByLabel,
-  getAnalyticsMetricDefinition,
+  getMetricMethodologyItems,
+  type AnalyticsMetricDefinition,
 } from "../../utils/analyticsMetricDefinitions";
 import KpiExplainButton from "./KpiExplainButton";
 import "./SupplierDecisionReport.css";
@@ -19,6 +20,17 @@ type ReportRow = {
   secondary?: string;
   note?: string;
 };
+
+type MethodologyItem = AnalyticsMetricDefinition | {
+  key: string;
+  label: string;
+  isDocumented: false;
+  message: string;
+};
+
+function isDocumented(item: MethodologyItem): item is AnalyticsMetricDefinition {
+  return !("isDocumented" in item);
+}
 
 function rowValue(payload: ResolvedAnalyticsTablePayload, section: string, item: string): string | null {
   const found = payload.rows.find((row) => String(row.section) === section && String(row.item) === item);
@@ -142,6 +154,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         )
       ),
     [kpi]
+  );
+  const methodologyDefinitions = useMemo(
+    () => getMetricMethodologyItems(methodologyMetricKeys),
+    [methodologyMetricKeys]
   );
 
   return (
@@ -324,25 +340,28 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
 
       <section className="sdr-section">
         <h2>Metodologija</h2>
-        {methodologyMetricKeys.length > 0 ? (
+        {methodologyDefinitions.length > 0 ? (
           <div className="sdr-methodology">
-            {methodologyMetricKeys.map((metricKey) => {
-              const definition = getAnalyticsMetricDefinition(metricKey);
-              return (
-                <div key={metricKey} className="sdr-method">
-                  <strong>{definition.title}</strong>
-                  <p>{definition.description}</p>
-                  <p><strong>Formula:</strong> {definition.formula}</p>
-                  <p><strong>Izvor:</strong> {definition.source}</p>
-                  {definition.qualityNote ? <p className="sdr-note">{definition.qualityNote}</p> : null}
-                  <KpiExplainButton metricKey={metricKey} ariaLabel={`Kako je izračunat KPI: ${definition.title}`} />
-                </div>
-              );
-            })}
+            {methodologyDefinitions.map((item) => (
+              <div key={item.key} className="sdr-method">
+                <strong>{item.label}</strong>
+                {isDocumented(item) ? (
+                  <>
+                    <p>{item.shortDescription}</p>
+                    <p><strong>Formula:</strong> {item.formula}</p>
+                    <p><strong>Izvor:</strong> {item.dataSource}</p>
+                    {item.limitations.length > 0 ? <p className="sdr-note">{item.limitations.join(" ")}</p> : null}
+                    <KpiExplainButton metricKey={item.key} ariaLabel={`Kako je izračunat KPI: ${item.label}`} />
+                  </>
+                ) : (
+                  <p>{item.message}</p>
+                )}
+              </div>
+            ))}
           </div>
         ) : null}
         {methodology.length === 0 ? (
-          methodologyMetricKeys.length === 0 ? <p className="sdr-empty">Metodologija nije dostupna.</p> : null
+          methodologyDefinitions.length === 0 ? <p className="sdr-empty">Metodologija nije dostupna.</p> : null
         ) : (
           <div className="sdr-methodology">
             {methodology.map((row, idx) => (

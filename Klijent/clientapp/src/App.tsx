@@ -64,6 +64,7 @@ const AnalyticsPrintPage = lazy(() => import("./pages/AnalyticsPrintPage"));
 const ProductDecisionCenterPage = lazy(() => import("./pages/ProductDecisionCenterPage"));
 const AnalyticsActionsPage = lazy(() => import("./pages/AnalyticsActionsPage"));
 const SupplierDecisionReportPage = lazy(() => import("./pages/SupplierDecisionReportPage"));
+const PilotIntakeReportPage = lazy(() => import("./pages/PilotIntakeReportPage"));
 const ThemeSettingsPage = lazy(() => import("./pages/ThemeSettingsPage"));
 const ConfigurationPage = lazy(() => import("./pages/ConfigurationPage"));
 
@@ -96,6 +97,8 @@ function AppShell() {
                     <Route path="/analytics/product-decision-center" element={<Navigate to="/analytics/products" replace />} />
                     <Route path="/analytics/supplier" element={<SupplierConsolidatedPage />} />
                     <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
+                    <Route path="/analytics/data-quality/pilot-intake-report" element={<PilotIntakeReportPage />} />
+                    <Route path="/analytics/reports/pilot-intake" element={<PilotIntakeReportPage />} />
                     <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsRedirect />} />
                     <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
                     <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />

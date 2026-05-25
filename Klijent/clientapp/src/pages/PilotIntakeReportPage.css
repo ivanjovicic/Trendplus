@@ -1,0 +1,55 @@
+.pilot-intake-report-page {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0;
+}
+
+.pirp-warning-banner {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pirp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pirp-back-link,
+.pirp-retry-btn {
+  border: 1px solid var(--border-muted, rgba(138, 160, 214, 0.3));
+  background: var(--surface-elevated, var(--panel));
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pirp-retry-btn {
+  cursor: pointer;
+}
+
+@media print {
+  .pirp-actions,
+  .pirp-warning-banner,
+  nav,
+  aside,
+  .sidebar,
+  .top-nav,
+  .filter,
+  .filters {
+    display: none !important;
+  }
+
+  .pilot-intake-report-page {
+    padding: 0 !important;
+  }
+}

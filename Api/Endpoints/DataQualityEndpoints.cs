@@ -2,6 +2,7 @@ using Application.Analytics.Queries.GetDataQualityIssues;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Api.Services;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -262,10 +263,12 @@ public static class DataQualityEndpoints
                     storeId,
                     supplierId,
                     dataScope,
-                    correlationId,
                     ct);
 
-                return Results.Ok(report);
+                return Results.Ok(report with
+                {
+                    Meta = ApplyCorrelationId(report.Meta, correlationId)
+                });
             }
             catch (Exception)
             {
@@ -276,7 +279,7 @@ public static class DataQualityEndpoints
                     string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
                     storeId?.ToString(CultureInfo.InvariantCulture),
                     supplierId?.ToString(CultureInfo.InvariantCulture),
-                    null, null, 0, "error", "Greska",
+                    null, null, null, 0, "error", "Greska",
                     new PilotDataQualityIntakeLoadedDataDto(0, 0, 0, 0, 0, null, null),
                     new PilotDataQualityIntakeIssuesDto(0, 0, 0, null, null, 0, 0, 0, 0),
                     new PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
@@ -294,6 +297,7 @@ public static class DataQualityEndpoints
             HttpContext httpContext,
             TrendplusDbContext trendDb,
             AnalyticsDbContext analyticsDb,
+            IAnalyticsCacheService cache,
             AnalyticsDataQualityHealthService healthService,
             AnalyticsRefreshStatusService refreshStatusService,
             [FromQuery] string? fromDate,
@@ -308,121 +312,45 @@ public static class DataQualityEndpoints
             var resolvedScope = !string.IsNullOrWhiteSpace(scope)
                 ? scope
                 : dataScope;
+            var period = ResolveIntakePeriod(fromDate, toDate);
+            var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
+                period.FromUtc,
+                period.ToUtc,
+                storeId,
+                supplierId,
+                resolvedScope);
 
             try
             {
-                var intake = await BuildPilotDataQualityIntakeReportAsync(
-                    trendDb,
-                    analyticsDb,
-                    healthService,
-                    refreshStatusService,
-                    fromDate,
-                    toDate,
-                    storeId,
-                    supplierId,
-                    resolvedScope,
-                    correlationId,
+                var report = await cache.GetOrSetAsync(
+                    reportCacheKey,
+                    async () =>
+                    {
+                        var intake = await BuildPilotDataQualityIntakeReportAsync(
+                            trendDb,
+                            analyticsDb,
+                            healthService,
+                            refreshStatusService,
+                            fromDate,
+                            toDate,
+                            storeId,
+                            supplierId,
+                            resolvedScope,
+                            ct);
+
+                        return BuildPilotIntakeReportResponse(intake, period, storeId, supplierId, resolvedScope);
+                    },
+                    CacheExpiration.HeavyAnalytics,
                     ct);
 
-                var period = ResolveIntakePeriod(fromDate, toDate);
-                var reportId = BuildPilotIntakeReportId(period, storeId, supplierId, resolvedScope);
-                var stableQueryUrl = BuildPilotIntakeStableQueryUrl(period, storeId, supplierId, resolvedScope);
-                var methodology = "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke.";
-                var recommendationAllowed = intake.ReadinessScore >= 70;
-                var warnings = BuildPilotIntakeWarnings(intake, recommendationAllowed);
-
-                var rows = BuildPilotIntakeRows(intake, methodology);
-                var sections = rows
-                    .GroupBy(x => x.Section)
-                    .Select(group => new ReportSectionSummaryDto(group.Key, group.Key, group.Count()))
-                    .ToList();
-
-                var payload = new ReportResolvedPayloadDto(
-                    "pilot-data-quality-intake",
-                    "Trendplus pilot izvestaj kvaliteta podataka",
-                    new List<ReportPayloadColumnDto>
-                    {
-                        new("section", "Sekcija", "text"),
-                        new("item", "Stavka", "text"),
-                        new("value", "Vrednost", "text"),
-                        new("secondary", "Kontekst", "text"),
-                        new("note", "Napomena", "text")
-                    },
-                    rows.Select(row => new ReportPayloadRowDto(row.Section, row.Item, row.Value, row.Secondary, row.Note)).ToList(),
-                    new List<ReportPayloadFilterDto>
-                    {
-                        new("period", "Period", $"{period.FromUtc:yyyy-MM-dd} - {period.ToUtc:yyyy-MM-dd}"),
-                        new("dataScope", "Scope", string.IsNullOrWhiteSpace(resolvedScope) ? "all" : resolvedScope),
-                        new("storeId", "Objekat", storeId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
-                        new("supplierId", "Dobavljac", supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
-                    },
-                    new List<ReportPayloadFilterDto>
-                    {
-                        new("reportId", "Report ID", reportId),
-                        new("generatedAtUtc", "Generisano", intake.GeneratedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
-                        new("lastRefreshAtUtc", "Poslednje osvezenje", intake.LastRefreshAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
-                        new("dataQualityStatus", "Kvalitet podataka", intake.Meta?.DataQualityStatus ?? "insufficient_data"),
-                        new("methodology", "Metodologija", methodology)
-                    },
-                    "sr-RS",
-                    "pilot-data-quality-intake",
-                    "analytics-table-default",
-                    1);
-
-                return Results.Ok(new PilotIntakeReportResponse(
-                    reportId,
-                    stableQueryUrl,
-                    "Trendplus pilot izveštaj kvaliteta podataka",
-                    "pilot-intake",
-                    intake.GeneratedAtUtc,
-                    period.FromUtc,
-                    period.ToUtc,
-                    new ReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake"),
-                    intake.LastRefreshAtUtc,
-                    intake.Meta?.DataQualityStatus ?? "insufficient_data",
-                    recommendationAllowed,
-                    false,
-                    warnings,
-                    methodology,
-                    rows,
-                    sections,
-                    payload,
-                    intake.Meta));
+                return Results.Ok(report with
+                {
+                    Meta = ApplyCorrelationId(report.Meta, correlationId)
+                });
             }
             catch (Exception)
             {
-                return Results.Ok(new PilotIntakeReportResponse(
-                    "pilot-intake-error",
-                    "/analytics/data-quality",
-                    "Trendplus pilot izveštaj kvaliteta podataka",
-                    "pilot-intake",
-                    DateTime.UtcNow,
-                    DateTime.UtcNow.Date.AddDays(-29),
-                    DateTime.UtcNow.Date,
-                    new ReportPeriodDto(DateTime.UtcNow.Date.AddDays(-29), DateTime.UtcNow.Date, "Pilot intake"),
-                    null,
-                    "insufficient_data",
-                    false,
-                    false,
-                    [],
-                    "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke.",
-                    [],
-                    [],
-                    new ReportResolvedPayloadDto(
-                        "pilot-data-quality-intake",
-                        "Trendplus pilot izvestaj kvaliteta podataka",
-                        [],
-                        [],
-                        [],
-                        [],
-                        "sr-RS",
-                        "pilot-data-quality-intake",
-                        "analytics-table-default",
-                        1),
-                    AnalyticsResponseMetaFactory.Error(
-                        "pilot_intake_report_error",
-                        "Pilot intake report trenutno nije dostupan.",
-                        correlationId)));
+                return Results.Ok(BuildPilotIntakeErrorReportResponse(period, storeId, supplierId, resolvedScope, correlationId));
             }
         })
         .WithTags("Analytics")
@@ -450,6 +378,11 @@ public static class DataQualityEndpoints
             warnings.Add(report.Meta.WarningMessage!);
         }
 
+        if (report.DataFreshnessStatus is "stale" or "critical")
+        {
+            warnings.Add("Analytics refresh može biti zastareo; proverite worker status.");
+        }
+
         return warnings
             .Where(static item => !string.IsNullOrWhiteSpace(item))
             .Distinct(StringComparer.Ordinal)
@@ -466,7 +399,6 @@ public static class DataQualityEndpoints
         int? storeId,
         int? supplierId,
         string? dataScope,
-        string correlationId,
         CancellationToken ct)
     {
         var period = ResolveIntakePeriod(fromDate, toDate);
@@ -601,6 +533,14 @@ public static class DataQualityEndpoints
         var generatedAtUtc = DateTime.UtcNow;
         var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc;
         var articlesWithoutSupplierPercent = totalArticles <= 0 ? 0d : (double)missingSupplierCount / totalArticles;
+        var meta = latestBatch is null
+            ? AnalyticsResponseMetaFactory.Empty(
+                "no_import",
+                "Pilot intake izvestaj nema import batch u periodu.",
+                readiness.MetaStatus)
+            : AnalyticsResponseMetaFactory.Success(readiness.MetaStatus, lastRefreshAtUtc);
+        meta.GeneratedAtUtc = generatedAtUtc;
+        meta.LastRefreshAtUtc = lastRefreshAtUtc;
 
         return new PilotDataQualityIntakeReportDto(
             generatedAtUtc,
@@ -611,6 +551,7 @@ public static class DataQualityEndpoints
             supplierId?.ToString(CultureInfo.InvariantCulture),
             latestImportAtUtc,
             lastRefreshAtUtc,
+            refreshStatus.DataFreshnessStatus,
             readinessScore,
             readiness.Code,
             readiness.Label,
@@ -647,17 +588,7 @@ public static class DataQualityEndpoints
                 "Pokreni osvezavanje analitike",
                 "Proveri import mapu",
             },
-            new AnalyticsResponseMetaDto
-            {
-                Success = true,
-                CorrelationId = correlationId,
-                GeneratedAtUtc = generatedAtUtc,
-                LastRefreshAtUtc = lastRefreshAtUtc,
-                DataQualityStatus = readiness.MetaStatus,
-                Message = latestBatch is null ? "Pilot intake izvestaj nema import batch u periodu." : null,
-                EmptyReason = latestBatch is null ? "no_import" : null,
-                IsPartial = false
-            });
+            meta);
     }
 
     private static string BuildPilotIntakeReportId((DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period, int? storeId, int? supplierId, string? dataScope)
@@ -715,6 +646,397 @@ public static class DataQualityEndpoints
         return rows;
     }
 
+    private static List<ReportRowDto> BuildPilotIntakeEmptyRows(PilotDataQualityIntakeReportDto report, string methodology)
+    {
+        var rows = new List<ReportRowDto>
+        {
+            new("Status", "Nedovoljno podataka", report.Meta?.Message ?? "Pilot intake report nema dovoljno podataka za traženi period."),
+            new("Status", "Opseg", $"{report.PeriodFromUtc:yyyy-MM-dd} - {report.PeriodToUtc:yyyy-MM-dd}", report.DataScope, null),
+            new("Metodologija", "Opis", methodology)
+        };
+
+        foreach (var action in report.RecommendedActions)
+        {
+            rows.Add(new ReportRowDto("Preporučene akcije", "Akcija", action));
+        }
+
+        return rows;
+    }
+
+    internal static AnalyticsReportResponseDto BuildPilotIntakeReportResponse(
+        PilotDataQualityIntakeReportDto intake,
+        (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period,
+        int? storeId,
+        int? supplierId,
+        string? dataScope)
+    {
+        var normalizedScope = string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope;
+        var methodology = BuildPilotIntakeMethodology();
+        var hasData = string.IsNullOrWhiteSpace(intake.Meta?.EmptyReason);
+        var recommendationAllowed = hasData && intake.ReadinessScore >= 70;
+        var warnings = BuildPilotIntakeWarnings(intake, recommendationAllowed);
+        var actions = BuildPilotIntakeActions(intake);
+        var rows = hasData
+            ? BuildPilotIntakeRows(intake, methodology.Summary)
+            : BuildPilotIntakeEmptyRows(intake, methodology.Summary);
+        var sections = BuildPilotIntakeSections(intake, actions, methodology, hasData);
+        var kpis = hasData
+            ? BuildPilotIntakeKpis(intake)
+            : [];
+        var reportId = BuildPilotIntakeReportId(period, storeId, supplierId, normalizedScope);
+
+        return new AnalyticsReportResponseDto(
+            reportId,
+            BuildPilotIntakeStableQueryUrl(period, storeId, supplierId, normalizedScope),
+            "Trendplus pilot izveštaj kvaliteta podataka",
+            "pilot_intake",
+            intake.GeneratedAtUtc,
+            period.FromUtc,
+            period.ToUtc,
+            new AnalyticsReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake", Scope: normalizedScope),
+            intake.LastRefreshAtUtc,
+            intake.DataFreshnessStatus,
+            intake.Meta?.DataQualityStatus ?? "insufficient_data",
+            recommendationAllowed,
+            false,
+            null,
+            warnings,
+            kpis,
+            sections,
+            actions,
+            methodology,
+            rows.Select(row => new AnalyticsLegacyReportRowDto(row.Section, row.Item, row.Value, row.Secondary, row.Note)).ToList(),
+            BuildPilotIntakePayload(reportId, intake, period, storeId, supplierId, normalizedScope, methodology.Summary, rows),
+            ReportTitle: "Trendplus pilot izveštaj kvaliteta podataka",
+            ReportType: "pilot-intake",
+            MethodologySummary: methodology.Summary,
+            Meta: intake.Meta);
+    }
+
+    internal static AnalyticsReportResponseDto BuildPilotIntakeErrorReportResponse(
+        (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period,
+        int? storeId,
+        int? supplierId,
+        string? dataScope,
+        string correlationId)
+    {
+        var generatedAtUtc = DateTime.UtcNow;
+        var normalizedScope = string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope;
+        var methodology = BuildPilotIntakeMethodology();
+
+        return new AnalyticsReportResponseDto(
+            BuildPilotIntakeReportId(period, storeId, supplierId, normalizedScope),
+            BuildPilotIntakeStableQueryUrl(period, storeId, supplierId, normalizedScope),
+            "Trendplus pilot izveštaj kvaliteta podataka",
+            "pilot_intake",
+            generatedAtUtc,
+            period.FromUtc,
+            period.ToUtc,
+            new AnalyticsReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake", Scope: normalizedScope),
+            null,
+            null,
+            "insufficient_data",
+            false,
+            false,
+            null,
+            [],
+            [],
+            [
+                new AnalyticsReportSectionDto(
+                    "report-status",
+                    "Status reporta",
+                    "Pilot intake report trenutno nije dostupan.",
+                    [
+                        new AnalyticsReportColumnDto("status", "Status"),
+                        new AnalyticsReportColumnDto("message", "Poruka"),
+                        new AnalyticsReportColumnDto("errorCode", "Kod")
+                    ],
+                    [
+                        new Dictionary<string, object?>
+                        {
+                            ["status"] = "greška",
+                            ["message"] = "Pilot intake report trenutno nije dostupan.",
+                            ["errorCode"] = "pilot_intake_report_error"
+                        }
+                    ],
+                    1,
+                    null)
+            ],
+            [],
+            methodology,
+            [new AnalyticsLegacyReportRowDto("Status", "Greška", "Pilot intake report trenutno nije dostupan.", "pilot_intake_report_error", null)],
+            new AnalyticsResolvedReportPayloadDto(
+                "pilot-data-quality-intake",
+                "Trendplus pilot izveštaj kvaliteta podataka",
+                [],
+                [],
+                [],
+                [],
+                "sr-RS",
+                "pilot-data-quality-intake",
+                "analytics-table-default",
+                1),
+            ReportTitle: "Trendplus pilot izveštaj kvaliteta podataka",
+            ReportType: "pilot-intake",
+            MethodologySummary: methodology.Summary,
+            Meta: AnalyticsResponseMetaFactory.Error(
+                "pilot_intake_report_error",
+                "Pilot intake report trenutno nije dostupan.",
+                correlationId));
+    }
+
+    private static AnalyticsResolvedReportPayloadDto BuildPilotIntakePayload(
+        string reportId,
+        PilotDataQualityIntakeReportDto intake,
+        (DateTime FromUtc, DateTime ToUtc, DateTime ToExclusiveUtc) period,
+        int? storeId,
+        int? supplierId,
+        string normalizedScope,
+        string methodologySummary,
+        IReadOnlyList<ReportRowDto> rows)
+    {
+        return new AnalyticsResolvedReportPayloadDto(
+            "pilot-data-quality-intake",
+            "Trendplus pilot izveštaj kvaliteta podataka",
+            new List<AnalyticsReportPayloadColumnDto>
+            {
+                new("section", "Sekcija", "text"),
+                new("item", "Stavka", "text"),
+                new("value", "Vrednost", "text"),
+                new("secondary", "Kontekst", "text"),
+                new("note", "Napomena", "text")
+            },
+            rows.Select(row => new AnalyticsReportPayloadRowDto(row.Section, row.Item, row.Value, row.Secondary, row.Note)).ToList(),
+            new List<AnalyticsReportNamedValueDto>
+            {
+                new("period", "Period", $"{period.FromUtc:yyyy-MM-dd} - {period.ToUtc:yyyy-MM-dd}"),
+                new("dataScope", "Scope", normalizedScope),
+                new("storeId", "Objekat", storeId?.ToString(CultureInfo.InvariantCulture) ?? "all"),
+                new("supplierId", "Dobavljač", supplierId?.ToString(CultureInfo.InvariantCulture) ?? "all")
+            },
+            new List<AnalyticsReportNamedValueDto>
+            {
+                new("reportId", "Report ID", reportId),
+                new("generatedAtUtc", "Generisano", intake.GeneratedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
+                new("lastRefreshAtUtc", "Poslednje osveženje", intake.LastRefreshAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("dataFreshnessStatus", "Svežina podataka", intake.DataFreshnessStatus ?? string.Empty),
+                new("dataQualityStatus", "Kvalitet podataka", intake.Meta?.DataQualityStatus ?? "insufficient_data"),
+                new("methodology", "Metodologija", methodologySummary)
+            },
+            "sr-RS",
+            "pilot-data-quality-intake",
+            "analytics-table-default",
+            1);
+    }
+
+    private static IReadOnlyList<AnalyticsReportKpiDto> BuildPilotIntakeKpis(PilotDataQualityIntakeReportDto report)
+    {
+        return new List<AnalyticsReportKpiDto>
+        {
+            new("readinessScore", "Readiness score", report.ReadinessScore, "/100", report.ReadinessScore >= 90 ? "positive" : report.ReadinessScore >= 70 ? "neutral" : "warning", report.ReadinessLabel),
+            new("articlesCount", "Artikli", report.LoadedData.ArticlesCount, null, report.LoadedData.ArticlesCount > 0 ? "positive" : "warning", null),
+            new("saleItemsCount", "Stavke prodaje", report.LoadedData.SaleItemsCount, null, report.LoadedData.SaleItemsCount > 0 ? "positive" : "warning", null),
+            new("missingCostCount", "Bez nabavne cene", report.Issues.MissingCostCount, null, report.Issues.MissingCostCount == 0 ? "positive" : "warning", null),
+            new("blockedRecommendations", "Blokirane preporuke", report.Impact.RecommendationsBlockedCount, null, report.Impact.RecommendationsBlockedCount == 0 ? "positive" : "warning", null),
+            new("revenueWithoutCost", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent, "ratio", report.Impact.RevenueWithoutCostPercent < 0.10d ? "positive" : "warning", null)
+        };
+    }
+
+    private static IReadOnlyList<AnalyticsReportActionDto> BuildPilotIntakeActions(PilotDataQualityIntakeReportDto report)
+    {
+        return report.RecommendedActions
+            .Select(action => new AnalyticsReportActionDto(
+                action,
+                "Otvori povezani ekran za rešavanje identifikovanog problema u intake fazi.",
+                MapPilotActionHref(action),
+                action.Contains("osvez", StringComparison.OrdinalIgnoreCase) ? "high" : "medium"))
+            .DistinctBy(action => action.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IReadOnlyList<AnalyticsReportSectionDto> BuildPilotIntakeSections(
+        PilotDataQualityIntakeReportDto report,
+        IReadOnlyList<AnalyticsReportActionDto> actions,
+        AnalyticsReportMethodologyDto methodology,
+        bool hasData)
+    {
+        var sections = new List<AnalyticsReportSectionDto>();
+
+        if (!hasData)
+        {
+            sections.Add(new AnalyticsReportSectionDto(
+                "report-status",
+                "Status reporta",
+                "Pilot intake report nema dovoljno podataka za traženi period.",
+                [
+                    new AnalyticsReportColumnDto("status", "Status"),
+                    new AnalyticsReportColumnDto("message", "Poruka"),
+                    new AnalyticsReportColumnDto("scope", "Opseg")
+                ],
+                [
+                    new Dictionary<string, object?>
+                    {
+                        ["status"] = report.Meta?.EmptyReason ?? "no_data",
+                        ["message"] = report.Meta?.Message ?? "Pilot intake report nema dovoljno podataka za traženi period.",
+                        ["scope"] = report.DataScope
+                    }
+                ],
+                1,
+                null));
+        }
+        else
+        {
+            sections.Add(new AnalyticsReportSectionDto(
+                "loaded-counts",
+                "Učitano",
+                "Koliko master i prodajnih podataka je obuhvaćeno izveštajem.",
+                [
+                    new AnalyticsReportColumnDto("metric", "Metrika"),
+                    new AnalyticsReportColumnDto("value", "Vrednost"),
+                    new AnalyticsReportColumnDto("note", "Napomena")
+                ],
+                new List<Dictionary<string, object?>>
+                {
+                    new() { ["metric"] = "Artikli", ["value"] = report.LoadedData.ArticlesCount, ["note"] = report.StoreId is null ? "Svi objekti" : $"Objekat {report.StoreId}" },
+                    new() { ["metric"] = "Stavke prodaje", ["value"] = report.LoadedData.SaleItemsCount, ["note"] = null },
+                    new() { ["metric"] = "Računi", ["value"] = report.LoadedData.ReceiptsCount, ["note"] = null },
+                    new() { ["metric"] = "Dobavljači", ["value"] = report.LoadedData.SuppliersCount, ["note"] = report.SupplierId is null ? "Svi dobavljači" : $"Dobavljač {report.SupplierId}" },
+                    new() { ["metric"] = "Objekti", ["value"] = report.LoadedData.StoresCount, ["note"] = null }
+                },
+                5,
+                null));
+
+            sections.Add(new AnalyticsReportSectionDto(
+                "issue-counts",
+                "Problemi",
+                "Najvažniji problemi koji ruše kvalitet i pouzdanost analitike.",
+                [
+                    new AnalyticsReportColumnDto("metric", "Problem"),
+                    new AnalyticsReportColumnDto("value", "Broj"),
+                    new AnalyticsReportColumnDto("severity", "Težina")
+                ],
+                new List<Dictionary<string, object?>>
+                {
+                    new() { ["metric"] = "Bez dobavljača", ["value"] = report.Issues.MissingSupplierCount, ["severity"] = "critical" },
+                    new() { ["metric"] = "Bez nabavne cene", ["value"] = report.Issues.MissingCostCount, ["severity"] = "critical" },
+                    new() { ["metric"] = "Bez kategorije", ["value"] = report.Issues.MissingCategoryCount, ["severity"] = "warning" },
+                    new() { ["metric"] = "Prodaja bez artikla", ["value"] = report.Issues.SaleWithoutArticleCount, ["severity"] = "critical" },
+                    new() { ["metric"] = "Nulta ili negativna cena", ["value"] = report.Issues.ZeroOrNegativePriceCount, ["severity"] = "critical" }
+                },
+                5,
+                null));
+
+            sections.Add(new AnalyticsReportSectionDto(
+                "impact",
+                "Uticaj",
+                "Procena koliko problemi blokiraju preporuke i pouzdano računanje marže.",
+                [
+                    new AnalyticsReportColumnDto("metric", "Metrika"),
+                    new AnalyticsReportColumnDto("value", "Vrednost"),
+                    new AnalyticsReportColumnDto("note", "Napomena")
+                ],
+                new List<Dictionary<string, object?>>
+                {
+                    new() { ["metric"] = "Prihod bez cene", ["value"] = report.Impact.RevenueWithoutCostPercent, ["note"] = "ratio" },
+                    new() { ["metric"] = "Artikli bez dobavljača", ["value"] = report.Impact.ArticlesWithoutSupplierPercent, ["note"] = "ratio" },
+                    new() { ["metric"] = "Blokirane preporuke", ["value"] = report.Impact.RecommendationsBlockedCount, ["note"] = null },
+                    new() { ["metric"] = "Ignorisani redovi", ["value"] = report.Impact.IgnoredRowsCount, ["note"] = null },
+                    new() { ["metric"] = "Nedovoljni signali", ["value"] = report.Impact.InsufficientSignalCount, ["note"] = null }
+                },
+                5,
+                null));
+        }
+
+        sections.Add(new AnalyticsReportSectionDto(
+            "recommended-actions",
+            "Preporučene akcije",
+            "Sledeći koraci koji najbrže podižu readiness score ili otklanjaju blokade.",
+            [
+                new AnalyticsReportColumnDto("priority", "Prioritet"),
+                new AnalyticsReportColumnDto("title", "Akcija"),
+                new AnalyticsReportColumnDto("description", "Opis"),
+                new AnalyticsReportColumnDto("href", "Link")
+            ],
+            actions.Select(action => new Dictionary<string, object?>
+            {
+                ["priority"] = action.Priority,
+                ["title"] = action.Title,
+                ["description"] = action.Description,
+                ["href"] = action.Href
+            }).ToList(),
+            actions.Count,
+            actions.Count == 0 ? "Nema preporučenih akcija za traženi opseg." : null));
+
+        sections.Add(new AnalyticsReportSectionDto(
+            "methodology",
+            "Metodologija",
+            "Pragovi readiness score-a i način tumačenja upozorenja.",
+            [
+                new AnalyticsReportColumnDto("topic", "Tema"),
+                new AnalyticsReportColumnDto("details", "Objašnjenje")
+            ],
+            methodology.Notes.Select((note, index) => new Dictionary<string, object?>
+            {
+                ["topic"] = index == 0 ? "Sažetak" : $"Napomena {index}",
+                ["details"] = note
+            }).ToList(),
+            methodology.Notes.Count,
+            null));
+
+        return sections;
+    }
+
+    private static AnalyticsReportMethodologyDto BuildPilotIntakeMethodology()
+    {
+        return new AnalyticsReportMethodologyDto(
+            "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke.",
+            new List<string>
+            {
+                "90-100: spremno za pouzdanu analitiku.",
+                "70-89: upotrebljivo uz upozorenja.",
+                "40-69: pilot moguć, ali preporuke ostaju ograničene.",
+                "Ispod 40: prvo rešiti kvalitet podataka i import tok."
+            },
+            ["/analytics/data-quality", "/admin/configuration?panel=workers"]);
+    }
+
+    private static string MapPilotActionHref(string action)
+    {
+        var normalized = action.ToLowerInvariant();
+        if (normalized.Contains("dobavlj")) return "/analytics/supplier";
+        if (normalized.Contains("cena") || normalized.Contains("kategor") || normalized.Contains("map")) return "/analytics/data-quality";
+        if (normalized.Contains("osvez")) return "/admin/configuration?panel=workers";
+        return "/analytics/data-quality";
+    }
+
+    private static AnalyticsResponseMetaDto ApplyCorrelationId(AnalyticsResponseMetaDto? meta, string correlationId)
+    {
+        var resolved = meta is null
+            ? new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                GeneratedAtUtc = DateTime.UtcNow
+            }
+            : new AnalyticsResponseMetaDto
+            {
+                Success = meta.Success,
+                Message = meta.Message,
+                ErrorCode = meta.ErrorCode,
+                ErrorMessage = meta.ErrorMessage,
+                WarningCode = meta.WarningCode,
+                WarningMessage = meta.WarningMessage,
+                DataQualityStatus = meta.DataQualityStatus,
+                EmptyReason = meta.EmptyReason,
+                IsPartial = meta.IsPartial,
+                GeneratedAtUtc = meta.GeneratedAtUtc,
+                LastRefreshAtUtc = meta.LastRefreshAtUtc,
+                CorrelationId = meta.CorrelationId
+            };
+
+        resolved.CorrelationId = correlationId;
+        return resolved;
+    }
+
     public sealed record DataQualityListRequest(
         string? Type,
         int Page = 1,
@@ -753,6 +1075,7 @@ public static class DataQualityEndpoints
         string? SupplierId,
         DateTime? LastImportAtUtc,
         DateTime? LastRefreshAtUtc,
+        string? DataFreshnessStatus,
         int ReadinessScore,
         string ReadinessStatus,
         string ReadinessLabel,

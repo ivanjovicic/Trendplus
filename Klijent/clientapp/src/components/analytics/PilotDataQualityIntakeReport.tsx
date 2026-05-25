@@ -172,6 +172,16 @@ function formatDurableValue(value: unknown): string {
   return String(value);
 }
 
+function durableMethodologySummary(report: PilotIntakeDurableReport): string {
+  if (typeof report.methodology === "string") return report.methodology;
+  return report.methodologySummary ?? report.methodology.summary;
+}
+
+function durableSectionRowCount(section: PilotIntakeDurableReport["sections"][number]): number {
+  if (typeof section.rowCount === "number") return section.rowCount;
+  return Array.isArray(section.rows) ? section.rows.length : 0;
+}
+
 function buildDurableCsv(report: PilotIntakeDurableReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
@@ -191,7 +201,7 @@ function buildDurableCsv(report: PilotIntakeDurableReport): string {
   }
 
   for (const section of report.sections) {
-    rows.push(["Sekcije", section.title || section.key, String(section.rowCount)]);
+    rows.push(["Sekcije", section.title || section.key, String(durableSectionRowCount(section))]);
   }
 
   for (const row of report.rows) {
@@ -224,7 +234,7 @@ function buildDurableSummary(report: PilotIntakeDurableReport): string {
     `Preporuke dozvoljene: ${report.recommendationAllowed == null ? "-" : report.recommendationAllowed ? "Da" : "Ne"}`,
     `Korišćen fallback: ${report.usedFallback == null ? "-" : report.usedFallback ? "Da" : "Ne"}`,
     `Upozorenja: ${warnings}`,
-    `Metodologija: ${report.methodology}`,
+    `Metodologija: ${durableMethodologySummary(report)}`,
   ].join("\n");
 }
 
@@ -484,12 +494,12 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
               <strong>Upozorenja:</strong> {durableReport.warnings.join(" | ")}
             </div>
           ) : null}
-          <p className="pilot-card-note"><strong>Metodologija:</strong> {durableReport.methodology}</p>
+          <p className="pilot-card-note"><strong>Metodologija:</strong> {durableMethodologySummary(durableReport)}</p>
           {durableReport.meta?.message ? <p className="pilot-card-note">{durableReport.meta.message}</p> : null}
           {durableReport.sections.length > 0 ? (
             <ul>
               {durableReport.sections.map((section) => (
-                <li key={section.key}>{section.title || section.key}: {fmtNumber(section.rowCount, 0, "-")}</li>
+                <li key={section.key}>{section.title || section.key}: {fmtNumber(durableSectionRowCount(section), 0, "-")}</li>
               ))}
             </ul>
           ) : null}

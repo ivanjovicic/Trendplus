@@ -366,6 +366,28 @@ public static class AnalyticsCacheKeys
         string? dataScope = null) =>
         $"{Prefix}supplier-decision-hub:details:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
+    public static string SupplierDecisionReport(
+        DateTime? from,
+        DateTime? to,
+        string? category,
+        string? gender,
+        int? seasonId,
+        decimal? minRevenue,
+        bool onlyHighConfidence,
+        bool excludeOosBeforeMarkdown,
+        int? supplierId,
+        int? storeId = null,
+        string? dataScope = null) =>
+        $"{Prefix}analytics-report:supplier-decision:v1:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
+
+    public static string PilotIntakeReport(
+        DateTime? from,
+        DateTime? to,
+        int? storeId = null,
+        int? supplierId = null,
+        string? dataScope = null) =>
+        $"{Prefix}analytics-report:pilot-intake:v1:from:{FormatInstant(from)}:to:{FormatInstant(to)}:store:{FormatNullable(storeId)}:supplier:{FormatNullable(supplierId)}:scope:{NormalizeDataScope(dataScope)}";
+
     public static string PreNivelacijaPriority(
         int? supplierId,
         int? seasonId,

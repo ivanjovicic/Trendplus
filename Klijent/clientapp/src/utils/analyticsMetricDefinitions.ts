@@ -1,8 +1,21 @@
 export type AnalyticsMetricKey =
-  | "totalRevenue"
+  | "revenue"
   | "marginContribution"
-  | "soldUnits"
+  | "unitsSold"
   | "stockAtRisk"
+  | "lostSalesEstimate"
+  | "dataReadinessScore"
+  | "missingCostCount"
+  | "missingSupplierCount"
+  | "sellThrough"
+  | "velocity"
+  | "confidencePct"
+  | "reliabilityPct"
+  | "markdownDependency"
+  | "slowStockCapital"
+  | "outOfStockRisk"
+  | "totalRevenue"
+  | "soldUnits"
   | "slowStock"
   | "lostSales"
   | "dataReadiness"
@@ -24,264 +37,485 @@ export type AnalyticsMetricKey =
   | "avgUnitsPerSku"
   | "onHandUnits"
   | "inventoryTotalValue"
-  | "revenue"
   | "quantity"
   | "stockRiskCapital"
-  | "dataReadinessScore"
   | "missingCostRevenueShare"
-  | "unknownSupplierRevenueShare"
-  | "lostSalesEstimate"
-  | "slowStockCapital";
+  | "unknownSupplierRevenueShare";
 
 export type AnalyticsMetricDefinition = {
-  title: string;
+  key: AnalyticsMetricKey;
+  label: string;
+  shortDescription: string;
   formula: string;
+  dataSource: string;
+  interpretation: string;
+  limitations: string[];
+  dataQualityDependencies: string[];
+  relatedScreens: string[];
+  title: string;
   source: string;
   description: string;
   qualityNote?: string;
-  label: string;
   businessMeaning: string;
   formulaText: string;
   inputs: string[];
-  dataSource: string[];
   caveats: string[];
   blockedWhen: string[];
   relatedDataQualityChecks: string[];
 };
 
 type MetricSeed = {
-  title: string;
+  label: string;
+  shortDescription: string;
   formula: string;
-  source: string;
-  description: string;
+  dataSource: string;
+  interpretation: string;
+  limitations?: string[];
+  dataQualityDependencies?: string[];
+  relatedScreens?: string[];
   qualityNote?: string;
   inputs?: string[];
-  caveats?: string[];
   blockedWhen?: string[];
-  relatedDataQualityChecks?: string[];
 };
 
-function defineMetric(seed: MetricSeed): AnalyticsMetricDefinition {
+function defineMetric(key: AnalyticsMetricKey, seed: MetricSeed): AnalyticsMetricDefinition {
+  const limitations = seed.limitations ?? [];
+  const dataQualityDependencies = seed.dataQualityDependencies ?? [];
+  const qualityNote = seed.qualityNote ?? limitations[0];
+
   return {
-    title: seed.title,
+    key,
+    label: seed.label,
+    shortDescription: seed.shortDescription,
     formula: seed.formula,
-    source: seed.source,
-    description: seed.description,
-    qualityNote: seed.qualityNote,
-    label: seed.title,
-    businessMeaning: seed.description,
+    dataSource: seed.dataSource,
+    interpretation: seed.interpretation,
+    limitations,
+    dataQualityDependencies,
+    relatedScreens: seed.relatedScreens ?? [],
+    title: seed.label,
+    source: seed.dataSource,
+    description: seed.shortDescription,
+    qualityNote,
+    businessMeaning: seed.interpretation,
     formulaText: seed.formula,
     inputs: seed.inputs ?? [],
-    dataSource: [seed.source],
-    caveats: seed.caveats ?? (seed.qualityNote ? [seed.qualityNote] : []),
+    caveats: limitations,
     blockedWhen: seed.blockedWhen ?? [],
-    relatedDataQualityChecks: seed.relatedDataQualityChecks ?? [],
+    relatedDataQualityChecks: dataQualityDependencies,
   };
 }
 
-const canonicalMetricDefinitions = {
-  totalRevenue: defineMetric({
-    title: "Prihod",
-    formula: "Suma polja ukupna_cena kroz sve prodajne stavke u izabranom periodu i filteru.",
-    source: "MV: sales_facts_mv",
-    description: "Ukupna prodajna vrednost u izabranom periodu i filteru.",
-    qualityNote: "Ako je meta partial/stale ili success=false, broj nije finalni poslovni rezultat.",
-    inputs: ["ukupna_cena", "period", "store/supplier filter"],
-    relatedDataQualityChecks: ["Svežina refresh-a", "Pokrivenost prodajnih stavki"],
+const baseMetrics = {
+  revenue: defineMetric("revenue", {
+    label: "Prihod",
+    shortDescription: "Ukupna prodajna vrednost stavki prodaje za izabrani period i filtere.",
+    formula: "SUM(prodajna_vrednost_stavke)",
+    dataSource: "Sales facts analytics",
+    interpretation: "Pokazuje obim prodaje, ali ne govori o profitabilnosti.",
+    limitations: ["Ako je refresh zastareo ili parcijalan, metrika je indikativna."],
+    dataQualityDependencies: ["Svežina refresh-a", "Potpunost sales facts podataka"],
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
+    inputs: ["prodajna_vrednost_stavke", "period", "filteri"],
   }),
-  marginContribution: defineMetric({
-    title: "Maržni doprinos",
-    formula: "Suma izraza (ukupna_cena - nabavna_cena) za stavke sa dostupnim troškom.",
-    source: "MV: sales_facts_mv",
-    description: "Bruto doprinos pre operativnih troškova; nije neto profit.",
-    qualityNote: "Visok udeo prometa bez nabavne cene smanjuje pouzdanost metrike.",
-    inputs: ["ukupna_cena", "nabavna_cena", "količina"],
-    relatedDataQualityChecks: ["Promet bez nabavne cene", "Fallback nabavna cena"],
+  marginContribution: defineMetric("marginContribution", {
+    label: "Maržni doprinos",
+    shortDescription: "Bruto doprinos: prihod umanjen za procenjeni nabavni trošak gde je trošak dostupan.",
+    formula: "SUM(prodajna_vrednost - nabavni_trošak)",
+    dataSource: "Sales facts analytics + cost coverage",
+    interpretation: "Signal profitabilnosti pre operativnih troškova, nije neto profit.",
+    limitations: ["Ako nedostaje nabavna cena, signal je manje pouzdan."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene", "Fallback cost procene"],
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
+    inputs: ["prodajna_vrednost", "nabavna_cena", "količina"],
   }),
-  soldUnits: defineMetric({
-    title: "Prodate jedinice",
-    formula: "Suma polja količina kroz prodajne stavke u periodu i filteru.",
-    source: "MV: sales_facts_mv",
-    description: "Ukupan broj prodatih komada; nije broj računa.",
+  unitsSold: defineMetric("unitsSold", {
+    label: "Prodate jedinice",
+    shortDescription: "Ukupan broj prodatih komada u periodu.",
+    formula: "SUM(količina)",
+    dataSource: "Sales facts analytics",
+    interpretation: "Meri promet po količini, nezavisno od cene.",
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
     inputs: ["količina", "period", "filteri"],
   }),
-  stockAtRisk: defineMetric({
-    title: "Lager u riziku",
-    formula: "Suma izraza (količina * nabavna_cena) za artikle sa signalom niske rotacije ili OOS rizika.",
-    source: "MV: inventory_mv",
-    description: "Procenjeni kapital vezan u zalihama sa povišenim operativnim rizikom.",
-    qualityNote: "Nije knjigovodstvena valuacija; zavisi od kvaliteta cost i risk signala.",
-    relatedDataQualityChecks: ["Nabavne cene", "Svežina inventory snapshot-a"],
+  stockAtRisk: defineMetric("stockAtRisk", {
+    label: "Lager u riziku",
+    shortDescription: "Kapital vezan u zalihama sa povišenim rizikom spore rotacije ili OOS problema.",
+    formula: "SUM(količina * nabavna_cena) za rizične SKU",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Pokazuje gde je kapital blokiran i gde postoji potreba za akcijom.",
+    limitations: ["Nije knjigovodstvena valuacija."],
+    dataQualityDependencies: ["Nabavna cena", "Tačnost stanja zaliha", "Svežina inventory snapshot-a"],
+    relatedScreens: ["/analytics", "/analytics/inventory"],
+    inputs: ["količina", "nabavna_cena", "risk_signal"],
   }),
-  slowStock: defineMetric({
-    title: "Kapital u sporoj zalihi",
-    formula: "Suma izraza (količina * nabavna_cena) za artikle označene kao slow stock.",
-    source: "MV: inventory_mv",
-    description: "Kapital zaključan u spororotirajućoj robi.",
-    qualityNote: "Kod fallback troška metrika je indikativna.",
+  slowStockCapital: defineMetric("slowStockCapital", {
+    label: "Kapital u sporoj zalihi",
+    shortDescription: "Procena kapitala vezanog u artiklima sa sporom rotacijom.",
+    formula: "SUM(količina * nabavna_cena) za slow_stock artikle",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Pomaže odluci gde su potrebni markdown ili transfer akcije.",
+    limitations: ["Ako se koristi fallback nabavna cena, procena je indikativna."],
+    dataQualityDependencies: ["Nabavna cena", "Signal sporosti prodaje"],
+    relatedScreens: ["/analytics", "/analytics/inventory", "/analytics/products"],
   }),
-  lostSales: defineMetric({
-    title: "Procena izgubljene prodaje",
-    formula: "Suma izraza ((procenjena_potražnja - realizovana_prodaja) * cena) uz OOS signal.",
-    source: "MV: product_decision_snapshot",
-    description: "Modelirana procena propuštenog prihoda zbog nedostupnosti artikla.",
-    qualityNote: "Modelski signal; nije knjižena prodaja.",
-    relatedDataQualityChecks: ["Istorija prodaje", "OOS signal", "Svežina refresh-a"],
+  lostSalesEstimate: defineMetric("lostSalesEstimate", {
+    label: "Procena izgubljene prodaje",
+    shortDescription: "Modelirana procena propuštenog prihoda zbog out-of-stock ili preniske dostupnosti.",
+    formula: "SUM((procenjena_potražnja - realizacija) * prosečna_cena)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Signal potencijalnog rasta kroz bolju dostupnost.",
+    limitations: ["Modelska procena, nije knjižena prodaja."],
+    dataQualityDependencies: ["Istorija prodaje", "OOS signal", "Svežina snapshot-a"],
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/inventory"],
   }),
-  dataReadiness: defineMetric({
-    title: "Spremnost podataka",
-    formula: "Ponderisani skor kvaliteta signala i kritičnih nedostajućih polja.",
-    source: "Data quality snapshot + analytics refresh status",
-    description: "Sažetak koliko su ulazni podaci spremni za pouzdanu analitiku i preporuke.",
-    qualityNote: "Dobar skor ne isključuje lokalne probleme na pojedinačnim KPI-jevima.",
-    relatedDataQualityChecks: ["Bez dobavljača", "Bez nabavne cene", "Insufficient signal", "Svežina refresh-a"],
+  dataReadinessScore: defineMetric("dataReadinessScore", {
+    label: "Spremnost podataka",
+    shortDescription: "Kompozitni skor koji pokazuje koliko su podaci pogodni za pouzdane preporuke.",
+    formula: "Ponderisani skor kvaliteta master i transakcionih podataka",
+    dataSource: "Data quality checks",
+    interpretation: "Viši skor znači manji rizik pogrešne preporuke.",
+    limitations: ["Visok skor ne garantuje da su sve pojedinačne metrike bez problema."],
+    dataQualityDependencies: ["missing_cost", "missing_supplier", "insufficient_signal", "refresh_freshness"],
+    relatedScreens: ["/analytics/data-quality", "/analytics"],
   }),
-  revenueWithoutCost: defineMetric({
-    title: "Promet bez nabavne cene",
-    formula: "(prihod bez troška / ukupan prihod) * 100.",
-    source: "MV: analytics_data_quality_history",
-    description: "Udeo prihoda za koji ne postoji pouzdan trošak.",
-    qualityNote: "Direktno utiče na pouzdanost maržnih KPI-jeva.",
+  missingCostCount: defineMetric("missingCostCount", {
+    label: "Redovi bez nabavne cene",
+    shortDescription: "Broj redova ili artikala bez potvrđene nabavne cene.",
+    formula: "COUNT(redovi gde nabavna_cena IS NULL)",
+    dataSource: "Data quality checks",
+    interpretation: "Direktno utiče na pouzdanost marže i maržnih preporuka.",
+    dataQualityDependencies: ["Mapiranje nabavnih cena"],
+    relatedScreens: ["/analytics/data-quality", "/analytics/products"],
   }),
-  revenueUnknownSupplier: defineMetric({
-    title: "Promet nepoznatog dobavljača",
-    formula: "(prihod bez mapiranog dobavljača / ukupan prihod) * 100.",
-    source: "MV: analytics_data_quality_history",
-    description: "Udeo prihoda koji nije moguće validno pripisati dobavljaču.",
-    qualityNote: "Narušava scorecard i supplier poređenja.",
+  missingSupplierCount: defineMetric("missingSupplierCount", {
+    label: "Artikli bez dobavljača",
+    shortDescription: "Broj artikala koji nemaju validno mapiranog dobavljača.",
+    formula: "COUNT(artikli gde supplier_id IS NULL)",
+    dataSource: "Data quality checks",
+    interpretation: "Utiče na supplier scorecard i dobavljačke preporuke.",
+    dataQualityDependencies: ["Supplier mapping kvalitet"],
+    relatedScreens: ["/analytics/data-quality", "/analytics/supplier"],
   }),
-  totalInventoryValue: defineMetric({
-    title: "Ukupna vrednost zaliha",
-    formula: "Suma izraza (količina * nabavna_cena) za pozitivnu zalihu.",
-    source: "MV: inventory_mv",
-    description: "Procenjena nabavna vrednost raspoložive zalihe.",
-    qualityNote: "Ako deo artikala koristi fallback cost, metrika je indikativna.",
+  sellThrough: defineMetric("sellThrough", {
+    label: "Sell-through",
+    shortDescription: "Udeo prodate količine u odnosu na dostupnu količinu u posmatranom periodu.",
+    formula: "(prodate_jedinice / dostupne_jedinice) * 100",
+    dataSource: "Sales facts + inventory snapshot",
+    interpretation: "Viši sell-through ukazuje na zdraviju rotaciju asortimana.",
+    limitations: ["Zavisi od kvaliteta početnog i završnog stanja zaliha."],
+    dataQualityDependencies: ["Tačnost stanja zaliha"],
+    relatedScreens: ["/analytics/inventory", "/analytics/products"],
   }),
-  stockUnits: defineMetric({
-    title: "Ukupno na stanju",
-    formula: "Suma polja količina za pozitivnu raspoloživu zalihu.",
-    source: "MV: inventory_mv",
-    description: "Ukupna količina robe na stanju u aktivnom filteru.",
+  velocity: defineMetric("velocity", {
+    label: "Brzina prodaje",
+    shortDescription: "Prosečan broj prodatih jedinica po danu.",
+    formula: "prodate_jedinice / broj_dana",
+    dataSource: "Sales facts analytics",
+    interpretation: "Pomaže proceni dopune i prioriteta nabavke.",
+    limitations: ["Kod kratkog perioda signal može biti nestabilan."],
+    dataQualityDependencies: ["Dužina perioda", "Potpunost prodaje"],
+    relatedScreens: ["/analytics/products", "/analytics/inventory"],
   }),
-  lowStockCount: defineMetric({
-    title: "Niska zaliha",
-    formula: "Broj SKU gde je količina <= minimalni prag.",
-    source: "MV: inventory_mv",
-    description: "Broj artikala koji su na ili ispod bezbednog nivoa zalihe.",
+  confidencePct: defineMetric("confidencePct", {
+    label: "Sigurnost preporuke",
+    shortDescription: "Stepen sigurnosti da je preporučena akcija validna za izabrani kontekst.",
+    formula: "Model confidence score * 100",
+    dataSource: "Recommendation engine metadata",
+    interpretation: "Niža vrednost znači veći rizik pogrešne odluke.",
+    limitations: ["Nije apsolutna garancija ishoda."],
+    dataQualityDependencies: ["Insufficient history", "Missing cost/supplier"],
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
   }),
-  replenishCount: defineMetric({
-    title: "Za dopunu",
-    formula: "Broj redova sa recommendationStatus = REPLENISH.",
-    source: "MV: product_decision_snapshot",
-    description: "Broj proizvoda sa signalom da treba dopunu.",
+  reliabilityPct: defineMetric("reliabilityPct", {
+    label: "Pouzdanost signala",
+    shortDescription: "Kvalitet ulaznih podataka i stabilnost signala na osnovu kog je data preporuka.",
+    formula: "Signal reliability score * 100",
+    dataSource: "Recommendation engine metadata",
+    interpretation: "Niža pouzdanost znači da signal treba čitati opreznije.",
+    limitations: ["Može biti visoko osetljivo na mali uzorak."],
+    dataQualityDependencies: ["Insufficient signal", "Partial dataset", "Fallback dataset"],
+    relatedScreens: ["/analytics/products", "/analytics/supplier", "/analytics/nivelacije-pre-post"],
   }),
-  boostCount: defineMetric({
-    title: "Za pojačanje",
-    formula: "Broj redova sa recommendationStatus = BOOST.",
-    source: "MV: product_decision_snapshot",
-    description: "Broj proizvoda sa jakim pozitivnim signalom.",
+  markdownDependency: defineMetric("markdownDependency", {
+    label: "Zavisnost od nivelacija",
+    shortDescription: "Koliko prodaja zavisi od sniženja i nivoa markdown aktivnosti.",
+    formula: "(prihod_iz_markdowna / ukupan_prihod) * 100",
+    dataSource: "Supplier decision materialized view",
+    interpretation: "Viša vrednost može signalizirati pritisak na maržu.",
+    limitations: ["Potrebna dosledna oznaka markdown transakcija."],
+    dataQualityDependencies: ["Tačnost oznake promo/nivelacije"],
+    relatedScreens: ["/analytics/supplier", "/analytics/nivelacije-pre-post"],
   }),
-  markdownCount: defineMetric({
-    title: "Za sniženje",
-    formula: "Broj redova sa recommendationStatus = MARKDOWN.",
-    source: "MV: product_decision_snapshot",
-    description: "Broj proizvoda sa signalom za sniženje.",
+  outOfStockRisk: defineMetric("outOfStockRisk", {
+    label: "Rizik nestanka zalihe",
+    shortDescription: "Signal verovatnoće da će artikal ostati bez zalihe u kratkom roku.",
+    formula: "Model OOS risk score",
+    dataSource: "Inventory recommendations",
+    interpretation: "Pomaže prioritizaciji dopune i transfera.",
+    limitations: ["Model zavisi od kvaliteta ulaznih trendova i zaliha."],
+    dataQualityDependencies: ["Svežina stanja zaliha", "Istorija prodaje"],
+    relatedScreens: ["/analytics/inventory", "/analytics/products"],
   }),
-  doNotOrderCount: defineMetric({
-    title: "Ne naručivati",
-    formula: "Broj redova sa recommendationStatus = DO_NOT_ORDER.",
-    source: "MV: product_decision_snapshot",
-    description: "Broj proizvoda za koje sistem ne preporučuje novu narudžbinu.",
+} as const;
+
+const operationalMetrics: Record<string, AnalyticsMetricDefinition> = {
+  lowStockCount: defineMetric("lowStockCount", {
+    label: "Niska zaliha",
+    shortDescription: "Broj SKU koji su na ili ispod bezbednog minimuma.",
+    formula: "COUNT(SKU gde količina <= minimalni_prag)",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Signal operativnog rizika i potrebe za dopunom.",
+    relatedScreens: ["/analytics/inventory"],
   }),
-  fixDataCount: defineMetric({
-    title: "Proveriti podatke",
-    formula: "Broj redova sa recommendationStatus = FIX_DATA.",
-    source: "MV: product_decision_snapshot",
-    description: "Broj proizvoda gde data quality blokira preporuku.",
+  replenishCount: defineMetric("replenishCount", {
+    label: "Za dopunu",
+    shortDescription: "Broj proizvoda sa statusom preporuke REPLENISH.",
+    formula: "COUNT(status = REPLENISH)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Pokazuje obim dopune koje zahtevaju akciju.",
+    relatedScreens: ["/analytics/products"],
   }),
-  topSupplierRevenueShare: defineMetric({
-    title: "Udeo top 5 dobavljača",
-    formula: "(prihod top 5 dobavljača / ukupan scorecard prihod) * 100.",
-    source: "MV: supplier_decision_score_cache",
-    description: "Meri koncentraciju prihoda na najveće dobavljače.",
+  boostCount: defineMetric("boostCount", {
+    label: "Za pojačanje",
+    shortDescription: "Broj proizvoda sa statusom preporuke BOOST.",
+    formula: "COUNT(status = BOOST)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Artikli sa potencijalom za jače ulaganje ili vidljivost.",
+    relatedScreens: ["/analytics/products"],
   }),
-  fullPriceShareChange: defineMetric({
-    title: "Promena udela pune cene",
-    formula: "Udeo pune cene u tekućem periodu minus udeo pune cene u prethodnom uporedivom periodu.",
-    source: "MV: supplier_decision_score_cache",
-    description: "Pokazuje smer promene zavisnosti od sniženja.",
+  markdownCount: defineMetric("markdownCount", {
+    label: "Za sniženje",
+    shortDescription: "Broj proizvoda sa statusom preporuke MARKDOWN.",
+    formula: "COUNT(status = MARKDOWN)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Artikli za koje je potrebno smanjenje cene radi oslobađanja kapitala.",
+    relatedScreens: ["/analytics/products"],
   }),
-  activeSkuShare: defineMetric({
-    title: "Aktivni SKU",
-    formula: "(broj SKU sa pozitivnom zalihom / ukupan broj SKU) * 100.",
-    source: "MV: inventory_mv",
-    description: "Udeo artikala koji nisu bez zaliha.",
+  doNotOrderCount: defineMetric("doNotOrderCount", {
+    label: "Ne naručivati",
+    shortDescription: "Broj proizvoda sa statusom preporuke DO_NOT_ORDER.",
+    formula: "COUNT(status = DO_NOT_ORDER)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Sprečava gomilanje zaliha sa slabom perspektivom prodaje.",
+    relatedScreens: ["/analytics/products"],
   }),
-  inventoryHealthScore: defineMetric({
-    title: "Stanje fonda",
-    formula: "Kompozitni skor iz active SKU, low stock, OOS i rizika rotacije.",
-    source: "MV: inventory_mv + inventory alerts",
-    description: "Sažeti operativni signal stanja zaliha.",
+  fixDataCount: defineMetric("fixDataCount", {
+    label: "Proveriti podatke",
+    shortDescription: "Broj proizvoda sa statusom preporuke FIX_DATA.",
+    formula: "COUNT(status = FIX_DATA)",
+    dataSource: "Product decision snapshot",
+    interpretation: "Pokazuje gde data quality blokira pouzdanu odluku.",
+    relatedScreens: ["/analytics/products", "/analytics/data-quality"],
   }),
-  skuCount: defineMetric({
-    title: "Ukupno SKU",
-    formula: "COUNT DISTINCT sku u aktivnom filteru.",
-    source: "MV: inventory_mv",
-    description: "Broj jedinstvenih artikala u opsegu filtera.",
+  topSupplierRevenueShare: defineMetric("topSupplierRevenueShare", {
+    label: "Udeo top dobavljača",
+    shortDescription: "Udeo prihoda koji dolazi od top dobavljača u scorecard periodu.",
+    formula: "(prihod_top_dobavljača / ukupan_prihod) * 100",
+    dataSource: "Supplier decision materialized view",
+    interpretation: "Meri koncentraciju i zavisnost od malog broja dobavljača.",
+    relatedScreens: ["/analytics/supplier"],
   }),
-  avgUnitsPerSku: defineMetric({
-    title: "Prosečno po SKU",
-    formula: "ukupno_na_stanju / ukupno_sku.",
-    source: "MV: inventory_mv",
-    description: "Srednja količina robe po SKU.",
+  fullPriceShareChange: defineMetric("fullPriceShareChange", {
+    label: "Promena udela pune cene",
+    shortDescription: "Razlika udela prodaje po punoj ceni između tekućeg i prethodnog perioda.",
+    formula: "full_price_share_now - full_price_share_previous",
+    dataSource: "Supplier decision materialized view",
+    interpretation: "Signal promene kvaliteta prodaje bez promo oslanjanja.",
+    relatedScreens: ["/analytics/supplier"],
   }),
+  activeSkuShare: defineMetric("activeSkuShare", {
+    label: "Udeo aktivnih SKU",
+    shortDescription: "Udeo SKU sa pozitivnom zalihom.",
+    formula: "(SKU_sa_stanjem / ukupan_SKU) * 100",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Pokazuje širinu aktivnog asortimana.",
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  inventoryHealthScore: defineMetric("inventoryHealthScore", {
+    label: "Stanje fonda",
+    shortDescription: "Kompozitni skor stanja zaliha na osnovu više inventory signala.",
+    formula: "Kompozitni inventory score",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Brza procena operativnog zdravlja zaliha.",
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  skuCount: defineMetric("skuCount", {
+    label: "Ukupno SKU",
+    shortDescription: "Broj jedinstvenih artikala u izabranom opsegu.",
+    formula: "COUNT(DISTINCT sku)",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Meri širinu asortimana.",
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  avgUnitsPerSku: defineMetric("avgUnitsPerSku", {
+    label: "Prosečno po SKU",
+    shortDescription: "Prosečna količina robe po artiklu.",
+    formula: "ukupno_na_stanju / ukupno_sku",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Pomaže proceni prezasićenosti ili deficita zaliha.",
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  onHandUnits: defineMetric("onHandUnits", {
+    label: "Ukupno na stanju",
+    shortDescription: "Ukupna raspoloživa količina robe na stanju.",
+    formula: "SUM(količina_na_stanju)",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Operativni obim zaliha za planiranje dopune.",
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  inventoryTotalValue: defineMetric("inventoryTotalValue", {
+    label: "Procena vrednosti zaliha",
+    shortDescription: "Procenjena nabavna vrednost raspoložive zalihe.",
+    formula: "SUM(količina * nabavna_cena)",
+    dataSource: "Inventory analytics snapshot",
+    interpretation: "Pokazuje kapital vezan u robi na stanju.",
+    limitations: ["Ako je nabavna cena parcijalna, procena je indikativna."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene"],
+    relatedScreens: ["/analytics/inventory"],
+  }),
+} as const;
+
+type BaseMetricKey =
+  | keyof typeof baseMetrics
+  | keyof typeof operationalMetrics
+  | "missingCostRevenueShare"
+  | "unknownSupplierRevenueShare";
+
+const metricAliasToBase: Record<AnalyticsMetricKey, BaseMetricKey> = {
+  revenue: "revenue",
+  marginContribution: "marginContribution",
+  unitsSold: "unitsSold",
+  stockAtRisk: "stockAtRisk",
+  lostSalesEstimate: "lostSalesEstimate",
+  dataReadinessScore: "dataReadinessScore",
+  missingCostCount: "missingCostCount",
+  missingSupplierCount: "missingSupplierCount",
+  sellThrough: "sellThrough",
+  velocity: "velocity",
+  confidencePct: "confidencePct",
+  reliabilityPct: "reliabilityPct",
+  markdownDependency: "markdownDependency",
+  slowStockCapital: "slowStockCapital",
+  outOfStockRisk: "outOfStockRisk",
+  totalRevenue: "revenue",
+  soldUnits: "unitsSold",
+  slowStock: "slowStockCapital",
+  lostSales: "lostSalesEstimate",
+  dataReadiness: "dataReadinessScore",
+  revenueWithoutCost: "missingCostRevenueShare",
+  revenueUnknownSupplier: "unknownSupplierRevenueShare",
+  totalInventoryValue: "inventoryTotalValue",
+  stockUnits: "onHandUnits",
+  lowStockCount: "lowStockCount",
+  replenishCount: "replenishCount",
+  boostCount: "boostCount",
+  markdownCount: "markdownCount",
+  doNotOrderCount: "doNotOrderCount",
+  fixDataCount: "fixDataCount",
+  topSupplierRevenueShare: "topSupplierRevenueShare",
+  fullPriceShareChange: "fullPriceShareChange",
+  activeSkuShare: "activeSkuShare",
+  inventoryHealthScore: "inventoryHealthScore",
+  skuCount: "skuCount",
+  avgUnitsPerSku: "avgUnitsPerSku",
+  onHandUnits: "onHandUnits",
+  inventoryTotalValue: "inventoryTotalValue",
+  quantity: "unitsSold",
+  stockRiskCapital: "stockAtRisk",
+  missingCostRevenueShare: "missingCostCount",
+  unknownSupplierRevenueShare: "missingSupplierCount",
 };
 
-export const analyticsMetricDefinitions: Record<AnalyticsMetricKey, AnalyticsMetricDefinition> = {
-  ...canonicalMetricDefinitions,
-  revenue: canonicalMetricDefinitions.totalRevenue,
-  quantity: canonicalMetricDefinitions.soldUnits,
-  stockRiskCapital: canonicalMetricDefinitions.stockAtRisk,
-  dataReadinessScore: canonicalMetricDefinitions.dataReadiness,
-  missingCostRevenueShare: canonicalMetricDefinitions.revenueWithoutCost,
-  unknownSupplierRevenueShare: canonicalMetricDefinitions.revenueUnknownSupplier,
-  inventoryTotalValue: canonicalMetricDefinitions.totalInventoryValue,
-  onHandUnits: canonicalMetricDefinitions.stockUnits,
-  lostSalesEstimate: canonicalMetricDefinitions.lostSales,
-  slowStockCapital: canonicalMetricDefinitions.slowStock,
-};
+const completeBaseMetrics = {
+  ...baseMetrics,
+  ...operationalMetrics,
+  missingCostRevenueShare: defineMetric("missingCostRevenueShare", {
+    label: "Promet bez nabavne cene",
+    shortDescription: "Udeo prihoda za koji ne postoji potvrđena nabavna cena.",
+    formula: "(prihod_bez_cene / ukupan_prihod) * 100",
+    dataSource: "Data quality checks",
+    interpretation: "Viši udeo smanjuje pouzdanost maržnih metrika.",
+    relatedScreens: ["/analytics/data-quality", "/analytics"],
+  }),
+  unknownSupplierRevenueShare: defineMetric("unknownSupplierRevenueShare", {
+    label: "Promet nepoznatog dobavljača",
+    shortDescription: "Udeo prihoda bez validnog mapiranja dobavljača.",
+    formula: "(prihod_bez_dobavljača / ukupan_prihod) * 100",
+    dataSource: "Data quality checks",
+    interpretation: "Viši udeo smanjuje pouzdanost supplier analitike.",
+    relatedScreens: ["/analytics/data-quality", "/analytics/supplier"],
+  }),
+} as const;
 
-const analyticsMetricAliases: Partial<Record<AnalyticsMetricKey, string[]>> = {
-  totalRevenue: ["Prihod", "Ukupan prihod", "Ukupan promet", "Promet"],
+export const analyticsMetricDefinitions: Record<AnalyticsMetricKey, AnalyticsMetricDefinition> = Object.fromEntries(
+  (Object.keys(metricAliasToBase) as AnalyticsMetricKey[]).map((key) => {
+    const baseKey = metricAliasToBase[key] as keyof typeof completeBaseMetrics;
+    const base = completeBaseMetrics[baseKey];
+    return [key, { ...base, key }];
+  })
+) as Record<AnalyticsMetricKey, AnalyticsMetricDefinition>;
+
+const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
+  revenue: ["Prihod", "Promet", "Ukupan prihod"],
   marginContribution: ["Maržni doprinos", "Ukupan maržni doprinos"],
-  soldUnits: ["Prodate jedinice", "Jedinice", "Komadi"],
+  unitsSold: ["Prodate jedinice", "Komadi", "Količina"],
   stockAtRisk: ["Lager u riziku", "Kapital u riziku"],
-  slowStock: ["Kapital u sporoj zalihi"],
-  lostSales: ["Procena izgubljene prodaje"],
-  dataReadiness: ["Spremnost podataka", "Data quality score", "Kvalitet podataka"],
-  revenueWithoutCost: ["Promet bez nabavne cene"],
-  revenueUnknownSupplier: ["Promet nepoznatog dobavljača"],
-  totalInventoryValue: ["Ukupna vrednost zaliha", "Procena vrednosti"],
-  stockUnits: ["Ukupno na stanju"],
-  lowStockCount: ["Niska zaliha"],
-  topSupplierRevenueShare: ["Udeo top 5 dobavljača"],
-  fullPriceShareChange: ["Promena udela pune cene"],
+  slowStockCapital: ["Kapital u sporoj zalihi"],
+  lostSalesEstimate: ["Procena izgubljene prodaje", "Izgubljena prodaja"],
+  dataReadinessScore: ["Spremnost podataka", "Data readiness", "Data quality score"],
+  missingCostCount: ["Bez nabavne cene", "Redovi bez nabavne cene"],
+  missingSupplierCount: ["Bez dobavljača", "Artikli bez dobavljača"],
+  sellThrough: ["Sell-through"],
+  velocity: ["Brzina prodaje", "Velocity"],
+  reliabilityPct: ["Pouzdanost signala", "Reliability"],
+  confidencePct: ["Sigurnost preporuke", "Confidence"],
+  markdownDependency: ["Zavisnost od nivelacija", "Markdown dependency"],
+  outOfStockRisk: ["OOS rizik", "Rizik nestanka zalihe"],
 };
 
 export function getAnalyticsMetricDefinition(metricKey: AnalyticsMetricKey): AnalyticsMetricDefinition {
   return analyticsMetricDefinitions[metricKey];
 }
 
+export function getMetricDefinition(metricKey: AnalyticsMetricKey | string): AnalyticsMetricDefinition | undefined {
+  if (metricKey in analyticsMetricDefinitions) {
+    return analyticsMetricDefinitions[metricKey as AnalyticsMetricKey];
+  }
+  return undefined;
+}
+
+export function getMetricLabel(metricKey: AnalyticsMetricKey | string): string {
+  return getMetricDefinition(metricKey)?.label ?? "Nepoznata metrika";
+}
+
+export function getMetricFormula(metricKey: AnalyticsMetricKey | string): string {
+  return getMetricDefinition(metricKey)?.formula ?? "Formula za ovu metriku još nije dokumentovana.";
+}
+
+export function getMetricMethodologyItems(
+  metricKeys: Array<AnalyticsMetricKey | string>
+): Array<AnalyticsMetricDefinition | { key: string; label: string; isDocumented: false; message: string }> {
+  return metricKeys.map((metricKey) => {
+    const definition = getMetricDefinition(metricKey);
+    if (definition) return definition;
+    return {
+      key: String(metricKey),
+      label: String(metricKey),
+      isDocumented: false as const,
+      message: "Metodologija za ovu metriku još nije dokumentovana.",
+    };
+  });
+}
+
 export function findAnalyticsMetricKeyByLabel(label: string | null | undefined): AnalyticsMetricKey | null {
   if (!label) return null;
   const normalized = label.trim().toLocaleLowerCase("sr-Latn-RS");
   const keys = Object.keys(analyticsMetricDefinitions) as AnalyticsMetricKey[];
-  const directMatch = keys.find(
-    (key) => analyticsMetricDefinitions[key].label.toLocaleLowerCase("sr-Latn-RS") === normalized
-  );
-  if (directMatch) return directMatch;
+  const direct = keys.find((key) => analyticsMetricDefinitions[key].label.toLocaleLowerCase("sr-Latn-RS") === normalized);
+  if (direct) return direct;
 
-  for (const [key, aliases] of Object.entries(analyticsMetricAliases) as Array<[AnalyticsMetricKey, string[] | undefined]>) {
+  for (const [key, aliases] of Object.entries(metricAliasesByLabel) as Array<[AnalyticsMetricKey, string[] | undefined]>) {
     if (aliases?.some((alias) => alias.toLocaleLowerCase("sr-Latn-RS") === normalized)) {
       return key;
     }

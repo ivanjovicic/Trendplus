@@ -16,10 +16,10 @@ type KpiTone = "info" | "success" | "warning" | "neutral" | "value";
 
 const KPI_TIPS: Record<string, string> = {
   "Ukupno SKU": "Broj jedinstvenih artikala (SKU) u izabranom filteru (prodavnica + dobavljač). Prikazuje obim asortimana, ne zalihu.",
-  "Ukupno na stanju": "Zbir pozitivnih raspolozivih kolicina za sve SKU u filteru. Ne uracunava negativne (korektivne) kolicine niti prednarudzbine.",
-  "Niska zaliha": "Broj SKU kod kojih je trenutna kolicina <= minimalnog nivoa (ili <= 2 kom ako minimum nije definisan). Procenat u napomeni je udeo ovih SKU u ukupnom broju.",
-  "Prosecno po SKU": "Srednja raspoloziva kolicina po jedinstvenom artiklu u filteru. Formula: ukupno na stanju / ukupno SKU. Visoke vrednosti mogu znaciti prekomerne zalihe.",
-  "Procena vrednosti": "Procenjena nabavna vrednost pozitivne raspolozive zalihe. Formula: kolicina × nabavna cena po SKU. Nabavna cena moze biti istorijska ili fallback procena — nije garantovano tacna za sve artikle.",
+  "Ukupno na stanju": "Zbir pozitivnih raspoloživih količina za sve SKU u filteru. Ne uračunava negativne korektivne količine niti prednarudžbine.",
+  "Niska zaliha": "Broj SKU kod kojih je trenutna količina <= minimalnog nivoa (ili <= 2 kom ako minimum nije definisan).",
+  "Prosečno po SKU": "Srednja raspoloživa količina po jedinstvenom artiklu u filteru. Formula: ukupno na stanju / ukupno SKU.",
+  "Procena vrednosti": "Procenjena nabavna vrednost pozitivne raspoložive zalihe. Formula: količina × nabavna cena po SKU.",
 };
 
 export function InventoryKPICards({
@@ -32,9 +32,9 @@ export function InventoryKPICards({
 }: InventoryKPICardsProps) {
   const cards: Array<{ label: string; value: string; note: string; tone: KpiTone; metricKey: AnalyticsMetricKey }> = [
     { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala u izabranom opsegu.", tone: "info", metricKey: "skuCount" },
-    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe.", tone: "success", metricKey: "stockUnits" },
+    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloživa količina robe.", tone: "success", metricKey: "stockUnits" },
     { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} fonda je blizu minimuma.`, tone: "warning", metricKey: "lowStockCount" },
-    { label: "Prosecno po SKU", value: formatNumber(avgUnitsPerSku, 1), note: "Srednja kolicina robe po artiklu.", tone: "neutral", metricKey: "avgUnitsPerSku" },
+    { label: "Prosečno po SKU", value: formatNumber(avgUnitsPerSku, 1), note: "Srednja količina robe po artiklu.", tone: "neutral", metricKey: "avgUnitsPerSku" },
     { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe.", tone: "value", metricKey: "totalInventoryValue" },
   ];
 

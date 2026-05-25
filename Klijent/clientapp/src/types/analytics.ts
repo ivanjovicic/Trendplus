@@ -611,6 +611,38 @@ export interface DurableReportSection {
   key: string;
   title?: string | null;
   rowCount: number;
+  description?: string | null;
+  emptyMessage?: string | null;
+  columns?: DurableReportColumn[];
+  rows?: Record<string, unknown>[];
+}
+
+export interface DurableReportColumn {
+  key: string;
+  label: string;
+  dataType?: string;
+}
+
+export interface DurableReportKpi {
+  key: string;
+  label: string;
+  value: unknown;
+  unit?: string | null;
+  tone?: string | null;
+  note?: string | null;
+}
+
+export interface DurableReportAction {
+  title: string;
+  description: string;
+  href: string;
+  priority?: string;
+}
+
+export interface DurableReportMethodology {
+  summary: string;
+  notes: string[];
+  sourceHints?: string[];
 }
 
 export interface DurableReportPayloadColumn {
@@ -644,7 +676,32 @@ export interface DurableReportPeriod {
   label: string;
 }
 
-export interface SupplierDecisionDurableReport {
+export interface ReportPeriod extends DurableReportPeriod {}
+
+export interface ReportSection extends DurableReportSection {}
+
+export interface ReportKpi {
+  key: string;
+  label: string;
+  value: string;
+  unit?: string | null;
+  note?: string | null;
+}
+
+export interface ReportAction {
+  priority: "P1" | "P2" | "P3" | string;
+  title: string;
+  reason?: string | null;
+  nextStep?: string | null;
+  href?: string | null;
+}
+
+export interface ReportMethodology {
+  summary: string;
+  notes?: string[];
+}
+
+export interface AnalyticsReportResponse {
   reportId: string;
   stableQueryUrl: string;
   reportTitle?: string;
@@ -652,13 +709,41 @@ export interface SupplierDecisionDurableReport {
   generatedAtUtc: string;
   periodFrom?: string;
   periodTo?: string;
+  period: ReportPeriod;
+  lastRefreshAtUtc?: string | null;
+  dataQualityStatus: string;
+  recommendationAllowed?: boolean;
+  usedFallback?: boolean;
+  warnings?: string[];
+  methodology: string;
+  rows: DurableReportRow[];
+  sections: ReportSection[];
+  payload: DurableResolvedReportPayload;
+  meta?: AnalyticsResponseMeta | null;
+}
+
+export interface SupplierDecisionDurableReport {
+  reportId: string;
+  stableQueryUrl: string;
+  title?: string;
+  type?: string;
+  reportTitle?: string;
+  reportType?: string;
+  generatedAtUtc: string;
+  periodFrom?: string;
+  periodTo?: string;
   period: DurableReportPeriod;
   lastRefreshAtUtc?: string | null;
+  dataFreshnessStatus?: string | null;
   dataQualityStatus: string;
   recommendationAllowed: boolean;
   usedFallback: boolean;
+  fallbackReason?: string | null;
   warnings?: string[];
-  methodology: string;
+  kpis?: DurableReportKpi[];
+  recommendedActions?: DurableReportAction[];
+  methodology: DurableReportMethodology | string;
+  methodologySummary?: string | null;
   rows: DurableReportRow[];
   sections: DurableReportSection[];
   payload: DurableResolvedReportPayload;
@@ -668,6 +753,8 @@ export interface SupplierDecisionDurableReport {
 export interface PilotIntakeDurableReport {
   reportId: string;
   stableQueryUrl: string;
+  title?: string;
+  type?: string;
   reportTitle?: string;
   reportType?: string;
   generatedAtUtc: string;
@@ -675,11 +762,16 @@ export interface PilotIntakeDurableReport {
   periodTo?: string;
   period: DurableReportPeriod;
   lastRefreshAtUtc?: string | null;
+  dataFreshnessStatus?: string | null;
   dataQualityStatus: string;
   recommendationAllowed?: boolean;
   usedFallback?: boolean;
+  fallbackReason?: string | null;
   warnings?: string[];
-  methodology: string;
+  kpis?: DurableReportKpi[];
+  recommendedActions?: DurableReportAction[];
+  methodology: DurableReportMethodology | string;
+  methodologySummary?: string | null;
   rows: DurableReportRow[];
   sections: DurableReportSection[];
   payload: DurableResolvedReportPayload;

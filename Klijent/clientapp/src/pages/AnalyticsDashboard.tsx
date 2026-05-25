@@ -1,375 +1,432 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  checkAnalyticsHealth,
-  getAnalyticsRefreshStatus,
-  getDashboardBootstrap,
-  getStores,
-  upsertAnalyticsAction,
-} from "../services/analyticsApi";
-import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
-import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
-import type {
-  AnalyticsResponseMeta,
-  AnalyticsRefreshStatus,
-  AnalyticsActionSourceType,
-  AnalyticsActionUpsertInput,
-  CategoryData,
-  DailySale,
-  DashboardAdvancedSnapshot,
-  DashboardDecisionAction,
-  DashboardMetricCard,
-  DashboardValidationEndpoint,
-  ExecutiveDashboardSnapshot,
-  GenderData,
-  HourData,
-  InventoryStatus,
-  PaymentData,
-  QuickInsights,
-  SalesSummary,
-  StoreOption,
-  SupplierData,
-  SupplierFilterOption,
-  TopProductAdvancedItem,
-  TopProductsAdvancedResult,
-  TransactionStats,
-  WeekdayData,
-} from "../types/analytics";
-import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
-import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
-import ExecutiveKpiRow from "../components/analytics/ExecutiveKpiRow";
-import InfoTip from "../components/ui/InfoTip";
-import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
-import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import {
-  ANALYTICS_PERIOD_PRESET_OPTIONS,
-  type AnalyticsPeriodPreset,
-  getAnalyticsPeriodPresetRange,
-} from "../utils/analyticsPeriodPresets";
-import {
-  normalizeRecommendationPct,
-  normalizeRecommendationQualityStatus,
-} from "../utils/canonicalRecommendationSemantics";
-import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
-import {
-  getAnalyticsMetaMessage,
-  isAnalyticsMetaInsufficient,
-  isAnalyticsMetaError,
-  isAnalyticsMetaWarning,
-  shouldShowAnalyticsEmptyState,
-} from "../utils/analyticsResponseMeta";
-import {
-  dataQualityStatusLabel,
-  formatConfidence as formatDecisionConfidence,
-  normalizeDataQualityStatus,
-} from "../utils/analyticsQuality";
-import "./AnalyticsDashboard.css";
+          <section className="analytics-section analytics-executive-stack">
+            <div className="analytics-executive-top">
+              <section className="analytics-section analytics-executive-kpis">
+                <div className="analytics-section-heading">
+                  <div>
+                    <p className="analytics-eyebrow">Executive cockpit</p>
+                    <h2>U 30 sekundi: prodaja, marža, rizici i prioriteti</h2>
+                  </div>
+                  <p className="section-note">Transakcije u periodu: <strong>{summary == null ? "Nije dostupno" : fmtNumber(summary.totalTransactions)}</strong></p>
+                </div>
+                <ExecutiveKpiRow
+                  loading={loading}
+                  totalRevenue={summary?.totalRevenue ?? null}
+                  marginContributionRsd={executive?.totalMarginContributionRsd ?? null}
+                  totalUnits={summary?.totalUnits ?? null}
+                  inventoryDangerValueRsd={executive?.inventoryDangerValueRsd ?? null}
+                  dataQualityTone={executiveDataQualityTone}
+                  dataQualityStatus={dashboardMeta?.dataQualityStatus ?? null}
+                  missingSupplierCount={executive?.dataQualitySummary?.missingSupplierCount ?? null}
+                  missingCostCount={executive?.dataQualitySummary?.missingCostCount ?? null}
+                  readinessLabel={executiveReadinessLabel}
+                />
+              </section>
 
-type TopTabKey = "revenue" | "units" | "velocity" | "margin";
-type Tone = "good" | "warning" | "critical" | "neutral";
+              <aside className="analytics-panel analytics-mini-dq-panel">
+                <div className="exec-section-head">
+                  <div>
+                    <h2>Kvalitet podataka i svežina</h2>
+                    <p className="section-note">Koliko možemo da verujemo dashboardu u ovom preseku.</p>
+                  </div>
+                  <Link to="/analytics/data-quality" className="decision-all-actions-link">Data Quality</Link>
+                </div>
+                <div className="analytics-mini-dq-list">
+                  {executiveMiniQualityCards.map((item) => (
+                    <div key={item.key} className={`analytics-mini-dq-item tone-${item.tone}`}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="analytics-mini-dq-meta">
+                  <span>Svežina: <strong>{freshnessStatusLabel(refreshStatus?.dataFreshnessStatus)}</strong></span>
+                  <span>Poslednje osveženje: <strong>{formatDateTime(dashboardLastRefreshAt, "Nije dostupno")}</strong></span>
+                </div>
+                <div className="analytics-mini-dq-meta">
+                  <span>Spremnost podataka: <strong>{executiveReadinessLabel}</strong></span>
+                  {refreshStatus?.isRunning ? <span>Osvežavanje je u toku: <strong>{refreshStatus.currentStep ?? "Obrada"}</strong></span> : null}
+                </div>
+                {executiveDataQualityHighlights.length === 0 && !showMetaWarning ? (
+                  <div className="analytics-empty success">Nema kritičnih count signala u ovom preseku.</div>
+                ) : null}
+                {showMetaWarning ? (
+                  <div className="analytics-empty warning" role="status">
+                    {dashboardMetaMessage ?? "Prikazani podaci su delimični ili fallback. Proverite Data Quality i status osvežavanja."}
+                  </div>
+                ) : null}
+              </aside>
+            </div>
 
-const AnalyticsDashboardCharts = lazy(() => import("../components/analytics/AnalyticsDashboardCharts"));
+            <div className="analytics-exec-fold analytics-exec-fold-single">
+              <section className="analytics-panel analytics-decision-cockpit">
+                <div className="decision-cockpit-head">
+                  <div>
+                    <h2>Šta treba uraditi ove nedelje?</h2>
+                    <p>Najvažnije akcije generisane iz prodaje, zaliha, marže i kvaliteta podataka.</p>
+                  </div>
+                  <Link to="/analytics/actions" className="decision-all-actions-link">Akcije i preporuke</Link>
+                </div>
+                {recommendationsBlocked ? (
+                  <div className="analytics-empty warning">Prikazani su pomoćni signali. Signal je ograničen zbog kvaliteta ili nedovoljno podataka.</div>
+                ) : null}
+                {loading ? (
+                  <div className="analytics-skeleton-grid">
+                    {Array.from({ length: 3 }).map((_, i) => <div key={`decision-skeleton-${i}`} className="analytics-skeleton-card" />)}
+                  </div>
+                ) : prioritizedDecisionActions.length === 0 ? (
+                  <AnalyticsEmptyState
+                    variant="insufficient_data"
+                    title="Nema prioritetnih akcija za ovu nedelju"
+                    message="Sistem trenutno nema dovoljno pouzdan signal za P1/P2/P3 preporuke."
+                    emptyReason={dashboardMeta?.emptyReason ?? "Nedovoljno podataka za automatske odluke."}
+                    reasons={[
+                      "Nedostaju ključni ulazni podaci (dobavljač, cena ili pokrivenost).",
+                      "Signal je ispod praga pouzdanosti za prodajnu odluku.",
+                    ]}
+                    actions={[
+                      { label: "Proširi period na 90 dana", onClick: () => applyPreset("90d") },
+                      { label: "Otvori Data Quality", href: "/analytics/data-quality" },
+                    ]}
+                    dataQualityHref="/analytics/data-quality"
+                    refreshStatusHref="/admin/configuration?panel=workers"
+                  />
+                ) : (
+                  <div className="decision-action-list">
+                    {prioritizedDecisionActions.map((action, index) => {
+                      const cardKey = getDecisionActionCardKey(action, index);
+                      const isQueued = addedToQueueKeys.has(cardKey);
+                      const isQueueBusy = queueBusyKeys.has(cardKey);
+                      const queueError = queueErrorsByKey[cardKey];
+                      const actionLink = resolveDashboardActionUrl(action);
+                      const impactText = action.expectedImpact?.trim()
+                        || (action.impactEstimateRsd != null ? fmtRsd(action.impactEstimateRsd, 0, "Nije dostupno") : "Nije dostupno");
 
-const HELP: Record<string, string> = {
-  promet: "Ukupan novac od prodaje u izabranom periodu.",
-  transakcije: "Jedan račun = jedna transakcija.",
-  jedinice: "Ukupan broj prodatih komada.",
-  sku: "Jedinstvena interna šifra artikla.",
-  velocity: "Prosečno prodata količina po danu.",
-  oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
-  pareto: "Koliko mali broj artikala pravi većinu prometa.",
-  ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend.",
-  momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
-  elasticnost: "Pokazuje koliko se tražnja menja kada se menja cena.",
-  completeness: "Da li artikli imaju ključna polja (naziv, šifra, kategorija).",
-  freshness: "Koliko je vremena prošlo od poslednjeg osvežavanja podataka.",
-  margin: "Procenjeni uticaj na maržu (prodajna - nabavna cena).",
-  trend: "Smer promene u odnosu na prethodni uporediv period.",
-};
+                      return (
+                        <article
+                          key={cardKey}
+                          className={`decision-action-card priority-${(action.priority || "P3").toLowerCase()}`}
+                        >
+                          <div className="decision-action-top">
+                            <div className="decision-action-badges">
+                              <span className={`priority ${(action.priority || "P3").toLowerCase()}`}>{action.priority || "P3"}</span>
+                              <span className={`decision-kind-badge${action.recommendationAllowed === false ? " limited" : ""}`}>
+                                {action.recommendationAllowed === false ? "Pomoćni signal" : "Preporuka sistema"}
+                              </span>
+                            </div>
+                            {action.priority === "P1" ? (
+                              <span className="decision-priority-spotlight" aria-label="Hitna nedeljna akcija">Hitno ove nedelje</span>
+                            ) : null}
+                          </div>
+                          <strong className="decision-action-title">{action.title}</strong>
+                          <p className="decision-action-reason"><strong>Zašto?</strong> {action.reason}</p>
+                          <div className="decision-action-stats">
+                            <span>Uticaj: {impactText}</span>
+                            <span>Sigurnost: {formatDecisionPctOrUnavailable(action.confidencePct)}</span>
+                            <span>Pouzdanost: {formatDecisionPctOrUnavailable(action.reliabilityPct)}</span>
+                          </div>
+                          <div className="decision-action-foot">
+                            <div className="decision-quality-stack">
+                              <span className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}>
+                                Data Quality: {dataQualityStatusLabel(action.dataQualityStatus)}
+                              </span>
+                              <small className={`decision-status-reason${action.recommendationAllowed === false ? " decision-status-warning" : " decision-status-ok"}`}>
+                                {action.recommendationAllowed === false
+                                  ? "Signal je ograničen zbog kvaliteta ili nedovoljno podataka."
+                                  : "Preporuka je dozvoljena za akciju."}
+                              </small>
+                              {normalizeDataQualityStatus(action.dataQualityStatus) !== "good" ? (
+                                <Link to="/analytics/data-quality" className="decision-quality-link">
+                                  Otvori kvalitet podataka
+                                </Link>
+                              ) : null}
+                              {action.statusReason ? <small className="decision-status-reason">{action.statusReason}</small> : null}
+                            </div>
+                            <div className="decision-action-links">
+                              <Link to={actionLink} className="decision-link">{action.linkLabel || "Otvori ekran"}</Link>
+                              <button
+                                type="button"
+                                className={`btn-add-to-queue${isQueued ? " added" : ""}`}
+                                title="Dodaj u centralni red akcija"
+                                disabled={isQueueBusy || isQueued}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (isQueueBusy || isQueued) return;
+                                  setQueueBusyKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(cardKey);
+                                    return next;
+                                  });
+                                  setQueueErrorsByKey((prev) => {
+                                    if (!(cardKey in prev)) return prev;
+                                    const { [cardKey]: _discard, ...rest } = prev;
+                                    return rest;
+                                  });
+                                  try {
+                                    const actionInput = buildAnalyticsActionFromDashboardAction(action, currentActionFilters);
+                                    await upsertAnalyticsAction(actionInput);
+                                    setAddedToQueueKeys((prev) => {
+                                      const next = new Set(prev);
+                                      next.add(cardKey);
+                                      return next;
+                                    });
+                                  } catch (reason) {
+                                    setQueueErrorsByKey((prev) => ({
+                                      ...prev,
+                                      [cardKey]: getErrorText(reason, "Akcija nije dodata u centralni red."),
+                                    }));
+                                  } finally {
+                                    setQueueBusyKeys((prev) => {
+                                      const next = new Set(prev);
+                                      next.delete(cardKey);
+                                      return next;
+                                    });
+                                  }
+                                }}
+                              >
+                                {isQueueBusy ? "Dodajem..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
+                              </button>
+                              {queueError ? <small className="decision-action-error">{queueError}</small> : null}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            </div>
+          </section>
 
-const DEFAULT_WEEKDAYS = ["Nedelja", "Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota"];
+          <section className="analytics-lower-sections">
+            <section className="analytics-panel analytics-exec-earn">
+              <div className="exec-section-head">
+                <div>
+                  <h2>Gde zarađujemo?</h2>
+                  <p className="section-note">Top dobavljači i artikli po maržnom doprinosu u izabranom periodu.</p>
+                </div>
+                <div className="exec-section-links">
+                  <Link to="/analytics/supplier" className="decision-all-actions-link">Supplier pregled</Link>
+                  <Link to="/analytics/products" className="decision-all-actions-link">Product decisions</Link>
+                </div>
+              </div>
+              {(executive?.topMarginCategories?.length ?? 0) > 0 ? (
+                <div className="exec-top-categories">
+                  {(executive?.topMarginCategories ?? []).slice(0, 3).map((item) => (
+                    <Link key={item.key} to={item.link} className="exec-category-pill">
+                      <span>{item.label}</span>
+                      <strong>{fmtRsd(item.marginContribution)}</strong>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+              {!executive || (executive.topSuppliers.length === 0 && executive.topMarginProducts.length === 0) ? (
+                <div className="analytics-empty">Nema dovoljno signala za prikaz top lista.</div>
+              ) : (
+                <div className="exec-two-tables">
+                  <div className="exec-table-wrap">
+                    <h3>Top dobavljači</h3>
+                    <table className="exec-table">
+                      <thead>
+                        <tr>
+                          <th>Dobavljač</th>
+                          <th className="num">Prihod</th>
+                          <th className="num">Maržni doprinos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(executive?.topSuppliers ?? []).slice(0, 5).map((item) => (
+                          <tr key={`${item.supplierId ?? "unknown"}:${item.supplierName}`}>
+                            <td><Link to={item.link}>{item.supplierName}</Link></td>
+                            <td className="num">{fmtRsd(item.revenue)}</td>
+                            <td className="num">{fmtRsd(item.marginContribution)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="exec-table-wrap">
+                    <h3>Top artikli</h3>
+                    <table className="exec-table">
+                      <thead>
+                        <tr>
+                          <th>Artikal</th>
+                          <th className="num">Maržni doprinos</th>
+                          <th className="num">Sigurnost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(executive?.topMarginProducts ?? []).slice(0, 5).map((item) => (
+                          <tr key={item.key}>
+                            <td>
+                              <Link to={item.link} title={item.supplierName ? `Dobavljač: ${item.supplierName}` : undefined}>
+                                {item.label}
+                              </Link>
+                            </td>
+                            <td className="num">{fmtRsd(item.marginContribution)}</td>
+                            <td className="num">
+                              <span className={`exec-pill dq-${normalizeDataQualityStatus(item.dataQualityStatus)}`}>{formatDecisionConfidence(item.confidencePct ?? null)}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
 
-const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
-  { key: "sku", header: "SKU", dataType: "text" },
-  { key: "productName", header: "Artikal", dataType: "text" },
-  { key: "revenue", header: "Promet", dataType: "currency" },
-  { key: "units", header: "Kom", dataType: "number" },
-  { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
-  { key: "marginImpact", header: "Uticaj na maržu", dataType: "currency" },
-  { key: "trendPct", header: "Trend %", dataType: "percent" },
-  { key: "stockStatus", header: "Status zalihe", dataType: "text" },
-];
+            <section className="analytics-panel analytics-exec-lose">
+              <div className="exec-section-head">
+                <div>
+                  <h2>Gde gubimo?</h2>
+                  <p className="section-note">Rizičan lager, spora zaliha, OOS i data gaps koji traže akciju.</p>
+                </div>
+                <div className="exec-section-links">
+                  <Link to="/analytics/inventory" className="decision-all-actions-link">Inventory</Link>
+                  <Link to="/analytics/data-quality" className="decision-all-actions-link">Data Quality</Link>
+                </div>
+              </div>
+              <div className="exec-loss-grid">
+                {executiveLossHighlights.map((item) => (
+                  <Link key={item.key} to={item.href} className={`exec-loss-card tone-${item.tone}`}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <small>{item.note}</small>
+                  </Link>
+                ))}
+              </div>
+              {!executive || (executive.negativeSignals ?? []).length === 0 ? (
+                <div className="analytics-empty">Nema dovoljno pouzdanih negativnih signala za prikaz.</div>
+              ) : (
+                <>
+                  <h3 className="exec-subtitle">Najkritičniji negativni signali</h3>
+                  <div className="exec-signal-list">
+                    {(executive.negativeSignals ?? []).slice(0, 5).map((signal, idx) => (
+                      <article key={`${signal.signalType}-${idx}`} className={`exec-signal priority-${(signal.priority || "P3").toLowerCase()}`}>
+                        <div className="exec-signal-top">
+                          <span className={`priority ${(signal.priority || "P3").toLowerCase()}`}>{signal.priority || "P3"}</span>
+                          <strong>{signal.title}</strong>
+                        </div>
+                        <p>{signal.description}</p>
+                        <div className="exec-signal-foot">
+                          <span className={`exec-pill dq-${normalizeDataQualityStatus(signal.dataQualityStatus)}`}>
+                            Data Quality: {dataQualityStatusLabel(signal.dataQualityStatus)}
+                          </span>
+                          <span className="exec-pill">{formatDecisionConfidence(signal.confidencePct ?? null)}</span>
+                          <span className="exec-pill">Uticaj: {signal.impactEstimateRsd != null ? fmtRsd(signal.impactEstimateRsd, 0, "Nije dostupno") : "Nije dostupno"}</span>
+                          <Link to={signal.link} className="exec-signal-link">Otvori</Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          </section>
 
-function formatInputDateTime(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  const hour = String(value.getHours()).padStart(2, "0");
-  const minute = String(value.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}`;
-}
-function parseInputDate(value: string): Date {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-}
+          <section className="analytics-panel analytics-overview-help no-print">
+            <button
+              type="button"
+              className={`overview-help-toggle${showOverviewHelp ? " open" : ""}`}
+              onClick={() => setShowOverviewHelp((prev) => !prev)}
+              aria-expanded={showOverviewHelp}
+            >
+              Kako je izračunat ovaj pregled?
+            </button>
+            {showOverviewHelp ? (
+              <div className="overview-help-body">
+                <p>Pregled kombinuje prihod, maržni doprinos, lager u riziku, kvalitet podataka i prioritetne odluke.</p>
+                <p>Preporuke čitajte zajedno sa pouzdanošću signala i Data Quality statusom.</p>
+                <MetricMethodologyPanel metricKeys={[...EXECUTIVE_OVERVIEW_METRIC_KEYS]} dataQualityHref="/analytics/data-quality" />
+              </div>
+            ) : null}
+          </section>
 
-function statusTone(value?: string | null): Tone {
-  if (!value) return "neutral";
-  if (value === "good") return "good";
-  if (value === "warning") return "warning";
-  if (value === "critical" || value === "error") return "critical";
-  return "neutral";
-}
-
-function statusLabel(value?: string | null): string {
-  const tone = statusTone(value);
-  if (tone === "good") return "Dobro";
-  if (tone === "warning") return "Upozorenje";
-  if (tone === "critical") return "Kritično";
-  return "Neutralno";
-}
-
-function decisionPriorityRank(priority?: string | null): number {
-  if (priority === "P1") return 1;
-  if (priority === "P2") return 2;
-  return 3;
-}
-
-type DashboardActionFilters = {
-  fromDate: string;
-  toDate: string;
-  storeId?: number;
-  supplierId?: number;
-};
-
-const DASHBOARD_ACTION_SOURCE_TYPES: AnalyticsActionSourceType[] = [
-  "dashboard",
-  "product",
-  "supplier",
-  "inventory",
-  "nivelacija",
-  "data_quality",
-];
-
-function formatActionDateKey(value: string): string {
-  if (!value) return "all";
-  return value.slice(0, 10);
-}
-
-function sanitizeActionKeyPart(value: string | null | undefined): string {
-  const normalized = (value ?? "")
-    .trim()
-    .toLowerCase()
-    .replaceAll(" ", "_")
-    .replaceAll("-", "_");
-
-  const sanitized = normalized.replace(/[^a-z0-9_]/g, "");
-  return sanitized || "signal";
-}
-
-function resolveDashboardActionUrl(action: DashboardDecisionAction): string {
-  const value = action.actionUrl?.trim() || action.link?.trim();
-  return value || "/analytics";
-}
-
-function inferDashboardActionSourceType(action: DashboardDecisionAction): AnalyticsActionSourceType {
-  const explicit = (action.sourceType ?? "").trim().toLowerCase();
-  if ((DASHBOARD_ACTION_SOURCE_TYPES as string[]).includes(explicit)) {
-    return explicit as AnalyticsActionSourceType;
-  }
-
-  const url = resolveDashboardActionUrl(action).toLowerCase();
-  if (url.includes("/analytics/products")) return "product";
-  if (url.includes("/analytics/inventory")) return "inventory";
-  if (url.includes("/analytics/supplier")) return "supplier";
-  if (url.includes("/analytics/data-quality")) return "data_quality";
-  if (url.includes("/analytics/pre-nivelacija-prioriteti")) return "nivelacija";
-  return "dashboard";
-}
-
-function resolveDashboardActionType(action: DashboardDecisionAction): string {
-  if (action.recommendationStatus?.trim()) {
-    return sanitizeActionKeyPart(action.recommendationStatus);
-  }
-
-  return sanitizeActionKeyPart(action.title);
-}
-
-function buildDashboardFallbackActionKey(
-  action: DashboardDecisionAction,
-  filters: DashboardActionFilters,
-): string {
-  const sourceType = inferDashboardActionSourceType(action);
-  const actionType = resolveDashboardActionType(action);
-  const periodFrom = formatActionDateKey(filters.fromDate);
-  const periodTo = formatActionDateKey(filters.toDate);
-  const storePart = filters.storeId == null ? "all" : String(filters.storeId);
-  const supplierPart = filters.supplierId == null ? "all" : String(filters.supplierId);
-  return `${sourceType}:${actionType}:${periodFrom}:${periodTo}:${storePart}:${supplierPart}`;
-}
-
-function buildAnalyticsActionFromDashboardAction(
-  action: DashboardDecisionAction,
-  filters: DashboardActionFilters,
-): AnalyticsActionUpsertInput {
-  const sourceType = inferDashboardActionSourceType(action);
-  const actionUrl = resolveDashboardActionUrl(action);
-  const sourceKey = action.actionKey?.trim() || buildDashboardFallbackActionKey(action, filters);
-  const priority = action.priority === "P1" || action.priority === "P2" || action.priority === "P3"
-    ? action.priority
-    : "P3";
-  const actionType = resolveDashboardActionType(action);
-  const periodFrom = formatActionDateKey(filters.fromDate);
-  const periodTo = formatActionDateKey(filters.toDate);
-  const metadata = {
-    ...(action.metadata ?? {}),
-    sourceType,
-    actionType,
-    periodFrom,
-    periodTo,
-    storeId: filters.storeId ?? "all",
-    supplierId: filters.supplierId ?? "all",
-  };
-
-  return {
-    sourceType,
-    sourceKey,
-    title: action.title,
-    description: action.description?.trim() || action.statusReason?.trim() || action.reason,
-    recommendationStatus: action.recommendationStatus ?? undefined,
-    priority,
-    impactEstimateRsd: action.impactEstimateRsd ?? undefined,
-    confidencePct: action.confidencePct ?? undefined,
-    reliabilityPct: action.reliabilityPct ?? undefined,
-    dataQualityStatus: normalizeDataQualityStatus(action.dataQualityStatus),
-    actionUrl,
-    metadataJson: JSON.stringify(metadata),
-  };
-}
-
-function mapLegacyActionLink(title: string): string {
-  const normalized = title.trim().toLowerCase();
-  if (normalized.includes("replenishment")) return "/analytics/inventory";
-  if (normalized.includes("data")) return "/analytics/data-quality";
-  if (normalized.includes("portfolio")) return "/analytics/products";
-  if (normalized.includes("refresh")) return "/analytics/data-quality";
-  return "/analytics";
-}
-
-function buildFallbackDecisionActionsFromAdvanced(advanced: DashboardAdvancedSnapshot | null): DashboardDecisionAction[] {
-  if (!advanced?.actions?.length) return [];
-
-  return advanced.actions.slice(0, 4).map((item) => {
-    const confidencePct = normalizeRecommendationPct(item.confidencePct);
-    const reliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
-    const dataQualityStatus = normalizeRecommendationQualityStatus(item.dataQualityStatus);
-
-    return {
-      sourceType: inferDashboardActionSourceType({ priority: item.priority || "P3", title: item.title || "", reason: item.recommendation || "", link: mapLegacyActionLink(item.title || "") }),
-      priority: item.priority || "P3",
-      title: item.title || "Operativna akcija",
-      description: item.recommendation || "Potrebna je dodatna provera signala.",
-      reason: item.recommendation || "Potrebna je dodatna provera signala.",
-      statusReason: item.statusReason || item.recommendation || "Pouzdanost preporuke nije dostupna.",
-      recommendationStatus: null,
-      expectedImpact: null,
-      impactEstimateRsd: null,
-      confidencePct,
-      reliabilityPct,
-      recommendationAllowed: false,
-      dataQualityStatus,
-      actionUrl: mapLegacyActionLink(item.title || ""),
-      metadata: { legacyAction: true },
-      link: mapLegacyActionLink(item.title || ""),
-      linkLabel: dataQualityStatus !== "good" ? "Otvori kvalitet podataka" : "Otvori povezani ekran",
-    };
-  });
-}
-
-function trendLabel(value?: number | null): string {
-  if (value == null) return "Nema trenda";
-  return value >= 0 ? "Rast" : "Pad";
-}
-
-function buildStoreLabel(store: StoreOption): string {
-  const extras = [store.city, store.region].filter(Boolean).join(", ");
-  return extras ? `${store.storeName} (${extras})` : store.storeName;
-}
-
-function downloadCsv(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function getErrorText(reason: unknown, fallback: string): string {
-  if (reason instanceof Error) {
-    const message = reason.message.trim();
-    const signature = `${reason.name} ${message}`.toLowerCase();
-
-    if (
-      signature.includes("apifailovertimeouterror")
-      || signature.includes("api request timed out")
-      || signature.includes("request timeout")
-      || signature.includes("timed out")
-    ) {
-      return "Analytics endpoint trenutno odgovara sporo (timeout). Pokušajte osvežavanje za 30-60 sekundi.";
-    }
-
-    if (message) return message;
-  }
-
-  if (typeof reason === "string" && reason.trim()) return reason;
-  return fallback;
-}
-
-function isTransientCancellationMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return normalized.includes("the operation was canceled")
-    || normalized.includes("operation was canceled")
-    || normalized.includes("request timeout")
-    || normalized.includes("aborterror");
-}
-
-function compactErrorMessages(messages: string[]): string[] {
-  const unique = Array.from(new Set(messages.map((item) => item.trim()).filter(Boolean)));
-  if (unique.length === 0) return [];
-
-  const stable: string[] = [];
-  let transientCancelCount = 0;
-
-  for (const message of unique) {
-    if (isTransientCancellationMessage(message)) {
-      transientCancelCount += 1;
-      continue;
-    }
-
-    stable.push(message);
-  }
-
-  if (transientCancelCount > 0) {
-    stable.push("Neki analytics upiti su privremeno prekinuti. Osvežite stranicu za kompletne podatke.");
-  }
-
-  return stable;
-}
+          <section className="analytics-panel analytics-context-panel no-print">
+            <div className="analytics-context-head">
+              <div>
+                <h2>Opseg i filteri</h2>
+                <p className="section-note">Menjajte period, prodavnicu ili dobavljača ovde; executive cockpit iznad ostaje fokusiran na odluku.</p>
+              </div>
+              <div className="analytics-controls">
+                <button onClick={() => void load()} disabled={loading}>{loading ? "Učitavanje..." : "Osveži dashboard"}</button>
+              </div>
+            </div>
+            <div className="analytics-filter-bar">
+              <div className="analytics-filter-grid">
+                <label>
+                  Period
+                  <select value={preset} onChange={(e) => applyPreset(e.target.value as AnalyticsPeriodPreset)}>
+                    {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {preset === "custom" && (
+                  <>
+                    <label>
+                      Datum od
+                      <input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    </label>
+                    <label>
+                      Datum do
+                      <input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </label>
+                  </>
+                )}
+                <label>
+                  Prodavnica
+                  <select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)}>
+                    <option value="">Sve prodavnice</option>
+                    {stores.map((store) => (
+                      <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Dobavljač
+                  <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
+                    <option value="">Svi dobavljači</option>
+                    {supplierOptions.map((supplier) => (
+                      <option key={supplier.supplierId} value={supplier.supplierId}>
+                        {supplier.supplierName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="filter-chip-row">
+                <span className="filter-chip">Opseg: {selectedDays} dana</span>
+                <span className="filter-chip">Prodavnica: {storeId == null ? "Sve" : buildStoreLabel(stores.find((item) => item.storeId === storeId) ?? { storeId, storeName: `Prodavnica ${storeId}` })}</span>
+                <span className="filter-chip">Dobavljač: {selectedSupplier ? supplierOptions.find((item) => item.supplierId === supplierId)?.supplierName ?? `ID ${supplierId}` : "Svi"}</span>
+              </div>
+            </div>
+            {healthText ? <div className="analytics-health">{healthText}</div> : null}
+            {isInvalidFilterRange ? <div className="analytics-empty warning">Proverite filtere: neispravan vremenski opseg.</div> : null}
+            {errors.length > 0 ? (
+              <section className="analytics-errors">
+                <h3>Validacione poruke</h3>
+                <ul>{errors.map((error, index) => <li key={`err-${index}`}>{error}</li>)}</ul>
+              </section>
+            ) : null}
+          </section>
 
 function formatDecisionPctOrUnavailable(value: number | null | undefined): string {
   const normalized = normalizeRecommendationPct(value);
-  if (normalized == null) return "nije dostupno";
+  if (normalized == null) return "Nije dostupno";
   return fmtPct(normalized, 0);
 }
 
 function freshnessStatusLabel(value?: string | null): string {
   const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "fresh") return "Sve\u017Ee";
+  if (normalized === "fresh") return "Sveže";
   if (normalized === "stale") return "Zastarelo";
-  if (normalized === "critical") return "Kriti\u010Dno";
+  if (normalized === "critical") return "Kritično";
   return "Nepoznato";
 }
 
@@ -384,6 +441,7 @@ function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?
     </article>
   );
 }
+
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -663,7 +721,7 @@ export default function AnalyticsDashboard() {
           if (byPriority !== 0) return byPriority;
           return (b.confidencePct ?? -1) - (a.confidencePct ?? -1);
         })
-        .slice(0, 5),
+        .slice(0, 4),
     [decisionActions]
   );
   const recommendationsBlocked = useMemo(
@@ -685,6 +743,90 @@ export default function AnalyticsDashboard() {
       { key: "refreshWarning", label: "Refresh warning", value: hasRefreshWarning ? 1 : 0 },
     ].filter((item) => item.value > 0);
   }, [executive?.dataQualitySummary, refreshStatus?.dataFreshnessStatus]);
+  const dashboardLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null;
+  const executiveReadinessLabel = useMemo(() => {
+    if (dashboardMeta?.dataQualityStatus) return dataQualityStatusLabel(dashboardMeta.dataQualityStatus);
+    if (refreshStatus?.dataFreshnessStatus) return freshnessStatusLabel(refreshStatus.dataFreshnessStatus);
+    return "Nije dostupno";
+  }, [dashboardMeta?.dataQualityStatus, refreshStatus?.dataFreshnessStatus]);
+  const executiveMiniQualityCards = useMemo(() => {
+    const summary = executive?.dataQualitySummary;
+
+    return [
+      {
+        key: "missingSupplier",
+        label: "Bez dobavljača",
+        value: summary ? fmtNumber(summary.missingSupplierCount, 0, "Nije dostupno") : "Nije dostupno",
+        tone: (summary?.missingSupplierCount ?? 0) > 0 ? "warning" : "neutral",
+      },
+      {
+        key: "missingCost",
+        label: "Bez nabavne cene",
+        value: summary ? fmtNumber(summary.missingCostCount, 0, "Nije dostupno") : "Nije dostupno",
+        tone: (summary?.missingCostCount ?? 0) > 0 ? "warning" : "neutral",
+      },
+      {
+        key: "insufficientSignals",
+        label: "Nedovoljni signali",
+        value: summary ? fmtNumber(summary.insufficientSignalCount, 0, "Nije dostupno") : "Nije dostupno",
+        tone: (summary?.insufficientSignalCount ?? 0) > 0 ? "warning" : "neutral",
+      },
+      {
+        key: "ignoredRows",
+        label: "Ignorisani redovi",
+        value: summary ? fmtNumber(summary.ignoredRowsCount, 0, "Nije dostupno") : "Nije dostupno",
+        tone: (summary?.ignoredRowsCount ?? 0) > 0 ? "critical" : "neutral",
+      },
+    ] as const;
+  }, [executive?.dataQualitySummary]);
+  const executiveLossHighlights = useMemo(() => {
+    const missingDataIssues = executive?.dataQualitySummary
+      ? executive.dataQualitySummary.missingCostCount + executive.dataQualitySummary.missingSupplierCount
+      : null;
+
+    return [
+      {
+        key: "stock-at-risk",
+        label: "Lager u riziku",
+        value: executive?.inventoryDangerValueRsd != null
+          ? fmtRsd(executive.inventoryDangerValueRsd, 0, "Nije dostupno")
+          : "Nije dostupno",
+        note: "Kapital blokiran u rizičnoj i sporoj zalihi.",
+        href: "/analytics/inventory",
+        tone: executive?.inventoryDangerValueRsd != null && executive.inventoryDangerValueRsd > 0 ? "warning" : "neutral",
+      },
+      {
+        key: "slow-stock",
+        label: "Spora zaliha",
+        value: inventory?.lowStockCount != null
+          ? `${fmtNumber(inventory.lowStockCount, 0, "Nije dostupno")} SKU`
+          : "Nije dostupno",
+        note: "Prvi indikator slow-stock kapitala i sporije rotacije.",
+        href: "/analytics/inventory",
+        tone: (inventory?.lowStockCount ?? 0) > 0 ? "warning" : "neutral",
+      },
+      {
+        key: "lost-sales",
+        label: "Izgubljena prodaja / OOS",
+        value: validLostSales?.lostSalesEstimate != null
+          ? fmtRsd(validLostSales.lostSalesEstimate, 0, "Nije dostupno")
+          : inventory?.outOfStockCount != null
+            ? `${fmtNumber(inventory.outOfStockCount, 0, "Nije dostupno")} SKU`
+            : "Nije dostupno",
+        note: validLostSales?.message ?? "Procena pritiska rasprodatosti i out-of-stock gubitka.",
+        href: "/analytics/inventory",
+        tone: normalizeDataQualityStatus(validLostSales?.status) === "critical" ? "critical" : "warning",
+      },
+      {
+        key: "missing-data",
+        label: "Missing cost / supplier",
+        value: missingDataIssues != null ? fmtNumber(missingDataIssues, 0, "Nije dostupno") : "Nije dostupno",
+        note: "Problemi kvaliteta podataka koji ruše maržu i supplier signal.",
+        href: "/analytics/data-quality",
+        tone: missingDataIssues != null && missingDataIssues > 0 ? "critical" : "neutral",
+      },
+    ] as const;
+  }, [executive?.dataQualitySummary, executive?.inventoryDangerValueRsd, inventory?.lowStockCount, inventory?.outOfStockCount, validLostSales?.lostSalesEstimate, validLostSales?.message, validLostSales?.status]);
 
   const currentActionFilters = useMemo<DashboardActionFilters>(() => ({
     fromDate,
@@ -807,7 +949,7 @@ export default function AnalyticsDashboard() {
         description="Executive cockpit za prodaju i profit: prihod, mar\u017Eni doprinos, rizici i prioritetne odluke za izabrani period."
         periodFrom={fromDate}
         periodTo={toDate}
-        lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? advanced?.generatedAtUtc ?? validFreshness?.lastImport ?? null}
+        lastRefreshAt={dashboardLastRefreshAt}
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}

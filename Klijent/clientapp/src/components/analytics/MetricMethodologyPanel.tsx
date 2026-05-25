@@ -1,15 +1,28 @@
 import { Link } from "react-router-dom";
 import {
+  getMetricMethodologyItems,
   type AnalyticsMetricKey,
-  getAnalyticsMetricDefinition,
+  type AnalyticsMetricDefinition,
 } from "../../utils/analyticsMetricDefinitions";
 import "./MetricMethodologyPanel.css";
 
 type MetricMethodologyPanelProps = {
-  metricKey: AnalyticsMetricKey;
+  metricKey?: AnalyticsMetricKey;
+  metricKeys?: Array<AnalyticsMetricKey | string>;
   onClose?: () => void;
   dataQualityHref?: string | null;
 };
+
+type MethodologyItem = AnalyticsMetricDefinition | {
+  key: string;
+  label: string;
+  isDocumented: false;
+  message: string;
+};
+
+function isDocumented(item: MethodologyItem): item is AnalyticsMetricDefinition {
+  return !("isDocumented" in item);
+}
 
 function renderList(title: string, items: string[]) {
   if (items.length === 0) return null;
@@ -27,17 +40,23 @@ function renderList(title: string, items: string[]) {
 
 export default function MetricMethodologyPanel({
   metricKey,
+  metricKeys,
   onClose,
   dataQualityHref = "/analytics/data-quality",
 }: MetricMethodologyPanelProps) {
-  const definition = getAnalyticsMetricDefinition(metricKey);
+  const keys = metricKeys && metricKeys.length > 0
+    ? metricKeys
+    : metricKey
+      ? [metricKey]
+      : [];
+  const items = getMetricMethodologyItems(keys);
 
   return (
     <div className="metric-methodology-panel">
       <div className="metric-methodology-header">
         <div>
           <p className="metric-methodology-eyebrow">Kako je izračunato?</p>
-          <h2>{definition.title}</h2>
+          <h2>Metodologija metrika</h2>
         </div>
         {onClose ? (
           <button
@@ -51,47 +70,44 @@ export default function MetricMethodologyPanel({
         ) : null}
       </div>
 
-      <section className="metric-methodology-section">
-        <h3>Šta broj znači</h3>
-        <p>{definition.description}</p>
-      </section>
-
-      <section className="metric-methodology-section metric-methodology-formula">
-        <h3>Formula</h3>
-        <p>{definition.formula}</p>
-      </section>
-
-      <section className="metric-methodology-section">
-        <h3>Izvor podataka</h3>
-        <p>{definition.source}</p>
-      </section>
-
-      {definition.qualityNote ? (
+      {items.length === 0 ? (
         <section className="metric-methodology-section">
-          <h3>Napomena o kvalitetu podataka</h3>
-          <p>{definition.qualityNote}</p>
+          <p>Metodologija za ovu metriku još nije dokumentovana.</p>
         </section>
       ) : null}
 
-      {renderList("Ulazna polja", definition.inputs)}
-      {renderList("Šta može da ograniči pouzdanost", definition.caveats)}
-      {renderList("Kada je signal blokiran", definition.blockedWhen)}
-
-      {definition.relatedDataQualityChecks.length > 0 ? (
-        <section className="metric-methodology-section">
-          <h3>Povezane Data Quality provere</h3>
-          <ul>
-            {definition.relatedDataQualityChecks.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          {dataQualityHref ? (
-            <Link to={dataQualityHref} className="metric-methodology-link">
-              Otvori Data Quality
-            </Link>
-          ) : null}
-        </section>
-      ) : null}
+      {items.map((item) => (
+        <article key={item.key} className="metric-methodology-section">
+          <h3>{item.label}</h3>
+          {isDocumented(item) ? (
+            <>
+              <p>{item.shortDescription}</p>
+              <section className="metric-methodology-section metric-methodology-formula">
+                <h4>Formula</h4>
+                <p>{item.formula}</p>
+              </section>
+              <section className="metric-methodology-section">
+                <h4>Izvor podataka</h4>
+                <p>{item.dataSource}</p>
+              </section>
+              <section className="metric-methodology-section">
+                <h4>Tumačenje</h4>
+                <p>{item.interpretation}</p>
+              </section>
+              {renderList("Šta može da ograniči pouzdanost", item.limitations)}
+              {renderList("Kada signal nije pouzdan", item.blockedWhen)}
+              {renderList("Povezane Data Quality provere", item.dataQualityDependencies)}
+              {dataQualityHref ? (
+                <Link to={dataQualityHref} className="metric-methodology-link">
+                  Otvori Data Quality
+                </Link>
+              ) : null}
+            </>
+          ) : (
+            <p>{item.message}</p>
+          )}
+        </article>
+      ))}
     </div>
   );
 }
