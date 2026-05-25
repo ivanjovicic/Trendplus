@@ -202,6 +202,25 @@ public sealed class AnalyticsResponseMetaContractTests
     }
 
     [Fact]
+    public void DashboardBootstrap_DbError_ReturnsErrorMetaInsteadOfZeroSummary()
+    {
+        var dto = new AnalyticsDashboardBootstrapDto
+        {
+            Summary = null,
+            Errors = ["Dashboard bootstrap failed: db unavailable."],
+            Meta = AnalyticsResponseMetaFactory.Error(
+                errorCode: "ANALYTICS_DB_UNAVAILABLE",
+                errorMessage: "Dashboard podaci nisu dostupni zbog greske baze.",
+                correlationId: "db-corr-001")
+        };
+
+        Assert.False(dto.Meta.Success);
+        Assert.Equal("ANALYTICS_DB_UNAVAILABLE", dto.Meta.ErrorCode);
+        Assert.Equal("db-corr-001", dto.Meta.CorrelationId);
+        Assert.Null(dto.Summary);
+    }
+
+    [Fact]
     public void ProductDecisionCenter_DbException_ResponseHasErrorMeta_NotFakeZero()
     {
         // Simulate what the PDC handler returns on NpgsqlException.
@@ -219,6 +238,82 @@ public sealed class AnalyticsResponseMetaContractTests
         // as a successful empty query. The meta distinguishes these two cases.
         Assert.Empty(dto.Rows);
         Assert.Equal("ANALYTICS_DB_UNAVAILABLE", dto.Meta.ErrorCode);
+    }
+
+    [Fact]
+    public void ProductDecisionCenter_NoRows_ReturnsInsufficientDataMeta()
+    {
+        var dto = new ProductDecisionCenterResponseDto
+        {
+            TotalRows = 0,
+            Rows = [],
+            Summary = new ProductDecisionCenterSummaryDto(),
+            Meta = AnalyticsResponseMetaFactory.Empty(
+                emptyReason: "no_rows_for_period",
+                message: "Nema artikala za izabrani period i filtere.",
+                dataQualityStatus: "insufficient_data")
+        };
+
+        Assert.True(dto.Meta.Success);
+        Assert.Equal("no_rows_for_period", dto.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", dto.Meta.DataQualityStatus);
+        Assert.Empty(dto.Rows);
+    }
+
+    [Fact]
+    public void Inventory_MissingDependency_ReturnsErrorMeta()
+    {
+        var response = new InventoryBalanceDto(
+            TotalSku: 0,
+            TotalOnHand: 0,
+            LowStockCount: 0,
+            OutOfStockCount: 0,
+            EstimatedInventoryValue: 0m,
+            Meta: AnalyticsResponseMetaFactory.Error(
+                errorCode: "inventory_dependency_missing",
+                errorMessage: "Inventory dependency nije dostupna.",
+                correlationId: "inv-corr-001"));
+
+        Assert.NotNull(response.Meta);
+        Assert.False(response.Meta!.Success);
+        Assert.Equal("inventory_dependency_missing", response.Meta.ErrorCode);
+        Assert.Equal("inv-corr-001", response.Meta.CorrelationId);
+    }
+
+    [Fact]
+    public void PreNivelacijaPriority_EmptyDataset_ReturnsEmptyMeta()
+    {
+        var response = new Api.Models.PreNivelacijaPriorityResponseDto
+        {
+            TotalCandidates = 0,
+            Candidates = [],
+            Meta = AnalyticsResponseMetaFactory.Empty(
+                emptyReason: "no_data_in_period",
+                message: "Nema prodaje za izabrani period.",
+                dataQualityStatus: "insufficient_data")
+        };
+
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_data_in_period", response.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+        Assert.Empty(response.Candidates);
+    }
+
+    [Fact]
+    public void PrePostNivelacija_Exception_ReturnsErrorMetaWithCorrelationId()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            Meta = AnalyticsResponseMetaFactory.Error(
+                errorCode: "vendor_sales_nivelacija_error",
+                errorMessage: "Pre/post nivelacija nije dostupna.",
+                correlationId: "nivelacija-corr-001")
+        };
+
+        Assert.NotNull(response.Meta);
+        Assert.False(response.Meta!.Success);
+        Assert.Equal("vendor_sales_nivelacija_error", response.Meta.ErrorCode);
+        Assert.Equal("nivelacija-corr-001", response.Meta.CorrelationId);
     }
 
     [Fact]

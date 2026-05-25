@@ -1,4 +1,8 @@
 using Infrastructure.Services.Caching;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
 using Xunit;
@@ -224,6 +228,188 @@ public sealed class AnalyticsReportsContractTests
         var pilotVersion2 = AnalyticsCacheKeys.PilotIntakeReport(fromUtc, toUtc, null, null, "all", reportCacheVersion: 2);
         Assert.NotEqual(supplierBase, supplierVersion2);
         Assert.NotEqual(pilotBase, pilotVersion2);
+    }
+
+    [Fact(DisplayName = "SupplierDecisionReport_CacheHit_ReturnsCachedReportAndCorrelationMeta")]
+    public async Task SupplierDecisionReport_CacheHit_ReturnsCachedReportAndCorrelationMeta()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)],
+            0,
+            0,
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var cachedReport = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        var cache = new StubAnalyticsCacheService { CachedValue = cachedReport };
+        var cacheAdmin = new AnalyticsCacheAdminService(cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        var configuration = CreateTestConfiguration();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Correlation-ID"] = "corr-supplier-report-cache-hit";
+
+        var result = await SupplierDecisionHubEndpoints.HandleSupplierDecisionReportAsync(
+            httpContext,
+            configuration,
+            cache,
+            cacheAdmin,
+            NullLoggerFactory.Instance,
+            refreshStatusService: null!,
+            fromDate: fromUtc,
+            toDate: toUtc,
+            ct: CancellationToken.None);
+
+        var ok = Assert.IsType<Ok<AnalyticsReportResponseDto>>(result);
+        var report = Assert.IsType<AnalyticsReportResponseDto>(ok.Value);
+        Assert.True(report.Meta?.Success);
+        Assert.Equal("corr-supplier-report-cache-hit", report.Meta?.CorrelationId);
+        Assert.Equal("supplier_decision", report.Type);
+    }
+
+    [Fact(DisplayName = "PilotIntakeReport_CacheHit_ReturnsCachedReportAndCorrelationMeta")]
+    public async Task PilotIntakeReport_CacheHit_ReturnsCachedReportAndCorrelationMeta()
+    {
+        var period = (
+            FromUtc: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            ToUtc: new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            ToExclusiveUtc: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+        var intake = CreatePilotIntakeReport(85, AnalyticsResponseMetaFactory.Success("good"));
+        var cachedReport = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        var cache = new StubAnalyticsCacheService { CachedValue = cachedReport };
+        var cacheAdmin = new AnalyticsCacheAdminService(cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Correlation-ID"] = "corr-pilot-report-cache-hit";
+
+        var result = await DataQualityEndpoints.HandlePilotIntakeReportAsync(
+            httpContext,
+            trendDb: null!,
+            analyticsDb: null!,
+            cache,
+            cacheAdmin,
+            NullLoggerFactory.Instance,
+            healthService: null!,
+            refreshStatusService: null!,
+            fromDate: period.FromUtc.ToString("yyyy-MM-dd"),
+            toDate: period.ToUtc.ToString("yyyy-MM-dd"),
+            storeId: null,
+            supplierId: null,
+            scope: "all",
+            dataScope: null,
+            ct: CancellationToken.None);
+
+        var ok = Assert.IsType<Ok<AnalyticsReportResponseDto>>(result);
+        var report = Assert.IsType<AnalyticsReportResponseDto>(ok.Value);
+        Assert.True(report.Meta?.Success);
+        Assert.Equal("corr-pilot-report-cache-hit", report.Meta?.CorrelationId);
+        Assert.Equal("pilot_intake", report.Type);
+    }
+
+    [Fact(DisplayName = "PilotIntakeReport_CacheFailure_ReturnsErrorMetaWithoutFakeZeroPayload")]
+    public async Task PilotIntakeReport_CacheFailure_ReturnsErrorMetaWithoutFakeZeroPayload()
+    {
+        var cache = new StubAnalyticsCacheService { GetException = new InvalidOperationException("cache unavailable") };
+        var cacheAdmin = new AnalyticsCacheAdminService(cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-Correlation-ID"] = "corr-pilot-cache-fail";
+
+        var result = await DataQualityEndpoints.HandlePilotIntakeReportAsync(
+            httpContext,
+            trendDb: null!,
+            analyticsDb: null!,
+            cache,
+            cacheAdmin,
+            NullLoggerFactory.Instance,
+            healthService: null!,
+            refreshStatusService: null!,
+            fromDate: "2026-06-01",
+            toDate: "2026-06-30",
+            storeId: null,
+            supplierId: null,
+            scope: "all",
+            dataScope: null,
+            ct: CancellationToken.None);
+
+        var ok = Assert.IsType<Ok<AnalyticsReportResponseDto>>(result);
+        var report = Assert.IsType<AnalyticsReportResponseDto>(ok.Value);
+        Assert.False(report.Meta?.Success);
+        Assert.Equal("pilot_intake_report_error", report.Meta?.ErrorCode);
+        Assert.Equal("corr-pilot-cache-fail", report.Meta?.CorrelationId);
+        Assert.Empty(report.Kpis);
+    }
+
+    private static IConfiguration CreateTestConfiguration() =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DOTNET_ENVIRONMENT"] = "Development",
+                ["ConnectionStrings:AnalyticsConnection"] = "Host=127.0.0.1;Port=5432;Database=analytics;Username=test;Password=test",
+                ["ConnectionStrings:DefaultConnection"] = "Host=127.0.0.1;Port=5432;Database=defaultdb;Username=test;Password=test"
+            })
+            .Build();
+
+    private sealed class StubAnalyticsCacheService : IAnalyticsCacheService
+    {
+        public object? CachedValue { get; set; }
+        public Exception? GetException { get; set; }
+
+        public bool IsRedisAvailable => false;
+        public bool IsRedisEnabled => false;
+
+        public void SetRedisEnabled(bool enabled)
+        {
+        }
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
+        {
+            if (GetException is not null)
+            {
+                throw GetException;
+            }
+
+            return Task.FromResult(CachedValue as T);
+        }
+
+        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+        {
+            CachedValue = value;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default) => Task.CompletedTask;
+
+        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+        {
+            if (GetException is not null)
+            {
+                throw GetException;
+            }
+
+            if (CachedValue is T typed)
+            {
+                return typed;
+            }
+
+            var value = await factory();
+            CachedValue = value;
+            return value;
+        }
     }
 
     private static SupplierDecisionHubEndpoints.SupplierScoreRow CreateSupplierRow(
