@@ -20,6 +20,11 @@ public class AnalyticsRefreshStatusDto
     }
     public bool WorkersEnabled { get; set; }
     public string? WorkerWarning { get; set; }
+    public string CacheMode { get; set; } = "unknown";
+    public bool IsDistributed { get; set; }
+    public DateTime? LastAnalyticsCacheClearAtUtc { get; set; }
+    public DateTime? LastReportCacheClearAtUtc { get; set; }
+    public string? CacheWarning { get; set; }
     public string? WorkerProcessWarning
     {
         get => WorkerWarning;

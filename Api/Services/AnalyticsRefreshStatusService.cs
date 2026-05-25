@@ -5,6 +5,7 @@ using Api.Config;
 using Domain.Model.Analytics;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Trendplus2.Dtos;
 
@@ -30,6 +31,7 @@ public sealed class AnalyticsRefreshStatusService
     private readonly AnalyticsDbContext _analyticsDbContext;
     private readonly WorkerHealthService _workerHealthService;
     private readonly WorkerRuntimeControlService _workerRuntimeControlService;
+    private readonly AnalyticsCacheAdminService _cacheAdmin;
     private readonly ILogger<AnalyticsRefreshStatusService> _logger;
 
     public AnalyticsRefreshStatusService(
@@ -38,6 +40,7 @@ public sealed class AnalyticsRefreshStatusService
         AnalyticsDbContext analyticsDbContext,
         WorkerHealthService workerHealthService,
         WorkerRuntimeControlService workerRuntimeControlService,
+        AnalyticsCacheAdminService cacheAdmin,
         ILogger<AnalyticsRefreshStatusService> logger)
     {
         _configuration = configuration;
@@ -45,6 +48,7 @@ public sealed class AnalyticsRefreshStatusService
         _analyticsDbContext = analyticsDbContext;
         _workerHealthService = workerHealthService;
         _workerRuntimeControlService = workerRuntimeControlService;
+        _cacheAdmin = cacheAdmin;
         _logger = logger;
     }
 
@@ -65,6 +69,9 @@ public sealed class AnalyticsRefreshStatusService
         var stuckRunningThreshold = ResolveStuckRunningThreshold();
 
         var runs = await LoadRecentRunsAsync(ct);
+        var cacheState = await _cacheAdmin.GetStateAsync(ct);
+        var (cacheMode, isDistributed) = _cacheAdmin.ResolveCacheMode();
+        var cacheWarning = ResolveCacheWarning(cacheMode, isDistributed);
 
         var jobs = new List<AnalyticsRefreshJobStatusDto>
         {
@@ -211,6 +218,11 @@ public sealed class AnalyticsRefreshStatusService
                 hasLastSuccess ? lastSuccess : null,
                 hasLastFailure ? lastFailure : null,
                 nowUtc),
+            CacheMode = cacheMode,
+            IsDistributed = isDistributed,
+            LastAnalyticsCacheClearAtUtc = cacheState.LastAnalyticsCacheClearAtUtc,
+            LastReportCacheClearAtUtc = cacheState.LastReportCacheClearAtUtc,
+            CacheWarning = cacheWarning,
             Jobs = jobs,
             RecentRuns = runs
                 .OrderByDescending(r => r.StartedAtUtc)
@@ -341,6 +353,22 @@ public sealed class AnalyticsRefreshStatusService
             DataFreshnessStatus = "unknown",
             StatusReason = reason
         };
+    }
+
+    private string? ResolveCacheWarning(string cacheMode, bool isDistributed)
+    {
+        if (_hostEnvironment.IsProduction() &&
+            string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Analytics cache je in-memory. U multi-instance okruženju podaci mogu biti nekonzistentni između instanci.";
+        }
+
+        if (!isDistributed)
+        {
+            return _cacheAdmin.GetTopologyWarning();
+        }
+
+        return null;
     }
 
     private async Task<List<AnalyticsRefreshRun>> LoadRecentRunsAsync(CancellationToken ct)

@@ -2012,8 +2012,14 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/cache/status", async (IAnalyticsCacheService cache, AnalyticsCacheAdminService cacheAdmin, IWebHostEnvironment env) =>
         {
             var clearState = await cacheAdmin.GetStateAsync();
+            var (cacheMode, isDistributed) = cacheAdmin.ResolveCacheMode();
             var isShared = clearState.IsShared;
             var warning = clearState.Warning;
+            if (env.IsProduction() && string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
+            {
+                warning = "Analytics cache je in-memory. U multi-instance okruženju podaci mogu biti nekonzistentni između instanci.";
+            }
+
             var message = isShared
                 ? "Cache radi u deljenom modu; clear state i invalidacija su vidljivi između instanci."
                 : "Cache nije distribuiran; može biti nekonzistentan između instanci.";
@@ -2024,12 +2030,17 @@ public static class CachedAnalyticsEndpoints
                 redisAvailable = cache.IsRedisAvailable,
                 redisEnabled = cache.IsRedisEnabled,
                 isShared,
+                isDistributed,
+                cacheMode,
                 environment = env.EnvironmentName,
                 cacheType = isShared ? "Hybrid (In-Memory + Redis)" : "In-Memory only",
                 message,
                 warning,
                 lastClearAtUtc = clearState.LastClearAtUtc,
                 lastClearFamily = clearState.LastClearFamily,
+                lastAnalyticsCacheClearAtUtc = clearState.LastAnalyticsCacheClearAtUtc,
+                lastReportCacheClearAtUtc = clearState.LastReportCacheClearAtUtc,
+                reportCacheVersion = clearState.ReportCacheVersion,
                 clearStateStorage = clearState.Storage
             });
         });
@@ -2044,9 +2055,12 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(new
             {
                 success = true,
-                message = "Analytics cache invalidiran (uključuje i report cache).",
+                message = "Analytics cache i report cache su očišćeni.",
                 lastClearAtUtc = state.LastClearAtUtc,
                 lastClearFamily = state.LastClearFamily,
+                lastAnalyticsCacheClearAtUtc = state.LastAnalyticsCacheClearAtUtc,
+                lastReportCacheClearAtUtc = state.LastReportCacheClearAtUtc,
+                reportCacheVersion = state.ReportCacheVersion,
                 isShared = state.IsShared,
                 warning = state.Warning,
                 storage = state.Storage

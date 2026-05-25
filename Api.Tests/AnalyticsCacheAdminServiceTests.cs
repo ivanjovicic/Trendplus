@@ -61,6 +61,9 @@ public sealed class AnalyticsCacheAdminServiceTests
         Assert.Null(state.Warning);
         Assert.Equal("dashboard,data-quality,pre-nivelacija-prioriteti,reports", state.LastClearFamily);
         Assert.NotNull(state.LastClearAtUtc);
+        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+        Assert.True(state.ReportCacheVersion >= 2);
 
         var reloaded = await sut.GetStateAsync(CancellationToken.None);
         Assert.True(reloaded.IsShared);
@@ -84,6 +87,32 @@ public sealed class AnalyticsCacheAdminServiceTests
         Assert.False(state.IsShared);
         Assert.Equal("memory", state.Storage);
         Assert.Equal("all", state.LastClearFamily);
+        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+        Assert.True(state.ReportCacheVersion >= 2);
+    }
+
+    [Fact]
+    public async Task ClearAsync_ReportsFamily_BumpsReportVersionToken()
+    {
+        var cache = new RecordingAnalyticsCacheService
+        {
+            IsRedisAvailable = false,
+            IsRedisEnabled = false
+        };
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var before = await sut.GetReportCacheVersionAsync();
+        var state = await sut.ClearAsync(AnalyticsCachePolicy.ReportsFamily, CancellationToken.None);
+        var after = await sut.GetReportCacheVersionAsync();
+
+        Assert.Equal([AnalyticsCacheKeys.ReportNamespace], cache.RemovedPrefixes);
+        Assert.Equal(before + 1, after);
+        Assert.Equal(after, state.ReportCacheVersion);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
     }
 
     private sealed class RecordingAnalyticsCacheService : IAnalyticsCacheService

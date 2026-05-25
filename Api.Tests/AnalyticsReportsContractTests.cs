@@ -203,6 +203,8 @@ public sealed class AnalyticsReportsContractTests
         Assert.Contains("analytics-report:pilot-intake:v1:", pilotBase);
         Assert.NotEqual(supplierBase, supplierScoped);
         Assert.NotEqual(pilotBase, pilotScoped);
+        Assert.Contains(":rv:1:", supplierBase);
+        Assert.Contains(":rv:1:", pilotBase);
 
         var supplierCategory = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, "patike", null, null, null, false, false, null, null, "all");
         var supplierGender = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, "women", null, null, false, false, null, null, "all");
@@ -217,6 +219,11 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEqual(supplierBase, supplierRevenue);
         Assert.NotEqual(supplierBase, supplierConfidence);
         Assert.NotEqual(supplierBase, supplierOos);
+
+        var supplierVersion2 = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, false, null, null, "all", reportCacheVersion: 2);
+        var pilotVersion2 = AnalyticsCacheKeys.PilotIntakeReport(fromUtc, toUtc, null, null, "all", reportCacheVersion: 2);
+        Assert.NotEqual(supplierBase, supplierVersion2);
+        Assert.NotEqual(pilotBase, pilotVersion2);
     }
 
     private static SupplierDecisionHubEndpoints.SupplierScoreRow CreateSupplierRow(

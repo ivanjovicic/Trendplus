@@ -300,6 +300,8 @@ public static class DataQualityEndpoints
         TrendplusDbContext trendDb,
         AnalyticsDbContext analyticsDb,
         IAnalyticsCacheService cache,
+        AnalyticsCacheAdminService cacheAdmin,
+        ILoggerFactory loggerFactory,
         AnalyticsDataQualityHealthService healthService,
         AnalyticsRefreshStatusService refreshStatusService,
         [FromQuery] string? fromDate,
@@ -315,35 +317,55 @@ public static class DataQualityEndpoints
             ? scope
             : dataScope;
         var period = ResolveIntakePeriod(fromDate, toDate);
+        var reportCacheVersion = await cacheAdmin.GetReportCacheVersionAsync(ct);
         var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
             period.FromUtc,
             period.ToUtc,
             storeId,
             supplierId,
-            resolvedScope);
+            resolvedScope,
+            reportCacheVersion);
+        var cacheLogger = loggerFactory.CreateLogger("PilotIntakeReportCache");
 
         try
         {
-            var report = await cache.GetOrSetAsync(
-                reportCacheKey,
-                async () =>
-                {
-                    var intake = await BuildPilotDataQualityIntakeReportAsync(
-                        trendDb,
-                        analyticsDb,
-                        healthService,
-                        refreshStatusService,
-                        fromDate,
-                        toDate,
-                        storeId,
-                        supplierId,
-                        resolvedScope,
-                        ct);
+            var cachedReport = await cache.GetAsync<AnalyticsReportResponseDto>(reportCacheKey, ct);
+            AnalyticsReportResponseDto report;
+            if (cachedReport is not null)
+            {
+                cacheLogger.LogInformation(
+                    "Pilot intake report cache HIT. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
+                report = cachedReport;
+            }
+            else
+            {
+                cacheLogger.LogInformation(
+                    "Pilot intake report cache MISS. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
 
-                    return BuildPilotIntakeReportResponse(intake, period, storeId, supplierId, resolvedScope);
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+                var intake = await BuildPilotDataQualityIntakeReportAsync(
+                    trendDb,
+                    analyticsDb,
+                    healthService,
+                    refreshStatusService,
+                    fromDate,
+                    toDate,
+                    storeId,
+                    supplierId,
+                    resolvedScope,
+                    ct);
+
+                report = BuildPilotIntakeReportResponse(intake, period, storeId, supplierId, resolvedScope);
+
+                await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
+                cacheLogger.LogInformation(
+                    "Pilot intake report cache STORE. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
+            }
 
             return Results.Ok(report with
             {

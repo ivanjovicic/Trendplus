@@ -17,6 +17,8 @@ vi.mock("../../services/workerApi", () => ({
 
 vi.mock("../../services/analyticsApi", () => ({
   getAnalyticsRefreshStatus: vi.fn(),
+  getAnalyticsCacheStatus: vi.fn(),
+  clearAnalyticsCache: vi.fn(),
 }));
 
 describe("WorkersPanel", () => {
@@ -114,6 +116,36 @@ describe("WorkersPanel", () => {
       jobs: [],
       recentRuns: [],
     } as any);
+    vi.mocked(analyticsApiModule.getAnalyticsCacheStatus).mockResolvedValue({
+      provider: "Memory",
+      redisAvailable: false,
+      redisEnabled: false,
+      isShared: false,
+      isDistributed: false,
+      cacheMode: "in-memory",
+      environment: "Development",
+      cacheType: "In-Memory only",
+      message: "Cache nije distribuiran",
+      warning: null,
+      lastClearAtUtc: null,
+      lastClearFamily: null,
+      lastAnalyticsCacheClearAtUtc: null,
+      lastReportCacheClearAtUtc: null,
+      reportCacheVersion: 1,
+      clearStateStorage: "memory",
+    } as any);
+    vi.mocked(analyticsApiModule.clearAnalyticsCache).mockResolvedValue({
+      success: true,
+      message: "Analytics cache i report cache su očišćeni.",
+      lastClearAtUtc: new Date().toISOString(),
+      lastClearFamily: "all",
+      lastAnalyticsCacheClearAtUtc: new Date().toISOString(),
+      lastReportCacheClearAtUtc: new Date().toISOString(),
+      reportCacheVersion: 2,
+      isShared: false,
+      warning: null,
+      storage: "memory",
+    } as any);
   });
 
   it("renders all workers returned by backend", async () => {
@@ -140,6 +172,7 @@ describe("WorkersPanel", () => {
     expect(screen.getByText("Akcije")).toBeInTheDocument();
 
     expect(screen.getAllByRole("button", { name: "Osvezi" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Očisti analytics cache" })).toBeInTheDocument();
     expect(screen.queryByText("Worker Management")).not.toBeInTheDocument();
     expect(screen.queryByText("Refresh")).not.toBeInTheDocument();
   });

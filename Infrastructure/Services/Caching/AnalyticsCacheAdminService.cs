@@ -7,6 +7,7 @@ namespace Infrastructure.Services.Caching;
 public sealed class AnalyticsCacheAdminService
 {
     private const string SharedStateKey = "analytics:admin:clear-state";
+    private const string SharedReportVersionKey = "analytics:admin:report-cache-version";
 
     private readonly IAnalyticsCacheService _cache;
     private readonly ILogger<AnalyticsCacheAdminService> _logger;
@@ -14,6 +15,9 @@ public sealed class AnalyticsCacheAdminService
 
     private DateTime? _lastClearAtUtc;
     private string? _lastClearFamily;
+    private DateTime? _lastAnalyticsCacheClearAtUtc;
+    private DateTime? _lastReportCacheClearAtUtc;
+    private int _reportCacheVersion = 1;
 
     public AnalyticsCacheAdminService(
         IAnalyticsCacheService cache,
@@ -39,6 +43,9 @@ public sealed class AnalyticsCacheAdminService
                     {
                         _lastClearAtUtc = parsed.LastClearAtUtc;
                         _lastClearFamily = parsed.LastClearFamily;
+                        _lastAnalyticsCacheClearAtUtc = parsed.LastAnalyticsCacheClearAtUtc;
+                        _lastReportCacheClearAtUtc = parsed.LastReportCacheClearAtUtc;
+                        _reportCacheVersion = Math.Max(1, parsed.ReportCacheVersion);
                         return parsed with { IsShared = true, Storage = "redis", Warning = null };
                     }
                 }
@@ -49,12 +56,69 @@ public sealed class AnalyticsCacheAdminService
             }
         }
 
-        return new AnalyticsCacheClearState(
-            _lastClearAtUtc,
-            _lastClearFamily,
-            IsShared: false,
-            Storage: "memory",
-            Warning: BuildNonSharedWarning());
+        return BuildCurrentState();
+    }
+
+    public async Task<int> GetReportCacheVersionAsync(CancellationToken ct = default)
+    {
+        if (CanUseDistributedClearState())
+        {
+            try
+            {
+                var raw = await _distributedCache!.GetStringAsync(SharedReportVersionKey, ct);
+                if (int.TryParse(raw, out var parsed) && parsed > 0)
+                {
+                    _reportCacheVersion = parsed;
+                    return parsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read report cache version token from distributed cache.");
+            }
+        }
+
+        return Math.Max(1, _reportCacheVersion);
+    }
+
+    public async Task<int> BumpReportCacheVersionAsync(CancellationToken ct = default)
+    {
+        var nextVersion = (await GetReportCacheVersionAsync(ct)) + 1;
+        _reportCacheVersion = nextVersion;
+
+        if (CanUseDistributedClearState())
+        {
+            try
+            {
+                await _distributedCache!.SetStringAsync(SharedReportVersionKey, nextVersion.ToString(), ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist report cache version token to distributed cache.");
+            }
+        }
+
+        return nextVersion;
+    }
+
+    public (string CacheMode, bool IsDistributed) ResolveCacheMode()
+    {
+        if (_cache is DisabledAnalyticsCacheService)
+        {
+            return ("disabled", false);
+        }
+
+        if (_cache.IsRedisEnabled && _cache.IsRedisAvailable)
+        {
+            return ("redis", true);
+        }
+
+        if (_cache is InMemoryCacheService || _cache is HybridCacheService)
+        {
+            return ("in-memory", false);
+        }
+
+        return ("unknown", false);
     }
 
     public async Task<AnalyticsCacheClearState> ClearAsync(string? family, CancellationToken ct = default)
@@ -68,13 +132,18 @@ public sealed class AnalyticsCacheAdminService
 
         _lastClearAtUtc = DateTime.UtcNow;
         _lastClearFamily = normalizedFamily;
+        if (normalizedFamily == "all" || !string.Equals(normalizedFamily, AnalyticsCachePolicy.ReportsFamily, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastAnalyticsCacheClearAtUtc = _lastClearAtUtc;
+        }
 
-        var state = new AnalyticsCacheClearState(
-            _lastClearAtUtc,
-            _lastClearFamily,
-            IsShared: CanUseDistributedClearState(),
-            Storage: CanUseDistributedClearState() ? "redis" : "memory",
-            Warning: CanUseDistributedClearState() ? null : BuildNonSharedWarning());
+        if (normalizedFamily == "all" || string.Equals(normalizedFamily, AnalyticsCachePolicy.ReportsFamily, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastReportCacheClearAtUtc = _lastClearAtUtc;
+            _reportCacheVersion = await BumpReportCacheVersionAsync(ct);
+        }
+
+        var state = BuildCurrentState();
 
         if (CanUseDistributedClearState())
         {
@@ -93,12 +162,13 @@ public sealed class AnalyticsCacheAdminService
         }
 
         _logger.LogInformation(
-            "Analytics cache clear completed. Family={Family} Prefix={Prefix} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage}",
+            "Analytics cache clear completed. Family={Family} Prefix={Prefix} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
             normalizedFamily,
             prefix,
             _lastClearAtUtc.Value,
             state.IsShared,
-            state.Storage);
+            state.Storage,
+            state.ReportCacheVersion);
 
         return state;
     }
@@ -124,13 +194,23 @@ public sealed class AnalyticsCacheAdminService
         _lastClearAtUtc = DateTime.UtcNow;
         _lastClearFamily = string.Join(",", normalizedFamilies);
 
+        var includesAll = normalizedFamilies.Any(f => string.Equals(f, "all", StringComparison.OrdinalIgnoreCase));
+        var includesReports = includesAll || normalizedFamilies.Any(f => string.Equals(f, AnalyticsCachePolicy.ReportsFamily, StringComparison.OrdinalIgnoreCase));
+        var includesAnalytics = includesAll || normalizedFamilies.Any(f => !string.Equals(f, AnalyticsCachePolicy.ReportsFamily, StringComparison.OrdinalIgnoreCase));
+
+        if (includesAnalytics)
+        {
+            _lastAnalyticsCacheClearAtUtc = _lastClearAtUtc;
+        }
+
+        if (includesReports)
+        {
+            _lastReportCacheClearAtUtc = _lastClearAtUtc;
+            _reportCacheVersion = await BumpReportCacheVersionAsync(ct);
+        }
+
         var canUseDistributedState = CanUseDistributedClearState();
-        var state = new AnalyticsCacheClearState(
-            _lastClearAtUtc,
-            _lastClearFamily,
-            IsShared: canUseDistributedState,
-            Storage: canUseDistributedState ? "redis" : "memory",
-            Warning: canUseDistributedState ? null : BuildNonSharedWarning());
+        var state = BuildCurrentState(canUseDistributedState);
 
         if (canUseDistributedState)
         {
@@ -149,11 +229,12 @@ public sealed class AnalyticsCacheAdminService
         }
 
         _logger.LogInformation(
-            "Analytics cache clear completed for multiple families. Families={Families} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage}",
+            "Analytics cache clear completed for multiple families. Families={Families} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
             normalizedFamilies,
             _lastClearAtUtc.Value,
             state.IsShared,
-            state.Storage);
+            state.Storage,
+            state.ReportCacheVersion);
 
         return state;
     }
@@ -165,6 +246,21 @@ public sealed class AnalyticsCacheAdminService
     private bool CanUseDistributedClearState() =>
         _distributedCache is not null && _cache.IsRedisEnabled && _cache.IsRedisAvailable;
 
+    private AnalyticsCacheClearState BuildCurrentState(bool? forceShared = null)
+    {
+        var shared = forceShared ?? CanUseDistributedClearState();
+        var storage = shared ? "redis" : "memory";
+        return new AnalyticsCacheClearState(
+            LastClearAtUtc: _lastClearAtUtc,
+            LastClearFamily: _lastClearFamily,
+            IsShared: shared,
+            Storage: storage,
+            Warning: shared ? null : BuildNonSharedWarning(),
+            LastAnalyticsCacheClearAtUtc: _lastAnalyticsCacheClearAtUtc,
+            LastReportCacheClearAtUtc: _lastReportCacheClearAtUtc,
+            ReportCacheVersion: Math.Max(1, _reportCacheVersion));
+    }
+
     private static string BuildNonSharedWarning() =>
         "Cache nije distribuiran; može biti nekonzistentan između instanci.";
 }
@@ -174,4 +270,7 @@ public sealed record AnalyticsCacheClearState(
     string? LastClearFamily,
     bool IsShared,
     string Storage,
-    string? Warning);
+    string? Warning,
+    DateTime? LastAnalyticsCacheClearAtUtc,
+    DateTime? LastReportCacheClearAtUtc,
+    int ReportCacheVersion);

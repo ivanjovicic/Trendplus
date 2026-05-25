@@ -1,6 +1,8 @@
 import type {
   AnalyticsDashboardBootstrap,
   AnalyticsRefreshStatus,
+  AnalyticsCacheStatus,
+  AnalyticsCacheInvalidateResponse,
   AnalyticsDataQualityHealth,
   CategoryData,
   CategoryTrendPoint,
@@ -667,6 +669,30 @@ export async function getAnalyticsRefreshStatus(): Promise<AnalyticsRefreshStatu
     undefined,
     "Greska pri ucitavanju statusa osvezavanja analitike"
   );
+}
+
+export async function getAnalyticsCacheStatus(): Promise<AnalyticsCacheStatus> {
+  return fetchJson(
+    "/api/analytics/cached/cache/status",
+    undefined,
+    "Greska pri ucitavanju statusa analytics cache-a"
+  );
+}
+
+export async function clearAnalyticsCache(family = "all"): Promise<AnalyticsCacheInvalidateResponse> {
+  const params = new URLSearchParams();
+  if (family.trim()) params.set("family", family.trim());
+  const response = await fetchAnalyticsResponse(
+    makeUrl("/api/analytics/cached/cache/invalidate", params),
+    { method: "POST" },
+    DEFAULT_ANALYTICS_GET_TIMEOUT_MS
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Greska pri ciscenju analytics cache-a"));
+  }
+
+  return (await response.json()) as AnalyticsCacheInvalidateResponse;
 }
 
 export async function getProductDecisionCenter(options?: {

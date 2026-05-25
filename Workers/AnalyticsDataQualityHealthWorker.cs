@@ -152,6 +152,26 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 var snapshot = await service.CaptureAsync(_options.LookbackDays, null, stoppingToken);
                 await historyService.SaveSnapshotAsync(snapshot, null, stoppingToken);
 
+                try
+                {
+                    var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
+                    if (cacheAdmin is not null)
+                    {
+                        var cacheState = await cacheAdmin.ClearFamiliesAsync(
+                            [AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily],
+                            stoppingToken);
+                        _logger.LogInformation(
+                            "Data quality refresh invalidated cache families {Families}. ReportCacheVersion={ReportCacheVersion} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
+                            new[] { AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily },
+                            cacheState.ReportCacheVersion,
+                            cacheState.LastReportCacheClearAtUtc);
+                    }
+                }
+                catch (Exception cacheEx)
+                {
+                    _logger.LogWarning(cacheEx, "Data quality refresh cache invalidation failed.");
+                }
+
                 var summary =
                     $"Lookback={snapshot.LookbackDays}d | OrphanArticles={snapshot.OrphanArticleCount} | " +
                     $"MissingCostRevenueShare={snapshot.MissingCostRevenueSharePct:0.##}% | " +

@@ -1,7 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workerApi, type WorkerConfigurationItem } from "../services/workerApi";
-import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
-import type { AnalyticsRefreshRun } from "../types/analytics";
+import { clearAnalyticsCache, getAnalyticsCacheStatus, getAnalyticsRefreshStatus } from "../services/analyticsApi";
+import type { AnalyticsCacheStatus, AnalyticsRefreshRun } from "../types/analytics";
 import {
   AlertCircle,
   CheckCircle2,
@@ -26,9 +26,13 @@ type ActionMessages = Record<string, { type: "success" | "error"; text: string }
 export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 5000 }) => {
   const [workers, setWorkers] = useState<WorkerConfigurationItem[]>([]);
   const [refreshRuns, setRefreshRuns] = useState<AnalyticsRefreshRun[]>([]);
+  const [refreshStatusCacheWarning, setRefreshStatusCacheWarning] = useState<string | null>(null);
+  const [cacheStatus, setCacheStatus] = useState<AnalyticsCacheStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshRunsError, setRefreshRunsError] = useState<string | null>(null);
+  const [cacheActionMessage, setCacheActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [clearCacheBusy, setClearCacheBusy] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [actionMessages, setActionMessages] = useState<ActionMessages>({});
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
@@ -59,7 +63,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
         setLoadError(null);
       }
 
-      const [workersResponse, refreshStatus] = await Promise.all([
+      const [workersResponse, refreshStatus, cacheStatusResponse] = await Promise.all([
         workerApi.getWorkersConfiguration(),
         getAnalyticsRefreshStatus().catch((error) => {
           setRefreshRuns([]);
@@ -70,10 +74,13 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           );
           return null;
         }),
+        getAnalyticsCacheStatus().catch(() => null),
       ]);
 
       setWorkers(workersResponse.workers);
       setRefreshRuns(refreshStatus?.recentRuns ?? []);
+      setRefreshStatusCacheWarning(refreshStatus?.cacheWarning ?? null);
+      setCacheStatus(cacheStatusResponse);
       if (refreshStatus) {
         setRefreshRunsError(null);
       }
@@ -172,6 +179,25 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
     return items.join(", ");
   };
 
+  const handleClearCache = useCallback(async () => {
+    try {
+      setClearCacheBusy(true);
+      setCacheActionMessage(null);
+      const result = await clearAnalyticsCache("all");
+      setCacheActionMessage({ type: "success", text: result.message || "Analytics cache i report cache su očišćeni." });
+      await fetchWorkers(false);
+    } catch (error) {
+      setCacheActionMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Čišćenje cache-a nije uspelo.",
+      });
+    } finally {
+      setClearCacheBusy(false);
+    }
+  }, [fetchWorkers]);
+
+  const combinedCacheWarning = refreshStatusCacheWarning ?? cacheStatus?.warning ?? null;
+
   const refreshRunBadgeClass = (status: string) => {
     const normalized = status.toLowerCase();
     if (normalized === "succeeded") return "wp-badge wp-badge--healthy";
@@ -208,6 +234,19 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           <RefreshCw className={`wp-icon-sm ${loading ? "wp-spin" : ""}`} />
           Osvezi
         </button>
+        <button
+          type="button"
+          onClick={() => void handleClearCache()}
+          disabled={clearCacheBusy}
+          className="wp-btn wp-btn--restart"
+        >
+          {clearCacheBusy ? (
+            <RefreshCw className="wp-icon-sm wp-spin" />
+          ) : (
+            <RotateCcw className="wp-icon-sm" />
+          )}
+          {clearCacheBusy ? "Čišćenje..." : "Očisti analytics cache"}
+        </button>
       </div>
 
       {loadError && (
@@ -216,6 +255,26 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           {loadError}
         </div>
       )}
+
+      {cacheActionMessage ? (
+        <div className={`wp-alert ${cacheActionMessage.type === "success" ? "wp-alert--success" : "wp-alert--error"}`}>
+          {cacheActionMessage.type === "success" ? <CheckCircle2 className="wp-icon-sm" /> : <AlertCircle className="wp-icon-sm" />}
+          {cacheActionMessage.text}
+        </div>
+      ) : null}
+
+      {combinedCacheWarning ? (
+        <div className="wp-alert wp-alert--warn">
+          <AlertCircle className="wp-icon-sm" />
+          {combinedCacheWarning}
+        </div>
+      ) : null}
+
+      {cacheStatus ? (
+        <div className="wp-alert wp-alert--muted">
+          Cache mode: {cacheStatus.cacheMode} | Distribuiran: {cacheStatus.isDistributed ? "da" : "ne"} | Poslednje čišćenje report cache-a: {formatDate(cacheStatus.lastReportCacheClearAtUtc ?? null)}
+        </div>
+      ) : null}
 
       {loading && orderedWorkers.length === 0 ? (
         <div className="wp-empty">Ucitavanje radnika...</div>

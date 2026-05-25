@@ -387,7 +387,12 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
                 if (cacheAdmin is not null)
                 {
-                    await cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+                    var cacheState = await cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+                    _logger.LogInformation(
+                        "[nightly] Analytics cache invalidation completed. ReportCacheVersion={ReportCacheVersion} LastAnalyticsClearAtUtc={LastAnalyticsCacheClearAtUtc:O} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
+                        cacheState.ReportCacheVersion,
+                        cacheState.LastAnalyticsCacheClearAtUtc,
+                        cacheState.LastReportCacheClearAtUtc);
                 }
             }
             catch (Exception ex)

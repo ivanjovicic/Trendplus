@@ -75,9 +75,46 @@ export interface AnalyticsRefreshStatus {
   workersEnabled: boolean;
   workerWarning?: string | null;
   workerProcessWarning?: string | null;
+  cacheMode?: "redis" | "in-memory" | "disabled" | "unknown" | string;
+  isDistributed?: boolean;
+  lastAnalyticsCacheClearAtUtc?: string | null;
+  lastReportCacheClearAtUtc?: string | null;
+  cacheWarning?: string | null;
   generatedAtUtc: string;
   jobs: AnalyticsRefreshJobStatus[];
   recentRuns?: AnalyticsRefreshRun[];
+}
+
+export interface AnalyticsCacheStatus {
+  provider: string;
+  redisAvailable: boolean;
+  redisEnabled: boolean;
+  isShared: boolean;
+  isDistributed: boolean;
+  cacheMode: "redis" | "in-memory" | "disabled" | "unknown" | string;
+  environment: string;
+  cacheType: string;
+  message: string;
+  warning?: string | null;
+  lastClearAtUtc?: string | null;
+  lastClearFamily?: string | null;
+  lastAnalyticsCacheClearAtUtc?: string | null;
+  lastReportCacheClearAtUtc?: string | null;
+  reportCacheVersion?: number;
+  clearStateStorage?: string | null;
+}
+
+export interface AnalyticsCacheInvalidateResponse {
+  success: boolean;
+  message: string;
+  lastClearAtUtc?: string | null;
+  lastClearFamily?: string | null;
+  lastAnalyticsCacheClearAtUtc?: string | null;
+  lastReportCacheClearAtUtc?: string | null;
+  reportCacheVersion?: number;
+  isShared: boolean;
+  warning?: string | null;
+  storage: string;
 }
 
 export interface TopProduct {

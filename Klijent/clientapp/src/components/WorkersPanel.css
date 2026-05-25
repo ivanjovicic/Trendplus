@@ -52,6 +52,24 @@
   color: #b91c1c;
 }
 
+.wp-alert--success {
+  background: var(--surface-elevated);
+  border: 1px solid var(--success);
+  color: var(--text-primary);
+}
+
+.wp-alert--warn {
+  background: var(--surface-elevated);
+  border: 1px solid var(--warning);
+  color: var(--text-primary);
+}
+
+.wp-alert--muted {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+
 /* Per-worker action messages */
 .wp-action-msg {
   display: flex;

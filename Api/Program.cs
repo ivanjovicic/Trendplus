@@ -762,6 +762,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     var app = builder.Build();
+    using (var scope = app.Services.CreateScope())
+    {
+        var cacheAdmin = scope.ServiceProvider.GetRequiredService<AnalyticsCacheAdminService>();
+        var (cacheMode, isDistributed) = cacheAdmin.ResolveCacheMode();
+        app.Logger.LogInformation(
+            "Analytics cache mode resolved at startup. Mode={CacheMode} IsDistributed={IsDistributed}",
+            cacheMode,
+            isDistributed);
+
+        if (app.Environment.IsProduction() && string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
+        {
+            app.Logger.LogWarning(
+                "Analytics cache je in-memory. U multi-instance okruženju podaci mogu biti nekonzistentni između instanci.");
+        }
+    }
+
     var allowedHealthOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "http://localhost:5173",

@@ -442,6 +442,8 @@ public static class SupplierDecisionHubEndpoints
         HttpContext httpContext,
         IConfiguration configuration,
         IAnalyticsCacheService cache,
+        AnalyticsCacheAdminService cacheAdmin,
+        ILoggerFactory loggerFactory,
         AnalyticsRefreshStatusService refreshStatusService,
         DateTime? fromDate = null,
         DateTime? toDate = null,
@@ -482,6 +484,7 @@ public static class SupplierDecisionHubEndpoints
         var activeFilters = filters!;
         var correlationId = ResolveCorrelationId(httpContext);
         var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+        var reportCacheVersion = await cacheAdmin.GetReportCacheVersionAsync(ct);
         var reportCacheKey = AnalyticsCacheKeys.SupplierDecisionReport(
             activeFilters.FromDate,
             activeFilters.ToDate,
@@ -493,33 +496,52 @@ public static class SupplierDecisionHubEndpoints
             activeFilters.ExcludeOosBeforeMarkdown,
             activeFilters.SupplierId,
             activeFilters.StoreId,
-            activeFilters.DataScope);
+            activeFilters.DataScope,
+            reportCacheVersion);
+        var cacheLogger = loggerFactory.CreateLogger("SupplierDecisionReportCache");
 
         try
         {
-            var report = await cache.GetOrSetAsync(
-                reportCacheKey,
-                async () =>
+            var cachedReport = await cache.GetAsync<AnalyticsReportResponseDto>(reportCacheKey, ct);
+            AnalyticsReportResponseDto report;
+            if (cachedReport is not null)
+            {
+                cacheLogger.LogInformation(
+                    "Supplier decision report cache HIT. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
+                report = cachedReport;
+            }
+            else
+            {
+                cacheLogger.LogInformation(
+                    "Supplier decision report cache MISS. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
+
+                var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                var summary = BuildSummaryResponse(dataset, activeFilters);
+                var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
+                ReportRefreshInfo? refreshInfo = null;
+
+                try
                 {
-                    var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                    var summary = BuildSummaryResponse(dataset, activeFilters);
-                    var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
-                    ReportRefreshInfo? refreshInfo = null;
+                    var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
+                    refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
+                }
+                catch
+                {
+                    refreshInfo = null;
+                }
 
-                    try
-                    {
-                        var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
-                        refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
-                    }
-                    catch
-                    {
-                        refreshInfo = null;
-                    }
+                report = BuildSupplierDecisionReportResponse(summary, dataset, activeFilters, refreshInfo, details);
 
-                    return BuildSupplierDecisionReportResponse(summary, dataset, activeFilters, refreshInfo, details);
-                },
-                CacheExpiration.HeavyAnalytics,
-                ct);
+                await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
+                cacheLogger.LogInformation(
+                    "Supplier decision report cache STORE. Key={CacheKey} Version={ReportCacheVersion}",
+                    reportCacheKey,
+                    reportCacheVersion);
+            }
 
             return Results.Ok(report with
             {
