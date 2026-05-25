@@ -290,8 +290,8 @@ export default function PilotIntakeReportPage() {
   return (
     <div className="pilot-intake-report-page">
       <AnalyticsTrustHeader
-        title="Pilot intake izveštaj"
-        description="Trajni pregled spremnosti podataka za pouzdanu analitiku i preporuke."
+        title="Pilot izveštaj kvaliteta podataka"
+        description="Pregled učitanih podataka, problema i spremnosti za pouzdanu analitiku."
         mode="report"
         periodFrom={resolvedReport.periodFrom ?? resolvedReport.period?.fromUtc ?? null}
         periodTo={resolvedReport.periodTo ?? resolvedReport.period?.toUtc ?? null}

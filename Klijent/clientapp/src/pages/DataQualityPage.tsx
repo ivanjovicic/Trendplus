@@ -330,6 +330,7 @@ export default function DataQualityPage() {
   const contextSezonaId = searchParams.get("sezonaId");
   const contextStoreId = searchParams.get("storeId");
   const contextDataScope = searchParams.get("dataScope");
+  const contextScope = searchParams.get("scope");
   const contextIncludeUnknown = searchParams.get("includeUnknown");
   const contextFocus = searchParams.get("focus");
   const contextSupplierId = searchParams.get("supplierId");
@@ -357,6 +358,23 @@ export default function DataQualityPage() {
     contextSupplierId,
     contextToDate,
   ]);
+
+  const pilotIntakeReportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (contextFromDate) params.set("fromDate", contextFromDate);
+    if (contextToDate) params.set("toDate", contextToDate);
+    if (contextStoreId) params.set("storeId", contextStoreId);
+    if (contextSupplierId) params.set("supplierId", contextSupplierId);
+    const scopeValue = contextScope ?? contextDataScope;
+    if (scopeValue) {
+      params.set("scope", scopeValue);
+    }
+    if (contextDataScope) {
+      params.set("dataScope", contextDataScope);
+    }
+    const query = params.toString();
+    return query ? `/analytics/reports/pilot-intake?${query}` : "/analytics/reports/pilot-intake";
+  }, [contextDataScope, contextFromDate, contextScope, contextStoreId, contextSupplierId, contextToDate]);
 
   useEffect(() => {
     setSearchDraft(q);
@@ -621,6 +639,7 @@ export default function DataQualityPage() {
           ) : null}
           <div className="data-quality-meta">
             <span>Signal filter: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
+            <Link to={pilotIntakeReportHref}>Otvori pilot intake report</Link>
           </div>
         </div>
       </header>

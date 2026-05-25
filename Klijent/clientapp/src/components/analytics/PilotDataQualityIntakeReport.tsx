@@ -5,7 +5,6 @@ import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../
 import { resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 import { downloadExport, generateExport, waitForExport } from "../../services/exportApi";
 import {
-  getAnalyticsMetricDefinition,
   type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import {
@@ -14,9 +13,9 @@ import {
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
-import KpiExplainButton from "./KpiExplainButton";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
+import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import "./PilotDataQualityIntakeReport.css";
 
 type Props = {
@@ -182,6 +181,24 @@ function durableSectionRowCount(section: PilotIntakeDurableReport["sections"][nu
   return Array.isArray(section.rows) ? section.rows.length : 0;
 }
 
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseNumberFromValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function buildDurableCsv(report: PilotIntakeDurableReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
@@ -240,16 +257,92 @@ function buildDurableSummary(report: PilotIntakeDurableReport): string {
 
 export default function PilotDataQualityIntakeReport({ report, loading, error, filters, durableReport, onRetry }: Props) {
   const [exportState, setExportState] = useState<string | null>(null);
-  const [showMethodology, setShowMethodology] = useState(false);
   const methodologyKeys: AnalyticsMetricKey[] = [
-    "dataReadiness",
+    "dataReadinessScore",
+    "missingCostCount",
+    "missingSupplierCount",
     "revenueWithoutCost",
-    "revenueUnknownSupplier",
-    "totalRevenue",
-    "marginContribution",
+    "unknownSupplierRevenueShare",
   ];
 
   const readiness = useMemo(() => readinessTone(report?.readinessStatus ?? "critical"), [report?.readinessStatus]);
+  const durableRows = durableReport?.rows ?? [];
+  const durableActions = durableReport?.recommendedActions ?? [];
+  const reportPeriodFrom = report?.periodFromUtc ?? durableReport?.periodFrom ?? durableReport?.period?.fromUtc ?? null;
+  const reportPeriodTo = report?.periodToUtc ?? durableReport?.periodTo ?? durableReport?.period?.toUtc ?? null;
+  const reportGeneratedAt = report?.generatedAtUtc ?? durableReport?.generatedAtUtc ?? null;
+  const reportLastRefreshAt = report?.lastRefreshAtUtc ?? durableReport?.lastRefreshAtUtc ?? null;
+  const reportDataQualityStatus = report?.meta?.dataQualityStatus ?? durableReport?.dataQualityStatus ?? null;
+
+  const groupedDurableRows = useMemo(() => {
+    const groups = {
+      loaded: [] as typeof durableRows,
+      issues: [] as typeof durableRows,
+      impact: [] as typeof durableRows,
+      readiness: [] as typeof durableRows,
+      recommended: [] as typeof durableRows,
+    };
+
+    for (const row of durableRows) {
+      const section = normalizeText(row.section);
+      if (section.includes("ucit") || section.includes("loaded")) groups.loaded.push(row);
+      if (section.includes("problem") || section.includes("issue")) groups.issues.push(row);
+      if (section.includes("uticaj") || section.includes("impact")) groups.impact.push(row);
+      if (section.includes("spremnost") || section.includes("readiness") || section.includes("skor")) groups.readiness.push(row);
+      if (section.includes("preporuc") || section.includes("action")) groups.recommended.push(row);
+    }
+
+    return groups;
+  }, [durableRows]);
+
+  const durableReadinessScore = useMemo(() => {
+    if (!durableReport) return null;
+    const kpiScore = durableReport.kpis?.find((kpi) => normalizeText(kpi.key).includes("readiness") || normalizeText(kpi.label).includes("spremnost"));
+    const fromKpi = parseNumberFromValue(kpiScore?.value);
+    if (fromKpi != null) return fromKpi;
+
+    const fromRows = groupedDurableRows.readiness.find((row) => normalizeText(row.item).includes("skor"));
+    return parseNumberFromValue(fromRows?.value);
+  }, [durableReport, groupedDurableRows.readiness]);
+
+  const durableReadinessLabel = useMemo(() => {
+    if (!durableReport) return null;
+    const kpiLabel = durableReport.kpis?.find((kpi) => normalizeText(kpi.key).includes("readiness") || normalizeText(kpi.label).includes("spremnost"))?.note;
+    if (kpiLabel) return kpiLabel;
+    const rowLabel = groupedDurableRows.readiness.find((row) => normalizeText(row.item).includes("oznaka") || normalizeText(row.item).includes("label"));
+    if (rowLabel?.value) return String(rowLabel.value);
+    if (durableReadinessScore == null) return null;
+    if (durableReadinessScore >= 90) return "Spremno za pouzdanu analitiku";
+    if (durableReadinessScore >= 70) return "Upotrebljivo uz upozorenja";
+    if (durableReadinessScore >= 40) return "Pilot može, preporuke ograničene";
+    return "Prvo srediti podatke";
+  }, [durableReport, groupedDurableRows.readiness, durableReadinessScore]);
+
+  const durableReadinessTone = useMemo(() => {
+    if (durableReadinessScore == null) return "warning";
+    if (durableReadinessScore >= 90) return "excellent";
+    if (durableReadinessScore >= 70) return "good";
+    if (durableReadinessScore >= 40) return "warning";
+    return "critical";
+  }, [durableReadinessScore]);
+
+  const renderDurableSection = (title: string, rows: typeof durableRows, emptyMessage: string) => (
+    <section className="pilot-card">
+      <h3>{title}</h3>
+      {rows.length === 0 ? (
+        <p className="pilot-card-note">{emptyMessage}</p>
+      ) : (
+        <ul>
+          {rows.map((row, index) => (
+            <li key={`${title}-${row.item}-${index}`}>
+              {row.item}: {formatDurableValue(row.value)}
+              {row.secondary ? <span className="pilot-list-secondary"> ({row.secondary})</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 
   if (error && !durableReport && !report) {
     return (
@@ -380,7 +473,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
       <div className="pilot-intake-head">
         <div>
           <h2>{durableReport?.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka"}</h2>
-          <p>Učitavanje podataka za analitiku pre otvaranja dashboard-a.</p>
+          <p>Prodajni/onboarding pregled spremnosti podataka pre prezentacije dashboard-a.</p>
         </div>
         <div className="pilot-intake-actions no-print">
           {durableReport?.stableQueryUrl ? (
@@ -396,6 +489,18 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
       </div>
 
       {exportState ? <div className="pilot-intake-state no-print">{exportState}</div> : null}
+
+      <section className="pilot-card">
+        <h3>Trendplus pilot izveštaj kvaliteta podataka</h3>
+        <ul>
+          <li>Period od: {formatDate(reportPeriodFrom, "-")}</li>
+          <li>Period do: {formatDate(reportPeriodTo, "-")}</li>
+          <li>Generisano: {formatDateTime(reportGeneratedAt, "-")}</li>
+          <li>Poslednje osveženje: {formatDateTime(reportLastRefreshAt, "-")}</li>
+          <li>Readiness score: {report ? `${fmtNumber(report.readinessScore, 0, "-")}/100` : durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</li>
+          <li>Status kvaliteta podataka: {reportDataQualityStatus ?? "-"}</li>
+        </ul>
+      </section>
 
       {report ? (
         <>
@@ -475,70 +580,63 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
         </>
       ) : null}
 
-      {durableReport ? (
-        <section className="pilot-card">
-          <h3>Trajni izveštaj</h3>
-          <ul>
-            <li>ID izveštaja: {durableReport.reportId}</li>
-            <li>Tip izveštaja: {durableReport.reportType ?? "pilot-intake"}</li>
-            <li>Generisano: {formatDateTime(durableReport.generatedAtUtc, "-")}</li>
-            <li>Period od: {formatDate(durableReport.periodFrom ?? durableReport.period?.fromUtc, "-")}</li>
-            <li>Period do: {formatDate(durableReport.periodTo ?? durableReport.period?.toUtc, "-")}</li>
-            <li>Poslednji refresh: {formatDateTime(durableReport.lastRefreshAtUtc, "-")}</li>
-            <li>Status kvaliteta podataka: {durableReport.dataQualityStatus}</li>
-            <li>Preporuke dozvoljene: {durableReport.recommendationAllowed == null ? "-" : durableReport.recommendationAllowed ? "Da" : "Ne"}</li>
-            <li>Korišćen fallback: {durableReport.usedFallback == null ? "-" : durableReport.usedFallback ? "Da" : "Ne"}</li>
-          </ul>
-          {durableReport.warnings && durableReport.warnings.length > 0 ? (
-            <div className="pilot-card-note">
-              <strong>Upozorenja:</strong> {durableReport.warnings.join(" | ")}
+      {!report && durableReport ? (
+        <>
+          <article className={`pilot-intake-score ${durableReadinessTone}`}>
+            <div>
+              <span>Skor spremnosti</span>
+              <strong>{durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</strong>
+              <p>{durableReadinessLabel ?? "Nije dostupno"}</p>
             </div>
-          ) : null}
-          <p className="pilot-card-note"><strong>Metodologija:</strong> {durableMethodologySummary(durableReport)}</p>
-          {durableReport.meta?.message ? <p className="pilot-card-note">{durableReport.meta.message}</p> : null}
-          {durableReport.sections.length > 0 ? (
-            <ul>
-              {durableReport.sections.map((section) => (
-                <li key={section.key}>{section.title || section.key}: {fmtNumber(durableSectionRowCount(section), 0, "-")}</li>
-              ))}
-            </ul>
-          ) : null}
+            <div className="pilot-intake-thresholds">
+              <span>90-100: Spremno za pouzdanu analitiku</span>
+              <span>70-89: Upotrebljivo uz upozorenja</span>
+              <span>40-69: Pilot može, preporuke ograničene</span>
+              <span>&lt;40: Prvo srediti podatke</span>
+            </div>
+          </article>
+
+          <div className="pilot-intake-grid">
+            {renderDurableSection("Učitano", groupedDurableRows.loaded, "Detalji o učitanim podacima nisu dostupni u ovom payload-u.")}
+            {renderDurableSection("Problemi", groupedDurableRows.issues, "Nema eksplicitnih problema u trajnom payload-u za ovaj period.")}
+            {renderDurableSection("Uticaj", groupedDurableRows.impact, "Uticaj nije eksplicitno opisan u trajnom payload-u.")}
+          </div>
+
+          <section className="pilot-card">
+            <h3>Preporučene akcije</h3>
+            {durableActions.length === 0 ? (
+              <p className="pilot-card-note">Nema preporučenih akcija za trenutni opseg. Proverite detalje kvaliteta podataka i osvežavanje.</p>
+            ) : (
+              <div className="pilot-actions-list">
+                {durableActions.map((action, index) => (
+                  <Link key={`${action.title}-${index}`} to={action.href || mapActionHref(action.title)} className="pilot-action-item">
+                    <strong>{action.title}</strong>
+                    <span>{action.description || "Otvori povezani ekran"}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
+
+      {durableReport?.warnings && durableReport.warnings.length > 0 ? (
+        <section className="pilot-card">
+          <h3>Upozorenja iz trajnog reporta</h3>
+          <p className="pilot-card-note">{durableReport.warnings.join(" | ")}</p>
         </section>
       ) : null}
 
-      <section className="pilot-methodology no-print">
-        <button
-          type="button"
-          onClick={() => setShowMethodology((prev) => !prev)}
-          aria-expanded={showMethodology}
-          aria-controls="pilot-methodology-panel"
-        >
-          Kako čitati ovaj izveštaj?
-        </button>
-        {showMethodology ? (
-          <div id="pilot-methodology-panel" className="pilot-methodology-list">
-            <p>
-              Ovaj izveštaj prikazuje koliko podataka je učitano i koji nedostaci utiču na pouzdanost analitike.
-              Definicije ključnih KPI-jeva se čitaju iz centralnog analytics registry-ja.
-            </p>
-            {methodologyKeys.map((metricKey) => {
-              const definition = getAnalyticsMetricDefinition(metricKey);
-              return (
-                <article key={metricKey} className="pilot-methodology-item">
-                  <div className="pilot-methodology-head">
-                    <strong>{definition.title}</strong>
-                    <KpiExplainButton metricKey={metricKey} ariaLabel={`Kako je izračunat KPI: ${definition.title}`} />
-                  </div>
-                  <p>{definition.description}</p>
-                  <p><strong>Formula:</strong> {definition.formula}</p>
-                  <p><strong>Izvor:</strong> {definition.source}</p>
-                  {definition.qualityNote ? <p className="pilot-card-note">{definition.qualityNote}</p> : null}
-                </article>
-              );
-            })}
-          </div>
-        ) : null}
-      </section>
+      <details className="pilot-methodology no-print">
+        <summary>Metodologija</summary>
+        <MetricMethodologyPanel metricKeys={methodologyKeys} dataQualityHref="/analytics/data-quality" />
+      </details>
+
+      {durableReport ? (
+        <p className="pilot-card-note no-print">
+          <strong>Metodologija backend payload-a:</strong> {durableMethodologySummary(durableReport)}
+        </p>
+      ) : null}
     </section>
   );
 }

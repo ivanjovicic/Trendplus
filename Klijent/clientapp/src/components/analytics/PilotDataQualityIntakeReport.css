@@ -129,6 +129,11 @@
   font-size: 13px;
 }
 
+.pilot-list-secondary {
+  color: var(--text-muted, #8fa0c2);
+  font-size: 12px;
+}
+
 .pilot-card li.critical {
   color: var(--error, #ff6c6c);
 }
@@ -171,13 +176,15 @@
   padding: 10px;
 }
 
-.pilot-methodology button {
-  border: 0;
-  background: transparent;
-  padding: 0;
+.pilot-methodology summary {
+  list-style: none;
+  cursor: pointer;
   color: var(--text-primary);
   font-weight: 700;
-  cursor: pointer;
+}
+
+.pilot-methodology summary::-webkit-details-marker {
+  display: none;
 }
 
 .pilot-methodology p {
@@ -191,6 +198,10 @@
   margin-top: 8px;
   display: grid;
   gap: 10px;
+}
+
+.pilot-methodology .metric-methodology-panel {
+  margin-top: 10px;
 }
 
 .pilot-methodology-item {
