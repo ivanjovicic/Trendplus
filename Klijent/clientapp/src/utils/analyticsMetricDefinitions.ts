@@ -39,6 +39,10 @@ export type AnalyticsMetricKey =
   | "inventoryTotalValue"
   | "quantity"
   | "stockRiskCapital"
+  | "blockedRecommendationsCount"
+  | "ignoredRowsCount"
+  | "grossMarginPct"
+  | "inventoryTurnover"
   | "missingCostRevenueShare"
   | "unknownSupplierRevenueShare";
 
@@ -72,7 +76,11 @@ export const canonicalMetricKeys = [
   "avgUnitsPerSku",
   "onHandUnits",
   "inventoryTotalValue",
-  "missingCostRevenueShare",
+  "revenueWithoutCost",
+  "blockedRecommendationsCount",
+  "ignoredRowsCount",
+  "grossMarginPct",
+  "inventoryTurnover",
   "unknownSupplierRevenueShare",
 ] as const;
 
@@ -410,6 +418,51 @@ const operationalMetrics: Record<string, AnalyticsMetricDefinition> = {
     dataQualityDependencies: ["Pokrivenost nabavne cene"],
     relatedScreens: ["/analytics/inventory"],
   }),
+  revenueWithoutCost: defineMetric("revenueWithoutCost", {
+    label: "Prihod bez nabavne cene",
+    shortDescription: "Udeo prihoda za koji ne postoji potvrđena nabavna cena.",
+    formula: "(prihod_bez_nabavne_cene / ukupan_prihod) * 100",
+    dataSource: "Data quality checks",
+    interpretation: "Viši udeo smanjuje pouzdanost maržnih metrika i preporuka.",
+    relatedScreens: ["/analytics/data-quality", "/analytics"],
+  }),
+  blockedRecommendationsCount: defineMetric("blockedRecommendationsCount", {
+    label: "Blokirane preporuke",
+    shortDescription: "Broj preporuka koje su blokirane zbog problema kvaliteta podataka.",
+    formula: "COUNT(preporuka gde je recommendation_allowed = false zbog data quality razloga)",
+    dataSource: "Data quality checks",
+    interpretation: "Pokazuje operativni uticaj data quality problema na recommendation tok.",
+    relatedScreens: ["/analytics/data-quality", "/analytics/reports/pilot-intake"],
+  }),
+  ignoredRowsCount: defineMetric("ignoredRowsCount", {
+    label: "Ignorisani redovi",
+    shortDescription: "Broj redova isključenih iz analitike zbog nevalidnih ili nepotpunih podataka.",
+    formula: "COUNT(redova označenih kao ignored u quality pipeline-u)",
+    dataSource: "Data quality checks",
+    interpretation: "Veći broj može značajno uticati na reprezentativnost signala.",
+    relatedScreens: ["/analytics/data-quality", "/analytics", "/analytics/reports/pilot-intake"],
+  }),
+  grossMarginPct: defineMetric("grossMarginPct", {
+    label: "Bruto marža %",
+    shortDescription: "Procenat bruto marže u odnosu na prihod.",
+    formula: "((prihod - nabavni_trošak) / prihod) * 100",
+    dataSource: "Sales facts analytics + cost coverage",
+    interpretation: "Pomaže poređenju profitabilnosti kroz periode i segmente.",
+    limitations: ["Ako nedostaje nabavna cena, rezultat je indikativan."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene"],
+    relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
+  }),
+  inventoryTurnover: defineMetric("inventoryTurnover", {
+    label: "Obrt zaliha",
+    shortDescription: "Koliko puta se prosečna zaliha obrne kroz period.",
+    formula: "trošak_prodate_robe / prosečna_vrednost_zaliha",
+    dataSource: "Inventory analytics snapshot + sales facts",
+    interpretation: "Viši obrt uglavnom znači efikasnije upravljanje zalihama.",
+    limitations: ["Trenutno indikativna metrika; zavisi od kvaliteta cost i stock podataka."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene", "Tačnost stanja zaliha"],
+    relatedScreens: ["/analytics/inventory"],
+  }),
+  // TODO(analytics-methodology): Dodati GMROI kada backend iznese stabilnu metriku i DTO polja.
 } as const;
 
 type BaseMetricKey =
@@ -425,7 +478,7 @@ export const metricAliases = {
   slowStock: "slowStockCapital",
   lostSales: "lostSalesEstimate",
   dataReadiness: "dataReadinessScore",
-  revenueWithoutCost: "missingCostRevenueShare",
+  missingCostRevenueShare: "revenueWithoutCost",
   revenueUnknownSupplier: "unknownSupplierRevenueShare",
   totalInventoryValue: "inventoryTotalValue",
   stockUnits: "onHandUnits",
@@ -435,14 +488,6 @@ export const metricAliases = {
 const canonicalMetricDefinitions = {
   ...baseMetrics,
   ...operationalMetrics,
-  missingCostRevenueShare: defineMetric("missingCostRevenueShare", {
-    label: "Promet bez nabavne cene",
-    shortDescription: "Udeo prihoda za koji ne postoji potvrđena nabavna cena.",
-    formula: "(prihod_bez_cene / ukupan_prihod) * 100",
-    dataSource: "Data quality checks",
-    interpretation: "Viši udeo smanjuje pouzdanost maržnih metrika.",
-    relatedScreens: ["/analytics/data-quality", "/analytics"],
-  }),
   unknownSupplierRevenueShare: defineMetric("unknownSupplierRevenueShare", {
     label: "Promet nepoznatog dobavljača",
     shortDescription: "Udeo prihoda bez validnog mapiranja dobavljača.",
@@ -476,6 +521,12 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   confidencePct: ["Sigurnost preporuke", "Confidence"],
   markdownDependency: ["Zavisnost od nivelacija", "Markdown dependency"],
   outOfStockRisk: ["OOS rizik", "Rizik nestanka zalihe"],
+  blockedRecommendationsCount: ["Blokirane preporuke"],
+  ignoredRowsCount: ["Ignorisani redovi"],
+  grossMarginPct: ["Bruto marža %", "Gross margin %"],
+  inventoryTurnover: ["Obrt zaliha", "Inventory turnover"],
+  revenueWithoutCost: ["Prihod bez nabavne cene", "Promet bez nabavne cene"],
+  unknownSupplierRevenueShare: ["Promet nepoznatog dobavljača"],
 };
 
 export function normalizeMetricKey(key: string): AnalyticsMetricKey | string {
