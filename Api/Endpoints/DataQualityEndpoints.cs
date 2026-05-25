@@ -293,68 +293,67 @@ public static class DataQualityEndpoints
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
 
-        app.MapGet("/api/analytics/reports/pilot-intake", async (
-            HttpContext httpContext,
-            TrendplusDbContext trendDb,
-            AnalyticsDbContext analyticsDb,
-            IAnalyticsCacheService cache,
-            AnalyticsDataQualityHealthService healthService,
-            AnalyticsRefreshStatusService refreshStatusService,
-            [FromQuery] string? fromDate,
-            [FromQuery] string? toDate,
-            [FromQuery] int? storeId,
-            [FromQuery] int? supplierId,
-            [FromQuery] string? scope,
-            [FromQuery] string? dataScope,
-            CancellationToken ct) =>
+    }
+
+    internal static async Task<IResult> HandlePilotIntakeReportAsync(
+        HttpContext httpContext,
+        TrendplusDbContext trendDb,
+        AnalyticsDbContext analyticsDb,
+        IAnalyticsCacheService cache,
+        AnalyticsDataQualityHealthService healthService,
+        AnalyticsRefreshStatusService refreshStatusService,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
+        [FromQuery] int? storeId,
+        [FromQuery] int? supplierId,
+        [FromQuery] string? scope,
+        [FromQuery] string? dataScope,
+        CancellationToken ct)
+    {
+        var correlationId = ResolveCorrelationId(httpContext);
+        var resolvedScope = !string.IsNullOrWhiteSpace(scope)
+            ? scope
+            : dataScope;
+        var period = ResolveIntakePeriod(fromDate, toDate);
+        var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
+            period.FromUtc,
+            period.ToUtc,
+            storeId,
+            supplierId,
+            resolvedScope);
+
+        try
         {
-            var correlationId = ResolveCorrelationId(httpContext);
-            var resolvedScope = !string.IsNullOrWhiteSpace(scope)
-                ? scope
-                : dataScope;
-            var period = ResolveIntakePeriod(fromDate, toDate);
-            var reportCacheKey = AnalyticsCacheKeys.PilotIntakeReport(
-                period.FromUtc,
-                period.ToUtc,
-                storeId,
-                supplierId,
-                resolvedScope);
-
-            try
-            {
-                var report = await cache.GetOrSetAsync(
-                    reportCacheKey,
-                    async () =>
-                    {
-                        var intake = await BuildPilotDataQualityIntakeReportAsync(
-                            trendDb,
-                            analyticsDb,
-                            healthService,
-                            refreshStatusService,
-                            fromDate,
-                            toDate,
-                            storeId,
-                            supplierId,
-                            resolvedScope,
-                            ct);
-
-                        return BuildPilotIntakeReportResponse(intake, period, storeId, supplierId, resolvedScope);
-                    },
-                    CacheExpiration.HeavyAnalytics,
-                    ct);
-
-                return Results.Ok(report with
+            var report = await cache.GetOrSetAsync(
+                reportCacheKey,
+                async () =>
                 {
-                    Meta = ApplyCorrelationId(report.Meta, correlationId)
-                });
-            }
-            catch (Exception)
+                    var intake = await BuildPilotDataQualityIntakeReportAsync(
+                        trendDb,
+                        analyticsDb,
+                        healthService,
+                        refreshStatusService,
+                        fromDate,
+                        toDate,
+                        storeId,
+                        supplierId,
+                        resolvedScope,
+                        ct);
+
+                    return BuildPilotIntakeReportResponse(intake, period, storeId, supplierId, resolvedScope);
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
+
+            return Results.Ok(report with
             {
-                return Results.Ok(BuildPilotIntakeErrorReportResponse(period, storeId, supplierId, resolvedScope, correlationId));
-            }
-        })
-        .WithTags("Analytics")
-        .RequireRateLimiting("analytics");
+                Meta = ApplyCorrelationId(report.Meta, correlationId)
+            });
+        }
+        catch (Exception)
+        {
+            return Results.Ok(BuildPilotIntakeErrorReportResponse(period, storeId, supplierId, resolvedScope, correlationId));
+        }
     }
 
     private static IReadOnlyList<string> BuildPilotIntakeWarnings(

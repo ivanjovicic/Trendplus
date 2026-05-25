@@ -47,6 +47,7 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEmpty(report.Rows);
         Assert.Equal("supplier_decision", report.Type);
         Assert.Equal("Trendplus izveštaj dobavljača", report.Title);
+        Assert.StartsWith("/analytics/supplier/report?", report.StableQueryUrl, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -156,6 +157,7 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEmpty(report.Kpis);
         Assert.NotEmpty(report.Sections);
         Assert.Equal("pilot_intake", report.Type);
+        Assert.StartsWith("/analytics/data-quality?view=intake&", report.StableQueryUrl, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -201,6 +203,20 @@ public sealed class AnalyticsReportsContractTests
         Assert.Contains("analytics-report:pilot-intake:v1:", pilotBase);
         Assert.NotEqual(supplierBase, supplierScoped);
         Assert.NotEqual(pilotBase, pilotScoped);
+
+        var supplierCategory = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, "patike", null, null, null, false, false, null, null, "all");
+        var supplierGender = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, "women", null, null, false, false, null, null, "all");
+        var supplierSeason = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, 3, null, false, false, null, null, "all");
+        var supplierRevenue = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, 1000m, false, false, null, null, "all");
+        var supplierConfidence = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, true, false, null, null, "all");
+        var supplierOos = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, true, null, null, "all");
+
+        Assert.NotEqual(supplierBase, supplierCategory);
+        Assert.NotEqual(supplierBase, supplierGender);
+        Assert.NotEqual(supplierBase, supplierSeason);
+        Assert.NotEqual(supplierBase, supplierRevenue);
+        Assert.NotEqual(supplierBase, supplierConfidence);
+        Assert.NotEqual(supplierBase, supplierOos);
     }
 
     private static SupplierDecisionHubEndpoints.SupplierScoreRow CreateSupplierRow(

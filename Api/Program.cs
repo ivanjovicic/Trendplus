@@ -1128,6 +1128,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapInsightStudioEndpoints();
     app.MapInsightStudioV2Endpoints();
     app.MapPreNivelacijaPriorityEndpoints();
+    app.MapAnalyticsReportsEndpoints();
     app.MapSupplierDecisionHubEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();

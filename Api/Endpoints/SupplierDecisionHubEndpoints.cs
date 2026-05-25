@@ -436,101 +436,100 @@ public static class SupplierDecisionHubEndpoints
             return Results.Ok(response.Response);
         });
 
-        app.MapGet("/api/analytics/reports/supplier-decision", async (
-            HttpContext httpContext,
-            IConfiguration configuration,
-            IAnalyticsCacheService cache,
-            AnalyticsRefreshStatusService refreshStatusService,
-            DateTime? fromDate = null,
-            DateTime? toDate = null,
-            string? category = null,
-            string? gender = null,
-            int? seasonId = null,
-            decimal? minRevenue = null,
-            bool onlyHighConfidence = false,
-            bool excludeOosBeforeMarkdown = false,
-            int? supplierId = null,
-            int? storeId = null,
-            string? scope = null,
-            string? dataScope = null,
-            CancellationToken ct = default) =>
+    }
+
+    internal static async Task<IResult> HandleSupplierDecisionReportAsync(
+        HttpContext httpContext,
+        IConfiguration configuration,
+        IAnalyticsCacheService cache,
+        AnalyticsRefreshStatusService refreshStatusService,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        string? category = null,
+        string? gender = null,
+        int? seasonId = null,
+        decimal? minRevenue = null,
+        bool onlyHighConfidence = false,
+        bool excludeOosBeforeMarkdown = false,
+        int? supplierId = null,
+        int? storeId = null,
+        string? scope = null,
+        string? dataScope = null,
+        CancellationToken ct = default)
+    {
+        var resolvedScope = !string.IsNullOrWhiteSpace(scope)
+            ? scope
+            : (string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope);
+
+        if (!TryCreateFilters(
+                fromDate,
+                toDate,
+                category,
+                gender,
+                seasonId,
+                minRevenue,
+                onlyHighConfidence,
+                excludeOosBeforeMarkdown,
+                supplierId,
+                storeId,
+                resolvedScope,
+                out var filters,
+                out var validationError))
         {
-            var resolvedScope = !string.IsNullOrWhiteSpace(scope)
-                ? scope
-                : (string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope);
+            return Results.ValidationProblem(validationError!);
+        }
 
-            if (!TryCreateFilters(
-                    fromDate,
-                    toDate,
-                    category,
-                    gender,
-                    seasonId,
-                    minRevenue,
-                    onlyHighConfidence,
-                    excludeOosBeforeMarkdown,
-                    supplierId,
-                    storeId,
-                    resolvedScope,
-                    out var filters,
-                    out var validationError))
-            {
-                return Results.ValidationProblem(validationError!);
-            }
+        var activeFilters = filters!;
+        var correlationId = ResolveCorrelationId(httpContext);
+        var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
+        var reportCacheKey = AnalyticsCacheKeys.SupplierDecisionReport(
+            activeFilters.FromDate,
+            activeFilters.ToDate,
+            activeFilters.Category,
+            activeFilters.Gender,
+            activeFilters.SeasonId,
+            activeFilters.MinRevenue,
+            activeFilters.OnlyHighConfidence,
+            activeFilters.ExcludeOosBeforeMarkdown,
+            activeFilters.SupplierId,
+            activeFilters.StoreId,
+            activeFilters.DataScope);
 
-            var activeFilters = filters!;
-            var correlationId = ResolveCorrelationId(httpContext);
-            var analyticsConnectionString = GetAnalyticsConnectionString(configuration);
-            var reportCacheKey = AnalyticsCacheKeys.SupplierDecisionReport(
-                activeFilters.FromDate,
-                activeFilters.ToDate,
-                activeFilters.Category,
-                activeFilters.Gender,
-                activeFilters.SeasonId,
-                activeFilters.MinRevenue,
-                activeFilters.OnlyHighConfidence,
-                activeFilters.ExcludeOosBeforeMarkdown,
-                activeFilters.SupplierId,
-                activeFilters.StoreId,
-                activeFilters.DataScope);
-
-            try
-            {
-                var report = await cache.GetOrSetAsync(
-                    reportCacheKey,
-                    async () =>
-                    {
-                        var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        var summary = BuildSummaryResponse(dataset, activeFilters);
-                        var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
-                        ReportRefreshInfo? refreshInfo = null;
-
-                        try
-                        {
-                            var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
-                            refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
-                        }
-                        catch
-                        {
-                            refreshInfo = null;
-                        }
-
-                        return BuildSupplierDecisionReportResponse(summary, dataset, activeFilters, refreshInfo, details);
-                    },
-                    CacheExpiration.HeavyAnalytics,
-                    ct);
-
-                return Results.Ok(report with
+        try
+        {
+            var report = await cache.GetOrSetAsync(
+                reportCacheKey,
+                async () =>
                 {
-                    Meta = ApplyCorrelationId(report.Meta, correlationId)
-                });
-            }
-            catch (SupplierDecisionUnavailableException ex)
+                    var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
+                    var summary = BuildSummaryResponse(dataset, activeFilters);
+                    var details = await BuildSupplierDecisionReportDetailsAsync(analyticsConnectionString, activeFilters, dataset, ct);
+                    ReportRefreshInfo? refreshInfo = null;
+
+                    try
+                    {
+                        var refreshStatus = await refreshStatusService.GetStatusAsync(ct);
+                        refreshInfo = ResolveReportRefreshInfo(refreshStatus, "supplier_decision_mvs");
+                    }
+                    catch
+                    {
+                        refreshInfo = null;
+                    }
+
+                    return BuildSupplierDecisionReportResponse(summary, dataset, activeFilters, refreshInfo, details);
+                },
+                CacheExpiration.HeavyAnalytics,
+                ct);
+
+            return Results.Ok(report with
             {
-                return Results.Ok(BuildSupplierDecisionErrorReportResponse(activeFilters, ex.ErrorCode, ex.Message, correlationId));
-            }
-        })
-        .WithTags("Analytics")
-        .RequireRateLimiting("analytics");
+                Meta = ApplyCorrelationId(report.Meta, correlationId)
+            });
+        }
+        catch (SupplierDecisionUnavailableException ex)
+        {
+            return Results.Ok(BuildSupplierDecisionErrorReportResponse(activeFilters, ex.ErrorCode, ex.Message, correlationId));
+        }
     }
 
     internal sealed record SupplierDecisionHubFilters(

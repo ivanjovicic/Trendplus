@@ -28,6 +28,36 @@ Scope: cached analytics families, supplier decision hub, inventory, data-quality
 - Page fajlovi ne treba da računaju finalnu preporuku, confidence ili reliability lokalno.
 - `AnalyticsTrustHeader`, `AnalyticsEmptyState`, i `AnalyticsErrorState` treba da budu primarni prikaz za trust, empty i error states.
 
+## Persistent Reports
+
+Canonical persistent analytics report API namespace:
+
+- `GET /api/analytics/reports/supplier-decision`
+   - Query: `fromDate`, `toDate`, `supplierId`, `storeId`, `scope`/`dataScope`, `category`, `gender`, `seasonId`, `minRevenue`, `onlyHighConfidence`, `excludeOosBeforeMarkdown`
+   - Response: `AnalyticsReportResponseDto`
+   - Cache key: `AnalyticsCacheKeys.SupplierDecisionReport(...)`
+
+- `GET /api/analytics/reports/pilot-intake`
+   - Query: `fromDate`, `toDate`, `storeId`, `supplierId`, `scope`/`dataScope`
+   - Response: `AnalyticsReportResponseDto`
+   - Cache key: `AnalyticsCacheKeys.PilotIntakeReport(...)`
+
+Canonical report routes koriste postojeće report builder-e (bez dupliranja poslovne logike):
+
+- `BuildSupplierDecisionReportResponse`
+- `BuildSupplierDecisionErrorReportResponse`
+- `BuildPilotIntakeReportResponse`
+- `BuildPilotIntakeErrorReportResponse`
+
+Meta contract i dalje važi:
+
+- success with data -> `AnalyticsResponseMetaFactory.Success`
+- empty/no import/no rows -> `AnalyticsResponseMetaFactory.Empty`
+- fallback/partial/stale -> `AnalyticsResponseMetaFactory.Warning`
+- backend error -> `AnalyticsResponseMetaFactory.Error`
+
+Napomena: `StableQueryUrl` ostaje user-facing URL (`/analytics/...`), ne interni API URL.
+
 ## Regression Checklist
 
 1. `dotnet build`
