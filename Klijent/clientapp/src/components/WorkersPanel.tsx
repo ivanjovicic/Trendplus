@@ -167,6 +167,11 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
     return `${Math.round(value)} s`;
   };
 
+  const formatObjectList = (items: string[]) => {
+    if (items.length === 0) return "-";
+    return items.join(", ");
+  };
+
   const refreshRunBadgeClass = (status: string) => {
     const normalized = status.toLowerCase();
     if (normalized === "succeeded") return "wp-badge wp-badge--healthy";
@@ -190,7 +195,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
           </span>
           {lastRefreshedAt && (
             <span className="wp-refreshed-at">
-              Osvezeno: {lastRefreshedAt.toLocaleTimeString("sr-RS")}
+              Osveženo: {lastRefreshedAt.toLocaleTimeString("sr-RS")}
             </span>
           )}
         </div>
@@ -408,18 +413,21 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
             <table className="wp-table wp-table--history">
               <thead>
                 <tr>
-                  <th className="wp-th">Pocetak</th>
+                  <th className="wp-th">Početak</th>
+                  <th className="wp-th">Završetak</th>
                   <th className="wp-th">Status</th>
                   <th className="wp-th">Posao</th>
                   <th className="wp-th">Trajanje</th>
-                  <th className="wp-th">Neuspesni objekti</th>
-                  <th className="wp-th">Greska</th>
+                  <th className="wp-th">Osveženi objekti</th>
+                  <th className="wp-th">Neuspešni objekti</th>
+                  <th className="wp-th">Greška</th>
                 </tr>
               </thead>
               <tbody>
                 {refreshRuns.map((run) => (
                   <tr key={run.id} className="wp-row">
                     <td className="wp-td wp-td--date">{formatDate(run.startedAtUtc)}</td>
+                    <td className="wp-td wp-td--date">{formatDate(run.finishedAtUtc)}</td>
                     <td className="wp-td">
                       <span className={refreshRunBadgeClass(run.status)}>{run.status}</span>
                     </td>
@@ -428,7 +436,8 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                       <div className="wp-worker-key">{run.jobKey}</div>
                     </td>
                     <td className="wp-td">{formatDuration(run.durationSeconds)}</td>
-                    <td className="wp-td">{run.failedObjects.length > 0 ? run.failedObjects.join(", ") : "-"}</td>
+                    <td className="wp-td">{formatObjectList(run.refreshedObjects)}</td>
+                    <td className="wp-td">{formatObjectList(run.failedObjects)}</td>
                     <td className="wp-td">
                       {run.errorMessage ? (
                         <span className="wp-error-text" title={run.errorMessage}>

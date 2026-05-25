@@ -5,6 +5,25 @@ namespace Infrastructure.Services.Caching;
 /// </summary>
 public static class AnalyticsCachePolicy
 {
+    public const string DashboardFamily = "dashboard";
+    public const string ProductDecisionCenterFamily = "product-decision-center";
+    public const string SupplierDecisionHubFamily = "supplier-decision-hub";
+    public const string InventoryFamily = "inventory";
+    public const string DataQualityFamily = "data-quality";
+    public const string PrePostFamily = "pre-post";
+    public const string PreNivelacijaPrioritetiFamily = "pre-nivelacija-prioriteti";
+
+    public static readonly string[] CoreFamilies =
+    [
+        DashboardFamily,
+        ProductDecisionCenterFamily,
+        SupplierDecisionHubFamily,
+        InventoryFamily,
+        DataQualityFamily,
+        PrePostFamily,
+        PreNivelacijaPrioritetiFamily
+    ];
+
     public static readonly AnalyticsCachePolicyEntry DashboardBootstrap = new(
         Ttl: TimeSpan.FromMinutes(2),
         StaleAfter: TimeSpan.FromMinutes(1));
@@ -34,12 +53,12 @@ public static class AnalyticsCachePolicy
         var normalized = (family ?? string.Empty).Trim().ToLowerInvariant();
         return normalized switch
         {
-            "dashboard" or "dashboard-bootstrap" => DashboardBootstrap,
-            "product-decision-center" or "products" => ProductDecisionCenter,
-            "supplier-scorecard" or "supplier-decision-hub" => SupplierScorecard,
-            "inventory" => Inventory,
-            "data-quality" => DataQuality,
-            "pre-post" or "pre-nivelacija" => PrePost,
+            DashboardFamily or "dashboard-bootstrap" => DashboardBootstrap,
+            ProductDecisionCenterFamily or "products" => ProductDecisionCenter,
+            "supplier-scorecard" or SupplierDecisionHubFamily => SupplierScorecard,
+            InventoryFamily => Inventory,
+            DataQualityFamily => DataQuality,
+            PrePostFamily or "pre-nivelacija" or PreNivelacijaPrioritetiFamily => PrePost,
             _ => CacheExpiration.Medium.WithStaleAfter(TimeSpan.FromMinutes(2))
         };
     }
@@ -49,12 +68,13 @@ public static class AnalyticsCachePolicy
         var normalized = (family ?? string.Empty).Trim().ToLowerInvariant();
         return normalized switch
         {
-            "dashboard" or "dashboard-bootstrap" => "analytics:dashboard",
-            "product-decision-center" or "products" => "analytics:product-decision-center",
-            "supplier-scorecard" or "supplier-decision-hub" => "analytics:supplier-decision-hub",
-            "inventory" => "analytics:inventory",
-            "data-quality" => "analytics:validation",
-            "pre-post" or "pre-nivelacija" => "analytics:pre-nivelacija-priority",
+            DashboardFamily or "dashboard-bootstrap" => "analytics:dashboard",
+            ProductDecisionCenterFamily or "products" => "analytics:product-decision-center",
+            "supplier-scorecard" or SupplierDecisionHubFamily => "analytics:supplier-decision-hub",
+            InventoryFamily => "analytics:inventory",
+            DataQualityFamily => "analytics:data-quality",
+            PrePostFamily => "analytics:pre-post",
+            "pre-nivelacija" or PreNivelacijaPrioritetiFamily => "analytics:pre-nivelacija-prioriteti",
             _ => AnalyticsCacheKeys.Prefix
         };
     }

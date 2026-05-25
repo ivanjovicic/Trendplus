@@ -42,8 +42,8 @@ import {
 import "./DataQualityPage.css";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
-  { key: "missingSupplier", label: "Nedostajuci dobavljač", tone: "danger" },
-  { key: "missingShoeType", label: "Nedostajuci tip obuće", tone: "warning" },
+  { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" },
+  { key: "missingShoeType", label: "Nedostajući tip obuće", tone: "warning" },
 ];
 
 const LOW_PRIORITY_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
@@ -61,9 +61,9 @@ const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
   { key: "name", header: "Naziv artikla", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "shoeTypeName", header: "Tip obuće", dataType: "text" },
-  { key: "sales30d", header: "Pogodjeni promet 30d", dataType: "currency" },
+  { key: "sales30d", header: "Pogođeni promet 30d", dataType: "currency" },
   { key: "stock", header: "Stanje", dataType: "number" },
-  { key: "lastUpdated", header: "Azurirano", dataType: "datetime" },
+  { key: "lastUpdated", header: "Ažurirano", dataType: "datetime" },
   { key: "issueType", header: "Problem", dataType: "text" },
 ];
 
@@ -176,7 +176,7 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
       <div className="data-quality-section-head">
         <div>
           <h2>Top offenders</h2>
-          <p>Rangirano po pogodjenom prometu unutar aktivnog tipa problema.</p>
+          <p>Rangirano po pogođenom prometu unutar aktivnog tipa problema.</p>
         </div>
         <span className="data-quality-top-offenders-meta">Top {result.count}</span>
       </div>
@@ -452,22 +452,28 @@ export default function DataQualityPage() {
       );
     }
 
-    if (intakeResult.status === "fulfilled") {
+    if (durableIntakeResult.status === "fulfilled") {
+      setDurableIntakeReport(durableIntakeResult.value);
+      if (intakeResult.status === "fulfilled") {
+        setIntakeReport(intakeResult.value);
+      } else {
+        setIntakeReport(null);
+      }
+      setIntakeReportError(null);
+    } else if (intakeResult.status === "fulfilled") {
+      setDurableIntakeReport(null);
       setIntakeReport(intakeResult.value);
       setIntakeReportError(null);
     } else {
+      setDurableIntakeReport(null);
       setIntakeReport(null);
       setIntakeReportError(
-        intakeResult.reason instanceof Error
-          ? intakeResult.reason.message
-          : "Pilot intake report nije dostupan."
+        durableIntakeResult.reason instanceof Error
+          ? durableIntakeResult.reason.message
+          : intakeResult.reason instanceof Error
+            ? intakeResult.reason.message
+            : "Pilot intake report nije dostupan."
       );
-    }
-
-    if (durableIntakeResult.status === "fulfilled") {
-      setDurableIntakeReport(durableIntakeResult.value);
-    } else {
-      setDurableIntakeReport(null);
     }
 
     setLoading(false);
@@ -540,19 +546,20 @@ export default function DataQualityPage() {
   };
 
   const showAdvancedContext = Boolean(contextIncludeUnknown || contextFocus || contextSupplierId || contextSezonaId);
-  const trustDataQualityStatus = intakeReport
-    ? intakeReport.readinessStatus === "critical"
+  const trustDataQualityStatus = durableIntakeReport?.dataQualityStatus
+    ?? (intakeReport
+      ? intakeReport.readinessStatus === "critical"
       ? "critical"
       : intakeReport.readinessStatus === "excellent" || intakeReport.readinessStatus === "good"
         ? "good"
         : "warning"
-    : health?.scoreStatus === "critical"
+      : health?.scoreStatus === "critical"
       ? "critical"
       : health?.scoreStatus === "warning"
         ? "warning"
         : health?.scoreStatus === "good" || health?.scoreStatus === "excellent"
           ? "good"
-          : health?.meta?.dataQualityStatus ?? null;
+          : health?.meta?.dataQualityStatus ?? null);
 
   const trustSummary = intakeReport
     ? {
@@ -588,7 +595,7 @@ export default function DataQualityPage() {
         emptyStateReason={
           viewMode === "issues"
             ? (!loading && !error && data?.items.length === 0 ? (issuesMetaMessage ?? "Nema otvorenih data quality problema za izabrani filter.") : null)
-            : intakeReport?.meta?.message ?? null
+            : durableIntakeReport?.meta?.message ?? intakeReport?.meta?.message ?? null
         }
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -609,7 +616,7 @@ export default function DataQualityPage() {
               <strong>{health.score}</strong>
               <span className="data-quality-score-status">{health.scoreStatus}</span>
               <p>{health.scoreSummary}</p>
-              <KpiExplainButton metricKey="dataReadinessScore" />
+              <KpiExplainButton metricKey="dataReadiness" ariaLabel="Kako je izračunat data quality score" />
             </section>
           ) : null}
           <div className="data-quality-meta">
@@ -678,14 +685,14 @@ export default function DataQualityPage() {
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{fmtPct(health.missingCostRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.missingCostRevenue, 2)} bez pouzdane marze</p>
-            <KpiExplainButton metricKey="missingCostRevenueShare" />
+            <KpiExplainButton metricKey="revenueWithoutCost" ariaLabel="Kako je izračunat promet bez nabavne cene" />
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
             <strong>{fmtPct(health.unknownSupplierRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.unknownSupplierRevenue, 2)} u unknown bucket-u</p>
-            <KpiExplainButton metricKey="unknownSupplierRevenueShare" />
+            <KpiExplainButton metricKey="revenueUnknownSupplier" ariaLabel="Kako je izračunat promet nepoznatog dobavljača" />
           </article>
         </section>
       ) : null}
@@ -842,7 +849,7 @@ export default function DataQualityPage() {
         />
       ) : null}
       {viewMode === "issues" && healthError ? <div className="data-quality-loading">{healthError}</div> : null}
-      {viewMode === "issues" && loading ? <div className="data-quality-loading">Ucitavam data quality probleme...</div> : null}
+      {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam data quality probleme...</div> : null}
 
       {viewMode === "issues" && !loading && data ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 
@@ -850,7 +857,7 @@ export default function DataQualityPage() {
         <section className="data-quality-card">
           <div className="data-quality-table-head">
             <div>
-              <h2>Problematicni artikli</h2>
+              <h2>Problematični artikli</h2>
               <span className="data-quality-table-meta">
                 Ukupno: {data.total} | Strana {page} / {totalPages}
               </span>
@@ -875,9 +882,9 @@ export default function DataQualityPage() {
                   <th>Artikal</th>
                   <th>Dobavljač</th>
                   <th>Tip obuće</th>
-                  <th className="align-right">Pogodjeni promet 30d</th>
+                  <th className="align-right">Pogođeni promet 30d</th>
                   <th className="align-right">Stanje</th>
-                  <th>Azurirano</th>
+                  <th>Ažurirano</th>
                   <th>Problem</th>
                   <th>Akcija</th>
                 </tr>

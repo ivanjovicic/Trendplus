@@ -68,7 +68,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       if (type === "copy") {
         const text = buildSupplierDecisionReportSummaryText(payload);
         await copyToClipboard(text);
-        setStatus("Sažetak je kopiran u clipboard.");
+        setStatus("Sažetak je kopiran.");
         return;
       }
 
@@ -91,7 +91,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       }
 
       if (!pdfExportEnabled) {
-        throw new Error("PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel.");
+        throw new Error("PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.");
       }
 
       await exportSupplierDecisionReportPdf(payload);
@@ -100,7 +100,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       const message = reason instanceof Error ? reason.message : "Izvoz izveštaja nije uspeo.";
       setStatus(message);
       onError?.(type === "pdf"
-        ? "PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel."
+        ? "PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel."
         : message);
     } finally {
       setBusy(null);
@@ -109,14 +109,16 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
   return (
     <div className="inline-flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("durable")}
-        disabled={durableActionDisabled}
-      >
-        {busy === "durable" ? "Otvaram..." : "Trajni report"}
-      </button>
+      {durableReportHref ? (
+        <button
+          type="button"
+          className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+          onClick={() => void run("durable")}
+          disabled={durableActionDisabled}
+        >
+          {busy === "durable" ? "Otvaram..." : "Trajni izveštaj"}
+        </button>
+      ) : null}
       <button
         type="button"
         className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
@@ -131,7 +133,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         onClick={() => void run("print")}
         disabled={actionDisabled}
       >
-        {busy === "print" ? "Otvaram..." : "Print izveštaj"}
+        {busy === "print" ? "Otvaram..." : "Štampaj izveštaj"}
       </button>
       <button
         type="button"
@@ -148,7 +150,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         onClick={() => void run("csv")}
         disabled={actionDisabled}
       >
-        {busy === "csv" ? "Izvoz..." : "Export CSV"}
+        {busy === "csv" ? "Izvoz..." : "Izvezi CSV"}
       </button>
       <button
         type="button"
@@ -156,7 +158,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         onClick={() => void run("excel")}
         disabled={actionDisabled}
       >
-        {busy === "excel" ? "Izvoz..." : "Export Excel"}
+        {busy === "excel" ? "Izvoz..." : "Izvezi Excel"}
       </button>
       {pdfExportEnabled ? (
         <button
@@ -165,7 +167,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           onClick={() => void run("pdf")}
           disabled={actionDisabled}
         >
-          {busy === "pdf" ? "Izvoz..." : "Export PDF"}
+          {busy === "pdf" ? "Izvoz..." : "Izvezi PDF"}
         </button>
       ) : null}
       {status ? <span className="text-xs text-[var(--accent-success)]">{status}</span> : null}

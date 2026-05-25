@@ -2487,11 +2487,11 @@ using NpgsqlTypes;
                     if (includeAnalytics)
                         await SyncAnalyticsAsync(result, transactionCt);
 
-                    if (_analyticsCache is not null)
+                    if (_analyticsCache is not null || _serviceScopeFactory is not null)
                     {
                         try
                         {
-                            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
+                            await InvalidateAnalyticsCacheAsync(transactionCt);
                         }
                         catch (Exception cacheEx)
                         {
@@ -3634,10 +3634,9 @@ using NpgsqlTypes;
             batchId);
 
         var cacheInvalidated = false;
-        if (includeAnalytics && _analyticsCache is not null)
+        if (includeAnalytics && (_analyticsCache is not null || _serviceScopeFactory is not null))
         {
-            await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
-            cacheInvalidated = true;
+            cacheInvalidated = await InvalidateAnalyticsCacheAsync(ct);
         }
 
         _logger.LogInformation(
@@ -3669,6 +3668,35 @@ using NpgsqlTypes;
             SummaryRowsDeleted = summaryDeleted,
             CacheInvalidated = cacheInvalidated
         };
+    }
+
+    private async Task<bool> InvalidateAnalyticsCacheAsync(CancellationToken ct)
+    {
+        if (_serviceScopeFactory is not null)
+        {
+            try
+            {
+                await using var scope = _serviceScopeFactory.CreateAsyncScope();
+                var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
+                if (cacheAdmin is not null)
+                {
+                    await cacheAdmin.ClearAsync("all", ct);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Analytics cache admin invalidation failed. Falling back to raw prefix invalidation.");
+            }
+        }
+
+        if (_analyticsCache is null)
+        {
+            return false;
+        }
+
+        await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+        return true;
     }
 
     private async Task<DeleteBatchHeader?> GetDeleteBatchHeaderAsync(long batchId, CancellationToken ct)

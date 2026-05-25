@@ -94,7 +94,7 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.rows.some((row) => row.section === "Kvalitet podataka")).toBe(true);
     expect(payload.rows.some((row) => row.section === "Header" && row.item === "Efektivni dataset")).toBe(true);
     expect(payload.metadata.some((item) => item.key === "effectiveDataset" && item.value === "90d")).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "dataFreshness" && item.value === "Sveze")).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "dataFreshness" && item.value === "Sveže")).toBe(true);
   });
 
   it("adds warning section for insufficient data and fallback", () => {

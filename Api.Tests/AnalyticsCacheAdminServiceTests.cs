@@ -1,0 +1,151 @@
+using System.Text;
+using Infrastructure.Services.Caching;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
+
+namespace Api.Tests;
+
+public sealed class AnalyticsCacheAdminServiceTests
+{
+    [Theory]
+    [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:dashboard")]
+    [InlineData(AnalyticsCachePolicy.ProductDecisionCenterFamily, "analytics:product-decision-center")]
+    [InlineData(AnalyticsCachePolicy.SupplierDecisionHubFamily, "analytics:supplier-decision-hub")]
+    [InlineData(AnalyticsCachePolicy.InventoryFamily, "analytics:inventory")]
+    [InlineData(AnalyticsCachePolicy.DataQualityFamily, "analytics:data-quality")]
+    [InlineData(AnalyticsCachePolicy.PrePostFamily, "analytics:pre-post")]
+    [InlineData(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, "analytics:pre-nivelacija-prioriteti")]
+    [InlineData("pre-nivelacija", "analytics:pre-nivelacija-prioriteti")]
+    public void ResolveFamilyPrefix_ReturnsCanonicalPrefix(string family, string expectedPrefix)
+    {
+        var actual = AnalyticsCachePolicy.ResolveFamilyPrefix(family);
+
+        Assert.Equal(expectedPrefix, actual);
+    }
+
+    [Fact]
+    public async Task ClearFamiliesAsync_RemovesEachFamilyPrefix_AndPersistsSharedState()
+    {
+        var cache = new RecordingAnalyticsCacheService
+        {
+            IsRedisAvailable = true,
+            IsRedisEnabled = true
+        };
+        var distributedCache = new TestDistributedCache();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var state = await sut.ClearFamiliesAsync(
+            [
+                AnalyticsCachePolicy.DashboardFamily,
+                AnalyticsCachePolicy.DataQualityFamily,
+                AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily
+            ],
+            CancellationToken.None);
+
+        Assert.Equal(
+            [
+                "analytics:dashboard",
+                "analytics:data-quality",
+                "analytics:pre-nivelacija-prioriteti"
+            ],
+            cache.RemovedPrefixes);
+        Assert.True(state.IsShared);
+        Assert.Equal("redis", state.Storage);
+        Assert.Null(state.Warning);
+        Assert.Equal("dashboard,data-quality,pre-nivelacija-prioriteti", state.LastClearFamily);
+        Assert.NotNull(state.LastClearAtUtc);
+
+        var reloaded = await sut.GetStateAsync(CancellationToken.None);
+        Assert.True(reloaded.IsShared);
+        Assert.Equal("redis", reloaded.Storage);
+        Assert.Equal(state.LastClearFamily, reloaded.LastClearFamily);
+        Assert.Equal(state.LastClearAtUtc, reloaded.LastClearAtUtc);
+    }
+
+    [Fact]
+    public async Task ClearFamiliesAsync_WithNoFamilies_FallsBackToFullAnalyticsPrefix()
+    {
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var state = await sut.ClearFamiliesAsync([], CancellationToken.None);
+
+        Assert.Equal([AnalyticsCacheKeys.Prefix], cache.RemovedPrefixes);
+        Assert.False(state.IsShared);
+        Assert.Equal("memory", state.Storage);
+        Assert.Equal("all", state.LastClearFamily);
+    }
+
+    private sealed class RecordingAnalyticsCacheService : IAnalyticsCacheService
+    {
+        public List<string> RemovedPrefixes { get; } = [];
+
+        public bool IsRedisAvailable { get; set; }
+
+        public bool IsRedisEnabled { get; set; }
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
+            => Task.FromResult<T?>(null);
+
+        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+            => Task.CompletedTask;
+
+        public Task RemoveAsync(string key, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
+        {
+            RemovedPrefixes.Add(prefix);
+            return Task.CompletedTask;
+        }
+
+        public Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+            => factory();
+
+        public void SetRedisEnabled(bool enabled)
+            => IsRedisEnabled = enabled;
+    }
+
+    private sealed class TestDistributedCache : IDistributedCache
+    {
+        private readonly Dictionary<string, byte[]> _storage = new(StringComparer.Ordinal);
+
+        public byte[]? Get(string key)
+            => _storage.TryGetValue(key, out var value) ? value : null;
+
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+            => Task.FromResult(Get(key));
+
+        public void Refresh(string key)
+        {
+        }
+
+        public Task RefreshAsync(string key, CancellationToken token = default)
+            => Task.CompletedTask;
+
+        public void Remove(string key)
+            => _storage.Remove(key);
+
+        public Task RemoveAsync(string key, CancellationToken token = default)
+        {
+            Remove(key);
+            return Task.CompletedTask;
+        }
+
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+            => _storage[key] = value;
+
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        {
+            Set(key, value, options);
+            return Task.CompletedTask;
+        }
+    }
+}

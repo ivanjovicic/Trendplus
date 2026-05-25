@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
-import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefinitions";
+import {
+  findAnalyticsMetricKeyByLabel,
+  getAnalyticsMetricDefinition,
+} from "../../utils/analyticsMetricDefinitions";
 import KpiExplainButton from "./KpiExplainButton";
 import "./SupplierDecisionReport.css";
 
@@ -31,6 +34,15 @@ function rowValueAny(payload: ResolvedAnalyticsTablePayload, candidates: Array<{
   }
 
   return null;
+}
+
+function groupRowsAny(grouped: Map<string, ReportRow[]>, sectionNames: string[]): ReportRow[] {
+  for (const sectionName of sectionNames) {
+    const rows = grouped.get(sectionName);
+    if (rows && rows.length > 0) return rows;
+  }
+
+  return [];
 }
 
 function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRow[]> {
@@ -84,17 +96,24 @@ function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: st
 export default function SupplierDecisionReport({ payload }: SupplierDecisionReportProps) {
   const grouped = useMemo(() => groupRows(payload), [payload]);
 
-  const supplierLabel = rowValueAny(payload, [{ section: "Header", item: "Dobavljač" }]) ?? filterValue(payload, "supplier") ?? "Dobavljač";
+  const supplierLabel = rowValueAny(payload, [
+    { section: "Header", item: "Dobavljač" },
+    { section: "Header", item: "Dobavljac" },
+  ]) ?? filterValue(payload, "supplier") ?? "Dobavljač";
   const period = rowValue(payload, "Header", "Period") ?? filterValue(payload, "period") ?? "-";
   const reportTitle = rowValueAny(payload, [
     { section: "Header", item: "Naziv izveštaja" },
+    { section: "Header", item: "Naziv izvestaja" },
     { section: "Header", item: "Report" },
   ]) ?? payload.tableTitle ?? "Trendplus izveštaj dobavljača";
   const dataScope = rowValueAny(payload, [
     { section: "Header", item: "Opseg podataka" },
     { section: "Header", item: "Data scope" },
   ]) ?? filterValue(payload, "dataScope") ?? "-";
-  const reportDate = rowValue(payload, "Header", "Datum izveštaja") ?? metaValue(payload, "generatedAtUtc") ?? "-";
+  const reportDate = rowValueAny(payload, [
+    { section: "Header", item: "Datum izveštaja" },
+    { section: "Header", item: "Datum izvestaja" },
+  ]) ?? metaValue(payload, "generatedAtUtc") ?? "-";
   const lastRefresh = rowValueAny(payload, [
     { section: "Header", item: "Poslednje osveženje" },
     { section: "Header", item: "Poslednji refresh" },
@@ -104,15 +123,26 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const normalizedDQ = normalizeDataQualityStatus(metaValue(payload, "dataQualityStatus"));
   const recommendationAllowed = metaValue(payload, "recommendationAllowed");
 
-  const warnings = grouped.get("Upozorenje") ?? [];
+  const warnings = groupRowsAny(grouped, ["Upozorenje"]);
   const kpi = grouped.get("KPI") ?? [];
-  const recommendations = grouped.get("Preporuke") ?? [];
-  const topRevenue = grouped.get("Top artikli / dobavljači") ?? [];
-  const risk = grouped.get("Rizik zalihe") ?? [];
-  const boost = grouped.get("Pojačaj") ?? [];
-  const reduce = grouped.get("Smanji") ?? [];
-  const dataQuality = grouped.get("Kvalitet podataka") ?? grouped.get("Data quality") ?? [];
-  const methodology = grouped.get("Metodologija") ?? grouped.get("Methodology") ?? [];
+  const recommendations = groupRowsAny(grouped, ["Preporuke"]);
+  const topRevenue = groupRowsAny(grouped, ["Top artikli / dobavljači", "Top artikli / dobavljaci"]);
+  const risk = groupRowsAny(grouped, ["Rizik zalihe"]);
+  const boost = groupRowsAny(grouped, ["Pojačaj", "Pojacaj"]);
+  const reduce = groupRowsAny(grouped, ["Smanji"]);
+  const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka", "Data quality"]);
+  const methodology = groupRowsAny(grouped, ["Metodologija", "Methodology"]);
+  const methodologyMetricKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          kpi
+            .map((row) => findAnalyticsMetricKeyByLabel(row.item))
+            .filter((value): value is NonNullable<typeof value> => Boolean(value))
+        )
+      ),
+    [kpi]
+  );
 
   return (
     <article className={`supplier-decision-report dq-${normalizedDQ}`}>
@@ -294,8 +324,25 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
 
       <section className="sdr-section">
         <h2>Metodologija</h2>
+        {methodologyMetricKeys.length > 0 ? (
+          <div className="sdr-methodology">
+            {methodologyMetricKeys.map((metricKey) => {
+              const definition = getAnalyticsMetricDefinition(metricKey);
+              return (
+                <div key={metricKey} className="sdr-method">
+                  <strong>{definition.title}</strong>
+                  <p>{definition.description}</p>
+                  <p><strong>Formula:</strong> {definition.formula}</p>
+                  <p><strong>Izvor:</strong> {definition.source}</p>
+                  {definition.qualityNote ? <p className="sdr-note">{definition.qualityNote}</p> : null}
+                  <KpiExplainButton metricKey={metricKey} ariaLabel={`Kako je izračunat KPI: ${definition.title}`} />
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
         {methodology.length === 0 ? (
-          <p className="sdr-empty">Metodologija nije dostupna.</p>
+          methodologyMetricKeys.length === 0 ? <p className="sdr-empty">Metodologija nije dostupna.</p> : null
         ) : (
           <div className="sdr-methodology">
             {methodology.map((row, idx) => (

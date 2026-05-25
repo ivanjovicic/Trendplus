@@ -746,6 +746,7 @@ public static class SupplierDecisionHubEndpoints
         var stableQueryUrl = BuildSupplierDecisionStableQueryUrl(filters);
         var periodLabel = BuildEffectivePeriodLabel(filters, ResolveEffectiveDataset(GetDecisionScoreWindowDays(filters)));
         var dataQualityStatus = summary.Meta?.DataQualityStatus ?? trust?.DataCoverageStatus ?? "insufficient_data";
+        var warnings = BuildSupplierDecisionWarnings(summary.Meta, trust);
 
         var rows = new List<SupplierDecisionReportRowContract>
         {
@@ -829,12 +830,17 @@ public static class SupplierDecisionHubEndpoints
         return new SupplierDecisionReportResponse(
             reportId,
             stableQueryUrl,
+            "Trendplus izveštaj dobavljača",
+            "supplier-decision",
             generatedAtUtc,
+            summary.From,
+            summary.To,
             new SupplierDecisionReportPeriodContract(filters.FromDate, filters.ToDate, periodLabel),
             trust?.LastRefreshAtUtc,
             dataQualityStatus,
             trust?.RecommendationAllowed ?? false,
             trust?.UsedFallback ?? false,
+            warnings,
             methodology,
             rows,
             sections,
@@ -867,6 +873,34 @@ public static class SupplierDecisionHubEndpoints
         }
 
         return $"/analytics/supplier/report?{string.Join("&", query)}";
+    }
+
+    private static IReadOnlyList<string> BuildSupplierDecisionWarnings(
+        AnalyticsResponseMetaDto? meta,
+        ScorecardTrustMetadata? trust)
+    {
+        var warnings = new List<string>();
+
+        if (trust?.UsedFallback == true)
+        {
+            var fallbackLabel = string.IsNullOrWhiteSpace(trust.EffectivePeriodLabel) ? "pomoćni dataset" : trust.EffectivePeriodLabel;
+            warnings.Add($"Korišćen je pomoćni dataset: {fallbackLabel}.");
+        }
+
+        if (trust is { RecommendationAllowed: false })
+        {
+            warnings.Add("Kvalitet podataka ograničava pouzdanost reporta.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(meta?.WarningMessage))
+        {
+            warnings.Add(meta.WarningMessage!);
+        }
+
+        return warnings
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static AnalyticsResponseMetaDto BuildResponseMeta(
@@ -2796,12 +2830,17 @@ public sealed record SupplierDecisionDetailsResponse(
 public sealed record SupplierDecisionReportResponse(
     string ReportId,
     string StableQueryUrl,
+    string ReportTitle,
+    string ReportType,
     DateTime GeneratedAtUtc,
+    DateTime PeriodFrom,
+    DateTime PeriodTo,
     SupplierDecisionReportPeriodContract Period,
     DateTime? LastRefreshAtUtc,
     string DataQualityStatus,
     bool RecommendationAllowed,
     bool UsedFallback,
+    IReadOnlyList<string> Warnings,
     string Methodology,
     IReadOnlyList<SupplierDecisionReportRowContract> Rows,
     IReadOnlyList<SupplierDecisionReportSectionContract> Sections,

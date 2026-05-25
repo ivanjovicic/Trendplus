@@ -7,12 +7,31 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Xunit;
 
 namespace Api.Tests;
 
 public sealed class AnalyticsRefreshStatusServiceTests
 {
+    [Fact]
+    public void AnalyticsRefreshRun_HasRequiredCompositeIndexes()
+    {
+        using var db = CreateAnalyticsDbContext();
+        var entityType = db.Model.FindEntityType(typeof(AnalyticsRefreshRun));
+        Assert.NotNull(entityType);
+
+        var indexNames = entityType!
+            .GetIndexes()
+            .Select(index => index.GetDatabaseName())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains("idx_analytics_refresh_runs_job_started", indexNames);
+        Assert.Contains("idx_analytics_refresh_runs_status_started", indexNames);
+        Assert.Contains("idx_analytics_refresh_runs_worker_started", indexNames);
+    }
+
     [Fact]
     public async Task GetStatus_ReturnsUnknown_WhenNoRefreshHistoryExists()
     {
@@ -150,6 +169,33 @@ public sealed class AnalyticsRefreshStatusServiceTests
     }
 
     [Fact]
+    public async Task GetStatus_ReturnsCritical_WhenRunningJobIsStuck()
+    {
+        await using var db = CreateAnalyticsDbContext();
+        var nowUtc = DateTime.UtcNow;
+        db.AnalyticsRefreshRuns.Add(new AnalyticsRefreshRun
+        {
+            JobKey = "data_quality_snapshot",
+            JobName = "Data quality snapshot",
+            Status = "running",
+            StartedAtUtc = nowUtc.AddHours(-3),
+            TriggeredBy = "system",
+            ProcessMode = "worker",
+            WorkerName = "AnalyticsDataQualityHealthWorker",
+            CreatedAtUtc = nowUtc.AddHours(-3)
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var status = await service.GetStatusAsync();
+        var dataQualityJob = Assert.Single(status.Jobs, job => job.Key == "data_quality_snapshot");
+
+        Assert.Equal("critical", status.DataFreshnessStatus);
+        Assert.Equal("critical", dataQualityJob.DataFreshnessStatus);
+        Assert.Equal("Refresh je započet, ali nije završen u očekivanom vremenu.", dataQualityJob.StatusReason);
+    }
+
+    [Fact]
     public async Task GetStatus_UsesFailedObjects_FromDurableHistory()
     {
         await using var db = CreateAnalyticsDbContext();
@@ -186,14 +232,26 @@ public sealed class AnalyticsRefreshStatusServiceTests
         return new AnalyticsDbContext(options);
     }
 
-    private static AnalyticsRefreshStatusService CreateService(AnalyticsDbContext analyticsDbContext)
+    private static AnalyticsRefreshStatusService CreateService(
+        AnalyticsDbContext analyticsDbContext,
+        Dictionary<string, string?>? overrides = null)
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
+        var values = new Dictionary<string, string?>
             {
                 ["PROCESS_TYPE"] = "worker",
                 ["Workers:Enabled"] = "true"
-            })
+            };
+
+        if (overrides is not null)
+        {
+            foreach (var (key, value) in overrides)
+            {
+                values[key] = value;
+            }
+        }
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(values)
             .Build();
 
         return new AnalyticsRefreshStatusService(

@@ -38,7 +38,7 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByRole("button", { name: "Export PDF" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Izvezi PDF" })).not.toBeInTheDocument();
   });
 
   it("calls print preview action", async () => {
@@ -50,7 +50,7 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Print izveštaj" }));
+    fireEvent.click(screen.getByRole("button", { name: "Štampaj izveštaj" }));
 
     await waitFor(() => {
       expect(printPreviewMock).toHaveBeenCalledTimes(1);
@@ -67,10 +67,10 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Izvezi Excel" }));
     await waitFor(() => expect(exportExcelMock).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: "Izvezi PDF" }));
     await waitFor(() => expect(exportPdfMock).toHaveBeenCalledTimes(1));
   });
 
@@ -83,11 +83,11 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: "Print izveštaj" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Štampaj izveštaj" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Kopiraj sažetak" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Export CSV" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Export Excel" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Izvezi CSV" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Izvezi Excel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Izvezi PDF" })).toBeDisabled();
   });
 
   it("notifies caller on PDF export errors", async () => {
@@ -101,10 +101,10 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Export PDF" }));
+    fireEvent.click(screen.getByRole("button", { name: "Izvezi PDF" }));
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith("PDF export trenutno nije dostupan. Koristite Print izveštaj ili Export Excel.");
+      expect(onError).toHaveBeenCalledWith("PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.");
     });
   });
 });

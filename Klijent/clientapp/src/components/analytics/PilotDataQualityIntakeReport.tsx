@@ -4,6 +4,17 @@ import type { AnalyticsNamedValue } from "../../types/analyticsTable";
 import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../../types/analytics";
 import { resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 import { downloadExport, generateExport, waitForExport } from "../../services/exportApi";
+import {
+  getAnalyticsMetricDefinition,
+  type AnalyticsMetricKey,
+} from "../../utils/analyticsMetricDefinitions";
+import {
+  fmtNumber,
+  fmtPct,
+  formatDate,
+  formatDateTime,
+} from "../../utils/analyticsFormatters";
+import KpiExplainButton from "./KpiExplainButton";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
 import "./PilotDataQualityIntakeReport.css";
@@ -17,28 +28,9 @@ type Props = {
   onRetry: () => void;
 };
 
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("sr-RS");
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("sr-RS");
-}
-
-function formatNumber(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "-";
-  return value.toLocaleString("sr-RS");
-}
-
 function formatPercentFromRatio(value: number | null | undefined, digits = 1): string {
   if (value == null || Number.isNaN(value)) return "-";
-  return `${(value * 100).toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+  return fmtPct(value * 100, digits);
 }
 
 function readinessTone(status: string): "excellent" | "good" | "warning" | "critical" {
@@ -59,34 +51,34 @@ function mapActionHref(action: string): string {
 function buildCsv(report: PilotDataQualityIntakeReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
-    ["Skor", "Readiness status", report.readinessStatus],
-    ["Skor", "Readiness label", report.readinessLabel],
-    ["Skor", "Readiness score", String(report.readinessScore)],
-    ["Ucitano", "Artikli", String(report.loadedData.articlesCount)],
-    ["Ucitano", "Stavke prodaje", String(report.loadedData.saleItemsCount)],
-    ["Ucitano", "Racuni", String(report.loadedData.receiptsCount)],
-    ["Ucitano", "Dobavljači", String(report.loadedData.suppliersCount)],
-    ["Ucitano", "Prodajni objekti", String(report.loadedData.storesCount)],
-    ["Ucitano", "Prva prodaja", report.loadedData.firstSaleDate ?? ""],
-    ["Ucitano", "Poslednja prodaja", report.loadedData.lastSaleDate ?? ""],
+    ["Skor", "Status spremnosti", report.readinessStatus],
+    ["Skor", "Oznaka spremnosti", report.readinessLabel],
+    ["Skor", "Skor spremnosti", String(report.readinessScore)],
+    ["Učitano", "Artikli", String(report.loadedData.articlesCount)],
+    ["Učitano", "Stavke prodaje", String(report.loadedData.saleItemsCount)],
+    ["Učitano", "Računi", String(report.loadedData.receiptsCount)],
+    ["Učitano", "Dobavljači", String(report.loadedData.suppliersCount)],
+    ["Učitano", "Prodajni objekti", String(report.loadedData.storesCount)],
+    ["Učitano", "Prva prodaja", report.loadedData.firstSaleDate ?? ""],
+    ["Učitano", "Poslednja prodaja", report.loadedData.lastSaleDate ?? ""],
     ["Problemi", "Bez dobavljača", String(report.issues.missingSupplierCount)],
     ["Problemi", "Bez nabavne cene", String(report.issues.missingCostCount)],
     ["Problemi", "Bez kategorije", String(report.issues.missingCategoryCount)],
     ["Problemi", "Bez boje", String(report.issues.missingColorCount ?? 0)],
-    ["Problemi", "Bez velicine", String(report.issues.missingSizeCount ?? 0)],
+    ["Problemi", "Bez veličine", String(report.issues.missingSizeCount ?? 0)],
     ["Problemi", "Prodaja bez artikla", String(report.issues.saleWithoutArticleCount)],
     ["Problemi", "Nulta/negativna cena", String(report.issues.zeroOrNegativePriceCount)],
     ["Problemi", "Dupliran SKU", String(report.issues.duplicateSkuCount ?? 0)],
     ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
-    ["Uticaj", "Prihod bez cene", String(report.impact.revenueWithoutCostPercent)],
-    ["Uticaj", "Artikli bez dobavljača", String(report.impact.articlesWithoutSupplierPercent)],
+    ["Uticaj", "Prihod bez cene", formatPercentFromRatio(report.impact.revenueWithoutCostPercent)],
+    ["Uticaj", "Artikli bez dobavljača", formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)],
     ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
     ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
   ];
 
   for (const action of report.recommendedActions) {
-    rows.push(["Akcije", "Preporucena akcija", action]);
+    rows.push(["Akcije", "Preporučena akcija", action]);
   }
 
   return rows
@@ -101,30 +93,30 @@ function buildSummary(report: PilotDataQualityIntakeReport): string {
   return [
     `Trendplus pilot izveštaj kvaliteta podataka`,
     `Skor spremnosti: ${report.readinessLabel} (${report.readinessScore}/100)`,
-    `Ucitano: ${formatNumber(report.loadedData.articlesCount)} artikala, ${formatNumber(report.loadedData.saleItemsCount)} stavki prodaje, ${formatNumber(report.loadedData.receiptsCount)} računa`,
-    `Top problemi: bez dobavljača ${formatNumber(report.issues.missingSupplierCount)}, bez nabavne cene ${formatNumber(report.issues.missingCostCount)}, bez kategorije ${formatNumber(report.issues.missingCategoryCount)}`,
-    `Uticaj: prihod bez cene ${formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}, artikli bez dobavljača ${formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}, blokirane preporuke ${formatNumber(report.impact.recommendationsBlockedCount)}`,
-    `Preporucene akcije: ${report.recommendedActions.join("; ")}`,
+    `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
+    `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
+    `Uticaj: prihod bez cene ${formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}, artikli bez dobavljača ${formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
   ].join("\n");
 }
 
 function buildExportPayload(report: PilotDataQualityIntakeReport, filters: AnalyticsNamedValue[]) {
   const rows: Array<{ section: string; item: string; value: string }> = [
-    { section: "Skor", item: "Readiness status", value: report.readinessStatus },
-    { section: "Skor", item: "Readiness label", value: report.readinessLabel },
-    { section: "Skor", item: "Readiness score", value: String(report.readinessScore) },
-    { section: "Ucitano", item: "Artikli", value: String(report.loadedData.articlesCount) },
-    { section: "Ucitano", item: "Stavke prodaje", value: String(report.loadedData.saleItemsCount) },
-    { section: "Ucitano", item: "Racuni", value: String(report.loadedData.receiptsCount) },
-    { section: "Ucitano", item: "Dobavljači", value: String(report.loadedData.suppliersCount) },
-    { section: "Ucitano", item: "Prodajni objekti", value: String(report.loadedData.storesCount) },
-    { section: "Ucitano", item: "Prva prodaja", value: report.loadedData.firstSaleDate ?? "-" },
-    { section: "Ucitano", item: "Poslednja prodaja", value: report.loadedData.lastSaleDate ?? "-" },
+    { section: "Skor", item: "Status spremnosti", value: report.readinessStatus },
+    { section: "Skor", item: "Oznaka spremnosti", value: report.readinessLabel },
+    { section: "Skor", item: "Skor spremnosti", value: String(report.readinessScore) },
+    { section: "Učitano", item: "Artikli", value: String(report.loadedData.articlesCount) },
+    { section: "Učitano", item: "Stavke prodaje", value: String(report.loadedData.saleItemsCount) },
+    { section: "Učitano", item: "Računi", value: String(report.loadedData.receiptsCount) },
+    { section: "Učitano", item: "Dobavljači", value: String(report.loadedData.suppliersCount) },
+    { section: "Učitano", item: "Prodajni objekti", value: String(report.loadedData.storesCount) },
+    { section: "Učitano", item: "Prva prodaja", value: report.loadedData.firstSaleDate ?? "-" },
+    { section: "Učitano", item: "Poslednja prodaja", value: report.loadedData.lastSaleDate ?? "-" },
     { section: "Problemi", item: "Bez dobavljača", value: String(report.issues.missingSupplierCount) },
     { section: "Problemi", item: "Bez nabavne cene", value: String(report.issues.missingCostCount) },
     { section: "Problemi", item: "Bez kategorije", value: String(report.issues.missingCategoryCount) },
     { section: "Problemi", item: "Bez boje", value: String(report.issues.missingColorCount ?? 0) },
-    { section: "Problemi", item: "Bez velicine", value: String(report.issues.missingSizeCount ?? 0) },
+    { section: "Problemi", item: "Bez veličine", value: String(report.issues.missingSizeCount ?? 0) },
     { section: "Problemi", item: "Prodaja bez artikla", value: String(report.issues.saleWithoutArticleCount) },
     { section: "Problemi", item: "Nulta/negativna cena", value: String(report.issues.zeroOrNegativePriceCount) },
     { section: "Problemi", item: "Dupliran SKU", value: String(report.issues.duplicateSkuCount ?? 0) },
@@ -137,7 +129,7 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
   ];
 
   for (const action of report.recommendedActions) {
-    rows.push({ section: "Preporucene akcije", item: "Akcija", value: action });
+    rows.push({ section: "Preporučene akcije", item: "Akcija", value: action });
   }
 
   return resolveAnalyticsTablePayload({
@@ -156,7 +148,7 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
       { key: "generatedAtUtc", label: "Generisano", value: report.generatedAtUtc },
       { key: "lastImportAtUtc", label: "Poslednji import", value: report.lastImportAtUtc ?? null },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
-      { key: "dataScope", label: "Scope", value: report.dataScope },
+      { key: "dataScope", label: "Opseg podataka", value: report.dataScope },
     ],
     locale: "sr-RS",
   });
@@ -173,19 +165,89 @@ function normalizeColumnType(value: string | undefined) {
     : "text";
 }
 
+function formatDurableValue(value: unknown): string {
+  if (value == null) return "-";
+  if (typeof value === "number") return fmtNumber(value, 0, "-");
+  if (typeof value === "boolean") return value ? "Da" : "Ne";
+  return String(value);
+}
+
+function buildDurableCsv(report: PilotIntakeDurableReport): string {
+  const rows = [
+    ["Sekcija", "Stavka", "Vrednost"],
+    ["Izveštaj", "Naslov", report.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka"],
+    ["Izveštaj", "Tip", report.reportType ?? "pilot-intake"],
+    ["Izveštaj", "Generisano", report.generatedAtUtc],
+    ["Izveštaj", "Period od", report.periodFrom ?? report.period?.fromUtc ?? "-"],
+    ["Izveštaj", "Period do", report.periodTo ?? report.period?.toUtc ?? "-"],
+    ["Izveštaj", "Poslednji refresh", report.lastRefreshAtUtc ?? "-"],
+    ["Izveštaj", "Status kvaliteta podataka", report.dataQualityStatus],
+    ["Izveštaj", "Preporuke dozvoljene", report.recommendationAllowed == null ? "-" : report.recommendationAllowed ? "Da" : "Ne"],
+    ["Izveštaj", "Korišćen fallback", report.usedFallback == null ? "-" : report.usedFallback ? "Da" : "Ne"],
+  ];
+
+  for (const warning of report.warnings ?? []) {
+    rows.push(["Upozorenja", "Upozorenje", warning]);
+  }
+
+  for (const section of report.sections) {
+    rows.push(["Sekcije", section.title || section.key, String(section.rowCount)]);
+  }
+
+  for (const row of report.rows) {
+    rows.push([
+      row.section || "Podaci",
+      row.item,
+      formatDurableValue(row.value),
+    ]);
+  }
+
+  return rows
+    .map((row) => row.map((value) => {
+      if (/[",\n;]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+      return value;
+    }).join(","))
+    .join("\n");
+}
+
+function buildDurableSummary(report: PilotIntakeDurableReport): string {
+  const warnings = report.warnings && report.warnings.length > 0
+    ? report.warnings.join("; ")
+    : "nema";
+
+  return [
+    report.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka",
+    `Tip: ${report.reportType ?? "pilot-intake"}`,
+    `Period: ${report.periodFrom ?? report.period?.fromUtc ?? "-"} - ${report.periodTo ?? report.period?.toUtc ?? "-"}`,
+    `Poslednji refresh: ${report.lastRefreshAtUtc ?? "-"}`,
+    `Status kvaliteta podataka: ${report.dataQualityStatus}`,
+    `Preporuke dozvoljene: ${report.recommendationAllowed == null ? "-" : report.recommendationAllowed ? "Da" : "Ne"}`,
+    `Korišćen fallback: ${report.usedFallback == null ? "-" : report.usedFallback ? "Da" : "Ne"}`,
+    `Upozorenja: ${warnings}`,
+    `Metodologija: ${report.methodology}`,
+  ].join("\n");
+}
+
 export default function PilotDataQualityIntakeReport({ report, loading, error, filters, durableReport, onRetry }: Props) {
   const [exportState, setExportState] = useState<string | null>(null);
   const [showMethodology, setShowMethodology] = useState(false);
+  const methodologyKeys: AnalyticsMetricKey[] = [
+    "dataReadiness",
+    "revenueWithoutCost",
+    "revenueUnknownSupplier",
+    "totalRevenue",
+    "marginContribution",
+  ];
 
   const readiness = useMemo(() => readinessTone(report?.readinessStatus ?? "critical"), [report?.readinessStatus]);
 
-  if (error) {
+  if (error && !durableReport && !report) {
     return (
       <AnalyticsErrorState
         title="Pilot intake report trenutno nije dostupan"
         message={error}
         suggestions={[
-          "Proverite da li je import zavrsen.",
+          "Proverite da li je import završen.",
           "Pokrenite osvežavanje analytics podataka.",
           "Pokušajte ponovo za nekoliko trenutaka.",
         ]}
@@ -195,17 +257,17 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     );
   }
 
-  if (loading && !report) {
-    return <div className="data-quality-loading">Ucitavam pilot intake report...</div>;
+  if (loading && !report && !durableReport) {
+    return <div className="data-quality-loading">Učitavam pilot intake izveštaj...</div>;
   }
 
-  if (!report) {
+  if (!report && !durableReport) {
     return (
       <AnalyticsEmptyState
         variant="no_data"
-        message="Pilot intake report nije moguce generisati za trenutni opseg."
+        message="Pilot intake izveštaj nije moguće generisati za trenutni opseg."
         reasons={[
-          "Import nije zavrsen ili nema podataka u periodu.",
+          "Import nije završen ili nema podataka u periodu.",
           "Filter opseg je previše uzak.",
         ]}
         actions={[
@@ -221,17 +283,24 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
   const handlePrint = () => {
     window.print();
+    setExportState("Otvoren je browser pregled za štampu.");
   };
 
   const handleCsv = () => {
-    const csv = buildCsv(report);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `pilot-data-quality-intake-${report.generatedAtUtc.slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    try {
+      const csv = durableReport ? buildDurableCsv(durableReport) : buildCsv(report!);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      const generatedAt = durableReport?.generatedAtUtc ?? report?.generatedAtUtc ?? new Date().toISOString();
+      anchor.download = `pilot-data-quality-intake-${generatedAt.slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setExportState("CSV izvoz je preuzet.");
+    } catch (reason) {
+      setExportState(reason instanceof Error ? reason.message : "CSV izvoz nije uspeo.");
+    }
   };
 
   const handleExcel = async () => {
@@ -252,7 +321,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
             filters: durableReport.payload.filters,
             metadata: durableReport.payload.metadata,
           })
-        : buildExportPayload(report, filters);
+        : buildExportPayload(report!, filters);
       const result = await generateExport(payload, {
         format: "xlsx",
         orientation: "landscape",
@@ -276,8 +345,9 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
   const handleCopySummary = async () => {
     try {
-      await navigator.clipboard.writeText(buildSummary(report));
-      setExportState("Sazetak je kopiran.");
+      const summary = durableReport ? buildDurableSummary(durableReport) : buildSummary(report!);
+      await navigator.clipboard.writeText(summary);
+      setExportState("Sažetak je kopiran.");
     } catch {
       setExportState("Kopiranje nije uspelo.");
     }
@@ -299,103 +369,164 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     <section className="pilot-intake-report">
       <div className="pilot-intake-head">
         <div>
-          <h2>Trendplus pilot izveštaj kvaliteta podataka</h2>
-          <p>Ucitavanje podataka za analitiku pre otvaranja dashboard-a.</p>
+          <h2>{durableReport?.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka"}</h2>
+          <p>Učitavanje podataka za analitiku pre otvaranja dashboard-a.</p>
         </div>
         <div className="pilot-intake-actions no-print">
           {durableReport?.stableQueryUrl ? (
             <Link to={durableReport.stableQueryUrl} className="pilot-intake-action-link">Otvori trajni report</Link>
           ) : null}
-          <button type="button" onClick={handlePrint}>Stampaj izveštaj</button>
+          <button type="button" onClick={handlePrint}>Štampaj izveštaj</button>
           <button type="button" onClick={handleCsv}>Izvezi CSV</button>
           <button type="button" onClick={() => void handleExcel()}>Izvezi Excel</button>
-          <button type="button" onClick={() => void handleCopySummary()}>Kopiraj sazetak</button>
+          <button type="button" onClick={() => void handleCopySummary()}>Kopiraj sažetak</button>
           <button type="button" onClick={() => void handleCopyLink()}>Kopiraj link</button>
-          <span className="pilot-intake-muted">PDF export nije dostupan u ovoj fazi.</span>
+          <span className="pilot-intake-muted">PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.</span>
         </div>
       </div>
 
       {exportState ? <div className="pilot-intake-state no-print">{exportState}</div> : null}
 
-      <article className={`pilot-intake-score ${readiness}`}>
-        <div>
-          <span>Skor spremnosti</span>
-          <strong>{report.readinessScore}/100</strong>
-          <p>{report.readinessLabel}</p>
-        </div>
-        <div className="pilot-intake-thresholds">
-          <span>90-100: Spremno za pouzdanu analitiku</span>
-          <span>70-89: Upotrebljivo uz upozorenja</span>
-          <span>40-69: Pilot moze, ali preporuke ogranicene</span>
-          <span>&lt;40: Prvo srediti podatke</span>
-        </div>
-      </article>
+      {report ? (
+        <>
+          <article className={`pilot-intake-score ${readiness}`}>
+            <div>
+              <span>Skor spremnosti</span>
+              <strong>{fmtNumber(report.readinessScore, 0, "-")}/100</strong>
+              <p>{report.readinessLabel}</p>
+            </div>
+            <div className="pilot-intake-thresholds">
+              <span>90-100: Spremno za pouzdanu analitiku</span>
+              <span>70-89: Upotrebljivo uz upozorenja</span>
+              <span>40-69: Pilot može, ali preporuke ograničene</span>
+              <span>&lt;40: Prvo srediti podatke</span>
+            </div>
+          </article>
 
-      <div className="pilot-intake-grid">
+          <div className="pilot-intake-grid">
+            <section className="pilot-card">
+              <h3>Učitano</h3>
+              <ul>
+                <li>Artikli: {fmtNumber(report.loadedData.articlesCount, 0, "-")}</li>
+                <li>Stavke prodaje: {fmtNumber(report.loadedData.saleItemsCount, 0, "-")}</li>
+                <li>Računi: {fmtNumber(report.loadedData.receiptsCount, 0, "-")}</li>
+                <li>Dobavljači: {fmtNumber(report.loadedData.suppliersCount, 0, "-")}</li>
+                <li>Objekti: {fmtNumber(report.loadedData.storesCount, 0, "-")}</li>
+                <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate)}</li>
+                <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate)}</li>
+                <li>Poslednji import: {formatDateTime(report.lastImportAtUtc, "-")}</li>
+                <li>Poslednje osveženje analitike: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
+              </ul>
+            </section>
+
+            <section className="pilot-card">
+              <h3>Problemi</h3>
+              <ul>
+                <li className="critical">Bez dobavljača: {fmtNumber(report.issues.missingSupplierCount, 0, "-")}</li>
+                <li className="critical">Bez nabavne cene: {fmtNumber(report.issues.missingCostCount, 0, "-")}</li>
+                <li className="warning">Bez kategorije: {fmtNumber(report.issues.missingCategoryCount, 0, "-")}</li>
+                <li className="warning">Bez boje: {fmtNumber(report.issues.missingColorCount ?? 0, 0, "-")}</li>
+                <li className="warning">Bez veličine: {fmtNumber(report.issues.missingSizeCount ?? 0, 0, "-")}</li>
+                <li className="critical">Prodaja bez artikla: {fmtNumber(report.issues.saleWithoutArticleCount, 0, "-")}</li>
+                <li className="critical">Nulta/negativna cena: {fmtNumber(report.issues.zeroOrNegativePriceCount, 0, "-")}</li>
+                <li className="warning">Dupliran SKU: {fmtNumber(report.issues.duplicateSkuCount ?? 0, 0, "-")}</li>
+                <li className="warning">Dobavljač bez naziva: {fmtNumber(report.issues.missingSupplierNameCount, 0, "-")}</li>
+              </ul>
+            </section>
+
+            <section className="pilot-card">
+              <h3>Uticaj</h3>
+              <ul>
+                <li>Prihod bez nabavne cene: {formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}</li>
+                <li>Artikli bez dobavljača: {formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}</li>
+                <li>Blokirane preporuke: {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}</li>
+                <li>Ignorisani redovi: {fmtNumber(report.impact.ignoredRowsCount, 0, "-")}</li>
+                <li>Nedovoljni signali: {fmtNumber(report.impact.insufficientSignalCount, 0, "-")}</li>
+              </ul>
+              <p className="pilot-card-note">Visok procenat prihoda bez cene ili veliki broj blokiranih preporuka direktno smanjuje pouzdanost maržnih odluka.</p>
+            </section>
+          </div>
+
+          <section className="pilot-card">
+            <h3>Preporučene akcije</h3>
+            {report.recommendedActions.length === 0 ? (
+              <p className="pilot-card-note">Nema preporučenih akcija za trenutni opseg. Proverite detalje kvaliteta podataka i osvežavanje.</p>
+            ) : (
+              <div className="pilot-actions-list">
+                {report.recommendedActions.map((action) => (
+                  <Link key={action} to={mapActionHref(action)} className="pilot-action-item">
+                    <strong>{action}</strong>
+                    <span>Otvori povezani ekran</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
+
+      {durableReport ? (
         <section className="pilot-card">
-          <h3>Ucitano</h3>
+          <h3>Trajni izveštaj</h3>
           <ul>
-            <li>Artikli: {formatNumber(report.loadedData.articlesCount)}</li>
-            <li>Stavke prodaje: {formatNumber(report.loadedData.saleItemsCount)}</li>
-            <li>Racuni: {formatNumber(report.loadedData.receiptsCount)}</li>
-            <li>Dobavljači: {formatNumber(report.loadedData.suppliersCount)}</li>
-            <li>Objekti: {formatNumber(report.loadedData.storesCount)}</li>
-            <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate)}</li>
-            <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate)}</li>
-            <li>Poslednji import: {formatDateTime(report.lastImportAtUtc)}</li>
-            <li>Poslednje osveženje analitike: {formatDateTime(report.lastRefreshAtUtc)}</li>
+            <li>ID izveštaja: {durableReport.reportId}</li>
+            <li>Tip izveštaja: {durableReport.reportType ?? "pilot-intake"}</li>
+            <li>Generisano: {formatDateTime(durableReport.generatedAtUtc, "-")}</li>
+            <li>Period od: {formatDate(durableReport.periodFrom ?? durableReport.period?.fromUtc, "-")}</li>
+            <li>Period do: {formatDate(durableReport.periodTo ?? durableReport.period?.toUtc, "-")}</li>
+            <li>Poslednji refresh: {formatDateTime(durableReport.lastRefreshAtUtc, "-")}</li>
+            <li>Status kvaliteta podataka: {durableReport.dataQualityStatus}</li>
+            <li>Preporuke dozvoljene: {durableReport.recommendationAllowed == null ? "-" : durableReport.recommendationAllowed ? "Da" : "Ne"}</li>
+            <li>Korišćen fallback: {durableReport.usedFallback == null ? "-" : durableReport.usedFallback ? "Da" : "Ne"}</li>
           </ul>
+          {durableReport.warnings && durableReport.warnings.length > 0 ? (
+            <div className="pilot-card-note">
+              <strong>Upozorenja:</strong> {durableReport.warnings.join(" | ")}
+            </div>
+          ) : null}
+          <p className="pilot-card-note"><strong>Metodologija:</strong> {durableReport.methodology}</p>
+          {durableReport.meta?.message ? <p className="pilot-card-note">{durableReport.meta.message}</p> : null}
+          {durableReport.sections.length > 0 ? (
+            <ul>
+              {durableReport.sections.map((section) => (
+                <li key={section.key}>{section.title || section.key}: {fmtNumber(section.rowCount, 0, "-")}</li>
+              ))}
+            </ul>
+          ) : null}
         </section>
-
-        <section className="pilot-card">
-          <h3>Problemi</h3>
-          <ul>
-            <li className="critical">Bez dobavljača: {formatNumber(report.issues.missingSupplierCount)}</li>
-            <li className="critical">Bez nabavne cene: {formatNumber(report.issues.missingCostCount)}</li>
-            <li className="warning">Bez kategorije: {formatNumber(report.issues.missingCategoryCount)}</li>
-            <li className="warning">Bez boje: {formatNumber(report.issues.missingColorCount ?? 0)}</li>
-            <li className="warning">Bez velicine: {formatNumber(report.issues.missingSizeCount ?? 0)}</li>
-            <li className="critical">Prodaja bez artikla: {formatNumber(report.issues.saleWithoutArticleCount)}</li>
-            <li className="critical">Nulta/negativna cena: {formatNumber(report.issues.zeroOrNegativePriceCount)}</li>
-            <li className="warning">Dupliran SKU: {formatNumber(report.issues.duplicateSkuCount ?? 0)}</li>
-            <li className="warning">Dobavljač bez naziva: {formatNumber(report.issues.missingSupplierNameCount)}</li>
-          </ul>
-        </section>
-
-        <section className="pilot-card">
-          <h3>Uticaj</h3>
-          <ul>
-            <li>Prihod bez nabavne cene: {formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}</li>
-            <li>Artikli bez dobavljača: {formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}</li>
-            <li>Blokirane preporuke: {formatNumber(report.impact.recommendationsBlockedCount)}</li>
-            <li>Ignorisani redovi: {formatNumber(report.impact.ignoredRowsCount)}</li>
-            <li>Nedovoljni signali: {formatNumber(report.impact.insufficientSignalCount)}</li>
-          </ul>
-          <p className="pilot-card-note">Visok procenat prihoda bez cene ili veliki broj blokiranih preporuka direktno smanjuje pouzdanost marznih odluka.</p>
-        </section>
-      </div>
-
-      <section className="pilot-card">
-        <h3>Preporucene akcije</h3>
-        <div className="pilot-actions-list">
-          {report.recommendedActions.map((action) => (
-            <Link key={action} to={mapActionHref(action)} className="pilot-action-item">
-              <strong>{action}</strong>
-              <span>Otvori povezani ekran</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      ) : null}
 
       <section className="pilot-methodology no-print">
-        <button type="button" onClick={() => setShowMethodology((prev) => !prev)} aria-expanded={showMethodology}>
-          Kako citati ovaj izveštaj?
+        <button
+          type="button"
+          onClick={() => setShowMethodology((prev) => !prev)}
+          aria-expanded={showMethodology}
+          aria-controls="pilot-methodology-panel"
+        >
+          Kako čitati ovaj izveštaj?
         </button>
         {showMethodology ? (
-          <p>
-            Ovaj izveštaj prikazuje koliko podataka je ucitano i koji nedostaci uticu na pouzdanost analitike. Preporuke su zasnovane na kvalitetu signala,
-            marznom doprinosu, zalihama i zavisnosti od nivoa cene.
-          </p>
+          <div id="pilot-methodology-panel" className="pilot-methodology-list">
+            <p>
+              Ovaj izveštaj prikazuje koliko podataka je učitano i koji nedostaci utiču na pouzdanost analitike.
+              Definicije ključnih KPI-jeva se čitaju iz centralnog analytics registry-ja.
+            </p>
+            {methodologyKeys.map((metricKey) => {
+              const definition = getAnalyticsMetricDefinition(metricKey);
+              return (
+                <article key={metricKey} className="pilot-methodology-item">
+                  <div className="pilot-methodology-head">
+                    <strong>{definition.title}</strong>
+                    <KpiExplainButton metricKey={metricKey} ariaLabel={`Kako je izračunat KPI: ${definition.title}`} />
+                  </div>
+                  <p>{definition.description}</p>
+                  <p><strong>Formula:</strong> {definition.formula}</p>
+                  <p><strong>Izvor:</strong> {definition.source}</p>
+                  {definition.qualityNote ? <p className="pilot-card-note">{definition.qualityNote}</p> : null}
+                </article>
+              );
+            })}
+          </div>
         ) : null}
       </section>
     </section>

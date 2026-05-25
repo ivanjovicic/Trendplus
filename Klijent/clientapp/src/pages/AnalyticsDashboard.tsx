@@ -530,7 +530,7 @@ export default function AnalyticsDashboard() {
       setDecisionActions([]);
       setExecutive(null);
       setDashboardMeta(null);
-      nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije ucitan."));
+      nextErrors.push(getErrorText(bootstrapR.reason, "Analytics dashboard bootstrap nije učitan."));
     }
 
     if (refreshStatusR.status === "fulfilled") {

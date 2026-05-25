@@ -563,37 +563,37 @@ export default function ProductDecisionCenterPage() {
         <article className="kpi-card">
           <span>Za dopunu</span>
           <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="replenishCount" />
+          <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
         </article>
         <article className="kpi-card">
           <span>Za pojačanje</span>
           <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="boostCount" />
+          <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
         </article>
         <article className="kpi-card">
           <span>Za sniženje</span>
           <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="markdownCount" />
+          <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
         </article>
         <article className="kpi-card">
           <span>Ne narucivati</span>
           <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="doNotOrderCount" />
+          <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
         </article>
         <article className="kpi-card">
           <span>Proveriti podatke</span>
           <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="fixDataCount" />
+          <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
         </article>
         <article className="kpi-card">
           <span>Procena izgubljene prodaje</span>
           <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="lostSalesEstimate" />
+          <KpiExplainButton metricKey="lostSales" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
         </article>
         <article className="kpi-card">
           <span>Kapital u sporoj zalihi</span>
           <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="slowStockCapital" />
+          <KpiExplainButton metricKey="slowStock" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
       </section>
       ) : null}

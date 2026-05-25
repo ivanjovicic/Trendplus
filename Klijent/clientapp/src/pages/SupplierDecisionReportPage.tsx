@@ -108,7 +108,7 @@ export default function SupplierDecisionReportPage() {
   if (loading && !payload) {
     return (
       <div className="supplier-decision-report-page">
-        <div className="data-quality-loading">Ucitavam trajni supplier report...</div>
+        <div className="data-quality-loading">Učitavam trajni izveštaj dobavljača...</div>
       </div>
     );
   }
@@ -122,7 +122,7 @@ export default function SupplierDecisionReportPage() {
           suggestions={[
             "Proverite da li je period validan.",
             "Proverite refresh status.",
-            "Pokusajte ponovo iz Supplier pregleda.",
+            "Pokušajte ponovo iz pregleda dobavljača.",
           ]}
           helpHref="/analytics/data-quality"
         />
@@ -134,17 +134,23 @@ export default function SupplierDecisionReportPage() {
     return (
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
-          title="Report nije pronađen"
-          message="Trajni report nije pronadjen za trazeni query, a preview payload je istekao. Ponovo generisite izvestaj iz Supplier pregleda."
+          title="Izveštaj nije dostupan"
+          message="Trajni report nije pronađen za traženi query, a preview payload je istekao. Ponovo generiši izveštaj iz Supplier pregleda."
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
             { label: "Ponovo generiši report", href: "/analytics/supplier" },
-            { label: "Otvori scorecard", href: "/analytics/supplier?tab=scorecard" },
           ]}
           refreshStatusHref="/admin/configuration?panel=workers"
           dataQualityHref="/analytics/data-quality"
           variant="filtered_out"
         />
+        <div className="sdrp-actions no-print" style={{ marginTop: "0.75rem" }}>
+          <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Nazad na scorecard</Link>
+          <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj</button>
+        </div>
+        <p style={{ marginTop: "0.75rem", color: "var(--text-secondary)" }}>
+          Ako problem ostane, proverite Data Quality i refresh status.
+        </p>
       </div>
     );
   }
@@ -167,12 +173,12 @@ export default function SupplierDecisionReportPage() {
       <header className="sdrp-head no-print">
         <div>
           <h1>Trendplus izveštaj dobavljača</h1>
-          <p>Pregled izvestaja u HTML formi (print-friendly). Ako je otvoren sa query parametrima, koristi trajni backend report payload.</p>
+          <p>Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Ako je otvoren sa query parametrima, koristi trajni backend report payload.</p>
         </div>
         <div className="sdrp-actions">
           <Link to="/analytics/supplier" className="sdrp-back">Nazad</Link>
           <SupplierDecisionReportActions payload={payload} durableReportHref={durableReportHref} onError={setExportError} />
-          <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj (browser)</button>
+          <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj iz pregleda</button>
         </div>
       </header>
 

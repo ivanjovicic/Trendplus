@@ -231,7 +231,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={includeFilters} onChange={(e) => setIncludeFilters(e.target.checked)} />
-            Ukljuci filtere i metadata
+            Uključi filtere i metadata
           </label>
 
           <label className={`flex items-center gap-2 text-sm ${format !== "pdf" ? "opacity-50" : ""}`}>
@@ -245,7 +245,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </label>
 
           <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">
-            Manji setovi se generisu odmah. Vece tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
+            Manji setovi se generišu odmah. Veće tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
           </div>
 
           <div className="flex justify-end gap-2">
@@ -255,7 +255,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
               disabled={submitting}
             >
-              Otkazi
+              Otkaži
             </button>
             <button
               type="button"
@@ -263,7 +263,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
               disabled={submitting}
             >
-              {submitting ? "Generisem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
+              {submitting ? "Generišem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
             </button>
           </div>
         </div>

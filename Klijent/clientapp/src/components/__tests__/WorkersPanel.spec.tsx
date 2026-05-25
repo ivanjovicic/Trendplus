@@ -170,4 +170,56 @@ describe("WorkersPanel", () => {
       expect(workerApiModule.workerApi.startWorker).toHaveBeenCalledWith("AccessImportBackgroundWorker");
     });
   });
+
+  it("renders durable analytics refresh history details", async () => {
+    vi.mocked(analyticsApiModule.getAnalyticsRefreshStatus).mockResolvedValueOnce({
+      lastSuccessfulRefreshAtUtc: null,
+      lastAttemptAtUtc: null,
+      lastFailureAtUtc: null,
+      isRunning: false,
+      lastErrorMessage: null,
+      currentStep: null,
+      refreshedObjects: [],
+      failedObjects: [],
+      durationSeconds: null,
+      dataFreshnessStatus: "unknown",
+      processMode: "worker",
+      processType: "worker",
+      workersEnabled: true,
+      workerWarning: null,
+      workerProcessWarning: null,
+      generatedAtUtc: new Date().toISOString(),
+      jobs: [],
+      recentRuns: [
+        {
+          id: 42,
+          jobKey: "nightly_analytics_refresh",
+          jobName: "Nightly analytics refresh",
+          status: "partial",
+          startedAtUtc: "2026-05-25T05:00:00Z",
+          finishedAtUtc: "2026-05-25T05:04:00Z",
+          durationSeconds: 240,
+          refreshedObjects: ["sales_facts_mv"],
+          failedObjects: ["mv_inventory_recommendations"],
+          errorCode: "partial_refresh",
+          errorMessage: "Jedan view nije osvezen.",
+          correlationId: "corr-123",
+          triggeredBy: "nightly",
+          processMode: "worker",
+          workerName: "NightlyAnalyticsRefreshWorker",
+          createdAtUtc: "2026-05-25T05:00:00Z",
+        },
+      ],
+    } as any);
+
+    render(<WorkersPanel />);
+
+    expect(await screen.findByText("Istorija analytics osvezavanja")).toBeInTheDocument();
+    expect(await screen.findByText("Početak")).toBeInTheDocument();
+    expect(await screen.findByText("Završetak")).toBeInTheDocument();
+    expect(await screen.findByText("Osveženi objekti")).toBeInTheDocument();
+    expect(await screen.findByText("Neuspešni objekti")).toBeInTheDocument();
+    expect(await screen.findByText("sales_facts_mv")).toBeInTheDocument();
+    expect(await screen.findByText("mv_inventory_recommendations")).toBeInTheDocument();
+  });
 });

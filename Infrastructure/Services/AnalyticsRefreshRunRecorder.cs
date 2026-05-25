@@ -1,6 +1,7 @@
 using Domain.Model.Analytics;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -11,16 +12,29 @@ public sealed class AnalyticsRefreshRunRecorder
     private const int MaxErrorCodeLength = 120;
     private const int MaxErrorMessageLength = 4000;
     private const int MaxCorrelationIdLength = 120;
+    private const int DefaultRetentionMaxRuns = 500;
+    private const int DefaultRetentionMaxAgeDays = 30;
 
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly ILogger<AnalyticsRefreshRunRecorder> _logger;
+    private readonly int _retentionMaxRuns;
+    private readonly int _retentionMaxAgeDays;
 
     public AnalyticsRefreshRunRecorder(
         AnalyticsDbContext analyticsDb,
+        IConfiguration configuration,
         ILogger<AnalyticsRefreshRunRecorder> logger)
     {
         _analyticsDb = analyticsDb;
         _logger = logger;
+        _retentionMaxRuns = Math.Max(
+            100,
+            configuration.GetValue<int?>("Analytics:RefreshHistory:Retention:MaxRuns")
+                ?? DefaultRetentionMaxRuns);
+        _retentionMaxAgeDays = Math.Max(
+            7,
+            configuration.GetValue<int?>("Analytics:RefreshHistory:Retention:MaxAgeDays")
+                ?? DefaultRetentionMaxAgeDays);
     }
 
     public async Task<long?> StartRunAsync(
@@ -49,6 +63,7 @@ public sealed class AnalyticsRefreshRunRecorder
 
             _analyticsDb.AnalyticsRefreshRuns.Add(run);
             await _analyticsDb.SaveChangesAsync(ct);
+            await CleanupRetentionAsync(ct);
             return run.Id;
         }
         catch (Exception ex)
@@ -153,6 +168,7 @@ public sealed class AnalyticsRefreshRunRecorder
             run.CorrelationId = TrimOrNull(correlationId ?? run.CorrelationId, MaxCorrelationIdLength);
 
             await _analyticsDb.SaveChangesAsync(ct);
+            await CleanupRetentionAsync(ct);
         }
         catch (Exception ex)
         {
@@ -211,6 +227,35 @@ public sealed class AnalyticsRefreshRunRecorder
         }
 
         var trimmed = value.Trim();
-        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+        if (trimmed.Length <= maxLength)
+        {
+            return trimmed;
+        }
+
+        // Keep a readable summary instead of silently truncating raw messages.
+        return $"{trimmed[..Math.Max(0, maxLength - 3)]}...";
+    }
+
+    private async Task CleanupRetentionAsync(CancellationToken ct)
+    {
+        try
+        {
+            var cutoffUtc = DateTime.UtcNow.AddDays(-_retentionMaxAgeDays);
+            var keepIds = await _analyticsDb.AnalyticsRefreshRuns
+                .AsNoTracking()
+                .OrderByDescending(x => x.StartedAtUtc)
+                .ThenByDescending(x => x.Id)
+                .Take(_retentionMaxRuns)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+            await _analyticsDb.AnalyticsRefreshRuns
+                .Where(x => x.StartedAtUtc < cutoffUtc && !keepIds.Contains(x.Id))
+                .ExecuteDeleteAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to cleanup analytics refresh history retention.");
+        }
     }
 }

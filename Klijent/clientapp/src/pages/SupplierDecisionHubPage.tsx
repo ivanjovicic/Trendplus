@@ -882,7 +882,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Zbir prihoda za sve učitane scorecard dobavljače. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
               </span>
               <strong>{fmtRsd(totalRevenue)}</strong>
-              <KpiExplainButton metricKey="revenue" />
+              <KpiExplainButton metricKey="totalRevenue" ariaLabel="Kako je izračunat ukupan prihod" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -898,7 +898,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Procena maržnog doprinosa za prikazane dobavljače: prihod ponderisan pre-markdown maržom. Viša vrednost je bolja, ali je proveri zajedno sa rizikom zaliha." />
               </span>
               <strong>{fmtRsd(totalMarginContribution)}</strong>
-              <KpiExplainButton metricKey="marginContribution" />
+              <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat ukupan maržni doprinos" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -906,7 +906,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Procena vrednosti neprodate ili sporo rotirajuće zalihe kod prikazanih dobavljača. Niža vrednost je bolja; visoka vrednost traži proveru nabavke i zaliha." />
               </span>
               <strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong>
-              <KpiExplainButton metricKey="stockRiskCapital" />
+              <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -914,7 +914,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Razlika u udelu prodaje po punoj ceni u odnosu na prethodni isti period. Pozitivno znači zdraviji signal; negativno znači veću zavisnost od sniženja." />
               </span>
               <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong>
-              <KpiExplainButton metricKey="fullPriceShareChange" />
+              <KpiExplainButton metricKey="fullPriceShareChange" ariaLabel="Kako je izračunata promena udela pune cene" />
             </article>
           </section>
 

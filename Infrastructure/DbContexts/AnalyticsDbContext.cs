@@ -356,12 +356,10 @@ namespace Infrastructure.DbContexts
 
                 entity.HasIndex(e => new { e.JobKey, e.StartedAtUtc })
                     .HasDatabaseName("idx_analytics_refresh_runs_job_started");
-                entity.HasIndex(e => e.Status)
-                    .HasDatabaseName("idx_analytics_refresh_runs_status");
-                entity.HasIndex(e => e.WorkerName)
-                    .HasDatabaseName("idx_analytics_refresh_runs_worker");
-                entity.HasIndex(e => e.StartedAtUtc)
-                    .HasDatabaseName("idx_analytics_refresh_runs_started");
+                entity.HasIndex(e => new { e.Status, e.StartedAtUtc })
+                    .HasDatabaseName("idx_analytics_refresh_runs_status_started");
+                entity.HasIndex(e => new { e.WorkerName, e.StartedAtUtc })
+                    .HasDatabaseName("idx_analytics_refresh_runs_worker_started");
             });
 
             // ── Analytics Action Queue ───────────────────────────────────

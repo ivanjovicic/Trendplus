@@ -22,6 +22,8 @@ public sealed class AnalyticsRefreshStatusService
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly TimeSpan ActiveWorkerHeartbeatThreshold = TimeSpan.FromMinutes(15);
+    private const int DefaultStuckRunningThresholdMinutes = 120;
+    private const string StuckRunningStatusReason = "Refresh je započet, ali nije završen u očekivanom vremenu.";
 
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
@@ -60,6 +62,7 @@ public sealed class AnalyticsRefreshStatusService
             _hostEnvironment.IsDevelopment());
         var workersEnabledInRuntime = workersEnabled && _workerRuntimeControlService.IsEnabled;
         var processMode = ResolveProcessMode(processType);
+        var stuckRunningThreshold = ResolveStuckRunningThreshold();
 
         var runs = await LoadRecentRunsAsync(ct);
 
@@ -73,6 +76,7 @@ public sealed class AnalyticsRefreshStatusService
                 refreshedObjectNames: ["sales_facts_mv"],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -85,6 +89,7 @@ public sealed class AnalyticsRefreshStatusService
                 refreshedObjectNames: ["product_dim_mv"],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -102,6 +107,7 @@ public sealed class AnalyticsRefreshStatusService
                 ],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -114,6 +120,7 @@ public sealed class AnalyticsRefreshStatusService
                 refreshedObjectNames: ["mv_product_decision_snapshot"],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -126,6 +133,7 @@ public sealed class AnalyticsRefreshStatusService
                 refreshedObjectNames: ["mv_inventory_recommendations"],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -138,6 +146,7 @@ public sealed class AnalyticsRefreshStatusService
                 refreshedObjectNames: ["analytics_data_quality_history"],
                 freshHours: 24,
                 staleHours: 72,
+                stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
                 nowUtc,
@@ -163,6 +172,10 @@ public sealed class AnalyticsRefreshStatusService
         var hasLastSuccess = lastSuccess != default;
         var hasLastAttempt = lastAttempt != default;
         var hasLastFailure = lastFailure != default;
+        var hasStuckRunningJob = jobs.Any(job =>
+            job.IsRunning &&
+            string.Equals(job.DataFreshnessStatus, "critical", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(job.StatusReason, StuckRunningStatusReason, StringComparison.Ordinal));
 
         var status = new AnalyticsRefreshStatusDto
         {
@@ -192,7 +205,9 @@ public sealed class AnalyticsRefreshStatusService
                 .Select(j => j.DurationSeconds!.Value)
                 .DefaultIfEmpty()
                 .Max(),
-            DataFreshnessStatus = ResolveOverallFreshness(
+            DataFreshnessStatus = hasStuckRunningJob
+                ? "critical"
+                : ResolveOverallFreshness(
                 hasLastSuccess ? lastSuccess : null,
                 hasLastFailure ? lastFailure : null,
                 nowUtc),
@@ -221,6 +236,7 @@ public sealed class AnalyticsRefreshStatusService
         IReadOnlyList<string> refreshedObjectNames,
         int freshHours,
         int staleHours,
+        TimeSpan stuckRunningThreshold,
         ProcessType processType,
         bool workersEnabledInRuntime,
         DateTime nowUtc,
@@ -243,6 +259,7 @@ public sealed class AnalyticsRefreshStatusService
             var lastFailure = failureRun?.FinishedAtUtc ?? failureRun?.StartedAtUtc;
             var lastAttempt = latestJobRun.StartedAtUtc;
             var isRunning = string.Equals(latestJobRun.Status, "running", StringComparison.OrdinalIgnoreCase);
+            var isStuckRunning = isRunning && latestJobRun.StartedAtUtc <= nowUtc.Subtract(stuckRunningThreshold);
 
             var refreshedObjects = ParseObjects(latestJobRun.RefreshedObjectsJson);
             var failedObjects = ParseObjects(latestJobRun.FailedObjectsJson);
@@ -267,6 +284,10 @@ public sealed class AnalyticsRefreshStatusService
                 nowUtc,
                 freshHours,
                 staleHours);
+            if (isStuckRunning)
+            {
+                freshnessStatus = "critical";
+            }
 
             return new AnalyticsRefreshJobStatusDto
             {
@@ -278,12 +299,14 @@ public sealed class AnalyticsRefreshStatusService
                 LastFailureAtUtc = lastFailure,
                 IsRunning = isRunning,
                 LastErrorMessage = latestJobRun.ErrorMessage,
-                CurrentStep = isRunning ? "Refresh u toku..." : null,
+                CurrentStep = isStuckRunning
+                    ? StuckRunningStatusReason
+                    : isRunning ? "Refresh u toku..." : null,
                 RefreshedObjects = refreshedObjects,
                 FailedObjects = failedObjects,
                 DurationSeconds = latestJobRun.DurationSeconds,
                 DataFreshnessStatus = freshnessStatus,
-                StatusReason = null
+                StatusReason = isStuckRunning ? StuckRunningStatusReason : null
             };
         }
 
@@ -576,5 +599,12 @@ public sealed class AnalyticsRefreshStatusService
             ProcessType.Worker => "worker",
             _ => "unknown"
         };
+    }
+
+    private TimeSpan ResolveStuckRunningThreshold()
+    {
+        var thresholdMinutes = _configuration.GetValue<int?>("Analytics:RefreshStatus:StuckRunningThresholdMinutes")
+            ?? DefaultStuckRunningThresholdMinutes;
+        return TimeSpan.FromMinutes(Math.Max(5, thresholdMinutes));
     }
 }

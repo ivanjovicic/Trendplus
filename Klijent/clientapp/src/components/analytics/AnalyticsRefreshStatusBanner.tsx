@@ -16,7 +16,7 @@ function normalizeFreshness(value: string | null | undefined): "fresh" | "stale"
 }
 
 function freshnessLabel(value: "fresh" | "stale" | "critical" | "unknown"): string {
-  if (value === "fresh") return "Sveze";
+  if (value === "fresh") return "Sveže";
   if (value === "stale") return "Zastarelo";
   if (value === "critical") return "Kritično";
   return "Nepoznato";
@@ -33,7 +33,7 @@ export default function AnalyticsRefreshStatusBanner({
   if (loading && !status) {
     return (
       <section className="analytics-refresh-banner" aria-live="polite">
-        <span className="arb-loading">Ucitavam status osvežavanja analitike...</span>
+        <span className="arb-loading">Učitavam status osvežavanja analitike...</span>
       </section>
     );
   }
@@ -60,8 +60,8 @@ export default function AnalyticsRefreshStatusBanner({
     <section className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`} aria-live="polite">
       <div className="arb-main">
         <div className="arb-row">
-          <strong>Poslednji uspesan refresh:</strong>
-          <span>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabelezen"}</span>
+          <strong>Poslednji uspešan refresh:</strong>
+          <span>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabeležen"}</span>
           <span className={`arb-badge arb-badge-${freshness}`}>{freshnessLabel(freshness)}</span>
         </div>
         <div className="arb-row">
@@ -98,13 +98,13 @@ export default function AnalyticsRefreshStatusBanner({
         ) : null}
         {refreshedObjects.length > 0 ? (
           <div className="arb-row">
-            <strong>Osvezeni objekti:</strong>
+            <strong>Osveženi objekti:</strong>
             <span>{refreshedObjects.join(", ")}</span>
           </div>
         ) : null}
         {failedObjects.length > 0 ? (
           <div className="arb-row arb-error">
-            <strong>Neuspesni objekti:</strong>
+            <strong>Neuspešni objekti:</strong>
             <span>{failedObjects.join(", ")}</span>
           </div>
         ) : null}
@@ -122,7 +122,7 @@ export default function AnalyticsRefreshStatusBanner({
         ) : null}
         {failedJobs.length > 0 ? (
           <div className="arb-row arb-error">
-            <strong>Poslovi sa greskom:</strong>
+            <strong>Poslovi sa greškom:</strong>
             <span>{failedJobs.map((job) => job.displayName).join(", ")}</span>
           </div>
         ) : null}

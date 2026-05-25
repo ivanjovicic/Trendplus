@@ -60,9 +60,9 @@ export type SupplierDecisionReportBuildInput = {
 
 function normalizeFreshnessLabel(value: string | null | undefined): string {
   const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "fresh") return "Sveze";
+  if (normalized === "fresh") return "Sveže";
   if (normalized === "stale") return "Zastarelo";
-  if (normalized === "critical") return "Kriticno";
+  if (normalized === "critical") return "Kritično";
   return "Nije poznato";
 }
 
@@ -98,20 +98,20 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const boostRows = input.rows.filter((row) => row.status === "increase_focus").slice(0, 5);
 
   const detailRows = [
-    buildSectionRow("Header", "Naziv izvestaja", "Trendplus izvestaj dobavljaca", "", ""),
-    buildSectionRow("Header", "Dobavljac", input.supplierLabel, "", ""),
+    buildSectionRow("Header", "Naziv izveštaja", "Trendplus izveštaj dobavljača", "", ""),
+    buildSectionRow("Header", "Dobavljač", input.supplierLabel, "", ""),
     buildSectionRow("Header", "Period", `${input.fromDate} - ${input.toDate}`, input.periodLabel, ""),
     buildSectionRow("Header", "Opseg podataka", input.dataScopeLabel, "", ""),
-    buildSectionRow("Header", "Datum izvestaja", safeDate(nowUtc), "", ""),
-    buildSectionRow("Header", "Poslednje osvezenje", safeDate(input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc), normalizeFreshnessLabel(input.freshnessStatus), ""),
+    buildSectionRow("Header", "Datum izveštaja", safeDate(nowUtc), "", ""),
+    buildSectionRow("Header", "Poslednje osveženje", safeDate(input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc), normalizeFreshnessLabel(input.freshnessStatus), ""),
     buildSectionRow("Header", "Kvalitet podataka", dataQualityStatusLabel(meta?.dataQualityStatus), trust?.dataCoverageStatus ?? "", ""),
-    buildSectionRow("Header", "Trazeni period", `${safeDate(trust?.requestedPeriodFrom ?? trust?.requestedFrom)} - ${safeDate(trust?.requestedPeriodTo ?? trust?.requestedTo)}`, trust?.requestedDataset ?? "nije dostupno", ""),
+    buildSectionRow("Header", "Traženi period", `${safeDate(trust?.requestedPeriodFrom ?? trust?.requestedFrom)} - ${safeDate(trust?.requestedPeriodTo ?? trust?.requestedTo)}`, trust?.requestedDataset ?? "nije dostupno", ""),
     buildSectionRow("Header", "Efektivni dataset", trust?.effectiveDataset ?? "nije dostupno", trust?.effectivePeriodLabel ?? "", ""),
-    buildSectionRow("Header", "Koriscen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),
+    buildSectionRow("Header", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),
     buildSectionRow("Header", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", trust?.dataCoverageStatus ?? "", ""),
     buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
-    buildSectionRow("KPI", "Marzni doprinos", fmtRsd(input.totalMarginContribution), "", ""),
-    buildSectionRow("KPI", "Broj dobavljaca", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
+    buildSectionRow("KPI", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "", ""),
+    buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
     buildSectionRow("KPI", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "", ""),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
     buildSectionRow("KPI", "Zavisnost od nivelacija", fmtPct(weightedMarkdownDependencyPct * 100, 1), "", ""),
@@ -120,7 +120,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow(
       "Preporuke",
       "Raspodela",
-      `Pojacaj ${input.supplierCounts.boost} | Zadrzi ${input.supplierCounts.keep} | Oprez ${input.supplierCounts.caution} | Smanji ${input.supplierCounts.reduce} | Nedovoljno ${input.supplierCounts.insufficient}`,
+      `Pojačaj ${input.supplierCounts.boost} | Zadrži ${input.supplierCounts.keep} | Oprez ${input.supplierCounts.caution} | Smanji ${input.supplierCounts.reduce} | Nedovoljno ${input.supplierCounts.insufficient}`,
       "",
       ""
     ),
@@ -136,7 +136,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   ];
 
   for (const row of topRevenueRows) {
-    detailRows.push(buildSectionRow("Top artikli / dobavljaci", row.supplierName, fmtRsd(row.revenue), `Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)}`, row.statusReason));
+    detailRows.push(buildSectionRow("Top artikli / dobavljači", row.supplierName, fmtRsd(row.revenue), `Marža ${fmtPct(row.preMarkdownMarginPct * 100, 1)}`, row.statusReason));
   }
 
   for (const row of riskRows) {
@@ -144,7 +144,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   for (const row of boostRows) {
-    detailRows.push(buildSectionRow("Pojacaj", row.supplierName, fmtRsd(row.revenue), `Pouzdanost ${row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : "nije dostupno"}`, row.statusReason));
+    detailRows.push(buildSectionRow("Pojačaj", row.supplierName, fmtRsd(row.revenue), `Pouzdanost ${row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : "nije dostupno"}`, row.statusReason));
   }
 
   for (const row of reduceRows) {
@@ -152,16 +152,16 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   detailRows.push(
-    buildSectionRow("Kvalitet podataka", "Nedostajuci dobavljaci", String(trust?.missingSupplierNameCount ?? 0), "", ""),
+    buildSectionRow("Kvalitet podataka", "Nedostajući dobavljači", String(trust?.missingSupplierNameCount ?? 0), "", ""),
     buildSectionRow("Kvalitet podataka", "Ignorisani redovi", String(trust?.ignoredRowCount ?? 0), "", ""),
     buildSectionRow("Kvalitet podataka", "Broj redova", String(trust?.rowCount ?? input.rows.length), "", ""),
     buildSectionRow("Kvalitet podataka", "Status pokrivenosti", trust?.dataCoverageStatus ?? normalizeDataQualityStatus(meta?.dataQualityStatus), trust?.effectivePeriodLabel ?? "", ""),
     buildSectionRow(
       "Metodologija",
       "Opis",
-      "Preporuka kombinuje promet, marzni doprinos, zavisnost od nivelacija, rizik zaliha i pouzdanost signala.",
+      "Preporuka kombinuje promet, maržni doprinos, zavisnost od nivelacija, rizik zaliha i pouzdanost signala.",
       "",
-      "Kako citati ovaj izvestaj: /analytics/data-quality"
+      "Kako čitati ovaj izveštaj: /analytics/data-quality"
     )
   );
 
@@ -169,8 +169,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     detailRows.push(
       buildSectionRow(
         "Kvalitet podataka",
-        "Detaljan sazetak",
-        "Detaljan sazetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.",
+        "Detaljan sažetak",
+        "Detaljan sažetak kvaliteta podataka nije dostupan u ovom report payload-u. Otvorite Data Quality ekran za detalje.",
         "",
         ""
       )
@@ -205,8 +205,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     detailRows.push(
       buildSectionRow(
         "Upozorenje",
-        "Delimicni/fallback podaci",
-        "Prikazani su delimicni ili fallback podaci.",
+        "Delimični/fallback podaci",
+        "Prikazani su delimični ili fallback podaci.",
         trust?.effectivePeriodLabel ?? "",
         meta?.warningMessage ?? meta?.message ?? trust?.fallbackReason ?? ""
       )
@@ -217,8 +217,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     detailRows.push(
       buildSectionRow(
         "Upozorenje",
-        "Koriscen siri period",
-        `Koriscen siri period (${trust.effectiveDataset}) zbog nedostatka podataka za trazeni period.`,
+        "Korišćen širi period",
+        `Korišćen je širi period (${trust.effectiveDataset}) zbog nedostatka podataka za traženi period.`,
         trust.fallbackReasonCode ?? "",
         trust.fallbackReason ?? ""
       )
@@ -226,7 +226,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   const filters: AnalyticsNamedValue[] = [
-    { key: "supplier", label: "Dobavljac", value: input.supplierLabel },
+    { key: "supplier", label: "Dobavljač", value: input.supplierLabel },
     { key: "period", label: "Period", value: `${input.fromDate} - ${input.toDate}` },
     { key: "periodLabel", label: "Oznaka perioda", value: input.periodLabel },
     { key: "dataScope", label: "Opseg podataka", value: input.dataScopeLabel },
@@ -234,19 +234,19 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
 
   const metadata: AnalyticsNamedValue[] = [
     { key: "generatedAtUtc", label: "Generisano", value: nowUtc },
-    { key: "lastRefreshAtUtc", label: "Poslednje osvezenje", value: input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc ?? null },
-    { key: "dataFreshness", label: "Svezina podataka", value: normalizeFreshnessLabel(input.freshnessStatus) },
+    { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc ?? null },
+    { key: "dataFreshness", label: "Svežina podataka", value: normalizeFreshnessLabel(input.freshnessStatus) },
     { key: "dataQualityStatus", label: "Kvalitet podataka", value: dataQualityStatusLabel(meta?.dataQualityStatus) },
-    { key: "requestedDataset", label: "Trazeni dataset", value: trust?.requestedDataset ?? null },
+    { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
-    { key: "usedFallback", label: "Koriscen fallback", value: trust?.usedFallback ?? false },
+    { key: "usedFallback", label: "Korišćen fallback", value: trust?.usedFallback ?? false },
     { key: "fallbackReason", label: "Razlog fallback-a", value: trust?.fallbackReason ?? null },
     { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: trust?.recommendationAllowed ?? false },
   ];
 
   return resolveAnalyticsTablePayload({
     tableKey: "supplier-decision-report",
-    tableTitle: "Trendplus izvestaj dobavljaca",
+    tableTitle: "Trendplus izveštaj dobavljača",
     documentType: "supplier-decision-report",
     templateName: "analytics-table-default",
     columns: [
@@ -349,10 +349,13 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
     return value.trim() ? value : null;
   };
 
-  const supplier = get("Header", "Dobavljac") ?? payload.filters.find((f) => f.key === "supplier")?.value ?? "Dobavljac";
+  const supplier = get("Header", "Dobavljač")
+    ?? get("Header", "Dobavljac")
+    ?? payload.filters.find((f) => f.key === "supplier")?.value
+    ?? "Dobavljač";
   const period = get("Header", "Period") ?? payload.filters.find((f) => f.key === "period")?.value ?? "";
   const revenue = get("KPI", "Prihod");
-  const margin = get("KPI", "Marzni doprinos");
+  const margin = get("KPI", "Maržni doprinos") ?? get("KPI", "Marzni doprinos");
   const top5 = get("KPI", "Top 5 udeo");
   const distribution = get("Preporuke", "Raspodela");
 
@@ -364,15 +367,15 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
   const recommendationAllowed = payload.metadata.find((m) => m.key === "recommendationAllowed")?.value ?? null;
 
   const lines = [
-    `Trendplus izvestaj dobavljaca`,
-    `Dobavljac: ${String(supplier)}`,
+    `Trendplus izveštaj dobavljača`,
+    `Dobavljač: ${String(supplier)}`,
     period ? `Period: ${String(period)}` : null,
     revenue ? `Prihod: ${revenue}` : null,
-    margin ? `Marzni doprinos: ${margin}` : null,
+    margin ? `Maržni doprinos: ${margin}` : null,
     top5 ? `Top 5 udeo: ${top5}` : null,
     distribution ? `Preporuke (raspodela): ${distribution}` : null,
     dataQuality != null ? `Kvalitet podataka: ${String(dataQuality)}` : null,
-    freshness != null ? `Svezina podataka: ${String(freshness)}` : null,
+    freshness != null ? `Svežina podataka: ${String(freshness)}` : null,
     effectiveDataset != null ? `Efektivni dataset: ${String(effectiveDataset)}` : null,
     usedFallback != null ? `Fallback aktivan: ${String(usedFallback)}` : null,
     fallbackReason != null && String(fallbackReason).trim() ? `Fallback razlog: ${String(fallbackReason)}` : null,

@@ -647,12 +647,17 @@ export interface DurableReportPeriod {
 export interface SupplierDecisionDurableReport {
   reportId: string;
   stableQueryUrl: string;
+  reportTitle?: string;
+  reportType?: string;
   generatedAtUtc: string;
+  periodFrom?: string;
+  periodTo?: string;
   period: DurableReportPeriod;
   lastRefreshAtUtc?: string | null;
   dataQualityStatus: string;
   recommendationAllowed: boolean;
   usedFallback: boolean;
+  warnings?: string[];
   methodology: string;
   rows: DurableReportRow[];
   sections: DurableReportSection[];
@@ -663,10 +668,17 @@ export interface SupplierDecisionDurableReport {
 export interface PilotIntakeDurableReport {
   reportId: string;
   stableQueryUrl: string;
+  reportTitle?: string;
+  reportType?: string;
   generatedAtUtc: string;
+  periodFrom?: string;
+  periodTo?: string;
   period: DurableReportPeriod;
   lastRefreshAtUtc?: string | null;
   dataQualityStatus: string;
+  recommendationAllowed?: boolean;
+  usedFallback?: boolean;
+  warnings?: string[];
   methodology: string;
   rows: DurableReportRow[];
   sections: DurableReportSection[];

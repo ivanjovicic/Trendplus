@@ -328,6 +328,8 @@ public static class DataQualityEndpoints
                 var reportId = BuildPilotIntakeReportId(period, storeId, supplierId, resolvedScope);
                 var stableQueryUrl = BuildPilotIntakeStableQueryUrl(period, storeId, supplierId, resolvedScope);
                 var methodology = "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke.";
+                var recommendationAllowed = intake.ReadinessScore >= 70;
+                var warnings = BuildPilotIntakeWarnings(intake, recommendationAllowed);
 
                 var rows = BuildPilotIntakeRows(intake, methodology);
                 var sections = rows
@@ -370,10 +372,17 @@ public static class DataQualityEndpoints
                 return Results.Ok(new PilotIntakeReportResponse(
                     reportId,
                     stableQueryUrl,
+                    "Trendplus pilot izveštaj kvaliteta podataka",
+                    "pilot-intake",
                     intake.GeneratedAtUtc,
+                    period.FromUtc,
+                    period.ToUtc,
                     new ReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake"),
                     intake.LastRefreshAtUtc,
                     intake.Meta?.DataQualityStatus ?? "insufficient_data",
+                    recommendationAllowed,
+                    false,
+                    warnings,
                     methodology,
                     rows,
                     sections,
@@ -385,10 +394,17 @@ public static class DataQualityEndpoints
                 return Results.Ok(new PilotIntakeReportResponse(
                     "pilot-intake-error",
                     "/analytics/data-quality",
+                    "Trendplus pilot izveštaj kvaliteta podataka",
+                    "pilot-intake",
                     DateTime.UtcNow,
+                    DateTime.UtcNow.Date.AddDays(-29),
+                    DateTime.UtcNow.Date,
                     new ReportPeriodDto(DateTime.UtcNow.Date.AddDays(-29), DateTime.UtcNow.Date, "Pilot intake"),
                     null,
                     "insufficient_data",
+                    false,
+                    false,
+                    [],
                     "Readiness score vrednuje potpunost master podataka, integritet prodaje i uticaj na preporuke.",
                     [],
                     [],
@@ -411,6 +427,33 @@ public static class DataQualityEndpoints
         })
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
+    }
+
+    private static IReadOnlyList<string> BuildPilotIntakeWarnings(
+        PilotDataQualityIntakeReportDto report,
+        bool recommendationAllowed)
+    {
+        var warnings = new List<string>();
+
+        if (!recommendationAllowed)
+        {
+            warnings.Add("Kvalitet podataka ograničava pouzdanost reporta.");
+        }
+
+        if (report.Impact.RevenueWithoutCostPercent >= 0.10d)
+        {
+            warnings.Add("Značajan udeo prihoda je bez nabavne cene.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(report.Meta?.WarningMessage))
+        {
+            warnings.Add(report.Meta.WarningMessage!);
+        }
+
+        return warnings
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     private static async Task<PilotDataQualityIntakeReportDto> BuildPilotDataQualityIntakeReportAsync(
@@ -749,10 +792,17 @@ public static class DataQualityEndpoints
     public sealed record PilotIntakeReportResponse(
         string ReportId,
         string StableQueryUrl,
+        string ReportTitle,
+        string ReportType,
         DateTime GeneratedAtUtc,
+        DateTime PeriodFrom,
+        DateTime PeriodTo,
         ReportPeriodDto Period,
         DateTime? LastRefreshAtUtc,
         string DataQualityStatus,
+        bool RecommendationAllowed,
+        bool UsedFallback,
+        IReadOnlyList<string> Warnings,
         string Methodology,
         IReadOnlyList<ReportRowDto> Rows,
         IReadOnlyList<ReportSectionSummaryDto> Sections,

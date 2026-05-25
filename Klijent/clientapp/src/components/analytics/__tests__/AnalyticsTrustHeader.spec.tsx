@@ -16,7 +16,7 @@ describe("AnalyticsTrustHeader", () => {
       />
     );
 
-    expect(screen.getByText("Sveze")).toBeInTheDocument();
+    expect(screen.getByText("Sveže")).toBeInTheDocument();
     expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
   });
 

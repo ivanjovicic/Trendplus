@@ -58,7 +58,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("ðŸŒ™ {WorkerName} starting...", WorkerName);
+        _logger.LogInformation("[nightly] {WorkerName} starting...", WorkerName);
         _healthService.ReportRunning(WorkerName, "Starting up...");
 
         var paused = false;
@@ -80,7 +80,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 if (!paused)
                 {
                     var reason = !_controlService.IsEnabled
-                        ? "Pauziran - workers switch je iskljucen."
+                        ? "Pauziran - workers switch je isključen."
                         : "Pauziran - NightlyAnalyticsRefresh je disabled u konfiguraciji.";
                     _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, reason);
                     _healthService.ReportStopped(WorkerName, reason);
@@ -148,7 +148,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             if (paused)
             {
                 _logger.LogInformation("{WorkerName} resumed (workers switch ON).", WorkerName);
-                _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon ukljucivanja workers switch-a.");
+                _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon uključivanja workers switch-a.");
                 paused = false;
             }
 
@@ -203,7 +203,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         }
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");
-        _logger.LogInformation("ðŸŒ™ {WorkerName} stopped", WorkerName);
+        _logger.LogInformation("[nightly] {WorkerName} stopped", WorkerName);
     }
 
     private async Task RunNightlyRefreshAsync(string triggeredBy, CancellationToken ct)
@@ -225,7 +225,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             ct);
 
         _healthService.ReportRunning(WorkerName, "Nightly refresh started...");
-        _logger.LogInformation("ðŸŒ™ Nightly analytics refresh started at {StartedAtUtc:O}", startedAtUtc);
+        _logger.LogInformation("[nightly] Nightly analytics refresh started at {StartedAtUtc:O}", startedAtUtc);
 
         try
         {
@@ -235,7 +235,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 var msg = "Missing Trendplus DB connection string.";
-                _logger.LogError("ðŸŒ™ {Message}", msg);
+                _logger.LogError("[nightly] {Message}", msg);
                 _healthService.ReportError(WorkerName, new InvalidOperationException(msg));
                 await _refreshRunRecorder.MarkFailedAsync(
                     runId,
@@ -254,7 +254,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             if (!acquired)
             {
                 var skipMessage = "Skipped (another instance is running nightly refresh).";
-                _logger.LogInformation("ðŸŒ™ Skipping refresh because another instance holds advisory lock.");
+                _logger.LogInformation("[nightly] Skipping refresh because another instance holds advisory lock.");
                 _healthService.ReportHealthy(WorkerName, skipMessage);
                 await _refreshRunRecorder.MarkPartialAsync(
                     runId,
@@ -328,7 +328,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                         await ExecuteNonQueryAsync(connection, vacuumSql, _options.CommandTimeoutSeconds, ct);
                         vacuumSw.Stop();
                         _logger.LogInformation(
-                            "ðŸŒ™ Vacuumed {Relation} in {DurationMs}ms",
+                            "[nightly] Vacuumed {Relation} in {DurationMs}ms",
                             $"{schema}.{rel}",
                             vacuumSw.Elapsed.TotalMilliseconds);
                     }
@@ -338,7 +338,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                         var relationName = $"{schema}.{rel}";
                         failedObjects.Add(relationName);
                         errors.Add($"VACUUM failed for {relationName}: {ex.MessageText}");
-                        _logger.LogError(ex, "ðŸŒ™ VACUUM failed for {Relation}", relationName);
+                        _logger.LogError(ex, "[nightly] VACUUM failed for {Relation}", relationName);
                     }
                 }
             }
@@ -352,7 +352,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             if (errors.Count > 0)
             {
                 var message = $"Nightly refresh finished with {errors.Count} errors; {warnings.Count} warnings. Duration: {sw.Elapsed.TotalSeconds:0}s";
-                _logger.LogError("ðŸŒ™ {Message}", message);
+                _logger.LogError("[nightly] {Message}", message);
                 _healthService.ReportError(WorkerName, new InvalidOperationException(message));
                 await _refreshRunRecorder.MarkFailedAsync(
                     runId,
@@ -375,13 +375,28 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 catch (Exception ex)
                 {
                     warnings.Add($"Supplier ranking training queue failed: {ex.Message}");
-                    _logger.LogWarning(ex, "ðŸŒ™ Failed to queue supplier ranking training run after nightly refresh.");
+                    _logger.LogWarning(ex, "[nightly] Failed to queue supplier ranking training run after nightly refresh.");
                 }
             }
 
             var okMessage = $"Nightly refresh OK. Duration: {sw.Elapsed.TotalSeconds:0}s"
                             + (warnings.Count > 0 ? $" | Warnings: {string.Join("; ", warnings.Distinct())}" : string.Empty);
-            _logger.LogInformation("ðŸŒ™ {Message}", okMessage);
+
+            try
+            {
+                var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
+                if (cacheAdmin is not null)
+                {
+                    await cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                warnings.Add($"Analytics cache invalidation failed: {ex.Message}");
+                _logger.LogWarning(ex, "[nightly] Analytics cache invalidation failed after successful refresh.");
+            }
+
+            _logger.LogInformation("[nightly] {Message}", okMessage);
             _healthService.ReportHealthy(WorkerName, okMessage);
 
             if (warnings.Count > 0)
@@ -419,7 +434,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         {
             sw.Stop();
             var message = $"Nightly refresh failed unexpectedly. Duration: {sw.Elapsed.TotalSeconds:0}s";
-            _logger.LogError(ex, "ðŸŒ™ {Message}", message);
+            _logger.LogError(ex, "[nightly] {Message}", message);
             _healthService.ReportError(WorkerName, ex);
             await _refreshRunRecorder.MarkFailedAsync(
                 runId,
@@ -646,7 +661,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 refreshSw.Stop();
                 refreshedObjects.Add(relationName);
                 _logger.LogInformation(
-                    "ðŸŒ™ Refreshed {Scope}/{Relation} using {RefreshMode} in {DurationMs}ms",
+                    "[nightly] Refreshed {Scope}/{Relation} using {RefreshMode} in {DurationMs}ms",
                     sourceLabel,
                     $"{schema}.{rel}",
                     refreshMode,
@@ -657,14 +672,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 refreshSw.Stop();
                 failedObjects.Add(relationName);
                 errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
-                _logger.LogError(ex, "ðŸŒ™ Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+                _logger.LogError(ex, "[nightly] Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
             }
             catch (PostgresException ex)
             {
                 refreshSw.Stop();
                 failedObjects.Add(relationName);
                 errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
-                _logger.LogError(ex, "ðŸŒ™ Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+                _logger.LogError(ex, "[nightly] Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
             }
         }
     }

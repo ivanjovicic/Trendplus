@@ -63,7 +63,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 if (!paused)
                 {
                     var reason = !_controlService.IsEnabled
-                        ? "Pauziran - workers switch je iskljucen."
+                        ? "Pauziran - workers switch je isključen."
                         : "Pauziran - AnalyticsDataQualityHealth je disabled u konfiguraciji.";
                     _logger.LogInformation("{WorkerName} paused. Reason: {Reason}", WorkerName, reason);
                     _healthService.ReportStopped(WorkerName, reason);
@@ -130,7 +130,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
 
             if (paused)
             {
-                _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon ukljucivanja workers switch-a.");
+                _healthService.ReportRunning(WorkerName, "Nastavljen rad nakon uključivanja workers switch-a.");
                 paused = false;
             }
 
@@ -180,11 +180,24 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 }
 
                 _healthService.ReportHealthy(WorkerName, summary);
-                await _refreshRunRecorder.MarkSucceededAsync(
-                    runId,
-                    ["analytics_data_quality_history"],
-                    correlationId,
-                    stoppingToken);
+                if (hasWarnings)
+                {
+                    await _refreshRunRecorder.MarkPartialAsync(
+                        runId,
+                        ["analytics_data_quality_history"],
+                        [],
+                        $"Data quality warning: {summary}",
+                        correlationId,
+                        stoppingToken);
+                }
+                else
+                {
+                    await _refreshRunRecorder.MarkSucceededAsync(
+                        runId,
+                        ["analytics_data_quality_history"],
+                        correlationId,
+                        stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

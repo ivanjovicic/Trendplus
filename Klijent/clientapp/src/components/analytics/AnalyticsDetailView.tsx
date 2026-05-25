@@ -79,7 +79,7 @@ export default function AnalyticsDetailView(props: {
         return;
       }
 
-      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju detalja.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju detalja.");
       setDetail(null);
     } finally {
       setLoading(false);

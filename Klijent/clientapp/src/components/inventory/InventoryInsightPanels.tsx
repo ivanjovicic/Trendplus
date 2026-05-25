@@ -38,7 +38,7 @@ export function InventoryInsightPanels({
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Aging i obrt fonda robe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
-            <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su racunati po poslednjem movement-u, uz fallback na poslednje azuriranje artikla.</p>
+            <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su računati po poslednjem movement-u, uz fallback na poslednje ažuriranje artikla.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
             {insightsLoading ? "Ucitavanje aging analitike..." : `${formatNumber(staleBucket?.itemCount ?? 0)} artikala je u 90+ dana`}

@@ -82,7 +82,7 @@ export function SKUDetailModal({
               ["Kategorija", detailData?.kategorija ?? "Nije upisano"],
               ["Pol", detailData?.pol ?? "Nije upisano"],
               ["Materijal", detailData?.materijal ?? "Nije upisano"],
-              ["Poslednje azuriranje", formatDateTime(detailData?.updatedAt)],
+              ["Poslednje ažuriranje", formatDateTime(detailData?.updatedAt)],
             ].map(([label, value]) => <div key={label} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">{label}</div><div className="mt-2 text-base font-semibold text-[var(--text-primary)]">{value}</div></div>)}
           </div>
 

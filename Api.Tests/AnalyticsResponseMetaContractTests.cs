@@ -100,6 +100,18 @@ public sealed class AnalyticsResponseMetaContractTests
         Assert.True(meta.IsPartial);
     }
 
+    [Fact]
+    public void Factory_StaleCacheWarning_ReturnsPartialWarningMeta()
+    {
+        var meta = AnalyticsResponseMetaFactory.StaleCacheWarning();
+
+        Assert.True(meta.Success);
+        Assert.True(meta.IsPartial);
+        Assert.Equal("STALE_CACHE", meta.WarningCode);
+        Assert.Equal("warning", meta.DataQualityStatus);
+        Assert.Equal(meta.WarningMessage, meta.Message);
+    }
+
     // ──────────────────────────────────────────────────────────────────
     // Factory: Error (Rule D – SQL exception / timeout)
     // ──────────────────────────────────────────────────────────────────

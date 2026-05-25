@@ -184,7 +184,7 @@ export default function InventoryPage() {
           setQueuedSuggestionKeys((current) => Array.from(new Set([...current, ...nextKeys])));
         }
       } catch (reason) {
-        console.warn("Neuspesno ucitavanje postojecih inventory akcija iz centralnog reda.", reason);
+        console.warn("Neuspešno učitavanje postojećih inventory akcija iz centralnog reda.", reason);
       }
     }
 
@@ -739,7 +739,7 @@ export default function InventoryPage() {
     setReloadNonce((current) => current + 1);
   }
 
-  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Ucitavanje bilansa stanja...</div>;
+  if (loading && !pageData && !balance) return <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa stanja...</div>;
   if (error && (!pageData || !balance)) {
     return (
       <AnalyticsErrorState
@@ -783,7 +783,7 @@ export default function InventoryPage() {
       <div className="space-y-6">
       <AnalyticsTrustHeader
         title="Inventory analytics"
-        description="Decision cockpit za zalihe: dopuna, OOS rizik, visak zalihe, transferi i workflow odluka."
+        description="Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={primaryMeta?.lastRefreshAtUtc ?? primaryMeta?.generatedAtUtc ?? inventoryLastRefreshAt}
@@ -791,7 +791,7 @@ export default function InventoryPage() {
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
         mode="recommendation"
         isPartial={isAnalyticsMetaWarning(primaryMeta)}
-        recommendationNote="Workflow akcije su korisnicki vodjene; backend recommendation payload ostaje izvor istine."
+        recommendationNote="Workflow akcije su korisnički vođene; backend recommendation payload ostaje izvor istine."
         emptyStateReason={showEmptyState ? (inventoryMetaMessage ?? null) : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -807,7 +807,7 @@ export default function InventoryPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-[760px]">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-muted bg-[var(--surface-darker)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--info)]"><Warehouse size={14} />Bilans stanja</div>
-            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Decision cockpit za zalihe: dopuna, OOS rizik, visak zalihe, transferi i workflow odluka.</h3>
+            <h3 className="text-2xl font-semibold tracking-tight text-contrast md:text-3xl">Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka.</h3>
             <p className="mt-3 max-w-[640px] text-sm leading-6 text-secondary md:text-base">Pregled vodi od prioriteta i signala ka dubinskoj analizi i operativnom izvozu bez promene poslovne logike.</p>
           </div>
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2">
@@ -824,7 +824,7 @@ export default function InventoryPage() {
                 </svg>
               </div>
               <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></div>
-              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kriticnih SKU." : "Povecan rizik od praznih polica."}</div>
+              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kritičnih SKU." : "Povećan rizik od praznih polica."}</div>
             </div>
           </div>
         </div>
@@ -835,7 +835,7 @@ export default function InventoryPage() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-contrast">Filteri i akcije</h2>
-              <p className="text-sm text-muted">Pretrazi bilans, suzi lokaciju i odmah pokreni report ili stampu.</p>
+              <p className="text-sm text-muted">Pretraži bilans, suzi lokaciju i odmah pokreni report ili štampu.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex rounded-xl border border-muted overflow-hidden text-xs font-semibold" role="group" aria-label="Orijentacija štampe">
@@ -887,17 +887,17 @@ export default function InventoryPage() {
             <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Sortiranje</span>
               <select aria-label="Sortiranje tabele artikala" value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
-                <option value="kolicina">Kolicina opadajuce</option>
+                <option value="kolicina">Količina opadajuće</option>
                 <option value="naziv">Naziv A-Z</option>
                 <option value="vrednost">Vrednost opadajuce</option>
-                <option value="azuriranje">Poslednje azuriranje</option>
+                <option value="azuriranje">Poslednje ažuriranje</option>
                 <option value="oosRisk">OOS rizik opadajuce</option>
                 <option value="overstockRisk">Overstock rizik opadajuce</option>
               </select>
             </label>
             <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Velicina strane</span>
-              <select aria-label="Velicina strane tabele artikala" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Veličina strane</span>
+              <select aria-label="Veličina strane tabele artikala" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
                 {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
               </select>
             </label>

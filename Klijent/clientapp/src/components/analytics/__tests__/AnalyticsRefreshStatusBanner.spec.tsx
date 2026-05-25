@@ -44,8 +44,8 @@ describe("AnalyticsRefreshStatusBanner", () => {
 
   it("shows fresh badge and last successful refresh", () => {
     renderBanner(buildStatus({ dataFreshnessStatus: "fresh" }));
-    expect(screen.getByText("Sveze")).toBeInTheDocument();
-    expect(screen.getByText(/Poslednji uspesan refresh:/)).toBeInTheDocument();
+    expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(screen.getByText(/Poslednji uspešan refresh:/)).toBeInTheDocument();
   });
 
   it("shows stale badge", () => {

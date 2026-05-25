@@ -32,10 +32,10 @@ export function InventoryKPICards({
 }: InventoryKPICardsProps) {
   const cards: Array<{ label: string; value: string; note: string; tone: KpiTone; metricKey: AnalyticsMetricKey }> = [
     { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala u izabranom opsegu.", tone: "info", metricKey: "skuCount" },
-    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe.", tone: "success", metricKey: "onHandUnits" },
+    { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe.", tone: "success", metricKey: "stockUnits" },
     { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} fonda je blizu minimuma.`, tone: "warning", metricKey: "lowStockCount" },
     { label: "Prosecno po SKU", value: formatNumber(avgUnitsPerSku, 1), note: "Srednja kolicina robe po artiklu.", tone: "neutral", metricKey: "avgUnitsPerSku" },
-    { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe.", tone: "value", metricKey: "inventoryTotalValue" },
+    { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe.", tone: "value", metricKey: "totalInventoryValue" },
   ];
 
   return (
@@ -51,7 +51,7 @@ export function InventoryKPICards({
           </div>
           <div className="analytics-kpi-card__value">{card.value}</div>
           <p className="analytics-kpi-card__note">{card.note}</p>
-          <KpiExplainButton metricKey={card.metricKey} />
+          <KpiExplainButton metricKey={card.metricKey} ariaLabel={`Kako je izračunat KPI: ${card.label}`} />
         </article>
       ))}
     </section>

@@ -27,7 +27,7 @@ function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?
         {props.infoTip ? <InfoTip text={props.infoTip} /> : null}
       </span>
       <strong>{props.value}</strong>
-      {props.metricKey ? <KpiExplainButton metricKey={props.metricKey} /> : null}
+      {props.metricKey ? <KpiExplainButton metricKey={props.metricKey} ariaLabel={`Kako je izračunat ${props.label}`} /> : null}
     </article>
   );
 }
@@ -50,7 +50,7 @@ export default function ExecutiveKpiRow(props: Props) {
         value={props.totalRevenue == null ? "N/A" : fmtRsd(props.totalRevenue)}
         tone="good"
         infoTip="Formula: zbir prodajne vrednosti svih prodaja u izabranom periodu."
-        metricKey="revenue"
+        metricKey="totalRevenue"
       />
       <MetricCard
         label="Mar\u017Eni doprinos"
@@ -64,14 +64,14 @@ export default function ExecutiveKpiRow(props: Props) {
         value={props.totalUnits == null ? "N/A" : fmtNumber(props.totalUnits)}
         tone="neutral"
         infoTip="Formula: zbir prodatih komada u izabranom periodu."
-        metricKey="quantity"
+        metricKey="soldUnits"
       />
       <MetricCard
         label="Lager u riziku"
         value={props.inventoryDangerValueRsd == null ? "N/A" : fmtRsd(props.inventoryDangerValueRsd)}
         tone={props.inventoryDangerValueRsd != null && props.inventoryDangerValueRsd > 0 ? "warning" : "neutral"}
         infoTip="Procena kapitala vezanog u sporoj i rizi\u010Dnoj zalihi (indikativno)."
-        metricKey="stockRiskCapital"
+        metricKey="stockAtRisk"
       />
       <article className={`metric-card ${qualityCardTone}`}>
         <span className="metric-label">
@@ -82,7 +82,7 @@ export default function ExecutiveKpiRow(props: Props) {
         <small className="exec-dq-sub">
           Bez dobavlja\u010Da: {props.missingSupplierCount == null ? "-" : props.missingSupplierCount.toLocaleString("sr-RS")} | Bez cene: {props.missingCostCount == null ? "-" : props.missingCostCount.toLocaleString("sr-RS")}
         </small>
-        <KpiExplainButton metricKey="dataReadinessScore" />
+        <KpiExplainButton metricKey="dataReadiness" ariaLabel="Kako je izračunata spremnost podataka" />
         <Link to="/analytics/data-quality" className="exec-dq-link">Otvori Data Quality</Link>
       </article>
     </div>
