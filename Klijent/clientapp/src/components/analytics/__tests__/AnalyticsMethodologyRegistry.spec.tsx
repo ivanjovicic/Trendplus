@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import SupplierDecisionReport from "../SupplierDecisionReport";
@@ -92,8 +92,9 @@ describe("Analytics methodology registry usage", () => {
     );
 
     expect(screen.getByText("Metodologija")).toBeInTheDocument();
-    expect(screen.getByText(/Suma polja ukupna_cena kroz sve prodajne stavke/i)).toBeInTheDocument();
-    expect(screen.getByText(/MV: sales_facts_mv/i)).toBeInTheDocument();
+    expect(screen.getByText("Metodologija metrika")).toBeInTheDocument();
+    expect(screen.getByText(/SUM\(prodajna_vrednost_stavke\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sales facts analytics/i)).toBeInTheDocument();
   });
 
   it("renders supplier sections from ascii payload aliases", () => {
@@ -122,9 +123,9 @@ describe("Analytics methodology registry usage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Kako čitati ovaj izveštaj?" }));
-    expect(screen.getByText(/Definicije ključnih KPI-jeva se čitaju iz centralnog analytics registry-ja/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ponderisani skor kvaliteta signala/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/MV: analytics_data_quality_history/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("Metodologija metrika")).toBeInTheDocument();
+    expect(screen.getByText("Spremnost podataka")).toBeInTheDocument();
+    expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Data quality checks/i).length).toBeGreaterThan(0);
   });
 });

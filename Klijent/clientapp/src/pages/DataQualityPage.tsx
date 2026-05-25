@@ -634,7 +634,7 @@ export default function DataQualityPage() {
               <strong>{health.score}</strong>
               <span className="data-quality-score-status">{health.scoreStatus}</span>
               <p>{health.scoreSummary}</p>
-              <KpiExplainButton metricKey="dataReadiness" ariaLabel="Kako je izračunat data quality score" />
+              <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunat data quality score" />
             </section>
           ) : null}
           <div className="data-quality-meta">
@@ -698,20 +698,28 @@ export default function DataQualityPage() {
             <span className="data-quality-health-label">Artikli bez dobavljača</span>
             <strong>{fmtNumber(health.orphanArticleCount)}</strong>
             <p>Warning threshold: {health.thresholds.orphanArticleCount}</p>
+            <KpiExplainButton metricKey="missingSupplierCount" ariaLabel="Kako je izračunat broj artikala bez dobavljača" />
+          </article>
+
+          <article className="data-quality-health-card">
+            <span className="data-quality-health-label">Artikli bez nabavne cene</span>
+            <strong>{fmtNumber(intakeReport?.issues.missingCostCount ?? null)}</strong>
+            <p>Risk threshold: {health.thresholds.missingCostRevenueSharePct}% udela prihoda bez cene</p>
+            <KpiExplainButton metricKey="missingCostCount" ariaLabel="Kako je izračunat broj artikala bez nabavne cene" />
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{fmtPct(health.missingCostRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.missingCostRevenue, 2)} bez pouzdane marze</p>
-            <KpiExplainButton metricKey="revenueWithoutCost" ariaLabel="Kako je izračunat promet bez nabavne cene" />
+            <KpiExplainButton metricKey="missingCostRevenueShare" ariaLabel="Kako je izračunat promet bez nabavne cene" />
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet nepoznatog dobavljača</span>
             <strong>{fmtPct(health.unknownSupplierRevenueSharePct, 1)}</strong>
             <p>{fmtRsd(health.unknownSupplierRevenue, 2)} u unknown bucket-u</p>
-            <KpiExplainButton metricKey="revenueUnknownSupplier" ariaLabel="Kako je izračunat promet nepoznatog dobavljača" />
+            <KpiExplainButton metricKey="unknownSupplierRevenueShare" ariaLabel="Kako je izračunat promet nepoznatog dobavljača" />
           </article>
         </section>
       ) : null}

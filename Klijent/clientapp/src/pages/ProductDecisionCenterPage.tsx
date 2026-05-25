@@ -588,12 +588,12 @@ export default function ProductDecisionCenterPage() {
         <article className="kpi-card">
           <span>Procena izgubljene prodaje</span>
           <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="lostSales" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
+          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
         </article>
         <article className="kpi-card">
           <span>Kapital u sporoj zalihi</span>
           <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
-          <KpiExplainButton metricKey="slowStock" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
+          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
       </section>
       ) : null}
@@ -911,18 +911,26 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-metric-grid">
                                 <div><strong>Revenue:</strong> {fmtRsd(row.revenue, 0, "N/A")}</div>
+                                <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat prihod" />
                                 <div><strong>Units sold:</strong> {fmtNumber(row.unitsSold, 0, "0")}</div>
+                                <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat broj prodatih jedinica" />
                                 <div><strong>Velocity:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}</div>
+                                <KpiExplainButton metricKey="velocity" ariaLabel="Kako je izračunata brzina prodaje" />
                                 <div><strong>Marza:</strong> {fmtPct(row.marginPct, 1)}</div>
                                 <div><strong>Margin contribution:</strong> {fmtRsd(row.marginContribution, 0, "N/A")}</div>
+                                <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                                 <div><strong>Current stock:</strong> {fmtNumber(row.currentStock, 0, "0")}</div>
                                 <div><strong>Days since last sale:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : "N/A"}</div>
                                 <div><strong>Trend:</strong> {fmtPct(row.trendPct, 1)}</div>
                                 <div><strong>Lost sales estimate:</strong> {fmtRsd(row.lostSalesEstimate, 0, "N/A")}</div>
+                                <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
                                 <div><strong>Slow stock capital:</strong> {fmtRsd(row.slowStockCapital, 0, "N/A")}</div>
+                                <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
                                 <div><strong>Cost coverage:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
                                 <div><strong>Reliability:</strong> {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</div>
+                                <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                                 <div><strong>Data quality:</strong> {DATA_QUALITY_LABELS[dataQuality]}</div>
+                                <KpiExplainButton metricKey="confidencePct" ariaLabel="Kako je izračunata sigurnost preporuke" />
                               </div>
 
                               <div className="reason-actions">

@@ -29,6 +29,7 @@ export function resolveAnalyticsTablePayload<Row>(input: {
   rows: Row[];
   filters?: AnalyticsNamedValue[];
   metadata?: AnalyticsNamedValue[];
+  methodologyMetricKeys?: string[];
   locale?: string;
   documentType?: string;
   templateName?: string;
@@ -59,6 +60,7 @@ export function resolveAnalyticsTablePayload<Row>(input: {
     rows,
     filters: input.filters ?? [],
     metadata: input.metadata ?? [],
+    methodologyMetricKeys: input.methodologyMetricKeys,
     locale: input.locale,
     documentType: input.documentType,
     templateName: input.templateName,

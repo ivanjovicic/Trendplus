@@ -42,6 +42,42 @@ export type AnalyticsMetricKey =
   | "missingCostRevenueShare"
   | "unknownSupplierRevenueShare";
 
+export const canonicalMetricKeys = [
+  "revenue",
+  "marginContribution",
+  "unitsSold",
+  "stockAtRisk",
+  "slowStockCapital",
+  "lostSalesEstimate",
+  "dataReadinessScore",
+  "missingCostCount",
+  "missingSupplierCount",
+  "sellThrough",
+  "velocity",
+  "confidencePct",
+  "reliabilityPct",
+  "markdownDependency",
+  "outOfStockRisk",
+  "lowStockCount",
+  "replenishCount",
+  "boostCount",
+  "markdownCount",
+  "doNotOrderCount",
+  "fixDataCount",
+  "topSupplierRevenueShare",
+  "fullPriceShareChange",
+  "activeSkuShare",
+  "inventoryHealthScore",
+  "skuCount",
+  "avgUnitsPerSku",
+  "onHandUnits",
+  "inventoryTotalValue",
+  "missingCostRevenueShare",
+  "unknownSupplierRevenueShare",
+] as const;
+
+type CanonicalMetricKey = (typeof canonicalMetricKeys)[number];
+
 export type AnalyticsMetricDefinition = {
   key: AnalyticsMetricKey;
   label: string;
@@ -382,24 +418,10 @@ type BaseMetricKey =
   | "missingCostRevenueShare"
   | "unknownSupplierRevenueShare";
 
-const metricAliasToBase: Record<AnalyticsMetricKey, BaseMetricKey> = {
-  revenue: "revenue",
-  marginContribution: "marginContribution",
-  unitsSold: "unitsSold",
-  stockAtRisk: "stockAtRisk",
-  lostSalesEstimate: "lostSalesEstimate",
-  dataReadinessScore: "dataReadinessScore",
-  missingCostCount: "missingCostCount",
-  missingSupplierCount: "missingSupplierCount",
-  sellThrough: "sellThrough",
-  velocity: "velocity",
-  confidencePct: "confidencePct",
-  reliabilityPct: "reliabilityPct",
-  markdownDependency: "markdownDependency",
-  slowStockCapital: "slowStockCapital",
-  outOfStockRisk: "outOfStockRisk",
+export const metricAliases = {
   totalRevenue: "revenue",
   soldUnits: "unitsSold",
+  stockRiskCapital: "stockAtRisk",
   slowStock: "slowStockCapital",
   lostSales: "lostSalesEstimate",
   dataReadiness: "dataReadinessScore",
@@ -407,27 +429,10 @@ const metricAliasToBase: Record<AnalyticsMetricKey, BaseMetricKey> = {
   revenueUnknownSupplier: "unknownSupplierRevenueShare",
   totalInventoryValue: "inventoryTotalValue",
   stockUnits: "onHandUnits",
-  lowStockCount: "lowStockCount",
-  replenishCount: "replenishCount",
-  boostCount: "boostCount",
-  markdownCount: "markdownCount",
-  doNotOrderCount: "doNotOrderCount",
-  fixDataCount: "fixDataCount",
-  topSupplierRevenueShare: "topSupplierRevenueShare",
-  fullPriceShareChange: "fullPriceShareChange",
-  activeSkuShare: "activeSkuShare",
-  inventoryHealthScore: "inventoryHealthScore",
-  skuCount: "skuCount",
-  avgUnitsPerSku: "avgUnitsPerSku",
-  onHandUnits: "onHandUnits",
-  inventoryTotalValue: "inventoryTotalValue",
   quantity: "unitsSold",
-  stockRiskCapital: "stockAtRisk",
-  missingCostRevenueShare: "missingCostCount",
-  unknownSupplierRevenueShare: "missingSupplierCount",
-};
+} as const satisfies Partial<Record<AnalyticsMetricKey, CanonicalMetricKey>>;
 
-const completeBaseMetrics = {
+const canonicalMetricDefinitions = {
   ...baseMetrics,
   ...operationalMetrics,
   missingCostRevenueShare: defineMetric("missingCostRevenueShare", {
@@ -446,14 +451,13 @@ const completeBaseMetrics = {
     interpretation: "Viši udeo smanjuje pouzdanost supplier analitike.",
     relatedScreens: ["/analytics/data-quality", "/analytics/supplier"],
   }),
-} as const;
+} as Record<CanonicalMetricKey, AnalyticsMetricDefinition>;
 
 export const analyticsMetricDefinitions: Record<AnalyticsMetricKey, AnalyticsMetricDefinition> = Object.fromEntries(
-  (Object.keys(metricAliasToBase) as AnalyticsMetricKey[]).map((key) => {
-    const baseKey = metricAliasToBase[key] as keyof typeof completeBaseMetrics;
-    const base = completeBaseMetrics[baseKey];
-    return [key, { ...base, key }];
-  })
+  [
+    ...canonicalMetricKeys.map((key) => [key, { ...canonicalMetricDefinitions[key], key }] as const),
+    ...Object.entries(metricAliases).map(([alias, canonical]) => [alias, { ...canonicalMetricDefinitions[canonical], key: alias }] as const),
+  ]
 ) as Record<AnalyticsMetricKey, AnalyticsMetricDefinition>;
 
 const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
@@ -474,15 +478,46 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   outOfStockRisk: ["OOS rizik", "Rizik nestanka zalihe"],
 };
 
-export function getAnalyticsMetricDefinition(metricKey: AnalyticsMetricKey): AnalyticsMetricDefinition {
-  return analyticsMetricDefinitions[metricKey];
+export function normalizeMetricKey(key: string): AnalyticsMetricKey | string {
+  const alias = metricAliases[key as keyof typeof metricAliases];
+  if (alias) return alias;
+
+  if ((canonicalMetricKeys as readonly string[]).includes(key)) return key as AnalyticsMetricKey;
+
+  return key;
 }
 
-export function getMetricDefinition(metricKey: AnalyticsMetricKey | string): AnalyticsMetricDefinition | undefined {
-  if (metricKey in analyticsMetricDefinitions) {
-    return analyticsMetricDefinitions[metricKey as AnalyticsMetricKey];
+export function getAnalyticsMetricDefinition(metricKey: AnalyticsMetricKey): AnalyticsMetricDefinition {
+  return getMetricDefinition(metricKey);
+}
+
+export function getMetricDefinition(metricKey: AnalyticsMetricKey | string): AnalyticsMetricDefinition {
+  const normalizedKey = normalizeMetricKey(String(metricKey));
+  if (normalizedKey in canonicalMetricDefinitions) {
+    return canonicalMetricDefinitions[normalizedKey as CanonicalMetricKey];
   }
-  return undefined;
+
+  return {
+    key: String(metricKey) as AnalyticsMetricKey,
+    label: String(metricKey),
+    shortDescription: "Metodologija za ovu metriku još nije dokumentovana.",
+    formula: "Metodologija za ovu metriku još nije dokumentovana.",
+    dataSource: "Metodologija za ovu metriku još nije dokumentovana.",
+    interpretation: "Metodologija za ovu metriku još nije dokumentovana.",
+    limitations: [],
+    dataQualityDependencies: [],
+    relatedScreens: [],
+    title: String(metricKey),
+    source: "Metodologija za ovu metriku još nije dokumentovana.",
+    description: "Metodologija za ovu metriku još nije dokumentovana.",
+    qualityNote: "Metodologija za ovu metriku još nije dokumentovana.",
+    businessMeaning: "Metodologija za ovu metriku još nije dokumentovana.",
+    formulaText: "Metodologija za ovu metriku još nije dokumentovana.",
+    inputs: [],
+    caveats: [],
+    blockedWhen: [],
+    relatedDataQualityChecks: [],
+  };
 }
 
 export function getMetricLabel(metricKey: AnalyticsMetricKey | string): string {
@@ -498,21 +533,23 @@ export function getMetricMethodologyItems(
 ): Array<AnalyticsMetricDefinition | { key: string; label: string; isDocumented: false; message: string }> {
   return metricKeys.map((metricKey) => {
     const definition = getMetricDefinition(metricKey);
-    if (definition) return definition;
-    return {
-      key: String(metricKey),
-      label: String(metricKey),
-      isDocumented: false as const,
-      message: "Metodologija za ovu metriku još nije dokumentovana.",
-    };
+    if ("shortDescription" in definition && definition.shortDescription === "Metodologija za ovu metriku još nije dokumentovana.") {
+      return {
+        key: String(metricKey),
+        label: String(metricKey),
+        isDocumented: false as const,
+        message: "Metodologija za ovu metriku još nije dokumentovana.",
+      };
+    }
+
+    return definition;
   });
 }
 
 export function findAnalyticsMetricKeyByLabel(label: string | null | undefined): AnalyticsMetricKey | null {
   if (!label) return null;
   const normalized = label.trim().toLocaleLowerCase("sr-Latn-RS");
-  const keys = Object.keys(analyticsMetricDefinitions) as AnalyticsMetricKey[];
-  const direct = keys.find((key) => analyticsMetricDefinitions[key].label.toLocaleLowerCase("sr-Latn-RS") === normalized);
+  const direct = canonicalMetricKeys.find((key) => canonicalMetricDefinitions[key].label.toLocaleLowerCase("sr-Latn-RS") === normalized);
   if (direct) return direct;
 
   for (const [key, aliases] of Object.entries(metricAliasesByLabel) as Array<[AnalyticsMetricKey, string[] | undefined]>) {

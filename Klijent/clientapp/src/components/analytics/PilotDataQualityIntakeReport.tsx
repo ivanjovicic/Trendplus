@@ -261,7 +261,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     "dataReadinessScore",
     "missingCostCount",
     "missingSupplierCount",
-    "revenueWithoutCost",
+    "missingCostRevenueShare",
     "unknownSupplierRevenueShare",
   ];
 

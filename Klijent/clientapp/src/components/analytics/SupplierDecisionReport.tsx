@@ -3,10 +3,9 @@ import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../t
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
 import {
   findAnalyticsMetricKeyByLabel,
-  getMetricMethodologyItems,
-  type AnalyticsMetricDefinition,
 } from "../../utils/analyticsMetricDefinitions";
 import KpiExplainButton from "./KpiExplainButton";
+import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import "./SupplierDecisionReport.css";
 
 type SupplierDecisionReportProps = {
@@ -20,17 +19,6 @@ type ReportRow = {
   secondary?: string;
   note?: string;
 };
-
-type MethodologyItem = AnalyticsMetricDefinition | {
-  key: string;
-  label: string;
-  isDocumented: false;
-  message: string;
-};
-
-function isDocumented(item: MethodologyItem): item is AnalyticsMetricDefinition {
-  return !("isDocumented" in item);
-}
 
 function rowValue(payload: ResolvedAnalyticsTablePayload, section: string, item: string): string | null {
   const found = payload.rows.find((row) => String(row.section) === section && String(row.item) === item);
@@ -145,19 +133,16 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka", "Data quality"]);
   const methodology = groupRowsAny(grouped, ["Metodologija", "Methodology"]);
   const methodologyMetricKeys = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          kpi
-            .map((row) => findAnalyticsMetricKeyByLabel(row.item))
-            .filter((value): value is NonNullable<typeof value> => Boolean(value))
-        )
-      ),
-    [kpi]
-  );
-  const methodologyDefinitions = useMemo(
-    () => getMetricMethodologyItems(methodologyMetricKeys),
-    [methodologyMetricKeys]
+    () => payload.methodologyMetricKeys?.length
+      ? Array.from(new Set(payload.methodologyMetricKeys))
+      : Array.from(
+          new Set(
+            kpi
+              .map((row) => findAnalyticsMetricKeyByLabel(row.item))
+              .filter((value): value is NonNullable<typeof value> => Boolean(value))
+          )
+        ),
+    [kpi, payload.methodologyMetricKeys]
   );
 
   return (
@@ -340,28 +325,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
 
       <section className="sdr-section">
         <h2>Metodologija</h2>
-        {methodologyDefinitions.length > 0 ? (
-          <div className="sdr-methodology">
-            {methodologyDefinitions.map((item) => (
-              <div key={item.key} className="sdr-method">
-                <strong>{item.label}</strong>
-                {isDocumented(item) ? (
-                  <>
-                    <p>{item.shortDescription}</p>
-                    <p><strong>Formula:</strong> {item.formula}</p>
-                    <p><strong>Izvor:</strong> {item.dataSource}</p>
-                    {item.limitations.length > 0 ? <p className="sdr-note">{item.limitations.join(" ")}</p> : null}
-                    <KpiExplainButton metricKey={item.key} ariaLabel={`Kako je izračunat KPI: ${item.label}`} />
-                  </>
-                ) : (
-                  <p>{item.message}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <MetricMethodologyPanel metricKeys={methodologyMetricKeys} dataQualityHref="/analytics/data-quality" />
         {methodology.length === 0 ? (
-          methodologyDefinitions.length === 0 ? <p className="sdr-empty">Metodologija nije dostupna.</p> : null
+          <p className="sdr-empty">Metodologija nije dostupna.</p>
         ) : (
           <div className="sdr-methodology">
             {methodology.map((row, idx) => (

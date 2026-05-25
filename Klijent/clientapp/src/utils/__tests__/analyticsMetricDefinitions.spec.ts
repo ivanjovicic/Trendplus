@@ -4,6 +4,7 @@ import {
   getMetricDefinition,
   getMetricFormula,
   getMetricMethodologyItems,
+  normalizeMetricKey,
 } from "../analyticsMetricDefinitions";
 
 describe("analyticsMetricDefinitions", () => {
@@ -17,7 +18,7 @@ describe("analyticsMetricDefinitions", () => {
   });
 
   it("handles unknown key gracefully through generic helpers", () => {
-    expect(getMetricDefinition("unknown_metric")).toBeUndefined();
+    expect(getMetricDefinition("unknown_metric").label).toBe("unknown_metric");
     expect(getMetricFormula("unknown_metric")).toContain("nije dokumentovana");
   });
 
@@ -27,5 +28,10 @@ describe("analyticsMetricDefinitions", () => {
     expect(items).toHaveLength(2);
     expect(items[0].label).toBe("Prihod");
     expect("isDocumented" in items[1]).toBe(true);
+  });
+
+  it("normalizes legacy aliases to canonical keys", () => {
+    expect(normalizeMetricKey("totalRevenue")).toBe("revenue");
+    expect(getAnalyticsMetricDefinition("totalRevenue").label).toBe("Prihod");
   });
 });

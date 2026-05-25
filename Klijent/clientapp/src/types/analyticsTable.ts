@@ -29,6 +29,7 @@ export interface ResolvedAnalyticsTablePayload {
   rows: Array<Record<string, AnalyticsScalar>>;
   filters: AnalyticsNamedValue[];
   metadata: AnalyticsNamedValue[];
+  methodologyMetricKeys?: string[];
   locale?: string;
   documentType?: string;
   templateName?: string;

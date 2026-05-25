@@ -882,7 +882,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <InfoTip text="Zbir prihoda za sve učitane scorecard dobavljače. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
               </span>
               <strong>{fmtRsd(totalRevenue)}</strong>
-              <KpiExplainButton metricKey="totalRevenue" ariaLabel="Kako je izračunat ukupan prihod" />
+              <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan prihod" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
@@ -1093,10 +1093,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <article>
                   <span>Confidence signala <InfoTip text="Backend confidence signal za scorecard signal. Ovo nije isto što i lokalni heuristic score." /></span>
                   <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.normalizedConfidence, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <KpiExplainButton metricKey="confidencePct" ariaLabel="Kako je izračunata sigurnost preporuke" />
                 </article>
                 <article>
                   <span>Pouzdanost signala</span>
                   <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                 </article>
                 <article>
                   <span>Status kvaliteta signala</span>

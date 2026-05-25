@@ -249,6 +249,15 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     tableTitle: "Trendplus izveštaj dobavljača",
     documentType: "supplier-decision-report",
     templateName: "analytics-table-default",
+    methodologyMetricKeys: [
+      "revenue",
+      "marginContribution",
+      "unitsSold",
+      "stockAtRisk",
+      "markdownDependency",
+      "confidencePct",
+      "reliabilityPct",
+    ],
     columns: [
       { key: "section", header: "Sekcija", dataType: "text" },
       { key: "item", header: "Stavka", dataType: "text" },
