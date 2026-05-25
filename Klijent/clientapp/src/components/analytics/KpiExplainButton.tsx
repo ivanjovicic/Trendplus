@@ -2,13 +2,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getMetricLabel,
-  type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import "./MetricMethodologyPanel.css";
 
 type KpiExplainButtonProps = {
-  metricKey: AnalyticsMetricKey;
+  metricKey: string;
   className?: string;
   label?: string;
   ariaLabel?: string;

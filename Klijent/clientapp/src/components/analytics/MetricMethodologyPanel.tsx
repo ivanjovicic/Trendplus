@@ -7,7 +7,7 @@ import {
 import "./MetricMethodologyPanel.css";
 
 type MetricMethodologyPanelProps = {
-  metricKey?: AnalyticsMetricKey;
+  metricKey?: AnalyticsMetricKey | string;
   metricKeys?: Array<AnalyticsMetricKey | string>;
   onClose?: () => void;
   dataQualityHref?: string | null;

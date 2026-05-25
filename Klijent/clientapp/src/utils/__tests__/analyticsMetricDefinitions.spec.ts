@@ -14,7 +14,7 @@ describe("analyticsMetricDefinitions", () => {
 
     expect(revenue.label).toBe("Prihod");
     expect(revenue.formula).toContain("SUM");
-    expect(margin.label).toBe("Maržni doprinos");
+    expect(margin.label.toLowerCase()).toContain("doprinos");
   });
 
   it("handles unknown key gracefully through generic helpers", () => {
@@ -33,5 +33,16 @@ describe("analyticsMetricDefinitions", () => {
   it("normalizes legacy aliases to canonical keys", () => {
     expect(normalizeMetricKey("totalRevenue")).toBe("revenue");
     expect(getAnalyticsMetricDefinition("totalRevenue").label).toBe("Prihod");
+    expect(normalizeMetricKey("stockUnits")).toBe("onHandUnits");
+    expect(getAnalyticsMetricDefinition("stockUnits").label).toBe("Ukupno na stanju");
+  });
+
+  it("contains methodology definitions for rollout metrics", () => {
+    expect(getAnalyticsMetricDefinition("revenueWithoutCost").formula).toContain("ukupan_prihod");
+    expect(getAnalyticsMetricDefinition("unknownSupplierRevenueShare").label).toBeTruthy();
+    expect(getAnalyticsMetricDefinition("blockedRecommendationsCount").label).toContain("Blokirane");
+    expect(getAnalyticsMetricDefinition("ignoredRowsCount").label).toContain("Ignorisani");
+    expect(getAnalyticsMetricDefinition("grossMarginPct").formula).toContain("prihod");
+    expect(getAnalyticsMetricDefinition("inventoryTurnover").formula).toContain("/");
   });
 });

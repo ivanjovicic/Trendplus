@@ -5,6 +5,7 @@ import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../
 import { resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 import { downloadExport, generateExport, waitForExport } from "../../services/exportApi";
 import {
+  findAnalyticsMetricKeyByLabel,
   type AnalyticsMetricKey,
 } from "../../utils/analyticsMetricDefinitions";
 import {
@@ -15,6 +16,7 @@ import {
 } from "../../utils/analyticsFormatters";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
+import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
 import "./PilotDataQualityIntakeReport.css";
 
@@ -257,13 +259,27 @@ function buildDurableSummary(report: PilotIntakeDurableReport): string {
 
 export default function PilotDataQualityIntakeReport({ report, loading, error, filters, durableReport, onRetry }: Props) {
   const [exportState, setExportState] = useState<string | null>(null);
-  const methodologyKeys: AnalyticsMetricKey[] = [
-    "dataReadinessScore",
-    "missingCostCount",
-    "missingSupplierCount",
-    "missingCostRevenueShare",
-    "unknownSupplierRevenueShare",
-  ];
+  const methodologyKeys = useMemo<Array<AnalyticsMetricKey | string>>(() => {
+    const fallbackKeys: AnalyticsMetricKey[] = [
+      "dataReadinessScore",
+      "missingCostCount",
+      "missingSupplierCount",
+      "revenueWithoutCost",
+      "unknownSupplierRevenueShare",
+      "blockedRecommendationsCount",
+      "ignoredRowsCount",
+    ];
+
+    const durableMethodologyKeys =
+      durableReport && typeof durableReport.methodology === "object" && Array.isArray(durableReport.methodology.metricKeys)
+        ? durableReport.methodology.metricKeys
+        : [];
+
+    const payloadMethodologyKeys =
+      (durableReport?.payload as { methodologyMetricKeys?: string[] } | undefined)?.methodologyMetricKeys ?? [];
+
+    return Array.from(new Set([...durableMethodologyKeys, ...payloadMethodologyKeys, ...fallbackKeys]));
+  }, [durableReport]);
 
   const readiness = useMemo(() => readinessTone(report?.readinessStatus ?? "critical"), [report?.readinessStatus]);
   const durableRows = durableReport?.rows ?? [];
@@ -325,6 +341,54 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
     if (durableReadinessScore >= 40) return "warning";
     return "critical";
   }, [durableReadinessScore]);
+
+  const intakeKpiCards = useMemo(() => {
+    if (!report) return [];
+    return [
+      {
+        label: "Spremnost podataka",
+        value: `${fmtNumber(report.readinessScore, 0, "-")}/100`,
+        metricKey: "dataReadinessScore" as const,
+      },
+      {
+        label: "Artikli bez dobavljača",
+        value: fmtNumber(report.issues.missingSupplierCount, 0, "-"),
+        metricKey: "missingSupplierCount" as const,
+      },
+      {
+        label: "Redovi bez nabavne cene",
+        value: fmtNumber(report.issues.missingCostCount, 0, "-"),
+        metricKey: "missingCostCount" as const,
+      },
+      {
+        label: "Prihod bez nabavne cene",
+        value: formatPercentFromRatio(report.impact.revenueWithoutCostPercent),
+        metricKey: "revenueWithoutCost" as const,
+      },
+      {
+        label: "Blokirane preporuke",
+        value: fmtNumber(report.impact.recommendationsBlockedCount, 0, "-"),
+        metricKey: "blockedRecommendationsCount" as const,
+      },
+    ];
+  }, [report]);
+
+  const durableKpiCards = useMemo(() => {
+    if (!durableReport?.kpis || durableReport.kpis.length === 0) return [];
+    return durableReport.kpis.map((kpi) => {
+      const resolvedMetricKey =
+        findAnalyticsMetricKeyByLabel(kpi.label)
+        ?? findAnalyticsMetricKeyByLabel(kpi.key)
+        ?? kpi.key
+        ?? kpi.label;
+
+      return {
+        label: kpi.label,
+        value: formatDurableValue(kpi.value),
+        metricKey: resolvedMetricKey,
+      };
+    });
+  }, [durableReport]);
 
   const renderDurableSection = (title: string, rows: typeof durableRows, emptyMessage: string) => (
     <section className="pilot-card">
@@ -504,6 +568,22 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
       {report ? (
         <>
+          <section className="pilot-card">
+            <h3>Ključni KPI signali</h3>
+            <div className="pilot-kpi-grid">
+              {intakeKpiCards.map((kpi) => (
+                <article key={kpi.label} className="pilot-kpi-card">
+                  <span>{kpi.label}</span>
+                  <strong>{kpi.value}</strong>
+                  <KpiExplainButton
+                    metricKey={kpi.metricKey}
+                    ariaLabel={`Kako je izračunato: ${kpi.label}`}
+                  />
+                </article>
+              ))}
+            </div>
+          </section>
+
           <article className={`pilot-intake-score ${readiness}`}>
             <div>
               <span>Skor spremnosti</span>
@@ -582,6 +662,24 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
       {!report && durableReport ? (
         <>
+          {durableKpiCards.length > 0 ? (
+            <section className="pilot-card">
+              <h3>Ključni KPI signali</h3>
+              <div className="pilot-kpi-grid">
+                {durableKpiCards.map((kpi, index) => (
+                  <article key={`${kpi.label}-${index}`} className="pilot-kpi-card">
+                    <span>{kpi.label}</span>
+                    <strong>{kpi.value}</strong>
+                    <KpiExplainButton
+                      metricKey={kpi.metricKey}
+                      ariaLabel={`Kako je izračunato: ${kpi.label}`}
+                    />
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <article className={`pilot-intake-score ${durableReadinessTone}`}>
             <div>
               <span>Skor spremnosti</span>

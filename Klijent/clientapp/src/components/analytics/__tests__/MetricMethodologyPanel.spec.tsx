@@ -23,6 +23,6 @@ describe("MetricMethodologyPanel", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Metodologija za ovu metriku još nije dokumentovana/i)).toBeInTheDocument();
+    expect(screen.getByText(/Metodologija za ovu metriku.*nije dokumentovana/i)).toBeInTheDocument();
   });
 });

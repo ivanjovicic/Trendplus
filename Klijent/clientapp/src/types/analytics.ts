@@ -680,6 +680,7 @@ export interface DurableReportMethodology {
   summary: string;
   notes: string[];
   sourceHints?: string[];
+  metricKeys?: string[];
 }
 
 export interface DurableReportPayloadColumn {

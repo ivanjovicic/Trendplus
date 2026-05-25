@@ -129,6 +129,29 @@
   font-size: 13px;
 }
 
+.pilot-kpi-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.pilot-kpi-card {
+  border: 1px solid var(--border-default, rgba(138, 160, 214, 0.3));
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.pilot-kpi-card span {
+  font-size: 12px;
+  color: var(--text-secondary, #8fa0c2);
+}
+
+.pilot-kpi-card strong {
+  font-size: 16px;
+}
+
 .pilot-list-secondary {
   color: var(--text-muted, #8fa0c2);
   font-size: 12px;

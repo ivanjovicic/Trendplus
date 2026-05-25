@@ -201,7 +201,10 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
                 <span>{row.item}</span>
                 <strong>{row.value}</strong>
                 {row.secondary ? <small>{row.secondary}</small> : null}
-                {metricKey ? <KpiExplainButton metricKey={metricKey} /> : null}
+                <KpiExplainButton
+                  metricKey={metricKey ?? row.item}
+                  ariaLabel={`Kako je izračunato: ${row.item}`}
+                />
               </article>
             );
           })}
