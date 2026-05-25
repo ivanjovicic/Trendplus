@@ -62,6 +62,9 @@ public interface IAnalyticsCacheService
 public static class AnalyticsCacheKeys
 {
     public const string Prefix = "analytics:";
+    public const string ReportNamespace = $"{Prefix}analytics-report:";
+    public const string SupplierDecisionReportPrefix = $"{ReportNamespace}supplier-decision:";
+    public const string PilotIntakeReportPrefix = $"{ReportNamespace}pilot-intake:";
     public const string ObservabilityLogsPrefix = $"{Prefix}observability:logs:";
     public const string ObservabilityPerformancePrefix = $"{Prefix}observability:performance:";
 
@@ -378,7 +381,7 @@ public static class AnalyticsCacheKeys
         int? supplierId,
         int? storeId = null,
         string? dataScope = null) =>
-        $"{Prefix}analytics-report:supplier-decision:v1:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
+        $"{SupplierDecisionReportPrefix}v1:{SupplierDecisionHubFilters(from, to, category, gender, seasonId, minRevenue, onlyHighConfidence, excludeOosBeforeMarkdown, supplierId, storeId, dataScope)}";
 
     public static string PilotIntakeReport(
         DateTime? from,
@@ -386,7 +389,7 @@ public static class AnalyticsCacheKeys
         int? storeId = null,
         int? supplierId = null,
         string? dataScope = null) =>
-        $"{Prefix}analytics-report:pilot-intake:v1:from:{FormatInstant(from)}:to:{FormatInstant(to)}:store:{FormatNullable(storeId)}:supplier:{FormatNullable(supplierId)}:scope:{NormalizeDataScope(dataScope)}";
+        $"{PilotIntakeReportPrefix}v1:from:{FormatInstant(from)}:to:{FormatInstant(to)}:store:{FormatNullable(storeId)}:supplier:{FormatNullable(supplierId)}:scope:{NormalizeDataScope(dataScope)}";
 
     public static string PreNivelacijaPriority(
         int? supplierId,

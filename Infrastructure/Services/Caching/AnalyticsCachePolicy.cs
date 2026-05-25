@@ -12,6 +12,7 @@ public static class AnalyticsCachePolicy
     public const string DataQualityFamily = "data-quality";
     public const string PrePostFamily = "pre-post";
     public const string PreNivelacijaPrioritetiFamily = "pre-nivelacija-prioriteti";
+    public const string ReportsFamily = "reports";
 
     public static readonly string[] CoreFamilies =
     [
@@ -21,7 +22,8 @@ public static class AnalyticsCachePolicy
         InventoryFamily,
         DataQualityFamily,
         PrePostFamily,
-        PreNivelacijaPrioritetiFamily
+        PreNivelacijaPrioritetiFamily,
+        ReportsFamily
     ];
 
     public static readonly AnalyticsCachePolicyEntry DashboardBootstrap = new(
@@ -59,6 +61,7 @@ public static class AnalyticsCachePolicy
             InventoryFamily => Inventory,
             DataQualityFamily => DataQuality,
             PrePostFamily or "pre-nivelacija" or PreNivelacijaPrioritetiFamily => PrePost,
+            ReportsFamily => CacheExpiration.Long.WithStaleAfter(TimeSpan.FromMinutes(10)),
             _ => CacheExpiration.Medium.WithStaleAfter(TimeSpan.FromMinutes(2))
         };
     }
@@ -75,6 +78,7 @@ public static class AnalyticsCachePolicy
             DataQualityFamily => "analytics:data-quality",
             PrePostFamily => "analytics:pre-post",
             "pre-nivelacija" or PreNivelacijaPrioritetiFamily => "analytics:pre-nivelacija-prioriteti",
+            ReportsFamily => AnalyticsCacheKeys.ReportNamespace,
             _ => AnalyticsCacheKeys.Prefix
         };
     }

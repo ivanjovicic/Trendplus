@@ -16,6 +16,7 @@ public sealed class AnalyticsCacheAdminServiceTests
     [InlineData(AnalyticsCachePolicy.DataQualityFamily, "analytics:data-quality")]
     [InlineData(AnalyticsCachePolicy.PrePostFamily, "analytics:pre-post")]
     [InlineData(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, "analytics:pre-nivelacija-prioriteti")]
+    [InlineData(AnalyticsCachePolicy.ReportsFamily, "analytics:analytics-report:")]
     [InlineData("pre-nivelacija", "analytics:pre-nivelacija-prioriteti")]
     public void ResolveFamilyPrefix_ReturnsCanonicalPrefix(string family, string expectedPrefix)
     {
@@ -42,7 +43,8 @@ public sealed class AnalyticsCacheAdminServiceTests
             [
                 AnalyticsCachePolicy.DashboardFamily,
                 AnalyticsCachePolicy.DataQualityFamily,
-                AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily
+                AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily,
+                AnalyticsCachePolicy.ReportsFamily
             ],
             CancellationToken.None);
 
@@ -50,13 +52,14 @@ public sealed class AnalyticsCacheAdminServiceTests
             [
                 "analytics:dashboard",
                 "analytics:data-quality",
-                "analytics:pre-nivelacija-prioriteti"
+                "analytics:pre-nivelacija-prioriteti",
+                "analytics:analytics-report:"
             ],
             cache.RemovedPrefixes);
         Assert.True(state.IsShared);
         Assert.Equal("redis", state.Storage);
         Assert.Null(state.Warning);
-        Assert.Equal("dashboard,data-quality,pre-nivelacija-prioriteti", state.LastClearFamily);
+        Assert.Equal("dashboard,data-quality,pre-nivelacija-prioriteti,reports", state.LastClearFamily);
         Assert.NotNull(state.LastClearAtUtc);
 
         var reloaded = await sut.GetStateAsync(CancellationToken.None);

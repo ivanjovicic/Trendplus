@@ -2044,7 +2044,7 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(new
             {
                 success = true,
-                message = "Analytics cache invalidiran",
+                message = "Analytics cache invalidiran (uključuje i report cache).",
                 lastClearAtUtc = state.LastClearAtUtc,
                 lastClearFamily = state.LastClearFamily,
                 isShared = state.IsShared,
