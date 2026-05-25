@@ -32,8 +32,15 @@ export default function SupplierDecisionReportPage() {
   const fromDate = searchParams.get("fromDate");
   const toDate = searchParams.get("toDate");
   const scope = searchParams.get("scope");
+  const dataScope = searchParams.get("dataScope");
   const supplierId = searchParams.get("supplierId");
   const storeId = searchParams.get("storeId");
+  const category = searchParams.get("category");
+  const gender = searchParams.get("gender");
+  const seasonId = searchParams.get("seasonId");
+  const minRevenue = searchParams.get("minRevenue");
+  const onlyHighConfidence = searchParams.get("onlyHighConfidence");
+  const excludeOosBeforeMarkdown = searchParams.get("excludeOosBeforeMarkdown");
 
   const [backendPayload, setBackendPayload] = useState<ResolvedAnalyticsTablePayload | null>(null);
   const [backendError, setBackendError] = useState<ReportLoadError | null>(null);
@@ -41,7 +48,20 @@ export default function SupplierDecisionReportPage() {
   const [reloadTick, setReloadTick] = useState(0);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const hasDurableParams = Boolean(fromDate || toDate || scope || supplierId || storeId);
+  const hasDurableParams = Boolean(
+    fromDate
+    || toDate
+    || scope
+    || dataScope
+    || supplierId
+    || storeId
+    || category
+    || gender
+    || seasonId
+    || minRevenue
+    || onlyHighConfidence
+    || excludeOosBeforeMarkdown
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -62,8 +82,15 @@ export default function SupplierDecisionReportPage() {
           fromDate,
           toDate,
           scope,
+          dataScope,
           supplierId: supplierId ? Number(supplierId) : null,
           storeId: storeId ? Number(storeId) : null,
+          category,
+          gender,
+          seasonId: seasonId ? Number(seasonId) : null,
+          minRevenue: minRevenue ? Number(minRevenue) : null,
+          onlyHighConfidence: onlyHighConfidence ? onlyHighConfidence.toLowerCase() === "true" : null,
+          excludeOosBeforeMarkdown: excludeOosBeforeMarkdown ? excludeOosBeforeMarkdown.toLowerCase() === "true" : null,
         });
 
         if (cancelled) return;
@@ -110,21 +137,58 @@ export default function SupplierDecisionReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromDate, hasDurableParams, reloadTick, scope, storeId, supplierId, toDate]);
+  }, [
+    category,
+    dataScope,
+    excludeOosBeforeMarkdown,
+    fromDate,
+    gender,
+    hasDurableParams,
+    minRevenue,
+    onlyHighConfidence,
+    reloadTick,
+    scope,
+    seasonId,
+    storeId,
+    supplierId,
+    toDate,
+  ]);
 
   const legacyPayload = useMemo(() => getPrintPayload(stateKey), [stateKey]);
   const hasLegacyFallback = Boolean(legacyPayload);
-  const showLegacyWarning = Boolean(backendError && hasDurableParams && hasLegacyFallback);
+  const showLegacyBackendFallbackWarning = Boolean(backendError && hasDurableParams && hasLegacyFallback);
+  const showStatePreviewWarning = Boolean(!hasDurableParams && hasLegacyFallback);
   const payload = backendPayload ?? legacyPayload;
+
   const durableReportHref = useMemo(() => {
     const params = new URLSearchParams();
     if (fromDate) params.set("fromDate", fromDate);
     if (toDate) params.set("toDate", toDate);
     if (scope) params.set("scope", scope);
+    if (dataScope) params.set("dataScope", dataScope);
     if (supplierId) params.set("supplierId", supplierId);
     if (storeId) params.set("storeId", storeId);
+    if (category) params.set("category", category);
+    if (gender) params.set("gender", gender);
+    if (seasonId) params.set("seasonId", seasonId);
+    if (minRevenue) params.set("minRevenue", minRevenue);
+    if (onlyHighConfidence) params.set("onlyHighConfidence", onlyHighConfidence);
+    if (excludeOosBeforeMarkdown) params.set("excludeOosBeforeMarkdown", excludeOosBeforeMarkdown);
     return params.toString() ? `/analytics/supplier/report?${params.toString()}` : null;
-  }, [fromDate, scope, storeId, supplierId, toDate]);
+  }, [
+    category,
+    dataScope,
+    excludeOosBeforeMarkdown,
+    fromDate,
+    gender,
+    minRevenue,
+    onlyHighConfidence,
+    scope,
+    seasonId,
+    storeId,
+    supplierId,
+    toDate,
+  ]);
 
   if (loading && !payload) {
     return (
@@ -158,7 +222,7 @@ export default function SupplierDecisionReportPage() {
     return (
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
-          title="Izveštaj nije dostupan"
+          title="Pregled izveštaja je istekao"
           message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
           reasons={[
             "Za trajni dokument koristite PDF/Excel export ili ponovo generišite report iz pregleda dobavljača.",
@@ -172,13 +236,6 @@ export default function SupplierDecisionReportPage() {
           dataQualityHref="/analytics/data-quality"
           variant="filtered_out"
         />
-        <div className="sdrp-expired-actions sdrp-actions no-print">
-          <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori Scorecard</Link>
-          <button type="button" className="sdrp-print" onClick={() => setReloadTick((prev) => prev + 1)}>Ponovo učitaj</button>
-        </div>
-        <p className="sdrp-expired-note">
-          Za trajni dokument koristite PDF/Excel export ili ponovo generišite report iz pregleda dobavljača.
-        </p>
       </div>
     );
   }
@@ -198,9 +255,14 @@ export default function SupplierDecisionReportPage() {
         />
       ) : null}
 
-      {showLegacyWarning ? (
+      {showLegacyBackendFallbackWarning ? (
         <div className="sdrp-warning-banner no-print" role="status">
           Backend report trenutno nije dostupan. Prikazujemo privremeni browser preview.
+        </div>
+      ) : null}
+      {showStatePreviewWarning ? (
+        <div className="sdrp-warning-banner no-print" role="status">
+          Prikazujemo privremeni browser preview. Za trajan dokument otvorite report kroz query parametre.
         </div>
       ) : null}
 
@@ -222,3 +284,4 @@ export default function SupplierDecisionReportPage() {
     </div>
   );
 }
+

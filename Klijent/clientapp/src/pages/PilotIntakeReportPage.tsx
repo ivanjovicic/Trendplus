@@ -45,6 +45,7 @@ function mapLegacyPayloadToDurable(
     fromDate: string | null;
     toDate: string | null;
     scope: string | null;
+    dataScope: string | null;
     storeId: string | null;
     supplierId: string | null;
   }
@@ -81,14 +82,15 @@ function mapLegacyPayloadToDurable(
   if (query.fromDate) stableParams.set("fromDate", query.fromDate);
   if (query.toDate) stableParams.set("toDate", query.toDate);
   if (query.scope) stableParams.set("scope", query.scope);
+  if (query.dataScope) stableParams.set("dataScope", query.dataScope);
   if (query.storeId) stableParams.set("storeId", query.storeId);
   if (query.supplierId) stableParams.set("supplierId", query.supplierId);
 
   return {
     reportId: metadataMap.get("reportId") ?? `pilot-intake-legacy-${stateKey ?? "preview"}`,
     stableQueryUrl: stableParams.toString()
-      ? `/analytics/data-quality/pilot-intake-report?${stableParams.toString()}`
-      : "/analytics/data-quality/pilot-intake-report",
+      ? `/analytics/reports/pilot-intake?${stableParams.toString()}`
+      : "/analytics/reports/pilot-intake",
     reportTitle: payload.tableTitle || "Trendplus pilot izveštaj kvaliteta podataka",
     reportType: payload.documentType || "pilot-intake",
     generatedAtUtc: metadataMap.get("generatedAtUtc") ?? new Date().toISOString(),
@@ -150,6 +152,7 @@ export default function PilotIntakeReportPage() {
   const fromDate = searchParams.get("fromDate");
   const toDate = searchParams.get("toDate");
   const scope = searchParams.get("scope");
+  const dataScope = searchParams.get("dataScope");
   const storeId = searchParams.get("storeId");
   const supplierId = searchParams.get("supplierId");
 
@@ -160,11 +163,11 @@ export default function PilotIntakeReportPage() {
   const [loading, setLoading] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const hasDurableParams = Boolean(fromDate || toDate || scope || storeId || supplierId);
+  const hasDurableParams = Boolean(fromDate || toDate || scope || dataScope || storeId || supplierId);
   const legacyPayload = useMemo(() => getPrintPayload(stateKey), [stateKey]);
   const legacyDurableReport = useMemo(
-    () => (legacyPayload ? mapLegacyPayloadToDurable(legacyPayload, stateKey, { fromDate, toDate, scope, storeId, supplierId }) : null),
-    [fromDate, legacyPayload, scope, stateKey, storeId, supplierId, toDate]
+    () => (legacyPayload ? mapLegacyPayloadToDurable(legacyPayload, stateKey, { fromDate, toDate, scope, dataScope, storeId, supplierId }) : null),
+    [dataScope, fromDate, legacyPayload, scope, stateKey, storeId, supplierId, toDate]
   );
 
   useEffect(() => {
@@ -180,6 +183,7 @@ export default function PilotIntakeReportPage() {
             fromDate,
             toDate,
             scope,
+            dataScope,
             storeId: storeId ? Number(storeId) : null,
             supplierId: supplierId ? Number(supplierId) : null,
           })
@@ -227,10 +231,11 @@ export default function PilotIntakeReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromDate, hasDurableParams, reloadTick, scope, storeId, supplierId, toDate]);
+  }, [dataScope, fromDate, hasDurableParams, reloadTick, scope, storeId, supplierId, toDate]);
 
   const resolvedReport = durableReport ?? legacyDurableReport;
   const showLegacyWarning = Boolean(backendError && hasDurableParams && legacyDurableReport);
+  const showStatePreviewWarning = Boolean(!hasDurableParams && legacyDurableReport);
 
   if (loading && !resolvedReport) {
     return (
@@ -264,14 +269,15 @@ export default function PilotIntakeReportPage() {
     return (
       <div className="pilot-intake-report-page">
         <AnalyticsEmptyState
-          title="Izveštaj nije dostupan"
+          title="Pregled izveštaja je istekao"
           message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
           reasons={[
-            "Za trajni dokument koristite print/CSV/Excel export ili ponovo generišite report iz Data Quality ekrana.",
+            "Za trajni dokument koristite PDF/Excel export ili ponovo generišite report iz Data Quality pregleda.",
           ]}
           actions={[
             { label: "Vrati se na Data Quality", href: "/analytics/data-quality" },
             { label: "Ponovo generiši report", href: "/analytics/data-quality" },
+            { label: "Otvori Pilot Intake", href: "/analytics/reports/pilot-intake" },
           ]}
           variant="filtered_out"
           dataQualityHref="/analytics/data-quality"
@@ -310,6 +316,11 @@ export default function PilotIntakeReportPage() {
           Backend report trenutno nije dostupan. Prikazujemo privremeni browser preview.
         </div>
       ) : null}
+      {showStatePreviewWarning ? (
+        <div className="pirp-warning-banner no-print" role="status">
+          Prikazujemo privremeni browser preview. Za trajan dokument otvorite report kroz query parametre.
+        </div>
+      ) : null}
 
       <div className="pirp-actions no-print">
         <Link to="/analytics/data-quality" className="pirp-back-link">Vrati se na Data Quality</Link>
@@ -327,3 +338,4 @@ export default function PilotIntakeReportPage() {
     </div>
   );
 }
+

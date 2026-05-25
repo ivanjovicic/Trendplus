@@ -864,6 +864,12 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   supplierId?: number | null;
   scope?: string | null;
   dataScope?: string | null;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean | null;
+  excludeOosBeforeMarkdown?: boolean | null;
 }): Promise<SupplierDecisionDurableReport> {
   const params = new URLSearchParams();
   if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
@@ -872,6 +878,12 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   if (paramsInput.supplierId != null) params.set("supplierId", String(paramsInput.supplierId));
   if (paramsInput.scope) params.set("scope", paramsInput.scope);
   if (paramsInput.dataScope) params.set("dataScope", paramsInput.dataScope);
+  if (paramsInput.category) params.set("category", paramsInput.category);
+  if (paramsInput.gender) params.set("gender", paramsInput.gender);
+  if (paramsInput.seasonId != null) params.set("seasonId", String(paramsInput.seasonId));
+  if (paramsInput.minRevenue != null) params.set("minRevenue", String(paramsInput.minRevenue));
+  if (paramsInput.onlyHighConfidence != null) params.set("onlyHighConfidence", String(paramsInput.onlyHighConfidence));
+  if (paramsInput.excludeOosBeforeMarkdown != null) params.set("excludeOosBeforeMarkdown", String(paramsInput.excludeOosBeforeMarkdown));
 
   return fetchJson(
     "/api/analytics/reports/supplier-decision",
