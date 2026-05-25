@@ -192,6 +192,70 @@ public sealed class AnalyticsReportsContractTests
         Assert.Empty(report.Kpis);
     }
 
+    // ──────────────────────────────────────────────────────────────────
+    // No-fake-zero regression: pilot intake readiness threshold
+    // ──────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void PilotIntakeReport_ReadinessAboveThreshold_AllowsRecommendationAndPopulatesKpis()
+    {
+        // readinessScore=85 >= 70 threshold + valid data → recommendation allowed, KPIs shown
+        var intake = CreatePilotIntakeReport(85, AnalyticsResponseMetaFactory.Success());
+        var period = (
+            FromUtc: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            ToUtc: new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            ToExclusiveUtc: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.True(report.RecommendationAllowed);
+        Assert.NotEmpty(report.Kpis);
+        Assert.Contains(report.Kpis, k => k.Key == "readinessScore");
+    }
+
+    [Fact]
+    public void PilotIntakeReport_ReadinessBelowThreshold_DisablesRecommendationWithKpisPresent()
+    {
+        // readinessScore=40 < 70 threshold but data exists → recommendation disabled, KPIs still shown (no fake-zero suppression)
+        var intake = CreatePilotIntakeReport(40, AnalyticsResponseMetaFactory.Success());
+        var period = (
+            FromUtc: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            ToUtc: new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            ToExclusiveUtc: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.False(report.RecommendationAllowed);
+        // KPIs must still be populated — low readiness disables recommendation but does not suppress data display
+        Assert.NotEmpty(report.Kpis);
+        Assert.Contains(report.Kpis, k => k.Key == "readinessScore");
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // No-fake-zero regression: scorecard 30d empty → no silent 180d fallback
+    // ──────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Scorecard_Explicit30dFilters_EmptyDataset_InsufficientDataNotFakeZeroAndPeriodIsNot180d()
+    {
+        // 30d explicit range with no supplier rows → insufficient_data meta, period stays 30d (not silently expanded to 180d)
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29); // 30 day window
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all");
+        var emptyDataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [], 0, 0, new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(emptyDataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, emptyDataset, filters);
+
+        Assert.Equal("insufficient_data", report.DataQualityStatus);
+        Assert.Empty(report.Kpis);
+        Assert.False(report.RecommendationAllowed);
+        // Requested dataset must be "30d", not silently expanded to "180d"
+        Assert.Equal("30d", report.Period.RequestedDataset);
+    }
+
     [Fact]
     public void ReportCacheKeysDifferentiateCriticalDimensions()
     {

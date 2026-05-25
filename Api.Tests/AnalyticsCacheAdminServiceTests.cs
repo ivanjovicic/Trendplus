@@ -155,6 +155,36 @@ public sealed class AnalyticsCacheAdminServiceTests
         Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
     }
 
+    [Fact]
+    public async Task ReportCacheVersion_AfterVersionBump_SupplierReportKeyBecomesStale()
+    {
+        // Full stale-key contract: after version bump, cache key generated with old version
+        // no longer matches the key used by the handler → old cached entry won't be returned.
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+        var fromUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+
+        var vBefore = await sut.GetReportCacheVersionAsync();
+        await sut.ClearAsync(AnalyticsCachePolicy.ReportsFamily, CancellationToken.None);
+        var vAfter = await sut.GetReportCacheVersionAsync();
+
+        var staleKey = AnalyticsCacheKeys.SupplierDecisionReport(
+            fromUtc, toUtc, null, null, null, null, false, false, null, null, "all",
+            reportCacheVersion: vBefore);
+        var freshKey = AnalyticsCacheKeys.SupplierDecisionReport(
+            fromUtc, toUtc, null, null, null, null, false, false, null, null, "all",
+            reportCacheVersion: vAfter);
+
+        Assert.Equal(vBefore + 1, vAfter);
+        Assert.NotEqual(staleKey, freshKey);
+        Assert.Contains($":rv:{vAfter}:", freshKey);
+        Assert.DoesNotContain($":rv:{vAfter}:", staleKey);
+    }
+
     private sealed class RecordingAnalyticsCacheService : IAnalyticsCacheService
     {
         public List<string> RemovedPrefixes { get; } = [];

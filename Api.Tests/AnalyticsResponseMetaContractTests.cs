@@ -345,4 +345,30 @@ public sealed class AnalyticsResponseMetaContractTests
         Assert.True(meta.IsPartial);
         Assert.Equal("ANALYTICS_PARTIAL_DATA", meta.WarningCode);
     }
+
+    // ──────────────────────────────────────────────────────────────────
+    // No-fake-zero regression: inventory empty vs error
+    // ──────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Inventory_EmptyBalance_HasEmptyMetaNotFakeZero()
+    {
+        // TotalSku=0 because the store has no articles → real empty state, not a fake zero from an error
+        var response = new InventoryBalanceDto(
+            TotalSku: 0,
+            TotalOnHand: 0,
+            LowStockCount: 0,
+            OutOfStockCount: 0,
+            EstimatedInventoryValue: 0m,
+            Meta: AnalyticsResponseMetaFactory.Empty(
+                emptyReason: "no_inventory_data",
+                message: "Nema podataka o zalihama.",
+                dataQualityStatus: null));
+
+        // Empty = success=true with EmptyReason set, distinct from error (ErrorCode null)
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_inventory_data", response.Meta.EmptyReason);
+        Assert.Null(response.Meta.ErrorCode);
+        Assert.Equal(0, response.TotalSku);
+    }
 }
