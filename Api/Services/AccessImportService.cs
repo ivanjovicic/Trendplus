@@ -329,6 +329,7 @@ using NpgsqlTypes;
     private readonly TrendplusDbContext _trendDb;
     private readonly AnalyticsDbContext _analyticsDb;
     private readonly IAnalyticsCacheService? _analyticsCache;
+    private readonly AnalyticsCacheAdminService? _cacheAdmin;
     private readonly ILogger<AccessImportService> _logger;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
@@ -372,6 +373,7 @@ using NpgsqlTypes;
         ILogger<AccessImportService> logger,
         IOptions<AccessImportOptions>? options = null,
         IAnalyticsCacheService? analyticsCache = null,
+        AnalyticsCacheAdminService? cacheAdmin = null,
         IServiceScopeFactory? serviceScopeFactory = null,
         IAccessImportJobQueue? jobQueue = null,
         IAccessImportCursorRepository? cursorRepository = null,
@@ -383,6 +385,7 @@ using NpgsqlTypes;
         _logger = logger;
         _options = options?.Value ?? new AccessImportOptions();
         _analyticsCache = analyticsCache;
+        _cacheAdmin = cacheAdmin;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
@@ -2487,11 +2490,14 @@ using NpgsqlTypes;
                     if (includeAnalytics)
                         await SyncAnalyticsAsync(result, transactionCt);
 
-                    if (_analyticsCache is not null || _serviceScopeFactory is not null)
+                    if (_cacheAdmin is not null || _analyticsCache is not null)
                     {
                         try
                         {
-                            await InvalidateAnalyticsCacheAsync(transactionCt);
+                            if (_cacheAdmin is not null)
+                                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, transactionCt);
+                            else
+                                await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
                         }
                         catch (Exception cacheEx)
                         {
@@ -3634,9 +3640,13 @@ using NpgsqlTypes;
             batchId);
 
         var cacheInvalidated = false;
-        if (includeAnalytics && (_analyticsCache is not null || _serviceScopeFactory is not null))
+        if (includeAnalytics && (_cacheAdmin is not null || _analyticsCache is not null))
         {
-            cacheInvalidated = await InvalidateAnalyticsCacheAsync(ct);
+            if (_cacheAdmin is not null)
+                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+            else
+                await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+            cacheInvalidated = true;
         }
 
         _logger.LogInformation(
@@ -3668,35 +3678,6 @@ using NpgsqlTypes;
             SummaryRowsDeleted = summaryDeleted,
             CacheInvalidated = cacheInvalidated
         };
-    }
-
-    private async Task<bool> InvalidateAnalyticsCacheAsync(CancellationToken ct)
-    {
-        if (_serviceScopeFactory is not null)
-        {
-            try
-            {
-                await using var scope = _serviceScopeFactory.CreateAsyncScope();
-                var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
-                if (cacheAdmin is not null)
-                {
-                    await cacheAdmin.ClearAsync("all", ct);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Analytics cache admin invalidation failed. Falling back to raw prefix invalidation.");
-            }
-        }
-
-        if (_analyticsCache is null)
-        {
-            return false;
-        }
-
-        await _analyticsCache.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
-        return true;
     }
 
     private async Task<DeleteBatchHeader?> GetDeleteBatchHeaderAsync(long batchId, CancellationToken ct)

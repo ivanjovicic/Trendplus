@@ -21,6 +21,7 @@ Trenutno standardizovane core familije su:
 - `data-quality`
 - `pre-post`
 - `pre-nivelacija-prioriteti`
+- `reports` ← trajan report cache; verzionisan sa `rv:{version}` tokenom
 
 Mapiranje prefiksa je definisano u `AnalyticsCachePolicy.ResolveFamilyPrefix(...)`.
 
@@ -35,8 +36,34 @@ Podržani tokovi:
 
 Trenutno su povezani sledeći lifecycle hook-ovi:
 
-- `AccessImportService`: posle uspešnog importa i pri delete-batch analytics cleanup-u koristi centralnu invalidaciju, sa fallback-om na sirovi prefix purge ako admin service nije dostupan
-- `NightlyAnalyticsRefreshWorker`: posle uspešnog refresh-a invalidira sve core familije
+- `AccessImportService`: posle uspešnog importa i pri delete-batch analytics cleanup-u poziva `cacheAdmin.ClearFamiliesAsync(CoreFamilies)` što uključuje `reports` family i bumpa `ReportCacheVersion`. Fallback na sirovi prefix purge ako admin service nije dostupan.
+- `NightlyAnalyticsRefreshWorker`: posle uspešnog refresh-a invalidira sve core familije uključujući `reports` → bumpa `ReportCacheVersion` i setuje `LastReportCacheClearAtUtc`.
+- `AnalyticsDataQualityHealthWorker`: invalidira `data-quality` i `reports` familije.
+
+## Report cache verzionisanje
+
+Trajan report cache (Supplier Decision Report, Pilot Intake Report, itd.) koristi versioned ključeve:
+
+```
+analytics:analytics-report:<slug>:rv:{version}:...
+```
+
+Verzija se čuva u `AnalyticsCacheKeys.ReportVersionTokenKey` i persista u Redis-u kada je dostupan.
+
+Svaki put kada se `reports` family invalidira:
+- `BumpReportCacheVersionAsync` inkrementira verziju
+- `LastReportCacheClearAtUtc` se setuje
+- Svi stari ključevi automatski postaju neaktivni (jer nova verzija generiše drugačiji ključ)
+
+| Tok                            | Bumpa report version? | Setuje LastReportCacheClearAtUtc? |
+|--------------------------------|----------------------|-----------------------------------|
+| AccessImportService import     | ✅ (via CoreFamilies)  | ✅                                 |
+| AccessImportService delete     | ✅ (via CoreFamilies)  | ✅                                 |
+| NightlyAnalyticsRefreshWorker  | ✅ (via CoreFamilies)  | ✅                                 |
+| AnalyticsDataQualityHealthWorker | ✅ (explicitno)      | ✅                                 |
+| Admin `ClearAsync("all")`      | ✅                    | ✅                                 |
+| Admin `ClearAsync("reports")` | ✅                    | ✅                                 |
+| Admin `ClearAsync("dashboard")` | ❌                   | ❌                                 |
 
 ## Deljeni clear-state
 
@@ -73,6 +100,9 @@ Dodate regresije proveravaju:
 
 - kanonsko mapiranje family -> prefix
 - multi-family invalidaciju i shared clear-state persistenciju
+- `ClearFamiliesAsync(CoreFamilies)` bumpa report version (pokriva import i nightly refresh tok)
+- `ClearFamiliesAsync([non-report])` ne bumpa report version niti setuje `LastReportCacheClearAtUtc`
+- `ClearAsync("reports")` bumpa report version token
 - stale cache meta factory kontrakt (`STALE_CACHE`)
 
 ## Operativna napomena

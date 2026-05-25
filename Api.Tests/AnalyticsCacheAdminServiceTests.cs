@@ -115,6 +115,46 @@ public sealed class AnalyticsCacheAdminServiceTests
         Assert.NotNull(state.LastReportCacheClearAtUtc);
     }
 
+    [Fact]
+    public async Task ClearFamiliesAsync_CoreFamilies_BumpsReportCacheVersion()
+    {
+        // CoreFamilies includes ReportsFamily → bumps report version
+        // This is the path taken by NightlyAnalyticsRefreshWorker and AccessImportService
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var before = await sut.GetReportCacheVersionAsync();
+        var state = await sut.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, CancellationToken.None);
+
+        Assert.True(state.ReportCacheVersion > before);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
+        Assert.Contains(AnalyticsCacheKeys.ReportNamespace, cache.RemovedPrefixes);
+    }
+
+    [Fact]
+    public async Task ClearFamiliesAsync_NonReportFamily_DoesNotBumpReportVersion()
+    {
+        // Clearing only a non-report family must NOT bump the report cache version
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var before = await sut.GetReportCacheVersionAsync();
+        var state = await sut.ClearFamiliesAsync(
+            [AnalyticsCachePolicy.DashboardFamily],
+            CancellationToken.None);
+
+        Assert.Equal(before, state.ReportCacheVersion);
+        Assert.Null(state.LastReportCacheClearAtUtc);
+        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
+    }
+
     private sealed class RecordingAnalyticsCacheService : IAnalyticsCacheService
     {
         public List<string> RemovedPrefixes { get; } = [];
