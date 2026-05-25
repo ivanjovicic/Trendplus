@@ -110,6 +110,17 @@ public static class AnalyticsCacheKeys
         return Convert.ToHexString(bytes)[..16].ToLowerInvariant();
     }
 
+    public static string SafeKeyFingerprint(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return "empty";
+        }
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(key.Trim()));
+        return Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+    }
+
     private static string FilterSuffix(int? storeId, int? supplierId, string? dataScope = null) =>
         $"store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
     

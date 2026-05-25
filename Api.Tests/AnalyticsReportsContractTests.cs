@@ -230,6 +230,22 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEqual(pilotBase, pilotVersion2);
     }
 
+    [Fact]
+    public void ReportCacheKeyFingerprint_IsStableAndDoesNotExposeOriginalKey()
+    {
+        const string keyA = "analytics:analytics-report:supplier-decision:v1:rv:2:from:202601010000:to:202603310000:supplier:42:store:7:scope:imported";
+        const string keyB = "analytics:analytics-report:supplier-decision:v1:rv:2:from:202601010000:to:202603310000:supplier:43:store:7:scope:imported";
+
+        var hashA1 = AnalyticsCacheKeys.SafeKeyFingerprint(keyA);
+        var hashA2 = AnalyticsCacheKeys.SafeKeyFingerprint(keyA);
+        var hashB = AnalyticsCacheKeys.SafeKeyFingerprint(keyB);
+
+        Assert.Equal(hashA1, hashA2);
+        Assert.NotEqual(hashA1, hashB);
+        Assert.DoesNotContain(keyA, hashA1, StringComparison.Ordinal);
+        Assert.DoesNotContain("analytics-report", hashA1, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact(DisplayName = "SupplierDecisionReport_CacheHit_ReturnsCachedReportAndCorrelationMeta")]
     public async Task SupplierDecisionReport_CacheHit_ReturnsCachedReportAndCorrelationMeta()
     {

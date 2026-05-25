@@ -498,6 +498,7 @@ public static class SupplierDecisionHubEndpoints
             activeFilters.StoreId,
             activeFilters.DataScope,
             reportCacheVersion);
+        var reportCacheKeyHash = AnalyticsCacheKeys.SafeKeyFingerprint(reportCacheKey);
         var cacheLogger = loggerFactory.CreateLogger("SupplierDecisionReportCache");
 
         try
@@ -507,17 +508,25 @@ public static class SupplierDecisionHubEndpoints
             if (cachedReport is not null)
             {
                 cacheLogger.LogInformation(
-                    "Supplier decision report cache HIT. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Supplier decision report cache HIT. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "supplier-decision",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    activeFilters.SupplierId,
+                    activeFilters.StoreId,
+                    activeFilters.DataScope);
                 report = cachedReport;
             }
             else
             {
                 cacheLogger.LogInformation(
-                    "Supplier decision report cache MISS. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Supplier decision report cache MISS. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "supplier-decision",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    activeFilters.SupplierId,
+                    activeFilters.StoreId,
+                    activeFilters.DataScope);
 
                 var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
                 var summary = BuildSummaryResponse(dataset, activeFilters);
@@ -538,9 +547,13 @@ public static class SupplierDecisionHubEndpoints
 
                 await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
                 cacheLogger.LogInformation(
-                    "Supplier decision report cache STORE. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Supplier decision report cache STORE. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "supplier-decision",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    activeFilters.SupplierId,
+                    activeFilters.StoreId,
+                    activeFilters.DataScope);
             }
 
             return Results.Ok(report with

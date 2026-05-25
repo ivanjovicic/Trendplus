@@ -325,6 +325,7 @@ public static class DataQualityEndpoints
             supplierId,
             resolvedScope,
             reportCacheVersion);
+        var reportCacheKeyHash = AnalyticsCacheKeys.SafeKeyFingerprint(reportCacheKey);
         var cacheLogger = loggerFactory.CreateLogger("PilotIntakeReportCache");
 
         try
@@ -334,17 +335,25 @@ public static class DataQualityEndpoints
             if (cachedReport is not null)
             {
                 cacheLogger.LogInformation(
-                    "Pilot intake report cache HIT. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Pilot intake report cache HIT. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "pilot-intake",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    supplierId,
+                    storeId,
+                    resolvedScope);
                 report = cachedReport;
             }
             else
             {
                 cacheLogger.LogInformation(
-                    "Pilot intake report cache MISS. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Pilot intake report cache MISS. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "pilot-intake",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    supplierId,
+                    storeId,
+                    resolvedScope);
 
                 var intake = await BuildPilotDataQualityIntakeReportAsync(
                     trendDb,
@@ -362,9 +371,13 @@ public static class DataQualityEndpoints
 
                 await cache.SetAsync(reportCacheKey, report, CacheExpiration.HeavyAnalytics, ct);
                 cacheLogger.LogInformation(
-                    "Pilot intake report cache STORE. Key={CacheKey} Version={ReportCacheVersion}",
-                    reportCacheKey,
-                    reportCacheVersion);
+                    "Pilot intake report cache STORE. ReportType={ReportType} KeyHash={CacheKeyHash} Version={ReportCacheVersion} SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope}",
+                    "pilot-intake",
+                    reportCacheKeyHash,
+                    reportCacheVersion,
+                    supplierId,
+                    storeId,
+                    resolvedScope);
             }
 
             return Results.Ok(report with
