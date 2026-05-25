@@ -119,56 +119,60 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           {busy === "durable" ? "Otvaram..." : "Trajni izveštaj"}
         </button>
       ) : null}
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("preview")}
-        disabled={actionDisabled}
-      >
-        {busy === "preview" ? "Otvaram..." : "Pregled u aplikaciji"}
-      </button>
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("print")}
-        disabled={actionDisabled}
-      >
-        {busy === "print" ? "Otvaram..." : "Štampaj izveštaj"}
-      </button>
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("copy")}
-        disabled={actionDisabled}
-        title="Kopira executive sažetak izveštaja"
-      >
-        {busy === "copy" ? "Kopiram..." : "Kopiraj sažetak"}
-      </button>
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("csv")}
-        disabled={actionDisabled}
-      >
-        {busy === "csv" ? "Izvoz..." : "Izvezi CSV"}
-      </button>
-      <button
-        type="button"
-        className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-        onClick={() => void run("excel")}
-        disabled={actionDisabled}
-      >
-        {busy === "excel" ? "Izvoz..." : "Izvezi Excel"}
-      </button>
-      {pdfExportEnabled ? (
-        <button
-          type="button"
-          className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-          onClick={() => void run("pdf")}
-          disabled={actionDisabled}
-        >
-          {busy === "pdf" ? "Izvoz..." : "Izvezi PDF"}
-        </button>
+      {payload ? (
+        <>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("preview")}
+            disabled={actionDisabled}
+          >
+            {busy === "preview" ? "Otvaram..." : "Pregled u aplikaciji"}
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("print")}
+            disabled={actionDisabled}
+          >
+            {busy === "print" ? "Otvaram..." : "Štampaj izveštaj"}
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("copy")}
+            disabled={actionDisabled}
+            title="Kopira executive sažetak izveštaja"
+          >
+            {busy === "copy" ? "Kopiram..." : "Kopiraj sažetak"}
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("csv")}
+            disabled={actionDisabled}
+          >
+            {busy === "csv" ? "Izvoz..." : "Izvezi CSV"}
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("excel")}
+            disabled={actionDisabled}
+          >
+            {busy === "excel" ? "Izvoz..." : "Izvezi Excel"}
+          </button>
+          {pdfExportEnabled ? (
+            <button
+              type="button"
+              className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+              onClick={() => void run("pdf")}
+              disabled={actionDisabled}
+            >
+              {busy === "pdf" ? "Izvoz..." : "Izvezi PDF"}
+            </button>
+          ) : null}
+        </>
       ) : null}
       {status ? <span className="text-xs text-[var(--accent-success)]">{status}</span> : null}
     </div>

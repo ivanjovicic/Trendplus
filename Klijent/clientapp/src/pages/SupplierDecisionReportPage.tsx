@@ -26,6 +26,20 @@ type ReportLoadError = {
   correlationId?: string | null;
 };
 
+function parseOptionalNumber(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseOptionalBoolean(value: string | null): boolean | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return null;
+}
+
 export default function SupplierDecisionReportPage() {
   const [searchParams] = useSearchParams();
   const stateKey = searchParams.get("stateKey");
@@ -41,6 +55,13 @@ export default function SupplierDecisionReportPage() {
   const minRevenue = searchParams.get("minRevenue");
   const onlyHighConfidence = searchParams.get("onlyHighConfidence");
   const excludeOosBeforeMarkdown = searchParams.get("excludeOosBeforeMarkdown");
+
+  const parsedSupplierId = useMemo(() => parseOptionalNumber(supplierId), [supplierId]);
+  const parsedStoreId = useMemo(() => parseOptionalNumber(storeId), [storeId]);
+  const parsedSeasonId = useMemo(() => parseOptionalNumber(seasonId), [seasonId]);
+  const parsedMinRevenue = useMemo(() => parseOptionalNumber(minRevenue), [minRevenue]);
+  const parsedOnlyHighConfidence = useMemo(() => parseOptionalBoolean(onlyHighConfidence), [onlyHighConfidence]);
+  const parsedExcludeOosBeforeMarkdown = useMemo(() => parseOptionalBoolean(excludeOosBeforeMarkdown), [excludeOosBeforeMarkdown]);
 
   const [backendPayload, setBackendPayload] = useState<ResolvedAnalyticsTablePayload | null>(null);
   const [backendError, setBackendError] = useState<ReportLoadError | null>(null);
@@ -83,14 +104,14 @@ export default function SupplierDecisionReportPage() {
           toDate,
           scope,
           dataScope,
-          supplierId: supplierId ? Number(supplierId) : null,
-          storeId: storeId ? Number(storeId) : null,
+          supplierId: parsedSupplierId,
+          storeId: parsedStoreId,
           category,
           gender,
-          seasonId: seasonId ? Number(seasonId) : null,
-          minRevenue: minRevenue ? Number(minRevenue) : null,
-          onlyHighConfidence: onlyHighConfidence ? onlyHighConfidence.toLowerCase() === "true" : null,
-          excludeOosBeforeMarkdown: excludeOosBeforeMarkdown ? excludeOosBeforeMarkdown.toLowerCase() === "true" : null,
+          seasonId: parsedSeasonId,
+          minRevenue: parsedMinRevenue,
+          onlyHighConfidence: parsedOnlyHighConfidence,
+          excludeOosBeforeMarkdown: parsedExcludeOosBeforeMarkdown,
         });
 
         if (cancelled) return;
@@ -146,6 +167,12 @@ export default function SupplierDecisionReportPage() {
     hasDurableParams,
     minRevenue,
     onlyHighConfidence,
+    parsedExcludeOosBeforeMarkdown,
+    parsedMinRevenue,
+    parsedOnlyHighConfidence,
+    parsedSeasonId,
+    parsedStoreId,
+    parsedSupplierId,
     reloadTick,
     scope,
     seasonId,
@@ -225,7 +252,7 @@ export default function SupplierDecisionReportPage() {
           title="Pregled izveštaja je istekao"
           message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
           reasons={[
-            "Za trajni dokument koristite PDF/Excel export ili ponovo generišite report iz pregleda dobavljača.",
+            "Za trajni dokument koristite Excel/Print ili ponovo generišite report.",
           ]}
           actions={[
             { label: "Vrati se na dobavljače", href: "/analytics/supplier" },

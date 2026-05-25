@@ -38,6 +38,12 @@ function asBool(value: string | null): boolean | undefined {
   return undefined;
 }
 
+function parseOptionalNumber(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function mapLegacyPayloadToDurable(
   payload: ResolvedAnalyticsTablePayload,
   stateKey: string | null,
@@ -156,6 +162,9 @@ export default function PilotIntakeReportPage() {
   const storeId = searchParams.get("storeId");
   const supplierId = searchParams.get("supplierId");
 
+  const parsedStoreId = useMemo(() => parseOptionalNumber(storeId), [storeId]);
+  const parsedSupplierId = useMemo(() => parseOptionalNumber(supplierId), [supplierId]);
+
   const [durableReport, setDurableReport] = useState<PilotIntakeDurableReport | null>(null);
   const [backendError, setBackendError] = useState<ReportLoadError | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
@@ -184,8 +193,8 @@ export default function PilotIntakeReportPage() {
             toDate,
             scope,
             dataScope,
-            storeId: storeId ? Number(storeId) : null,
-            supplierId: supplierId ? Number(supplierId) : null,
+            storeId: parsedStoreId,
+            supplierId: parsedSupplierId,
           })
         : Promise.resolve(null);
 
@@ -231,7 +240,16 @@ export default function PilotIntakeReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [dataScope, fromDate, hasDurableParams, reloadTick, scope, storeId, supplierId, toDate]);
+  }, [
+    dataScope,
+    fromDate,
+    hasDurableParams,
+    parsedStoreId,
+    parsedSupplierId,
+    reloadTick,
+    scope,
+    toDate,
+  ]);
 
   const resolvedReport = durableReport ?? legacyDurableReport;
   const showLegacyWarning = Boolean(backendError && hasDurableParams && legacyDurableReport);
@@ -272,7 +290,7 @@ export default function PilotIntakeReportPage() {
           title="Pregled izveštaja je istekao"
           message="Pregled izveštaja je istekao jer se čuva privremeno u browseru."
           reasons={[
-            "Za trajni dokument koristite PDF/Excel export ili ponovo generišite report iz Data Quality pregleda.",
+            "Za trajni dokument koristite Excel/Print ili ponovo generišite report.",
           ]}
           actions={[
             { label: "Vrati se na Data Quality", href: "/analytics/data-quality" },

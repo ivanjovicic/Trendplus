@@ -237,6 +237,14 @@ npm run check:analytics-guardrails
 npm run build
 ```
 
+Za ciljane frontend testove koristi non-watch režim da se terminal ne zaglavi na `Waiting for file changes`:
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx
+```
+
+Ako menjaš drugi spec, zadrži isti obrazac: `npm run test -- --run <putanja-do-spec-fajla>`.
+
 Backend:
 ```powershell
 dotnet build

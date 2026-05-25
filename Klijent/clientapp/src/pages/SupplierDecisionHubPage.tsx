@@ -1073,6 +1073,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <article>
                   <span>Udeo nivelacija <InfoTip text="Koliki deo prihoda od ovog dobavljača dolazi od prodaje sa sniženjima (nivelacijama). Viši procenat može ukazivati da je asortiman precenjen ili da potražnja slabi." /></span>
                   <strong>{fmtPct(selectedRow.markdownRevenueShare * 100, 2)}</strong>
+                  <KpiExplainButton metricKey="markdownDependency" ariaLabel="Kako je izračunata zavisnost od nivelacija" />
                 </article>
                 <article>
                   <span>Stopa neaktivnih artikala <InfoTip text="Koliki deo artikala ovog dobavljača leži na zalihi bez prodaje. Viša stopa znači prekomerne narudžbine u odnosu na potražnju — rizik za kapital i skladište." /></span>

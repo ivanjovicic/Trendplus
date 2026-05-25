@@ -40,9 +40,14 @@ Primer:
 cd Klijent/clientapp
 npm run check:analytics-guardrails
 
+# za ciljane Vitest testove koristi non-watch
+npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx
+
 # tek onda build
 npm run build
 ```
+
+Za ostale test fajlove koristi isti obrazac: `npm run test -- --run <putanja-do-spec-fajla>`.
 
 Za backend:
 ```powershell

@@ -636,7 +636,7 @@ public static class DataQualityEndpoints
             query.Add($"supplierId={supplierId.Value.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        return $"/analytics/data-quality?view=intake&{string.Join("&", query)}";
+        return $"/analytics/reports/pilot-intake?{string.Join("&", query)}";
     }
 
     private static List<ReportRowDto> BuildPilotIntakeRows(PilotDataQualityIntakeReportDto report, string methodology)

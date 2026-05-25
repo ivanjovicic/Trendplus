@@ -118,8 +118,11 @@ Frontend:
 ```powershell
 cd Klijent/clientapp
 npm run check:analytics-guardrails
+npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx
 npm run build
 ```
+
+Napomena: za ciljane Vitest testove koristi `--run` (non-watch), da se proces ne zadrži na `Waiting for file changes`.
 
 Backend:
 ```powershell

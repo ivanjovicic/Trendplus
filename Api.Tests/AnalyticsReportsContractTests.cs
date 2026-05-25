@@ -161,7 +161,7 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEmpty(report.Kpis);
         Assert.NotEmpty(report.Sections);
         Assert.Equal("pilot_intake", report.Type);
-        Assert.StartsWith("/analytics/data-quality?view=intake&", report.StableQueryUrl, StringComparison.Ordinal);
+        Assert.StartsWith("/analytics/reports/pilot-intake?", report.StableQueryUrl, StringComparison.Ordinal);
     }
 
     [Fact]

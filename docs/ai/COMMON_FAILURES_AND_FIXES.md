@@ -138,6 +138,20 @@ Ponavljalo se:
 - hardcoded color
 - tooltip drift
 
+---
+
+## 10. Vitest ostaje u watch modu
+
+Problem: test komanda završi sa `PASS  Waiting for file changes...` i terminal ostane aktivan.
+
+Fix:
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx
+```
+
+Za druge testove koristi isti obrazac: `npm run test -- --run <putanja-do-spec-fajla>`.
+
 Fix:
 - explicit legend payload
 - podržani Recharts props
