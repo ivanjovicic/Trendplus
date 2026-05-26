@@ -96,6 +96,7 @@ const AnalyticsDashboardCharts = lazy(
 const EXECUTIVE_OVERVIEW_METRIC_KEYS: AnalyticsMetricKey[] = [
   "revenue",
   "marginContribution",
+  "unitsSold",
   "stockAtRisk",
   "lostSalesEstimate",
   "dataReadinessScore",

@@ -721,6 +721,24 @@ export default function DataQualityPage() {
             <p>{fmtRsd(health.unknownSupplierRevenue, 2)} u unknown bucket-u</p>
             <KpiExplainButton metricKey="unknownSupplierRevenueShare" ariaLabel="Kako je izračunat promet nepoznatog dobavljača" />
           </article>
+
+          {intakeReport ? (
+            <article className="data-quality-health-card">
+              <span className="data-quality-health-label">Blokirane preporuke</span>
+              <strong>{fmtNumber(intakeReport.impact.recommendationsBlockedCount)}</strong>
+              <p>Preporuke koje nisu dozvoljene dok se ne popravi kvalitet podataka.</p>
+              <KpiExplainButton metricKey="blockedRecommendationsCount" ariaLabel="Kako je izračunat broj blokiranih preporuka" />
+            </article>
+          ) : null}
+
+          {intakeReport ? (
+            <article className="data-quality-health-card">
+              <span className="data-quality-health-label">Ignorisani redovi</span>
+              <strong>{fmtNumber(intakeReport.impact.ignoredRowsCount)}</strong>
+              <p>Redovi isključeni iz analitike zbog nevalidnih ili nepotpunih podataka.</p>
+              <KpiExplainButton metricKey="ignoredRowsCount" ariaLabel="Kako je izračunat broj ignorisanih redova" />
+            </article>
+          ) : null}
         </section>
       ) : null}
 

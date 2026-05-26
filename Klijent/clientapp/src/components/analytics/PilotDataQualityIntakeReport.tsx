@@ -370,6 +370,11 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
         value: fmtNumber(report.impact.recommendationsBlockedCount, 0, "-"),
         metricKey: "blockedRecommendationsCount" as const,
       },
+      {
+        label: "Ignorisani redovi",
+        value: fmtNumber(report.impact.ignoredRowsCount, 0, "-"),
+        metricKey: "ignoredRowsCount" as const,
+      },
     ];
   }, [report]);
 
