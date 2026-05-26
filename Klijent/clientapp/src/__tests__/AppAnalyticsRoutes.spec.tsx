@@ -64,10 +64,10 @@ afterEach(() => {
 });
 
 describe("App analytics core route smoke", () => {
-  it.each(routeCases)("renders mapped route for $path", ({ path, testId }) => {
+  it.each(routeCases)("renders mapped route for $path", async ({ path, testId }) => {
     window.history.pushState({}, "", path);
 
     expect(() => render(<App />)).not.toThrow();
-    expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
   });
 });
