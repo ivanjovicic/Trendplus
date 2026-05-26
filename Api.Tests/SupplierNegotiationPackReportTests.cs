@@ -74,7 +74,7 @@ public sealed class SupplierNegotiationPackReportTests
         var fromUtc = toUtc.AddDays(-29);
         var filters = CreateFilters(fromUtc, toUtc);
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
-            [CreateSupplierRow(11, "Alpha", "PRICE_NEGOTIATE", 42m, 43m, 120000m, 310m, fromUtc, toUtc)],
+            [CreateSupplierRow(11, "Alpha", "PRICE_NEGOTIATE", 42m, 43m, 120000m, 310m, fromUtc, toUtc, reasonCodes: ["missing_cost"])],
             0,
             0,
             toUtc);
@@ -86,6 +86,39 @@ public sealed class SupplierNegotiationPackReportTests
         Assert.Contains(section.Rows, row =>
             string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Visok missing cost", StringComparison.Ordinal)
             && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SupplierReport_WhenDataQualityIsCritical_AddsCriticalWarningInNegotiationPack()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateFilters(fromUtc, toUtc, supplierId: 11);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(11, "Alpha", "HOLD", 41m, 42m, 180000m, 280m, fromUtc, toUtc)],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        summary = summary with
+        {
+            TrustMetadata = summary.TrustMetadata! with
+            {
+                DataCoverageStatus = "critical",
+                RecommendationAllowed = false
+            }
+        };
+        summary.Meta!.DataQualityStatus = "critical";
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var section = Assert.Single(report.Sections.Where(x => x.Key == "supplier_negotiation_pack"));
+
+        Assert.Contains(section.Rows, row =>
+            string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal)
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Kvalitet podataka nije idealan", StringComparison.Ordinal)
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("value")), "critical", StringComparison.Ordinal)
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("note")), "Preporuke proveriti kroz Data Quality ekran.", StringComparison.Ordinal));
     }
 
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters CreateFilters(
@@ -117,7 +150,10 @@ public sealed class SupplierNegotiationPackReportTests
         decimal revenue,
         decimal units,
         DateTime? periodFrom = null,
-        DateTime? periodTo = null)
+        DateTime? periodTo = null,
+        bool supplierNameMissing = false,
+        string dataQualityStatus = "good",
+        IReadOnlyList<string>? reasonCodes = null)
     {
         var fromUtc = periodFrom ?? new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = periodTo ?? new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
@@ -148,11 +184,11 @@ public sealed class SupplierNegotiationPackReportTests
             81m,
             recommendationCode,
             confidenceScore,
-            false,
+            supplierNameMissing,
             reliabilityPct,
-            "good",
+            dataQualityStatus,
             "Signal podržava prikazanu preporuku.",
-            ["stable_margin", "repeat_winner"]);
+            reasonCodes ?? ["stable_margin", "repeat_winner"]);
     }
 }
 

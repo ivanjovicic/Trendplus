@@ -17,7 +17,6 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalyticsDataQualityHealthWorker> _logger;
     private readonly WorkerHealthService _healthService;
-    private readonly AnalyticsRefreshRunRecorder _refreshRunRecorder;
     private readonly WorkerRuntimeControlService _controlService;
     private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly AnalyticsDataQualityHealthOptions _options;
@@ -26,7 +25,6 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<AnalyticsDataQualityHealthWorker> logger,
         WorkerHealthService healthService,
-        AnalyticsRefreshRunRecorder refreshRunRecorder,
         WorkerRuntimeControlService controlService,
         WorkerRuntimePolicyService runtimePolicyService,
         IOptions<AnalyticsDataQualityHealthOptions> options)
@@ -34,7 +32,6 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
-        _refreshRunRecorder = refreshRunRecorder;
         _controlService = controlService;
         _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
@@ -135,14 +132,14 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
             }
 
             var correlationId = System.Diagnostics.Activity.Current?.Id;
-            var runId = await _refreshRunRecorder.StartRunAsync(
+            var runId = await UseRefreshRunRecorderAsync(recorder => recorder.StartRunAsync(
                 jobKey: RefreshJobKey,
                 jobName: RefreshJobName,
                 triggeredBy: manualRunRequested ? "manual" : "system",
                 processMode: "worker",
                 workerName: WorkerName,
                 correlationId: correlationId,
-                stoppingToken);
+                stoppingToken));
 
             try
             {
@@ -202,45 +199,45 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                 _healthService.ReportHealthy(WorkerName, summary);
                 if (hasWarnings)
                 {
-                    await _refreshRunRecorder.MarkPartialAsync(
+                    await UseRefreshRunRecorderAsync(recorder => recorder.MarkPartialAsync(
                         runId,
                         ["analytics_data_quality_history"],
                         [],
                         $"Data quality warning: {summary}",
                         correlationId,
-                        stoppingToken);
+                        stoppingToken));
                 }
                 else
                 {
-                    await _refreshRunRecorder.MarkSucceededAsync(
+                    await UseRefreshRunRecorderAsync(recorder => recorder.MarkSucceededAsync(
                         runId,
                         ["analytics_data_quality_history"],
                         correlationId,
-                        stoppingToken);
+                        stoppingToken));
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                await _refreshRunRecorder.MarkFailedAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                     runId,
                     "cancelled",
                     "Analytics data-quality run was cancelled.",
                     ["analytics_data_quality_history"],
                     correlationId,
-                    CancellationToken.None);
+                    CancellationToken.None));
                 break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Analytics data-quality health worker failed.");
                 _healthService.ReportError(WorkerName, ex);
-                await _refreshRunRecorder.MarkFailedAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                     runId,
                     "data_quality_worker_failed",
                     ex.Message,
                     ["analytics_data_quality_history"],
                     correlationId,
-                    stoppingToken);
+                    stoppingToken));
             }
 
             try
@@ -258,6 +255,20 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");
         _logger.LogInformation("{WorkerName} stopped.", WorkerName);
+    }
+
+    private async Task<T> UseRefreshRunRecorderAsync<T>(Func<AnalyticsRefreshRunRecorder, Task<T>> action)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var recorder = scope.ServiceProvider.GetRequiredService<AnalyticsRefreshRunRecorder>();
+        return await action(recorder);
+    }
+
+    private async Task UseRefreshRunRecorderAsync(Func<AnalyticsRefreshRunRecorder, Task> action)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var recorder = scope.ServiceProvider.GetRequiredService<AnalyticsRefreshRunRecorder>();
+        await action(recorder);
     }
 }
 

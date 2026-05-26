@@ -404,6 +404,81 @@ public sealed class AnalyticsResponseMetaContractTests
     }
 
     [Fact]
+    public void PrePostNivelacija_CacheHitWithRows_DerivesSuccessMetaAndCorrelation()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            VendorStats = [new Api.Models.VendorSalesNivelacijaVendorStatDto { VendorId = 10, VendorName = "Alpha", PostRevenue = 120000m }],
+            ArticleStats = [new Api.Models.VendorSalesNivelacijaArticleStatDto { VendorId = 10, VendorName = "Alpha", Sku = "SKU-10", ArticleName = "Model X", PostRevenue = 120000m }]
+        };
+
+        var patched = AllEndpoints.ApplyVendorSalesNivelacijaMeta(response, "nivelacija-cache-hit-001");
+
+        Assert.True(patched.Meta!.Success);
+        Assert.False(patched.Meta.IsPartial);
+        Assert.Null(patched.Meta.EmptyReason);
+        Assert.Equal("good", patched.Meta.DataQualityStatus);
+        Assert.Equal("nivelacija-cache-hit-001", patched.Meta.CorrelationId);
+    }
+
+    [Fact]
+    public void PrePostNivelacija_CacheHitWithoutRows_DerivesEmptyMetaAndCorrelation()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto();
+
+        var patched = AllEndpoints.ApplyVendorSalesNivelacijaMeta(response, "nivelacija-cache-hit-002");
+
+        Assert.True(patched.Meta!.Success);
+        Assert.Equal("no_data_in_period", patched.Meta.EmptyReason);
+        Assert.Null(patched.Meta.ErrorCode);
+        Assert.Equal("nivelacija-cache-hit-002", patched.Meta.CorrelationId);
+    }
+
+    [Fact]
+    public void PrePostNivelacija_CacheHitWithGlobalWarnings_DerivesWarningMetaAndCorrelation()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            VendorStats = [new Api.Models.VendorSalesNivelacijaVendorStatDto { VendorId = 10, VendorName = "Alpha", PostRevenue = 120000m }],
+            ArticleStats = [new Api.Models.VendorSalesNivelacijaArticleStatDto { VendorId = 10, VendorName = "Alpha", Sku = "SKU-10", ArticleName = "Model X", PostRevenue = 120000m }],
+            MetricsStatus = "Metrics mapping failed; OOS/DiD mapping failed"
+        };
+
+        var patched = AllEndpoints.ApplyVendorSalesNivelacijaMeta(response, "nivelacija-cache-hit-003");
+
+        Assert.True(patched.Meta!.Success);
+        Assert.True(patched.Meta.IsPartial);
+        Assert.Equal("vendor_sales_nivelacija_warning", patched.Meta.WarningCode);
+        Assert.Equal("nivelacija-cache-hit-003", patched.Meta.CorrelationId);
+    }
+
+    [Fact]
+    public void PrePostNivelacija_CacheHitFallbackPayload_DerivesErrorMetaAndCorrelation()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            MetricsStatus = "Vendor sales nivelacija analytics fallback due to schema mismatch.",
+            Insights =
+            [
+                new Api.Models.VendorSalesNivelacijaInsightDto
+                {
+                    Title = "Podaci privremeno nedostupni",
+                    Value = "Fallback mode",
+                    Details = "Schema mismatch",
+                    Tone = "warning"
+                }
+            ]
+        };
+
+        var patched = AllEndpoints.ApplyVendorSalesNivelacijaMeta(response, "nivelacija-cache-hit-004");
+
+        Assert.False(patched.Meta!.Success);
+        Assert.Equal("vendor_sales_nivelacija_error", patched.Meta.ErrorCode);
+        Assert.Equal("nivelacija-cache-hit-004", patched.Meta.CorrelationId);
+        Assert.Empty(patched.ArticleStats);
+    }
+
+    [Fact]
     public void SupplierDecisionHub_UnavailableException_ResponseHasErrorMeta()
     {
         // Simulate what the summary endpoint returns on SupplierDecisionUnavailableException.

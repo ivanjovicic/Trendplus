@@ -30,7 +30,6 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<NightlyAnalyticsRefreshWorker> _logger;
     private readonly WorkerHealthService _healthService;
-    private readonly AnalyticsRefreshRunRecorder _refreshRunRecorder;
     private readonly WorkerRuntimeControlService _controlService;
     private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly NightlyAnalyticsRefreshOptions _options;
@@ -42,7 +41,6 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<NightlyAnalyticsRefreshWorker> logger,
         WorkerHealthService healthService,
-        AnalyticsRefreshRunRecorder refreshRunRecorder,
         WorkerRuntimeControlService controlService,
         WorkerRuntimePolicyService runtimePolicyService,
         IOptions<NightlyAnalyticsRefreshOptions> options)
@@ -50,7 +48,6 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         _scopeFactory = scopeFactory;
         _logger = logger;
         _healthService = healthService;
-        _refreshRunRecorder = refreshRunRecorder;
         _controlService = controlService;
         _runtimePolicyService = runtimePolicyService;
         _options = options.Value;
@@ -215,14 +212,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         var warnings = new List<string>();
         var errors = new List<string>();
         var correlationId = Activity.Current?.Id;
-        var runId = await _refreshRunRecorder.StartRunAsync(
+        var runId = await UseRefreshRunRecorderAsync(recorder => recorder.StartRunAsync(
             jobKey: RefreshJobKey,
             jobName: RefreshJobName,
             triggeredBy: triggeredBy,
             processMode: "worker",
             workerName: WorkerName,
             correlationId: correlationId,
-            ct);
+            ct));
 
         _healthService.ReportRunning(WorkerName, "Nightly refresh started...");
         _logger.LogInformation("[nightly] Nightly analytics refresh started at {StartedAtUtc:O}", startedAtUtc);
@@ -237,13 +234,13 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 var msg = "Missing Trendplus DB connection string.";
                 _logger.LogError("[nightly] {Message}", msg);
                 _healthService.ReportError(WorkerName, new InvalidOperationException(msg));
-                await _refreshRunRecorder.MarkFailedAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                     runId,
                     "missing_connection_string",
                     msg,
                     failedObjects,
                     correlationId,
-                    ct);
+                    ct));
                 return;
             }
 
@@ -256,13 +253,13 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 var skipMessage = "Skipped (another instance is running nightly refresh).";
                 _logger.LogInformation("[nightly] Skipping refresh because another instance holds advisory lock.");
                 _healthService.ReportHealthy(WorkerName, skipMessage);
-                await _refreshRunRecorder.MarkPartialAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkPartialAsync(
                     runId,
                     refreshedObjects,
                     failedObjects,
                     skipMessage,
                     correlationId,
-                    ct);
+                    ct));
                 return;
             }
 
@@ -354,13 +351,13 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 var message = $"Nightly refresh finished with {errors.Count} errors; {warnings.Count} warnings. Duration: {sw.Elapsed.TotalSeconds:0}s";
                 _logger.LogError("[nightly] {Message}", message);
                 _healthService.ReportError(WorkerName, new InvalidOperationException(message));
-                await _refreshRunRecorder.MarkFailedAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                     runId,
                     "refresh_failed",
                     BuildStatusSummary(message, warnings, errors),
                     failedObjects,
                     correlationId,
-                    ct);
+                    ct));
                 return;
             }
 
@@ -406,33 +403,33 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
 
             if (warnings.Count > 0)
             {
-                await _refreshRunRecorder.MarkPartialAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkPartialAsync(
                     runId,
                     refreshedObjects,
                     failedObjects,
                     BuildStatusSummary(okMessage, warnings, errors),
                     correlationId,
-                    ct);
+                    ct));
             }
             else
             {
-                await _refreshRunRecorder.MarkSucceededAsync(
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkSucceededAsync(
                     runId,
                     refreshedObjects,
                     correlationId,
-                    ct);
+                    ct));
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             sw.Stop();
-            await _refreshRunRecorder.MarkFailedAsync(
+            await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                 runId,
                 "cancelled",
                 "Nightly refresh was cancelled.",
                 failedObjects,
                 correlationId,
-                CancellationToken.None);
+                CancellationToken.None));
             throw;
         }
         catch (Exception ex)
@@ -441,14 +438,28 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             var message = $"Nightly refresh failed unexpectedly. Duration: {sw.Elapsed.TotalSeconds:0}s";
             _logger.LogError(ex, "[nightly] {Message}", message);
             _healthService.ReportError(WorkerName, ex);
-            await _refreshRunRecorder.MarkFailedAsync(
+            await UseRefreshRunRecorderAsync(recorder => recorder.MarkFailedAsync(
                 runId,
                 "unexpected_error",
                 BuildStatusSummary($"{message} {ex.Message}", warnings, errors),
                 failedObjects,
                 correlationId,
-                ct);
+                ct));
         }
+    }
+
+    private async Task<T> UseRefreshRunRecorderAsync<T>(Func<AnalyticsRefreshRunRecorder, Task<T>> action)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var recorder = scope.ServiceProvider.GetRequiredService<AnalyticsRefreshRunRecorder>();
+        return await action(recorder);
+    }
+
+    private async Task UseRefreshRunRecorderAsync(Func<AnalyticsRefreshRunRecorder, Task> action)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var recorder = scope.ServiceProvider.GetRequiredService<AnalyticsRefreshRunRecorder>();
+        await action(recorder);
     }
 
     private async Task RefreshOpenTrainingMaterializedViewsAsync(

@@ -25,24 +25,56 @@ public static class InventoryEndpoints
 
         group.MapGet("/balance", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
+            ILoggerFactory loggerFactory,
             int? storeId,
             int? supplierId,
             CancellationToken ct) =>
         {
-            var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
+            var logger = loggerFactory.CreateLogger("InventoryEndpoints");
+            var correlationId = AllEndpoints.ResolveAnalyticsCorrelationId(httpContext);
 
-            var totalSku = await query.CountAsync(ct);
-            var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
-            var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
-            var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-            var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
+            try
+            {
+                var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
 
-            return Results.Ok(new InventoryBalanceDto(
-                TotalSku: totalSku,
-                TotalOnHand: totalOnHand,
-                LowStockCount: lowStock,
-                OutOfStockCount: outOfStock,
-                EstimatedInventoryValue: Math.Round(estimatedValue, 2)));
+                var totalSku = await query.CountAsync(ct);
+                var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
+                var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
+                var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
+                var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
+
+                var meta = totalSku == 0
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                    : AnalyticsResponseMetaFactory.Success();
+                meta.CorrelationId = correlationId;
+
+                return Results.Ok(new InventoryBalanceDto(
+                    TotalSku: totalSku,
+                    TotalOnHand: totalOnHand,
+                    LowStockCount: lowStock,
+                    OutOfStockCount: outOfStock,
+                    EstimatedInventoryValue: Math.Round(estimatedValue, 2),
+                    Meta: meta));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Inventory balance query failed.");
+                return Results.Ok(new InventoryBalanceDto(
+                    TotalSku: 0,
+                    TotalOnHand: 0,
+                    LowStockCount: 0,
+                    OutOfStockCount: 0,
+                    EstimatedInventoryValue: 0m,
+                    Meta: AnalyticsResponseMetaFactory.Error(
+                        "inventory_balance_error",
+                        "Bilans zaliha trenutno nije dostupan.",
+                        correlationId)));
+            }
         })
         .WithName("GetInventoryBalance");
 

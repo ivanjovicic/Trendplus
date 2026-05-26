@@ -36,6 +36,7 @@ using System.Globalization;
 using System.Diagnostics;
 using System.Text.Json;
 using Serilog.Context;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -3150,6 +3151,7 @@ public static class AllEndpoints
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
+            HttpContext httpContext,
             int? vendorId = null,
             DateTime? eventDate = null,
             DateTime? from = null,
@@ -3159,6 +3161,7 @@ public static class AllEndpoints
             int maxRows = 5000,
             CancellationToken ct = default) =>
         {
+            var correlationId = ResolveAnalyticsCorrelationId(httpContext);
             try
             {
                 var connectionString = trendplusDb.Database.GetConnectionString();
@@ -3212,7 +3215,7 @@ public static class AllEndpoints
                         maxRows,
                         endpointStopwatch.ElapsedMilliseconds);
 
-                    return Results.Ok(cachedResponse);
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId));
                 }
 
                 logger.LogInformation(
@@ -3986,6 +3989,8 @@ public static class AllEndpoints
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal))
                 };
 
+                ApplyVendorSalesNivelacijaMeta(response, correlationId);
+
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
                 logger.LogInformation(
@@ -4015,21 +4020,39 @@ public static class AllEndpoints
                     ex.SqlState);
 
                 // Keep the UI operational with an empty payload when DB schema is behind.
-                return Results.Ok(CreateVendorSalesNivelacijaFallbackResponse(
+                var fallback = CreateVendorSalesNivelacijaFallbackResponse(
                     vendorId,
                     eventDate?.Date,
                     from,
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
-                    reason));
+                    reason,
+                    AnalyticsResponseMetaFactory.Error(
+                        "vendor_sales_nivelacija_error",
+                        "Pre/post nivelacija nije dostupna.",
+                        correlationId));
+
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
             }
             catch (Exception ex)
             {
-                return Results.Problem(
-                    title: "Failed to load pre/post nivelacija analytics",
-                    detail: ex.Message,
-                    statusCode: 500);
+                logger.LogError(ex, "Vendor sales nivelacija failed unexpectedly.");
+
+                var fallback = CreateVendorSalesNivelacijaFallbackResponse(
+                    vendorId,
+                    eventDate?.Date,
+                    from,
+                    to,
+                    string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
+                    includeInactive,
+                    ex.Message,
+                    AnalyticsResponseMetaFactory.Error(
+                        "vendor_sales_nivelacija_error",
+                        "Pre/post nivelacija nije dostupna.",
+                        correlationId));
+
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
             }
         })
         .WithName("GetVendorSalesNivelacija")
@@ -6459,6 +6482,105 @@ public static class AllEndpoints
         }
     }
 
+    internal static VendorSalesNivelacijaResponseDto ApplyVendorSalesNivelacijaMeta(
+        VendorSalesNivelacijaResponseDto response,
+        string correlationId)
+    {
+        response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
+        return response;
+    }
+
+    internal static AnalyticsResponseMetaDto BuildVendorSalesNivelacijaMeta(
+        VendorSalesNivelacijaResponseDto response,
+        string correlationId)
+    {
+        if (response.Meta is not null)
+        {
+            var resolved = CloneAnalyticsResponseMeta(response.Meta);
+            resolved.CorrelationId = correlationId;
+            return resolved;
+        }
+
+        var hasFallbackInsight = response.Insights.Any(insight =>
+            string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(insight.Title, "Podaci privremeno nedostupni", StringComparison.OrdinalIgnoreCase));
+
+        AnalyticsResponseMetaDto meta;
+        if (hasFallbackInsight)
+        {
+            meta = AnalyticsResponseMetaFactory.Error(
+                "vendor_sales_nivelacija_error",
+                response.MetricsStatus ?? "Pre/post nivelacija nije dostupna.",
+                correlationId);
+        }
+        else
+        {
+            var hasData = response.VendorStats.Count > 0
+                || response.ArticleStats.Count > 0
+                || response.CategoryStats.Count > 0
+                || response.PriceDirectionStats.Count > 0;
+
+            if (!hasData)
+            {
+                meta = AnalyticsResponseMetaFactory.Empty(
+                    "no_data_in_period",
+                    "Nema podataka za pre/post nivelaciju.",
+                    "insufficient_data");
+            }
+            else if (!string.IsNullOrWhiteSpace(response.MetricsStatus))
+            {
+                meta = AnalyticsResponseMetaFactory.Warning(
+                    "vendor_sales_nivelacija_warning",
+                    response.MetricsStatus,
+                    "warning");
+            }
+            else
+            {
+                meta = AnalyticsResponseMetaFactory.Success("good");
+            }
+
+            meta.CorrelationId = correlationId;
+        }
+
+        return meta;
+    }
+
+    internal static string ResolveAnalyticsCorrelationId(HttpContext httpContext)
+    {
+        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(responseHeader))
+        {
+            return responseHeader;
+        }
+
+        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(requestHeader))
+        {
+            return requestHeader;
+        }
+
+        return httpContext.TraceIdentifier;
+    }
+
+    private static AnalyticsResponseMetaDto CloneAnalyticsResponseMeta(AnalyticsResponseMetaDto meta)
+    {
+        return new AnalyticsResponseMetaDto
+        {
+            Success = meta.Success,
+            WarningCode = meta.WarningCode,
+            WarningMessage = meta.WarningMessage,
+            ErrorCode = meta.ErrorCode,
+            ErrorMessage = meta.ErrorMessage,
+            EmptyReason = meta.EmptyReason,
+            CorrelationId = meta.CorrelationId,
+            Message = meta.Message,
+            GeneratedAtUtc = meta.GeneratedAtUtc,
+            LastRefreshAtUtc = meta.LastRefreshAtUtc,
+            DataQualityStatus = meta.DataQualityStatus,
+            IsPartial = meta.IsPartial
+        };
+    }
+
     private static VendorSalesNivelacijaResponseDto CreateVendorSalesNivelacijaFallbackResponse(
         int? vendorId,
         DateTime? eventDate,
@@ -6466,7 +6588,8 @@ public static class AllEndpoints
         DateTime? to,
         string? category,
         bool includeInactive,
-        string reason)
+        string reason,
+        AnalyticsResponseMetaDto? meta = null)
     {
         return new VendorSalesNivelacijaResponseDto
         {
@@ -6500,7 +6623,8 @@ public static class AllEndpoints
             AvgDidRevenue = null,
             AvgLostSalesOOS = null,
             OOSRate = null,
-            MetricsStatus = reason
+            MetricsStatus = reason,
+            Meta = meta
         };
     }
 
