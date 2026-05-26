@@ -81,13 +81,15 @@ describe("Inventory signal presentation", () => {
         onNextPage={onNextPage}
         onAddToActions={onAddToActions}
         onReviewSlowStock={onReviewSlowStock}
+        isRowQueued={() => false}
+        isRowQueueBusy={() => false}
       />,
     );
 
     expect(screen.getByLabelText("Kako je izračunata pokrivenost zalihe")).toBeInTheDocument();
     expect(screen.getByLabelText("Kako je izračunat sell-through signal")).toBeInTheDocument();
     expect(screen.getAllByText("Nedovoljno podataka").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pregledaj sporu zalihu" })).not.toBeInTheDocument();
   });
 });

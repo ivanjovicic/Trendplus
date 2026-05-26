@@ -17,8 +17,8 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
 import { getSezone } from "../services/sezoneApi";
-import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
-import type { AnalyticsRefreshStatus } from "../types/analytics";
+import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction } from "../services/analyticsApi";
+import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
 import {
@@ -89,6 +89,8 @@ type DecisionRow = RankingItem & {
   reasonCodes: string[];
 };
 
+const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
+
 const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prihod", dataType: "currency" },
@@ -140,6 +142,25 @@ function buildStatusTooltip(row: DecisionRow): string {
   return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
+function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "insufficient_data") {
+    return normalized;
+  }
+
+  return "insufficient_data";
+}
+
+function mapSupplierActionPriority(row: DecisionRow, recommendationAllowed: boolean): "P1" | "P2" {
+  if (!recommendationAllowed) return "P2";
+  return row.status === "do_not_trust" || row.status === "review" ? "P1" : "P2";
+}
+
+function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, recommendationAllowed: boolean): string {
+  const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
+  return `supplier:${actionKind}:${row.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
+}
+
 export default function SupplierDecisionHubPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -176,6 +197,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierId, setExpandedSupplierId] = useState<number | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
+  const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
+  const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
+  const [queueMessage, setQueueMessage] = useState<string | null>(null);
 
   const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
 
@@ -281,6 +305,39 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   }, []);
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setQueuedActionKeys(new Set());
+
+    void (async () => {
+      try {
+        const responses = await Promise.all(
+          OPEN_ACTION_STATUSES.map((status) => getAnalyticsActions({
+            sourceType: "supplier",
+            status,
+            page: 1,
+            pageSize: 200,
+          })),
+        );
+
+        if (cancelled) return;
+        const keys = new Set<string>();
+        for (const response of responses) {
+          for (const item of response.items) {
+            if (item.sourceKey) keys.add(item.sourceKey);
+          }
+        }
+        setQueuedActionKeys(keys);
+      } catch {
+        if (!cancelled) setQueuedActionKeys(new Set());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFilters.dataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate]);
 
   const trustMetadata = summary?.trustMetadata ?? ranking?.trustMetadata ?? null;
   const scorecardMeta = ranking?.meta ?? summary?.meta ?? null;
@@ -663,6 +720,62 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     navigate(`/analitika/supplier-decision-hub/${row.supplierId}`, { state: { backgroundLocation: location } });
   };
 
+  const addSupplierSignalToQueue = useCallback(async (row: DecisionRow) => {
+    const sourceKey = buildSupplierActionSourceKey(row, activeFilters, recommendationAllowed);
+    const alreadyQueued = queuedActionKeys.has(sourceKey);
+    setQueueBusyKey(sourceKey);
+    setQueueMessage(null);
+
+    const recommendationStatus = recommendationAllowed ? row.status : "SIGNAL_REVIEW";
+    const title = recommendationAllowed
+      ? `Pripremi razgovor sa dobavljačem: ${row.supplierName}`
+      : `Proveri signal dobavljača: ${row.supplierName}`;
+    const description = recommendationAllowed
+      ? row.statusReason
+      : "Finalna preporuka nije dozvoljena za traženi period; akcija je signalnog karaktera i zahteva proveru.";
+
+    try {
+      const action = await upsertAnalyticsAction({
+        sourceType: "supplier",
+        sourceKey,
+        sourceId: row.supplierId,
+        title,
+        description,
+        recommendationStatus,
+        priority: mapSupplierActionPriority(row, recommendationAllowed),
+        impactEstimateRsd: row.unsoldStockValue > 0 ? row.unsoldStockValue : undefined,
+        confidencePct: row.confidenceAvailable ? Math.round(row.normalizedConfidence) : undefined,
+        reliabilityPct: row.reliabilityAvailable ? Math.round(row.reliabilityPct) : undefined,
+        dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
+        actionUrl: `/analytics/supplier?tab=scorecard&supplierId=${row.supplierId}`,
+        metadataJson: JSON.stringify({
+          supplierId: row.supplierId,
+          supplierName: row.supplierName,
+          actionKind: recommendationAllowed ? "negotiation" : "signal_check",
+          scorecardStatus: row.status,
+          reasonCodes: row.reasonCodes,
+          periodFrom: activeFilters.fromDate,
+          periodTo: activeFilters.toDate,
+          storeId: activeFilters.storeId ?? "all",
+          dataScope: activeFilters.dataScope ?? "all",
+          recommendationAllowed,
+        }),
+      });
+
+      setQueuedActionKeys((prev) => {
+        const next = new Set(prev);
+        next.add(sourceKey);
+        if (action.sourceKey) next.add(action.sourceKey);
+        return next;
+      });
+      setQueueMessage(alreadyQueued ? "Akcija je već u centralnom redu." : "Akcija dodata u centralni red.");
+    } catch (reason) {
+      setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
+    } finally {
+      setQueueBusyKey(null);
+    }
+  }, [activeFilters, queuedActionKeys, recommendationAllowed]);
+
   return (
     <div className={`sdh-decision-page ${embedded ? "sdh-decision-page--embedded" : ""}`}>
       {!embedded ? (
@@ -829,6 +942,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         <div className="sdh-decision-message warning" role="note">
           Prikazani podaci su delimični ili fallback. {scorecardMetaMessage ?? "Proverite analytics refresh status."}
         </div>
+      ) : null}
+
+      {queueMessage ? (
+        <div className="sdh-decision-message info" role="status">{queueMessage}</div>
       ) : null}
 
       {!loading && !showBlockingError && hasDatasetFallback ? (
@@ -1055,7 +1172,20 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <section className="sdh-decision-detail">
               <div className="sdh-decision-detail-head">
                 <h3>Detalj scorecard signala: {selectedRow.supplierName}</h3>
-                <button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button>
+                <div className="inline-flex items-center gap-2">
+                  <button type="button" onClick={() => openSupplierDetail(selectedRow)}>Otvori puni detalj</button>
+                  <button
+                    type="button"
+                    onClick={() => void addSupplierSignalToQueue(selectedRow)}
+                    disabled={queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed) || queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))}
+                  >
+                    {queueBusyKey === buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed)
+                      ? "Dodavanje..."
+                      : queuedActionKeys.has(buildSupplierActionSourceKey(selectedRow, activeFilters, recommendationAllowed))
+                        ? "U akcijama"
+                        : "Dodaj u akcije"}
+                  </button>
+                </div>
               </div>
               <div className="sdh-decision-detail-grid">
                 <article>

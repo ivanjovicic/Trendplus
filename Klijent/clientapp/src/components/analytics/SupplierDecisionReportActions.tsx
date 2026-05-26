@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
+import { getAnalyticsActions, upsertAnalyticsAction } from "../../services/analyticsApi";
+import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus } from "../../types/analytics";
 import {
   buildSupplierDecisionReportSummaryText,
   exportSupplierDecisionReportCsv,
@@ -17,14 +19,89 @@ type SupplierDecisionReportActionsProps = {
   durableReportHref?: string | null;
 };
 
+const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
+
+function readPayloadValue(payload: ResolvedAnalyticsTablePayload | null, key: string): string | null {
+  if (!payload) return null;
+  const fromMetadata = payload.metadata.find((entry) => entry.key === key)?.value;
+  if (fromMetadata != null && String(fromMetadata).trim()) return String(fromMetadata);
+  const fromFilters = payload.filters.find((entry) => entry.key === key)?.value;
+  if (fromFilters != null && String(fromFilters).trim()) return String(fromFilters);
+  return null;
+}
+
+function parseSupplierId(payload: ResolvedAnalyticsTablePayload | null): number | null {
+  const supplierValue = readPayloadValue(payload, "supplierId") ?? readPayloadValue(payload, "supplier");
+  if (!supplierValue) return null;
+  const idMatch = supplierValue.match(/\d+/);
+  if (!idMatch) return null;
+  const parsed = Number(idMatch[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseRecommendationAllowed(payload: ResolvedAnalyticsTablePayload | null): boolean {
+  const raw = (readPayloadValue(payload, "recommendationAllowed") ?? "").trim().toLowerCase();
+  return raw === "true" || raw === "da";
+}
+
+function toActionDataQualityStatus(payload: ResolvedAnalyticsTablePayload | null): AnalyticsActionDataQualityStatus {
+  const raw = (readPayloadValue(payload, "dataQualityStatus") ?? "").trim().toLowerCase();
+  if (raw === "good" || raw === "dobar") return "good";
+  if (raw === "warning" || raw === "upozorenje") return "warning";
+  if (raw === "critical" || raw === "kritican" || raw === "kritičan") return "critical";
+  return "insufficient_data";
+}
+
 export default function SupplierDecisionReportActions({ payload, disabled = false, onError, durableReportHref }: SupplierDecisionReportActionsProps) {
   const navigate = useNavigate();
-  const [busy, setBusy] = useState<"durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | "queue" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
   const pdfExportEnabled = String(import.meta.env.VITE_ENABLE_PDF_EXPORT ?? "false").toLowerCase() === "true";
+
+  const recommendationAllowed = useMemo(() => parseRecommendationAllowed(payload), [payload]);
+  const supplierId = useMemo(() => parseSupplierId(payload), [payload]);
+  const periodValue = useMemo(() => readPayloadValue(payload, "period"), [payload]);
+  const dataScope = useMemo(() => readPayloadValue(payload, "dataScope") ?? "all", [payload]);
+  const dataQualityStatus = useMemo(() => toActionDataQualityStatus(payload), [payload]);
+
+  const sourceKey = useMemo(() => {
+    if (!payload) return null;
+    const scopePart = dataScope || "all";
+    const periodPart = periodValue?.replace(/\s+/g, "").replace(/[^0-9\-]/g, "") || "unknown-period";
+    const supplierPart = supplierId ?? "all";
+    const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
+    return `supplier:${actionKind}:${supplierPart}:${periodPart}:${scopePart}`;
+  }, [dataScope, payload, periodValue, recommendationAllowed, supplierId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sourceKey) {
+      setQueued(false);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const responses = await Promise.all(
+          OPEN_ACTION_STATUSES.map((status) => getAnalyticsActions({ sourceType: "supplier", status, page: 1, pageSize: 200 })),
+        );
+        if (cancelled) return;
+        const exists = responses.some((response) => response.items.some((item) => item.sourceKey === sourceKey));
+        setQueued(exists);
+      } catch {
+        if (!cancelled) setQueued(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceKey]);
 
   const actionDisabled = disabled || !payload || busy !== null;
   const durableActionDisabled = disabled || !durableReportHref || busy !== null;
+  const queueDisabled = disabled || !payload || !sourceKey || busy !== null || queued;
 
   const copyToClipboard = async (text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -42,7 +119,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     document.body.removeChild(textarea);
   };
 
-  const run = async (type: "durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf") => {
+  const run = async (type: "durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | "queue") => {
     if (type === "durable") {
       if (durableActionDisabled || !durableReportHref) return;
       setBusy(type);
@@ -90,6 +167,42 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         return;
       }
 
+      if (type === "queue") {
+        if (!sourceKey) throw new Error("Nedostaje sourceKey za akciju.");
+        const title = recommendationAllowed
+          ? "Pripremi razgovor sa dobavljačem"
+          : "Proveri signal dobavljača";
+        const recommendationStatus = recommendationAllowed ? "NEGOTIATE_SUPPLIER" : "SIGNAL_REVIEW";
+        const description = recommendationAllowed
+          ? "Pripremiti argumente i uslove za pregovor na osnovu scorecard signala."
+          : "Finalna preporuka nije dozvoljena za ovaj izveštaj; potrebna je provera signala pre odluke.";
+
+        const action = await upsertAnalyticsAction({
+          sourceType: "supplier",
+          sourceKey,
+          sourceId: supplierId,
+          title,
+          description,
+          recommendationStatus,
+          priority: recommendationAllowed ? "P1" : "P2",
+          dataQualityStatus,
+          actionUrl: durableReportHref ?? "/analytics/supplier?tab=scorecard",
+          metadataJson: JSON.stringify({
+            tableKey: payload.tableKey,
+            supplierId,
+            dataScope,
+            period: periodValue,
+            recommendationAllowed,
+          }),
+        });
+
+        if (action.sourceKey) {
+          setQueued(true);
+        }
+        setStatus("Akcija je dodata u centralni red.");
+        return;
+      }
+
       if (!pdfExportEnabled) {
         throw new Error("PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.");
       }
@@ -121,6 +234,14 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       ) : null}
       {payload ? (
         <>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+            onClick={() => void run("queue")}
+            disabled={queueDisabled}
+          >
+            {busy === "queue" ? "Dodajem..." : queued ? "U akcijama" : "Dodaj u akcije"}
+          </button>
           <button
             type="button"
             className="inline-flex items-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"

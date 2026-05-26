@@ -280,15 +280,25 @@ function buildAnalyticsActionFromDashboardAction(
     supplierId: filters.supplierId ?? "all",
   };
 
+  const recommendationAllowed = action.recommendationAllowed !== false;
+  const resolvedTitle = recommendationAllowed
+    ? action.title
+    : (sourceType === "data_quality"
+      ? "Dopuni podatke za pouzdaniju analitiku"
+      : "Proveri signal");
+  const resolvedRecommendationStatus = recommendationAllowed
+    ? action.recommendationStatus ?? undefined
+    : "SIGNAL_REVIEW";
+
   return {
     sourceType,
     sourceKey,
-    title: action.title,
+    title: resolvedTitle,
     description:
       action.description?.trim() ||
       action.statusReason?.trim() ||
       action.reason,
-    recommendationStatus: action.recommendationStatus ?? undefined,
+    recommendationStatus: resolvedRecommendationStatus,
     priority,
     impactEstimateRsd: action.impactEstimateRsd ?? undefined,
     confidencePct: action.confidencePct ?? undefined,

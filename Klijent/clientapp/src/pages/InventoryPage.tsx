@@ -76,6 +76,45 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function buildInventorySignalActionSpec(row: InventoryRow): {
+  sourceKey: string;
+  title: string;
+  recommendationStatus: string;
+  priority: "P1" | "P2" | "P3";
+  description: string;
+} {
+  const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
+
+  if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low") {
+    const isCritical = normalizedCover === "out_of_stock_risk";
+    return {
+      sourceKey: `inventory:replenish:${row.id}:${row.idObjekat ?? "all"}`,
+      title: `Dopuni artikal: ${row.naziv}`,
+      recommendationStatus: "REPLENISH",
+      priority: isCritical ? "P1" : "P2",
+      description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+    };
+  }
+
+  if (normalizedCover === "slow" || normalizedCover === "no_velocity") {
+    return {
+      sourceKey: `inventory:slow_stock_review:${row.id}:${row.idObjekat ?? "all"}`,
+      title: `Proveri sporu zalihu: ${row.naziv}`,
+      recommendationStatus: "SLOW_STOCK_REVIEW",
+      priority: normalizedCover === "slow" ? "P2" : "P3",
+      description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
+    };
+  }
+
+  return {
+    sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+    title: `Proveri signal zalihe: ${row.naziv}`,
+    recommendationStatus: "SIGNAL_REVIEW",
+    priority: "P2",
+    description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+  };
+}
+
 export default function InventoryPage() {
   const [balance, setBalance] = useState<InventoryBalance | null>(null);
   const [pageData, setPageData] = useState<InventoryPagedResponse | null>(null);
@@ -771,29 +810,39 @@ export default function InventoryPage() {
   }
 
   async function addSignalRowToCentralQueue(row: InventoryRow) {
-    const sourceKey = `inventory-signal:${row.id}:${row.idObjekat ?? "all"}:${row.stockCoverStatus}:${row.sellThroughStatus}`;
+    const actionSpec = buildInventorySignalActionSpec(row);
+    const wasAlreadyQueued = queuedSuggestionKeys.includes(actionSpec.sourceKey);
+    setQueueBusyKey(actionSpec.sourceKey);
     try {
       await upsertAnalyticsAction({
         sourceType: "inventory",
-        sourceKey,
+        sourceKey: actionSpec.sourceKey,
         sourceId: row.id,
-        title: `Dopuna signala: ${row.naziv}`,
-        description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
-        recommendationStatus: row.stockCoverStatus,
-        priority: "P1",
+        title: actionSpec.title,
+        description: actionSpec.description,
+        recommendationStatus: actionSpec.recommendationStatus,
+        priority: actionSpec.priority,
         confidencePct: row.signalConfidencePct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: "/analytics/inventory",
         metadataJson: JSON.stringify({
+          actionKind: actionSpec.recommendationStatus,
           stockCoverStatus: row.stockCoverStatus,
           sellThroughStatus: row.sellThroughStatus,
           stockCoverDays: row.stockCoverDays,
           sellThroughRatio: row.sellThroughRatio,
         }),
       });
-      setExportStatus("Signal je dodat u centralne akcije.");
+      setQueuedSuggestionKeys((current) => (
+        current.includes(actionSpec.sourceKey) ? current : [...current, actionSpec.sourceKey]
+      ));
+      setExportStatus(wasAlreadyQueued
+        ? "Signal je već u centralnim akcijama."
+        : "Signal je dodat u centralne akcije.");
     } catch (reason) {
       setExportStatus(reason instanceof Error ? reason.message : "Dodavanje signalne akcije nije uspelo.");
+    } finally {
+      setQueueBusyKey(null);
     }
   }
 
@@ -1073,7 +1122,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Detail Table - scrollable inventory list */}
-      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} />
+      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} isRowQueued={(row) => queuedSuggestionKeys.includes(buildInventorySignalActionSpec(row).sourceKey)} isRowQueueBusy={(row) => queueBusyKey === buildInventorySignalActionSpec(row).sourceKey} />
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>

@@ -27,7 +27,9 @@ import {
 } from "../utils/analyticsResponseMeta";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import type {
+  AnalyticsActionDataQualityStatus,
   AnalyticsActionStatus,
+  AnalyticsActionSourceType,
   ProductDecisionCenterItem,
   ProductDecisionCenterResponse,
   ProductDecisionRecommendationStatus,
@@ -227,12 +229,13 @@ function buildInventoryDecisionUrl(row: ProductDecisionCenterItem): string {
 
 function buildSourceKey(
   row: ProductDecisionCenterItem,
+  actionKind: string,
   fromDate: string,
   toDate: string,
   storeId: number | null,
   supplierId: number | null,
 ): string {
-  return `product:${row.productId}:${row.recommendationStatus}:${fromDate}:${toDate}:${storeId ?? "all"}:${supplierId ?? "all"}`;
+  return `product:${row.productId}:${actionKind}:${fromDate}:${toDate}:${storeId ?? "all"}:${supplierId ?? "all"}`;
 }
 
 function recommendationActionTitle(status: ProductDecisionRecommendationStatus, productName: string): string {
@@ -254,6 +257,61 @@ function mapActionPriority(row: ProductDecisionCenterItem): "P1" | "P2" | "P3" {
   if (hasCriticalOos || hasLargeLostSales || hasCriticalDataIssue) return "P1";
   if (row.recommendationStatus === "WATCH" || row.recommendationStatus === "INSUFFICIENT_DATA") return "P3";
   return "P2";
+}
+
+function hasDataQualityGap(reasonCodes: string[]): boolean {
+  return reasonCodes.some((code) => {
+    const normalized = (code ?? "").trim().toLowerCase();
+    return normalized === "missing_cost" || normalized === "missing_supplier";
+  });
+}
+
+function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "insufficient_data") {
+    return normalized;
+  }
+
+  return "insufficient_data";
+}
+
+function buildProductQueueSpec(row: ProductDecisionCenterItem): {
+  sourceType: AnalyticsActionSourceType;
+  actionKind: string;
+  title: string;
+  recommendationStatus: string;
+  priority: "P1" | "P2" | "P3";
+} {
+  const reasonCodes = row.reasonCodes ?? [];
+  const dataQualityGap = row.recommendationStatus === "FIX_DATA" || hasDataQualityGap(reasonCodes);
+
+  if (dataQualityGap) {
+    return {
+      sourceType: "data_quality",
+      actionKind: "data_quality_fix",
+      title: "Dopuni podatke za pouzdaniju analitiku",
+      recommendationStatus: "FIX_DATA",
+      priority: toActionDataQualityStatus(row.dataQualityStatus) === "critical" ? "P1" : "P2",
+    };
+  }
+
+  if (row.recommendationStatus === "INSUFFICIENT_DATA") {
+    return {
+      sourceType: "product",
+      actionKind: "signal_check",
+      title: `Proveri signal: ${row.productName}`,
+      recommendationStatus: "SIGNAL_REVIEW",
+      priority: "P3",
+    };
+  }
+
+  return {
+    sourceType: "product",
+    actionKind: row.recommendationStatus.toLowerCase(),
+    title: recommendationActionTitle(row.recommendationStatus, row.productName),
+    recommendationStatus: row.recommendationStatus,
+    priority: mapActionPriority(row),
+  };
 }
 
 export default function ProductDecisionCenterPage() {
@@ -320,12 +378,10 @@ export default function ProductDecisionCenterPage() {
     (async () => {
       try {
         const responses = await Promise.all(
-          OPEN_ACTION_STATUSES.map((status) => getAnalyticsActions({
-            sourceType: "product",
-            status,
-            page: 1,
-            pageSize: 200,
-          })),
+          OPEN_ACTION_STATUSES.flatMap((status) => [
+            getAnalyticsActions({ sourceType: "product", status, page: 1, pageSize: 200 }),
+            getAnalyticsActions({ sourceType: "data_quality", status, page: 1, pageSize: 200 }),
+          ]),
         );
 
         if (cancelled) return;
@@ -517,7 +573,8 @@ export default function ProductDecisionCenterPage() {
   }, []);
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionCenterItem) => {
-    const sourceKey = buildSourceKey(row, fromDate, toDate, storeId, supplierId);
+    const queueSpec = buildProductQueueSpec(row);
+    const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
     const alreadyQueued = queuedActionKeys.has(sourceKey);
 
     setQueueBusyKey(sourceKey);
@@ -526,22 +583,23 @@ export default function ProductDecisionCenterPage() {
       const reasonText = row.recommendationReason;
 
       const action = await upsertAnalyticsAction({
-        sourceType: "product",
+        sourceType: queueSpec.sourceType,
         sourceKey,
         sourceId: row.productId,
-        title: recommendationActionTitle(row.recommendationStatus, row.productName),
+        title: queueSpec.title,
         description: reasonText,
-        recommendationStatus: row.recommendationStatus,
-        priority: mapActionPriority(row),
+        recommendationStatus: queueSpec.recommendationStatus,
+        priority: queueSpec.priority,
         impactEstimateRsd: row.lostSalesEstimate > 0 ? row.lostSalesEstimate : undefined,
         confidencePct: row.confidencePct,
         reliabilityPct: row.reliabilityPct ?? undefined,
-        dataQualityStatus: canonicalDataQualityStatus(row.dataQualityStatus),
-        actionUrl: "/analytics/products",
+        dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
+        actionUrl: queueSpec.sourceType === "data_quality" ? "/analytics/data-quality" : "/analytics/products",
         metadataJson: JSON.stringify({
           productId: row.productId,
           sku: row.sku,
           supplierId: row.supplierId ?? null,
+          actionKind: queueSpec.actionKind,
           recommendationStatus: row.recommendationStatus,
           periodFrom: fromDate,
           periodTo: toDate,
@@ -869,7 +927,8 @@ export default function ProductDecisionCenterPage() {
             <tbody>
               {sortedRows.map((row) => {
                   const expanded = expandedProductId === row.productId;
-                  const sourceKey = buildSourceKey(row, fromDate, toDate, storeId, supplierId);
+                  const queueSpec = buildProductQueueSpec(row);
+                  const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
                   const isQueued = queuedActionKeys.has(sourceKey);
                   const isQueueBusy = queueBusyKey === sourceKey;
                   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);

@@ -20,6 +20,8 @@ type InventoryItemsTableProps = {
   onNextPage: () => void;
   onAddToActions: (row: InventoryRow) => void;
   onReviewSlowStock: (row: InventoryRow) => void;
+  isRowQueued: (row: InventoryRow) => boolean;
+  isRowQueueBusy: (row: InventoryRow) => boolean;
 };
 
 function isActionableLowCover(status: string): boolean {
@@ -30,6 +32,11 @@ function isActionableLowCover(status: string): boolean {
 function isSlowSignal(status: string): boolean {
   const normalized = (status ?? "").trim().toLowerCase();
   return normalized === "slow" || normalized === "no_velocity";
+}
+
+function isSignalReviewOnly(status: string): boolean {
+  const normalized = (status ?? "").trim().toLowerCase();
+  return normalized === "insufficient_data";
 }
 
 export function InventoryItemsTable({
@@ -43,6 +50,8 @@ export function InventoryItemsTable({
   onNextPage,
   onAddToActions,
   onReviewSlowStock,
+  isRowQueued,
+  isRowQueueBusy,
 }: InventoryItemsTableProps) {
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
@@ -92,6 +101,9 @@ export function InventoryItemsTable({
               ) : rows.map((row) => {
                 const stock = getStockState(row.quantity, row.minimum);
                 const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[var(--border-default)]" : row.stockState === "warning" ? "border-l-4 border-l-[var(--border-default)]" : "border-l-4 border-l-[var(--border-default)]";
+                const isQueued = isRowQueued(row);
+                const isQueueBusy = isRowQueueBusy(row);
+                const showQueueButton = isActionableLowCover(row.stockCoverStatus) || isSlowSignal(row.stockCoverStatus) || isSignalReviewOnly(row.stockCoverStatus);
                 return (
                   <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-light)] hover:border-t-[var(--border-hover, var(--theme-color-293243, #293243))] focus:outline-none focus-visible:bg-[var(--surface-elevated)] focus-visible:border-t-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetail(row); } }}>
                     <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[var(--text-primary)]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>
@@ -114,16 +126,17 @@ export function InventoryItemsTable({
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-2">
                         <span>{row.signalText}</span>
-                        {isActionableLowCover(row.stockCoverStatus) ? (
+                        {showQueueButton ? (
                           <button
                             type="button"
                             className="rounded-lg border border-[var(--warning)] bg-[var(--surface-darker)] px-2 py-1 text-xs font-semibold text-[var(--warning)]"
+                            disabled={isQueueBusy || isQueued}
                             onClick={(event) => {
                               event.stopPropagation();
                               onAddToActions(row);
                             }}
                           >
-                            Dodaj u akcije
+                            {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                           </button>
                         ) : null}
                         {isSlowSignal(row.stockCoverStatus) ? (

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierDecisionReportActions from "../SupplierDecisionReportActions";
 
 const exportExcelMock = vi.fn(() => Promise.resolve());
@@ -8,6 +8,8 @@ const exportPdfMock = vi.fn(() => Promise.resolve());
 const printPreviewMock = vi.fn(() => Promise.resolve());
 const exportCsvMock = vi.fn(() => undefined);
 const buildSummaryMock = vi.fn(() => "summary");
+const getAnalyticsActionsMock = vi.fn(() => Promise.resolve({ items: [], totalCount: 0, page: 1, pageSize: 200, totalPages: 1 }));
+const upsertAnalyticsActionMock = vi.fn(() => Promise.resolve({ sourceKey: "supplier:signal_check:all:unknown-period:all" }));
 
 vi.mock("../../../services/supplierDecisionReport", () => ({
   exportSupplierDecisionReportExcel: (...args: unknown[]) => exportExcelMock(...args),
@@ -17,6 +19,11 @@ vi.mock("../../../services/supplierDecisionReport", () => ({
   buildSupplierDecisionReportSummaryText: (...args: unknown[]) => buildSummaryMock(...args),
 }));
 
+vi.mock("../../../services/analyticsApi", () => ({
+  getAnalyticsActions: (...args: unknown[]) => getAnalyticsActionsMock(...args),
+  upsertAnalyticsAction: (...args: unknown[]) => upsertAnalyticsActionMock(...args),
+}));
+
 const payload = {
   tableKey: "supplier-decision-report",
   tableTitle: "Trendplus Supplier Decision Report",
@@ -24,11 +31,18 @@ const payload = {
   columns: [{ key: "item", header: "Stavka", dataType: "text" }],
   rows: [{ item: "Test", value: "1" }],
   filters: [],
-  metadata: [],
+  metadata: [
+    { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: false },
+    { key: "dataScope", label: "Opseg podataka", value: "all" },
+  ],
   locale: "sr-RS",
 };
 
 describe("SupplierDecisionReportActions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("hides PDF export action when feature is disabled", () => {
     vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
 
@@ -74,7 +88,7 @@ describe("SupplierDecisionReportActions", () => {
     await waitFor(() => expect(exportPdfMock).toHaveBeenCalledTimes(1));
   });
 
-  it("disables actions when payload is missing", () => {
+  it("hides export actions when payload is missing", () => {
     vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "true");
 
     render(
@@ -83,11 +97,11 @@ describe("SupplierDecisionReportActions", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: "Štampaj izveštaj" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Kopiraj sažetak" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Izvezi CSV" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Izvezi Excel" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Izvezi PDF" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Štampaj izveštaj" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kopiraj sažetak" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Izvezi CSV" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Izvezi Excel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Izvezi PDF" })).not.toBeInTheDocument();
   });
 
   it("notifies caller on PDF export errors", async () => {
@@ -106,5 +120,28 @@ describe("SupplierDecisionReportActions", () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith("PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.");
     });
+  });
+
+  it("maps recommendationAllowed=false to signal review action", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+
+    await waitFor(() => {
+      expect(upsertAnalyticsActionMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(upsertAnalyticsActionMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceType: "supplier",
+      title: "Proveri signal dobavljača",
+      recommendationStatus: "SIGNAL_REVIEW",
+      priority: "P2",
+    }));
   });
 });
