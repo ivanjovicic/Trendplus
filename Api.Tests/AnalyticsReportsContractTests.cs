@@ -461,6 +461,97 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_IncludesSupplierNegotiationPackSection()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, 1, null, "all", "supplier_negotiation_pack");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
+        Assert.Equal("Paket za razgovor sa dobavljačem", section.Title);
+        Assert.True(section.RowCount > 0);
+        Assert.Contains(section.Rows, row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_NegotiationPack_IncludesFallbackWarningWhenUsedFallbackIsTrue()
+    {
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
+
+        Assert.Contains(section.Rows, row =>
+            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Korišćen fallback dataset", StringComparison.Ordinal)
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_NegotiationPack_BlocksFinalAdviceWhenRecommendationNotAllowed()
+    {
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
+        var finalAdvice = Assert.Single(section.Rows.Where(row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal)));
+
+        Assert.Contains("blokiran", Convert.ToString(finalAdvice.GetValueOrDefault("value")), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_NegotiationPack_IncludesMissingCostWarningWhenSignalIsHigh()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m) with { ReasonCodes = ["missing_cost"] },
+                CreateSupplierRow(2, "Beta", "HOLD", 74m, 76m, 410000m, 1100m) with { ReasonCodes = ["missing_cost", "stock_alert"] },
+                CreateSupplierRow(3, "Gamma", "PRICE_NEGOTIATE", 63m, 68m, 280000m, 980m)
+            ],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
+
+        Assert.Contains(section.Rows, row =>
+            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Visok missing cost", StringComparison.Ordinal)
+            && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReportCacheKeysDifferentiateCriticalDimensions()
     {
         var fromUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -484,6 +575,7 @@ public sealed class AnalyticsReportsContractTests
         var supplierRevenue = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, 1000m, false, false, null, null, "all");
         var supplierConfidence = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, true, false, null, null, "all");
         var supplierOos = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, true, null, null, "all");
+        var supplierNegotiationSection = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
 
         Assert.NotEqual(supplierBase, supplierCategory);
         Assert.NotEqual(supplierBase, supplierGender);
@@ -491,6 +583,7 @@ public sealed class AnalyticsReportsContractTests
         Assert.NotEqual(supplierBase, supplierRevenue);
         Assert.NotEqual(supplierBase, supplierConfidence);
         Assert.NotEqual(supplierBase, supplierOos);
+        Assert.NotEqual(supplierBase, supplierNegotiationSection);
 
         var supplierVersion2 = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, false, null, null, "all", reportCacheVersion: 2);
         var pilotVersion2 = AnalyticsCacheKeys.PilotIntakeReport(fromUtc, toUtc, null, null, "all", reportCacheVersion: 2);

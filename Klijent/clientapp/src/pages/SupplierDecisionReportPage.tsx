@@ -40,6 +40,15 @@ function parseOptionalBoolean(value: string | null): boolean | null {
   return null;
 }
 
+const SUPPLIER_REPORT_METHODOLOGY_KEYS = [
+  "revenue",
+  "marginContribution",
+  "markdownDependency",
+  "stockAtRisk",
+  "confidencePct",
+  "reliabilityPct",
+];
+
 export default function SupplierDecisionReportPage() {
   const [searchParams] = useSearchParams();
   const stateKey = searchParams.get("stateKey");
@@ -55,6 +64,7 @@ export default function SupplierDecisionReportPage() {
   const minRevenue = searchParams.get("minRevenue");
   const onlyHighConfidence = searchParams.get("onlyHighConfidence");
   const excludeOosBeforeMarkdown = searchParams.get("excludeOosBeforeMarkdown");
+  const section = searchParams.get("section");
 
   const parsedSupplierId = useMemo(() => parseOptionalNumber(supplierId), [supplierId]);
   const parsedStoreId = useMemo(() => parseOptionalNumber(storeId), [storeId]);
@@ -82,6 +92,7 @@ export default function SupplierDecisionReportPage() {
     || minRevenue
     || onlyHighConfidence
     || excludeOosBeforeMarkdown
+    || section
   );
 
   useEffect(() => {
@@ -112,6 +123,7 @@ export default function SupplierDecisionReportPage() {
           minRevenue: parsedMinRevenue,
           onlyHighConfidence: parsedOnlyHighConfidence,
           excludeOosBeforeMarkdown: parsedExcludeOosBeforeMarkdown,
+          section,
         });
 
         if (cancelled) return;
@@ -122,6 +134,7 @@ export default function SupplierDecisionReportPage() {
           documentType: response.payload.documentType,
           templateName: response.payload.templateName,
           locale: response.payload.locale,
+          methodologyMetricKeys: SUPPLIER_REPORT_METHODOLOGY_KEYS,
           columns: response.payload.columns.map((column) => ({
             ...column,
             dataType: normalizeColumnType(column.dataType),
@@ -174,6 +187,7 @@ export default function SupplierDecisionReportPage() {
     parsedStoreId,
     parsedSupplierId,
     reloadTick,
+    section,
     scope,
     seasonId,
     storeId,
@@ -201,6 +215,7 @@ export default function SupplierDecisionReportPage() {
     if (minRevenue) params.set("minRevenue", minRevenue);
     if (onlyHighConfidence) params.set("onlyHighConfidence", onlyHighConfidence);
     if (excludeOosBeforeMarkdown) params.set("excludeOosBeforeMarkdown", excludeOosBeforeMarkdown);
+    if (section) params.set("section", section);
     return params.toString() ? `/analytics/supplier/report?${params.toString()}` : null;
   }, [
     category,
@@ -210,6 +225,7 @@ export default function SupplierDecisionReportPage() {
     gender,
     minRevenue,
     onlyHighConfidence,
+    section,
     scope,
     seasonId,
     storeId,

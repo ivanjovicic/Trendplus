@@ -4,11 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 import SupplierDecisionReportPage from "../SupplierDecisionReportPage";
 
 const getPrintPayloadMock = vi.fn();
+const resolveAnalyticsTablePayloadMock = vi.fn((payload) => payload);
+const getSupplierDecisionDurableReportMock = vi.fn();
 
 vi.mock("../../services/analyticsTableState", () => ({
   getPrintPayload: (...args: unknown[]) => getPrintPayloadMock(...args),
-  resolveAnalyticsTablePayload: vi.fn(),
+  resolveAnalyticsTablePayload: (...args: unknown[]) => resolveAnalyticsTablePayloadMock(...args),
 }));
+
+vi.mock("../../services/analyticsApi", async () => {
+  const actual = await vi.importActual<typeof import("../../services/analyticsApi")>("../../services/analyticsApi");
+  return {
+    ...actual,
+    getSupplierDecisionDurableReport: (...args: unknown[]) => getSupplierDecisionDurableReportMock(...args),
+  };
+});
 
 vi.mock("../../components/analytics/SupplierDecisionReport", () => ({
   default: () => <div>report-body</div>,
@@ -33,13 +43,54 @@ function renderPage(path = "/analytics/supplier/report?stateKey=test") {
 }
 
 describe("SupplierDecisionReportPage", () => {
+  it("forwards section query to durable endpoint and injects methodology keys", async () => {
+    getPrintPayloadMock.mockReturnValueOnce(null);
+    getSupplierDecisionDurableReportMock.mockResolvedValueOnce({
+      payload: {
+        tableKey: "supplier-decision-report",
+        tableTitle: "Trendplus izveštaj dobavljača",
+        documentType: "supplier-decision-report",
+        templateName: "supplier-decision",
+        locale: "sr-RS",
+        columns: [{ key: "section", header: "Sekcija", dataType: "text" }],
+        rows: [{ section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" }],
+        filters: [],
+        metadata: [],
+      },
+    });
+
+    renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&section=supplier_negotiation_pack");
+
+    await screen.findByText("report-body");
+
+    expect(getSupplierDecisionDurableReportMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromDate: "2026-04-01",
+        toDate: "2026-06-30",
+        section: "supplier_negotiation_pack",
+      })
+    );
+
+    expect(resolveAnalyticsTablePayloadMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        methodologyMetricKeys: [
+          "revenue",
+          "marginContribution",
+          "markdownDependency",
+          "stockAtRisk",
+          "confidencePct",
+          "reliabilityPct",
+        ],
+      })
+    );
+  });
+
   it("renders filtered_out empty state with recovery actions when payload is missing", () => {
     getPrintPayloadMock.mockReturnValueOnce(null);
 
     renderPage();
 
-    expect(screen.getByText("Izveštaj nije dostupan")).toBeInTheDocument();
-    expect(screen.getByText(/Pregled izveštaja je istekao/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pregled izveštaja je istekao" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ponovo generiši report" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Otvori Scorecard" }).length).toBeGreaterThan(0);

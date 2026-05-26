@@ -79,6 +79,46 @@ function filterValue(payload: ResolvedAnalyticsTablePayload, key: string): strin
   return text.trim() ? text : null;
 }
 
+function buildNegotiationMeetingSummary(rows: ReportRow[]): string {
+  const byGroup = (group: string) => rows.filter((row) => (row.secondary ?? "") === group);
+  const summary = byGroup("Sažetak");
+  const argumentsRows = byGroup("Argumenti za dobavljača");
+  const proposal = byGroup("Predlog razgovora");
+  const warnings = byGroup("Upozorenja");
+
+  const lines: string[] = ["Paket za razgovor sa dobavljačem"];
+
+  if (summary.length > 0) {
+    lines.push("", "Sažetak:");
+    for (const row of summary) {
+      lines.push(`- ${row.item}: ${row.value}`);
+    }
+  }
+
+  if (argumentsRows.length > 0) {
+    lines.push("", "Argumenti:");
+    for (const row of argumentsRows) {
+      lines.push(`- ${row.item}: ${row.value}`);
+    }
+  }
+
+  if (proposal.length > 0) {
+    lines.push("", "Predlog razgovora:");
+    for (const row of proposal) {
+      lines.push(`- ${row.item}: ${row.value}`);
+    }
+  }
+
+  if (warnings.length > 0) {
+    lines.push("", "Upozorenja:");
+    for (const row of warnings) {
+      lines.push(`- ${row.item}: ${row.value}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function renderMetaChips(items: AnalyticsNamedValue[] | undefined, className: string) {
   if (!items || items.length === 0) return null;
   return (
@@ -130,6 +170,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const risk = groupRowsAny(grouped, ["Rizik zalihe"]);
   const boost = groupRowsAny(grouped, ["Pojačaj", "Pojacaj"]);
   const reduce = groupRowsAny(grouped, ["Smanji"]);
+  const negotiationPack = groupRowsAny(grouped, ["Paket za razgovor sa dobavljačem"]);
   const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka", "Data quality"]);
   const methodology = groupRowsAny(grouped, ["Metodologija", "Methodology"]);
   const methodologyMetricKeys = useMemo(
@@ -144,6 +185,16 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         ),
     [kpi, payload.methodologyMetricKeys]
   );
+  const negotiationMeetingSummary = useMemo(
+    () => buildNegotiationMeetingSummary(negotiationPack),
+    [negotiationPack]
+  );
+
+  const copyNegotiationSummary = async () => {
+    if (!negotiationPack.length) return;
+    if (!navigator?.clipboard?.writeText) return;
+    await navigator.clipboard.writeText(negotiationMeetingSummary);
+  };
 
   return (
     <article className={`supplier-decision-report dq-${normalizedDQ}`}>
@@ -306,6 +357,53 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
             )}
           </div>
         </div>
+      </section>
+
+      <section className="sdr-section">
+        <div className="sdr-section-head">
+          <h2>Paket za razgovor sa dobavljačem</h2>
+          <button type="button" className="sdr-copy-btn" onClick={copyNegotiationSummary} disabled={negotiationPack.length === 0}>
+            Kopiraj sažetak za sastanak
+          </button>
+        </div>
+        {negotiationPack.length === 0 ? (
+          <p className="sdr-empty">Paket nije dostupan za trenutni opseg.</p>
+        ) : (
+          <div className="sdr-two-col">
+            <div>
+              <h3>Sažetak i argumenti</h3>
+              <ul className="sdr-list">
+                {negotiationPack
+                  .filter((row) => (row.secondary ?? "") === "Sažetak" || (row.secondary ?? "") === "Argumenti za dobavljača")
+                  .map((row, idx) => (
+                    <li key={`${row.item}-${idx}`}>
+                      <div className="sdr-list-main">
+                        <strong>{row.item}</strong>
+                        <span className="sdr-list-val">{row.value}</span>
+                      </div>
+                      {row.note ? <div className="sdr-list-note">{row.note}</div> : null}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+            <div>
+              <h3>Predlog razgovora i upozorenja</h3>
+              <ul className="sdr-list">
+                {negotiationPack
+                  .filter((row) => (row.secondary ?? "") === "Predlog razgovora" || (row.secondary ?? "") === "Upozorenja")
+                  .map((row, idx) => (
+                    <li key={`${row.item}-${idx}`}>
+                      <div className="sdr-list-main">
+                        <strong>{row.item}</strong>
+                        <span className="sdr-list-val">{row.value}</span>
+                      </div>
+                      {row.note ? <div className="sdr-list-note">{row.note}</div> : null}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="sdr-section">

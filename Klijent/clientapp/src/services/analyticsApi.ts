@@ -896,6 +896,7 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   minRevenue?: number | null;
   onlyHighConfidence?: boolean | null;
   excludeOosBeforeMarkdown?: boolean | null;
+  section?: string | null;
 }): Promise<SupplierDecisionDurableReport> {
   const params = new URLSearchParams();
   if (paramsInput.fromDate) params.set("fromDate", paramsInput.fromDate);
@@ -910,6 +911,7 @@ export async function getSupplierDecisionDurableReport(paramsInput: {
   if (paramsInput.minRevenue != null) params.set("minRevenue", String(paramsInput.minRevenue));
   if (paramsInput.onlyHighConfidence != null) params.set("onlyHighConfidence", String(paramsInput.onlyHighConfidence));
   if (paramsInput.excludeOosBeforeMarkdown != null) params.set("excludeOosBeforeMarkdown", String(paramsInput.excludeOosBeforeMarkdown));
+  if (paramsInput.section) params.set("section", paramsInput.section);
 
   return fetchJson(
     "/api/analytics/reports/supplier-decision",

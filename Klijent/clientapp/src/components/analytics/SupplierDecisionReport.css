@@ -128,6 +128,30 @@
   font-size: 15px;
 }
 
+.sdr-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sdr-copy-btn {
+  border: 1px solid var(--sdr-border);
+  border-radius: 10px;
+  background: var(--sdr-panel);
+  color: var(--sdr-text);
+  font-weight: 800;
+  font-size: 12px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.sdr-copy-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .sdr-section h3 {
   margin: 0 0 8px;
   font-size: 13px;
