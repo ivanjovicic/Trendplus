@@ -826,6 +826,7 @@ export default function InventoryPage() {
               <div className="text-xs uppercase tracking-[0.22em] text-[var(--warning)]">Aktivni SKU</div>
               <div className="mt-2 text-3xl font-semibold text-contrast">{formatPercent(activeSkuShare)}</div>
               <div className="mt-2 text-sm text-secondary">Udeo artikala koji nisu bez zaliha.</div>
+              <KpiExplainButton metricKey="activeSkuShare" ariaLabel="Kako je izračunato: Aktivni SKU" />
             </div>
             <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
               <div className="flex items-center justify-between gap-3">
@@ -836,6 +837,7 @@ export default function InventoryPage() {
               </div>
               <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></div>
               <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kritičnih SKU." : "Povećan rizik od praznih polica."}</div>
+              <KpiExplainButton metricKey="inventoryHealthScore" ariaLabel="Kako je izračunato: Stanje fonda" />
             </div>
           </div>
         </div>

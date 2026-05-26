@@ -333,6 +333,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           <p className="sdr-empty">Metodologija nije dostupna.</p>
         ) : (
           <div className="sdr-methodology">
+            <h3>Napomene iz backend payload-a</h3>
             {methodology.map((row, idx) => (
               <div key={`${row.item}-${idx}`} className="sdr-method">
                 <strong>{row.item}</strong>
