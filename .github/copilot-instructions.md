@@ -286,6 +286,31 @@ Koristi CSS variables:
 
 ---
 
+## Frontend routing guardrails
+
+- Ne menjaj App.tsx iz lazy/Suspense u direktne import-e radi testa.
+- Ako route smoke test ne radi sa lazy importima, popravi test/mocks; ne ukidaj lazy loading.
+- `RouteFallback` mora ostati za lazy-loaded routes.
+- Legacy/admin compatibility rute ne uklanjati bez replacement + redirect plana:
+  - `/analytics/product-decision-center` -> `/analytics/products`
+  - `/analytics/data-quality/pilot-intake-report`
+  - `/admin/configuration`
+  - `/configuration` -> `/admin/configuration`
+  - `/analytics/supplier-sales-stats` (ako se koristi)
+  - `/analytics/dobavljaci-tipovi-obuce` (ako se koristi)
+  - `/analytics/supplier-decision-hub` (ako se koristi)
+- Ne menjaj `ThemeProvider defaultTheme` u routing/test taskovima.
+
+Route smoke vs browser smoke:
+- Route smoke proverava mapiranje i render-level stabilnost.
+- Browser/manual smoke proverava URL refresh, API loading, empty/error stanje i copy.
+- Route smoke nije dovoljan za production sign-off.
+
+Standard i PR checklist:
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+
+---
+
 ## UTF-8 i srpski tekst
 
 Pre commit-a pretraži:

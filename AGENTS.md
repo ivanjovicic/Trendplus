@@ -170,6 +170,14 @@ Core analytics page treba:
 
 Ne prikazuj raw backend code korisniku ako postoji mapping.
 
+### Frontend routing guardrails
+
+- Ne menjaj App.tsx iz lazy/Suspense u direktne import-e radi testa.
+- Ako route smoke test ne radi sa lazy importima, popravi test/mocks, ne runtime routing.
+- Ne uklanjaj legacy/admin compatibility rute bez replacement + redirect plana.
+- Ne menjaj `ThemeProvider defaultTheme` u taskovima koji nisu theme/design-system.
+- Za detaljna pravila koristi `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`.
+
 ---
 
 ## Supplier Scorecard rules

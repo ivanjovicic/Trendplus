@@ -3,6 +3,7 @@
 Datum verifikacije: 2026-05-26
 Repo: ivanjovicic/Trendplus
 Osnovni checklist: docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md
+Routing/smoke standard: docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md
 
 ## Sažetak
 

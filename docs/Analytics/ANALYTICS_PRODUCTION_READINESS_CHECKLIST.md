@@ -2,6 +2,9 @@
 
 Koristi ovaj dokument kao finalni pre-merge checklist za svaku analytics promenu. Važi za backend endpoint-e, frontend analytics ekrane, durable reports, cache, worker/refresh tokove i KPI methodology rollout.
 
+Routing i smoke standard (obavezna dopuna ovog checklist-a):
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+
 Ako makar jedna stavka iz odeljka Production blockers padne, promena nije spremna za merge.
 
 ## 1) Build/Test Gates
@@ -185,6 +188,13 @@ Pre merge-a proveriti da PR opis sadrži barem:
 - Rezultate build/test komandi.
 - Manual smoke coverage po rutama ili jasno naveden uzorak.
 - Preostale rizike, fallback-e ili stvari koje nisu mogle da se verifikuju.
+
+Dodatne obavezne stavke za routing/smoke PR:
+- App.tsx i dalje koristi lazy/Suspense (nema masovnog prelaza na direktne import-e radi testa).
+- Nema dupliranih ruta (`/settings/themes`, `/analytics/*`, `/admin/*`, `/configuration`).
+- Legacy/admin rute imaju replacement + redirect kada se menjaju.
+- `ThemeProvider defaultTheme` nije promenjen slucajno.
+- Route smoke test prolazi: `npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx`.
 
 ## Final Pre-Merge Sign-off
 
