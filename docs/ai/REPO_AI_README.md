@@ -63,6 +63,6 @@ Ne zatrpavati standarde pravilima koja nemaju realnu vrednost za ovaj repo.
 
 ## Production Readiness (Analytics)
 
-Pre merge-a za analytics promene koristi:
+Pre merge-a za analytics promene obavezno koristi pre-merge checklist:
 
-- `docs/analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
