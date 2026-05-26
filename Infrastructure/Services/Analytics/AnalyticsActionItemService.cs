@@ -20,6 +20,11 @@ public sealed class AnalyticsActionItemService
         _logger = logger;
     }
 
+    private static bool IsOpenStatus(string? status)
+        => status is AnalyticsActionConstants.Statuses.New
+            or AnalyticsActionConstants.Statuses.Accepted
+            or AnalyticsActionConstants.Statuses.Deferred;
+
     // ── Query ─────────────────────────────────────────────────────────────
 
     public async Task<(IReadOnlyList<AnalyticsActionItem> Items, int TotalCount)> ListAsync(
@@ -131,6 +136,15 @@ public sealed class AnalyticsActionItemService
         string? userId,
         CancellationToken ct = default)
     {
+        var result = await UpsertWithResultAsync(request, userId, ct);
+        return result.Item;
+    }
+
+    public async Task<AnalyticsActionUpsertResult> UpsertWithResultAsync(
+        AnalyticsActionUpsertRequest request,
+        string? userId,
+        CancellationToken ct = default)
+    {
         if (!AnalyticsActionConstants.IsValidSourceType(request.SourceType))
         {
             throw new ArgumentException(
@@ -159,16 +173,19 @@ public sealed class AnalyticsActionItemService
             .FirstOrDefaultAsync(x =>
                 x.SourceType == request.SourceType &&
                 x.SourceKey == request.SourceKey &&
-                (x.Status == AnalyticsActionConstants.Statuses.New ||
-                 x.Status == AnalyticsActionConstants.Statuses.Accepted ||
-                 x.Status == AnalyticsActionConstants.Statuses.Deferred),
+            IsOpenStatus(x.Status),
                 ct);
 
         if (existing is not null)
         {
             _logger.LogDebug("AnalyticsActionItem upsert: found existing open action {Id} for {SourceType}/{SourceKey}",
                 existing.Id, request.SourceType, request.SourceKey);
-            return existing;
+            return new AnalyticsActionUpsertResult(
+                Item: existing,
+                Created: false,
+                Existing: true,
+                Status: existing.Status,
+                SourceKey: existing.SourceKey);
         }
 
         var item = new AnalyticsActionItem
@@ -199,7 +216,80 @@ public sealed class AnalyticsActionItemService
         _logger.LogInformation("AnalyticsActionItem created: Id={Id} SourceType={SourceType} SourceKey={SourceKey} Priority={Priority}",
             item.Id, item.SourceType, item.SourceKey, item.Priority);
 
-        return item;
+        return new AnalyticsActionUpsertResult(
+            Item: item,
+            Created: true,
+            Existing: false,
+            Status: item.Status,
+            SourceKey: item.SourceKey);
+    }
+
+    public async Task<IReadOnlyList<AnalyticsActionSourceStatusDto>> GetSourceStatusesAsync(
+        string sourceType,
+        IReadOnlyCollection<string> sourceKeys,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(sourceType) || sourceKeys.Count == 0)
+        {
+            return Array.Empty<AnalyticsActionSourceStatusDto>();
+        }
+
+        var normalizedKeys = sourceKeys
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Select(key => key.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (normalizedKeys.Length == 0)
+        {
+            return Array.Empty<AnalyticsActionSourceStatusDto>();
+        }
+
+        var candidates = await _db.AnalyticsActionItems
+            .AsNoTracking()
+            .Where(x => x.SourceType == sourceType && normalizedKeys.Contains(x.SourceKey))
+            .Select(x => new
+            {
+                x.Id,
+                x.SourceKey,
+                x.Status,
+                x.UpdatedAtUtc,
+                OpenRank = IsOpenStatus(x.Status) ? 1 : 0,
+            })
+            .ToListAsync(ct);
+
+        var bestByKey = candidates
+            .GroupBy(x => x.SourceKey)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(x => x.OpenRank)
+                    .ThenByDescending(x => x.UpdatedAtUtc)
+                    .First(),
+                StringComparer.Ordinal);
+
+        var items = new List<AnalyticsActionSourceStatusDto>(normalizedKeys.Length);
+        foreach (var key in normalizedKeys)
+        {
+            if (!bestByKey.TryGetValue(key, out var candidate))
+            {
+                items.Add(new AnalyticsActionSourceStatusDto(
+                    SourceKey: key,
+                    Exists: false,
+                    Status: null,
+                    ActionId: null));
+                continue;
+            }
+
+            var exists = IsOpenStatus(candidate.Status);
+            items.Add(new AnalyticsActionSourceStatusDto(
+                SourceKey: key,
+                Exists: exists,
+                Status: candidate.Status,
+                ActionId: candidate.Id));
+        }
+
+        return items;
     }
 
     // ── Status update ──────────────────────────────────────────────────────
@@ -302,4 +392,19 @@ public sealed record AnalyticsActionUpsertRequest(
     string? DataQualityStatus,
     string? ActionUrl,
     string? MetadataJson
+);
+
+public sealed record AnalyticsActionUpsertResult(
+    AnalyticsActionItem Item,
+    bool Created,
+    bool Existing,
+    string Status,
+    string SourceKey
+);
+
+public sealed record AnalyticsActionSourceStatusDto(
+    string SourceKey,
+    bool Exists,
+    string? Status,
+    long? ActionId
 );

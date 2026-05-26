@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
-import { getAnalyticsActions, upsertAnalyticsAction } from "../../services/analyticsApi";
-import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus } from "../../types/analytics";
+import { getAnalyticsActionSourceStatuses, upsertAnalyticsActionWithResult } from "../../services/analyticsApi";
+import type { AnalyticsActionDataQualityStatus } from "../../types/analytics";
 import {
   buildSupplierDecisionReportSummaryText,
   exportSupplierDecisionReportCsv,
@@ -18,8 +18,6 @@ type SupplierDecisionReportActionsProps = {
   onError?: (message: string) => void;
   durableReportHref?: string | null;
 };
-
-const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
 
 function readPayloadValue(payload: ResolvedAnalyticsTablePayload | null, key: string): string | null {
   if (!payload) return null;
@@ -83,12 +81,13 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
 
     void (async () => {
       try {
-        const responses = await Promise.all(
-          OPEN_ACTION_STATUSES.map((status) => getAnalyticsActions({ sourceType: "supplier", status, page: 1, pageSize: 200 })),
-        );
+        const response = await getAnalyticsActionSourceStatuses({
+          sourceType: "supplier",
+          sourceKeys: [sourceKey],
+        });
         if (cancelled) return;
-        const exists = responses.some((response) => response.items.some((item) => item.sourceKey === sourceKey));
-        setQueued(exists);
+        const item = response.items.find((entry: { sourceKey: string; exists: boolean }) => entry.sourceKey === sourceKey);
+        setQueued(Boolean(item?.exists));
       } catch {
         if (!cancelled) setQueued(false);
       }
@@ -177,7 +176,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           ? "Pripremiti argumente i uslove za pregovor na osnovu scorecard signala."
           : "Finalna preporuka nije dozvoljena za ovaj izveštaj; potrebna je provera signala pre odluke.";
 
-        const action = await upsertAnalyticsAction({
+        const result = await upsertAnalyticsActionWithResult({
           sourceType: "supplier",
           sourceKey,
           sourceId: supplierId,
@@ -196,10 +195,12 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           }),
         });
 
-        if (action.sourceKey) {
+        if (result.sourceKey) {
           setQueued(true);
         }
-        setStatus("Akcija je dodata u centralni red.");
+        setStatus(result.existing
+          ? "Akcija je već u centralnim akcijama."
+          : "Akcija je dodata u centralni red.");
         return;
       }
 

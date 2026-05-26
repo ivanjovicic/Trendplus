@@ -136,6 +136,40 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(1, await db.AnalyticsActionItems.CountAsync());
     }
 
+    [Fact]
+    public async Task UpsertWithResultAsync_SameSourceWhileOpen_ReturnsExistingFlag()
+    {
+        await using var db = CreateDbContext(nameof(UpsertWithResultAsync_SameSourceWhileOpen_ReturnsExistingFlag));
+        var service = CreateService(db);
+        var sourceType = AnalyticsActionConstants.SourceTypes.Inventory;
+        var sourceKey = "dup-open-flags";
+
+        var first = await service.UpsertWithResultAsync(CreateRequest(sourceType, sourceKey, title: "Prvi"), userId: "u1");
+        var second = await service.UpsertWithResultAsync(CreateRequest(sourceType, sourceKey, title: "Drugi"), userId: "u2");
+
+        Assert.True(first.Created);
+        Assert.False(first.Existing);
+        Assert.False(second.Created);
+        Assert.True(second.Existing);
+        Assert.Equal(first.Item.Id, second.Item.Id);
+        Assert.Equal(sourceKey, second.SourceKey);
+        Assert.Equal(1, await db.AnalyticsActionItems.CountAsync());
+    }
+
+    [Fact]
+    public async Task UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide));
+        var service = CreateService(db);
+        const string sourceKey = "same-key";
+
+        var inventory = await service.UpsertAsync(CreateRequest(AnalyticsActionConstants.SourceTypes.Inventory, sourceKey, title: "Inventory"), userId: "u1");
+        var supplier = await service.UpsertAsync(CreateRequest(AnalyticsActionConstants.SourceTypes.Supplier, sourceKey, title: "Supplier"), userId: "u1");
+
+        Assert.NotEqual(inventory.Id, supplier.Id);
+        Assert.Equal(2, await db.AnalyticsActionItems.CountAsync());
+    }
+
     [Theory]
     [InlineData(AnalyticsActionConstants.Statuses.Rejected)]
     [InlineData(AnalyticsActionConstants.Statuses.Done)]
@@ -184,6 +218,52 @@ public class AnalyticsActionItemServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.UpdateStatusAsync(created.Id, "invalid_status", note: null, userId: "u1", userName: "tester"));
+    }
+
+    [Fact]
+    public async Task GetSourceStatusesAsync_ReturnsExistsForMultipleKeys()
+    {
+        await using var db = CreateDbContext(nameof(GetSourceStatusesAsync_ReturnsExistsForMultipleKeys));
+        var service = CreateService(db);
+
+        await service.UpsertAsync(CreateRequest("inventory", "exists-open"), userId: "u1");
+
+        var closed = await service.UpsertAsync(CreateRequest("inventory", "exists-closed"), userId: "u1");
+        await service.UpdateStatusAsync(closed.Id, AnalyticsActionConstants.Statuses.Done, note: null, userId: "u1", userName: "tester");
+
+        var statuses = await service.GetSourceStatusesAsync("inventory", new[] { "exists-open", "exists-closed", "missing-key" });
+
+        var open = statuses.Single(x => x.SourceKey == "exists-open");
+        Assert.True(open.Exists);
+        Assert.Equal(AnalyticsActionConstants.Statuses.New, open.Status);
+        Assert.NotNull(open.ActionId);
+
+        var closedStatus = statuses.Single(x => x.SourceKey == "exists-closed");
+        Assert.False(closedStatus.Exists);
+        Assert.Equal(AnalyticsActionConstants.Statuses.Done, closedStatus.Status);
+        Assert.NotNull(closedStatus.ActionId);
+
+        var missing = statuses.Single(x => x.SourceKey == "missing-key");
+        Assert.False(missing.Exists);
+        Assert.Null(missing.Status);
+        Assert.Null(missing.ActionId);
+    }
+
+    [Fact]
+    public void AnalyticsAction_ModelHasUniqueOpenSourceIndex()
+    {
+        using var db = CreateDbContext(nameof(AnalyticsAction_ModelHasUniqueOpenSourceIndex));
+        var entityType = db.Model.FindEntityType(typeof(Domain.Model.Analytics.AnalyticsActionItem));
+        Assert.NotNull(entityType);
+
+        var hasUniqueOpenIndex = entityType!
+            .GetIndexes()
+            .Any(index =>
+                index.IsUnique
+                && index.Properties.Select(p => p.Name).SequenceEqual(new[] { "SourceType", "SourceKey" })
+                && (index.GetFilter()?.Contains("new") ?? false));
+
+        Assert.True(hasUniqueOpenIndex);
     }
 
     private static AnalyticsDbContext CreateDbContext(string databaseName)

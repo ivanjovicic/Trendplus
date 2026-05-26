@@ -1172,13 +1172,52 @@ export async function getAnalyticsActionById(id: number): Promise<AnalyticsActio
   );
 }
 
+type AnalyticsActionUpsertResponse = {
+  item: AnalyticsActionItem;
+  created: boolean;
+  existing: boolean;
+  status: string;
+  sourceKey: string;
+};
+
+type AnalyticsActionSourceStatusInput = {
+  sourceType: string;
+  sourceKeys: string[];
+};
+
+type AnalyticsActionSourceStatusResponse = {
+  items: Array<{
+    sourceKey: string;
+    exists: boolean;
+    status?: string | null;
+    actionId?: number | null;
+  }>;
+};
+
 export async function upsertAnalyticsAction(
   input: AnalyticsActionUpsertInput
 ): Promise<AnalyticsActionItem> {
-  return postJson<AnalyticsActionItem>(
+  const response = await upsertAnalyticsActionWithResult(input);
+  return response.item;
+}
+
+export async function upsertAnalyticsActionWithResult(
+  input: AnalyticsActionUpsertInput
+): Promise<AnalyticsActionUpsertResponse> {
+  return postJson<AnalyticsActionUpsertResponse>(
     "/api/analytics/actions",
     input,
     "Greška pri dodavanju akcije"
+  );
+}
+
+export async function getAnalyticsActionSourceStatuses(
+  input: AnalyticsActionSourceStatusInput
+): Promise<AnalyticsActionSourceStatusResponse> {
+  return postJson<AnalyticsActionSourceStatusResponse>(
+    "/api/analytics/actions/status",
+    input,
+    "Greška pri proveri statusa akcija"
   );
 }
 

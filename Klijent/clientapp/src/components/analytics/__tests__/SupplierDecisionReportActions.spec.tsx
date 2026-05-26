@@ -8,8 +8,14 @@ const exportPdfMock = vi.fn(() => Promise.resolve());
 const printPreviewMock = vi.fn(() => Promise.resolve());
 const exportCsvMock = vi.fn(() => undefined);
 const buildSummaryMock = vi.fn(() => "summary");
-const getAnalyticsActionsMock = vi.fn(() => Promise.resolve({ items: [], totalCount: 0, page: 1, pageSize: 200, totalPages: 1 }));
-const upsertAnalyticsActionMock = vi.fn(() => Promise.resolve({ sourceKey: "supplier:signal_check:all:unknown-period:all" }));
+const getAnalyticsActionSourceStatusesMock = vi.fn(() => Promise.resolve({ items: [] }));
+const upsertAnalyticsActionWithResultMock = vi.fn(() => Promise.resolve({
+  item: { sourceKey: "supplier:signal_check:all:unknown-period:all" },
+  created: true,
+  existing: false,
+  status: "new",
+  sourceKey: "supplier:signal_check:all:unknown-period:all",
+}));
 
 vi.mock("../../../services/supplierDecisionReport", () => ({
   exportSupplierDecisionReportExcel: (...args: unknown[]) => exportExcelMock(...args),
@@ -20,8 +26,8 @@ vi.mock("../../../services/supplierDecisionReport", () => ({
 }));
 
 vi.mock("../../../services/analyticsApi", () => ({
-  getAnalyticsActions: (...args: unknown[]) => getAnalyticsActionsMock(...args),
-  upsertAnalyticsAction: (...args: unknown[]) => upsertAnalyticsActionMock(...args),
+  getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
+  upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
 }));
 
 const payload = {
@@ -134,14 +140,37 @@ describe("SupplierDecisionReportActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
 
     await waitFor(() => {
-      expect(upsertAnalyticsActionMock).toHaveBeenCalledTimes(1);
+      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(upsertAnalyticsActionMock).toHaveBeenCalledWith(expect.objectContaining({
+    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledWith(expect.objectContaining({
       sourceType: "supplier",
       title: "Proveri signal dobavljača",
       recommendationStatus: "SIGNAL_REVIEW",
       priority: "P2",
     }));
+  });
+
+  it("shows existing message when backend reports existing action", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+    upsertAnalyticsActionWithResultMock.mockResolvedValueOnce({
+      item: { sourceKey: "supplier:signal_check:all:unknown-period:all" },
+      created: false,
+      existing: true,
+      status: "accepted",
+      sourceKey: "supplier:signal_check:all:unknown-period:all",
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Akcija je već u centralnim akcijama.")).toBeInTheDocument();
+    });
   });
 });

@@ -118,10 +118,34 @@ public static class AnalyticsActionsEndpoints
                 MetadataJson: body.MetadataJson
             );
 
-            var item = await svc.UpsertAsync(request, userId, ct);
-            return Results.Ok(item);
+            var result = await svc.UpsertWithResultAsync(request, userId, ct);
+            return Results.Ok(result);
         })
         .WithName("UpsertAnalyticsAction");
+
+        // POST /api/analytics/actions/status
+        // Batch status probe by sourceType + sourceKeys.
+        group.MapPost("/status", async (
+            AnalyticsActionSourceStatusBody body,
+            AnalyticsActionItemService svc,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.SourceType))
+                return Results.BadRequest("sourceType is required");
+
+            if (!AnalyticsActionConstants.IsValidSourceType(body.SourceType))
+                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+
+            if (body.SourceKeys is null || body.SourceKeys.Count == 0)
+                return Results.BadRequest("sourceKeys is required");
+
+            if (body.SourceKeys.Count > 1000)
+                return Results.BadRequest("sourceKeys must contain at most 1000 items");
+
+            var items = await svc.GetSourceStatusesAsync(body.SourceType, body.SourceKeys, ct);
+            return Results.Ok(new { items });
+        })
+        .WithName("GetAnalyticsActionSourceStatuses");
 
         // PATCH /api/analytics/actions/{id}/status
         group.MapMethods("/{id:long}/status", ["PATCH"], async (
@@ -171,4 +195,9 @@ public sealed record AnalyticsActionUpsertBody(
 public sealed record AnalyticsActionStatusUpdateBody(
     string Status,
     string? Note
+);
+
+public sealed record AnalyticsActionSourceStatusBody(
+    string SourceType,
+    IReadOnlyList<string> SourceKeys
 );

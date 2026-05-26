@@ -1,6 +1,6 @@
 ﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
-import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
+import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
@@ -211,36 +211,6 @@ export default function InventoryPage() {
       });
     return () => { cancelled = true; };
   }, [selectedStoreId, selectedSupplierId]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadQueuedInventorySuggestions() {
-      try {
-        const [newActions, acceptedActions, deferredActions] = await Promise.all([
-          getAnalyticsActions({ sourceType: "inventory", status: "new", page: 1, pageSize: 200 }),
-          getAnalyticsActions({ sourceType: "inventory", status: "accepted", page: 1, pageSize: 200 }),
-          getAnalyticsActions({ sourceType: "inventory", status: "deferred", page: 1, pageSize: 200 }),
-        ]);
-
-        if (cancelled) return;
-
-        const nextKeys = new Set<string>();
-        for (const action of [...newActions.items, ...acceptedActions.items, ...deferredActions.items]) {
-          if (action.sourceKey) nextKeys.add(action.sourceKey);
-        }
-
-        if (nextKeys.size > 0) {
-          setQueuedSuggestionKeys((current) => Array.from(new Set([...current, ...nextKeys])));
-        }
-      } catch (reason) {
-        console.warn("Neuspešno učitavanje postojećih inventory akcija iz centralnog reda.", reason);
-      }
-    }
-
-    void loadQueuedInventorySuggestions();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     const currentLoad = {
@@ -521,6 +491,49 @@ export default function InventoryPage() {
         : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
     });
   }, [forecastMetricsByRowKey, rows, sortBy]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const signalKeys = displayedRows.map((row) => buildInventorySignalActionSpec(row).sourceKey);
+    const workflowKeys = (actionWorkflow?.items ?? [])
+      .map((item) => item.suggestionKey)
+      .filter((key) => Boolean(key));
+    const sourceKeys = Array.from(new Set([...signalKeys, ...workflowKeys]));
+
+    if (sourceKeys.length === 0) {
+      setQueuedSuggestionKeys([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const response = await getAnalyticsActionSourceStatuses({
+          sourceType: "inventory",
+          sourceKeys,
+        });
+
+        if (cancelled) return;
+        setQueuedSuggestionKeys(
+          response.items
+            .filter((item: { exists: boolean }) => item.exists)
+            .map((item: { sourceKey: string }) => item.sourceKey),
+        );
+      } catch (reason) {
+        if (!cancelled) {
+          setQueuedSuggestionKeys([]);
+          console.warn("Neuspešna provera statusa inventory akcija po sourceKey.", reason);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [actionWorkflow, displayedRows]);
+
   const signalKpis = useMemo(() => {
     const lowCoverSkus = rows.filter((row) => {
       const status = (row.stockCoverStatus ?? "").toLowerCase();
@@ -655,9 +668,7 @@ export default function InventoryPage() {
   async function addWorkflowSuggestionToCentralQueue(item: InventoryActionSuggestion) {
     try {
       setQueueBusyKey(item.suggestionKey);
-      const wasAlreadyQueued = queuedSuggestionKeys.includes(item.suggestionKey);
-
-      await upsertAnalyticsAction({
+      const result = await upsertAnalyticsActionWithResult({
         sourceType: "inventory",
         sourceKey: item.suggestionKey,
         sourceId: item.artikalId,
@@ -678,9 +689,9 @@ export default function InventoryPage() {
       setQueuedSuggestionKeys((current) => (
         current.includes(item.suggestionKey) ? current : [...current, item.suggestionKey]
       ));
-      setExportStatus(wasAlreadyQueued
-        ? "Predlog je već bio u centralnim akcijama."
-        : "Predlog dodat u centralne akcije.");
+      setExportStatus(result.existing
+        ? "Akcija je već u centralnim akcijama."
+        : "Akcija je dodata u centralni red.");
     } catch (reason) {
       setExportStatus(reason instanceof Error ? reason.message : "Dodavanje u centralne akcije nije uspelo.");
     } finally {
@@ -811,10 +822,9 @@ export default function InventoryPage() {
 
   async function addSignalRowToCentralQueue(row: InventoryRow) {
     const actionSpec = buildInventorySignalActionSpec(row);
-    const wasAlreadyQueued = queuedSuggestionKeys.includes(actionSpec.sourceKey);
     setQueueBusyKey(actionSpec.sourceKey);
     try {
-      await upsertAnalyticsAction({
+      const result = await upsertAnalyticsActionWithResult({
         sourceType: "inventory",
         sourceKey: actionSpec.sourceKey,
         sourceId: row.id,
@@ -836,9 +846,9 @@ export default function InventoryPage() {
       setQueuedSuggestionKeys((current) => (
         current.includes(actionSpec.sourceKey) ? current : [...current, actionSpec.sourceKey]
       ));
-      setExportStatus(wasAlreadyQueued
-        ? "Signal je već u centralnim akcijama."
-        : "Signal je dodat u centralne akcije.");
+      setExportStatus(result.existing
+        ? "Akcija je već u centralnim akcijama."
+        : "Akcija je dodata u centralni red.");
     } catch (reason) {
       setExportStatus(reason instanceof Error ? reason.message : "Dodavanje signalne akcije nije uspelo.");
     } finally {
@@ -1080,11 +1090,7 @@ export default function InventoryPage() {
           actionWorkflow={actionWorkflow}
           operationsLoading={operationsLoading}
           workflowBusyKey={workflowBusyKey}
-          queueBusyKey={queueBusyKey}
-          centralQueueUrl={INVENTORY_ACTIONS_QUEUE_URL}
-          isSuggestionQueued={(item) => queuedSuggestionKeys.includes(item.suggestionKey)}
           onUpdateWorkflowStatus={(item, status) => void updateWorkflowStatus(item, status)}
-          onAddToCentralQueue={(item) => void addWorkflowSuggestionToCentralQueue(item)}
         />
       </ErrorBoundary>
 

@@ -8,11 +8,11 @@ import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
 import {
   AnalyticsMetaError,
-  getAnalyticsActions,
+  getAnalyticsActionSourceStatuses,
   getProductDecisionCenter,
   getStores,
   getSupplierFilters,
-  upsertAnalyticsAction,
+  upsertAnalyticsActionWithResult,
 } from "../services/analyticsApi";
 import {
   fmtNumber,
@@ -28,7 +28,6 @@ import {
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import type {
   AnalyticsActionDataQualityStatus,
-  AnalyticsActionStatus,
   AnalyticsActionSourceType,
   ProductDecisionCenterItem,
   ProductDecisionCenterResponse,
@@ -141,8 +140,6 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "dataQualityStatus", header: "Data quality", dataType: "text" },
   { key: "recommendationLabel", header: "Preporuka", dataType: "text" },
 ];
-
-const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
 
 function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -370,39 +367,6 @@ export default function ProductDecisionCenterPage() {
     };
   }, [fromDate, toDate, storeId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    // UX choice: clear queued keys on sourceKey-defining filter change
-    // to avoid temporary false-positive "U akcijama" badges for the previous context.
-    setQueuedActionKeys(new Set());
-    (async () => {
-      try {
-        const responses = await Promise.all(
-          OPEN_ACTION_STATUSES.flatMap((status) => [
-            getAnalyticsActions({ sourceType: "product", status, page: 1, pageSize: 200 }),
-            getAnalyticsActions({ sourceType: "data_quality", status, page: 1, pageSize: 200 }),
-          ]),
-        );
-
-        if (cancelled) return;
-
-        const keys = new Set<string>();
-        for (const response of responses) {
-          for (const item of response.items) {
-            if (item.sourceKey) keys.add(item.sourceKey);
-          }
-        }
-        setQueuedActionKeys(keys);
-      } catch {
-        if (!cancelled) setQueuedActionKeys(new Set());
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fromDate, toDate, storeId, supplierId]);
-
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -483,6 +447,56 @@ export default function ProductDecisionCenterPage() {
     });
     return copy;
   }, [filteredRows, sortDir, sortField]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setQueuedActionKeys(new Set());
+
+    const candidates = sortedRows.map((row) => {
+      const queueSpec = buildProductQueueSpec(row);
+      return {
+        sourceType: queueSpec.sourceType,
+        sourceKey: buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId),
+      };
+    });
+
+    const productKeys = Array.from(new Set(candidates.filter((entry) => entry.sourceType === "product").map((entry) => entry.sourceKey)));
+    const dataQualityKeys = Array.from(new Set(candidates.filter((entry) => entry.sourceType === "data_quality").map((entry) => entry.sourceKey)));
+
+    if (productKeys.length === 0 && dataQualityKeys.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    (async () => {
+      try {
+        const [productStatuses, dataQualityStatuses] = await Promise.all([
+          productKeys.length > 0
+            ? getAnalyticsActionSourceStatuses({ sourceType: "product", sourceKeys: productKeys })
+            : Promise.resolve({ items: [] }),
+          dataQualityKeys.length > 0
+            ? getAnalyticsActionSourceStatuses({ sourceType: "data_quality", sourceKeys: dataQualityKeys })
+            : Promise.resolve({ items: [] }),
+        ]);
+
+        if (cancelled) return;
+
+        const keys = new Set<string>();
+        for (const item of [...productStatuses.items, ...dataQualityStatuses.items]) {
+          if (item.exists && item.sourceKey) keys.add(item.sourceKey);
+        }
+
+        setQueuedActionKeys(keys);
+      } catch {
+        if (!cancelled) setQueuedActionKeys(new Set());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fromDate, sortedRows, storeId, supplierId, toDate]);
   const hasBlockingError = Boolean(error && !payload);
   const showMetaWarning = !loading && !hasBlockingError && isAnalyticsMetaWarning(responseMeta);
   const showInsufficientState = !loading
@@ -575,14 +589,13 @@ export default function ProductDecisionCenterPage() {
   const addRowToCentralActions = useCallback(async (row: ProductDecisionCenterItem) => {
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
-    const alreadyQueued = queuedActionKeys.has(sourceKey);
 
     setQueueBusyKey(sourceKey);
     setQueueMessage(null);
     try {
       const reasonText = row.recommendationReason;
 
-      const action = await upsertAnalyticsAction({
+      const result = await upsertAnalyticsActionWithResult({
         sourceType: queueSpec.sourceType,
         sourceKey,
         sourceId: row.productId,
@@ -611,16 +624,19 @@ export default function ProductDecisionCenterPage() {
       setQueuedActionKeys((prev) => {
         const next = new Set(prev);
         next.add(sourceKey);
-        if (action.sourceKey) next.add(action.sourceKey);
+        if (result.sourceKey) next.add(result.sourceKey);
+        if (result.item.sourceKey) next.add(result.item.sourceKey);
         return next;
       });
-      setQueueMessage(alreadyQueued ? "Akcija je vec u centralnom redu." : "Akcija dodata u centralni red.");
+      setQueueMessage(result.existing
+        ? "Akcija je već u centralnim akcijama."
+        : "Akcija je dodata u centralni red.");
     } catch (reason) {
       setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
     } finally {
       setQueueBusyKey(null);
     }
-  }, [fromDate, queuedActionKeys, storeId, supplierId, toDate]);
+  }, [fromDate, storeId, supplierId, toDate]);
 
   return (
     <section className="product-decision-page">
