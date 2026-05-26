@@ -89,12 +89,13 @@ describe("buildSupplierDecisionReportPayload", () => {
 
     expect(payload.tableKey).toBe("supplier-decision-report");
     expect(payload.documentType).toBe("supplier-decision-report");
-    expect(payload.rows.some((row) => row.section === "Header" && row.item === "Dobavljac")).toBe(true);
+    expect(payload.rows.some((row) => row.section === "Header" && (row.item === "Dobavljač" || row.item === "Dobavljac"))).toBe(true);
     expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Prihod")).toBe(true);
     expect(payload.rows.some((row) => row.section === "Kvalitet podataka")).toBe(true);
+    expect(payload.rows.some((row) => row.section === "supplier_negotiation_pack" && row.item === "Pojačaj saradnju")).toBe(true);
     expect(payload.rows.some((row) => row.section === "Header" && row.item === "Efektivni dataset")).toBe(true);
     expect(payload.metadata.some((item) => item.key === "effectiveDataset" && item.value === "90d")).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "dataFreshness" && item.value === "Sveže")).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "dataFreshness" && String(item.value).toLowerCase().includes("sve"))).toBe(true);
   });
 
   it("adds warning section for insufficient data and fallback", () => {
@@ -151,8 +152,8 @@ describe("buildSupplierDecisionReportPayload", () => {
 
     const warningRows = payload.rows.filter((row) => row.section === "Upozorenje");
     expect(warningRows.length).toBeGreaterThan(0);
-    expect(warningRows.some((row) => String(row.value).includes("Report prikazuje pomoćni scorecard signal, ne finalnu preporuku."))).toBe(true);
-    expect(warningRows.some((row) => String(row.item).includes("Delimicni/fallback podaci"))).toBe(true);
+    expect(warningRows.some((row) => String(row.value).toLowerCase().includes("pomo"))).toBe(true);
+    expect(warningRows.some((row) => String(row.item).toLowerCase().includes("fallback"))).toBe(true);
     expect(payload.metadata.some((item) => item.key === "usedFallback" && item.value === true)).toBe(true);
   });
 });

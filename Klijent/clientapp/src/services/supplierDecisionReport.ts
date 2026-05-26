@@ -151,6 +151,75 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     detailRows.push(buildSectionRow("Smanji", row.supplierName, fmtRsd(row.revenue), `Sigurnost ${row.confidenceAvailable ? fmtPct(row.normalizedConfidence, 0) : "nije dostupno"}`, row.statusReason));
   }
 
+  const topMarginRows = [...input.rows]
+    .sort((a, b) => b.marginContribution - a.marginContribution)
+    .slice(0, 3);
+  const markdownDependentRows = input.rows
+    .filter((row) => (row.markdownRevenueShare ?? 0) >= 0.5)
+    .sort((a, b) => (b.markdownRevenueShare ?? 0) - (a.markdownRevenueShare ?? 0))
+    .slice(0, 3);
+  const slowStockRows = [...input.rows]
+    .sort((a, b) => b.unsoldStockValue - a.unsoldStockValue)
+    .slice(0, 3);
+  const replenishRows = input.rows
+    .filter((row) => row.status === "increase_focus" && row.deadStockRate <= 0.2)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 3);
+
+  detailRows.push(
+    buildSectionRow("supplier_negotiation_pack", "Dobavljač", input.supplierLabel, "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Prihod", fmtRsd(input.totalRevenue), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Lager u riziku", fmtRsd(totalStockRisk), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", fmtPct(weightedMarkdownDependencyPct * 100, 1), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", "Sažetak", trust?.effectivePeriodLabel ?? ""),
+    buildSectionRow("supplier_negotiation_pack", "Status kvaliteta podataka", trust?.dataCoverageStatus ?? normalizeDataQualityStatus(meta?.dataQualityStatus), "Sažetak", "")
+  );
+
+  if (topMarginRows.length > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Najbolji artikli po maržnom doprinosu", topMarginRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Top 3 po maržnom doprinosu"));
+  }
+  if (slowStockRows.length > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa sporom zalihom", slowStockRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Visok lager u riziku"));
+  }
+  if (markdownDependentRows.length > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli zavisni od sniženja", markdownDependentRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Visoka markdown zavisnost"));
+  }
+  if (replenishRows.length > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za dopunu", replenishRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Stabilna tražnja i nizak dead stock"));
+  }
+  if (reduceRows.length > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za smanjenje narudžbine", reduceRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Signal za smanjenje fokusa"));
+  }
+  if ((trust?.missingSupplierNameCount ?? 0) > 0) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing supplier problemom", String(trust?.missingSupplierNameCount ?? 0), "Argumenti za pregovor", "Nedostaje dobavljač i signal je manje pouzdan"));
+  }
+  if ((meta?.dataQualityStatus ?? trust?.dataCoverageStatus) && normalizeDataQualityStatus(meta?.dataQualityStatus ?? trust?.dataCoverageStatus) !== "good") {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing cost problemom", "Maržni doprinos je procena", "Argumenti za pregovor", "Deo nabavne cene nije istorijski potvrđen"));
+  }
+
+  detailRows.push(
+    buildSectionRow("supplier_negotiation_pack", "Pojačaj saradnju", input.supplierCounts.boost > input.supplierCounts.reduce ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Fokus na artikle sa stabilnim signalom rasta."),
+    buildSectionRow("supplier_negotiation_pack", "Zadrži", input.supplierCounts.keep > 0 ? "Razmotriti" : "Nije prioritet", "Predlog razgovora", "Stabilan učinak bez eskalacije."),
+    buildSectionRow("supplier_negotiation_pack", "Pregovaraj bolje uslove", input.supplierCounts.caution > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Marža i markdown signal ukazuju na prostor za pregovor."),
+    buildSectionRow("supplier_negotiation_pack", "Smanji narednu narudžbinu", input.supplierCounts.reduce > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Signal upozorava na rizičan asortiman."),
+    buildSectionRow("supplier_negotiation_pack", "Traži zamenu/povrat spore robe", slowStockRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Spor obrt i visok lager u riziku."),
+    buildSectionRow("supplier_negotiation_pack", "Traži rabat za robu koja se prodaje samo kroz sniženje", markdownDependentRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Zavisnost od sniženja smanjuje kvalitet marže.")
+  );
+
+  if (trust?.recommendationAllowed === false) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Finalna preporuka je blokirana", "Da", "Upozorenja", "Nedovoljno podataka za finalni savet."));
+  }
+  if (trust?.usedFallback) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Korišćen je fallback dataset", "Da", "Upozorenja", trust?.effectivePeriodLabel ?? trust?.fallbackReason ?? ""));
+  }
+  if ((meta?.dataQualityStatus ?? trust?.dataCoverageStatus) && normalizeDataQualityStatus(meta?.dataQualityStatus ?? trust?.dataCoverageStatus) !== "good") {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Kvalitet podataka nije idealan", dataQualityStatusLabel(meta?.dataQualityStatus), "Upozorenja", meta?.warningMessage ?? meta?.message ?? ""));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Maržni doprinos je procena", "Da", "Upozorenja", "Marža je procena jer deo nabavne cene nije istorijski potvrđen."));
+  }
+
   detailRows.push(
     buildSectionRow("Kvalitet podataka", "Nedostajući dobavljači", String(trust?.missingSupplierNameCount ?? 0), "", ""),
     buildSectionRow("Kvalitet podataka", "Ignorisani redovi", String(trust?.ignoredRowCount ?? 0), "", ""),

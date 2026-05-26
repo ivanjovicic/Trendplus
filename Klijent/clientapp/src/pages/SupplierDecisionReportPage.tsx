@@ -47,6 +47,7 @@ const SUPPLIER_REPORT_METHODOLOGY_KEYS = [
   "stockAtRisk",
   "confidencePct",
   "reliabilityPct",
+  "sellThrough",
 ];
 
 export default function SupplierDecisionReportPage() {
@@ -327,4 +328,3 @@ export default function SupplierDecisionReportPage() {
     </div>
   );
 }
-

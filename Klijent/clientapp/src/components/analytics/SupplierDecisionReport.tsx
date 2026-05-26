@@ -82,7 +82,10 @@ function filterValue(payload: ResolvedAnalyticsTablePayload, key: string): strin
 function buildNegotiationMeetingSummary(rows: ReportRow[]): string {
   const byGroup = (group: string) => rows.filter((row) => (row.secondary ?? "") === group);
   const summary = byGroup("Sažetak");
-  const argumentsRows = byGroup("Argumenti za dobavljača");
+  const argumentsRows = rows.filter(
+    (row) => (row.secondary ?? "") === "Argumenti za dobavljača"
+      || (row.secondary ?? "") === "Argumenti za pregovor"
+  );
   const proposal = byGroup("Predlog razgovora");
   const warnings = byGroup("Upozorenja");
 
@@ -170,7 +173,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const risk = groupRowsAny(grouped, ["Rizik zalihe"]);
   const boost = groupRowsAny(grouped, ["Pojačaj", "Pojacaj"]);
   const reduce = groupRowsAny(grouped, ["Smanji"]);
-  const negotiationPack = groupRowsAny(grouped, ["Paket za razgovor sa dobavljačem"]);
+  const negotiationPack = groupRowsAny(grouped, ["supplier_negotiation_pack", "Paket za razgovor sa dobavljačem"]);
   const dataQuality = groupRowsAny(grouped, ["Kvalitet podataka", "Data quality"]);
   const methodology = groupRowsAny(grouped, ["Metodologija", "Methodology"]);
   const methodologyMetricKeys = useMemo(
@@ -374,7 +377,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
               <h3>Sažetak i argumenti</h3>
               <ul className="sdr-list">
                 {negotiationPack
-                  .filter((row) => (row.secondary ?? "") === "Sažetak" || (row.secondary ?? "") === "Argumenti za dobavljača")
+                  .filter((row) => (row.secondary ?? "") === "Sažetak" || (row.secondary ?? "") === "Argumenti za dobavljača" || (row.secondary ?? "") === "Argumenti za pregovor")
                   .map((row, idx) => (
                     <li key={`${row.item}-${idx}`}>
                       <div className="sdr-list-main">

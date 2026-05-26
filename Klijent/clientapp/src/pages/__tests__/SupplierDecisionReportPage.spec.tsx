@@ -80,6 +80,7 @@ describe("SupplierDecisionReportPage", () => {
           "stockAtRisk",
           "confidencePct",
           "reliabilityPct",
+          "sellThrough",
         ],
       })
     );
