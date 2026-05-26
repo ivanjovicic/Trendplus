@@ -4,10 +4,10 @@ namespace Trendplus2.Endpoints;
 
 public static class InventorySignalCalculator
 {
-    public const string StockCoverLow = "low";
+    public const string StockCoverLow = "low_cover";
     public const string StockCoverHealthy = "healthy";
-    public const string StockCoverHigh = "high";
-    public const string StockCoverSlow = "slow";
+    public const string StockCoverOverstock = "overstock";
+    public const string StockCoverSlowStock = "slow_stock";
     public const string StockCoverNoVelocity = "no_velocity";
     public const string StockCoverOutOfStockRisk = "out_of_stock_risk";
     public const string StockCoverInsufficientData = "insufficient_data";
@@ -37,8 +37,8 @@ public static class InventorySignalCalculator
         var reasonCodes = new List<string>();
 
         var stockCover = CalculateStockCover(currentOnHandUnits, avgDailySalesUnits, hasSufficientData, reasonCodes);
-        var sellThrough = CalculateSellThrough(soldUnits, openingStockUnits, inboundUnits, currentOnHandUnits, hasSufficientData, reasonCodes, out var usedFallback);
-        var confidence = CalculateSignalConfidence(stockCover.Status, sellThrough.Status, dataQualityStatus, usedFallback, hasSufficientData);
+        var sellThrough = CalculateSellThrough(soldUnits, openingStockUnits, inboundUnits, hasSufficientData, reasonCodes);
+        var confidence = CalculateSignalConfidence(stockCover.Status, sellThrough.Status, dataQualityStatus, hasSufficientData);
 
         return new SignalResult(
             stockCover.Days,
@@ -84,8 +84,8 @@ public static class InventorySignalCalculator
         {
             <= 7m => StockCoverLow,
             <= 30m => StockCoverHealthy,
-            <= 60m => StockCoverHigh,
-            _ => StockCoverSlow,
+            <= 60m => StockCoverOverstock,
+            _ => StockCoverSlowStock,
         };
 
         reasonCodes.Add($"stock_cover_status:{status}");
@@ -96,32 +96,22 @@ public static class InventorySignalCalculator
         int soldUnits,
         int? openingStockUnits,
         int? inboundUnits,
-        int currentOnHandUnits,
         bool hasSufficientData,
-        List<string> reasonCodes,
-        out bool usedFallback)
+        List<string> reasonCodes)
     {
-        usedFallback = false;
-
         if (!hasSufficientData)
         {
             reasonCodes.Add("sell_through_insufficient_data");
             return (null, SellThroughInsufficientData);
         }
 
-        var hasOpeningInbound = openingStockUnits.HasValue || inboundUnits.HasValue;
-        decimal denominator;
+        if (!openingStockUnits.HasValue && !inboundUnits.HasValue)
+        {
+            reasonCodes.Add("sell_through_insufficient_denominator_data");
+            return (null, SellThroughInsufficientData);
+        }
 
-        if (hasOpeningInbound)
-        {
-            denominator = Math.Max(openingStockUnits ?? 0, 0) + Math.Max(inboundUnits ?? 0, 0);
-        }
-        else
-        {
-            denominator = Math.Max(soldUnits, 0) + Math.Max(currentOnHandUnits, 0);
-            usedFallback = true;
-            reasonCodes.Add("sell_through_fallback_current_plus_sold");
-        }
+        decimal denominator = Math.Max(openingStockUnits ?? 0, 0) + Math.Max(inboundUnits ?? 0, 0);
 
         if (denominator <= 0)
         {
@@ -129,7 +119,7 @@ public static class InventorySignalCalculator
             return (null, SellThroughInsufficientData);
         }
 
-        var ratio = Math.Round(Math.Max(soldUnits, 0) / denominator, 4, MidpointRounding.AwayFromZero);
+        var ratio = Math.Round(Math.Max((decimal)soldUnits, 0m) / denominator, 4, MidpointRounding.AwayFromZero);
         var status = ratio switch
         {
             >= 0.60m => SellThroughGood,
@@ -145,7 +135,6 @@ public static class InventorySignalCalculator
         string stockCoverStatus,
         string sellThroughStatus,
         string dataQualityStatus,
-        bool usedSellThroughFallback,
         bool hasSufficientData)
     {
         if (!hasSufficientData)
@@ -159,7 +148,7 @@ public static class InventorySignalCalculator
         {
             confidence -= 25m;
         }
-        else if (stockCoverStatus is StockCoverOutOfStockRisk or StockCoverSlow)
+        else if (stockCoverStatus is StockCoverOutOfStockRisk or StockCoverSlowStock)
         {
             confidence -= 10m;
         }
@@ -171,11 +160,6 @@ public static class InventorySignalCalculator
         else if (sellThroughStatus == SellThroughWarning)
         {
             confidence -= 8m;
-        }
-
-        if (usedSellThroughFallback)
-        {
-            confidence -= 12m;
         }
 
         var normalizedQuality = (dataQualityStatus ?? string.Empty).Trim().ToLowerInvariant();
@@ -201,8 +185,8 @@ public static class InventorySignalCalculator
         {
             StockCoverLow => "Niska pokrivenost",
             StockCoverHealthy => "Zdrava pokrivenost",
-            StockCoverHigh => "Visoka pokrivenost",
-            StockCoverSlow => "Spor obrt zalihe",
+            StockCoverOverstock => "Prekomerna zaliha",
+            StockCoverSlowStock => "Spor obrt zalihe",
             StockCoverNoVelocity => "Bez rotacije",
             StockCoverOutOfStockRisk => "Rizik rasprodaje",
             _ => "Nedovoljno podataka",

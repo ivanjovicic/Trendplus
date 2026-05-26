@@ -73,12 +73,15 @@ export function getStockState(quantity: number, minimum: number) {
 
 export function stockCoverStatusLabel(status: string): string {
   switch ((status ?? "").trim().toLowerCase()) {
+    case "low_cover":
     case "low":
       return "Niska pokrivenost";
     case "healthy":
       return "Zdrava pokrivenost";
+    case "overstock":
     case "high":
-      return "Visoka pokrivenost";
+      return "Prekomerna zaliha";
+    case "slow_stock":
     case "slow":
       return "Spor obrt";
     case "no_velocity":
@@ -111,11 +114,11 @@ export function buildSignalText(stockCoverStatus: string, sellThroughStatus: str
     return "Nedovoljno podataka";
   }
 
-  if (normalizedStockCover === "out_of_stock_risk" || normalizedStockCover === "low") {
+  if (normalizedStockCover === "out_of_stock_risk" || normalizedStockCover === "low_cover" || normalizedStockCover === "low") {
     return "Dopuni";
   }
 
-  if (normalizedStockCover === "slow" || normalizedStockCover === "no_velocity") {
+  if (normalizedStockCover === "slow_stock" || normalizedStockCover === "slow" || normalizedStockCover === "no_velocity") {
     return "Spor obrt";
   }
 

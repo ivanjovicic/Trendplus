@@ -13,13 +13,14 @@ public class InventorySignalCalculatorTests
             currentOnHandUnits: 100,
             avgDailySalesUnits: 10m,
             soldUnits: 40,
-            openingStockUnits: 120,
+            openingStockUnits: 130,
             inboundUnits: 20,
             dataQualityStatus: "good",
             hasSufficientData: true);
 
         Assert.Equal(10m, result.StockCoverDays);
         Assert.Equal(InventorySignalCalculator.StockCoverHealthy, result.StockCoverStatus);
+        Assert.Equal(0.2667m, result.SellThroughRatio);
     }
 
     [Fact(DisplayName = "Positive stock with zero velocity maps to no_velocity")]
@@ -85,5 +86,22 @@ public class InventorySignalCalculatorTests
         Assert.Null(result.SellThroughRatio);
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
         Assert.Contains("sell_through_denominator_zero", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Missing sell-through denominator maps to insufficient_data without fallback")]
+    public void Calculate_SellThroughInsufficient_WhenOpeningAndInboundMissing()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: 12,
+            avgDailySalesUnits: 2m,
+            soldUnits: 30,
+            openingStockUnits: null,
+            inboundUnits: null,
+            dataQualityStatus: "warning",
+            hasSufficientData: true);
+
+        Assert.Null(result.SellThroughRatio);
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
     }
 }

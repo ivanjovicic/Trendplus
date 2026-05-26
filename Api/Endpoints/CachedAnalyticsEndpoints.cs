@@ -563,7 +563,7 @@ public static class CachedAnalyticsEndpoints
                                 reasonCodes.Add("replenish_needed");
                             }
 
-                            if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlow or InventorySignalCalculator.StockCoverNoVelocity)
+                            if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlowStock or InventorySignalCalculator.StockCoverNoVelocity)
                             {
                                 reasonCodes.Add("slow_stock");
                             }

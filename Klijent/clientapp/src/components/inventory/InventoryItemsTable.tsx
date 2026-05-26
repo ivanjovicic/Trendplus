@@ -26,12 +26,12 @@ type InventoryItemsTableProps = {
 
 function isActionableLowCover(status: string): boolean {
   const normalized = (status ?? "").trim().toLowerCase();
-  return normalized === "low" || normalized === "out_of_stock_risk";
+  return normalized === "low_cover" || normalized === "low" || normalized === "out_of_stock_risk";
 }
 
 function isSlowSignal(status: string): boolean {
   const normalized = (status ?? "").trim().toLowerCase();
-  return normalized === "slow" || normalized === "no_velocity";
+  return normalized === "slow_stock" || normalized === "slow" || normalized === "no_velocity";
 }
 
 function isSignalReviewOnly(status: string): boolean {

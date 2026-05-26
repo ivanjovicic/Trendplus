@@ -85,7 +85,7 @@ function buildInventorySignalActionSpec(row: InventoryRow): {
 } {
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
 
-  if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low") {
+  if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
     const isCritical = normalizedCover === "out_of_stock_risk";
     return {
       sourceKey: `inventory:replenish:${row.id}:${row.idObjekat ?? "all"}`,
@@ -96,12 +96,12 @@ function buildInventorySignalActionSpec(row: InventoryRow): {
     };
   }
 
-  if (normalizedCover === "slow" || normalizedCover === "no_velocity") {
+  if (normalizedCover === "slow_stock" || normalizedCover === "slow" || normalizedCover === "no_velocity") {
     return {
       sourceKey: `inventory:slow_stock_review:${row.id}:${row.idObjekat ?? "all"}`,
       title: `Proveri sporu zalihu: ${row.naziv}`,
       recommendationStatus: "SLOW_STOCK_REVIEW",
-      priority: normalizedCover === "slow" ? "P2" : "P3",
+      priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
     };
   }
@@ -524,18 +524,18 @@ export default function InventoryPage() {
   const signalKpis = useMemo(() => {
     const lowCoverSkus = rows.filter((row) => {
       const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low" || status === "out_of_stock_risk";
+      return status === "low_cover" || status === "low" || status === "out_of_stock_risk";
     }).length;
 
     const slowStockSkus = rows.filter((row) => {
       const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "slow" || status === "no_velocity";
+      return status === "slow_stock" || status === "slow" || status === "no_velocity";
     }).length;
 
     const goodSellThroughSkus = rows.filter((row) => (row.sellThroughStatus ?? "").toLowerCase() === "good").length;
     const stockCoverRiskCount = rows.filter((row) => {
       const status = (row.stockCoverStatus ?? "").toLowerCase();
-      return status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
+      return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
     }).length;
 
     return {

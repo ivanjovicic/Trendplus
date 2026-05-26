@@ -198,10 +198,10 @@ function translateReasonCode(code: string): string {
 
 function stockCoverStatusLabel(status: string | null | undefined): string {
   const normalized = (status ?? "").trim().toLowerCase();
-  if (normalized === "low") return "Niska pokrivenost";
+  if (normalized === "low_cover" || normalized === "low") return "Niska pokrivenost";
   if (normalized === "healthy") return "Zdrava pokrivenost";
-  if (normalized === "high") return "Visoka pokrivenost";
-  if (normalized === "slow") return "Spor obrt";
+  if (normalized === "overstock" || normalized === "high") return "Prekomerna zaliha";
+  if (normalized === "slow_stock" || normalized === "slow") return "Spor obrt";
   if (normalized === "no_velocity") return "Bez rotacije";
   if (normalized === "out_of_stock_risk") return "Rizik rasprodaje";
   return "Nedovoljno podataka";
@@ -502,15 +502,15 @@ export default function ProductDecisionCenterPage() {
     slowStockCapital: payload?.summary.slowStockCapital ?? 0,
     stockCoverRiskCount: rows.filter((x) => {
       const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
+      return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
     }).length,
     lowCoverSkus: rows.filter((x) => {
       const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "low" || status === "out_of_stock_risk";
+      return status === "low_cover" || status === "low" || status === "out_of_stock_risk";
     }).length,
     slowStockSkus: rows.filter((x) => {
       const status = (x.stockCoverStatus ?? "").toLowerCase();
-      return status === "slow" || status === "no_velocity";
+      return status === "slow_stock" || status === "slow" || status === "no_velocity";
     }).length,
     goodSellThroughSkus: rows.filter((x) => (x.sellThroughStatus ?? "").toLowerCase() === "good").length,
   }), [payload?.summary.lostSalesEstimate, payload?.summary.slowStockCapital, rows]);
