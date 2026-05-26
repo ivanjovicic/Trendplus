@@ -506,21 +506,87 @@ public static class CachedAnalyticsEndpoints
                         };
 
                         var total = await query.CountAsync(ct);
-                        var items = await query
+                        var rawItems = await query
                             .Skip((page - 1) * pageSize)
                             .Take(pageSize)
-                            .Select(a => new InventoryListItemDto(
+                            .Select(a => new
+                            {
                                 a.Id,
                                 a.PLU,
-                                a.Naziv ?? string.Empty,
+                                Naziv = a.Naziv ?? string.Empty,
                                 a.Kolicina,
                                 a.MinimalnaKolicina,
                                 a.NabavnaCena,
-                                (a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0),
                                 a.IDObjekat,
                                 a.IDDobavljac
-                            ))
+                            })
                             .ToListAsync(ct);
+
+                        var articleIds = rawItems.Select(item => item.Id).ToArray();
+                        var salesFromDate = DateTime.UtcNow.AddDays(-30);
+                        var soldUnitsByArticle = await (
+                            from pz in db.ProdajaZaglavlja.AsNoTracking()
+                            join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
+                            where articleIds.Contains(ps.IdArtikal)
+                                  && pz.DatumProdaje >= salesFromDate
+                                  && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
+                            group ps by ps.IdArtikal
+                            into g
+                            select new
+                            {
+                                ProductId = g.Key,
+                                UnitsSold = g.Sum(x => x.Kolicina)
+                            })
+                            .ToDictionaryAsync(x => x.ProductId, x => x.UnitsSold, ct);
+
+                        var items = new List<InventoryListItemDto>(rawItems.Count);
+                        foreach (var item in rawItems)
+                        {
+                            var quantity = item.Kolicina ?? 0;
+                            var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
+                            var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+                            var hasSufficientData = soldUnits30d > 0 || quantity > 0;
+                            var signalDataQuality = soldUnits30d > 0 ? "good" : quantity > 0 ? "warning" : "insufficient_data";
+
+                            var signal = InventorySignalCalculator.Calculate(
+                                currentOnHandUnits: quantity,
+                                avgDailySalesUnits: avgDailySalesUnits,
+                                soldUnits: soldUnits30d,
+                                openingStockUnits: null,
+                                inboundUnits: null,
+                                dataQualityStatus: signalDataQuality,
+                                hasSufficientData: hasSufficientData);
+
+                            var reasonCodes = signal.ReasonCodes.ToList();
+                            if (signal.StockCoverStatus == InventorySignalCalculator.StockCoverOutOfStockRisk)
+                            {
+                                reasonCodes.Add("replenish_needed");
+                            }
+
+                            if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlow or InventorySignalCalculator.StockCoverNoVelocity)
+                            {
+                                reasonCodes.Add("slow_stock");
+                            }
+
+                            items.Add(new InventoryListItemDto(
+                                item.Id,
+                                item.PLU,
+                                item.Naziv,
+                                item.Kolicina,
+                                item.MinimalnaKolicina,
+                                item.NabavnaCena,
+                                (item.NabavnaCena ?? 0m) * (quantity > 0 ? quantity : 0),
+                                item.IDObjekat,
+                                item.IDDobavljac,
+                                signal.StockCoverDays,
+                                signal.StockCoverStatus,
+                                signal.SellThroughRatio,
+                                signal.SellThroughStatus,
+                                signal.SignalConfidencePct,
+                                reasonCodes,
+                                signalDataQuality));
+                        }
+
                         var meta = total == 0
                             ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", null)
                             : AnalyticsResponseMetaFactory.Success();
@@ -5007,6 +5073,20 @@ public static class CachedAnalyticsEndpoints
                 ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock, 2)
                 : 0m;
 
+            var signal = InventorySignalCalculator.Calculate(
+                currentOnHandUnits: article.CurrentStock,
+                avgDailySalesUnits: velocityUnitsPerDay,
+                soldUnits: unitsSold,
+                openingStockUnits: null,
+                inboundUnits: null,
+                dataQualityStatus: dataQualityStatus,
+                hasSufficientData: unitsSold > 0 || article.CurrentStock > 0);
+
+            var combinedReasonCodes = reasonCodes
+                .Concat(signal.ReasonCodes)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
             totalLostSalesEstimate += lostSalesEstimate;
             totalSlowStockCapital += slowStockCapital;
 
@@ -5035,13 +5115,18 @@ public static class CachedAnalyticsEndpoints
                 TrendPct = trendPct.HasValue ? Math.Round(trendPct.Value, 2) : null,
                 LostSalesEstimate = lostSalesEstimate,
                 SlowStockCapital = slowStockCapital,
+                StockCoverDays = signal.StockCoverDays,
+                StockCoverStatus = signal.StockCoverStatus,
+                SellThroughRatio = signal.SellThroughRatio,
+                SellThroughStatus = signal.SellThroughStatus,
+                SignalConfidencePct = signal.SignalConfidencePct,
                 DataQualityStatus = dataQualityStatus,
                 ConfidencePct = confidencePct,
                 ReliabilityPct = reliabilityPct,
                 RecommendationStatus = recommendationStatus,
                 RecommendationLabel = recommendationLabel,
                 RecommendationReason = recommendationReason,
-                ReasonCodes = reasonCodes.ToList(),
+                ReasonCodes = combinedReasonCodes,
                 RecommendedAction = recommendedAction
             });
         }
@@ -5477,6 +5562,11 @@ public class ProductDecisionCenterRowDto
     public decimal? TrendPct { get; set; }
     public decimal LostSalesEstimate { get; set; }
     public decimal SlowStockCapital { get; set; }
+    public decimal? StockCoverDays { get; set; }
+    public string StockCoverStatus { get; set; } = InventorySignalCalculator.StockCoverInsufficientData;
+    public decimal? SellThroughRatio { get; set; }
+    public string SellThroughStatus { get; set; } = InventorySignalCalculator.SellThroughInsufficientData;
+    public decimal SignalConfidencePct { get; set; }
     public string DataQualityStatus { get; set; } = "warning";
     public int ConfidencePct { get; set; }
     public int ReliabilityPct { get; set; }

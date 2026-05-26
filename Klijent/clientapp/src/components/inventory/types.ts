@@ -11,6 +11,16 @@ export type InventoryRow = InventoryListItem & {
   estimatedValueAmount: number;
   unitCost: number;
   coverageRatio: number | null;
+  stockCoverDays: number | null;
+  stockCoverStatus: string;
+  stockCoverStatusLabel: string;
+  sellThroughRatio: number | null;
+  sellThroughStatus: string;
+  sellThroughStatusLabel: string;
+  signalConfidencePct: number | null;
+  signalText: string;
+  dataQualityStatus: string;
+  reasonCodes: string[];
 };
 
 export type BuildInventoryRowFn = (item: InventoryListItem, stores: StoreOption[], suppliers: SupplierFilterOption[]) => InventoryRow;

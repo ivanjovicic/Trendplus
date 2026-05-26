@@ -1,5 +1,12 @@
-﻿import InfoTip from "../ui/InfoTip";
-import { formatCurrency, formatNumber, getCoverageText, getStockState } from "./inventoryUtils";
+﻿import KpiExplainButton from "../analytics/KpiExplainButton";
+import {
+  formatCurrency,
+  formatNumber,
+  formatSellThroughRatio,
+  formatStockCoverDays,
+  getCoverageText,
+  getStockState,
+} from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type InventoryItemsTableProps = {
@@ -11,7 +18,19 @@ type InventoryItemsTableProps = {
   onOpenDetail: (row: InventoryRow) => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  onAddToActions: (row: InventoryRow) => void;
+  onReviewSlowStock: (row: InventoryRow) => void;
 };
+
+function isActionableLowCover(status: string): boolean {
+  const normalized = (status ?? "").trim().toLowerCase();
+  return normalized === "low" || normalized === "out_of_stock_risk";
+}
+
+function isSlowSignal(status: string): boolean {
+  const normalized = (status ?? "").trim().toLowerCase();
+  return normalized === "slow" || normalized === "no_velocity";
+}
 
 export function InventoryItemsTable({
   rows,
@@ -22,6 +41,8 @@ export function InventoryItemsTable({
   onOpenDetail,
   onPreviousPage,
   onNextPage,
+  onAddToActions,
+  onReviewSlowStock,
 }: InventoryItemsTableProps) {
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
@@ -38,56 +59,87 @@ export function InventoryItemsTable({
           <table aria-label="Lista artikala na stanju" className="min-w-full text-sm">
             <thead className="bg-[var(--surface-elevated)] text-left text-[var(--text-primary)]">
               <tr>
-                <th className="px-4 py-3">
-                  Artikal
-                  <InfoTip text="Naziv artikla i PLU kod. Klik na red otvara detalj sa preporukom akcije, istorijatom i size curve analizom." />
-                </th>
-                <th className="px-4 py-3">
-                  Status zalihe
-                  <InfoTip text="Status zalihe: Kriticno (ispod minimuma), Niska zaliha (<= 20% iznad minimuma), U redu (iznad minimuma). Ovo nije workflow status akcije." />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  Kolicina
-                  <InfoTip text="Trenutna raspoloziva kolicina u komadima. Ne uracunava nerasporedjen ili blokiran fond." />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  Minimum
-                  <InfoTip text="Minimalni nivo zalihe definisan za ovaj artikal i prodavnicu. Kada je kolicina <= minimuma, artikal ulazi u 'Niska zaliha' ili 'Kriticno' status." />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  Gap
-                  <InfoTip text="Koliko komada nedostaje do minimalnog nivoa zalihe. Formula: minimum − količina (klampovano na 0). Nula = zaliha dostiže ili prelazi minimum — dopuna nije hitna. Pozitivna vrednost = koliko treba naručiti da se dostigne minimum." />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  Nabavna
-                  <InfoTip text="Nabavna cena po komadu. Moze biti istorijska (iz poslednjeg prijema) ili fallback procena. Koristiti oprezno — nije uvek ažurna." />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  Vrednost
-                  <InfoTip text="Procenjena nabavna vrednost zalihe ovog artikla. Formula: kolicina × nabavna cena. Podlezna nepreciznosti ako je cena fallback." />
-                </th>
-                <th className="px-4 py-3">
-                  Prodavnica
-                  <InfoTip text="Lokacija (prodajni objekat) gde se artikal nalazi." />
-                </th>
+                <th className="px-4 py-3">Artikal</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Kolicina</th>
+                <th className="px-4 py-3 text-right">Minimum</th>
+                <th className="px-4 py-3 text-right">Gap</th>
+                <th className="px-4 py-3">Pokrivenost zalihe</th>
+                <th className="px-4 py-3">Sell-through</th>
+                <th className="px-4 py-3">Signal</th>
+                <th className="px-4 py-3 text-right">Nabavna</th>
+                <th className="px-4 py-3 text-right">Vrednost</th>
+                <th className="px-4 py-3">Prodavnica</th>
                 <th className="px-4 py-3">Dobavljac</th>
+              </tr>
+              <tr>
+                <th className="px-4 py-2" colSpan={5}></th>
+                <th className="px-4 py-2">
+                  <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
+                </th>
+                <th className="px-4 py-2">
+                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through signal" />
+                </th>
+                <th className="px-4 py-2"></th>
+                <th className="px-4 py-2" colSpan={4}></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--text-primary)]">Ucitavam tabelu...</td></tr>
+                <tr><td colSpan={12} className="px-4 py-10 text-center text-[var(--text-primary)]">Ucitavam tabelu...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--text-primary)]">Nema artikala za zadate filtere.</td></tr>
+                <tr><td colSpan={12} className="px-4 py-10 text-center text-[var(--text-primary)]">Nema artikala za zadate filtere.</td></tr>
               ) : rows.map((row) => {
                 const stock = getStockState(row.quantity, row.minimum);
                 const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[var(--border-default)]" : row.stockState === "warning" ? "border-l-4 border-l-[var(--border-default)]" : "border-l-4 border-l-[var(--border-default)]";
                 return (
-                  <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-light)] hover:border-t-[var(--border-hover, var(--theme-color-293243, #293243))] focus:outline-none focus-visible:bg-[var(--surface-elevated)] focus-visible:border-t-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(row); } }}>
+                  <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-light)] hover:border-t-[var(--border-hover, var(--theme-color-293243, #293243))] focus:outline-none focus-visible:bg-[var(--surface-elevated)] focus-visible:border-t-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetail(row); } }}>
                     <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[var(--text-primary)]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>
                     <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${stock.badge}`}>{row.stockStateLabel}</span></td>
                     <td className="px-4 py-3 text-right font-semibold text-white">{formatNumber(row.quantity)}</td>
                     <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatNumber(row.minimum)}</td>
                     <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatNumber(row.reorderGap)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-white">{formatStockCoverDays(row.stockCoverDays)}</span>
+                        <span>{row.stockCoverStatusLabel}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-white">{formatSellThroughRatio(row.sellThroughRatio)}</span>
+                        <span>{row.sellThroughStatusLabel}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        <span>{row.signalText}</span>
+                        {isActionableLowCover(row.stockCoverStatus) ? (
+                          <button
+                            type="button"
+                            className="rounded-lg border border-[var(--warning)] bg-[var(--surface-darker)] px-2 py-1 text-xs font-semibold text-[var(--warning)]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onAddToActions(row);
+                            }}
+                          >
+                            Dodaj u akcije
+                          </button>
+                        ) : null}
+                        {isSlowSignal(row.stockCoverStatus) ? (
+                          <button
+                            type="button"
+                            className="rounded-lg border border-[var(--info)] bg-[var(--surface-darker)] px-2 py-1 text-xs font-semibold text-[var(--info)]"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onReviewSlowStock(row);
+                            }}
+                          >
+                            Pregledaj sporu zalihu
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(row.unitCost)}</td>
                     <td className="px-4 py-3 text-right font-semibold text-[var(--text-primary)]">{formatCurrency(row.estimatedValueAmount)}</td>
                     <td className="px-4 py-3 text-[var(--text-primary)]">{row.storeName}</td>
@@ -110,3 +162,4 @@ export function InventoryItemsTable({
     </section>
   );
 }
+

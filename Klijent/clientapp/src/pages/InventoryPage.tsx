@@ -2,7 +2,7 @@
 import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActions, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsAction } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
-import type { AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
+import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -24,6 +24,7 @@ import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPan
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
+import { fmtNumber } from "../utils/analyticsFormatters";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
@@ -64,6 +65,15 @@ function toInventoryPageError(reason: unknown, fallback: string): InventoryPageE
   }
 
   return { message: fallback };
+}
+
+function toActionDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "insufficient_data") {
+    return normalized;
+  }
+
+  return "insufficient_data";
 }
 
 export default function InventoryPage() {
@@ -472,6 +482,30 @@ export default function InventoryPage() {
         : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
     });
   }, [forecastMetricsByRowKey, rows, sortBy]);
+  const signalKpis = useMemo(() => {
+    const lowCoverSkus = rows.filter((row) => {
+      const status = (row.stockCoverStatus ?? "").toLowerCase();
+      return status === "low" || status === "out_of_stock_risk";
+    }).length;
+
+    const slowStockSkus = rows.filter((row) => {
+      const status = (row.stockCoverStatus ?? "").toLowerCase();
+      return status === "slow" || status === "no_velocity";
+    }).length;
+
+    const goodSellThroughSkus = rows.filter((row) => (row.sellThroughStatus ?? "").toLowerCase() === "good").length;
+    const stockCoverRiskCount = rows.filter((row) => {
+      const status = (row.stockCoverStatus ?? "").toLowerCase();
+      return status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
+    }).length;
+
+    return {
+      stockCoverRiskCount,
+      lowCoverSkus,
+      slowStockSkus,
+      goodSellThroughSkus,
+    };
+  }, [rows]);
   const inventoryMetas = useMemo(
     () => ([pageData?.meta, balance?.meta, insights?.meta, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
     [actionWorkflow?.meta, balance?.meta, insights?.meta, pageData?.meta, storeComparison?.meta]
@@ -736,6 +770,38 @@ export default function InventoryPage() {
     scrollToSection(STORE_COMPARISON_SECTION_ID);
   }
 
+  async function addSignalRowToCentralQueue(row: InventoryRow) {
+    const sourceKey = `inventory-signal:${row.id}:${row.idObjekat ?? "all"}:${row.stockCoverStatus}:${row.sellThroughStatus}`;
+    try {
+      await upsertAnalyticsAction({
+        sourceType: "inventory",
+        sourceKey,
+        sourceId: row.id,
+        title: `Dopuna signala: ${row.naziv}`,
+        description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+        recommendationStatus: row.stockCoverStatus,
+        priority: "P1",
+        confidencePct: row.signalConfidencePct ?? undefined,
+        dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
+        actionUrl: "/analytics/inventory",
+        metadataJson: JSON.stringify({
+          stockCoverStatus: row.stockCoverStatus,
+          sellThroughStatus: row.sellThroughStatus,
+          stockCoverDays: row.stockCoverDays,
+          sellThroughRatio: row.sellThroughRatio,
+        }),
+      });
+      setExportStatus("Signal je dodat u centralne akcije.");
+    } catch (reason) {
+      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje signalne akcije nije uspelo.");
+    }
+  }
+
+  function reviewSlowStock(row: InventoryRow) {
+    openDetail(row);
+    setExportStatus(`Otvoren detalj za sporu zalihu: ${row.naziv}.`);
+  }
+
   function retryPageLoad() {
     setReloadNonce((current) => current + 1);
   }
@@ -811,8 +877,31 @@ export default function InventoryPage() {
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
           <KpiExplainButton metricKey="outOfStockRisk" ariaLabel="Kako je izračunat rizik nestanka zalihe" />
           <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
           <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through" />
         </div>
+      </section>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Stock cover risk</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.stockCoverRiskCount, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">SKU sa niskom pokrivenošću, OOS rizikom ili nedovoljnim signalom.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Low cover SKU</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.lowCoverSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">Prioritet za dopunu i zaštitu od rasprodaje.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Slow stock SKU</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.slowStockSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">Artikli sa sporim obrtom ili bez rotacije.</div>
+        </article>
+        <article className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Good sell-through SKU</div>
+          <div className="mt-2 text-2xl font-semibold text-contrast">{fmtNumber(signalKpis.goodSellThroughSkus, 0, "0")}</div>
+          <div className="mt-2 text-sm text-secondary">SKU sa zdravim tempom izlaza robe.</div>
+        </article>
       </section>
       <section className="overflow-hidden rounded-[30px] border border-muted bg-[radial-gradient(circle_at_top_left,var(--theme-color-rgba-68-208-255-0p1, rgba(68,208,255,0.1)),transparent_32%),var(--surface-elevated)] p-6 shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -984,7 +1073,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Detail Table - scrollable inventory list */}
-      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} />
+      <InventoryItemsTable rows={displayedRows} loading={loading} totalCount={totalCount} pageNumber={pageNumber} totalPages={totalPages} onOpenDetail={openDetail} onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))} onNextPage={() => setPageNumber((current) => Math.min(totalPages, current + 1))} onAddToActions={(row) => void addSignalRowToCentralQueue(row)} onReviewSlowStock={reviewSlowStock} />
 
       <div className="space-y-1">
         <h2 className="text-xl font-semibold text-contrast">4. Izvoz i raspored izveštaja</h2>

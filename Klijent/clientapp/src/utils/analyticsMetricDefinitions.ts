@@ -3,6 +3,7 @@ export type AnalyticsMetricKey =
   | "marginContribution"
   | "unitsSold"
   | "stockAtRisk"
+  | "stockCoverDays"
   | "lostSalesEstimate"
   | "dataReadinessScore"
   | "missingCostCount"
@@ -51,6 +52,7 @@ export const canonicalMetricKeys = [
   "marginContribution",
   "unitsSold",
   "stockAtRisk",
+  "stockCoverDays",
   "slowStockCapital",
   "lostSalesEstimate",
   "dataReadinessScore",
@@ -192,6 +194,18 @@ const baseMetrics = {
     dataQualityDependencies: ["Nabavna cena", "Tačnost stanja zaliha", "Svežina inventory snapshot-a"],
     relatedScreens: ["/analytics", "/analytics/inventory"],
     inputs: ["količina", "nabavna_cena", "risk_signal"],
+  }),
+  stockCoverDays: defineMetric("stockCoverDays", {
+    label: "Pokrivenost zalihe",
+    shortDescription: "Procena dana pokrivenosti zalihe na osnovu trenutnog stanja i prosečne dnevne prodaje.",
+    formula: "currentOnHandUnits / avgDailySalesUnits",
+    dataSource: "Inventory analytics + Product decision snapshot",
+    interpretation: "Niža pokrivenost signalizira potrebu za dopunom, a previsoka pokrivenost može ukazati na spor obrt.",
+    limitations: ["Ako nema pouzdanog velocity signala, metrika prelazi u insufficient_data/no_velocity status."],
+    dataQualityDependencies: ["Istorija prodaje", "Tačnost stanja zaliha", "Svežina snapshot-a"],
+    relatedScreens: ["/analytics/inventory", "/analytics/products"],
+    blockedWhen: ["avgDailySalesUnits <= 0 bez stabilnog signala", "Nedostaje dovoljno istorije prodaje"],
+    inputs: ["currentOnHandUnits", "avgDailySalesUnits"],
   }),
   slowStockCapital: defineMetric("slowStockCapital", {
     label: "Kapital u sporoj zalihi",
@@ -510,6 +524,7 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   marginContribution: ["Maržni doprinos", "Ukupan maržni doprinos"],
   unitsSold: ["Prodate jedinice", "Komadi", "Količina"],
   stockAtRisk: ["Lager u riziku", "Kapital u riziku"],
+  stockCoverDays: ["Pokrivenost zalihe", "Stock cover", "Days of supply"],
   slowStockCapital: ["Kapital u sporoj zalihi"],
   lostSalesEstimate: ["Procena izgubljene prodaje", "Izgubljena prodaja"],
   dataReadinessScore: ["Spremnost podataka", "Data readiness", "Data quality score"],

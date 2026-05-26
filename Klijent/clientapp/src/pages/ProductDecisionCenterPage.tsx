@@ -46,6 +46,8 @@ type SortField =
   | "marginPct"
   | "currentStock"
   | "trendPct"
+  | "stockCoverDays"
+  | "sellThroughRatio"
   | "confidencePct"
   | "recommendationStatus"
   | "dataQualityStatus";
@@ -54,6 +56,16 @@ type SortDir = "asc" | "desc";
 type RecommendationFilter = "all" | ProductDecisionRecommendationStatus;
 type DataQualityFilter = "all" | "good" | "warning" | "critical" | "insufficient_data";
 type PeriodPreset = "last30" | "last60" | "last90" | "custom";
+
+type ProductDecisionSignalFields = {
+  stockCoverDays?: number | null;
+  stockCoverStatus?: string | null;
+  sellThroughRatio?: number | null;
+  sellThroughStatus?: string | null;
+  signalConfidencePct?: number | null;
+};
+
+type ProductDecisionRow = ProductDecisionCenterItem & ProductDecisionSignalFields;
 
 const RECOMMENDATION_LABELS: Record<ProductDecisionRecommendationStatus, string> = {
   BOOST: "Pojacaj",
@@ -121,6 +133,8 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "marginPct", header: "Marza", dataType: "percent" },
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "trendPct", header: "Trend", dataType: "percent" },
+  { key: "stockCoverDays", header: "Pokrivenost zalihe", dataType: "number" },
+  { key: "sellThroughRatio", header: "Sell-through", dataType: "percent" },
   { key: "confidencePct", header: "Confidence", dataType: "number" },
   { key: "dataQualityStatus", header: "Data quality", dataType: "text" },
   { key: "recommendationLabel", header: "Preporuka", dataType: "text" },
@@ -178,6 +192,25 @@ function dataQualityClass(status: Exclude<DataQualityFilter, "all">): string {
 function translateReasonCode(code: string): string {
   const normalized = (code ?? "").trim().toLowerCase();
   return REASON_CODE_MESSAGES[normalized] ?? code;
+}
+
+function stockCoverStatusLabel(status: string | null | undefined): string {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "low") return "Niska pokrivenost";
+  if (normalized === "healthy") return "Zdrava pokrivenost";
+  if (normalized === "high") return "Visoka pokrivenost";
+  if (normalized === "slow") return "Spor obrt";
+  if (normalized === "no_velocity") return "Bez rotacije";
+  if (normalized === "out_of_stock_risk") return "Rizik rasprodaje";
+  return "Nedovoljno podataka";
+}
+
+function sellThroughStatusLabel(status: string | null | undefined): string {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "good") return "Dobar sell-through";
+  if (normalized === "warning") return "Sell-through upozorenje";
+  if (normalized === "critical") return "Kritican sell-through";
+  return "Nedovoljno podataka";
 }
 
 function buildSupplierDecisionUrl(supplierId: number): string {
@@ -354,7 +387,7 @@ export default function ProductDecisionCenterPage() {
     loadData();
   }, [loadData]);
 
-  const rows = payload?.rows ?? [];
+  const rows = (payload?.rows ?? []) as ProductDecisionRow[];
   const responseMeta = payload?.meta ?? null;
   const responseMetaMessage = getAnalyticsMetaMessage(responseMeta);
 
@@ -381,6 +414,8 @@ export default function ProductDecisionCenterPage() {
       else if (sortField === "marginPct") diff = (a.marginPct ?? -9999) - (b.marginPct ?? -9999);
       else if (sortField === "currentStock") diff = a.currentStock - b.currentStock;
       else if (sortField === "trendPct") diff = (a.trendPct ?? -9999) - (b.trendPct ?? -9999);
+      else if (sortField === "stockCoverDays") diff = (a.stockCoverDays ?? -9999) - (b.stockCoverDays ?? -9999);
+      else if (sortField === "sellThroughRatio") diff = (a.sellThroughRatio ?? -9999) - (b.sellThroughRatio ?? -9999);
       else if (sortField === "confidencePct") diff = a.confidencePct - b.confidencePct;
       else if (sortField === "dataQualityStatus") {
         diff = DATA_QUALITY_ORDER[canonicalDataQualityStatus(a.dataQualityStatus)] - DATA_QUALITY_ORDER[canonicalDataQualityStatus(b.dataQualityStatus)];
@@ -409,6 +444,19 @@ export default function ProductDecisionCenterPage() {
     fixDataCount: rows.filter((x) => x.recommendationStatus === "FIX_DATA").length,
     lostSalesEstimate: payload?.summary.lostSalesEstimate ?? 0,
     slowStockCapital: payload?.summary.slowStockCapital ?? 0,
+    stockCoverRiskCount: rows.filter((x) => {
+      const status = (x.stockCoverStatus ?? "").toLowerCase();
+      return status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
+    }).length,
+    lowCoverSkus: rows.filter((x) => {
+      const status = (x.stockCoverStatus ?? "").toLowerCase();
+      return status === "low" || status === "out_of_stock_risk";
+    }).length,
+    slowStockSkus: rows.filter((x) => {
+      const status = (x.stockCoverStatus ?? "").toLowerCase();
+      return status === "slow" || status === "no_velocity";
+    }).length,
+    goodSellThroughSkus: rows.filter((x) => (x.sellThroughStatus ?? "").toLowerCase() === "good").length,
   }), [payload?.summary.lostSalesEstimate, payload?.summary.slowStockCapital, rows]);
 
   const trustQualitySummary = useMemo(() => {
@@ -595,6 +643,26 @@ export default function ProductDecisionCenterPage() {
           <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
+        <article className="kpi-card">
+          <span>Stock cover risk</span>
+          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
+        </article>
+        <article className="kpi-card">
+          <span>Low cover SKU</span>
+          <strong>{fmtNumber(kpis.lowCoverSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj low cover SKU" />
+        </article>
+        <article className="kpi-card">
+          <span>Slow stock SKU</span>
+          <strong>{fmtNumber(kpis.slowStockSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj sporih SKU" />
+        </article>
+        <article className="kpi-card">
+          <span>Good sell-through SKU</span>
+          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj SKU sa dobrim sell-through signalom" />
+        </article>
       </section>
       ) : null}
 
@@ -684,6 +752,8 @@ export default function ProductDecisionCenterPage() {
               <option value="confidencePct:desc">Confidence opadajuce</option>
               <option value="revenue:desc">Promet opadajuce</option>
               <option value="velocityUnitsPerDay:desc">Velocity opadajuce</option>
+              <option value="stockCoverDays:asc">Pokrivenost zalihe rastuce</option>
+              <option value="sellThroughRatio:desc">Sell-through opadajuce</option>
               <option value="trendPct:desc">Trend opadajuce</option>
               <option value="dataQualityStatus:desc">Data quality (kriticno prvo)</option>
               <option value="productName:asc">Artikal A-Z</option>
@@ -788,6 +858,8 @@ export default function ProductDecisionCenterPage() {
                 <th onClick={() => setSort("marginPct")}>Marza</th>
                 <th onClick={() => setSort("currentStock")}>Zaliha</th>
                 <th onClick={() => setSort("trendPct")}>Trend</th>
+                <th onClick={() => setSort("stockCoverDays")}>Pokrivenost zalihe</th>
+                <th onClick={() => setSort("sellThroughRatio")}>Sell-through</th>
                 <th onClick={() => setSort("confidencePct")}>Confidence</th>
                 <th onClick={() => setSort("dataQualityStatus")}>Data quality</th>
                 <th onClick={() => setSort("recommendationStatus")}>Preporuka</th>
@@ -830,6 +902,14 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>{fmtPct(row.trendPct, 1)}</td>
                         <td>
+                          <span>{row.stockCoverDays != null ? `${fmtNumber(row.stockCoverDays, 1, "N/A")} dana` : "Nedovoljno podataka"}</span>
+                          <small>{stockCoverStatusLabel(row.stockCoverStatus)}</small>
+                        </td>
+                        <td>
+                          <span>{row.sellThroughRatio != null ? fmtPct(row.sellThroughRatio * 100, 1) : "Nedovoljno podataka"}</span>
+                          <small>{sellThroughStatusLabel(row.sellThroughStatus)}</small>
+                        </td>
+                        <td>
                           <span>{fmtNumber(row.confidencePct, 0, "N/A")}%</span>
                           <small>Reliability: {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
                         </td>
@@ -871,7 +951,7 @@ export default function ProductDecisionCenterPage() {
                       </tr>
                       {expanded ? (
                         <tr className="reason-row">
-                          <td colSpan={11}>
+                          <td colSpan={13}>
                             <div className="reason-content reason-content-expanded">
                               <div className="reason-headline">
                                 <div>
@@ -937,6 +1017,14 @@ export default function ProductDecisionCenterPage() {
                                 <div>
                                   <strong>Slow stock capital:</strong> {fmtRsd(row.slowStockCapital, 0, "N/A")}
                                   <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
+                                </div>
+                                <div>
+                                  <strong>Stock cover:</strong> {row.stockCoverDays != null ? `${fmtNumber(row.stockCoverDays, 1, "N/A")} dana` : "Nedovoljno podataka"}
+                                  <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
+                                </div>
+                                <div>
+                                  <strong>Sell-through:</strong> {row.sellThroughRatio != null ? fmtPct(row.sellThroughRatio * 100, 1) : "Nedovoljno podataka"}
+                                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through signal" />
                                 </div>
                                 <div><strong>Cost coverage:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
                                 <div>

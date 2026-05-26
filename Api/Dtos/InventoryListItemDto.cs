@@ -9,5 +9,12 @@ public sealed record InventoryListItemDto(
     decimal? NabavnaCena,
     decimal EstimatedValue,
     int? IDObjekat,
-    int? IDDobavljac
+    int? IDDobavljac,
+    decimal? StockCoverDays,
+    string StockCoverStatus,
+    decimal? SellThroughRatio,
+    string SellThroughStatus,
+    decimal SignalConfidencePct,
+    List<string> ReasonCodes,
+    string DataQualityStatus
 );

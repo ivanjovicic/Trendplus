@@ -2,6 +2,16 @@ import type { InventoryInsightItem, InventoryListItem, InventoryReportScheduleIn
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
 
+type InventoryListItemWithSignals = InventoryListItem & {
+  stockCoverDays?: number | null;
+  stockCoverStatus?: string | null;
+  sellThroughRatio?: number | null;
+  sellThroughStatus?: string | null;
+  signalConfidencePct?: number | null;
+  dataQualityStatus?: string | null;
+  reasonCodes?: string[] | null;
+};
+
 export const WEEKDAY_OPTIONS = [
   { value: 1, label: "Ponedeljak" },
   { value: 2, label: "Utorak" },
@@ -61,7 +71,70 @@ export function getStockState(quantity: number, minimum: number) {
   };
 }
 
-export function buildInventoryRow(item: InventoryListItem, stores: StoreOption[], suppliers: SupplierFilterOption[]): InventoryRow {
+export function stockCoverStatusLabel(status: string): string {
+  switch ((status ?? "").trim().toLowerCase()) {
+    case "low":
+      return "Niska pokrivenost";
+    case "healthy":
+      return "Zdrava pokrivenost";
+    case "high":
+      return "Visoka pokrivenost";
+    case "slow":
+      return "Spor obrt";
+    case "no_velocity":
+      return "Bez rotacije";
+    case "out_of_stock_risk":
+      return "Rizik rasprodaje";
+    default:
+      return "Nedovoljno podataka";
+  }
+}
+
+export function sellThroughStatusLabel(status: string): string {
+  switch ((status ?? "").trim().toLowerCase()) {
+    case "good":
+      return "Dobar sell-through";
+    case "warning":
+      return "Sell-through upozorenje";
+    case "critical":
+      return "Kritičan sell-through";
+    default:
+      return "Nedovoljno podataka";
+  }
+}
+
+export function buildSignalText(stockCoverStatus: string, sellThroughStatus: string): string {
+  const normalizedStockCover = (stockCoverStatus ?? "").trim().toLowerCase();
+  const normalizedSellThrough = (sellThroughStatus ?? "").trim().toLowerCase();
+
+  if (normalizedStockCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
+    return "Nedovoljno podataka";
+  }
+
+  if (normalizedStockCover === "out_of_stock_risk" || normalizedStockCover === "low") {
+    return "Dopuni";
+  }
+
+  if (normalizedStockCover === "slow" || normalizedStockCover === "no_velocity") {
+    return "Spor obrt";
+  }
+
+  if (normalizedSellThrough === "critical") {
+    return "Kritičan signal";
+  }
+
+  if (normalizedSellThrough === "warning") {
+    return "Prati signal";
+  }
+
+  if (normalizedSellThrough === "good") {
+    return "Stabilan signal";
+  }
+
+  return "Nedovoljno podataka";
+}
+
+export function buildInventoryRow(item: InventoryListItemWithSignals, stores: StoreOption[], suppliers: SupplierFilterOption[]): InventoryRow {
   const quantity = item.kolicina ?? 0;
   const minimum = item.minimalnaKolicina ?? 0;
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
@@ -71,6 +144,8 @@ export function buildInventoryRow(item: InventoryListItem, stores: StoreOption[]
   const estimatedValueAmount = item.estimatedValue ?? unitCost * positiveQuantity;
   const coverageRatio = minimum > 0 ? quantity / minimum : null;
   const stock = getStockState(quantity, minimum);
+  const stockCoverStatus = item.stockCoverStatus ?? "insufficient_data";
+  const sellThroughStatus = item.sellThroughStatus ?? "insufficient_data";
 
   return {
     ...item,
@@ -84,6 +159,16 @@ export function buildInventoryRow(item: InventoryListItem, stores: StoreOption[]
     estimatedValueAmount,
     unitCost,
     coverageRatio,
+    stockCoverDays: item.stockCoverDays ?? null,
+    stockCoverStatus,
+    stockCoverStatusLabel: stockCoverStatusLabel(stockCoverStatus),
+    sellThroughRatio: item.sellThroughRatio ?? null,
+    sellThroughStatus,
+    sellThroughStatusLabel: sellThroughStatusLabel(sellThroughStatus),
+    signalConfidencePct: item.signalConfidencePct ?? null,
+    signalText: buildSignalText(stockCoverStatus, sellThroughStatus),
+    dataQualityStatus: item.dataQualityStatus ?? "insufficient_data",
+    reasonCodes: item.reasonCodes ?? [],
   };
 }
 
@@ -106,6 +191,16 @@ export function getCoverageText(row: InventoryRow) {
   if (row.coverageRatio >= 2) return "Komforna zaliha";
   if (row.coverageRatio >= 1) return "Na minimumu";
   return "Ispod minimuma";
+}
+
+export function formatStockCoverDays(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "Nedovoljno podataka";
+  return `${formatNumber(value, 1)} dana`;
+}
+
+export function formatSellThroughRatio(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "Nedovoljno podataka";
+  return formatPercent(value * 100);
 }
 
 export function getRecommendation(row: InventoryRow) {
