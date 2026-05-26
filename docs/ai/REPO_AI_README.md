@@ -15,6 +15,7 @@ docs/ai/COMMIT_STANDARDS.md
 docs/ai/BACKEND_STANDARDS.md
 docs/ai/FRONTEND_UX_STANDARDS.md
 docs/ai/AI_WORKFLOW_AND_TOKEN_BUDGET.md
+docs/analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md
 ```
 
 ## Ko čita šta
@@ -59,3 +60,9 @@ Dodaj standard kada se greška ponovi bar drugi put:
 - API URL deployment bug
 
 Ne zatrpavati standarde pravilima koja nemaju realnu vrednost za ovaj repo.
+
+## Production Readiness (Analytics)
+
+Pre merge-a za analytics promene koristi:
+
+- `docs/analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
