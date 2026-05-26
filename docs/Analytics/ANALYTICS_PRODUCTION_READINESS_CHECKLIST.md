@@ -127,6 +127,9 @@ Pass kriterijum:
 
 ## 7) Manual Smoke Rute
 
+Detaljna browser-level procedura i tabela za evidenciju rezultata:
+- `docs/Analytics/ANALYTICS_BROWSER_SMOKE.md`
+
 Ručno proveriti sledeće rute pre merge-a:
 - `/analytics`
 - `/analytics/products`
@@ -155,6 +158,7 @@ Pass kriterijum:
 - Rute se učitavaju bez runtime crash-a.
 - Period, refresh i data quality informacije su vidljive gde se očekuju.
 - Report rute rade i pri direktnom otvaranju URL-a ili browser refresh-u.
+- Manual browser sign-off se evidentira kroz tabelu u `docs/Analytics/ANALYTICS_BROWSER_SMOKE.md`.
 
 ## 8) Production Blockers
 
