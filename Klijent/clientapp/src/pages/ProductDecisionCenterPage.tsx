@@ -450,7 +450,6 @@ export default function ProductDecisionCenterPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setQueuedActionKeys(new Set());
 
     const candidates = sortedRows.map((row) => {
       const queueSpec = buildProductQueueSpec(row);
@@ -464,6 +463,7 @@ export default function ProductDecisionCenterPage() {
     const dataQualityKeys = Array.from(new Set(candidates.filter((entry) => entry.sourceType === "data_quality").map((entry) => entry.sourceKey)));
 
     if (productKeys.length === 0 && dataQualityKeys.length === 0) {
+      setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
       return () => {
         cancelled = true;
       };

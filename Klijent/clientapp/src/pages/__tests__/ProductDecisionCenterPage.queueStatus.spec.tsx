@@ -1,7 +1,13 @@
 import { render, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
+
+vi.mock("react-router-dom", async () => {
+  return {
+    Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  };
+});
 
 const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
@@ -82,11 +88,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
   });
 
   it("uses batch source status endpoint for visible rows", async () => {
-    render(
-      <MemoryRouter>
-        <ProductDecisionCenterPage />
-      </MemoryRouter>,
-    );
+    const { unmount } = render(<ProductDecisionCenterPage />);
 
     await waitFor(() => {
       expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalled();
@@ -97,5 +99,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
         sourceType: "product",
       }),
     );
+
+    unmount();
   });
 });
