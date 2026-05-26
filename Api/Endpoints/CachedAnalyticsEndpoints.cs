@@ -2007,43 +2007,12 @@ public static class CachedAnalyticsEndpoints
             return Results.Ok(result);
         });
 
-        // ========== CACHE STATUS ENDPOINT ==========
-        // ========== CACHE STATUS ENDPOINT ==========
-        group.MapGet("/cache/status", async (IAnalyticsCacheService cache, AnalyticsCacheAdminService cacheAdmin, IWebHostEnvironment env) =>
-        {
-            var clearState = await cacheAdmin.GetStateAsync();
-            var (cacheMode, isDistributed) = cacheAdmin.ResolveCacheMode();
-            var isShared = clearState.IsShared;
-            var warning = clearState.Warning;
-            if (env.IsProduction() && string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
-            {
-                warning = "Analytics cache je in-memory. U multi-instance okruženju podaci mogu biti nekonzistentni između instanci.";
-            }
+        // ========== CACHE STATUS ENDPOINTS (LEGACY + CANONICAL ALIAS) ==========
+        group.MapGet("/cache/status", HandleCacheStatusAsync);
 
-            var message = isShared
-                ? "Cache radi u deljenom modu; clear state i invalidacija su vidljivi između instanci."
-                : "Cache nije distribuiran; može biti nekonzistentan između instanci.";
-
-            return Results.Ok(new
-            {
-                provider = cache.GetType().Name.Replace("CacheService", string.Empty),
-                redisAvailable = cache.IsRedisAvailable,
-                redisEnabled = cache.IsRedisEnabled,
-                isShared,
-                isDistributed,
-                cacheMode,
-                environment = env.EnvironmentName,
-                cacheType = isShared ? "Hybrid (In-Memory + Redis)" : "In-Memory only",
-                message,
-                warning,
-                lastClearAtUtc = clearState.LastClearAtUtc,
-                lastClearFamily = clearState.LastClearFamily,
-                lastAnalyticsCacheClearAtUtc = clearState.LastAnalyticsCacheClearAtUtc,
-                lastReportCacheClearAtUtc = clearState.LastReportCacheClearAtUtc,
-                reportCacheVersion = clearState.ReportCacheVersion,
-                clearStateStorage = clearState.Storage
-            });
-        });
+        app.MapGet("/api/analytics/cache/status", HandleCacheStatusAsync)
+            .WithTags("Analytics (Cached)")
+            .RequireRateLimiting("analytics");
 
         // ========== CACHE INVALIDATE ENDPOINT (za admin) ==========
         group.MapPost("/cache/invalidate", async (
@@ -2067,6 +2036,45 @@ public static class CachedAnalyticsEndpoints
             });
         });
 
+    }
+
+    private static async Task<IResult> HandleCacheStatusAsync(
+        IAnalyticsCacheService cache,
+        AnalyticsCacheAdminService cacheAdmin,
+        IWebHostEnvironment env)
+    {
+        var clearState = await cacheAdmin.GetStateAsync();
+        var (cacheMode, isDistributed) = cacheAdmin.ResolveCacheMode();
+        var isShared = clearState.IsShared;
+        var warning = clearState.Warning;
+        if (env.IsProduction() && string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
+        {
+            warning = "Analytics cache je in-memory. U multi-instance okruženju podaci mogu biti nekonzistentni između instanci.";
+        }
+
+        var message = isShared
+            ? "Cache radi u deljenom modu; clear state i invalidacija su vidljivi između instanci."
+            : "Cache nije distribuiran; može biti nekonzistentan između instanci.";
+
+        return Results.Ok(new
+        {
+            provider = cache.GetType().Name.Replace("CacheService", string.Empty),
+            redisAvailable = cache.IsRedisAvailable,
+            redisEnabled = cache.IsRedisEnabled,
+            isShared,
+            isDistributed,
+            cacheMode,
+            environment = env.EnvironmentName,
+            cacheType = isShared ? "Hybrid (In-Memory + Redis)" : "In-Memory only",
+            message,
+            warning,
+            lastClearAtUtc = clearState.LastClearAtUtc,
+            lastClearFamily = clearState.LastClearFamily,
+            lastAnalyticsCacheClearAtUtc = clearState.LastAnalyticsCacheClearAtUtc,
+            lastReportCacheClearAtUtc = clearState.LastReportCacheClearAtUtc,
+            reportCacheVersion = clearState.ReportCacheVersion,
+            clearStateStorage = clearState.Storage
+        });
     }
 
     private static async Task<NpgsqlConnection?> OpenTrendplusConnectionAsync(ITrendplusDbContext db, CancellationToken ct)

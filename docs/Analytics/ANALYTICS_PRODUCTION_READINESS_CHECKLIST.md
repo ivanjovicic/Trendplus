@@ -76,6 +76,8 @@ Pass kriterijum:
 ## 4) Cache
 
 Pre merge-a proveriti report i analytics cache ponašanje:
+- Cache status endpoint je dostupan na canonical ruti `/api/analytics/cache/status`.
+- Legacy ruta `/api/analytics/cached/cache/status` je i dalje aktivna zbog backward compatibility.
 - `cacheMode` je vidljiv i razumljiv.
 - Redis/shared naspram in-memory status je vidljiv u administraciji ili status payload-u.
 - In-memory cache u production okruženju ima warning ako je deployment multi-instance ili deli load.
@@ -86,6 +88,7 @@ Pre merge-a proveriti report i analytics cache ponašanje:
 
 Pass kriterijum:
 - Nema stale report odgovora posle validnog import/refresh događaja.
+- Canonical i legacy cache status rute vraćaju isti payload shape.
 - `cacheMode`, cache backend i warning signal su vidljivi i ne traže čitanje koda da bi bili razumljivi.
 - Admin clear cache za reports family zaista invalidira durable report payload-e.
 
