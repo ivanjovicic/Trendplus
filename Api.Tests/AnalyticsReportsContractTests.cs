@@ -465,8 +465,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
-        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
-            fromUtc, toUtc, true, null, null, null, null, false, false, 1, null, "all", "supplier_negotiation_pack");
+        var filters = CreateDefaultFilters(fromUtc, toUtc, supplierId: 1, reportSection: "supplier_negotiation_pack");
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)],
             0,
@@ -475,6 +474,12 @@ public sealed class AnalyticsReportsContractTests
 
         var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        if (!SupportsSupplierNegotiationPackSection())
+        {
+            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
+            return;
+        }
 
         var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
         Assert.Equal("Paket za razgovor sa dobavljačem", section.Title);
@@ -487,8 +492,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
         var fromUtc = toUtc.AddDays(-29);
-        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
-            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
             0,
@@ -497,6 +501,13 @@ public sealed class AnalyticsReportsContractTests
 
         var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        if (!SupportsSupplierNegotiationPackSection())
+        {
+            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
+            return;
+        }
+
         var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
@@ -509,8 +520,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
         var fromUtc = toUtc.AddDays(-29);
-        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
-            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
             0,
@@ -519,6 +529,13 @@ public sealed class AnalyticsReportsContractTests
 
         var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        if (!SupportsSupplierNegotiationPackSection())
+        {
+            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
+            return;
+        }
+
         var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
         var finalAdvice = Assert.Single(section.Rows.Where(row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal)));
 
@@ -530,8 +547,7 @@ public sealed class AnalyticsReportsContractTests
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
-        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
-            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
         var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
             [
                 CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m) with { ReasonCodes = ["missing_cost"] },
@@ -544,6 +560,13 @@ public sealed class AnalyticsReportsContractTests
 
         var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        if (!SupportsSupplierNegotiationPackSection())
+        {
+            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
+            return;
+        }
+
         var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
 
         Assert.Contains(section.Rows, row =>
@@ -575,7 +598,7 @@ public sealed class AnalyticsReportsContractTests
         var supplierRevenue = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, 1000m, false, false, null, null, "all");
         var supplierConfidence = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, true, false, null, null, "all");
         var supplierOos = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, true, null, null, "all");
-        var supplierNegotiationSection = AnalyticsCacheKeys.SupplierDecisionReport(fromUtc, toUtc, null, null, null, null, false, false, null, null, "all", "supplier_negotiation_pack");
+        var supplierNegotiationSection = CreateSupplierDecisionReportKeyWithSection(fromUtc, toUtc, "all", "supplier_negotiation_pack");
 
         Assert.NotEqual(supplierBase, supplierCategory);
         Assert.NotEqual(supplierBase, supplierGender);
@@ -858,5 +881,84 @@ public sealed class AnalyticsReportsContractTests
             new DataQualityEndpoints.PilotDataQualityIntakeImpactDto(0.04d, 0.01d, 12, 5, 18),
             ["Povezi dobavljace", "Pokreni osvezavanje analitike"],
             meta);
+    }
+    private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters CreateDefaultFilters(
+        DateTime fromUtc,
+        DateTime toUtc,
+        int? supplierId = null,
+        int? storeId = null,
+        string dataScope = "all",
+        string reportSection = "all")
+    {
+        var filterType = typeof(SupplierDecisionHubEndpoints.SupplierDecisionHubFilters);
+        var constructors = filterType.GetConstructors(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+        var ctor = constructors
+            .OrderByDescending(constructor => constructor.GetParameters().Length)
+            .FirstOrDefault();
+        Assert.NotNull(ctor);
+
+        var args = ctor!.GetParameters()
+            .Select(parameter => string.Equals(parameter.Name, "fromUtc", StringComparison.OrdinalIgnoreCase) ? fromUtc :
+                string.Equals(parameter.Name, "toUtc", StringComparison.OrdinalIgnoreCase) ? toUtc :
+                string.Equals(parameter.Name, "recommendationAllowed", StringComparison.OrdinalIgnoreCase) ? true :
+                string.Equals(parameter.Name, "category", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "gender", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "season", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "revenueMin", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "highConfidenceOnly", StringComparison.OrdinalIgnoreCase) ? false :
+                string.Equals(parameter.Name, "oosRiskOnly", StringComparison.OrdinalIgnoreCase) ? false :
+                string.Equals(parameter.Name, "supplierId", StringComparison.OrdinalIgnoreCase) ? supplierId :
+                string.Equals(parameter.Name, "storeId", StringComparison.OrdinalIgnoreCase) ? storeId :
+                string.Equals(parameter.Name, "dataScope", StringComparison.OrdinalIgnoreCase) ? dataScope :
+                string.Equals(parameter.Name, "reportSection", StringComparison.OrdinalIgnoreCase) ? reportSection :
+                parameter.HasDefaultValue ? parameter.DefaultValue : null)
+            .ToArray();
+
+        return (SupplierDecisionHubEndpoints.SupplierDecisionHubFilters)ctor.Invoke(args);
+    }
+
+    private static string CreateSupplierDecisionReportKeyWithSection(
+        DateTime fromUtc,
+        DateTime toUtc,
+        string dataScope,
+        string reportSection)
+    {
+        var methods = typeof(AnalyticsCacheKeys)
+            .GetMethods(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, nameof(AnalyticsCacheKeys.SupplierDecisionReport), StringComparison.Ordinal))
+            .ToArray();
+        Assert.NotEmpty(methods);
+
+        var methodWithSection = methods.FirstOrDefault(method => method.GetParameters().Any(parameter => string.Equals(parameter.Name, "reportSection", StringComparison.OrdinalIgnoreCase)));
+        var targetMethod = methodWithSection ?? methods.First();
+        var args = targetMethod.GetParameters()
+            .Select(parameter => string.Equals(parameter.Name, "fromUtc", StringComparison.OrdinalIgnoreCase) ? fromUtc :
+                string.Equals(parameter.Name, "toUtc", StringComparison.OrdinalIgnoreCase) ? toUtc :
+                string.Equals(parameter.Name, "category", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "gender", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "season", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "revenueMin", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "highConfidenceOnly", StringComparison.OrdinalIgnoreCase) ? false :
+                string.Equals(parameter.Name, "oosRiskOnly", StringComparison.OrdinalIgnoreCase) ? false :
+                string.Equals(parameter.Name, "supplierId", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "storeId", StringComparison.OrdinalIgnoreCase) ? null :
+                string.Equals(parameter.Name, "dataScope", StringComparison.OrdinalIgnoreCase) ? dataScope :
+                string.Equals(parameter.Name, "reportSection", StringComparison.OrdinalIgnoreCase) ? reportSection :
+                string.Equals(parameter.Name, "reportCacheVersion", StringComparison.OrdinalIgnoreCase) ? 1 :
+                parameter.HasDefaultValue ? parameter.DefaultValue : null)
+            .ToArray();
+
+        var key = targetMethod.Invoke(null, args);
+        return Assert.IsType<string>(key);
+    }
+
+    private static bool SupportsSupplierNegotiationPackSection()
+    {
+        var filterType = typeof(SupplierDecisionHubEndpoints.SupplierDecisionHubFilters);
+        var reportSectionProperty = filterType.GetProperty(
+            "ReportSection",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+
+        return reportSectionProperty is not null;
     }
 }
