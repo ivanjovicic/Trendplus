@@ -2,6 +2,7 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { CORE_ANALYTICS_SMOKE_ROUTES } from "../routes/analyticsRouteDefinitions";
 
 vi.mock("../layout/AppLayout", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid="app-layout">{children}</div>,
@@ -43,27 +44,33 @@ vi.mock("../pages/PilotIntakeReportPage", () => ({
   default: () => <div data-testid="route-analytics-pilot-intake-report">pilot-intake</div>,
 }));
 
-type RouteCase = {
-  path: string;
-  testId: string;
+const testIdByPath: Record<string, string> = {
+  "/analytics": "route-analytics",
+  "/analytics/products": "route-analytics-products",
+  "/analytics/supplier": "route-analytics-supplier",
+  "/analytics/inventory": "route-analytics-inventory",
+  "/analytics/data-quality": "route-analytics-data-quality",
+  "/analytics/actions": "route-analytics-actions",
+  "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30": "route-analytics-supplier-report",
+  "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30": "route-analytics-pilot-intake-report",
 };
 
-const routeCases: RouteCase[] = [
-  { path: "/analytics", testId: "route-analytics" },
-  { path: "/analytics/products", testId: "route-analytics-products" },
-  { path: "/analytics/supplier", testId: "route-analytics-supplier" },
-  { path: "/analytics/inventory", testId: "route-analytics-inventory" },
-  { path: "/analytics/data-quality", testId: "route-analytics-data-quality" },
-  { path: "/analytics/actions", testId: "route-analytics-actions" },
-  { path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30", testId: "route-analytics-supplier-report" },
-  { path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30", testId: "route-analytics-pilot-intake-report" },
-];
+const routeCases = CORE_ANALYTICS_SMOKE_ROUTES.map((path) => ({
+  path,
+  testId: testIdByPath[path],
+}));
 
 afterEach(() => {
   cleanup();
 });
 
 describe("App analytics core route smoke", () => {
+  it("has test ids for all registered smoke routes", () => {
+    routeCases.forEach(({ path, testId }) => {
+      expect(testId, `Missing test id mapping for ${path}`).toBeDefined();
+    });
+  });
+
   it.each(routeCases)("renders mapped route for $path", async ({ path, testId }) => {
     window.history.pushState({}, "", path);
 

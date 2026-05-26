@@ -6,6 +6,7 @@ import { ToastProvider } from "./components/Toast";
 import { CircuitBreakerStatus } from "./components/CircuitBreakerStatus";
 import Modal from "./components/Modal";
 import { ThemeProvider } from "./context/ThemeContext";
+import { CORE_ANALYTICS_LEGACY_ALIASES } from "./routes/analyticsRouteDefinitions";
 import {
     SupplierDecisionHubRedirect,
     SupplierFootwearAnalyticsRedirect,
@@ -94,7 +95,7 @@ function AppShell() {
                     <Route path="/performance" element={<PerformanceDashboard />} />
                     <Route path="/analytics" element={<AnalyticsDashboard />} />
                     <Route path="/analytics/products" element={<ProductDecisionCenterPage />} />
-                    <Route path="/analytics/product-decision-center" element={<Navigate to="/analytics/products" replace />} />
+                    <Route path={CORE_ANALYTICS_LEGACY_ALIASES.productDecisionCenter} element={<Navigate to="/analytics/products" replace />} />
                     <Route path="/analytics/supplier" element={<SupplierConsolidatedPage />} />
                     <Route path="/analytics/supplier-sales-stats" element={<SupplierSalesStatsRedirect />} />
                     <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
@@ -106,7 +107,7 @@ function AppShell() {
                     <Route path="/analytics/actions" element={<AnalyticsActionsPage />} />
                     <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
                     <Route path="/analytics/reports/pilot-intake" element={<PilotIntakeReportPage />} />
-                    <Route path="/analytics/data-quality/pilot-intake-report" element={<PilotIntakeReportPage />} />
+                    <Route path={CORE_ANALYTICS_LEGACY_ALIASES.pilotIntakeReport} element={<PilotIntakeReportPage />} />
                     <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
                     <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
                     <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsRedirect />} />
