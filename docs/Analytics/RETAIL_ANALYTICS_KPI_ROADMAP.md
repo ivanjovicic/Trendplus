@@ -1,309 +1,353 @@
-# Retail Analytics KPI Roadmap (Trendplus)
+# Retail Analytics KPI Roadmap
 
-Status: planning-only dokument, bez runtime promena.
-Scope: definicija naprednih KPI-jeva i decision flow smernica za prodaju, zalihu i dobavljace.
+Status: planning-only dokument, bez runtime promena, bez migracija.
+Namena: definisati sledeci nivo retail analytics KPI-jeva i decision flow logike tako da Trendplus podrzi ozbiljne odluke o prodaji, zalihama, dobavljacima i snizenjima.
 
-## Cilj
+## Kako citati roadmap
 
-Trendplus treba da predje iz reporting alata u decision platformu: da menadzer dobije jasan signal, stepen pouzdanosti i sledecu akciju.
+- `Yes`: podaci verovatno vec postoje u Trendplus DB za MVP signal ili report.
+- `Partial`: deo podataka postoji, ali coverage, istorija ili granularnost nisu dovoljno stabilni za pun recommendation mode.
+- `No`: bez novih podataka ili novih eventa ne treba uvoditi kao finalni KPI.
+- `Unknown`: trenutno nije potvrdeno da li model ili ETL vec nose potreban signal.
 
-## Readiness pregled: sta moze odmah vs sta trazi nove podatke
+## Readiness pregled
 
-### Moze odmah ili uz postojece delove modela (P0/P1 MVP)
+### Moze relativno brzo u MVP signal/recommendation sloj
 
 - Sell-through ratio
-- Inventory turnover (units varijanta)
-- Margin loss zbog nivelacija (signal)
-- Markdown efficiency (osnovni pre/post signal)
+- Inventory turnover
+- Margin loss zbog nivelacija/snizenja
 - Stock cover / days of supply
-- OOS lost sales estimate (gruba procena)
-- Size/color availability risk (uz coverage prag)
+- OOS lost sales estimate
+- Size/color availability risk
 - Supplier dependency risk
 - Category contribution margin
 - Slow stock capital
 - Dead stock aging
-- Transfer opportunity izmedju prodavnica (human-in-the-loop)
-- Supplier negotiation pack (na osnovu postojecih KPI)
-- Replenishment/OOS decision flow (rule-based MVP)
+- Transfer opportunity izmedju prodavnica
+- Replenishment/OOS decision flow
+- Store performance comparison
+- Assortment gap detection
 
-### Trazi nove podatke ili znacajno bolji quality coverage
+### Trazi jaci data foundation ili dodatne evente
 
-- GMROI (stabilan valuation snapshot kroz vreme)
-- Price elasticity signal (puna istorija cena + kontrolni faktori)
-- Return/refund impact (pouzdano mapiranje povrata na originalnu prodaju)
-- Markdown optimizer (eksperimentalni uplift/elasticity sloj)
+- GMROI
+- Markdown efficiency
+- Price elasticity signal
+- Return/refund impact
+- Supplier negotiation pack
+- Markdown optimizer
 
-## Legenda dostupnosti podataka
+## KPI i Decision Flow katalog (20)
 
-- Postoji: kljucni podaci vec postoje u Trendplus DB i mogu u MVP.
-- Delimicno: deo podataka postoji, ali treba bolja granularnost ili coverage.
-- Nedostaje: bez novih tabela/eventa ne uvoditi kao final recommendation.
+### 1. Sell-through ratio
 
-## KPI i Decision Flow katalog (18)
-
-## 1) Sell-through ratio
-
-- Poslovno pitanje: Koliko brzo se roba iz zalihe prodaje u izabranom periodu?
-- Formula: sell_through = sold_units / (opening_stock_units + inbound_units).
-- Potrebni podaci: prodate jedinice, ulaz robe, pocetna zaliha po periodu/SKU.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: netacan opening stock snapshot, kasnjenje osvezavanja pokreta.
-- Recommendation ili signal: Signal u P0, recommendation u P1.
-- Gde se prikazuje: /analytics/inventory, /analytics/products, supplier report sekcije.
-- Minimalni MVP: 30d i 90d sell-through po SKU/kategoriji sa data quality bedzom.
+- Poslovno pitanje: Da li artikl, kategorija ili dobavljac prodaje dovoljno brzo u odnosu na raspolozivu zalihu i ulaze?
+- Formula: `sell_through_ratio = sold_units / (opening_stock_units + inbound_units)` za izabrani period.
+- Potrebni podaci: prodaja, lager, datumi, prodavnica, kategorija, dobavljac.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing stock snapshot, kasnjenje refresh-a lagera, netacan opening stock.
+- Tip: signal.
+- Gde se prikazuje: Dashboard, Product Decision, Inventory, Reports.
+- Minimalni MVP: 30d i 90d sell-through po SKU i kategoriji sa quality bedzom.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: nizak sell-through ne znaci automatski los proizvod; moguci su visoka cena, sezonalnost ili kasni ulaz robe.
 
-## 2) Inventory turnover
+### 2. Inventory turnover
 
-- Poslovno pitanje: Koliko puta se prosecna zaliha okrene u periodu?
-- Formula: turnover_units = sold_units / avg_on_hand_units. Finansijski: turnover_value = COGS / avg_inventory_value.
-- Potrebni podaci: sold units, average on-hand, COGS (za finansijsku varijantu).
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: slaba istorija avg zalihe, cost coverage rupe.
-- Recommendation ili signal: Signal.
-- Gde se prikazuje: /analytics/inventory i category drilldown.
-- Minimalni MVP: units turnover po kategoriji/dobavljacu, bez finansijske varijante.
+- Poslovno pitanje: Koliko brzo se prosecna zaliha obrce i gde je kapital spor?
+- Formula: `inventory_turnover = sold_units / avg_on_hand_units` za units varijantu; naprednije `COGS / avg_inventory_value`.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, kategorija, dobavljac, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing stock history, missing cost, los avg inventory snapshot.
+- Tip: signal.
+- Gde se prikazuje: Inventory, Supplier, Reports.
+- Minimalni MVP: units turnover po kategoriji i dobavljacu bez pune finansijske valuacije.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: visok turnover moze znaciti i premali lager, ne samo zdravu rotaciju.
 
-## 3) GMROI
+### 3. GMROI
 
-- Poslovno pitanje: Koliko bruto marze dobijamo po ulozenom dinaru u zalihu?
-- Formula: GMROI = gross_margin_value / avg_inventory_cost_value.
-- Potrebni podaci: prihod, COGS, prosecna vrednost zalihe po nabavnoj ceni.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: netacan COGS, nestabilna procena avg inventory value.
-- Recommendation ili signal: Signal dok valuation ne postane stabilan.
-- Gde se prikazuje: supplier scorecard, category profitability panel.
-- Minimalni MVP: GMROI-lite kao pomocni signal sa jasnim disclaimer-om.
+- Poslovno pitanje: Koliko bruto marze zaradjujemo po ulozenom dinaru u zalihu?
+- Formula: `gmroi = gross_margin_value / avg_inventory_cost_value`.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, kategorija, dobavljac, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing cost, nestabilna avg inventory value, nejasan valuation trenutak.
+- Tip: signal.
+- Gde se prikazuje: Supplier, Inventory, Reports.
+- Minimalni MVP: GMROI-lite po kategoriji i dobavljacu sa jakim disclaimer-om o cost coverage-u.
 - Prioritet: P1.
+- Rizik od pogresnog tumacenja: korisnik moze GMROI da cita kao finalnu profitabilnost iako je cost coverage delimican.
 
-## 4) Margin loss zbog nivelacija
+### 4. Margin loss zbog nivelacija/snizenja
 
-- Poslovno pitanje: Koliko marze gubimo zbog nivelacije/korigovanja cena?
-- Formula: margin_loss = expected_margin_without_nivelacija - realized_margin_after_nivelacija.
-- Potrebni podaci: istorija cena, prodaja pre/posle, nabavna cena.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: nepotpuna istorija promene cene, pogresan event timing.
-- Recommendation ili signal: Signal.
-- Gde se prikazuje: pre/post nivelacija i supplier decision report.
-- Minimalni MVP: agregat po dobavljacu i kategoriji sa confidence indikatorom.
+- Poslovno pitanje: Koliko marze gubimo zbog promene cena, nivelacija i markdown odluka?
+- Formula: `margin_loss = expected_margin_without_price_change - realized_margin_after_price_change`.
+- Potrebni podaci: prodaja, nabavna cena, datumi, nivelacije, kategorija, dobavljac, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: nepotpuna istorija cena, netacan trenutak promene, missing cost.
+- Tip: signal.
+- Gde se prikazuje: Dashboard, Supplier, Reports.
+- Minimalni MVP: agregat po dobavljacu i kategoriji za pre/post intervale.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: pad marze ne mora biti posledica samo markdown-a; mesaju se sezona, mix i akcije.
 
-## 5) Markdown efficiency
+### 5. Markdown efficiency
 
-- Poslovno pitanje: Da li markdown oslobadja lager dovoljno efikasno u odnosu na izgubljenu marzu?
-- Formula: markdown_eff = incremental_units_cleared / margin_loss_from_markdown.
-- Potrebni podaci: markdown event-i, prodaja pre/posle, marza delta.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: attribution bias, preklapanje promocija i sezonalnosti.
-- Recommendation ili signal: Signal.
-- Gde se prikazuje: pricing/nivelacija report i supplier decision context.
-- Minimalni MVP: 14d pre/post analiza bez kauzalnog modela.
+- Poslovno pitanje: Da li markdown oslobadja lager dovoljno brzo u odnosu na izgubljenu marzu?
+- Formula: `markdown_efficiency = incremental_units_sold_after_markdown / margin_loss_from_markdown` ili skor kombinacija sell-through uplift i margin loss.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, nivelacije, kategorija, dobavljac, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: confounding zbog promocija i sezonalnosti, nepotpuna price history.
+- Tip: signal.
+- Gde se prikazuje: Reports, Supplier, Dashboard.
+- Minimalni MVP: 14d pre/post markdown analiza po SKU ili kategoriji.
 - Prioritet: P1.
+- Rizik od pogresnog tumacenja: korisnik moze poverovati da markdown "radi" i kada je uplift posledica spoljnog faktora.
 
-## 6) Stock cover / days of supply
+### 6. Stock cover / days of supply
 
-- Poslovno pitanje: Koliko dana trenutna zaliha pokriva traznju?
-- Formula: days_of_supply = current_on_hand_units / avg_daily_sales_units.
-- Potrebni podaci: trenutno stanje zalihe, rolling daily sales velocity.
-- Da li podaci vec postoje u Trendplus DB: Postoji.
-- Data quality rizici: volatilnost kod niskog volumena, sezonski pikovi.
-- Recommendation ili signal: Recommendation (dopuna, stop reorder, markdown).
-- Gde se prikazuje: /analytics/inventory i akcioni panel.
-- Minimalni MVP: risk zone (nizak/srednji/visok cover) + predlog akcije.
+- Poslovno pitanje: Koliko dana trenutna zaliha pokriva ocekivanu traznju?
+- Formula: `days_of_supply = current_on_hand_units / avg_daily_sales_units`.
+- Potrebni podaci: prodaja, lager, datumi, prodavnica, kategorija, dobavljac.
+- Da li podaci vec postoje u Trendplus DB: Yes.
+- Data quality rizici: missing stock refresh, volatilnost kod sporih SKU, sezonalni pikovi.
+- Tip: recommendation.
+- Gde se prikazuje: Inventory, Dashboard, Actions.
+- Minimalni MVP: low/medium/high cover zone sa reason code-om.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: kratak cover ne znaci automatski dopunu ako je artikal pri kraju sezone ili planiran za markdown.
 
-## 7) OOS lost sales estimate
+### 7. OOS lost sales estimate
 
-- Poslovno pitanje: Koliki prihod i marza su izgubljeni zbog OOS stanja?
-- Formula: lost_sales_units = expected_units_during_oos - actual_units_during_oos.
-- Formula: lost_margin = lost_sales_units * unit_margin.
-- Potrebni podaci: OOS intervali, baseline demand signal, marza po artiklu.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: substitucija artikla, slab demand baseline za retke SKU.
-- Recommendation ili signal: Signal.
-- Gde se prikazuje: OOS risk panel i nedeljni report.
-- Minimalni MVP: rough estimate + interval pouzdanosti + warning.
+- Poslovno pitanje: Koliki prihod i marza su izgubljeni zbog out-of-stock perioda?
+- Formula: `lost_sales_units = expected_units_if_in_stock - actual_units`; `lost_sales_value = lost_sales_units * avg_selling_price`.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, prodavnica, kategorija, velicina, boja.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing stock intervals, slaba baseline traznja, substitucija drugim SKU.
+- Tip: signal.
+- Gde se prikazuje: Inventory, Dashboard, Reports.
+- Minimalni MVP: gruba procena po SKU/store sa confidence warning-om.
+- Prioritet: P0.
+- Rizik od pogresnog tumacenja: estimate moze preceniti izgubljenu prodaju ako je kupac presao na slican artikal.
+
+### 8. Size/color availability risk
+
+- Poslovno pitanje: Gde gubimo prodaju jer nedostaju kljucne velicine ili boje?
+- Formula: `availability_risk = sum(variant_demand_weight * is_variant_oos)` po SKU/store.
+- Potrebni podaci: prodaja, lager, velicina, boja, prodavnica, datumi.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: incomplete size/color atributi, nekonzistentna standardizacija varijanti, missing stock po varijanti.
+- Tip: recommendation.
+- Gde se prikazuje: Product Decision, Inventory, Reports.
+- Minimalni MVP: lista SKU sa visokim risk score-om za velicinu/boju i predlog dopune.
+- Prioritet: P0.
+- Rizik od pogresnog tumacenja: korisnik moze misliti da je ceo SKU problem, iako je problem samo u jednoj kljucnoj velicini ili boji.
+
+### 9. Supplier dependency risk
+
+- Poslovno pitanje: Koliko smo izlozeni riziku zbog prevelike zavisnosti od malog broja dobavljaca?
+- Formula: `supplier_dependency_risk = HHI(revenue_share_by_supplier)` ili `top_5_supplier_share`.
+- Potrebni podaci: prodaja, nabavna cena, dobavljac, kategorija, datumi.
+- Da li podaci vec postoje u Trendplus DB: Yes.
+- Data quality rizici: missing supplier, duplikati dobavljaca, loše mapiranje nepoznatih dobavljaca.
+- Tip: recommendation.
+- Gde se prikazuje: Supplier, Dashboard, Reports.
+- Minimalni MVP: top concentration warning sa pragovima i listom dobavljaca koji nose rizik.
+- Prioritet: P0.
+- Rizik od pogresnog tumacenja: visok share jednog dobavljaca nije uvek los ako je strategijski ili ekskluzivni partner.
+
+### 10. Category contribution margin
+
+- Poslovno pitanje: Koje kategorije stvarno nose marzu, a koje samo prihod?
+- Formula: `category_contribution_margin = (revenue - COGS) / revenue` i apsolutni `revenue - COGS`.
+- Potrebni podaci: prodaja, nabavna cena, kategorija, datumi, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Yes.
+- Data quality rizici: missing cost, nekonzistentna kategorizacija, outlier cost.
+- Tip: recommendation.
+- Gde se prikazuje: Dashboard, Supplier, Reports.
+- Minimalni MVP: top/bottom kategorije po contribution margin-u sa quality status-om.
+- Prioritet: P0.
+- Rizik od pogresnog tumacenja: visoka marza procenat ne znaci i najveci ukupni doprinos u dinarima.
+
+### 11. Slow stock capital
+
+- Poslovno pitanje: Koliko kapitala je vezano u robi koja se krece presporo?
+- Formula: `slow_stock_capital = sum(on_hand_units * unit_cost)` za SKU gde je turnover ili velocity ispod praga.
+- Potrebni podaci: lager, nabavna cena, prodaja, datumi, kategorija, dobavljac, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing cost, stale stock, loš threshold izbor po kategoriji.
+- Tip: recommendation.
+- Gde se prikazuje: Inventory, Actions, Reports.
+- Minimalni MVP: top 50 SKU po slow stock kapitalu sa predlogom markdown/transfer/hold.
 - Prioritet: P1.
+- Rizik od pogresnog tumacenja: spor artikal ne mora biti problem ako je sezonski ili strateški assortment anchor.
 
-## 8) Size/color availability risk
+### 12. Dead stock aging
 
-- Poslovno pitanje: Gde gubimo prodaju jer nedostaju kljucne velicine/boje?
-- Formula: avail_risk = sum(weight_variant_demand * is_variant_oos).
-- Potrebni podaci: prodaja po varijanti, stanje po varijanti, atributi velicina/boja.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: nekonzistentna standardizacija velicina/boja, mapiranje sifara.
-- Recommendation ili signal: Recommendation kad coverage atributa predje prag; inace signal.
-- Gde se prikazuje: /analytics/products i /analytics/inventory.
-- Minimalni MVP: top SKU lista sa risk score i predlogom dopune varijanti.
+- Poslovno pitanje: Koji artikli stoje predugo bez prodaje i koliki je finansijski teret toga?
+- Formula: `aging_days = today - last_sale_date`; `dead_stock_value = on_hand_units * unit_cost` po aging bucket-u.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, kategorija, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: phantom stock, netacan last sale date, missing cost.
+- Tip: recommendation.
+- Gde se prikazuje: Inventory, Dashboard, Reports.
+- Minimalni MVP: aging bucketi 30/60/90/120+ sa akcijom hold/markdown/clearance.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: dugo bez prodaje ne znaci automatski otpis; moguca je sezonska obnova traznje.
 
-## 9) Supplier dependency risk
+### 13. Price elasticity signal
 
-- Poslovno pitanje: Koliko smo zavisni od malog broja dobavljaca?
-- Formula: dependency_risk = HHI(revenue_share_by_supplier) ili topN_share.
-- Potrebni podaci: prihod i marza po dobavljacu kroz vreme.
-- Da li podaci vec postoje u Trendplus DB: Postoji.
-- Data quality rizici: unknown supplier mapiranje, duplikati dobavljaca.
-- Recommendation ili signal: Recommendation na portfolio nivou.
-- Gde se prikazuje: /analytics/supplier i supplier report.
-- Minimalni MVP: top concentration warning + predlog diverzifikacije.
-- Prioritet: P0.
-
-## 10) Category contribution margin
-
-- Poslovno pitanje: Koje kategorije donose stvarni doprinos marzi?
-- Formula: contribution_margin_pct = (revenue - COGS) / revenue.
-- Potrebni podaci: revenue, COGS, kategorija proizvoda.
-- Da li podaci vec postoje u Trendplus DB: Postoji (uz cost caveat).
-- Data quality rizici: missing cost, nekonzistentna kategorizacija.
-- Recommendation ili signal: Recommendation (invest, hold, reduce).
-- Gde se prikazuje: /analytics i category sekcije.
-- Minimalni MVP: rang lista kategorija sa contribution signalom i quality bedzom.
-- Prioritet: P0.
-
-## 11) Slow stock capital
-
-- Poslovno pitanje: Koliko kapitala je vezano u sporoj robi?
-- Formula: slow_stock_capital = sum(on_hand_units * unit_cost) for turnover < threshold.
-- Potrebni podaci: on-hand, unit cost, turnover klasifikacija.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: slabo cost pokrice, stale on-hand podaci.
-- Recommendation ili signal: Recommendation uz human confirmation.
-- Gde se prikazuje: /analytics/inventory i /analytics/actions.
-- Minimalni MVP: top 50 SKU po vezanom kapitalu sa predlog akcije.
-- Prioritet: P1.
-
-## 12) Dead stock aging
-
-- Poslovno pitanje: Koji artikli stoje predugo i koliko kosta taj zastoj?
-- Formula: aging_days = today - last_sale_date.
-- Formula: dead_stock_exposure = on_hand_units * unit_cost by aging bucket.
-- Potrebni podaci: poslednji datum prodaje, on-hand, cost.
-- Da li podaci vec postoje u Trendplus DB: Postoji/Delimicno.
-- Data quality rizici: phantom stock, netacan last sale datum zbog merge/mapiranja.
-- Recommendation ili signal: Recommendation.
-- Gde se prikazuje: /analytics/inventory i report sekcije.
-- Minimalni MVP: bucketi 30/60/90/120+ sa akcijom hold/markdown/clearance.
-- Prioritet: P0.
-
-## 13) Price elasticity signal
-
-- Poslovno pitanje: Kako promena cene utice na traznju?
-- Formula: elasticity_proxy = pct_change_units / pct_change_price.
-- Potrebni podaci: istorija cena, prodaja po vremenskim prozorima, promo/sezona flag.
-- Da li podaci vec postoje u Trendplus DB: Delimicno/Nedostaje.
-- Data quality rizici: confounding faktori, mali uzorak, istovremene kampanje.
-- Recommendation ili signal: Signal samo u ranoj fazi.
-- Gde se prikazuje: pricing laboratorija i pre-nivelacija analitika.
-- Minimalni MVP: signal za SKU sa dovoljnim brojem price-change dogadjaja.
+- Poslovno pitanje: Kako promena cene menja traznju za dati SKU ili kategoriju?
+- Formula: `elasticity_signal = pct_change_units / pct_change_price` uz filtriranje neuporedivih perioda.
+- Potrebni podaci: prodaja, datumi, nivelacije, kategorija, prodavnica, povrati.
+- Da li podaci vec postoje u Trendplus DB: Unknown.
+- Data quality rizici: mali uzorci, akcije i sezona kao confounder, nepotpuna istorija cena.
+- Tip: signal.
+- Gde se prikazuje: Reports, Product Decision.
+- Minimalni MVP: proxy signal samo za SKU sa vise price-change dogadjaja.
 - Prioritet: P2.
+- Rizik od pogresnog tumacenja: korisnik moze izvesti kauzalni zakljucak iz korelacije bez kontrole za sezonu i promocije.
 
-## 14) Return/refund impact
+### 14. Return/refund impact
 
-- Poslovno pitanje: Koliko povrati i refundacije umanjuju profitabilnost?
-- Formula: refund_impact_pct = (refund_revenue + refund_cost) / gross_revenue.
-- Potrebni podaci: povrati/refundacije, povezivanje sa originalnim sale line-om, cost.
-- Da li podaci vec postoje u Trendplus DB: Delimicno/Nedostaje.
-- Data quality rizici: nedostajuci linkage povrat-prodaja, dupli refund zapisi.
-- Recommendation ili signal: Signal.
-- Gde se prikazuje: profitability report i data quality panel.
-- Minimalni MVP: refund rate po kategoriji sa coverage upozorenjem.
+- Poslovno pitanje: Koliko povrati i refundacije umanjuju stvarnu profitabilnost?
+- Formula: `return_impact = (refund_revenue + return_handling_cost + lost_margin) / gross_revenue`.
+- Potrebni podaci: prodaja, povrati, refundacije, nabavna cena, datumi, kategorija, prodavnica.
+- Da li podaci vec postoje u Trendplus DB: Unknown.
+- Data quality rizici: no returns history, nepovezan refund sa originalnim sale line-om, dupli zapisi.
+- Tip: signal.
+- Gde se prikazuje: Reports, Data Quality, Dashboard.
+- Minimalni MVP: refund rate i procena uticaja po kategoriji sa coverage warning-om.
 - Prioritet: P2.
+- Rizik od pogresnog tumacenja: korisnik moze potceniti profitabilnu kategoriju zbog tehnički loše povezanih refund događaja.
 
-## 15) Transfer opportunity izmedju prodavnica
+### 15. Transfer opportunity izmedju prodavnica
 
-- Poslovno pitanje: Gde interni transfer smanjuje OOS i dead stock najbrze?
-- Formula: transfer_score = (surplus_source - shortage_target) * demand_velocity * margin_weight.
-- Potrebni podaci: store-level inventory, store-level velocity, transfer istorija.
-- Da li podaci vec postoje u Trendplus DB: Delimicno.
-- Data quality rizici: kasnjenje knjizenja prenosa, stale store stanje.
-- Recommendation ili signal: Recommendation sa human approval korakom.
-- Gde se prikazuje: inventory transfer i /analytics/actions.
-- Minimalni MVP: top transfer parovi source->target sa expected recovery.
+- Poslovno pitanje: Gde interni transfer resava OOS u jednoj prodavnici i slow stock u drugoj?
+- Formula: `transfer_opportunity_score = shortage_target * surplus_source * demand_velocity * margin_weight`.
+- Potrebni podaci: lager, prodaja, prodavnica, datumi, nabavna cena, transfer istorija.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: no transfer history, stale store stock, kasnjenje osvezavanja po prodavnici.
+- Tip: recommendation.
+- Gde se prikazuje: Inventory, Actions, Reports.
+- Minimalni MVP: top source-target parovi sa ocekivanim recovery signalom.
 - Prioritet: P1.
+- Rizik od pogresnog tumacenja: predlog transfera moze ignorisati operativni trosak ili pravila visual merchandising-a.
 
-## 16) Supplier negotiation pack
+### 16. Supplier negotiation pack
 
-- Poslovno pitanje: Kako pripremiti pregovore sa dobavljacem na osnovu dokaza?
-- Formula: nije jedan KPI; scorecard paket = weighted index od margin trend, sell-through, markdown loss, OOS impact, dependency risk.
-- Potrebni podaci: supplier-level KPI istorija, quality status, trendovi po periodima.
-- Da li podaci vec postoje u Trendplus DB: Delimicno (uglavnom postoji, treba standardizovan paket).
-- Data quality rizici: neuskaldjene metrike po periodima, fallback dataset bez oznake.
-- Recommendation ili signal: Recommendation za pregovaracke akcije (human-in-the-loop).
-- Gde se prikazuje: /analytics/supplier/report i report export.
-- Minimalni MVP: PDF/print-ready supplier pack sa 5 kljucnih KPI i CTA koracima.
+- Poslovno pitanje: Kako pripremiti pregovor sa dobavljacem kroz jedan dokazni paket KPI-jeva i akcija?
+- Formula: nije jedan KPI; paket = kombinacija `sell-through`, `margin trend`, `markdown loss`, `dependency risk`, `stock risk`, `OOS impact`.
+- Potrebni podaci: prodaja, lager, nabavna cena, dobavljac, kategorija, datumi, nivelacije.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: missing supplier, missing cost, nekonzistentni periodi izmedju KPI-jeva.
+- Tip: report.
+- Gde se prikazuje: Supplier, Reports.
+- Minimalni MVP: print-ready supplier report sa 5 KPI, quality sazetkom i CTA preporukama.
 - Prioritet: P1.
+- Rizik od pogresnog tumacenja: korisnik moze paket citati kao finalnu presudu o dobavljacu iako je deo signala pomocni ili fallback.
 
-## 17) Markdown optimizer
+### 17. Markdown optimizer
 
-- Poslovno pitanje: Koji markdown procenat daje najbolji balans izmedju clearance i marze?
-- Formula: optimize markdown_pct to maximize objective = expected_margin_after_markdown - holding_cost - stockout_penalty.
-- Potrebni podaci: price elasticity signal, historical markdown outcomes, inventory aging, margin floor policy.
-- Da li podaci vec postoje u Trendplus DB: Delimicno/Nedostaje.
-- Data quality rizici: slab elasticity signal, policy ogranicenja nisu modelovana, mali uzorci.
-- Recommendation ili signal: Signal u P1, recommendation u P2.
-- Gde se prikazuje: pricing/nivelacija decision panel.
-- Minimalni MVP: simulator scenarija (5/10/15/20%) bez auto-primene.
+- Poslovno pitanje: Koji nivo markdown-a najverovatnije balansira clearance i marzu?
+- Formula: `argmax(markdown_pct) of expected_margin_after_markdown - holding_cost - clearance_penalty`.
+- Potrebni podaci: prodaja, lager, nabavna cena, datumi, nivelacije, price elasticity signal, kategorija.
+- Da li podaci vec postoje u Trendplus DB: No.
+- Data quality rizici: slab elasticity signal, nema policy ogranicenja, nema dovoljno pre/post istorije.
+- Tip: recommendation.
+- Gde se prikazuje: Product Decision, Reports.
+- Minimalni MVP: simulator scenarija 5/10/15/20% bez automatske preporuke za primenu.
 - Prioritet: P2.
+- Rizik od pogresnog tumacenja: korisnik moze tretirati simulator kao pouzdanu optimizaciju iako je samo scenario tool.
 
-## 18) Replenishment/OOS decision flow
+### 18. Replenishment/OOS decision flow
 
-- Poslovno pitanje: Koja je sledeca akcija po SKU/store: dopuna, transfer, markdown ili hold?
-- Formula: decision_score = w1*oos_risk + w2*days_of_supply_gap + w3*margin_priority - w4*data_quality_penalty.
-- Potrebni podaci: stock cover, OOS risk, transfer opportunity, marza, quality status, lead-time.
-- Da li podaci vec postoje u Trendplus DB: Delimicno (za rule-based MVP dovoljno; za optimizaciju treba bolji lead-time).
-- Data quality rizici: stale inventory, nepotpuni lead-time, fallback period mismatch.
-- Recommendation ili signal: Recommendation flow sa explicit gating pravilima.
-- Gde se prikazuje: /analytics/inventory, /analytics/actions, supplier/product decision kontekst.
-- Minimalni MVP: rule engine sa 4 izlaza (replenish, transfer, markdown, hold) + reason codes.
+- Poslovno pitanje: Koja je sledeca najbolja akcija po SKU/store: dopuna, transfer, hold ili markdown?
+- Formula: `decision_score = w1*oos_risk + w2*days_of_supply_gap + w3*margin_priority + w4*availability_risk - w5*data_quality_penalty`.
+- Potrebni podaci: prodaja, lager, nabavna cena, dobavljac, prodavnica, velicina, boja, datumi, transfer signal.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: stale stock, missing supplier lead-time, incomplete size/color coverage.
+- Tip: recommendation.
+- Gde se prikazuje: Inventory, Actions, Product Decision, Dashboard.
+- Minimalni MVP: rule-based flow sa izlazima `replenish`, `transfer`, `hold`, `markdown` i reason code-ovima.
 - Prioritet: P0.
+- Rizik od pogresnog tumacenja: recommendation moze delovati autoritativno iako je data quality slab ili lead-time nije poznat.
 
-## Decision Governance i rollout redosled
+### 19. Store performance comparison
 
-### P0 (odmah za planning i MVP implementaciju)
+- Poslovno pitanje: Koje prodavnice ostvaruju bolju prodaju, marzu i rotaciju za uporediv assortment?
+- Formula: kombinovani benchmark po prodavnici, npr. `store_score = z(revenue_per_sku) + z(margin_pct) + z(turnover) - z(oos_rate)`.
+- Potrebni podaci: prodaja, lager, nabavna cena, prodavnica, kategorija, datumi, velicina, boja.
+- Da li podaci vec postoje u Trendplus DB: Yes.
+- Data quality rizici: neuporediv assortment, razlike u footfall-u, missing stock po store-u.
+- Tip: report.
+- Gde se prikazuje: Dashboard, Reports, Inventory.
+- Minimalni MVP: store benchmark tabela po prihod/marza/turnover/OOS sa filterom po kategoriji i periodu.
+- Prioritet: P1.
+- Rizik od pogresnog tumacenja: korisnik moze kriviti store tim iako je problem u assortmanu, veličinama ili supply-u.
 
-- 1 Sell-through ratio
-- 2 Inventory turnover (units)
-- 4 Margin loss zbog nivelacija
-- 6 Stock cover / days of supply
-- 8 Size/color availability risk
-- 9 Supplier dependency risk
-- 10 Category contribution margin
-- 12 Dead stock aging
-- 18 Replenishment/OOS decision flow
+### 20. Assortment gap detection
 
-### P1 (zahteva stabilizaciju i data quality podizanje)
+- Poslovno pitanje: Gde nedostaje bitan assortment u odnosu na traznju, sezonu ili peer store obrazac?
+- Formula: `assortment_gap_score = expected_assortment_presence - actual_presence` po kategoriji, brendu, velicini, boji ili store-u.
+- Potrebni podaci: prodaja, lager, kategorija, velicina, boja, prodavnica, dobavljac, datumi.
+- Da li podaci vec postoje u Trendplus DB: Partial.
+- Data quality rizici: incomplete size/color, nedovoljno bogat assortment master, slab baseline za peer comparison.
+- Tip: recommendation.
+- Gde se prikazuje: Product Decision, Inventory, Dashboard, Reports.
+- Minimalni MVP: lista kategorija ili SKU klastera koji imaju demand signal ali slabo pokrice assortmana.
+- Prioritet: P1.
+- Rizik od pogresnog tumacenja: gap ne znaci automatski da treba kupiti vise; moze znaciti da peer store ima drugaciji profil kupca.
 
-- 3 GMROI (lite)
-- 5 Markdown efficiency
-- 7 OOS lost sales estimate
-- 11 Slow stock capital
-- 15 Transfer opportunity izmedju prodavnica
-- 16 Supplier negotiation pack
+## Sta moze odmah, a sta trazi nove podatke
 
-### P2 (zahteva nove podatke ili napredniji model)
+### P0: visoka vrednost, relativno brz MVP
 
-- 13 Price elasticity signal
-- 14 Return/refund impact
-- 17 Markdown optimizer
+- Sell-through ratio
+- Inventory turnover
+- Margin loss zbog nivelacija/snizenja
+- Stock cover / days of supply
+- OOS lost sales estimate
+- Size/color availability risk
+- Supplier dependency risk
+- Category contribution margin
+- Dead stock aging
+- Replenishment/OOS decision flow
+
+### P1: vredno, ali trazi bolji quality ili standardizaciju
+
+- GMROI
+- Markdown efficiency
+- Slow stock capital
+- Transfer opportunity izmedju prodavnica
+- Supplier negotiation pack
+- Store performance comparison
+- Assortment gap detection
+
+### P2: trazice nove podatke, napredniji modeling ili ozbiljniji eksperiment design
+
+- Price elasticity signal
+- Return/refund impact
+- Markdown optimizer
 
 ## Predlog data enabler-a pre pune recommendation faze
 
-- Stabilan periodicki inventory snapshot po store/SKU.
-- Dosledna istorija promene cena na event nivou.
-- Jaci cost coverage i validacija outlier-a.
-- Standardizacija atributa velicine i boje.
-- Pouzdano povezivanje refund transakcije sa originalnim sale line-om.
-- Jasno modelovan lead-time po dobavljacu/store ruti.
+- Stabilan periodicki inventory snapshot po SKU, store-u i po mogucstvu po varijanti.
+- Dosledna istorija cena i markdown event-a sa datumom vazenja.
+- Jaci coverage nabavne cene i alerting za missing cost.
+- Standardizacija atributa velicina i boja.
+- Jasno mapiranje povrata i refundacije na originalni sale line.
+- Pouzdaniji transfer history i store-level inventory refresh signal.
 
-## Guardrails
+## Guardrails za buducu implementaciju
 
-- No fake-zero: greska ili timeout nikad ne sme da izgleda kao validna nula.
+- No fake-zero: greska, timeout ili missing dependency nikad ne smeju izgledati kao validna nula.
+- Delimicni podaci daju signal ili report, ne finalnu recommendation odluku.
 - Svaki KPI mora imati data quality status i reason code kada je degradiran.
-- Delimicno/Nedostaje podaci: prikazivati kao signal, ne kao final recommendation.
 - Trust, refresh i quality signal moraju biti vidljivi pre svake akcione preporuke.
+- Frontend ne sme lokalno izmisljati finalne recommendation score-ove bez backend contract-a.
 
 ## Napomena
 
-Ovaj dokument je roadmap i plan specifikacija. Ne uvodi runtime promene backend/frontend sloja.
+Ovaj dokument je roadmap i specifikacija za planiranje. Ne uvodi runtime promene ni u frontend ni u backend sloju.
