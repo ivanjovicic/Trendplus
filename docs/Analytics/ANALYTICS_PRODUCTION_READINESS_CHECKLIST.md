@@ -137,6 +137,13 @@ Ručno proveriti sledeće rute pre merge-a:
 - `/analytics/supplier/report?fromDate=...&toDate=...`
 - `/analytics/reports/pilot-intake?fromDate=...&toDate=...`
 
+Preporučeni automated guardrail (non-watch):
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx
+```
+
 Pass kriterijum:
 - Rute se učitavaju bez runtime crash-a.
 - Period, refresh i data quality informacije su vidljive gde se očekuju.
