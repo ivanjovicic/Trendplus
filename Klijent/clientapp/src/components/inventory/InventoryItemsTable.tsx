@@ -39,6 +39,10 @@ function isSignalReviewOnly(status: string): boolean {
   return normalized === "insufficient_data";
 }
 
+function isInsufficientStatus(status: string): boolean {
+  return (status ?? "").trim().toLowerCase() === "insufficient_data";
+}
+
 export function InventoryItemsTable({
   rows,
   loading,
@@ -103,7 +107,11 @@ export function InventoryItemsTable({
                 const stockBorder = row.stockState === "critical" ? "border-l-4 border-l-[var(--border-default)]" : row.stockState === "warning" ? "border-l-4 border-l-[var(--border-default)]" : "border-l-4 border-l-[var(--border-default)]";
                 const isQueued = isRowQueued(row);
                 const isQueueBusy = isRowQueueBusy(row);
-                const showQueueButton = isActionableLowCover(row.stockCoverStatus) || isSlowSignal(row.stockCoverStatus) || isSignalReviewOnly(row.stockCoverStatus);
+                const showQueueButton = row.recommendationAllowed === false
+                  || isActionableLowCover(row.stockCoverStatus)
+                  || isSlowSignal(row.stockCoverStatus)
+                  || isSignalReviewOnly(row.stockCoverStatus)
+                  || isInsufficientStatus(row.sellThroughStatus);
                 return (
                   <tr key={row.id} role="button" tabIndex={0} aria-label={`Otvori detalje za ${row.naziv} - ${row.stockStateLabel}`} className={`cursor-pointer border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] transition-all duration-200 hover:bg-[var(--surface-light)] hover:border-t-[var(--border-hover, var(--theme-color-293243, #293243))] focus:outline-none focus-visible:bg-[var(--surface-elevated)] focus-visible:border-t-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring, var(--theme-color-44d0ff, #44d0ff))] focus-visible:ring-opacity-30 ${stockBorder}`} onClick={() => onOpenDetail(row)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetail(row); } }}>
                     <td className="px-4 py-3"><div className="flex flex-col"><span className="font-semibold text-white">{row.naziv}</span><span className="text-xs text-[var(--text-primary)]">{row.plu ?? "Bez PLU"} | {getCoverageText(row)}</span></div></td>

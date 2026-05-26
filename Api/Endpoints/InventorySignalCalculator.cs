@@ -93,7 +93,7 @@ public static class InventorySignalCalculator
         if (currentOnHandUnits <= 0 && avgDailySalesUnits > 0)
         {
             reasonCodes.Add("stock_cover_out_of_stock_risk");
-            return (0m, StockCoverOutOfStockRisk);
+            return (null, StockCoverOutOfStockRisk);
         }
 
         if (avgDailySalesUnits <= 0 && currentOnHandUnits > 0)

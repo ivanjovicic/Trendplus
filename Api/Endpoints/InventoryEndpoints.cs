@@ -4,6 +4,7 @@ using Application.Common.Interfaces;
 using Application.Documents.Interfaces;
 using Application.Inventory.Models;
 using Application.Documents.Models;
+using Domain.Model;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Caching;
 using Infrastructure.Services.Inventory;
@@ -80,6 +81,7 @@ public static class InventoryEndpoints
 
         group.MapGet("/list", async (
             ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
             int page = 1,
             int pageSize = 50,
             int? storeId = null,
@@ -114,22 +116,32 @@ public static class InventoryEndpoints
 
             var articleIds = rawItems.Select(item => item.Id).ToArray();
             var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
+            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
 
             var items = new List<InventoryListItemDto>(rawItems.Count);
             foreach (var item in rawItems)
             {
                 var quantity = item.Kolicina ?? 0;
                 var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
+                var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
+                    ? stats
+                    : new InventorySignalWindowStats(0, 0);
+                var openingStockUnits = Math.Max(quantity - movementWindowStats.NetMovementUnits, 0);
+                var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
                 var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
-                var hasSufficientData = soldUnits30d > 0 || quantity > 0;
-                var signalDataQuality = soldUnits30d > 0 ? "good" : quantity > 0 ? "warning" : "insufficient_data";
+                var hasSufficientData = soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs;
+                var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
+                    ? "good"
+                    : hasSufficientData
+                        ? "warning"
+                        : "insufficient_data";
 
                 var signal = InventorySignalCalculator.Calculate(
                     currentOnHandUnits: quantity,
                     avgDailySalesUnits: avgDailySalesUnits,
                     soldUnits: soldUnits30d,
-                    openingStockUnits: null,
-                    inboundUnits: null,
+                    openingStockUnits: openingStockUnits,
+                    inboundUnits: movementWindowStats.InboundUnits,
                     dataQualityStatus: signalDataQuality,
                     hasSufficientData: hasSufficientData);
 
@@ -848,6 +860,48 @@ public static class InventoryEndpoints
             .ToListAsync(ct);
 
         return grouped.ToDictionary(x => x.ProductId, x => x.UnitsSold);
+    }
+
+    private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsAsync(
+        IAnalyticsDbContext analyticsDb,
+        IReadOnlyCollection<int> articleIds,
+        int? storeId,
+        int lookbackDays,
+        CancellationToken ct)
+    {
+        if (articleIds.Count == 0)
+        {
+            return [];
+        }
+
+        var fromDate = DateTime.UtcNow.AddDays(-Math.Max(lookbackDays, 1));
+        var inboundTypes = TipPromeneConstants.UlazTypes.ToArray();
+        var stats = new Dictionary<int, InventorySignalWindowStats>(articleIds.Count);
+
+        foreach (var batch in articleIds.Distinct().Chunk(MovementStatsBatchSize))
+        {
+            var batchStats = await analyticsDb.InventoryMovementFacts
+                .AsNoTracking()
+                .Where(x => x.ArtikalId.HasValue
+                    && batch.Contains(x.ArtikalId.Value)
+                    && x.Datum >= fromDate
+                    && (!storeId.HasValue || x.StoreId == storeId.Value))
+                .GroupBy(x => x.ArtikalId!.Value)
+                .Select(g => new
+                {
+                    ArtikalId = g.Key,
+                    NetMovementUnits = g.Sum(x => x.Kolicina ?? 0),
+                    InboundUnits = g.Where(x => inboundTypes.Contains(x.TipPromene)).Sum(x => Math.Max(x.Kolicina ?? 0, 0))
+                })
+                .ToListAsync(ct);
+
+            foreach (var row in batchStats)
+            {
+                stats[row.ArtikalId] = new InventorySignalWindowStats(row.NetMovementUnits, row.InboundUnits);
+            }
+        }
+
+        return stats;
     }
 
     private static List<InventoryDatasetItem> ApplyAbcClassification(List<InventoryDatasetItem> items)
@@ -1569,6 +1623,10 @@ public static class InventoryEndpoints
     private sealed record InventoryMovementStats(
         DateTime LastMovementAt,
         int MovementCount30d);
+
+    private sealed record InventorySignalWindowStats(
+        int NetMovementUnits,
+        int InboundUnits);
 
     private sealed record InventoryDatasetItem(
         int Id,

@@ -1,11 +1,27 @@
 # Stock Cover / Sell-through Audit
 
-| Layer | Stock cover | Sell-through | Gap | Action |
-|---|---|---|---|---|
-| Backend formula | Yes | Partial | Sell-through formula je backend-calculated, ali denominator u trenutnim endpointima cesto nema opening/inbound ulaze pa signal pada na insufficient_data (ispravno), bez eksplicitnog recommendationAllowed polja u DTO pre izmene. | Zadrzana no-fake-zero logika; dodat `recommendationAllowed` i canonical label polja iz backend-a. |
-| DTO | Partial | Partial | Nedostajali `stockCoverStatusLabel`, `sellThroughStatusLabel`, `recommendationAllowed` u inventory/product decision contract-u. | DTO contract prosiren na backend-u i frontend types uskladjeni. |
-| Frontend table | Partial | Partial | Prikaz null vrednosti je bio uglavnom "Nedovoljno podataka" i kada signal nije eksplicitno insufficient_data. | Dodata razlika: `insufficient_data -> Nedovoljno podataka`, `null bez insufficient_data -> Nije dostupno`; backend label se koristi kada postoji. |
-| KPI cards | Yes | Yes | KPI explain postoji, ali sell-through metodologija nije bila dovoljno precizna za denominator/blocked cases. | Metodologija za sell-through unapredjena u metric definitions. |
-| Methodology | Yes | Partial | Formula za sell-through bila generalna i bez jasnog blocked/no-fake-zero pravila. | Formula i blocked uslovi sada eksplicitno dokumentovani (`soldUnits / (openingStockUnits + inboundUnits)`). |
-| Tests | Partial | Partial | Backend testovi postoje, ali bez provere novih contract polja; frontend nije imao direktne testove za signal->action mapiranje i null/unavailable razliku. | Dodati backend assertion-i i novi frontend testovi za mapiranje (`REPLENISH`/`SLOW_STOCK_REVIEW`/`SIGNAL_REVIEW`) i prikaz unavailable stanja. |
-| Action Queue | Partial | Partial | Inventory je imao signal mapiranje; Product Decision je uglavnom sledio recommendation status bez eksplicitnog signal status mapiranja. | Product Decision queue mapiranje dopunjeno canonical signal pravilima; metadata prosirena signal poljima. |
+| Layer | Stock cover | Sell-through | Status | Gap |
+| --- | --- | --- | --- | --- |
+| Backend formula | `currentOnHandUnits / avgDailySalesUnits` u `InventorySignalCalculator.Calculate` | `soldUnits / (openingStockUnits + inboundUnits)` u `InventorySignalCalculator.Calculate` | OK | Formula ostaje nepromenjena; audit potvrđuje implementaciju. |
+| DTO | `InventoryListItemDto.StockCoverDays`, `StockCoverStatus`, `StockCoverStatusLabel` | `SellThroughRatio`, `SellThroughStatus`, `SellThroughStatusLabel` | OK | DTO kontrakt je kompletan za signal sloj. |
+| API response | `/api/analytics/inventory/list` vraća stock cover polja i labele | `/api/analytics/inventory/list` sada puni opening/inbound iz movement window statistike | OK | Pre audita je sell-through često završavao u `insufficient_data` jer su opening/inbound bili `null`. |
+| Frontend table | `InventoryItemsTable` prikazuje `Pokrivenost zalihe` sa `Nedovoljno podataka` ili `Nije dostupno` za `null` numeriku | `InventoryItemsTable` prikazuje `Sell-through` bez fake `0%` kada denominator nije pouzdan | OK | Dodata je guard logika da blokirana preporuka i dalje nudi signal akciju. |
+| KPI cards | `InventoryPage` KPI sekcija koristi stock cover statuse (`low_cover`, `out_of_stock_risk`, `slow_stock`, `no_velocity`, `insufficient_data`) | Sell-through KPI koristi canonical status vrednosti (`good`, `warning`, `critical`, `insufficient_data`) | OK | Nema razmimoilaženja status vrednosti između kartica i tabele. |
+| Methodology | `analyticsMetricDefinitions.stockCoverDays` koristi `currentOnHandUnits / avgDailySalesUnits` | `analyticsMetricDefinitions.sellThrough` dokumentuje `soldUnits / (openingStockUnits + inboundUnits)` i blokadu na nepouzdan denominator | OK | Methodology pokriva signal putanju u inventory/products ekranima. |
+| Action Queue | `low_cover`/`out_of_stock_risk` mapira na `REPLENISH`; `slow_stock`/`no_velocity` na `SLOW_STOCK_REVIEW` | `insufficient_data` ili `recommendationAllowed=false` mapiraju na `SIGNAL_REVIEW` | OK | Uvedena zaštita da blokirana preporuka ne kreira finalnu akciju. |
+| Tests | `Api.Tests/InventorySignalCalculatorTests.cs` pokriva no-fake-zero i labele | Frontend specovi pokrivaju `Nedovoljno podataka`, `Nije dostupno`, KPI explain i `SIGNAL_REVIEW` mapiranje | OK | Dodate rupe za recommendation block i UTF-8 label check. |
+
+## Formula Notes
+
+- Stock cover ostaje `daysOfSupply = currentOnHandUnits / avgDailySalesUnits`.
+- Sell-through ostaje `sellThrough = soldUnits / (openingStockUnits + inboundUnits)`.
+- U inventory list putanji opening stock se aproksimira kao `currentOnHand - netMovementWindow`, gde je `netMovementWindow` zbir `Kolicina` iz `InventoryMovementFacts` za isti period.
+- Inbound ulazi se računaju preko `TipPromeneConstants.UlazTypes` (`Ulaz robe`, `Prenos ulaz`, `Povrat kupca`).
+
+## No Fake Zero Rules
+
+- `openingStockUnits + inboundUnits <= 0` vraća `SellThroughRatio = null` i status `insufficient_data`.
+- Nedostajući opening/inbound ulazi ne prikazuju `0%` sell-through u UI.
+- `avgDailySalesUnits <= 0` uz pozitivan lager vraća `no_velocity` i `StockCoverDays = null`.
+- `stock = 0` uz pozitivan velocity vraća `out_of_stock_risk`.
+- `recommendationAllowed = false` degradira queue akciju na `SIGNAL_REVIEW`.

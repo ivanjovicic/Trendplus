@@ -55,7 +55,7 @@ public class InventorySignalCalculatorTests
             dataQualityStatus: "warning",
             hasSufficientData: true);
 
-        Assert.Equal(0m, result.StockCoverDays);
+        Assert.Null(result.StockCoverDays);
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, result.StockCoverStatus);
         Assert.Equal("Rizik rasprodaje", result.StockCoverStatusLabel);
     }
@@ -112,5 +112,14 @@ public class InventorySignalCalculatorTests
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
         Assert.False(result.RecommendationAllowed);
         Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Signal labels are Serbian and UTF-8 safe")]
+    public void StatusLabels_AreSerbianAndUtf8Safe()
+    {
+        Assert.Equal("Rizik rasprodaje", InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverOutOfStockRisk));
+        Assert.Equal("Kritičan sell-through", InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughCritical));
+        Assert.DoesNotContain("Ä", InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverOutOfStockRisk));
+        Assert.DoesNotContain("�", InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughCritical));
     }
 }

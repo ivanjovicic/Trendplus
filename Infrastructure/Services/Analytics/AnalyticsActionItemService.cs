@@ -9,6 +9,8 @@ namespace Infrastructure.Services.Analytics;
 
 public sealed class AnalyticsActionItemService
 {
+    private const int MaxOutcomeNotesLength = 4000;
+
     private readonly IAnalyticsDbContext _db;
     private readonly ILogger<AnalyticsActionItemService> _logger;
 
@@ -390,18 +392,43 @@ public sealed class AnalyticsActionItemService
         if (item is null)
             return null;
 
+        var normalizedOutcomeNotes = NormalizeOutcomeNotes(request.OutcomeNotes);
+        var oldOutcomeStatus = item.OutcomeStatus;
+        var oldMeasuredImpactRsd = item.MeasuredImpactRsd;
+        var oldOutcomeMeasuredAtUtc = item.OutcomeMeasuredAtUtc;
+        var oldOutcomeNotes = item.OutcomeNotes;
         var now = DateTime.UtcNow;
         item.OutcomeStatus = request.OutcomeStatus;
         item.MeasuredImpactRsd = request.MeasuredImpactRsd;
         item.OutcomeMeasuredAtUtc = request.OutcomeMeasuredAtUtc ?? now;
-        item.OutcomeNotes = string.IsNullOrWhiteSpace(request.OutcomeNotes) ? null : request.OutcomeNotes.Trim();
+        item.OutcomeNotes = normalizedOutcomeNotes;
         item.UpdatedAtUtc = now;
         item.UpdatedByUserId = userId;
         item.UpdatedByUserName = userName;
 
         if (request.OutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Pending)
         {
+            item.MeasuredImpactRsd = null;
             item.OutcomeMeasuredAtUtc = null;
+        }
+
+        var outcomeChanged = !string.Equals(oldOutcomeStatus, item.OutcomeStatus, StringComparison.Ordinal)
+            || oldMeasuredImpactRsd != item.MeasuredImpactRsd
+            || oldOutcomeMeasuredAtUtc != item.OutcomeMeasuredAtUtc
+            || !string.Equals(oldOutcomeNotes, item.OutcomeNotes, StringComparison.Ordinal);
+
+        if (outcomeChanged)
+        {
+            _db.AnalyticsActionNotes.Add(new AnalyticsActionNote
+            {
+                ActionItemId = item.Id,
+                StatusFrom = item.Status,
+                StatusTo = item.Status,
+                Note = BuildOutcomeAuditNote(item),
+                CreatedAtUtc = now,
+                CreatedByUserId = userId,
+                CreatedByUserName = userName
+            });
         }
 
         await _db.SaveChangesAsync(ct);
@@ -413,6 +440,48 @@ public sealed class AnalyticsActionItemService
             userId);
 
         return item;
+    }
+
+    private static string? NormalizeOutcomeNotes(string? outcomeNotes)
+    {
+        if (string.IsNullOrWhiteSpace(outcomeNotes))
+        {
+            return null;
+        }
+
+        var trimmed = outcomeNotes.Trim();
+        if (trimmed.Length > MaxOutcomeNotesLength)
+        {
+            throw new ArgumentException($"outcomeNotes must be {MaxOutcomeNotesLength} characters or fewer", nameof(outcomeNotes));
+        }
+
+        return trimmed;
+    }
+
+    private static string BuildOutcomeAuditNote(AnalyticsActionItem item)
+    {
+        var segments = new List<string>
+        {
+            $"Outcome: {item.OutcomeStatus ?? AnalyticsActionConstants.OutcomeStatuses.Pending}"
+        };
+
+        if (item.MeasuredImpactRsd.HasValue)
+        {
+            segments.Add($"MeasuredImpactRsd={item.MeasuredImpactRsd.Value:0.##}");
+        }
+
+        if (item.OutcomeMeasuredAtUtc.HasValue)
+        {
+            segments.Add($"MeasuredAtUtc={item.OutcomeMeasuredAtUtc.Value:O}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.OutcomeNotes))
+        {
+            segments.Add($"Note={item.OutcomeNotes}");
+        }
+
+        var note = string.Join(" | ", segments);
+        return note.Length <= MaxOutcomeNotesLength ? note : note[..MaxOutcomeNotesLength];
     }
 }
 

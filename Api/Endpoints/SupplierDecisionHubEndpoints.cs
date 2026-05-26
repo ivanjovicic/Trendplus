@@ -1411,9 +1411,17 @@ public static class SupplierDecisionHubEndpoints
         var supplierMarginContribution = primarySupplier is null
             ? dataset.Rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare)
             : primarySupplier.Revenue * primarySupplier.PreMarkdownMarginPct * primarySupplier.FullPriceRevenueShare;
-        var coverageStatus = trust?.DataCoverageStatus
+        var trustCoverageStatus = trust?.DataCoverageStatus;
+        var coverageStatus = trustCoverageStatus
             ?? dataQualityStatus
             ?? "insufficient_data";
+        if (!string.IsNullOrWhiteSpace(dataQualityStatus)
+            && !string.Equals(dataQualityStatus, "good", StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(trustCoverageStatus)
+                || string.Equals(trustCoverageStatus, "good", StringComparison.OrdinalIgnoreCase)))
+        {
+            coverageStatus = dataQualityStatus;
+        }
         var recommendationAllowed = trust?.RecommendationAllowed ?? false;
         var usedFallback = trust?.UsedFallback ?? false;
         var recommendationCode = details?.SupplierHeader.RecommendationCode
@@ -1440,7 +1448,7 @@ public static class SupplierDecisionHubEndpoints
                 .ToList();
             if (bestByMargin.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najbolji artikli po maržnom doprinosu", string.Join(", ", bestByMargin), "Argumenti za pregovor", "Top 3 artikla"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najbolji artikli po maržnom doprinosu", string.Join(", ", bestByMargin), "Argumenti", "Top 3 artikla"));
             }
 
             var slowStock = details.MarkdownDependentArticles
@@ -1450,7 +1458,7 @@ public static class SupplierDecisionHubEndpoints
                 .ToList();
             if (slowStock.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa sporom zalihom", string.Join(", ", slowStock), "Argumenti za pregovor", "Povišena zaliha pre sniženja"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa sporom zalihom", string.Join(", ", slowStock), "Argumenti", "Povišena zaliha pre sniženja"));
             }
 
             var markdownDependent = details.MarkdownDependentArticles
@@ -1460,7 +1468,7 @@ public static class SupplierDecisionHubEndpoints
                 .ToList();
             if (markdownDependent.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli zavisni od sniženja", string.Join(", ", markdownDependent), "Argumenti za pregovor", "Visok udeo prihoda posle sniženja"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli zavisni od sniženja", string.Join(", ", markdownDependent), "Argumenti", "Visok udeo prihoda posle sniženja"));
             }
 
             var replenish = details.BlockedByOosArticles
@@ -1470,7 +1478,7 @@ public static class SupplierDecisionHubEndpoints
                 .ToList();
             if (replenish.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli za dopunu", string.Join(", ", replenish), "Argumenti za pregovor", "Rizik propuštene prodaje zbog OOS"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli za dopunu", string.Join(", ", replenish), "Argumenti", "Rizik propuštene prodaje zbog OOS"));
             }
 
             var reduceOrder = details.MarkdownDependentArticles
@@ -1480,7 +1488,7 @@ public static class SupplierDecisionHubEndpoints
                 .ToList();
             if (reduceOrder.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli za smanjenje narudžbine", string.Join(", ", reduceOrder), "Argumenti za pregovor", "Slab sell-through ili marža"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli za smanjenje narudžbine", string.Join(", ", reduceOrder), "Argumenti", "Slab sell-through ili marža"));
             }
         }
         else
@@ -1489,23 +1497,25 @@ public static class SupplierDecisionHubEndpoints
             var risk = summary.TopRiskSuppliers.Take(3).Select(x => x.SupplierName).ToList();
             if (grow.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najjači kandidati za rast", string.Join(", ", grow), "Argumenti za pregovor", "Top dobavljači po signalu"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najjači kandidati za rast", string.Join(", ", grow), "Argumenti", "Top dobavljači po signalu"));
             }
             if (risk.Count > 0)
             {
-                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najveći rizik", string.Join(", ", risk), "Argumenti za pregovor", "Dobavljači sa povišenim stock/markdown rizikom"));
+                rows.Add(new AnalyticsLegacyReportRowDto(section, "Najveći rizik", string.Join(", ", risk), "Argumenti", "Dobavljači sa povišenim stock/markdown rizikom"));
             }
         }
 
         if (trust is { MissingSupplierNameCount: > 0 })
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing supplier problemom", trust.MissingSupplierNameCount.ToString(CultureInfo.InvariantCulture), "Argumenti za pregovor", "Nedostaju nazivi dobavljača; signal je manje pouzdan"));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing supplier problemom", trust.MissingSupplierNameCount.ToString(CultureInfo.InvariantCulture), "Argumenti", "Nedostaju nazivi dobavljača; signal je manje pouzdan"));
         }
 
-        var missingCostAffectsMargin = !string.Equals(coverageStatus, "good", StringComparison.OrdinalIgnoreCase);
-        if (missingCostAffectsMargin)
+        var missingCostReasonDetected = dataset.Rows.Any(row =>
+            row.ReasonCodes.Any(code =>
+                code.Contains("missing_cost", StringComparison.OrdinalIgnoreCase)));
+        if (missingCostReasonDetected)
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing cost problemom", "Maržni doprinos je indikativan", "Argumenti za pregovor", "Deo nabavne cene nije istorijski potvrđen"));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Artikli sa missing cost problemom", "Maržni doprinos može biti nepouzdan", "Argumenti", "Detektovan missing_cost signal u reasonCodes."));
         }
 
         rows.Add(new AnalyticsLegacyReportRowDto(section, "Pojačaj saradnju", recommendationCode is "EXPAND" or "EXPAND_SELECTIVELY" ? "Da" : "Razmotriti", "Predlog razgovora", RecommendationReason("EXPAND")));
@@ -1517,19 +1527,32 @@ public static class SupplierDecisionHubEndpoints
         rows.Add(new AnalyticsLegacyReportRowDto(
             section,
             "Finalni savet",
-            recommendationAllowed ? RecommendationTitle(recommendationCode) : "Finalna preporuka je blokirana",
+            recommendationAllowed ? RecommendationTitle(recommendationCode) : "Pomoćni signal - proveriti podatke pre odluke",
             "Predlog razgovora",
-            recommendationAllowed ? RecommendationReason(recommendationCode) : "Nedovoljno podataka za finalni savet."));
+            recommendationAllowed ? RecommendationReason(recommendationCode) : "Finalni savet je blokiran jer recommendationAllowed=false."));
 
         if (!recommendationAllowed)
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Finalna preporuka je blokirana", "Da", "Upozorenja", "Nedovoljno podataka za finalni savet."));
+            rows.Add(new AnalyticsLegacyReportRowDto(section, "Pomoćni signal", "Pomoćni signal - proveriti podatke pre odluke", "Upozorenja", "Finalna preporuka nije dozvoljena za ovaj signal."));
         }
 
         if (usedFallback)
         {
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Korišćen je fallback dataset", "Da", "Upozorenja", trust?.EffectivePeriodLabel ?? trust?.FallbackReason));
-            rows.Add(new AnalyticsLegacyReportRowDto(section, "Korišćen fallback dataset", "usedFallback=true", "Upozorenja", trust?.EffectivePeriodLabel ?? trust?.FallbackReason));
+            var fallbackContext = string.Join(
+                " | ",
+                new[]
+                {
+                    string.IsNullOrWhiteSpace(trust?.EffectiveDataset) ? null : $"dataset: {trust.EffectiveDataset}",
+                    string.IsNullOrWhiteSpace(trust?.EffectivePeriodLabel) ? null : $"period: {trust.EffectivePeriodLabel}",
+                    string.IsNullOrWhiteSpace(trust?.FallbackReason) ? null : trust.FallbackReason,
+                }.Where(static part => !string.IsNullOrWhiteSpace(part))!);
+
+            rows.Add(new AnalyticsLegacyReportRowDto(
+                section,
+                "Korišćen fallback dataset",
+                "Da",
+                "Upozorenja",
+                string.IsNullOrWhiteSpace(fallbackContext) ? "Korišćen fallback dataset" : fallbackContext));
         }
 
         if (!string.Equals(coverageStatus, "good", StringComparison.OrdinalIgnoreCase))
@@ -1537,7 +1560,7 @@ public static class SupplierDecisionHubEndpoints
             rows.Add(new AnalyticsLegacyReportRowDto(section, "Kvalitet podataka nije idealan", coverageStatus, "Upozorenja", "Preporuke proveriti kroz Data Quality ekran."));
         }
 
-        if (missingCostAffectsMargin)
+        if (missingCostReasonDetected)
         {
             rows.Add(new AnalyticsLegacyReportRowDto(section, "Visok missing cost", "Da", "Upozorenja", "Missing cost utiče na pouzdanost maržnog doprinosa."));
             rows.Add(new AnalyticsLegacyReportRowDto(section, "Maržni doprinos je procena", "Da", "Upozorenja", "Deo nabavne cene nije istorijski potvrđen."));

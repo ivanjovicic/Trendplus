@@ -68,4 +68,17 @@ describe("Inventory signal action mapping", () => {
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
   });
+
+  it("maps recommendationAllowed=false to SIGNAL_REVIEW even if cover is low", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        stockCoverStatus: "low_cover",
+        recommendationAllowed: false,
+        sellThroughStatus: "insufficient_data",
+        sellThroughRatio: null,
+      })
+    );
+
+    expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+  });
 });
