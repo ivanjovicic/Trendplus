@@ -70,7 +70,7 @@ const SupplierDecisionReportPage = lazy(() => import("./pages/SupplierDecisionRe
 const PilotIntakeReportPage = lazy(() => import("./pages/PilotIntakeReportPage"));
 
 function RouteFallback() {
-    return <div className="page-loading">Ucitavanje...</div>;
+    return <div className="page-loading">Učitavanje...</div>;
 }
 
 function AppShell() {
