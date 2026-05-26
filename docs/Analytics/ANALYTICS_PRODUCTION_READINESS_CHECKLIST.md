@@ -136,6 +136,10 @@ Ručno proveriti sledeće rute pre merge-a:
 - `/analytics/actions`
 - `/analytics/supplier/report?fromDate=...&toDate=...`
 - `/analytics/reports/pilot-intake?fromDate=...&toDate=...`
+- `/analytics/product-decision-center` (legacy redirect na `/analytics/products`)
+- `/analytics/data-quality/pilot-intake-report` (legacy route)
+- `/admin/configuration`
+- `/configuration` (redirect na `/admin/configuration`)
 
 Preporučeni automated guardrail (non-watch):
 
@@ -143,6 +147,9 @@ Preporučeni automated guardrail (non-watch):
 cd Klijent/clientapp
 npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx
 ```
+
+Napomena:
+- Ovaj route smoke je automated/code-level verifikacija (ukljucujuci lazy route resolution) i nije zamena za manual browser smoke.
 
 Pass kriterijum:
 - Rute se učitavaju bez runtime crash-a.
