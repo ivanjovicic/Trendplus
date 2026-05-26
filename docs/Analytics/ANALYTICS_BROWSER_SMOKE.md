@@ -65,25 +65,27 @@ Dodatno za durable report rute:
 
 ## Execution Table
 
+Browser smoke not executed in this pass.
+
 | Route | Expected | PASS/FAIL | Notes |
 |---|---|---|---|
-| /analytics | Analytics dashboard render, bez crash-a, trust info vidljiv |  |  |
-| /analytics/products | Product decision page render, bez crash-a |  |  |
-| /analytics/supplier | Supplier consolidated page render, bez crash-a |  |  |
-| /analytics/inventory | Inventory analytics page render, bez crash-a |  |  |
-| /analytics/data-quality | Data quality page render, bez crash-a |  |  |
-| /analytics/actions | Action queue analytics page render, bez crash-a |  |  |
-| /analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a |  |  |
-| /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a |  |  |
-| /admin/configuration | Configuration page render, bez crash-a |  |  |
-| /configuration | Redirect na /admin/configuration i stabilan render |  |  |
+| /analytics | Analytics dashboard render, bez crash-a, trust info vidljiv | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/products | Product decision page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/supplier | Supplier consolidated page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/inventory | Inventory analytics page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/data-quality | Data quality page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/actions | Action queue analytics page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /admin/configuration | Configuration page render, bez crash-a | NOT EXECUTED | Browser smoke not executed in this pass. |
+| /configuration | Redirect na /admin/configuration i stabilan render | NOT EXECUTED | Browser smoke not executed in this pass. |
 
 ## Result Summary (fill after run)
 
 - Environment:
 - Browser:
-- Date/time:
-- Executed by:
-- Overall result: PASS / FAIL
-- Blocking findings:
-- Follow-up actions:
+- Date/time: 2026-05-27 (UTC, tokom dokumentacione verifikacije)
+- Executed by: GitHub Copilot (GPT-5.3-Codex)
+- Overall result: NOT EXECUTED
+- Blocking findings: Nije dostupan pokrenut frontend/backend target za manual browser smoke (localhost 5173/3000/8080 nedostupni u ovom pass-u).
+- Follow-up actions: Pokrenuti target environment i ponoviti kompletan manual browser smoke po ovoj tabeli, pa ažurirati PASS/FAIL po ruti.

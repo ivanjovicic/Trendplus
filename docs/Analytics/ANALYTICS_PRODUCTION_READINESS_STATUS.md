@@ -15,6 +15,7 @@ Finalni sign-off pass potvrđuje da su prethodni P0 gapovi zatvoreni na code/tes
 - Cache status canonical/legacy mismatch je zatvoren (podržane su obe rute: `/api/analytics/cache/status` i `/api/analytics/cached/cache/status`).
 
 Preostala ograničenja su manual browser smoke i UX/copy provere koje nisu izvršene u ovom pass-u.
+Browser smoke status za ovaj pass: NOT EXECUTED.
 
 ## Status tabela
 
@@ -26,8 +27,8 @@ Preostala ograničenja su manual browser smoke i UX/copy provere koje nisu izvr�
 | Cache/report invalidation | PASS (code+tests) | Cache status payload vraća `cacheMode`, `reportCacheVersion`, `lastReportCacheClearAtUtc` i ostala status polja iz istog shared handler-a za obe rute (`/api/analytics/cache/status` i `/api/analytics/cached/cache/status`) u `Api/Endpoints/CachedAnalyticsEndpoints.cs`. `CoreFamilies` invalidation i bump report verzije pokriveni (`Infrastructure/Services/Caching/AnalyticsCacheAdminService.cs`, `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`, `Api.Tests/AnalyticsCacheAdminServiceTests.cs`). Worker/import invalidacija koristi `CoreFamilies` (`Workers/NightlyAnalyticsRefreshWorker.cs`, `Workers/AnalyticsDataQualityHealthWorker.cs`, `Api/Services/AccessImportService.cs`). | Nema aktivnog rute gapa za cache status; frontend i dalje koristi legacy putanju zbog minimalnog rizika. | P2 |
 | KPI methodology | PASS | Canonical registry i alias map postoje (`Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`), plus testovi (`Klijent/clientapp/src/utils/__tests__/analyticsMetricDefinitions.spec.ts`). KPI explain i methodology panel su integrisani (`KpiExplainButton`, `MetricMethodologyPanel`) kroz core analytics stranice i report komponente. | Nema potvrđenog gapa u ovoj verifikaciji. | P2 |
 | UX/copy | PARTIAL | Expired state i sledeći koraci su jasni u supplier report stranici (`Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`) i testu. In-memory production warning postoji u cache status sloju (`Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Services/AnalyticsRefreshStatusService.cs`, `Api/Program.cs`). | Manual UI smoke za mojibake/copy preko svih core ruta nije urađen u browser sesiji tokom ovog passa; procena je code/test-based. | P2 |
-| Manual smoke routes | PASS (code-level) | Core i legacy/compat rute su mapirane u `Klijent/clientapp/src/App.tsx`; automated route smoke test prolazi (`src/__tests__/AppAnalyticsRoutes.spec.tsx`) i pokriva lazy route resolution. | Route smoke je automated/code-level; manual browser smoke nije izvršen. | P2 |
-| Production blockers | PASS (no active P0) | Prethodni P0 blokatori (Api.Tests gate, core route mapping, cache status route mismatch) su zatvoreni i verifikovani kroz build/test i endpoint mapiranja. | Nema aktivnog P0 blokera u ovom pass-u; preostaju P2 manual smoke ograničenja. | P2 |
+| Manual smoke routes | NOT EXECUTED | Core i legacy/compat rute su mapirane u `Klijent/clientapp/src/App.tsx`; automated route smoke test prolazi (`src/__tests__/AppAnalyticsRoutes.spec.tsx`) i pokriva lazy route resolution. | Manual browser smoke nije izvršen u ovom pass-u; nije dozvoljeno tretirati kao PASS. | P0 |
+| Production blockers | FAIL (active blocker) | Browser smoke nije izvršen jer target environment za realan browser run nije bio dostupan u ovom pass-u. | Obavezni manual browser smoke za pilot sign-off nije zatvoren. | P0 |
 
 ## Komande i rezultati
 
@@ -44,23 +45,24 @@ Frontend:
 Napomena:
 - Route smoke je automated/code-level verifikacija i prolazi i sa lazy route resolution.
 - Manual browser smoke nije izvršen u ovom pass-u.
+- Browser smoke status je eksplicitno NOT EXECUTED (nije PASS/FAIL run).
 
 ## Core rute verifikacija
 
 | Ruta | Mapirana | Browser smoke | Status |
 |---|---|---|---|
-| `/analytics` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/products` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/supplier` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/inventory` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/data-quality` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/actions` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/supplier/report?fromDate=...&toDate=...` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/reports/pilot-intake?fromDate=...&toDate=...` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/product-decision-center` | DA (redirect na `/analytics/products` u `Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/analytics/data-quality/pilot-intake-report` | DA (`PilotIntakeReportPage` u `Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/admin/configuration` | DA (`Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
-| `/configuration` | DA (redirect na `/admin/configuration` u `Klijent/clientapp/src/App.tsx`) | nije urađen | PASS code-level |
+| `/analytics` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/products` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/supplier` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/inventory` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/data-quality` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/actions` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/supplier/report?fromDate=...&toDate=...` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/reports/pilot-intake?fromDate=...&toDate=...` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/product-decision-center` | DA (redirect na `/analytics/products` u `Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/analytics/data-quality/pilot-intake-report` | DA (`PilotIntakeReportPage` u `Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/admin/configuration` | DA (`Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
+| `/configuration` | DA (redirect na `/admin/configuration` u `Klijent/clientapp/src/App.tsx`) | NOT EXECUTED | NOT EXECUTED (code-level route mapping postoji) |
 
 ## API verifikacija
 
@@ -81,9 +83,12 @@ Napomena:
 
 ## Finalni zaključak
 
-Status: Pilot-ready with known limitations.
+Status: Not ready.
 
 Known limitations:
 - Manual browser smoke nije izvršen za core analytics i durable report rute (status je PASS code-level, ne PASS manual).
 - Manual browser smoke nije izvršen ni za legacy/compat i admin configuration rute; potvrda je trenutno code-level kroz route mapping i route smoke test.
 - `dotnet test` na root-u ostaje nepouzdan signal u ovom okruženju; koristi se eksplicitni `dotnet test Api.Tests/Api.Tests.csproj` kao gate.
+
+Production blockers:
+- Browser smoke not executed in this pass.
