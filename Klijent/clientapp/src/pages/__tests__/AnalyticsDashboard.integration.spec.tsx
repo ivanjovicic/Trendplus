@@ -13,8 +13,8 @@ vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
 
 describe("AnalyticsDashboard (integration)", () => {
   const bootstrapResponse = {
-    summary: { totalRevenue: 12345, totalTransactions: 42, totalUnits: 120, avgBasketValue: 345, avgItemPrice: 102 },
-    inventory: { totalSkuCount: 100, totalOnHand: 250, outOfStockCount: 5, lowStockCount: 10 },
+    summary: { totalRevenue: 12345, totalItems: 10, supplierCount: 5 },
+    inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
     dailySales: [],
     categoryData: [],
     genderData: [],
@@ -30,16 +30,6 @@ describe("AnalyticsDashboard (integration)", () => {
     validationCompleteness: null,
     validationFreshness: null,
     validationLostSales: null,
-    decisionActions: [],
-    executive: {
-      totalMarginContributionRsd: 2200,
-      inventoryDangerValueRsd: 1100,
-      topSuppliers: [],
-      topMarginProducts: [],
-      topMarginCategories: [],
-      negativeSignals: [],
-      dataQualitySummary: { missingSupplierCount: 0, missingCostCount: 0, insufficientSignalCount: 0, ignoredRowsCount: 0, freshnessStatus: "unknown" },
-    },
     errors: [],
   };
 
@@ -70,8 +60,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const titleMatches = screen.getAllByText("Pregled poslovanja");
-    expect(titleMatches.length).toBeGreaterThan(0);
+    const title = screen.getByText("Pregled analitike");
+    expect(title).toBeInTheDocument();
   });
 
   it("renders filter controls", () => {
@@ -81,8 +71,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabels = screen.getAllByText("Period");
-    expect(periodLabels.length).toBeGreaterThan(0);
+    const periodLabel = screen.getByText("Period");
+    expect(periodLabel).toBeInTheDocument();
   });
 
   it("shows overview dashboard section", () => {
@@ -92,7 +82,7 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const dashboardHeader = screen.getByText("Ključni KPI-jevi");
+    const dashboardHeader = screen.getByText("Pregledni dashboard");
     expect(dashboardHeader).toBeInTheDocument();
   });
 

@@ -62,7 +62,7 @@ public static class WorkerRegistryCatalog
             IsRuntimeControllable: true,
             IsScheduleControllable: true,
             RegistersInWorkerProcess: true,
-            RegistersInWebProcess: false),
+            RegistersInWebProcess: true),
         new(
             WorkerName: "OpenTrainingModelTrainingWorker",
             DisplayName: "Model Training",

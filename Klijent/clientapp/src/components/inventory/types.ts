@@ -18,6 +18,7 @@ export type InventoryRow = InventoryListItem & {
   sellThroughStatus: string;
   sellThroughStatusLabel: string;
   signalConfidencePct: number | null;
+  recommendationAllowed: boolean | null;
   signalText: string;
   dataQualityStatus: string;
   reasonCodes: string[];

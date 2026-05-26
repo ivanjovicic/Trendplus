@@ -26,7 +26,6 @@ export default function AnalyticsTableToolbar<Row>(props: {
   tableTitle: string;
   columns: AnalyticsTableColumn<Row>[];
   rows: Row[];
-  printRows?: Row[];
   filters?: AnalyticsNamedValue[];
   metadata?: AnalyticsNamedValue[];
   defaultOrientation?: ExportOrientation;
@@ -62,25 +61,6 @@ export default function AnalyticsTableToolbar<Row>(props: {
     [props.columns, props.documentType, props.filters, props.locale, props.metadata, props.rows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
   );
 
-  const printPayload = React.useMemo(
-    () =>
-      props.printRows
-        ? resolveAnalyticsTablePayload({
-            tableKey: props.tableKey,
-            tableTitle: props.tableTitle,
-            columns: props.columns,
-            rows: props.printRows,
-            filters: props.filters,
-            metadata: props.metadata,
-            locale: props.locale,
-            documentType: props.documentType,
-            templateName: props.templateName,
-            templateVersion: props.templateVersion,
-          })
-        : payload,
-    [payload, props.columns, props.documentType, props.filters, props.locale, props.metadata, props.printRows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
-  );
-
   const openExportModal = (selectedFormat: ExportFormat) => {
     setFormat(selectedFormat);
     setPreview(selectedFormat === "pdf");
@@ -89,7 +69,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
   };
 
   const handlePrint = () => {
-    const stateKey = savePrintPayload(printPayload);
+    const stateKey = savePrintPayload(payload);
     window.open(`/print/analytics/${encodeURIComponent(props.tableKey)}?stateKey=${encodeURIComponent(stateKey)}`, "_blank", "noopener");
   };
 
@@ -147,18 +127,16 @@ export default function AnalyticsTableToolbar<Row>(props: {
     <>
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <div className="inline-flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
-            >
-              <Download size={14} />
-              Izvoz
-              <ChevronDown size={14} />
-            </button>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((current) => !current)}
+            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
+          >
+            <Download size={14} />
+            Izvoz
             <InfoTip text="Izvezi tabelu u PDF, Excel ili CSV format." />
-          </div>
+            <ChevronDown size={14} />
+          </button>
 
           {menuOpen ? (
             <div className="absolute right-0 z-20 mt-2 min-w-[180px] rounded-xl border border-border bg-surface p-1 shadow-[0_12px_30px_-12px_var(--theme-color-rgba-0-0-0-0p9, rgba(0,0,0,0.9))]">
@@ -231,7 +209,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={includeFilters} onChange={(e) => setIncludeFilters(e.target.checked)} />
-            Uključi filtere i metadata
+            Ukljuci filtere i metadata
           </label>
 
           <label className={`flex items-center gap-2 text-sm ${format !== "pdf" ? "opacity-50" : ""}`}>
@@ -245,7 +223,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </label>
 
           <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">
-            Manji setovi se generišu odmah. Veće tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
+            Manji setovi se generisu odmah. Vece tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
           </div>
 
           <div className="flex justify-end gap-2">
@@ -255,7 +233,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
               disabled={submitting}
             >
-              Otkaži
+              Otkazi
             </button>
             <button
               type="button"
@@ -263,7 +241,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
               disabled={submitting}
             >
-              {submitting ? "Generišem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
+              {submitting ? "Generisem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
             </button>
           </div>
         </div>

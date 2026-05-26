@@ -5,6 +5,10 @@ Koristi ovaj dokument kao finalni pre-merge checklist za svaku analytics promenu
 Routing i smoke standard (obavezna dopuna ovog checklist-a):
 - `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
 
+Smoke reference izvori:
+- `docs/Analytics/ANALYTICS_BROWSER_SMOKE.md`
+- `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`
+
 Ako makar jedna stavka iz odeljka Production blockers padne, promena nije spremna za merge.
 
 ## 1) Build/Test Gates
@@ -132,6 +136,9 @@ Pass kriterijum:
 
 Detaljna browser-level procedura i tabela za evidenciju rezultata:
 - `docs/Analytics/ANALYTICS_BROWSER_SMOKE.md`
+
+Automated smoke route source of truth:
+- `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`
 
 Ručno proveriti sledeće rute pre merge-a:
 - `/analytics`

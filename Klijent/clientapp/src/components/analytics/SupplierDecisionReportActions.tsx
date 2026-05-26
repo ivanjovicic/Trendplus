@@ -175,6 +175,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         const description = recommendationAllowed
           ? "Pripremiti argumente i uslove za pregovor na osnovu scorecard signala."
           : "Finalna preporuka nije dozvoljena za ovaj izveštaj; potrebna je provera signala pre odluke.";
+        const dueAtUtc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
         const result = await upsertAnalyticsActionWithResult({
           sourceType: "supplier",
@@ -184,6 +185,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           description,
           recommendationStatus,
           priority: recommendationAllowed ? "P1" : "P2",
+          dueAtUtc,
           dataQualityStatus,
           actionUrl: durableReportHref ?? "/analytics/supplier?tab=scorecard",
           metadataJson: JSON.stringify({

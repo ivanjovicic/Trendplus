@@ -113,13 +113,13 @@ export function InventoryItemsTable({
                     <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatNumber(row.reorderGap)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-white">{formatStockCoverDays(row.stockCoverDays)}</span>
+                        <span className="font-semibold text-white">{formatStockCoverDays(row.stockCoverDays, row.stockCoverStatus)}</span>
                         <span>{row.stockCoverStatusLabel}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-white">{formatSellThroughRatio(row.sellThroughRatio)}</span>
+                        <span className="font-semibold text-white">{formatSellThroughRatio(row.sellThroughRatio, row.sellThroughStatus)}</span>
                         <span>{row.sellThroughStatusLabel}</span>
                       </div>
                     </td>

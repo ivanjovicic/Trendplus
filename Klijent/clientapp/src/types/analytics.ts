@@ -1188,6 +1188,12 @@ export interface AnalyticsActionItem {
   recommendationStatus?: string | null;
   priority: AnalyticsActionPriority;
   impactEstimateRsd?: number | null;
+  dueAtUtc?: string | null;
+  expectedImpactRsd?: number | null;
+  measuredImpactRsd?: number | null;
+  outcomeStatus?: "pending" | "success" | "neutral" | "negative" | "not_measured" | string | null;
+  outcomeMeasuredAtUtc?: string | null;
+  outcomeNotes?: string | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
   dataQualityStatus?: AnalyticsActionAnyDataQualityStatus | null;
@@ -1229,6 +1235,8 @@ export interface AnalyticsActionUpsertInput {
   recommendationStatus?: string | null;
   priority: AnalyticsActionPriority;
   impactEstimateRsd?: number | null;
+  dueAtUtc?: string | null;
+  expectedImpactRsd?: number | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
   dataQualityStatus?: AnalyticsActionDataQualityStatus | null;
@@ -1241,6 +1249,13 @@ export interface AnalyticsActionStatusUpdateInput {
   note?: string | null;
 }
 
+export interface AnalyticsActionOutcomeUpdateInput {
+  outcomeStatus: "pending" | "success" | "neutral" | "negative" | "not_measured";
+  measuredImpactRsd?: number | null;
+  outcomeMeasuredAtUtc?: string | null;
+  outcomeNotes?: string | null;
+}
+
 export interface AnalyticsActionFilters {
   status?: AnalyticsActionStatus;
   priority?: AnalyticsActionPriority;
@@ -1250,4 +1265,3 @@ export interface AnalyticsActionFilters {
   page?: number;
   pageSize?: number;
 }
-

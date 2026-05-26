@@ -122,6 +122,48 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_PersistsOutcomePlanningFields()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_PersistsOutcomePlanningFields));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "planned-1",
+                dueAtUtc: new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc),
+                expectedImpactRsd: 1234.56m),
+            userId: "u1");
+
+        Assert.Equal(new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc), created.DueAtUtc);
+        Assert.Equal(1234.56m, created.ExpectedImpactRsd);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_PersistsOutcomeFields()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PersistsOutcomeFields));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "outcome-1"), userId: "u1");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 777m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Ishod potvrđen"),
+            userId: "u1",
+            userName: "tester");
+
+        Assert.NotNull(updated);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, updated!.OutcomeStatus);
+        Assert.Equal(777m, updated.MeasuredImpactRsd);
+        Assert.Equal("Ishod potvrđen", updated.OutcomeNotes);
+        Assert.Equal(new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc), updated.OutcomeMeasuredAtUtc);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
@@ -281,7 +323,9 @@ public class AnalyticsActionItemServiceTests
         string sourceType,
         string sourceKey,
         string title = "Predlog akcije",
-        string priority = AnalyticsActionConstants.Priorities.P2)
+        string priority = AnalyticsActionConstants.Priorities.P2,
+        DateTime? dueAtUtc = null,
+        decimal? expectedImpactRsd = null)
         => new(
             SourceType: sourceType,
             SourceKey: sourceKey,
@@ -291,6 +335,8 @@ public class AnalyticsActionItemServiceTests
             RecommendationStatus: "dopuna",
             Priority: priority,
             ImpactEstimateRsd: 12345m,
+            DueAtUtc: dueAtUtc,
+            ExpectedImpactRsd: expectedImpactRsd,
             ConfidencePct: 80,
             ReliabilityPct: 75,
             DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning,

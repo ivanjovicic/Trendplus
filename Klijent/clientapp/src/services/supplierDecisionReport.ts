@@ -452,6 +452,9 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
     margin ? `Maržni doprinos: ${margin}` : null,
     top5 ? `Top 5 udeo: ${top5}` : null,
     distribution ? `Preporuke (raspodela): ${distribution}` : null,
+    ...payload.rows
+      .filter((row) => String(row.section) === "supplier_negotiation_pack")
+      .map((row) => `${String(row.secondary ?? row.section)} - ${String(row.item)}: ${String(row.value)}`),
     dataQuality != null ? `Kvalitet podataka: ${String(dataQuality)}` : null,
     freshness != null ? `Svežina podataka: ${String(freshness)}` : null,
     effectiveDataset != null ? `Efektivni dataset: ${String(effectiveDataset)}` : null,

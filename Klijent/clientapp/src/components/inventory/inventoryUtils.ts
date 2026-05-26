@@ -5,9 +5,12 @@ import { TONE, resolveTone } from "./toneMap";
 type InventoryListItemWithSignals = InventoryListItem & {
   stockCoverDays?: number | null;
   stockCoverStatus?: string | null;
+  stockCoverStatusLabel?: string | null;
   sellThroughRatio?: number | null;
   sellThroughStatus?: string | null;
+  sellThroughStatusLabel?: string | null;
   signalConfidencePct?: number | null;
+  recommendationAllowed?: boolean | null;
   dataQualityStatus?: string | null;
   reasonCodes?: string[] | null;
 };
@@ -149,6 +152,8 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
   const stock = getStockState(quantity, minimum);
   const stockCoverStatus = item.stockCoverStatus ?? "insufficient_data";
   const sellThroughStatus = item.sellThroughStatus ?? "insufficient_data";
+  const stockCoverStatusLabelValue = item.stockCoverStatusLabel ?? stockCoverStatusLabel(stockCoverStatus);
+  const sellThroughStatusLabelValue = item.sellThroughStatusLabel ?? sellThroughStatusLabel(sellThroughStatus);
 
   return {
     ...item,
@@ -164,11 +169,12 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     coverageRatio,
     stockCoverDays: item.stockCoverDays ?? null,
     stockCoverStatus,
-    stockCoverStatusLabel: stockCoverStatusLabel(stockCoverStatus),
+    stockCoverStatusLabel: stockCoverStatusLabelValue,
     sellThroughRatio: item.sellThroughRatio ?? null,
     sellThroughStatus,
-    sellThroughStatusLabel: sellThroughStatusLabel(sellThroughStatus),
+    sellThroughStatusLabel: sellThroughStatusLabelValue,
     signalConfidencePct: item.signalConfidencePct ?? null,
+    recommendationAllowed: item.recommendationAllowed ?? null,
     signalText: buildSignalText(stockCoverStatus, sellThroughStatus),
     dataQualityStatus: item.dataQualityStatus ?? "insufficient_data",
     reasonCodes: item.reasonCodes ?? [],
@@ -196,13 +202,21 @@ export function getCoverageText(row: InventoryRow) {
   return "Ispod minimuma";
 }
 
-export function formatStockCoverDays(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "Nedovoljno podataka";
+export function formatStockCoverDays(value: number | null | undefined, status?: string | null): string {
+  if (value == null || Number.isNaN(value)) {
+    return (status ?? "").trim().toLowerCase() === "insufficient_data"
+      ? "Nedovoljno podataka"
+      : "Nije dostupno";
+  }
   return `${formatNumber(value, 1)} dana`;
 }
 
-export function formatSellThroughRatio(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "Nedovoljno podataka";
+export function formatSellThroughRatio(value: number | null | undefined, status?: string | null): string {
+  if (value == null || Number.isNaN(value)) {
+    return (status ?? "").trim().toLowerCase() === "insufficient_data"
+      ? "Nedovoljno podataka"
+      : "Nije dostupno";
+  }
   return formatPercent(value * 100);
 }
 

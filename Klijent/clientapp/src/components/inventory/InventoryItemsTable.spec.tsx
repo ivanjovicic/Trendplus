@@ -32,6 +32,7 @@ function makeRow(overrides: Partial<InventoryRow> = {}): InventoryRow {
     sellThroughStatus: "good",
     sellThroughStatusLabel: "Dobar sell-through",
     signalConfidencePct: 82,
+    recommendationAllowed: true,
     signalText: "Stabilan signal",
     dataQualityStatus: "good",
     reasonCodes: [],
@@ -69,6 +70,7 @@ describe("Inventory signal presentation", () => {
             sellThroughRatio: null,
             sellThroughStatus: "insufficient_data",
             sellThroughStatusLabel: "Nedovoljno podataka",
+            recommendationAllowed: false,
             signalText: "Nedovoljno podataka",
           }),
         ]}
@@ -91,5 +93,36 @@ describe("Inventory signal presentation", () => {
     expect(screen.getAllByText("Nedovoljno podataka").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pregledaj sporu zalihu" })).not.toBeInTheDocument();
+  });
+
+  it("renders null metric as unavailable when status is not insufficient_data", () => {
+    render(
+      <InventoryItemsTable
+        rows={[
+          makeRow({
+            stockCoverDays: null,
+            stockCoverStatus: "healthy",
+            stockCoverStatusLabel: "Zdrava pokrivenost",
+            sellThroughRatio: null,
+            sellThroughStatus: "good",
+            sellThroughStatusLabel: "Dobar sell-through",
+            signalText: "Stabilan signal",
+          }),
+        ]}
+        loading={false}
+        totalCount={1}
+        pageNumber={1}
+        totalPages={1}
+        onOpenDetail={vi.fn()}
+        onPreviousPage={vi.fn()}
+        onNextPage={vi.fn()}
+        onAddToActions={vi.fn()}
+        onReviewSlowStock={vi.fn()}
+        isRowQueued={() => false}
+        isRowQueueBusy={() => false}
+      />,
+    );
+
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
   });
 });

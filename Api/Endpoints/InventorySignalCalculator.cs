@@ -20,9 +20,12 @@ public static class InventorySignalCalculator
     public sealed record SignalResult(
         decimal? StockCoverDays,
         string StockCoverStatus,
+        string StockCoverStatusLabel,
         decimal? SellThroughRatio,
         string SellThroughStatus,
+        string SellThroughStatusLabel,
         decimal SignalConfidencePct,
+        bool RecommendationAllowed,
         IReadOnlyList<string> ReasonCodes);
 
     public static SignalResult Calculate(
@@ -43,10 +46,36 @@ public static class InventorySignalCalculator
         return new SignalResult(
             stockCover.Days,
             stockCover.Status,
+            StockCoverStatusLabel(stockCover.Status),
             sellThrough.Ratio,
             sellThrough.Status,
+            SellThroughStatusLabel(sellThrough.Status),
             confidence,
+            ResolveRecommendationAllowed(stockCover.Status, sellThrough.Status, hasSufficientData),
             reasonCodes);
+    }
+
+    private static bool ResolveRecommendationAllowed(
+        string stockCoverStatus,
+        string sellThroughStatus,
+        bool hasSufficientData)
+    {
+        if (!hasSufficientData)
+        {
+            return false;
+        }
+
+        if (stockCoverStatus == StockCoverInsufficientData)
+        {
+            return false;
+        }
+
+        if (sellThroughStatus == SellThroughInsufficientData)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static (decimal? Days, string Status) CalculateStockCover(

@@ -1,17 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
-  ArrowUpDown,
   BarChart3,
   Boxes,
-  CalendarDays,
-  CalendarRange,
   ClipboardList,
+  CalendarDays,
   Gauge,
   Globe2,
   LayoutGrid,
-  LibraryBig,
-  Link2,
   ListChecks,
   Logs,
   AlertTriangle,
@@ -37,8 +33,6 @@ export type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
-  title?: string;
-  hidden?: boolean;
   badge?: { label: string; tone?: string; title?: string };
 };
 
@@ -117,78 +111,20 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Analitika",
     icon: BarChart3,
     items: [
-      {
-        to: "/analytics",
-        label: "Pregled poslovanja",
-        icon: BarChart3,
-        title: "Glavni ulaz: KPI pregled, trendovi i prioriteti za tekući period.",
-      },
-      {
-        to: "/analytics/products",
-        label: "Odluke o proizvodima",
-        icon: Sparkles,
-        title: "Centralni ekran za odluke: dopuna, pojačanje, praćenje i sniženje artikala.",
-      },
-      {
-        to: "/analytics/supplier",
-        label: "Dobavljači",
-        icon: TrendingUp,
-        title: "Jedini glavni ulaz za odluke o učinku i saradnji sa dobavljačima.",
-      },
-      {
-        to: "/analytics/inventory",
-        label: "Zalihe i dopuna",
-        icon: LibraryBig,
-        title: "Bilans stanja, signalizacija rizika i predlozi dopune zaliha.",
-      },
-      {
-        to: "/analytics/nivelacije-pre-post",
-        label: "Cene i nivelacije: pre/posle",
-        icon: ArrowUpDown,
-        title: "Uticaj nivelacije cena kroz poređenje perioda pre i posle.",
-      },
-      {
-        to: "/analytics/pre-nivelacija-prioriteti",
-        label: "Cene i nivelacije: prioriteti",
-        icon: Tags,
-        title: "Prioriteti intervencija pre narednog ciklusa nivelacije.",
-      },
-      {
-        to: "/analytics/shoe-type-sales-stats",
-        label: "Segmenti prodaje: tip obuće",
-        icon: ShoppingBag,
-        title: "Performanse prodaje po tipu obuće i preporuke po segmentu.",
-      },
-      {
-        to: "/analytics/daily-sales",
-        label: "Segmenti prodaje: smene",
-        icon: CalendarRange,
-        title: "Promet po smenama i operativni ritam prodaje tokom dana.",
-      },
-      {
-        to: "/analytics/color-sales-stats",
-        label: "Segmenti prodaje: boje",
-        icon: Palette,
-        title: "Prodajni učinak i preporuke po kolor segmentima.",
-      },
-      {
-        to: "/analytics/data-quality",
-        label: "Kvalitet podataka",
-        icon: AlertTriangle,
-        title: "Detekcija i prioritetizacija problema koji utiču na pouzdanost analitike.",
-      },
-      {
-        to: "/analytics/insight-studio",
-        label: "Insight Studio",
-        icon: Microscope,
-        title: "Napredne analize i dublji uvidi za strateške odluke.",
-      },
-      {
-        to: "/analytics/actions",
-        label: "Akcije i preporuke",
-        icon: ListChecks,
-        title: "Centralni red akcija iz svih analitičkih izvora: dodajte, prihvatite, odložite ili završite preporuke.",
-      },
+      { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljačima", icon: TrendingUp },
+      { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
+      { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: ShoppingBag },
+      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
+      { to: "/analytics/inventory", label: "Bilans stanja", icon: Boxes },
+      { to: "/analytics", label: "Pregled analitike", icon: BarChart3 },
+      { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
+      { to: "/analytics/data-quality", label: "Data quality", icon: AlertTriangle },
+      { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },
+      { to: "/analytics/dobavljaci-tipovi-obuce", label: "Dobavljači i tipovi obuće", icon: ShoppingBag },
+      { to: "/analytics/supplier-decision-hub", label: "Odluke o dobavljačima", icon: Microscope },
+      { to: "/analytics/insight-studio", label: "Insight Studio", icon: Microscope },
+      { to: "/analytics-details", label: "Detaljne analize", icon: Activity },
+      { to: "/admin/common-products", label: "Zajednički proizvodi", icon: Boxes },
     ],
   },
   {
@@ -216,14 +152,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/outbox/messages", label: "Outbox poruke", icon: Logs },
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
-      {
-        to: "/analytics-details",
-        label: "Legacy detaljni pregled",
-        icon: Activity,
-        title: "Legacy prikaz za power-user potrebe. Glavni analytics dashboard je Pregled poslovanja.",
-      },
-      { to: "/admin/configuration", label: "Konfiguracija", icon: Settings2 },
-      { to: "/admin/common-products", label: "Zajednički proizvodi", icon: Link2 },
       { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
       { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
     ],

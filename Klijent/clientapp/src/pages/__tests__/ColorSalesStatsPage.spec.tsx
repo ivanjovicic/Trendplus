@@ -6,11 +6,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { server } from "../../mocks/server";
 import ColorSalesStatsPage from "../ColorSalesStatsPage";
 
-vi.mock("react", async () => {
-  const actual = await vi.importActual<typeof import("react")>("react");
-  return actual;
-});
-
 // Mock the chart components
 vi.mock("recharts", () => ({
   PieChart: ({ children }: any) => <div>{children}</div>,
@@ -89,9 +84,8 @@ describe("ColorSalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    // Title is rendered both in AnalyticsTrustHeader and page header.
-    const titles = screen.getAllByRole("heading", { name: /Prodaja po boji/i });
-    expect(titles.length).toBeGreaterThan(0);
+    const title = screen.getByText(/Prodaja po boji/i);
+    expect(title).toBeInTheDocument();
   });
 
   it("renders filter controls", () => {
@@ -106,7 +100,7 @@ describe("ColorSalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabels = screen.getAllByText("Period");
-    expect(periodLabels.length).toBeGreaterThan(0);
+    const periodLabel = screen.getByText("Period");
+    expect(periodLabel).toBeInTheDocument();
   });
 });

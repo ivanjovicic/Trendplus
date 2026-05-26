@@ -35,7 +35,7 @@ export default function UnosRobePage() {
                 if ((e as { name?: string })?.name === "AbortError") return;
                 console.error("Error fetching dobavljaci:", e);
                 if (!aborted) {
-                    setError("Greška pri učitavanju dobavljača.");
+                    setError("Greska pri ucitavanju dobavljaca.");
                 }
             } finally {
                 if (!aborted) {
@@ -56,14 +56,14 @@ export default function UnosRobePage() {
         <InventoryPageShell
             icon={ClipboardPlus}
             title="Unos robe"
-            subtitle="Brzi prijem robe: račun + dobavljač + nastavak na stavke, sa fokusom na što manje klikova."
+            subtitle="Brzi prijem robe: racun + dobavljac + nastavak na stavke, sa fokusom na sto manje klikova."
         >
             <InventoryKpiRow
                 items={[
-                    { label: "Dobavljači", value: `${dobavljaci.length}` },
-                    { label: "Status", value: loading ? "Učitavanje" : "Spremno", tone: loading ? "warning" : "positive" },
-                    { label: "Greške", value: error ? "1" : "0", tone: error ? "danger" : "positive" },
-                    { label: "Workflow", value: "Račun → Dobavljač → Stavke" },
+                    { label: "Dobavljaci", value: `${dobavljaci.length}` },
+                    { label: "Status", value: loading ? "Ucitavanje" : "Spremno", tone: loading ? "warning" : "positive" },
+                    { label: "Greske", value: error ? "1" : "0", tone: error ? "danger" : "positive" },
+                    { label: "Workflow", value: "Racun -> Dobavljac -> Stavke" },
                 ]}
             />
 
@@ -71,11 +71,11 @@ export default function UnosRobePage() {
                 <div className="mb-4 grid gap-3 md:grid-cols-3">
                     <article className="rounded-xl border border-border bg-surface px-3 py-2">
                         <p className="text-[11px] uppercase tracking-wide text-muted">Korak 1</p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">Unesite broj računa</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">Unesite broj racuna</p>
                     </article>
                     <article className="rounded-xl border border-border bg-surface px-3 py-2">
                         <p className="text-[11px] uppercase tracking-wide text-muted">Korak 2</p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">Izaberite dobavljača</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">Izaberite dobavljaca</p>
                     </article>
                     <article className="rounded-xl border border-border bg-surface px-3 py-2">
                         <p className="text-[11px] uppercase tracking-wide text-muted">Korak 3</p>
@@ -83,11 +83,11 @@ export default function UnosRobePage() {
                     </article>
                 </div>
 
-                {loading && <InventoryState message="Učitavanje dobavljača..." tone="warning" />}
+                {loading && <InventoryState message="Ucitavanje dobavljaca..." tone="warning" />}
                 {!loading && error && <InventoryState message={error} tone="danger" />}
                 {!loading && !error && dobavljaci.length === 0 && (
                     <InventoryState
-                        message="Nema dostupnih dobavljača. Dodajte dobavljača pre unosa robe."
+                        message="Nema dostupnih dobavljaca. Dodajte dobavljaca pre unosa robe."
                         tone="warning"
                     />
                 )}

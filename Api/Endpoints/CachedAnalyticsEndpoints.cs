@@ -580,9 +580,12 @@ public static class CachedAnalyticsEndpoints
                                 item.IDDobavljac,
                                 signal.StockCoverDays,
                                 signal.StockCoverStatus,
+                                signal.StockCoverStatusLabel,
                                 signal.SellThroughRatio,
                                 signal.SellThroughStatus,
+                                signal.SellThroughStatusLabel,
                                 signal.SignalConfidencePct,
+                                signal.RecommendationAllowed,
                                 reasonCodes,
                                 signalDataQuality));
                         }
@@ -5117,9 +5120,12 @@ public static class CachedAnalyticsEndpoints
                 SlowStockCapital = slowStockCapital,
                 StockCoverDays = signal.StockCoverDays,
                 StockCoverStatus = signal.StockCoverStatus,
+                StockCoverStatusLabel = signal.StockCoverStatusLabel,
                 SellThroughRatio = signal.SellThroughRatio,
                 SellThroughStatus = signal.SellThroughStatus,
+                SellThroughStatusLabel = signal.SellThroughStatusLabel,
                 SignalConfidencePct = signal.SignalConfidencePct,
+                RecommendationAllowed = signal.RecommendationAllowed,
                 DataQualityStatus = dataQualityStatus,
                 ConfidencePct = confidencePct,
                 ReliabilityPct = reliabilityPct,
@@ -5564,9 +5570,12 @@ public class ProductDecisionCenterRowDto
     public decimal SlowStockCapital { get; set; }
     public decimal? StockCoverDays { get; set; }
     public string StockCoverStatus { get; set; } = InventorySignalCalculator.StockCoverInsufficientData;
+    public string StockCoverStatusLabel { get; set; } = InventorySignalCalculator.StockCoverStatusLabel(InventorySignalCalculator.StockCoverInsufficientData);
     public decimal? SellThroughRatio { get; set; }
     public string SellThroughStatus { get; set; } = InventorySignalCalculator.SellThroughInsufficientData;
+    public string SellThroughStatusLabel { get; set; } = InventorySignalCalculator.SellThroughStatusLabel(InventorySignalCalculator.SellThroughInsufficientData);
     public decimal SignalConfidencePct { get; set; }
+    public bool RecommendationAllowed { get; set; }
     public string DataQualityStatus { get; set; } = "warning";
     public int ConfidencePct { get; set; }
     public int ReliabilityPct { get; set; }

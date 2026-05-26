@@ -198,6 +198,8 @@ public sealed class AnalyticsActionItemService
             RecommendationStatus = request.RecommendationStatus,
             Priority = request.Priority,
             ImpactEstimateRsd = request.ImpactEstimateRsd,
+            DueAtUtc = request.DueAtUtc,
+            ExpectedImpactRsd = request.ExpectedImpactRsd,
             ConfidencePct = request.ConfidencePct,
             ReliabilityPct = request.ReliabilityPct,
             DataQualityStatus = normalizedDataQuality,
@@ -365,6 +367,53 @@ public sealed class AnalyticsActionItemService
 
         return item;
     }
+
+    public async Task<AnalyticsActionItem?> UpdateOutcomeAsync(
+        long id,
+        AnalyticsActionOutcomeUpdateRequest request,
+        string? userId,
+        string? userName,
+        CancellationToken ct = default)
+    {
+        if (!AnalyticsActionConstants.IsValidOutcomeStatus(request.OutcomeStatus))
+        {
+            _logger.LogWarning(
+                "AnalyticsActionItem outcome update rejected: invalid outcome {OutcomeStatus}. Allowed: {AllowedStatuses}",
+                request.OutcomeStatus,
+                string.Join(", ", AnalyticsActionConstants.OutcomeStatuses.AllValues));
+            throw new ArgumentException(
+                $"outcomeStatus must be one of: {string.Join(", ", AnalyticsActionConstants.OutcomeStatuses.AllValues)}",
+                nameof(request.OutcomeStatus));
+        }
+
+        var item = await _db.AnalyticsActionItems.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (item is null)
+            return null;
+
+        var now = DateTime.UtcNow;
+        item.OutcomeStatus = request.OutcomeStatus;
+        item.MeasuredImpactRsd = request.MeasuredImpactRsd;
+        item.OutcomeMeasuredAtUtc = request.OutcomeMeasuredAtUtc ?? now;
+        item.OutcomeNotes = string.IsNullOrWhiteSpace(request.OutcomeNotes) ? null : request.OutcomeNotes.Trim();
+        item.UpdatedAtUtc = now;
+        item.UpdatedByUserId = userId;
+        item.UpdatedByUserName = userName;
+
+        if (request.OutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Pending)
+        {
+            item.OutcomeMeasuredAtUtc = null;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "AnalyticsActionItem outcome updated: Id={Id} OutcomeStatus={OutcomeStatus} UserId={UserId}",
+            item.Id,
+            request.OutcomeStatus,
+            userId);
+
+        return item;
+    }
 }
 
 // ── DTOs scoped to service (no separate file to keep it lean) ────────────────
@@ -387,6 +436,8 @@ public sealed record AnalyticsActionUpsertRequest(
     string? RecommendationStatus,
     string Priority,
     decimal? ImpactEstimateRsd,
+    DateTime? DueAtUtc,
+    decimal? ExpectedImpactRsd,
     int? ConfidencePct,
     int? ReliabilityPct,
     string? DataQualityStatus,
@@ -408,3 +459,10 @@ public sealed record AnalyticsActionSourceStatusDto(
     string? Status,
     long? ActionId
 );
+
+    public sealed record AnalyticsActionOutcomeUpdateRequest(
+        string OutcomeStatus,
+        decimal? MeasuredImpactRsd,
+        DateTime? OutcomeMeasuredAtUtc,
+        string? OutcomeNotes
+    );

@@ -1,5 +1,9 @@
 import { useContext, useState } from "react";
-import { Menu, RefreshCw, Server } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Menu, RefreshCw, Server, Settings } from "lucide-react";
+import ApiPingFlag from "../../components/ApiPingFlag";
+import WorkerControlFlag from "../../components/WorkerControlFlag";
+import RedisToggleFlag from "../../components/RedisToggleFlag";
 import { BackendStatusContext } from "../../context/BackendStatusContext";
 import { getDataScope, setDataScope, type DataScope } from "../../utils/dataScope";
 
@@ -56,8 +60,14 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
         <div className="flex min-w-[180px] items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2">
           <Server size={16} className={backendIconClass} />
           <span className="text-xs uppercase tracking-wide text-muted">Backend</span>
-          <span className={`text-sm font-semibold ${backendLabelClass}`}>{backendLabel}</span>
+          <span className={`text-sm font-semibold ${backendLabelClass}`}>
+            {backendLabel}
+          </span>
         </div>
+
+        <ApiPingFlag />
+        <WorkerControlFlag />
+        <RedisToggleFlag />
 
         <div className="ml-auto flex items-center gap-2">
           <label className="text-xs text-secondary">Prikaz</label>
@@ -70,6 +80,14 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
             <option value="existing">Postojeci</option>
             <option value="imported">Importovani</option>
           </select>
+          <Link
+            to="/settings/themes"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition hover:surface-hover"
+            title="Podešavanje tema"
+          >
+            <Settings size={14} />
+            Teme
+          </Link>
           <button
             type="button"
             onClick={refreshAll}
@@ -83,3 +101,4 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
     </header>
   );
 }
+

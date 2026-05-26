@@ -9,6 +9,7 @@ export type AnalyticsMetricKey =
   | "missingCostCount"
   | "missingSupplierCount"
   | "sellThrough"
+  | "sellThroughRatio"
   | "velocity"
   | "confidencePct"
   | "reliabilityPct"
@@ -257,13 +258,15 @@ const baseMetrics = {
   }),
   sellThrough: defineMetric("sellThrough", {
     label: "Sell-through",
-    shortDescription: "Udeo prodate količine u odnosu na dostupnu količinu u posmatranom periodu.",
-    formula: "(prodate_jedinice / dostupne_jedinice) * 100",
+    shortDescription: "Udeo prodatih jedinica u odnosu na početno stanje i ulaze robe u periodu.",
+    formula: "soldUnits / (openingStockUnits + inboundUnits)",
     dataSource: "Sales facts + inventory snapshot",
     interpretation: "Viši sell-through ukazuje na zdraviju rotaciju asortimana.",
-    limitations: ["Zavisi od kvaliteta početnog i završnog stanja zaliha."],
-    dataQualityDependencies: ["Tačnost stanja zaliha"],
+    limitations: ["Ako denominator nije pouzdan (0 ili nedostaje), signal je insufficient_data i ratio se ne prikazuje kao 0%."],
+    dataQualityDependencies: ["Opening stock", "Inbound evidencija", "Tačnost stanja zaliha"],
     relatedScreens: ["/analytics/inventory", "/analytics/products"],
+    blockedWhen: ["openingStockUnits + inboundUnits <= 0", "Nedostaju opening/inbound ulazi"],
+    inputs: ["soldUnits", "openingStockUnits", "inboundUnits"],
   }),
   velocity: defineMetric("velocity", {
     label: "Brzina prodaje",
@@ -497,6 +500,7 @@ export const metricAliases = {
   totalInventoryValue: "inventoryTotalValue",
   stockUnits: "onHandUnits",
   quantity: "unitsSold",
+  sellThroughRatio: "sellThrough",
 } as const satisfies Partial<Record<AnalyticsMetricKey, CanonicalMetricKey>>;
 
 const canonicalMetricDefinitions = {
@@ -531,6 +535,7 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   missingCostCount: ["Bez nabavne cene", "Redovi bez nabavne cene"],
   missingSupplierCount: ["Bez dobavljača", "Artikli bez dobavljača"],
   sellThrough: ["Sell-through"],
+  sellThroughRatio: ["Sell-through ratio"],
   velocity: ["Brzina prodaje", "Velocity"],
   reliabilityPct: ["Pouzdanost signala", "Reliability"],
   confidencePct: ["Sigurnost preporuke", "Confidence"],

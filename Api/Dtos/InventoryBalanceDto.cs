@@ -5,6 +5,5 @@ public sealed record InventoryBalanceDto(
     int TotalOnHand,
     int LowStockCount,
     int OutOfStockCount,
-    decimal EstimatedInventoryValue,
-    AnalyticsResponseMetaDto? Meta = null
+    decimal EstimatedInventoryValue
 );

@@ -173,4 +173,31 @@ describe("SupplierDecisionReportActions", () => {
       expect(screen.getByText("Akcija je već u centralnim akcijama.")).toBeInTheDocument();
     });
   });
+
+  it("copies negotiation pack rows into summary text", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions
+          payload={{
+            ...payload,
+            rows: [
+              { section: "Header", item: "Dobavljač", value: "Alpha" },
+              { section: "supplier_negotiation_pack", item: "Prihod", value: "520000", secondary: "Sažetak" },
+              { section: "supplier_negotiation_pack", item: "Finalni savet", value: "Pojačaj saradnju", secondary: "Predlog razgovora" },
+            ],
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Kopiraj sažetak" }));
+
+    await waitFor(() => {
+      expect(buildSummaryMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(buildSummaryMock.mock.calls[0][0].rows.some((row: { section?: string }) => row.section === "supplier_negotiation_pack")).toBe(true);
+  });
 });

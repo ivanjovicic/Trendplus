@@ -392,6 +392,16 @@ namespace Infrastructure.DbContexts
                 // Quality/impact fields
                 entity.Property(e => e.ImpactEstimateRsd)
                     .HasColumnType("numeric(18,2)");
+                entity.Property(e => e.DueAtUtc);
+                entity.Property(e => e.ExpectedImpactRsd)
+                    .HasColumnType("numeric(18,2)");
+                entity.Property(e => e.MeasuredImpactRsd)
+                    .HasColumnType("numeric(18,2)");
+                entity.Property(e => e.OutcomeStatus)
+                    .HasMaxLength(32);
+                entity.Property(e => e.OutcomeMeasuredAtUtc);
+                entity.Property(e => e.OutcomeNotes)
+                    .HasMaxLength(4000);
                 entity.Property(e => e.ConfidencePct);
                 entity.Property(e => e.ReliabilityPct);
                 entity.Property(e => e.DataQualityStatus)

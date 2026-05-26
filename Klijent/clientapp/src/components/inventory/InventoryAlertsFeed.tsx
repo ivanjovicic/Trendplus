@@ -1,5 +1,4 @@
 ﻿import { AlertTriangle } from "lucide-react";
-import { Link } from "react-router-dom";
 import type { InventoryAlertListDto } from "../../types/analytics";
 import { getAlertSeverityTone } from "./inventoryUtils";
 
@@ -57,7 +56,6 @@ export function InventoryAlertsFeed({
       {!alerts?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {alertsLoading ? "Ucitavam alertove..." : "Alertovi nisu dostupni. Snapshot tabela je prazna ili nije pokrenuta analitika."}
-          <div className="mt-2 text-xs">Otvori <Link to="/analytics/data-quality">Data Quality</Link> ako alert snapshot ili quality signal kasni.</div>
           {alerts?.warning ? <div className="mt-2 text-xs text-warning">{alerts.warning}</div> : null}
         </div>
       ) : (
@@ -68,12 +66,11 @@ export function InventoryAlertsFeed({
                 <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getAlertSeverityTone(alert.severity)}`}>
                   {alert.severity === "critical" ? "Kriticno" : alert.severity === "warning" ? "Upozorenje" : "Info"}
                 </div>
-                <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted" title="Alert confidence">
-                  signal {Math.round(alert.confidenceScore * 100)}%
+                <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                  {Math.round(alert.confidenceScore * 100)}%
                 </div>
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>
-              <div className="mt-1 text-[11px] text-muted">Data quality status nije dostupan za alert; koristi confidence i <Link to="/analytics/data-quality">Data Quality</Link>.</div>
               <div className="mt-1 text-xs leading-5 text-muted">{alert.message}</div>
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
                 <span>Tip: {alert.alertType}</span>

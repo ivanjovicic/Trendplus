@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -17,38 +17,11 @@ import {
 } from "../services/colorSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
-import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
-import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
-import {
-  analyticsMetricDescriptions,
-  buildPopMetricDescription,
-  buildPrePostNivelacijaImpactDescription,
-} from "../utils/analyticsMetricDescriptions";
-import {
-  RECOMMENDATION_CONFIDENCE_LABEL,
-  RECOMMENDATION_RELIABILITY_LABEL,
-  RECOMMENDATION_SIGNAL_UNAVAILABLE,
-  RECOMMENDATION_STATUS_PRIORITY,
-  isCanonicalRecommendationStatus,
-  normalizeRecommendationPct,
-  normalizeRecommendationQualityStatus,
-  recommendationQualityLabel,
-  recommendationQualityStyle,
-  recommendationReasonHints,
-  recommendationStatusLabel,
-  recommendationStatusTone,
-  recommendationStatusTooltipBrief,
-  type CanonicalRecommendationStatus,
-  type RecommendationQualityStatus,
-} from "../utils/canonicalRecommendationSemantics";
-import { buildMarginDetailNote, buildRecommendationCaveat, qualityTierClass, qualityTierIcon } from "../utils/marginQuality";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -61,7 +34,7 @@ type SortField =
   | "popRevenueChangePct"
   | "prePostNivelacijaRevenueImpactPct"
   | "status";
-type DecisionStatus = CanonicalRecommendationStatus;
+type DecisionStatus = "Pojacaj" | "Zadrzi" | "Smanji";
 
 type ActiveFilters = {
   fromDate: string;
@@ -74,21 +47,25 @@ type DecisionColor = ColorSalesStat & {
   sharePct: number;
   marginContribution: number;
   reliabilityPct: number;
-  reliabilityAvailable: boolean;
   coveragePct: number;
   splitCoveragePct: number;
-  confidencePct: number;
-  recommendationConfidencePct: number;
-  confidenceAvailable: boolean;
+  decisionScore: number;
   status: DecisionStatus;
   statusReason: string;
-  dataQualityStatus: RecommendationQualityStatus;
-  reasonCodes: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
-  ...RECOMMENDATION_STATUS_PRIORITY,
+  Pojacaj: 3,
+  Zadrzi: 2,
+  Smanji: 1,
 };
+
+const UNKNOWN_COLORS = new Set([
+  "",
+  "NEPOZNATO",
+  "UNKNOWN",
+  "N/A",
+]);
 
 const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "boja", header: "Boja", dataType: "text" },
@@ -98,8 +75,30 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "popRevenueChangePct", header: "PoP trend %", dataType: "percent" },
   { key: "prePostNivelacijaRevenueImpactPct", header: "Nivelacija impact %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "recommendationConfidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "number" },
+  { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toDateInput(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
+  const to = new Date();
+  const from = new Date(to);
+  if (preset === "30d") from.setDate(from.getDate() - 29);
+  if (preset === "90d") from.setDate(from.getDate() - 89);
+  if (preset === "180d") from.setDate(from.getDate() - 179);
+  if (preset === "365d") from.setDate(from.getDate() - 364);
+
+  return {
+    fromDate: toDateInput(from),
+    toDate: toDateInput(to),
+  };
+}
 
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
@@ -114,6 +113,32 @@ function toDateOnly(value: string): string {
   return parsed.toISOString().slice(0, 10);
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("sr-RS");
+}
+
+function fmtRsd(value: number): string {
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
+}
+
+function fmtPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+
+function fmtSignedPct(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "N/A";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${fmtPct(value, digits)}`;
+}
+
+function fmtQty(value: number): string {
+  return `${value.toLocaleString("sr-RS")} kom`;
+}
+
 function normalizeName(value: string | null | undefined): string {
   return (value ?? "").trim().toUpperCase();
 }
@@ -124,20 +149,25 @@ function sortMarker(field: SortField, activeField: SortField, dir: SortDir): str
 }
 
 function statusClass(status: DecisionStatus): string {
-  const tone = recommendationStatusTone(status);
-  if (tone === "boost") return "color-decision-status status-boost";
-  if (tone === "keep") return "color-decision-status status-keep";
-  if (tone === "review") return "color-decision-status status-review";
-  if (tone === "reduce") return "color-decision-status status-reduce";
-  return "color-decision-status status-na";
+  if (status === "Pojacaj") return "color-decision-status status-boost";
+  if (status === "Smanji") return "color-decision-status status-reduce";
+  return "color-decision-status status-keep";
 }
 
 function displayStatusLabel(status: DecisionStatus): string {
-  return recommendationStatusLabel(status);
+  if (status === "Pojacaj") return "Pojačaj";
+  if (status === "Zadrzi") return "Zadrži";
+  if (status === "Smanji") return "Smanji";
+  return status;
 }
 
 function mapRecommendationStatus(status?: string | null): DecisionStatus | null {
-  return isCanonicalRecommendationStatus(status) ? status : null;
+  if (!status) return null;
+  if (status === "increase_focus") return "Pojacaj";
+  if (status === "maintain") return "Zadrzi";
+  if (status === "review" || status === "do_not_trust") return "Smanji";
+  if (status === "insufficient_data") return "Zadrzi";
+  return null;
 }
 
 function trendClass(value: number | null | undefined): string {
@@ -146,6 +176,17 @@ function trendClass(value: number | null | undefined): string {
   if (value < 0) return "trend-down";
   return "trend-neutral";
 }
+
+type StatusReasonSignals = {
+  popRevenueChangePct: number | null;
+  hasPreviousPeriodWindow: boolean;
+  isNewColor: boolean;
+  splitCoveragePct: number | null;
+  marginPct: number;
+  avgMargin: number;
+  reliabilityPct: number;
+  marginCoveragePct: number | null;
+};
 
 type StatusTooltipData = {
   status: DecisionStatus;
@@ -157,12 +198,41 @@ type StatusTooltipData = {
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
   reliabilityPct: number;
-  reliabilityAvailable: boolean;
-  confidencePct: number;
-  confidenceAvailable: boolean;
-  dataQualityStatus: RecommendationQualityStatus;
-  reasonCodes: string[];
 };
+
+function buildStatusReason(status: DecisionStatus, signals: StatusReasonSignals): string {
+  const lowReliability = signals.reliabilityPct < 35;
+  const positivePoP = (signals.popRevenueChangePct ?? 0) > 0;
+  const negativePoP = (signals.popRevenueChangePct ?? 0) < 0;
+  const strongMargin = signals.marginPct >= signals.avgMargin;
+  const limitedMarginCoverage = (signals.marginCoveragePct ?? 0) < 70;
+  const limitedSplitCoverage = (signals.splitCoveragePct ?? 0) > 0 && (signals.splitCoveragePct ?? 0) < 60;
+
+  if (status === "Pojacaj") {
+    if (!signals.hasPreviousPeriodWindow) return "Promet i marza su jaki, ali uporediv prethodni period nije dostupan.";
+    if (signals.isNewColor) return "Boja je nova u odnosu na prethodni uporediv period; pratiti signal pre jacanja fokusa.";
+    if (lowReliability) return "Signal je dobar, ali je pouzdanost niska; potvrditi pre veceg ulaganja.";
+    if (limitedMarginCoverage) return "Promet i PoP trend su dobri, ali marza je zasnovana na delimicno pokrivenim nabavnim cenama.";
+    if (limitedSplitCoverage) return "PoP signal je dobar, ali pre/post nivelacija impact pokriva samo deo prometa.";
+    if (positivePoP && strongMargin) return "Jak promet, zdrava marza i rast prema prethodnom uporedivom periodu.";
+    if (positivePoP) return "Dobar promet i pozitivan PoP trend; kandidat za veci fokus.";
+    return "Stabilan doprinos i solidna marza; opravdan fokus u nabavci.";
+  }
+
+  if (status === "Zadrzi") {
+    if (!signals.hasPreviousPeriodWindow) return "Uporediv prethodni period nije dostupan; odluku drzati konzervativnom.";
+    if (signals.isNewColor) return "Boja je nova u odnosu na prethodni uporediv period; zadrzati dok se signal ne stabilizuje.";
+    if (lowReliability) return "Niza pouzdanost podataka; odluku drzati konzervativnom dok se signal ne stabilizuje.";
+    if (limitedMarginCoverage) return "Marza je samo delimicno pokrivena nabavnim cenama; zadrzati dok se podaci ne dopune.";
+    if (negativePoP && !strongMargin) return "PoP trend slabi i marza je ispod proseka; zadrzati uz pojacan nadzor.";
+    return "Stabilan rezultat bez dovoljno jakog signala za promenu prioriteta.";
+  }
+
+  if (!signals.hasPreviousPeriodWindow) return "Nema uporedivog prethodnog perioda, a signal doprinosa nije dovoljno jak za veci fokus.";
+  if (signals.isNewColor) return "Boja je nova i jos nema stabilnu istoriju; ne siriti fokus dok se signal ne potvrdi.";
+  if (negativePoP) return "Pad u odnosu na prethodni uporediv period uz nizak doprinos; smanjiti fokus.";
+  return "Nizak doprinos bez jasnog potencijala rasta; kandidat za smanjenje fokusa.";
+}
 
 function buildStatusTooltip(data: StatusTooltipData): string {
   const popText = data.popRevenueChangePct != null
@@ -173,18 +243,14 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
-  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${displayStatusLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${data.status}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
 }
 
 function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
   if (item.popRevenueChangePct != null && !Number.isNaN(item.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(item.popRevenueChangePct, 2),
-      title: buildPopMetricDescription(item.previousPeriodRevenue),
+      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(item.previousPeriodRevenue ?? 0)}.`,
       className: trendClass(item.popRevenueChangePct),
     };
   }
@@ -208,7 +274,7 @@ function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: string; 
   if (item.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: buildPrePostNivelacijaImpactDescription(item.prePostNivelacijaRevenueCoveragePct),
+      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokrice: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -307,7 +373,7 @@ export default function ColorSalesStatsPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju podataka po boji.");
+      setError(reason instanceof Error ? reason.message : "Greska pri ucitavanju podataka po boji.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -324,33 +390,95 @@ export default function ColorSalesStatsPage() {
     if (rows.length === 0) return [];
 
     const totalRevenue = rows.reduce((sum, item) => sum + item.ukupanPromet, 0);
+    const topShare = rows.reduce((max, item) => {
+      const share = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
+      return Math.max(max, share);
+    }, 0);
+
+    const marginValues = rows.map((item) => item.marginPct);
+    const minMargin = Math.min(...marginValues);
+    const maxMargin = Math.max(...marginValues);
+    const marginSpan = maxMargin - minMargin;
+    const avgMargin = marginValues.reduce((sum, value) => sum + value, 0) / marginValues.length;
 
     return rows.map((item) => {
       const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
       const marginContribution = item.marginContribution;
+      const popRevenueChangePct = item.popRevenueChangePct;
       const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? 0;
       const coveragePct = item.brojArtikalaUkupno > 0
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
-      const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
-      const reliabilityPctValue = normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct);
-      const confidencePctValue = normalizeRecommendationPct(item.recommendation?.confidencePct);
+      const marginCoveragePct = item.marginDataCoveragePct ?? 0;
+      const hasPreviousPeriodWindow = item.previousPeriodRevenue != null;
+      const isNewColor = hasPreviousPeriodWindow && (item.previousPeriodRevenue ?? 0) <= 0 && item.ukupanPromet > 0;
+
+      const backendStatus = mapRecommendationStatus(item.recommendation?.status);
+      if (backendStatus) {
+        return {
+          ...item,
+          sharePct: item.sharePct ?? sharePct,
+          marginContribution,
+          reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
+          coveragePct,
+          splitCoveragePct,
+          decisionScore: Math.round(item.recommendation?.confidencePct ?? 0),
+          status: backendStatus,
+          statusReason: item.recommendation?.summary ?? "Backend recommendation summary nije dostupan.",
+        };
+      }
+
+      const knownColor = !UNKNOWN_COLORS.has(normalizeName(item.boja));
+      const reliabilityPct = clamp(
+        marginCoveragePct * 0.45 +
+        splitCoveragePct * 0.20 +
+        (hasPreviousPeriodWindow ? 20 : 0) +
+        (knownColor ? 15 : 0),
+        0,
+        100
+      );
+
+      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
+      const marginNorm = marginSpan > 0
+        ? clamp(((item.marginPct - minMargin) / marginSpan) * 100, 0, 100)
+        : 50;
+      const popNorm = popRevenueChangePct == null
+        ? 50
+        : clamp(((clamp(popRevenueChangePct, -100, 100) + 100) / 200) * 100, 0, 100);
+
+      const decisionScore = Math.round(
+        shareNorm * 0.35 +
+        marginNorm * 0.30 +
+        popNorm * 0.20 +
+        reliabilityPct * 0.15
+      );
+
+      let status: DecisionStatus = "Smanji";
+      if (decisionScore >= 70) status = "Pojacaj";
+      else if (decisionScore >= 45) status = "Zadrzi";
+      if ((!hasPreviousPeriodWindow || isNewColor || reliabilityPct < 35) && status === "Pojacaj") status = "Zadrzi";
+
+      const statusReason = buildStatusReason(status, {
+        popRevenueChangePct,
+        hasPreviousPeriodWindow,
+        isNewColor,
+        splitCoveragePct,
+        marginPct: item.marginPct,
+        avgMargin,
+        reliabilityPct,
+        marginCoveragePct: item.marginDataCoveragePct,
+      });
 
       return {
         ...item,
-        sharePct: item.sharePct ?? sharePct,
+        sharePct,
         marginContribution,
-        reliabilityPct: reliabilityPctValue ?? 0,
-        reliabilityAvailable: reliabilityPctValue != null,
+        reliabilityPct,
         coveragePct,
         splitCoveragePct,
-        confidencePct: confidencePctValue ?? 0,
-        recommendationConfidencePct: confidencePctValue ?? 0,
-        confidenceAvailable: confidencePctValue != null,
-        status: backendStatus,
-        statusReason: item.recommendation?.summary ?? "Nedovoljno podataka za preporuku. Red ostaje informativan dok backend ne vrati stabilan signal.",
-        dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
-        reasonCodes: item.recommendation?.reasonCodes ?? [],
+        decisionScore,
+        status,
+        statusReason,
       };
     });
   }, [data?.colors]);
@@ -376,7 +504,7 @@ export default function ColorSalesStatsPage() {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
-      if (compare === 0) compare = a.recommendationConfidencePct - b.recommendationConfidencePct;
+      if (compare === 0) compare = a.decisionScore - b.decisionScore;
       if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
       return sortDir === "asc" ? compare : -compare;
     });
@@ -440,12 +568,10 @@ export default function ColorSalesStatsPage() {
   }, [sortedRows]);
 
   const counts = useMemo(() => {
-    const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
-    const maintain = sortedRows.filter((row) => row.status === "maintain").length;
-    const review = sortedRows.filter((row) => row.status === "review").length;
-    const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
-    const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
-    return { increaseFocus, maintain, review, doNotTrust, insufficientData };
+    const boost = sortedRows.filter((row) => row.status === "Pojacaj").length;
+    const keep = sortedRows.filter((row) => row.status === "Zadrzi").length;
+    const reduce = sortedRows.filter((row) => row.status === "Smanji").length;
+    return { boost, keep, reduce };
   }, [sortedRows]);
 
   const activeSezonaLabel = useMemo(() => {
@@ -504,25 +630,6 @@ export default function ColorSalesStatsPage() {
     return notes;
   }, [data]);
 
-  const headerDataQualityStatus = useMemo<"good" | "warning" | "critical" | "insufficient_data" | null>(() => {
-    if (!data) return null;
-    if ((data.colors ?? []).length === 0) return "insufficient_data";
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct ?? 0;
-    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct ?? 100;
-    if (missingCostShare >= 50 || splitCoverage < 30) return "critical";
-    if (qualityNotes.length > 0) return "warning";
-    return "good";
-  }, [data, qualityNotes.length]);
-
-  const showBlockingError = Boolean(error && !data);
-  const showStaleError = Boolean(error && data);
-  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
-    if (!data || sortedRows.length > 0) return null;
-    if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
-    if (decisionRows.length > 0) return "filtered_out";
-    return "no_data";
-  }, [data, decisionRows.length, headerDataQualityStatus, sortedRows.length]);
-
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "fromDate", label: "Od", value: activeFilters.fromDate },
@@ -539,18 +646,14 @@ export default function ColorSalesStatsPage() {
       { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
-      { key: "increaseFocus", label: recommendationStatusLabel("increase_focus"), value: counts.increaseFocus },
-      { key: "maintain", label: recommendationStatusLabel("maintain"), value: counts.maintain },
-      { key: "review", label: recommendationStatusLabel("review"), value: counts.review },
-      { key: "doNotTrust", label: recommendationStatusLabel("do_not_trust"), value: counts.doNotTrust },
-      { key: "insufficientData", label: recommendationStatusLabel("insufficient_data"), value: counts.insufficientData },
+      { key: "boost", label: "Pojačaj", value: counts.boost },
+      { key: "keep", label: "Zadrži", value: counts.keep },
+      { key: "reduce", label: "Smanji", value: counts.reduce },
     ],
     [
-      counts.doNotTrust,
-      counts.increaseFocus,
-      counts.insufficientData,
-      counts.maintain,
-      counts.review,
+      counts.boost,
+      counts.keep,
+      counts.reduce,
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
@@ -592,7 +695,6 @@ export default function ColorSalesStatsPage() {
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    setActiveFilters({ fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -600,21 +702,26 @@ export default function ColorSalesStatsPage() {
     setSezonaId(parsed);
     setPeriodPreset("custom");
 
-    if (parsed == null) {
-      setActiveFilters({ fromDate, toDate, sezonaId: null, storeId });
+    if (parsed == null) return;
+
+    const selected = data?.sezone.find((item) => item.id === parsed);
+    if (!selected) return;
+    setFromDate(toDateOnly(selected.datumOd));
+    setToDate(toDateOnly(selected.datumDo));
+  };
+
+  const applyFilters = () => {
+    if (invalidRange) {
+      setError("Datum od ne moze biti posle datuma do.");
       return;
     }
 
-    const selected = data?.sezone.find((item) => item.id === parsed);
-    if (!selected) {
-      setActiveFilters({ fromDate, toDate, sezonaId: parsed, storeId });
-      return;
-    }
-    const newFrom = toDateOnly(selected.datumOd);
-    const newTo = toDateOnly(selected.datumDo);
-    setFromDate(newFrom);
-    setToDate(newTo);
-    setActiveFilters({ fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId });
+    setActiveFilters({
+      fromDate,
+      toDate,
+      sezonaId,
+      storeId,
+    });
   };
 
   const resetFilters = () => {
@@ -646,25 +753,11 @@ export default function ColorSalesStatsPage() {
 
   return (
     <div className="color-decision-page">
-      <AnalyticsTrustHeader
-        title="Prodaja po boji"
-        description="Analiza boja: rast, popularnost i prioriteti za nabavku."
-        periodFrom={activeFilters.fromDate}
-        periodTo={activeFilters.toDate}
-        lastRefreshAt={data?.generatedAt ?? null}
-        dataSource="Sales facts analytics"
-        dataQualityStatus={headerDataQualityStatus}
-        mode="signal"
-        methodologyHref="/analytics/data-quality"
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        compact
-      />
       <header className="color-decision-header">
         <div>
-          <h1 className="color-decision-title">Prodaja po boji</h1>
+          <h1 className="color-decision-title">Prodaja po boji artikla</h1>
           <p className="color-decision-subtitle">
-            Analiza boja: rast, popularnost i prioriteti za nabavku.
+            Decision-support pogled za izbor boja koje treba pojačati u nabavci.
           </p>
         </div>
         {data?.generatedAt ? (
@@ -682,7 +775,7 @@ export default function ColorSalesStatsPage() {
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">PrilagoÃ„â€˜eno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -692,13 +785,9 @@ export default function ColorSalesStatsPage() {
             type="date"
             value={fromDate}
             onChange={(event) => {
-              const newFrom = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setFromDate(newFrom);
-              if (newFrom.length === 10 && new Date(newFrom) <= new Date(toDate)) {
-                setActiveFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
-              }
+              setFromDate(event.target.value);
             }}
           />
         </label>
@@ -709,13 +798,9 @@ export default function ColorSalesStatsPage() {
             type="date"
             value={toDate}
             onChange={(event) => {
-              const newTo = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setToDate(newTo);
-              if (newTo.length === 10 && new Date(fromDate) <= new Date(newTo)) {
-                setActiveFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
-              }
+              setToDate(event.target.value);
             }}
           />
         </label>
@@ -736,11 +821,7 @@ export default function ColorSalesStatsPage() {
           <span>Objekat</span>
           <select
             value={storeId ?? ""}
-            onChange={(event) => {
-              const newStore = event.target.value ? Number(event.target.value) : null;
-              setStoreId(newStore);
-              setActiveFilters({ fromDate, toDate, sezonaId, storeId: newStore });
-            }}
+            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
           >
             <option value="">Svi objekti</option>
             {stores.map((store) => (
@@ -752,6 +833,7 @@ export default function ColorSalesStatsPage() {
         </label>
 
         <div className="color-decision-actions">
+          <button type="button" onClick={applyFilters} disabled={loading}>Primeni</button>
           <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
         </div>
       </section>
@@ -759,41 +841,12 @@ export default function ColorSalesStatsPage() {
       {invalidRange ? (
         <div className="color-decision-message error">Datum od ne moze biti posle datuma do.</div>
       ) : null}
-      {showBlockingError ? (
-        <AnalyticsErrorState
-          title="Podaci trenutno nisu dostupni"
-          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
-          onRetry={() => void load(activeFilters)}
-          helpHref="/analytics/data-quality"
-        />
-      ) : null}
-      {showStaleError ? (
-        <div className="color-decision-message info" role="status" aria-live="polite">
-          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
-        </div>
-      ) : null}
+      {error ? <div className="color-decision-message error">{error}</div> : null}
       {loading ? <div className="color-decision-message loading">Ucitavam boje...</div> : null}
-      {!loading && !showBlockingError && emptyStateHint ? (
-        <AnalyticsEmptyState
-          variant={emptyStateVariant ?? "no_data"}
-          message={
-            emptyStateVariant === "insufficient_data"
-              ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
-              : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili prosirite period."
-                : emptyStateHint
-          }
-          actions={[
-            { label: "Proširite period pretrage." },
-            { label: "Uklonite filter prodavnice ili sezone." },
-          ]}
-          dataQualityHref="/analytics/data-quality"
-          refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={emptyStateHint}
-          onRetry={() => void load(activeFilters)}
-        />
+      {!loading && !error && emptyStateHint ? (
+        <div className="color-decision-message info">{emptyStateHint}</div>
       ) : null}
-      {!loading && !showBlockingError && qualityNotes.length > 0 ? (
+      {!loading && !error && qualityNotes.length > 0 ? (
         <div className="color-decision-message info">
           <strong>Kvalitet podataka:</strong> {qualityNotes.join(" ")}
         </div>
@@ -823,7 +876,7 @@ export default function ColorSalesStatsPage() {
           <section className="color-decision-panels">
             <article className="color-decision-card">
               <h2>Koncentracija prometa po bojama</h2>
-              <p>Top boje koje nose najveÃ„â€¡i deo prodaje.</p>
+              <p>Top boje koje nose najveći deo prodaje.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -846,7 +899,7 @@ export default function ColorSalesStatsPage() {
                 <div>
                   <h2>Prioritetna lista boja</h2>
                   <p>
-                    {recommendationStatusLabel("increase_focus")}: {counts.increaseFocus} | {recommendationStatusLabel("maintain")}: {counts.maintain} | {recommendationStatusLabel("review")}: {counts.review} | {recommendationStatusLabel("do_not_trust")}: {counts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {counts.insufficientData}
+                    Pojačaj: {counts.boost} | Zadrži: {counts.keep} | Smanji: {counts.reduce}
                   </p>
                   <p className="color-decision-metric-note">
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
@@ -884,22 +937,22 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("marginContribution")}>
-                          MarÃ…Â¾ni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marÃ…Â¾e: razlika izmeÃ„â€˜u prodajne vrednosti i nabavne vrednosti za prodatu robu." />
+                          Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} />
+                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
                         </button>
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text={analyticsMetricDescriptions.prePostNivelacijaImpactPct} />
+                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto sto i PoP trend." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text={analyticsMetricDescriptions.recommendation} />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji. Kliknite na red za detaljnije objašnjenje." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -1003,84 +1056,26 @@ export default function ColorSalesStatsPage() {
                   <strong>{selectedRow.brojArtikalaSaNivelacijom} / {selectedRow.brojArtikalaUkupno}</strong>
                 </article>
                 <article>
-                  <span>Kvalitet marze <InfoTip text="Backend quality tier za margin signal. Ako nije potvrden, marza ili margin contribution nisu za automatsku odluku bez provere." /></span>
-                  <strong>
-                    {selectedRow.marginQualityLabel ? (
-                      <span className={`shoetype-decision-kpi-badge ${qualityTierClass(selectedRow.marginQualityTier)}`}>
-                        {qualityTierIcon(selectedRow.marginQualityTier)} {selectedRow.marginQualityLabel}
-                      </span>
-                    ) : (
-                      "Kvalitet marze nije dostupan"
-                    )}
-                  </strong>
-                </article>
-                <article>
-                  <span>{RECOMMENDATION_RELIABILITY_LABEL} <InfoTip text={analyticsMetricDescriptions.reliabilityPct} /></span>
-                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
-                </article>
-                <article>
-                  <span>Status kvaliteta preporuke <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = neutralno." /></span>
-                  <strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong>
+                  <span>Pouzdanost podataka</span>
+                  <strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong>
                 </article>
                 <article>
                   <span>Pokrice marze</span>
-                  <strong>{fmtPct(selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct, 1)}</strong>
+                  <strong>{fmtPct(selectedRow.marginDataCoveragePct, 1)}</strong>
                 </article>
                 <article>
                   <span>Marza %</span>
                   <strong>{fmtSignedPct(selectedRow.marginPct, 2)}</strong>
                 </article>
                 <article>
-                  <span>{RECOMMENDATION_CONFIDENCE_LABEL} <InfoTip text={analyticsMetricDescriptions.recommendationConfidencePct} /></span>
-                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.recommendationConfidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <span>Decision score</span>
+                  <strong>{selectedRow.decisionScore}</strong>
                 </article>
               </div>
 
               <p className="color-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
-              {selectedRow.reasonCodes.length > 0 ? (
-                <p className="color-decision-reason">
-                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
-                </p>
-              ) : null}
-              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
-                <p key={hint} className="color-decision-reason">
-                  <strong>Napomena:</strong> {hint}
-                </p>
-              ))}
-              {(() => {
-                const marginNote = buildMarginDetailNote(
-                  selectedRow.marginQualityTier,
-                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
-                  selectedRow.historicalCostCoveragePct ?? selectedRow.marginDataCoveragePct,
-                  fmtPct,
-                  selectedRow.snapshotCostCoveragePct,
-                  data?.totals.isSnapshotActive
-                );
-                return marginNote ? (
-                  <p className="color-decision-reason">
-                    <strong>Napomena za marzu:</strong> {marginNote}
-                  </p>
-                ) : null;
-              })()}
-              {(() => {
-                const recCaveat = buildRecommendationCaveat(
-                  selectedRow.marginQualityTier,
-                  selectedRow.estimatedCostCoveragePct ?? selectedRow.fallbackCostCoveragePct,
-                  fmtPct
-                );
-                return recCaveat ? (
-                  <p className="color-decision-reason">
-                    <strong>Napomena za preporuku:</strong> {recCaveat}
-                  </p>
-                ) : null;
-              })()}
-              {(!selectedRow.marginQualityLabel || !selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
-                <p className="color-decision-reason">
-                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
-                </p>
-              ) : null}
             </section>
           ) : null}
         </>

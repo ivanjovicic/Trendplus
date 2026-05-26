@@ -4,6 +4,7 @@ import {
   getAnalyticsActionById,
   getAnalyticsActions,
   getAnalyticsActionCounts,
+  updateAnalyticsActionOutcome,
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
 import { fmtNumber, fmtRsd } from "../utils/analyticsFormatters";
@@ -17,6 +18,7 @@ import type {
   AnalyticsActionPriority,
   AnalyticsActionDataQualityStatus,
   AnalyticsActionAnyDataQualityStatus,
+  AnalyticsActionOutcomeUpdateInput,
 } from "../types/analytics";
 import "./AnalyticsActionsPage.css";
 
@@ -67,6 +69,22 @@ const DATA_QUALITY_CSS: Record<string, string> = {
   poor: "dq-critical", // legacy -> critical
 };
 
+const OUTCOME_LABELS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], string> = {
+  pending: "Na čekanju",
+  success: "Uspešno",
+  neutral: "Neutralno",
+  negative: "Negativno",
+  not_measured: "Nije mereno",
+};
+
+const OUTCOME_CSS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], string> = {
+  pending: "badge-outcome badge-pending",
+  success: "badge-outcome badge-success",
+  neutral: "badge-outcome badge-neutral",
+  negative: "badge-outcome badge-negative",
+  not_measured: "badge-outcome badge-not-measured",
+};
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -81,6 +99,15 @@ function getDataQualityLabel(value: AnalyticsActionAnyDataQualityStatus | null |
   const normalized = normalizeDataQualityStatus(value);
   if (!normalized) return value;
   return DATA_QUALITY_LABELS[normalized];
+}
+
+function normalizeOutcomeStatus(value: string | null | undefined): AnalyticsActionOutcomeUpdateInput["outcomeStatus"] | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "pending" || normalized === "success" || normalized === "neutral" || normalized === "negative" || normalized === "not_measured") {
+    return normalized;
+  }
+  return null;
 }
 
 function parseSourceTypeQuery(value: string | null): AnalyticsActionSourceType | undefined {
@@ -120,6 +147,14 @@ type StatusModalState = {
   note: string;
 };
 
+type OutcomeModalState = {
+  id: number;
+  title: string;
+  outcomeStatus: AnalyticsActionOutcomeUpdateInput["outcomeStatus"];
+  measuredImpactRsd: string;
+  outcomeNotes: string;
+};
+
 export default function AnalyticsActionsPage() {
   const location = useLocation();
   const [items, setItems] = useState<AnalyticsActionItem[]>([]);
@@ -146,6 +181,8 @@ export default function AnalyticsActionsPage() {
   const [detailsErrorById, setDetailsErrorById] = useState<Record<number, string>>({});
   const [statusModal, setStatusModal] = useState<StatusModalState | null>(null);
   const [statusModalBusy, setStatusModalBusy] = useState(false);
+  const [outcomeModal, setOutcomeModal] = useState<OutcomeModalState | null>(null);
+  const [outcomeModalBusy, setOutcomeModalBusy] = useState(false);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
     setLoading(true);
@@ -253,6 +290,33 @@ export default function AnalyticsActionsPage() {
     const ok = await changeStatus(statusModal.id, statusModal.status, trimmedNote.length > 0 ? trimmedNote : undefined);
     setStatusModalBusy(false);
     if (ok) setStatusModal(null);
+  }
+
+  function openOutcomeModal(item: AnalyticsActionItem) {
+    setOutcomeModal({
+      id: item.id,
+      title: item.title,
+      outcomeStatus: normalizeOutcomeStatus(item.outcomeStatus) ?? "pending",
+      measuredImpactRsd: item.measuredImpactRsd != null ? String(item.measuredImpactRsd) : "",
+      outcomeNotes: item.outcomeNotes ?? "",
+    });
+  }
+
+  async function submitOutcomeModal() {
+    if (!outcomeModal) return;
+    setOutcomeModalBusy(true);
+    const measuredImpact = outcomeModal.measuredImpactRsd.trim();
+    const parsedImpact = measuredImpact.length > 0 ? Number(measuredImpact) : null;
+    const result = await updateAnalyticsActionOutcome(outcomeModal.id, {
+      outcomeStatus: outcomeModal.outcomeStatus,
+      measuredImpactRsd: parsedImpact != null && Number.isFinite(parsedImpact) ? parsedImpact : null,
+      outcomeMeasuredAtUtc: new Date().toISOString(),
+      outcomeNotes: outcomeModal.outcomeNotes.trim().length > 0 ? outcomeModal.outcomeNotes.trim() : null,
+    });
+    setItems((prev) => prev.map((it) => (it.id === result.id ? result : it)));
+    setDetailsById((prev) => ({ ...prev, [result.id]: result }));
+    setOutcomeModalBusy(false);
+    setOutcomeModal(null);
   }
 
   const openStatuses: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
@@ -386,9 +450,12 @@ export default function AnalyticsActionsPage() {
                   <th>Izvor</th>
                   <th>Naslov</th>
                   <th>Preporuka</th>
+                  <th>Rok provere</th>
                   <th className="th-num">Uticaj (RSD)</th>
+                  <th className="th-num">Očekivani uticaj</th>
                   <th className="th-num">Conf%</th>
                   <th>Data Q</th>
+                  <th>Ishod</th>
                   <th>Status</th>
                   <th>Akcije</th>
                   <th>Detalji</th>
@@ -425,7 +492,9 @@ export default function AnalyticsActionsPage() {
                           )}
                         </td>
                         <td className="td-rec">{item.recommendationStatus ?? "-"}</td>
+                        <td>{formatTimestamp(item.dueAtUtc)}</td>
                         <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "-")}</td>
+                        <td className="td-num">{fmtRsd(item.expectedImpactRsd, 0, "-")}</td>
                         <td className="td-num">{item.confidencePct != null ? `${fmtNumber(item.confidencePct, 0, "-")}%` : "-"}</td>
                         <td>
                           {item.dataQualityStatus ? (
@@ -433,6 +502,13 @@ export default function AnalyticsActionsPage() {
                               {getDataQualityLabel(item.dataQualityStatus)}
                             </span>
                           ) : "-"}
+                        </td>
+                        <td>
+                          {normalizeOutcomeStatus(item.outcomeStatus) ? (
+                            <span className={OUTCOME_CSS[normalizeOutcomeStatus(item.outcomeStatus)!]}>{OUTCOME_LABELS[normalizeOutcomeStatus(item.outcomeStatus)!]}</span>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td>
                           <span className={STATUS_CSS[item.status]}>{STATUS_LABELS[item.status]}</span>
@@ -478,6 +554,13 @@ export default function AnalyticsActionsPage() {
                                   Odbij
                                 </button>
                               )}
+                              <button
+                                className="btn-action btn-details"
+                                onClick={() => openOutcomeModal(item)}
+                                title="Oznaci ishod"
+                              >
+                                Ishod
+                              </button>
                             </div>
                           )}
                         </td>
@@ -495,14 +578,19 @@ export default function AnalyticsActionsPage() {
                       </tr>
                       {isExpanded && (
                         <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
-                          <td colSpan={10}>
+                          <td colSpan={13}>
                             <div className="aaq-details-grid">
                               <div><strong>SourceType:</strong> {detailsItem.sourceType}</div>
                               <div><strong>SourceKey:</strong> {detailsItem.sourceKey}</div>
                               <div><strong>SourceId:</strong> {detailsItem.sourceId ?? "-"}</div>
+                              <div><strong>DueAtUtc:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
                               <div><strong>CreatedAtUtc:</strong> {formatTimestamp(detailsItem.createdAtUtc)}</div>
                               <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(detailsItem.updatedAtUtc)}</div>
                               <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(detailsItem.resolvedAtUtc)}</div>
+                              <div><strong>ExpectedImpactRsd:</strong> {fmtRsd(detailsItem.expectedImpactRsd, 0, "-")}</div>
+                              <div><strong>MeasuredImpactRsd:</strong> {fmtRsd(detailsItem.measuredImpactRsd, 0, "-")}</div>
+                              <div><strong>OutcomeStatus:</strong> {normalizeOutcomeStatus(detailsItem.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(detailsItem.outcomeStatus)!] : "-"}</div>
+                              <div><strong>OutcomeMeasuredAtUtc:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
                               <div><strong>CreatedByUserId:</strong> {detailsItem.createdByUserId ?? "-"}</div>
                               <div><strong>UpdatedByUserName:</strong> {detailsItem.updatedByUserName ?? "-"}</div>
                               <div>
@@ -510,6 +598,12 @@ export default function AnalyticsActionsPage() {
                                 {detailsItem.actionUrl ? <a href={detailsItem.actionUrl} className="action-link">Otvori</a> : "-"}
                               </div>
                             </div>
+                            {detailsItem.outcomeNotes ? (
+                              <div className="aaq-metadata-panel">
+                                <strong>Outcome notes:</strong>
+                                <p>{detailsItem.outcomeNotes}</p>
+                              </div>
+                            ) : null}
                             {isDetailLoading && (
                               <div className="aaq-detail-loading">Ucitavanje istorije...</div>
                             )}
@@ -610,6 +704,61 @@ export default function AnalyticsActionsPage() {
               </button>
               <button type="button" className="btn-action btn-done" onClick={() => void submitStatusModal()} disabled={statusModalBusy}>
                 {statusModalBusy ? "Cuvanje..." : "Potvrdi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {outcomeModal && (
+        <div className="aaq-modal-backdrop" role="presentation" onClick={() => !outcomeModalBusy && setOutcomeModal(null)}>
+          <div
+            className="aaq-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="aaq-outcome-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="aaq-outcome-modal-title">Označi ishod</h2>
+            <p className="aaq-modal-subtitle">
+              Beležite ishod za akciju <strong>{outcomeModal.title}</strong>.
+            </p>
+            <label htmlFor="aaq-outcome-status">Ishod</label>
+            <select
+              id="aaq-outcome-status"
+              value={outcomeModal.outcomeStatus}
+              onChange={(e) => setOutcomeModal((current) => current ? { ...current, outcomeStatus: e.target.value as OutcomeModalState["outcomeStatus"] } : current)}
+              disabled={outcomeModalBusy}
+            >
+              {(Object.keys(OUTCOME_LABELS) as OutcomeModalState["outcomeStatus"][]).map((status) => (
+                <option key={status} value={status}>{OUTCOME_LABELS[status]}</option>
+              ))}
+            </select>
+            <label htmlFor="aaq-outcome-impact">Merljivi uticaj (RSD)</label>
+            <input
+              id="aaq-outcome-impact"
+              type="number"
+              step="0.01"
+              value={outcomeModal.measuredImpactRsd}
+              onChange={(e) => setOutcomeModal((current) => current ? { ...current, measuredImpactRsd: e.target.value } : current)}
+              placeholder="npr. 12500"
+              disabled={outcomeModalBusy}
+            />
+            <label htmlFor="aaq-outcome-notes">Napomena</label>
+            <textarea
+              id="aaq-outcome-notes"
+              value={outcomeModal.outcomeNotes}
+              onChange={(e) => setOutcomeModal((current) => current ? { ...current, outcomeNotes: e.target.value } : current)}
+              rows={4}
+              placeholder="Kratko zabeležite šta se desilo..."
+              disabled={outcomeModalBusy}
+            />
+            <div className="aaq-modal-actions">
+              <button type="button" className="btn-page" onClick={() => setOutcomeModal(null)} disabled={outcomeModalBusy}>
+                Otkazi
+              </button>
+              <button type="button" className="btn-action btn-done" onClick={() => void submitOutcomeModal()} disabled={outcomeModalBusy}>
+                {outcomeModalBusy ? "Cuvanje..." : "Potvrdi"}
               </button>
             </div>
           </div>

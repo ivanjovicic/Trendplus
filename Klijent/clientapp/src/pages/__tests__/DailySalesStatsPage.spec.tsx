@@ -86,9 +86,8 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    // Page now renders the title in both AnalyticsTrustHeader and the local page header.
-    const titles = screen.getAllByRole("heading", { name: /Prodaja po smeni/i });
-    expect(titles.length).toBeGreaterThan(0);
+    const title = screen.getByText(/Prodaja po smeni/i);
+    expect(title).toBeInTheDocument();
   });
 
   it("renders filter controls", () => {
@@ -103,7 +102,7 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabels = screen.getAllByText("Period");
-    expect(periodLabels.length).toBeGreaterThan(0);
+    const periodLabel = screen.getByText("Period");
+    expect(periodLabel).toBeInTheDocument();
   });
 });

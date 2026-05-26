@@ -1,10 +1,4 @@
 import { makeUrl } from "./analyticsApi";
-import type { AnalyticsResponseMeta } from "../types/analytics";
-import {
-  AnalyticsMetaError,
-  getAnalyticsMetaMessage,
-  isAnalyticsMetaError,
-} from "../utils/analyticsResponseMeta";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -59,12 +53,6 @@ export type SummarySupplierItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
-  // TODO(backend-dto): extend Supplier Decision Hub DTOs with recommendation reliability, dataQualityStatus,
-  // statusReason/reasonCodes and margin quality context for margin-bearing metrics.
-  reliabilityPct?: number | null;
-  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
-  statusReason?: string | null;
-  reasonCodes?: string[] | null;
 };
 
 export type KeyInsightItem = {
@@ -72,35 +60,6 @@ export type KeyInsightItem = {
   value: string;
   details: string;
   tone: string;
-};
-
-export type ScorecardTrustMetadata = {
-  requestedPeriodFrom?: string;
-  requestedPeriodTo?: string;
-  requestedFrom: string;
-  requestedTo: string;
-  effectiveFrom: string;
-  effectiveTo: string;
-  requestedDataset: "30d" | "90d" | "180d" | "all_time" | string;
-  effectiveDataset: "30d" | "90d" | "180d" | "all_time" | string;
-  effectivePeriodLabel: string;
-  dataCoverageStatus: "good" | "warning" | "critical" | "insufficient_data" | string;
-  usedFallback: boolean;
-  fallbackReason?: string | null;
-  fallbackReasonCode?: string | null;
-  lastRefreshAtUtc?: string | null;
-  rowCount?: number;
-  ignoredRowCount?: number;
-  zeroRevenueRowsExcludedCount?: number;
-  missingSupplierNameCount?: number;
-  hasData: boolean;
-  hasExplicitDateRange: boolean;
-  recommendationAllowed: boolean;
-  noSilentFallback: boolean;
-  windowDays: number;
-  dataScope: string;
-  coverage: "window_90d" | "window_180d" | "all_history" | string;
-  dataNote?: string | null;
 };
 
 export type SummaryResponse = {
@@ -116,8 +75,6 @@ export type SummaryResponse = {
   topRiskSuppliers: SummarySupplierItem[];
   keyInsights: KeyInsightItem[];
   dataNote?: string | null;
-  trustMetadata?: ScorecardTrustMetadata | null;
-  meta?: AnalyticsResponseMeta | null;
 };
 
 export type QuadrantItem = {
@@ -130,16 +87,10 @@ export type QuadrantItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
-  reliabilityPct?: number | null;
-  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
-  statusReason?: string | null;
-  reasonCodes?: string[] | null;
 };
 
 export type QuadrantResponse = {
   items: QuadrantItem[];
-  trustMetadata?: ScorecardTrustMetadata | null;
-  meta?: AnalyticsResponseMeta | null;
 };
 
 export type RankingItem = {
@@ -158,10 +109,6 @@ export type RankingItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
-  reliabilityPct?: number | null;
-  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
-  statusReason?: string | null;
-  reasonCodes?: string[] | null;
 };
 
 export type RankingResponse = {
@@ -170,8 +117,6 @@ export type RankingResponse = {
   totalCount: number;
   items: RankingItem[];
   dataNote?: string | null;
-  trustMetadata?: ScorecardTrustMetadata | null;
-  meta?: AnalyticsResponseMeta | null;
 };
 
 export type SupplierHeaderDto = {
@@ -187,10 +132,6 @@ export type SupplierHeaderDto = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
-  reliabilityPct?: number | null;
-  dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
-  statusReason?: string | null;
-  reasonCodes?: string[] | null;
 };
 
 export type SupplierKpisDto = {
@@ -278,137 +219,10 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
 
 async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {
   const response = await fetch(makeUrl(path, params));
-  let payload: unknown = null;
-  try {
-    payload = await response.json();
-  } catch {
-    payload = null;
-  }
-
-  const meta = (payload as { meta?: AnalyticsResponseMeta | null } | null)?.meta;
-  const resolvedMessage = getAnalyticsMetaMessage(meta) || errorMessage;
-
   if (!response.ok) {
-    throw new SupplierDecisionApiError(
-      resolvedMessage,
-      meta?.errorCode ?? null,
-      meta?.correlationId ?? null,
-      errorMessage,
-      meta
-    );
+    throw new Error(errorMessage);
   }
-
-  const data = payload as T;
-
-  if (isAnalyticsMetaError(meta)) {
-    throw new SupplierDecisionApiError(
-      resolvedMessage,
-      meta?.errorCode ?? null,
-      meta?.correlationId ?? null,
-      errorMessage,
-      meta
-    );
-  }
-
-  return data;
-}
-
-function toIsoString(value: unknown): string {
-  return typeof value === "string" && value.trim() ? value : "";
-}
-
-function toOptionalString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value : null;
-}
-
-function toBoolean(value: unknown, fallback = false): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
-function toNumber(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function normalizeDataset(value: unknown): string {
-  const normalized = typeof value === "string" ? value.trim() : "";
-  if (!normalized) return "all_time";
-  if (normalized === "all_history") return "all_time";
-  return normalized;
-}
-
-function normalizeScorecardTrustMetadata(raw: unknown): ScorecardTrustMetadata | null {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-
-  const trust = raw as Record<string, unknown>;
-  const requestedFrom = toIsoString(trust.requestedFrom ?? trust.requestedPeriodFrom);
-  const requestedTo = toIsoString(trust.requestedTo ?? trust.requestedPeriodTo);
-  const effectiveFrom = toIsoString(trust.effectiveFrom ?? requestedFrom);
-  const effectiveTo = toIsoString(trust.effectiveTo ?? requestedTo);
-
-  return {
-    requestedPeriodFrom: requestedFrom || undefined,
-    requestedPeriodTo: requestedTo || undefined,
-    requestedFrom,
-    requestedTo,
-    effectiveFrom,
-    effectiveTo,
-    requestedDataset: normalizeDataset(trust.requestedDataset),
-    effectiveDataset: normalizeDataset(trust.effectiveDataset),
-    effectivePeriodLabel: toOptionalString(trust.effectivePeriodLabel) ?? "Neograničeno",
-    dataCoverageStatus: toOptionalString(trust.dataCoverageStatus) ?? "insufficient_data",
-    usedFallback: toBoolean(trust.usedFallback),
-    fallbackReason: toOptionalString(trust.fallbackReason),
-    fallbackReasonCode: toOptionalString(trust.fallbackReasonCode),
-    lastRefreshAtUtc: toOptionalString(trust.lastRefreshAtUtc),
-    rowCount: toNumber(trust.rowCount),
-    ignoredRowCount: toNumber(trust.ignoredRowCount),
-    zeroRevenueRowsExcludedCount: toNumber(trust.zeroRevenueRowsExcludedCount),
-    missingSupplierNameCount: toNumber(trust.missingSupplierNameCount),
-    hasData: toBoolean(trust.hasData),
-    hasExplicitDateRange: toBoolean(trust.hasExplicitDateRange),
-    recommendationAllowed: toBoolean(trust.recommendationAllowed),
-    noSilentFallback: toBoolean(trust.noSilentFallback, true),
-    windowDays: toNumber(trust.windowDays),
-    dataScope: toOptionalString(trust.dataScope) ?? "all",
-    coverage: toOptionalString(trust.coverage) ?? "all_history",
-    dataNote: toOptionalString(trust.dataNote),
-  };
-}
-
-function normalizeSummaryResponse(data: SummaryResponse): SummaryResponse {
-  return {
-    ...data,
-    trustMetadata: normalizeScorecardTrustMetadata(data.trustMetadata),
-  };
-}
-
-function normalizeQuadrantResponse(data: QuadrantResponse): QuadrantResponse {
-  return {
-    ...data,
-    trustMetadata: normalizeScorecardTrustMetadata(data.trustMetadata),
-  };
-}
-
-function normalizeRankingResponse(data: RankingResponse): RankingResponse {
-  return {
-    ...data,
-    trustMetadata: normalizeScorecardTrustMetadata(data.trustMetadata),
-  };
-}
-
-export class SupplierDecisionApiError extends AnalyticsMetaError {
-  constructor(
-    message: string,
-    errorCode: string | null,
-    correlationId: string | null,
-    context?: string,
-    meta?: AnalyticsResponseMeta | null
-  ) {
-    super(message, { errorCode, correlationId, context, meta });
-    this.name = "SupplierDecisionApiError";
-  }
+  return (await response.json()) as T;
 }
 
 export async function getSupplierDecisionSummary(
@@ -416,12 +230,11 @@ export async function getSupplierDecisionSummary(
 ): Promise<SummaryResponse> {
   const params = new URLSearchParams();
   appendFilterParams(params, filters);
-  const data = await fetchJson<SummaryResponse>(
+  return fetchJson<SummaryResponse>(
     "/api/analytics/suppliers/decision-hub/summary",
     params,
     "Ne mogu da učitam sažetak dobavljača."
   );
-  return normalizeSummaryResponse(data);
 }
 
 export async function getSupplierDecisionQuadrant(
@@ -429,12 +242,11 @@ export async function getSupplierDecisionQuadrant(
 ): Promise<QuadrantResponse> {
   const params = new URLSearchParams();
   appendFilterParams(params, filters);
-  const data = await fetchJson<QuadrantResponse>(
+  return fetchJson<QuadrantResponse>(
     "/api/analytics/suppliers/decision-hub/quadrant",
     params,
     "Ne mogu da učitam kvadrant dobavljača."
   );
-  return normalizeQuadrantResponse(data);
 }
 
 export async function getSupplierDecisionRanking(
@@ -449,12 +261,11 @@ export async function getSupplierDecisionRanking(
   if (query.sortBy) params.append("sortBy", query.sortBy);
   if (query.sortDir) params.append("sortDir", query.sortDir);
 
-  const data = await fetchJson<RankingResponse>(
+  return fetchJson<RankingResponse>(
     "/api/analytics/suppliers/decision-hub/ranking",
     params,
     "Ne mogu da učitam rang listu dobavljača."
   );
-  return normalizeRankingResponse(data);
 }
 
 export async function getAllSupplierDecisionRanking(

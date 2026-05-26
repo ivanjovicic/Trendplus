@@ -48,6 +48,7 @@ import type {
   AnalyticsActionCounts,
   AnalyticsActionUpsertInput,
   AnalyticsActionStatusUpdateInput,
+  AnalyticsActionOutcomeUpdateInput,
   AnalyticsActionFilters,
   AnalyticsResponseMeta,
   SupplierDecisionDurableReport,
@@ -1229,6 +1230,17 @@ export async function updateAnalyticsActionStatus(
     `/api/analytics/actions/${id}/status`,
     input,
     "Greška pri ažuriranju statusa akcije"
+  );
+}
+
+export async function updateAnalyticsActionOutcome(
+  id: number,
+  input: AnalyticsActionOutcomeUpdateInput
+): Promise<AnalyticsActionItem> {
+  return patchJson<AnalyticsActionItem>(
+    `/api/analytics/actions/${id}/outcome`,
+    input,
+    "Greška pri ažuriranju ishoda akcije"
   );
 }
 

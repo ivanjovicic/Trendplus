@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import { getDobavljaci } from "../services/dobavljaciApi";
@@ -16,15 +16,6 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
-import {
-  RECOMMENDATION_SIGNAL_UNAVAILABLE,
-  normalizeRecommendationPct,
-  normalizeRecommendationQualityStatus,
-  recommendationQualityLabel,
-  recommendationQualityStyle,
-  recommendationReasonHints,
-  type RecommendationQualityStatus,
-} from "../utils/canonicalRecommendationSemantics";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -43,12 +34,8 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   topFootwearTypeSharePct: number;
   avgElasticity: number | null;
   confidencePct: number;
-  confidenceAvailable: boolean;
-  reliabilityAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
-  dataQualityStatus: RecommendationQualityStatus;
-  reasonCodes: string[];
 };
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -66,7 +53,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
-  { key: "status", header: "Signal asortimana", dataType: "text" },
+  { key: "status", header: "Preporuka", dataType: "text" },
   { key: "confidencePct", header: "Poverenje %", dataType: "percent" },
 ];
 
@@ -96,10 +83,10 @@ function statusClass(status: DecisionStatus): string {
   return "sf-decision-status status-keep";
 }
 function statusDisplayLabel(status: DecisionStatus): string {
-  if (status === "increase_focus") return "Pojačaj";
+  if (status === "increase_focus") return "Pojačaj fokus";
   if (status === "maintain") return "Zadrži";
-  if (status === "review") return "Oprez";
-  if (status === "do_not_trust") return "Smanji / Ne veruj";
+  if (status === "review") return "Proveri";
+  if (status === "do_not_trust") return "Ne veruj";
   return "Nedovoljno podataka";
 }
 function trendClass(value: number | null | undefined): string {
@@ -109,27 +96,10 @@ function trendClass(value: number | null | undefined): string {
   return "trend-neutral";
 }
 
-type StatusTooltipData = {
-  status: DecisionStatus;
-  statusReason: string;
-  sharePct: number;
-  trendPct: number;
-  topFootwearType: string;
-  topFootwearTypeSharePct: number;
-  reliabilityPct: number;
-  confidencePct: number;
-  reliabilityAvailable: boolean;
-  confidenceAvailable: boolean;
-  dataQualityStatus: RecommendationQualityStatus;
-  reasonCodes: string[];
-};
+type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number; confidencePct: number };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const qualityText = recommendationQualityLabel(data.dataQualityStatus);
-  const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${reliabilityText} | Poverenje ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
 }
 function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
@@ -171,7 +141,7 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   return { byVendor, globalTypeShare };
 }
 
-export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters, onTrustMetadataChange }: SupplierEmbeddedPageProps = {}) {
+export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
@@ -281,7 +251,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
           });
           setDataHint("Za izabrani period nema analiziranih redova. Predlozen je datum gde postoje nivelacije i/ili prodaja.");
         } else if (likelyFilteredOutByInactive) {
-          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Uključi širi period ili proveri opciju sa neaktivnim artiklima.");
+          setDataHint("U periodu postoje nivelacije, ali bez prodaje u pre/post prozoru. Ukljuci siri period ili proveri opciju sa neaktivnim artiklima.");
         } else {
           setDataHint("U izabranom periodu nema nivelacija za zadate filtere.");
         }
@@ -304,27 +274,6 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
 
   useEffect(() => { void load(activeFilters); }, [activeFilters, load]);
 
-  useEffect(() => {
-    if (!embedded || !onTrustMetadataChange) return;
-    if (!data) {
-      onTrustMetadataChange(null);
-      return;
-    }
-
-    onTrustMetadataChange({
-      periodFrom: activeFilters.fromDate,
-      periodTo: activeFilters.toDate,
-      lastRefreshAt: data.generatedAt ?? null,
-      dataFreshnessStatus: "unknown",
-      dataSource: "Supplier assortment (tipovi obuće)",
-      dataQualityStatus: data.dataQuality.analyzedRows <= 0
-        ? "insufficient_data"
-        : (data.dataQuality.analyzedSharePercent < 50 ? "warning" : "good"),
-      recommendationAllowed: data.dataQuality.analyzedRows > 0 && data.dataQuality.analyzedSharePercent >= 50,
-      recommendationNote: "Asortiman tab prikazuje strukturu prometa po tipu obuće (drilldown), bez paralelne finalne preporuke.",
-    });
-  }, [activeFilters.fromDate, activeFilters.toDate, data, embedded, onTrustMetadataChange]);
-
   const typeInsights = useMemo(() => buildTypeInsights(data?.articleStats ?? []), [data?.articleStats]);
 
   const decisionRows = useMemo<DecisionVendor[]>(() => {
@@ -332,8 +281,10 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
     if (rows.length === 0) return [];
 
     const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
-    return rows.map((item) => {
+    return rows.flatMap((item) => {
       const recommendation = item.recommendation;
+      if (!recommendation) return [];
+
       const key = vendorKey(item);
       const typeInsight = typeInsights.byVendor.get(key);
       const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
@@ -342,25 +293,18 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       const topFootwearType = typeInsight?.topType ?? "N/A";
       const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? 0;
       const avgElasticity = typeInsight?.avgElasticity ?? null;
-      const confidencePctValue = normalizeRecommendationPct(recommendation?.confidencePct);
-      const reliabilityPctValue = normalizeRecommendationPct(recommendation?.reliabilityPct ?? item.reliabilityPct);
 
-      return {
+      return [{
         ...item,
         sharePct,
         trendPct,
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
-        confidencePct: confidencePctValue ?? 0,
-        confidenceAvailable: confidencePctValue != null,
-        reliabilityPct: reliabilityPctValue ?? 0,
-        reliabilityAvailable: reliabilityPctValue != null,
-        status: recommendation?.status ?? "insufficient_data",
-        statusReason: recommendation?.summary ?? "Nedovoljno podataka za signal asortimana; backend nije dostavio recommendation payload za ovog dobavljača.",
-        dataQualityStatus: normalizeRecommendationQualityStatus(recommendation?.dataQualityStatus),
-        reasonCodes: recommendation?.reasonCodes ?? [],
-      };
+        confidencePct: recommendation.confidencePct,
+        status: recommendation.status,
+        statusReason: recommendation.summary,
+      }];
     });
   }, [data?.vendorStats, typeInsights.byVendor]);
 
@@ -465,7 +409,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       table: "dobavljaci-tipovi-obuce",
       recordId: String(row.vendorId ?? row.vendorName),
       title: row.vendorName,
-      subtitle: "Podrška odluci po dobavljaču i tipu obuće",
+      subtitle: "Podrska odluci po dobavljacu i tipu obuce",
       columns: decisionColumns,
       row,
       metadata: [...toolbarFilters, ...toolbarMetadata],
@@ -478,8 +422,8 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
       {!embedded ? (
       <header className="sf-decision-header">
         <div>
-          <h1 className="sf-decision-title">Dobavljači i tipovi obuće (Asortiman)</h1>
-          <p className="sf-decision-subtitle">Asortimanski drilldown po tipu obuće. Ovo je dodatni signal, dok finalna preporuka za dobavljača dolazi iz taba Pregled.</p>
+          <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
+          <p className="sf-decision-subtitle">Ekran za podrsku odluci koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
         </div>
         <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
       </header>
@@ -517,22 +461,22 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                   ? "U izabranom periodu nema evidentirane nivelacije u Dnevniku promena. Pokušajte sa drugačijim periodom ili dobavljačem."
                   : data.dataQuality.analyzedRows === 0 && data.dataQuality.inactiveRows > 0
                     ? `Nivelacije postoje (${data.dataQuality.rawRows} redova), ali bez prodaje u 30-dnevnom post-prozoru. Pokušajte sa periodima gde postoji prodajna aktivnost.`
-                    : `Analizirano je ${data.dataQuality.analyzedRows} redova, ali bez detektovanog prometa. Oprezte filtere ili proširite vremenski raspon.`}
+                    : `Analizirano je ${data.dataQuality.analyzedRows} redova, ali bez detektovanog prometa. Proverite filtere ili proširite vremenski raspon.`}
               </p>
             </div>
           )}
 
           <section className="sf-decision-kpis">
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drži pet najjačih dobavljača."><span>Udeo top 5 dobavljača</span><strong>{fmtPct(top5SharePct)}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće koji trenutno nosi najveći deo prometa."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuce koji trenutno nosi najveci deo prometa."><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
           </section>
 
           <section className="sf-decision-panels">
             <article className="sf-decision-card analytics-surface-panel">
-              <h2>Koncentracija po tipu obuće</h2><p>Top tipovi obuće po udelu prometa u trenutnom filtru.</p>
+              <h2>Koncentracija po tipu obuce</h2><p>Top tipovi obuce po udelu prometa u trenutnom filtru.</p>
               {typeInsights.globalTypeShare.length > 0 ? (
                 <div className="sf-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
@@ -545,17 +489,13 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuće.</div>}
+              ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuce.</div>}
             </article>
 
             <article className="sf-decision-card analytics-surface-panel">
               <div className="sf-decision-table-head">
-                <div>
-                  <h2>Asortimanski signal dobavljača</h2>
-                  <p>Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Oprez: {vendorCounts.review} | Smanji / Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno podataka: {vendorCounts.insufficientData}</p>
-                  <p className="sf-mini-note">Signal je pomoćni asortimanski pogled. Finalnu preporuku po dobavljaču donosi tab Pregled.</p>
-                </div>
-                <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće (Asortiman)" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
+                <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno: {vendorCounts.insufficientData}</p></div>
+                <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
               </div>
               <div className="sf-decision-table-wrap">
                 <table className="sf-decision-table">
@@ -566,7 +506,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                       <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
                       <th><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
                       <th className="align-right"><button type="button" onClick={() => handleSort("trendPct")}>Trend{sortMarker("trendPct", sortField, sortDir)}</button></th>
-                      <th><button type="button" onClick={() => handleSort("status")}>Signal asortimana{sortMarker("status", sortField, sortDir)}</button></th>
+                      <th><button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button></th>
                       <th className="align-center">Detalj</th>
                     </tr>
                   </thead>
@@ -597,29 +537,19 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
 
           {selectedRow ? (
             <section className="sf-decision-detail">
-              <div className="sf-decision-detail-head"><h3>Detalj signala: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
+              <div className="sf-decision-detail-head"><h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
               <div className="sf-decision-detail-grid">
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(selectedRow.preRevenue)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(selectedRow.postRevenue)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo količina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo količina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Status kvaliteta</span><strong style={recommendationQualityStyle(selectedRow.dataQualityStatus)}>{recommendationQualityLabel(selectedRow.dataQualityStatus)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.confidencePct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{fmtPct(selectedRow.confidencePct, 1)}</strong></article>
               </div>
-              <p className="sf-decision-reason"><strong>Razlog signala:</strong> {selectedRow.statusReason}</p>
-              {selectedRow.reasonCodes.length > 0 ? (
-                <p className="sf-decision-reason"><strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}</p>
-              ) : null}
-              {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
-                <p key={hint} className="sf-decision-reason"><strong>Napomena:</strong> {hint}</p>
-              ))}
-              {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
-                <p className="sf-decision-reason"><strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.</p>
-              ) : null}
+              <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>
           ) : null}
         </>
@@ -627,4 +557,3 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
     </div>
   );
 }
-

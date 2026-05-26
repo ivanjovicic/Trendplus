@@ -12,9 +12,12 @@ public sealed record InventoryListItemDto(
     int? IDDobavljac,
     decimal? StockCoverDays,
     string StockCoverStatus,
+    string StockCoverStatusLabel,
     decimal? SellThroughRatio,
     string SellThroughStatus,
+    string SellThroughStatusLabel,
     decimal SignalConfidencePct,
+    bool RecommendationAllowed,
     List<string> ReasonCodes,
     string DataQualityStatus
 );

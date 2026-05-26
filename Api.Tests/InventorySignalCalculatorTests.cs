@@ -20,7 +20,10 @@ public class InventorySignalCalculatorTests
 
         Assert.Equal(10m, result.StockCoverDays);
         Assert.Equal(InventorySignalCalculator.StockCoverHealthy, result.StockCoverStatus);
+        Assert.Equal("Zdrava pokrivenost", result.StockCoverStatusLabel);
         Assert.Equal(0.2667m, result.SellThroughRatio);
+        Assert.Equal("Kritičan sell-through", result.SellThroughStatusLabel);
+        Assert.True(result.RecommendationAllowed);
     }
 
     [Fact(DisplayName = "Positive stock with zero velocity maps to no_velocity")]
@@ -37,6 +40,7 @@ public class InventorySignalCalculatorTests
 
         Assert.Null(result.StockCoverDays);
         Assert.Equal(InventorySignalCalculator.StockCoverNoVelocity, result.StockCoverStatus);
+        Assert.Equal("Bez rotacije", result.StockCoverStatusLabel);
     }
 
     [Fact(DisplayName = "Zero stock with positive velocity maps to out_of_stock_risk")]
@@ -53,6 +57,7 @@ public class InventorySignalCalculatorTests
 
         Assert.Equal(0m, result.StockCoverDays);
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, result.StockCoverStatus);
+        Assert.Equal("Rizik rasprodaje", result.StockCoverStatusLabel);
     }
 
     [Fact(DisplayName = "Insufficient data maps both signals to insufficient_data")]
@@ -69,6 +74,7 @@ public class InventorySignalCalculatorTests
 
         Assert.Equal(InventorySignalCalculator.StockCoverInsufficientData, result.StockCoverStatus);
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.False(result.RecommendationAllowed);
     }
 
     [Fact(DisplayName = "Sell-through denominator zero maps to insufficient_data")]
@@ -85,6 +91,8 @@ public class InventorySignalCalculatorTests
 
         Assert.Null(result.SellThroughRatio);
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.Equal("Nedovoljno podataka", result.SellThroughStatusLabel);
+        Assert.False(result.RecommendationAllowed);
         Assert.Contains("sell_through_denominator_zero", result.ReasonCodes);
     }
 
@@ -102,6 +110,7 @@ public class InventorySignalCalculatorTests
 
         Assert.Null(result.SellThroughRatio);
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.False(result.RecommendationAllowed);
         Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
     }
 }

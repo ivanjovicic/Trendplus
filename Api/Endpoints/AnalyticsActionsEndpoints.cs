@@ -111,6 +111,8 @@ public static class AnalyticsActionsEndpoints
                 RecommendationStatus: body.RecommendationStatus,
                 Priority: body.Priority,
                 ImpactEstimateRsd: body.ImpactEstimateRsd,
+                DueAtUtc: body.DueAtUtc,
+                ExpectedImpactRsd: body.ExpectedImpactRsd,
                 ConfidencePct: body.ConfidencePct,
                 ReliabilityPct: body.ReliabilityPct,
                 DataQualityStatus: normalizedDataQualityStatus,
@@ -171,6 +173,41 @@ public static class AnalyticsActionsEndpoints
             return detailed is null ? Results.NotFound() : Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionStatus");
+
+        // PATCH /api/analytics/actions/{id}/outcome
+        group.MapMethods("/{id:long}/outcome", ["PATCH"], async (
+            long id,
+            AnalyticsActionOutcomeUpdateBody body,
+            AnalyticsActionItemService svc,
+            HttpContext httpContext,
+            CancellationToken ct) =>
+        {
+            if (!AnalyticsActionConstants.IsValidOutcomeStatus(body.OutcomeStatus))
+                return Results.BadRequest($"outcomeStatus must be one of: {string.Join(", ", AnalyticsActionConstants.OutcomeStatuses.AllValues)}");
+
+            var userId = httpContext.User?.FindFirst("sub")?.Value
+                      ?? httpContext.User?.FindFirst("userId")?.Value;
+            var userName = httpContext.User?.FindFirst("name")?.Value
+                        ?? httpContext.User?.FindFirst("preferred_username")?.Value;
+
+            var updated = await svc.UpdateOutcomeAsync(
+                id,
+                new AnalyticsActionOutcomeUpdateRequest(
+                    OutcomeStatus: body.OutcomeStatus,
+                    MeasuredImpactRsd: body.MeasuredImpactRsd,
+                    OutcomeMeasuredAtUtc: body.OutcomeMeasuredAtUtc,
+                    OutcomeNotes: body.OutcomeNotes),
+                userId,
+                userName,
+                ct);
+
+            if (updated is null)
+                return Results.NotFound();
+
+            var detailed = await svc.GetByIdAsync(id, includeNotes: true, ct);
+            return detailed is null ? Results.NotFound() : Results.Ok(detailed);
+        })
+        .WithName("UpdateAnalyticsActionOutcome");
     }
 }
 
@@ -185,6 +222,8 @@ public sealed record AnalyticsActionUpsertBody(
     string? RecommendationStatus,
     string Priority,
     decimal? ImpactEstimateRsd,
+    DateTime? DueAtUtc,
+    decimal? ExpectedImpactRsd,
     int? ConfidencePct,
     int? ReliabilityPct,
     string? DataQualityStatus,
@@ -195,6 +234,13 @@ public sealed record AnalyticsActionUpsertBody(
 public sealed record AnalyticsActionStatusUpdateBody(
     string Status,
     string? Note
+);
+
+public sealed record AnalyticsActionOutcomeUpdateBody(
+    string OutcomeStatus,
+    decimal? MeasuredImpactRsd,
+    DateTime? OutcomeMeasuredAtUtc,
+    string? OutcomeNotes
 );
 
 public sealed record AnalyticsActionSourceStatusBody(

@@ -124,9 +124,12 @@ public static class InventoryEndpoints
                     item.IDDobavljac,
                     signal.StockCoverDays,
                     signal.StockCoverStatus,
+                        signal.StockCoverStatusLabel,
                     signal.SellThroughRatio,
                     signal.SellThroughStatus,
+                        signal.SellThroughStatusLabel,
                     signal.SignalConfidencePct,
+                        signal.RecommendationAllowed,
                     reasonCodes,
                     signalDataQuality));
             }

@@ -41,6 +41,15 @@ public class AnalyticsActionConstantsTests
         Assert.Equal(5, statuses.Length);
     }
 
+        [Fact]
+        public void OutcomeStatuses_ContainExpectedValues()
+        {
+            Assert.Contains(AnalyticsActionConstants.OutcomeStatuses.Pending, AnalyticsActionConstants.OutcomeStatuses.AllValues);
+            Assert.Contains(AnalyticsActionConstants.OutcomeStatuses.Success, AnalyticsActionConstants.OutcomeStatuses.AllValues);
+            Assert.True(AnalyticsActionConstants.IsValidOutcomeStatus(AnalyticsActionConstants.OutcomeStatuses.Neutral));
+            Assert.False(AnalyticsActionConstants.IsValidOutcomeStatus("unknown"));
+        }
+
     [Fact]
     public void Statuses_OpenStatusesCorrect()
     {

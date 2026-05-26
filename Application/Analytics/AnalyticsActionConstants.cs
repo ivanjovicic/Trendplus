@@ -66,6 +66,22 @@ public static class AnalyticsActionConstants
         public static readonly string[] ClosedStatuses = { Rejected, Done };
     }
 
+    // ── Outcome Statuses ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Outcome states for reviewed analytics actions.
+    /// </summary>
+    public static class OutcomeStatuses
+    {
+        public const string Pending = "pending";
+        public const string Success = "success";
+        public const string Neutral = "neutral";
+        public const string Negative = "negative";
+        public const string NotMeasured = "not_measured";
+
+        public static readonly string[] AllValues = { Pending, Success, Neutral, Negative, NotMeasured };
+    }
+
     // ── Data Quality Statuses ───────────────────────────────────────────────
 
     /// <summary>
@@ -111,6 +127,12 @@ public static class AnalyticsActionConstants
     /// </summary>
     public static bool IsValidStatus(string? status)
         => !string.IsNullOrWhiteSpace(status) && Statuses.AllValues.Contains(status);
+
+    /// <summary>
+    /// Validates that outcomeStatus is one of the allowed values.
+    /// </summary>
+    public static bool IsValidOutcomeStatus(string? outcomeStatus)
+        => !string.IsNullOrWhiteSpace(outcomeStatus) && OutcomeStatuses.AllValues.Contains(outcomeStatus);
 
     /// <summary>
     /// Validates that dataQualityStatus is one of the canonical values.

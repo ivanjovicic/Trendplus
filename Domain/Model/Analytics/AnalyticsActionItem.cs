@@ -50,6 +50,36 @@ public class AnalyticsActionItem
     public decimal? ImpactEstimateRsd { get; set; }
 
     /// <summary>
+    /// Planned review due date for checking whether the action produced the intended result.
+    /// </summary>
+    public DateTime? DueAtUtc { get; set; }
+
+    /// <summary>
+    /// Expected financial impact in RSD.
+    /// </summary>
+    public decimal? ExpectedImpactRsd { get; set; }
+
+    /// <summary>
+    /// Measured financial impact in RSD after review.
+    /// </summary>
+    public decimal? MeasuredImpactRsd { get; set; }
+
+    /// <summary>
+    /// Outcome status: pending | success | neutral | negative | not_measured.
+    /// </summary>
+    public string? OutcomeStatus { get; set; }
+
+    /// <summary>
+    /// When the outcome was measured.
+    /// </summary>
+    public DateTime? OutcomeMeasuredAtUtc { get; set; }
+
+    /// <summary>
+    /// Optional free-form notes about the observed outcome.
+    /// </summary>
+    public string? OutcomeNotes { get; set; }
+
+    /// <summary>
     /// Confidence percentage (0-100) in the recommendation
     /// </summary>
     public int? ConfidencePct { get; set; }

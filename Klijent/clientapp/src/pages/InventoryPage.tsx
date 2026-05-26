@@ -76,13 +76,16 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
-function buildInventorySignalActionSpec(row: InventoryRow): {
+export function buildInventorySignalActionSpec(row: InventoryRow): {
   sourceKey: string;
   title: string;
   recommendationStatus: string;
   priority: "P1" | "P2" | "P3";
   description: string;
+  dueAtUtc: string;
+  expectedImpactRsd?: number | null;
 } {
+  const dueAtUtc = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
 
   if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
@@ -93,6 +96,8 @@ function buildInventorySignalActionSpec(row: InventoryRow): {
       recommendationStatus: "REPLENISH",
       priority: isCritical ? "P1" : "P2",
       description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+      dueAtUtc,
+      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
     };
   }
 
@@ -103,6 +108,8 @@ function buildInventorySignalActionSpec(row: InventoryRow): {
       recommendationStatus: "SLOW_STOCK_REVIEW",
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
+      dueAtUtc,
+      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
     };
   }
 
@@ -112,6 +119,8 @@ function buildInventorySignalActionSpec(row: InventoryRow): {
     recommendationStatus: "SIGNAL_REVIEW",
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+    dueAtUtc,
+    expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
   };
 }
 
@@ -832,6 +841,8 @@ export default function InventoryPage() {
         description: actionSpec.description,
         recommendationStatus: actionSpec.recommendationStatus,
         priority: actionSpec.priority,
+        dueAtUtc: actionSpec.dueAtUtc,
+        expectedImpactRsd: actionSpec.expectedImpactRsd ?? undefined,
         confidencePct: row.signalConfidencePct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: "/analytics/inventory",
@@ -841,6 +852,7 @@ export default function InventoryPage() {
           sellThroughStatus: row.sellThroughStatus,
           stockCoverDays: row.stockCoverDays,
           sellThroughRatio: row.sellThroughRatio,
+          recommendationAllowed: row.recommendationAllowed,
         }),
       });
       setQueuedSuggestionKeys((current) => (

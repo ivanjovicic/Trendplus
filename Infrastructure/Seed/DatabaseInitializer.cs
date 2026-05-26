@@ -2199,44 +2199,6 @@ public static class DatabaseInitializer
 
         logger.LogInformation("✓ Analytics DB initialized");
 
-        // Ensure important analytics_action_items indexes exist (idempotent).
-        // This keeps older / drifted environments aligned even when they missed some migrations.
-        try
-        {
-            if (await TableExistsAsync(connectionString, "analytics_action_items", logger))
-            {
-                const string ensureIndexesSql = @"
-                    CREATE INDEX IF NOT EXISTS idx_analytics_action_sourcekey_status ON analytics_action_items (""SourceType"", ""SourceKey"", ""Status"");
-                    CREATE INDEX IF NOT EXISTS idx_analytics_action_priority_status ON analytics_action_items (""Priority"", ""Status"");
-                    CREATE INDEX IF NOT EXISTS idx_analytics_action_updated ON analytics_action_items (""UpdatedAtUtc"");
-                ";
-
-                await ExecuteSqlCommandAsync(connectionString, ensureIndexesSql, logger);
-                logger.LogInformation("Ensured analytics_action_items non-unique indexes exist.");
-
-                // Prefer DB-level idempotency for open actions (new/accepted/deferred).
-                // If legacy duplicate open rows exist, index creation may fail; service-level upsert still protects new writes.
-                try
-                {
-                    const string ensureOpenUniqueIndexSql = @"
-                        CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_action_sourcekey_open
-                        ON analytics_action_items (""SourceType"", ""SourceKey"")
-                        WHERE ""Status"" IN ('new', 'accepted', 'deferred');
-                    ";
-                    await ExecuteSqlCommandAsync(connectionString, ensureOpenUniqueIndexSql, logger);
-                    logger.LogInformation("Ensured analytics_action_items open-action unique filtered index exists.");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Could not ensure idx_analytics_action_sourcekey_open (legacy duplicates may exist); service-level idempotency remains active.");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to ensure analytics_action_items indexes; continuing startup.");
-        }
-
         // 5️⃣ Defer backfill operations to background task (these are I/O heavy and can start after startup)
         if (runBackfillOnStartup)
         {

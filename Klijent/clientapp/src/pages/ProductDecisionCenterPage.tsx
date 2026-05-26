@@ -58,15 +58,18 @@ type RecommendationFilter = "all" | ProductDecisionRecommendationStatus;
 type DataQualityFilter = "all" | "good" | "warning" | "critical" | "insufficient_data";
 type PeriodPreset = "last30" | "last60" | "last90" | "custom";
 
-type ProductDecisionSignalFields = {
+export type ProductDecisionSignalFields = {
   stockCoverDays?: number | null;
   stockCoverStatus?: string | null;
+  stockCoverStatusLabel?: string | null;
   sellThroughRatio?: number | null;
   sellThroughStatus?: string | null;
+  sellThroughStatusLabel?: string | null;
   signalConfidencePct?: number | null;
+  recommendationAllowed?: boolean | null;
 };
 
-type ProductDecisionRow = ProductDecisionCenterItem & ProductDecisionSignalFields;
+export type ProductDecisionRow = ProductDecisionCenterItem & ProductDecisionSignalFields;
 
 const RECOMMENDATION_LABELS: Record<ProductDecisionRecommendationStatus, string> = {
   BOOST: "Pojacaj",
@@ -212,11 +215,25 @@ function sellThroughStatusLabel(status: string | null | undefined): string {
   return "Nedovoljno podataka";
 }
 
+function formatSignalMetricValue(value: number | null | undefined, status: string | null | undefined, unit: "days" | "ratio"): string {
+  if (value == null || Number.isNaN(value)) {
+    return (status ?? "").trim().toLowerCase() === "insufficient_data"
+      ? "Nedovoljno podataka"
+      : "Nije dostupno";
+  }
+
+  if (unit === "days") {
+    return `${fmtNumber(value, 1, "N/A")} dana`;
+  }
+
+  return fmtPct(value * 100, 1);
+}
+
 function buildSupplierDecisionUrl(supplierId: number): string {
   return `/analytics/supplier?supplierId=${supplierId}`;
 }
 
-function buildInventoryDecisionUrl(row: ProductDecisionCenterItem): string {
+function buildInventoryDecisionUrl(row: ProductDecisionRow): string {
   const params = new URLSearchParams();
   if (row.sku) params.set("sku", row.sku);
   params.set("productId", String(row.productId));
@@ -225,7 +242,7 @@ function buildInventoryDecisionUrl(row: ProductDecisionCenterItem): string {
 }
 
 function buildSourceKey(
-  row: ProductDecisionCenterItem,
+  row: ProductDecisionRow,
   actionKind: string,
   fromDate: string,
   toDate: string,
@@ -245,7 +262,7 @@ function recommendationActionTitle(status: ProductDecisionRecommendationStatus, 
   return `Proveri: ${productName}`;
 }
 
-function mapActionPriority(row: ProductDecisionCenterItem): "P1" | "P2" | "P3" {
+function mapActionPriority(row: ProductDecisionRow): "P1" | "P2" | "P3" {
   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
   const hasCriticalOos = row.recommendationStatus === "REPLENISH" && row.stockGap > 0 && row.currentStock <= 0;
   const hasLargeLostSales = row.lostSalesEstimate >= 100_000;
@@ -272,13 +289,50 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
-function buildProductQueueSpec(row: ProductDecisionCenterItem): {
+export function buildProductQueueSpec(row: ProductDecisionRow): {
   sourceType: AnalyticsActionSourceType;
   actionKind: string;
   title: string;
   recommendationStatus: string;
   priority: "P1" | "P2" | "P3";
+  dueAtUtc: string;
 } {
+  const dueAtUtc = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
+
+  if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
+    return {
+      sourceType: "product",
+      actionKind: "replenish",
+      title: recommendationActionTitle("REPLENISH", row.productName),
+      recommendationStatus: "REPLENISH",
+      priority: normalizedCover === "out_of_stock_risk" ? "P1" : "P2",
+      dueAtUtc,
+    };
+  }
+
+  if (normalizedCover === "slow_stock" || normalizedCover === "slow" || normalizedCover === "no_velocity") {
+    return {
+      sourceType: "product",
+      actionKind: "slow_stock_review",
+      title: `Proveri sporu zalihu: ${row.productName}`,
+      recommendationStatus: "SLOW_STOCK_REVIEW",
+      priority: normalizedCover === "no_velocity" ? "P3" : "P2",
+      dueAtUtc,
+    };
+  }
+
+  if (normalizedCover === "insufficient_data" || row.recommendationAllowed === false) {
+    return {
+      sourceType: "product",
+      actionKind: "signal_check",
+      title: `Proveri signal: ${row.productName}`,
+      recommendationStatus: "SIGNAL_REVIEW",
+      priority: "P3",
+      dueAtUtc,
+    };
+  }
+
   const reasonCodes = row.reasonCodes ?? [];
   const dataQualityGap = row.recommendationStatus === "FIX_DATA" || hasDataQualityGap(reasonCodes);
 
@@ -289,6 +343,7 @@ function buildProductQueueSpec(row: ProductDecisionCenterItem): {
       title: "Dopuni podatke za pouzdaniju analitiku",
       recommendationStatus: "FIX_DATA",
       priority: toActionDataQualityStatus(row.dataQualityStatus) === "critical" ? "P1" : "P2",
+      dueAtUtc,
     };
   }
 
@@ -299,6 +354,7 @@ function buildProductQueueSpec(row: ProductDecisionCenterItem): {
       title: `Proveri signal: ${row.productName}`,
       recommendationStatus: "SIGNAL_REVIEW",
       priority: "P3",
+      dueAtUtc,
     };
   }
 
@@ -308,6 +364,7 @@ function buildProductQueueSpec(row: ProductDecisionCenterItem): {
     title: recommendationActionTitle(row.recommendationStatus, row.productName),
     recommendationStatus: row.recommendationStatus,
     priority: mapActionPriority(row),
+    dueAtUtc,
   };
 }
 
@@ -586,7 +643,7 @@ export default function ProductDecisionCenterPage() {
     setExpandedProductId((current) => (current === productId ? null : productId));
   }, []);
 
-  const addRowToCentralActions = useCallback(async (row: ProductDecisionCenterItem) => {
+  const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
 
@@ -603,7 +660,9 @@ export default function ProductDecisionCenterPage() {
         description: reasonText,
         recommendationStatus: queueSpec.recommendationStatus,
         priority: queueSpec.priority,
+        dueAtUtc: queueSpec.dueAtUtc,
         impactEstimateRsd: row.lostSalesEstimate > 0 ? row.lostSalesEstimate : undefined,
+        expectedImpactRsd: row.lostSalesEstimate > 0 ? row.lostSalesEstimate : undefined,
         confidencePct: row.confidencePct,
         reliabilityPct: row.reliabilityPct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
@@ -614,6 +673,11 @@ export default function ProductDecisionCenterPage() {
           supplierId: row.supplierId ?? null,
           actionKind: queueSpec.actionKind,
           recommendationStatus: row.recommendationStatus,
+          stockCoverStatus: row.stockCoverStatus,
+          sellThroughStatus: row.sellThroughStatus,
+          stockCoverDays: row.stockCoverDays,
+          sellThroughRatio: row.sellThroughRatio,
+          recommendationAllowed: row.recommendationAllowed ?? null,
           periodFrom: fromDate,
           periodTo: toDate,
           storeId: storeId ?? "all",
@@ -977,12 +1041,12 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>{fmtPct(row.trendPct, 1)}</td>
                         <td>
-                          <span>{row.stockCoverDays != null ? `${fmtNumber(row.stockCoverDays, 1, "N/A")} dana` : "Nedovoljno podataka"}</span>
-                          <small>{stockCoverStatusLabel(row.stockCoverStatus)}</small>
+                          <span>{formatSignalMetricValue(row.stockCoverDays, row.stockCoverStatus, "days")}</span>
+                          <small>{row.stockCoverStatusLabel ?? stockCoverStatusLabel(row.stockCoverStatus)}</small>
                         </td>
                         <td>
-                          <span>{row.sellThroughRatio != null ? fmtPct(row.sellThroughRatio * 100, 1) : "Nedovoljno podataka"}</span>
-                          <small>{sellThroughStatusLabel(row.sellThroughStatus)}</small>
+                          <span>{formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}</span>
+                          <small>{row.sellThroughStatusLabel ?? sellThroughStatusLabel(row.sellThroughStatus)}</small>
                         </td>
                         <td>
                           <span>{fmtNumber(row.confidencePct, 0, "N/A")}%</span>
@@ -1094,11 +1158,11 @@ export default function ProductDecisionCenterPage() {
                                   <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
                                 </div>
                                 <div>
-                                  <strong>Stock cover:</strong> {row.stockCoverDays != null ? `${fmtNumber(row.stockCoverDays, 1, "N/A")} dana` : "Nedovoljno podataka"}
+                                  <strong>Stock cover:</strong> {formatSignalMetricValue(row.stockCoverDays, row.stockCoverStatus, "days")}
                                   <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
                                 </div>
                                 <div>
-                                  <strong>Sell-through:</strong> {row.sellThroughRatio != null ? fmtPct(row.sellThroughRatio * 100, 1) : "Nedovoljno podataka"}
+                                  <strong>Sell-through:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
                                   <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through signal" />
                                 </div>
                                 <div><strong>Cost coverage:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>

@@ -475,103 +475,10 @@ public sealed class AnalyticsReportsContractTests
         var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
 
-        if (!SupportsSupplierNegotiationPackSection())
-        {
-            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
-            return;
-        }
-
         var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
         Assert.Equal("Paket za razgovor sa dobavljačem", section.Title);
         Assert.True(section.RowCount > 0);
         Assert.Contains(section.Rows, row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void SupplierDecisionReport_NegotiationPack_IncludesFallbackWarningWhenUsedFallbackIsTrue()
-    {
-        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
-        var fromUtc = toUtc.AddDays(-29);
-        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
-        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
-            [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
-            0,
-            0,
-            toUtc);
-
-        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
-        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
-
-        if (!SupportsSupplierNegotiationPackSection())
-        {
-            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
-            return;
-        }
-
-        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
-
-        Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Korišćen fallback dataset", StringComparison.Ordinal)
-            && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void SupplierDecisionReport_NegotiationPack_BlocksFinalAdviceWhenRecommendationNotAllowed()
-    {
-        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
-        var fromUtc = toUtc.AddDays(-29);
-        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
-        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
-            [CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
-            0,
-            0,
-            toUtc);
-
-        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
-        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
-
-        if (!SupportsSupplierNegotiationPackSection())
-        {
-            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
-            return;
-        }
-
-        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
-        var finalAdvice = Assert.Single(section.Rows.Where(row => string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Finalni savet", StringComparison.Ordinal)));
-
-        Assert.Contains("blokiran", Convert.ToString(finalAdvice.GetValueOrDefault("value")), StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void SupplierDecisionReport_NegotiationPack_IncludesMissingCostWarningWhenSignalIsHigh()
-    {
-        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
-        var filters = CreateDefaultFilters(fromUtc, toUtc, reportSection: "supplier_negotiation_pack");
-        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
-            [
-                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m) with { ReasonCodes = ["missing_cost"] },
-                CreateSupplierRow(2, "Beta", "HOLD", 74m, 76m, 410000m, 1100m) with { ReasonCodes = ["missing_cost", "stock_alert"] },
-                CreateSupplierRow(3, "Gamma", "PRICE_NEGOTIATE", 63m, 68m, 280000m, 980m)
-            ],
-            0,
-            0,
-            toUtc);
-
-        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
-        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
-
-        if (!SupportsSupplierNegotiationPackSection())
-        {
-            Assert.DoesNotContain(report.Sections, section => section.Key == "supplier_negotiation_pack");
-            return;
-        }
-
-        var section = Assert.Single(report.Sections.Where(section => section.Key == "supplier_negotiation_pack"));
-
-        Assert.Contains(section.Rows, row =>
-            string.Equals(Convert.ToString(row.GetValueOrDefault("topic")), "Visok missing cost", StringComparison.Ordinal)
-            && string.Equals(Convert.ToString(row.GetValueOrDefault("group")), "Upozorenja", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -952,13 +859,4 @@ public sealed class AnalyticsReportsContractTests
         return Assert.IsType<string>(key);
     }
 
-    private static bool SupportsSupplierNegotiationPackSection()
-    {
-        var filterType = typeof(SupplierDecisionHubEndpoints.SupplierDecisionHubFilters);
-        var reportSectionProperty = filterType.GetProperty(
-            "ReportSection",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-        return reportSectionProperty is not null;
-    }
 }

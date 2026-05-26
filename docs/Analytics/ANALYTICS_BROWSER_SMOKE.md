@@ -4,6 +4,9 @@ Datum: 2026-05-26
 Repo: ivanjovicic/Trendplus
 Namena: Manual browser-level smoke za production sign-off (nije zamena za automated route smoke).
 
+Napomena:
+- Source of truth za automated smoke route listu je Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts.
+
 ## Scope
 
 Obavezne rute:
@@ -21,8 +24,8 @@ Obavezne rute:
 ## Prerequisites
 
 - Frontend aplikacija je pokrenuta lokalno (ili target environment za sign-off).
-- Browser console je otvoren (F12) za proveru runtime gresaka.
-- Pozeljno je imati fallback dataset, ali test ne sme zavisiti od specificne baze.
+- Browser console je otvoren (F12) za proveru runtime grešaka.
+- Poželjno je imati fallback dataset, ali test ne sme zavisiti od specifične baze.
 
 ## Automated Guardrail (complementary)
 
@@ -35,16 +38,16 @@ npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx
 
 Napomena:
 - Ovaj test proverava route mapping/lazy route resolution.
-- Ne proverava realno browser renderovanje i UX ponasanje posle refresh-a.
+- Ne proverava realno browser renderovanje i UX ponašanje posle refresh-a.
 
 ## Pass Criteria
 
-Za svaku rutu vazi:
-- Stranica se ucita bez blank screen-a.
+Za svaku rutu važi:
+- Stranica se učita bez blank screen-a.
 - Nema runtime crash-a (nema uncaught error overlay-a).
 - Ako backend nema podatke, prikazan je user-friendly empty/error state (bez fake-zero KPI prikaza).
-- TrustHeader/refresh/data quality informacije su vidljive gde se ocekuju na analytics ekranima.
-- Nema mojibake-a u glavnim naslovima i kljucnim tekstovima.
+- TrustHeader/refresh/data quality informacije su vidljive gde se očekuju na analytics ekranima.
+- Nema mojibake-a u glavnim naslovima i ključnim tekstovima.
 
 Dodatno za durable report rute:
 - Browser refresh (`Ctrl+R`) ostaje na istoj report stranici i URL-u.
@@ -56,9 +59,9 @@ Dodatno za durable report rute:
 2. Potvrdi da nema blank screen-a niti runtime crash-a.
 3. Za analytics rute proveri da su TrustHeader i refresh/data quality info vidljivi.
 4. Za durable report rute uradi refresh i potvrdi da stranica ostaje stabilna.
-5. Ako se prikaze expired state, potvrdi da export dugmad nisu dostupna bez payload-a.
+5. Ako se prikaže expired state, potvrdi da export dugmad nisu dostupna bez payload-a.
 6. Vizuelno proveri glavne naslove za mojibake (`Ä`, `Å`, `â`, `�`).
-7. Zabelezi PASS/FAIL i kratku napomenu po ruti.
+7. Zabeleži PASS/FAIL i kratku napomenu po ruti.
 
 ## Execution Table
 

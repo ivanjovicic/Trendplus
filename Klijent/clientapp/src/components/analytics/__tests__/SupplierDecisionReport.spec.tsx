@@ -34,6 +34,9 @@ function buildPayload() {
       { section: "Header", item: "Period", value: "2026-04-01 - 2026-06-30" },
       { section: "KPI", item: "Prihod", value: "520000" },
       { section: "supplier_negotiation_pack", item: "Dobavljač", value: "Alpha", secondary: "Sažetak", note: "Kontekst" },
+      { section: "supplier_negotiation_pack", item: "Prihod", value: "520000", secondary: "Sažetak" },
+      { section: "supplier_negotiation_pack", item: "Maržni doprinos", value: "162000", secondary: "Sažetak" },
+      { section: "supplier_negotiation_pack", item: "Prodate jedinice", value: "120", secondary: "Sažetak" },
       { section: "supplier_negotiation_pack", item: "Najbolji artikli po marži", value: "Model A", secondary: "Argumenti za pregovor" },
       { section: "supplier_negotiation_pack", item: "Finalni savet", value: "Pojačaj saradnju", secondary: "Predlog razgovora" },
       { section: "supplier_negotiation_pack", item: "Korišćen fallback dataset", value: "usedFallback=true", secondary: "Upozorenja", note: "fallback_90d" },
@@ -72,5 +75,18 @@ describe("SupplierDecisionReport", () => {
 
     expect(clipboardWriteTextMock.mock.calls[0][0]).toContain("Paket za razgovor sa dobavljačem");
     expect(clipboardWriteTextMock.mock.calls[0][0]).toContain("Finalni savet");
+  });
+
+  it("shows helper signal when recommendationAllowed=false", () => {
+    const payload = buildPayload();
+    payload.rows = payload.rows.map((row) => row.section === "supplier_negotiation_pack" && row.item === "Finalni savet"
+      ? { ...row, secondary: "Pomoćni signal", value: "Proveriti podatke i signal pre pregovora" }
+      : row);
+    payload.metadata = [{ key: "dataQualityStatus", label: "Kvalitet podataka", value: "critical" }];
+
+    render(<SupplierDecisionReport payload={payload} />);
+
+    expect(screen.getByText("Pomoćni signal")).toBeInTheDocument();
+    expect(screen.getByText(/proveriti podatke i signal pre pregovora/i)).toBeInTheDocument();
   });
 });

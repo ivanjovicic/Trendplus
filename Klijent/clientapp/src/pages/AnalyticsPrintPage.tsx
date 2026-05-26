@@ -2,50 +2,6 @@ import React from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getPrintPayload } from "../services/analyticsTableState";
 
-function isManualSupplierColumnKey(key: string): boolean {
-  return key.startsWith("manualSupplier:");
-}
-
-function normalizeColumnClassName(key: string): string {
-  return key.replace(/[^a-zA-Z0-9_-]+/g, "-");
-}
-
-function getPrintColumnClassName(column: { key: string; header: string }): string {
-  const baseClass = !column.header || isManualSupplierColumnKey(column.key) ? "blank-col" : "named-col";
-  return `${baseClass} analytics-print-col-${normalizeColumnClassName(column.key)}`;
-}
-
-function formatPrintDate(value: string, compact: boolean): string {
-  const normalized = value.slice(0, 10);
-  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-
-  if (match) {
-    const [, year, month, day] = match;
-    return compact ? `${day}.${month}.${year.slice(2)}` : `${day}.${month}.${year}.`;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const year = String(parsed.getFullYear());
-  return compact ? `${day}.${month}.${year.slice(2)}` : `${day}.${month}.${year}.`;
-}
-
-function formatPrintCellValue(
-  column: { dataType?: string },
-  value: unknown,
-  options: { compactDate: boolean }
-): string {
-  if (value == null) return "";
-  if (column.dataType === "date" || column.dataType === "datetime") {
-    return formatPrintDate(String(value), options.compactDate);
-  }
-
-  return String(value);
-}
-
 export default function AnalyticsPrintPage() {
   const params = useParams<{ table?: string }>();
   const [searchParams] = useSearchParams();
@@ -53,29 +9,14 @@ export default function AnalyticsPrintPage() {
     () => getPrintPayload(searchParams.get("stateKey")),
     [searchParams]
   );
-  const isPortraitShiftBlank = payload?.documentType === "daily-sales-blank-portrait";
-  const isDenseDailySalesBlank =
-    payload?.documentType === "daily-sales-blank" ||
-    (payload?.tableKey === "daily-sales-stats-blank" && !isPortraitShiftBlank);
-  const isFilledDailySalesPrint =
-    payload?.tableKey === "daily-sales-stats" && !isDenseDailySalesBlank && !isPortraitShiftBlank;
-  const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank || isPortraitShiftBlank;
-  const isDailySalesPortraitA4 = isDailySalesPrint;
-  const manualSupplierColumnCount = payload?.columns.filter((column) => isManualSupplierColumnKey(column.key)).length ?? 0;
-  const manualSupplierStartIndex = payload?.columns.findIndex((column) => isManualSupplierColumnKey(column.key)) ?? -1;
-  const manualSupplierEndColSpan =
-    manualSupplierStartIndex >= 0 && payload
-      ? payload.columns.length - manualSupplierStartIndex - manualSupplierColumnCount
-      : 0;
-  const pageOrientation = "portrait";
-  const pageMarginMm = isDailySalesPortraitA4 ? 4 : 14;
-  const tableFontSizePx = isDailySalesPortraitA4 ? 5.5 : 12;
-  // Separate padding for th and td so we can control row height properly
-  const thPadding = isDailySalesPortraitA4 ? "1px" : "8px";
-  const tdPadding = isDailySalesPortraitA4 ? "0 1px" : "8px";
-  // height on <td> acts as min-height (unlike min-height which is ignored on table cells)
-  const blankTdHeightPx = 22;
-  const titleFontSizePx = isDailySalesPortraitA4 ? 10 : 28;
+  const isDenseDailySalesBlank = payload?.documentType === "daily-sales-blank";
+  const isDailySalesPrint = payload?.tableKey === "daily-sales-stats" || payload?.tableKey === "daily-sales-stats-blank" || isDenseDailySalesBlank;
+  const pageOrientation = isDailySalesPrint ? "portrait" : "landscape";
+  const pageMarginMm = isDenseDailySalesBlank ? 8 : 14;
+  const tableFontSizePx = isDenseDailySalesBlank ? 9 : 12;
+  const cellPadding = isDenseDailySalesBlank ? "8px 5px" : isDailySalesPrint ? "10px 8px" : "8px";
+  const rowMinHeightPx = isDenseDailySalesBlank ? 30 : isDailySalesPrint ? 26 : 0;
+  const titleFontSizePx = isDenseDailySalesBlank ? 22 : 28;
 
   React.useEffect(() => {
     if (!payload) return;
@@ -94,7 +35,7 @@ export default function AnalyticsPrintPage() {
 
   return (
     <div
-      className={`analytics-print-page${isDailySalesPortraitA4 ? " analytics-print-page-daily-a4-portrait" : ""}${isFilledDailySalesPrint ? " analytics-print-page-daily-sales" : ""}${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}${isPortraitShiftBlank ? " analytics-print-page-portrait-shift" : ""}`}
+      className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}`}
       style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
@@ -105,398 +46,26 @@ export default function AnalyticsPrintPage() {
           body { background: var(--c-fff, var(--theme-color-ffffff, #ffffff)) !important; }
           .analytics-print-page { padding: 0 !important; }
         }
-        .analytics-print-table {
-          width: 100%;
-          max-width: 100%;
-          border-collapse: collapse;
-          table-layout: fixed;
-          page-break-inside: auto;
-        }
-        .analytics-print-table thead { display: table-header-group; }
-        .analytics-print-table tfoot { display: table-footer-group; }
-        .analytics-print-table tr {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
+        .analytics-print-table { width: 100%; border-collapse: collapse; }
         .analytics-print-table th,
         .analytics-print-table td {
           border: 1px solid var(--border);
+          padding: ${cellPadding};
           font-size: ${tableFontSizePx}px;
-          line-height: 1.18;
           vertical-align: top;
-          overflow-wrap: anywhere;
-          word-break: normal;
+          min-height: ${rowMinHeightPx}px;
         }
-        .analytics-print-table th { padding: ${thPadding}; }
-        .analytics-print-table td { padding: ${tdPadding}; }
         .analytics-print-table th {
           background: var(--surface-elevated);
           text-align: left;
-          font-weight: 700;
         }
-        @media print {
-          .analytics-print-page,
-          .analytics-print-table {
-            overflow: visible !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-        }
-
-        /* Filled daily-sales print: landscape A4, compact fixed columns */
-        .analytics-print-page-daily-sales .analytics-print-header {
-          margin-bottom: 8px !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-meta {
-          margin-bottom: 8px !important;
-          gap: 8px !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-meta h2 {
-          font-size: 10px !important;
-          margin-bottom: 3px !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-meta div {
-          font-size: 8px !important;
-          margin-bottom: 2px !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-table th,
-        .analytics-print-page-daily-sales .analytics-print-table td {
-          border-color: #666666;
-        }
-        .analytics-print-page-daily-sales .analytics-print-table th {
-          background: #e9edf3 !important;
-          color: #111111 !important;
-          font-size: 7px;
-          line-height: 1.12;
-          padding: 5px 2px;
-          vertical-align: bottom;
-          text-align: right;
-          white-space: normal;
-        }
-        .analytics-print-page-daily-sales .analytics-print-table td {
-          background: #ffffff !important;
-          color: #111111 !important;
-          font-size: 8px;
-          line-height: 1.15;
-          padding: 4px 3px;
-          text-align: right;
-          vertical-align: middle;
-          white-space: nowrap;
-        }
-        .analytics-print-page-daily-sales .analytics-print-table tbody tr:nth-child(even) td {
-          background: #f7f8fa !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-col-date {
-          width: 20mm;
-          text-align: left !important;
-        }
-        .analytics-print-page-daily-sales .analytics-print-col-firstShiftTotalItems,
-        .analytics-print-page-daily-sales .analytics-print-col-secondShiftTotalItems {
-          width: 16mm;
-        }
-        .analytics-print-page-daily-sales .analytics-print-col-totalRevenue {
-          width: 24mm;
-        }
-        .analytics-print-page-daily-sales .analytics-print-col-othersCount {
-          width: 15mm;
-        }
-        .analytics-print-page-daily-sales .analytics-print-col-totalItemsSold {
-          width: 17mm;
-        }
-        .analytics-print-page-daily-sales th[class*="analytics-print-col-supplier-"],
-        .analytics-print-page-daily-sales td[class*="analytics-print-col-supplier-"] {
-          width: auto;
-        }
-
-        /* Blank daily-sales form: 15 manual supplier columns on landscape A4 */
         .analytics-print-page-dense .analytics-print-table {
           table-layout: fixed;
         }
-        .analytics-print-page-dense .analytics-print-group-row th {
-          border: 1px solid #555555;
-          background: #f0f0f0 !important;
-          color: #111111 !important;
-          padding: 3px 2px;
-          font-size: 7px;
-          line-height: 1.1;
-          text-align: center;
-          vertical-align: middle;
-        }
-        .analytics-print-page-dense .analytics-print-group-row .manual-supplier-group {
-          background: #e6edf7 !important;
-          font-weight: 700;
-        }
-        .analytics-print-page-dense .analytics-print-table th.named-col {
-          font-size: 7px;
-          line-height: 1.15;
-          padding: 5px 3px;
-          vertical-align: bottom;
-          white-space: normal;
-          background: #eeeeee !important;
-          color: #111111 !important;
-        }
-        .analytics-print-page-dense .analytics-print-table td.named-col {
-          padding: ${tdPadding};
-          height: ${blankTdHeightPx}px;
-          vertical-align: middle;
-          background: #ffffff !important;
-        }
-        .analytics-print-page-dense .analytics-print-table th.blank-col {
-          font-size: 7px;
-          line-height: 1.1;
-          padding: 5px 1px;
-          vertical-align: bottom;
-          text-align: center;
-          background: #e6edf7 !important;
-          color: #111111 !important;
-        }
-        .analytics-print-page-dense .analytics-print-table td.blank-col {
-          padding: ${tdPadding};
-          height: ${blankTdHeightPx}px;
-          vertical-align: middle;
-          background: #ffffff !important;
-        }
-        /* Fixed blank-form widths. Daily portrait rules below override these for A4 print. */
-        .analytics-print-page-dense .analytics-print-col-date { width: 12mm; }
-        .analytics-print-page-dense .analytics-print-col-worker1,
-        .analytics-print-page-dense .analytics-print-col-worker2 { width: 15mm; }
-        .analytics-print-page-dense .analytics-print-col-others { width: 15mm; }
-        .analytics-print-page-dense .analytics-print-col-shift1,
-        .analytics-print-page-dense .analytics-print-col-shift2 { width: 10mm; }
-        .analytics-print-page-dense .analytics-print-col-revenue { width: 11mm; }
-        .analytics-print-page-dense .analytics-print-col-total { width: 9mm; }
-        .analytics-print-page-dense th[class*="analytics-print-col-manualSupplier-"],
-        .analytics-print-page-dense td[class*="analytics-print-col-manualSupplier-"] {
-          width: 13mm;
-        }
-        /* Even rows stay white on blank form — no tinting for clean writing space */
-        .analytics-print-page-dense .analytics-print-table tbody tr:nth-child(even) td {
-          background: #ffffff !important;
-        }
-        @media print {
-          .analytics-print-page-dense .analytics-print-table td {
-            background: #ffffff !important;
-            height: ${blankTdHeightPx}px;
-          }
-        }
-
-        /* ── Portrait shift blank form (30 rows on A4 portrait) ───── */
-        /* A4 portrait: 297mm - 16mm margins = 281mm.
-           Title block ~18mm + table header ~8mm = 26mm overhead.
-           255mm / 30 rows = 8.5mm ≈ 32px per row. */
-        .analytics-print-page-portrait-shift .analytics-print-table {
-          table-layout: fixed;
-          width: 100%;
-          border-collapse: collapse;
-        }
-        .analytics-print-page-portrait-shift .analytics-print-table th,
-        .analytics-print-page-portrait-shift .analytics-print-table td {
-          border: 1px solid #888;
-          font-size: 8px;
-          overflow: hidden;
-        }
-        .analytics-print-page-portrait-shift .analytics-print-table th {
-          padding: 2px 3px;
-          background: #eeeeee !important;
-          font-weight: bold;
-          text-align: left;
-          vertical-align: middle;
-          line-height: 1.1;
-          font-size: 10.5px;
-          height: 42px;
+        .analytics-print-page-dense .analytics-print-table th,
+        .analytics-print-page-dense .analytics-print-table td {
+          overflow-wrap: anywhere;
           word-break: break-word;
-          white-space: normal;
-        }
-        .analytics-print-page-portrait-shift .analytics-print-table td {
-          padding: 0 3px;
-          height: 32px;
-          background: #ffffff !important;
-          vertical-align: middle;
-        }
-        /* Alternating row shade — very light, so writing stays visible */
-        .analytics-print-page-portrait-shift .analytics-print-table tbody tr:nth-child(even) td {
-          background: #f5f5f5 !important;
-        }
-        /* Column widths (total = 194mm on portrait with 8mm margins) */
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(1),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(1) { width: 22mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(2),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(2) { width: 37mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(3),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(3) { width: 19mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(4),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(4) { width: 37mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(5),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(5) { width: 20mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(6),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(6) { width: 24mm; }
-        .analytics-print-page-portrait-shift .analytics-print-table th:nth-child(7),
-        .analytics-print-page-portrait-shift .analytics-print-table td:nth-child(7) { width: 35mm; }
-        @media print {
-          .analytics-print-page-portrait-shift .analytics-print-table td {
-            background: #ffffff !important;
-            height: 32px;
-          }
-          .analytics-print-page-portrait-shift .analytics-print-table tbody tr:nth-child(even) td {
-            background: #f5f5f5 !important;
-          }
-        }
-
-        /* Daily sales A4 portrait: 30 rows on one printed page */
-        .analytics-print-page-daily-a4-portrait {
-          background: #ffffff !important;
-          color: #111111 !important;
-          width: 202mm;
-          max-width: 202mm;
-          min-height: auto !important;
-          padding: 0 !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-actions {
-          margin-bottom: 8px !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-header {
-          margin-bottom: 2px !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-header > div:first-child,
-        .analytics-print-page-daily-a4-portrait .analytics-print-meta {
-          display: none !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-header h1 {
-          color: #111111 !important;
-          font-size: 10px !important;
-          line-height: 1 !important;
-          margin: 0 0 2px !important;
-          padding: 0 !important;
-          font-weight: 700 !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-group-row {
-          display: none !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table {
-          width: 202mm !important;
-          max-width: 202mm !important;
-          table-layout: fixed !important;
-          border-collapse: collapse !important;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-          border: 1px solid #555555 !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table thead {
-          display: table-header-group;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table tr {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table th,
-        .analytics-print-page-daily-a4-portrait .analytics-print-table td {
-          border: 0.6px solid #6f6f6f !important;
-          color: #111111 !important;
-          overflow: hidden !important;
-          text-overflow: clip !important;
-          word-break: normal !important;
-          overflow-wrap: normal !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table th {
-          background: #eeeeee !important;
-          font-size: 4.6px !important;
-          line-height: 1 !important;
-          height: 13px !important;
-          padding: 1px !important;
-          text-align: center !important;
-          vertical-align: middle !important;
-          white-space: nowrap !important;
-          font-weight: 700 !important;
-        }
-        .analytics-print-page-daily-a4-portrait.analytics-print-page-dense .analytics-print-table th {
-          font-size: 7.2px !important;
-          line-height: 1.06 !important;
-          height: 42px !important;
-          padding: 2px 1px !important;
-          white-space: normal !important;
-          word-break: break-word !important;
-          overflow-wrap: anywhere !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table td {
-          background: #ffffff !important;
-          font-size: 5.5px !important;
-          line-height: 1 !important;
-          height: 18px !important;
-          padding: 0 1px !important;
-          text-align: right !important;
-          vertical-align: middle !important;
-          white-space: nowrap !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-table tbody tr:nth-child(even) td {
-          background: #ffffff !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-date {
-          width: 10mm !important;
-          text-align: left !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-firstShiftTotalItems,
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-secondShiftTotalItems {
-          width: 10mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-totalRevenue {
-          width: 16mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-othersCount {
-          width: 8mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-totalItemsSold {
-          width: 10mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-worker1,
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-worker2 {
-          width: 11.5mm !important;
-          text-align: left !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-others {
-          width: 12.5mm !important;
-          text-align: left !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-shift1,
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-shift2 {
-          width: 7mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-revenue {
-          width: 8mm !important;
-        }
-        .analytics-print-page-daily-a4-portrait .analytics-print-col-total {
-          width: 12mm !important;
-        }
-        /* Shared supplier column standard for both "Stampaj" and "Stampaj obrazac" */
-        .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-supplier-"],
-        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-supplier-"],
-        .analytics-print-page-daily-a4-portrait th[class*="analytics-print-col-manualSupplier-"],
-        .analytics-print-page-daily-a4-portrait td[class*="analytics-print-col-manualSupplier-"] {
-          width: 8.8mm !important;
-          text-align: center !important;
-        }
-        .analytics-print-page-daily-a4-portrait .blank-col {
-          background: #ffffff !important;
-        }
-        .analytics-print-page-daily-a4-portrait td.blank-col,
-        .analytics-print-page-daily-a4-portrait.analytics-print-page-dense .analytics-print-table td {
-          height: ${blankTdHeightPx}px !important;
-          font-size: 5px !important;
-        }
-        @media print {
-          html,
-          body {
-            width: 210mm !important;
-            min-width: 210mm !important;
-            background: #ffffff !important;
-          }
-          .analytics-print-page-daily-a4-portrait {
-            width: 202mm !important;
-            max-width: 202mm !important;
-            overflow: hidden !important;
-          }
-          .analytics-print-page-daily-a4-portrait .analytics-print-table {
-            page-break-after: avoid !important;
-          }
         }
       `}</style>
 
@@ -509,12 +78,12 @@ export default function AnalyticsPrintPage() {
         </button>
       </div>
 
-      <header className="analytics-print-header" style={{ marginBottom: isDailySalesPrint ? 10 : 20 }}>
+      <header style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Trendplus analitika
         </div>
         <h1 style={{ margin: "6px 0 4px", fontSize: titleFontSizePx }}>{payload.tableTitle}</h1>
-        {!isDenseDailySalesBlank && !isPortraitShiftBlank && (
+        {!isDenseDailySalesBlank && (
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
             Table key: {params.table ?? payload.tableKey} | Generated in browser print view
           </div>
@@ -522,7 +91,7 @@ export default function AnalyticsPrintPage() {
       </header>
 
       {(payload.filters.length > 0 || payload.metadata.length > 0) ? (
-        <section className="analytics-print-meta" style={{ marginBottom: isDailySalesPrint ? 10 : 20, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+        <section style={{ marginBottom: 20, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           {payload.filters.length > 0 ? (
             <div>
               <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Filteri</h2>
@@ -549,18 +118,9 @@ export default function AnalyticsPrintPage() {
 
       <table className="analytics-print-table">
         <thead>
-          {isDenseDailySalesBlank && manualSupplierStartIndex >= 0 ? (
-            <tr className="analytics-print-group-row">
-              {manualSupplierStartIndex > 0 ? <th className="group-spacer" colSpan={manualSupplierStartIndex} /> : null}
-              <th className="manual-supplier-group" colSpan={manualSupplierColumnCount}>
-                Dobavljači (ručni unos)
-              </th>
-              {manualSupplierEndColSpan > 0 ? <th className="group-spacer" colSpan={manualSupplierEndColSpan} /> : null}
-            </tr>
-          ) : null}
           <tr>
             {payload.columns.map((column) => (
-              <th key={column.key} className={getPrintColumnClassName(column)}>{column.header}</th>
+              <th key={column.key}>{column.header}</th>
             ))}
           </tr>
         </thead>
@@ -572,9 +132,7 @@ export default function AnalyticsPrintPage() {
           ) : payload.rows.map((row, index) => (
             <tr key={`${payload.tableKey}-${index}`}>
               {payload.columns.map((column) => (
-                <td key={column.key} className={getPrintColumnClassName(column)}>
-                  {formatPrintCellValue(column, row[column.key], { compactDate: isDailySalesPrint })}
-                </td>
+                <td key={column.key}>{row[column.key] == null ? "-" : String(row[column.key])}</td>
               ))}
             </tr>
           ))}

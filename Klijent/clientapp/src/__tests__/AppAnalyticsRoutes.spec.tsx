@@ -51,8 +51,8 @@ const testIdByPath: Record<string, string> = {
   "/analytics/inventory": "route-analytics-inventory",
   "/analytics/data-quality": "route-analytics-data-quality",
   "/analytics/actions": "route-analytics-actions",
-  "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30": "route-analytics-supplier-report",
-  "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30": "route-analytics-pilot-intake-report",
+  "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all": "route-analytics-supplier-report",
+  "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all": "route-analytics-pilot-intake-report",
 };
 
 const routeCases = CORE_ANALYTICS_SMOKE_ROUTES.map((path) => ({

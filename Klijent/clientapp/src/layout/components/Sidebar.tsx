@@ -75,8 +75,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
   };
 
   const sidebarContent = (
-    <aside className="h-full w-64 border-r border-muted surface">
-      <div className="flex items-center justify-between border-b border-muted px-4 py-3">
+    <aside className="h-full w-80 border-r border-muted surface">
+      <div className="flex items-center justify-between border-b border-muted px-5 py-4">
         <div>
           <div className="text-sm font-medium text-muted">Trendplus</div>
           <h1 className="text-lg font-semibold text-contrast">Backoffice</h1>
@@ -102,8 +102,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
         </div>
       </div>
 
-      <nav className="h-[calc(100%-61px)] overflow-y-auto px-2 py-3">
-        <div className="space-y-1.5">
+      <nav className="h-[calc(100%-73px)] overflow-y-auto px-3 py-4">
+        <div className="space-y-2">
           {NAV_GROUPS.map((group) => {
             const GroupIcon = group.icon;
             const isOpen = openGroups.has(group.id);
@@ -113,7 +113,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className="flex w-full items-center justify-between px-3 py-2 text-left"
+                  className="flex w-full items-center justify-between px-3 py-2.5 text-left"
                 >
                   <span className="flex items-center gap-2 text-sm font-semibold text-contrast">
                     <GroupIcon size={15} className="text-[var(--info)]" />
@@ -137,25 +137,20 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                 </button>
 
                 {isOpen ? (
-                  <ul className="space-y-0.5 px-1.5 pb-1.5">
-                    {group.items.filter((item) => !item.hidden).map((item) => {
+                  <ul className="space-y-1 px-2 pb-2">
+                    {group.items.map((item) => {
                       const ItemIcon = item.icon;
                       const isTestItem = Boolean(group.badge || item.badge);
                       const badge = item.badge ?? group.badge;
                       return (
                         <li key={item.to}>
-                          <NavLink
-                            to={item.to}
-                            onClick={onCloseMobile}
-                            title={item.title}
-                            className={
-                              `group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition ${
-                                item.to === activeItemTo
-                                  ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
-                                  : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
-                              }`
-                            }
-                          >
+                          <NavLink to={item.to} onClick={onCloseMobile} className={
+                            `group flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
+                              item.to === activeItemTo
+                                ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
+                                : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
+                            }`
+                          }>
                             <ItemIcon size={15} className="shrink-0 text-[var(--info)] group-hover:opacity-80" />
                             <span className="truncate flex items-center gap-2">
                               <span>{item.label}</span>

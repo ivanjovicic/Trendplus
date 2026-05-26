@@ -14,9 +14,6 @@ import {
   YAxis,
 } from "recharts";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
-import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
-import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
 import { getStores } from "../services/analyticsApi";
@@ -30,7 +27,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
-import { fmtNumber, fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import "./DailySalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -178,6 +175,10 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+function fmtNumber(value: number): string {
+  return value.toLocaleString("sr-RS");
+}
+
 function fmtCompactNumber(value: number): string {
   return COMPACT_NUMBER_FORMATTER.format(value);
 }
@@ -188,6 +189,24 @@ function fmtDelta(deltaPct: number | null, currentValue: number, previousValue: 
     return "N/A";
   }
   return fmtSignedPct(deltaPct, 1);
+}
+
+function fmtDate(value: string): string {
+  const normalized = value.slice(0, 10);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString("sr-RS");
+  }
+
+  const [, yearRaw, monthRaw, dayRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("sr-RS");
 }
 
 function fmtDateShort(value: string | null | undefined): string {
@@ -216,8 +235,8 @@ function fmtDateISO(value: string | null | undefined): string {
 function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | null {
   if (field !== active) return null;
   // Use simple Unicode badges; kept small to avoid encoding issues in common setups
-  const up = "Ã¢â€“Â²";
-  const down = "Ã¢â€“Â¼";
+  const up = "▲";
+  const down = "▼";
   return <span className="sort-badge">{dir === "asc" ? up : down}</span>;
 }
 
@@ -551,7 +570,7 @@ export default function DailySalesStatsPage() {
     timeSeriesRows.map((row, index) => ({
       date: row.date,
       label: fmtDateShort(row.date),
-      fullLabel: formatDate(row.date),
+      fullLabel: fmtDate(row.date),
       totalRevenue: row.totalRevenue,
       totalItemsSold: row.totalItemsSold,
       ma7Revenue: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalRevenue, 7),
@@ -563,7 +582,7 @@ export default function DailySalesStatsPage() {
     timeSeriesRows.map((row) => ({
       date: row.date,
       label: fmtDateShort(row.date),
-      fullLabel: formatDate(row.date),
+      fullLabel: fmtDate(row.date),
       firstShiftTotalItems: row.firstShiftTotalItems,
       secondShiftTotalItems: row.secondShiftTotalItems,
       totalItemsSold: row.totalItemsSold,
@@ -740,7 +759,7 @@ export default function DailySalesStatsPage() {
       const revenueDelta = current.totalRevenue - previous.totalRevenue;
       changes.push({
         date: current.date,
-        label: formatDate(current.date),
+        label: fmtDate(current.date),
         revenueDelta,
         revenueDeltaPct: calculateDeltaPct(current.totalRevenue, previous.totalRevenue),
       });
@@ -821,7 +840,7 @@ export default function DailySalesStatsPage() {
     },
     {
       key: "receiptMismatch",
-      label: "NeusklaÃ„â€˜eni raÃ„Âuni",
+      label: "Neusklađeni računi",
       value: fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0),
       tone: (data?.metadata.receiptAmountMismatchCount ?? 0) > 0 ? "danger" : "good",
       description: "Računi gde dnevnik i suma stavki ne daju isti iznos.",
@@ -922,7 +941,7 @@ export default function DailySalesStatsPage() {
     if ((data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 || (data?.metadata.receiptAmountMismatchCount ?? 0) > 0) {
       insights.push({
         title: "Prodaja trazi rekonsilijaciju",
-        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om izmeÃ„â€˜u dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
+        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om između dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
         tone: "danger",
       });
     }
@@ -1112,24 +1131,8 @@ export default function DailySalesStatsPage() {
     );
   }, []);
 
-  const showBlockingError = Boolean(error && !data);
-  const showStaleError = Boolean(error && data);
-
   return (
     <div className="daily-sales-page">
-      <AnalyticsTrustHeader
-        title="Prodaja po smeni"
-        description="Dnevni pregled prodaje po smenama: kolicine, prihodi i top dobavljaci."
-        periodFrom={activeFilters.fromDate}
-        periodTo={activeFilters.toDate}
-        lastRefreshAt={null}
-        dataSource="Sales facts analytics"
-        mode="signal"
-        methodologyHref="/analytics/data-quality"
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        compact
-      />
       <header className="daily-sales-header">
         <div>
           <h1>Prodaja po smeni</h1>
@@ -1150,7 +1153,7 @@ export default function DailySalesStatsPage() {
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">PrilagoÃ„â€˜eno</option>
+            <option value="custom">Prilagođeno</option>
           </select>
         </label>
 
@@ -1217,37 +1220,7 @@ export default function DailySalesStatsPage() {
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {showBlockingError ? (
-        <AnalyticsErrorState
-          title="Podaci trenutno nisu dostupni"
-          message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
-          onRetry={() => void load(activeFilters)}
-          helpHref="/analytics/data-quality"
-        />
-      ) : null}
-      {showStaleError ? (
-        <div className="daily-sales-message info" role="status" aria-live="polite">
-          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
-        </div>
-      ) : null}
-      {!loading && !showBlockingError && data && (data.dateRows?.length ?? 0) === 0 ? (
-        <AnalyticsEmptyState
-          variant={data.metadata.totalItemsInRange > 0 ? "filtered_out" : "no_data"}
-          message={
-            data.metadata.totalItemsInRange > 0
-              ? "Promenite filtere ili prosirite period."
-              : "Nije bilo prodaje u izabranom periodu."
-          }
-          actions={[
-            { label: "Proširite period pretrage." },
-            { label: "Uklonite filter prodavnice." },
-            { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
-          ]}
-          dataQualityHref="/analytics/data-quality"
-          refreshStatusHref="/admin/configuration?panel=workers"
-          onRetry={() => void load(activeFilters)}
-        />
-      ) : null}
+      {error ? <div className="daily-sales-message error">{error}</div> : null}
       {loading ? (
         <div className="daily-sales-message loading">
           <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />
@@ -1279,17 +1252,17 @@ export default function DailySalesStatsPage() {
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
-              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00Ã¢â‚¬â€œ13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
+              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu ukljuceni u ovaj procenat." /></span>
               <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
               <small>{fmtNumber(currentSummary.firstShiftItems)} komada</small>
             </article>
             <article>
-              <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00Ã¢â‚¬â€œ21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
+              <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00–21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
               <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
               <small>{fmtNumber(currentSummary.secondShiftItems)} komada</small>
             </article>
             <article>
-              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi Ãƒâ€” 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
+              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljaca sa najvecim prometom u opsegu. Formula: (top 3 dobavljaci) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljaca." /></span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
               <small>Udeo top 3 dobavljača po komadima</small>
             </article>
@@ -1300,7 +1273,7 @@ export default function DailySalesStatsPage() {
               <div>
                 <h2>Tabela po danima</h2>
                 <p>
-                  Top dobavljaÃ„Âi su odreÃ„â€˜eni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
+                  Top dobavljači su određeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
                 </p>
               </div>
               <AnalyticsTableToolbar
@@ -1388,7 +1361,7 @@ export default function DailySalesStatsPage() {
                       const mismatch = supplierTotal !== row.totalItemsSold;
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
-                          <td>{formatDate(row.date)}</td>
+                          <td>{fmtDate(row.date)}</td>
                           <td className="align-right">{shiftDisplayValue(row, "first")}</td>
                           <td className="align-right">{shiftDisplayValue(row, "second")}</td>
                           <td className="align-right">{fmtRsd(row.totalRevenue, 2)}</td>
@@ -1411,7 +1384,7 @@ export default function DailySalesStatsPage() {
             </div>
             {mismatchCount > 0 ? (
               <p className="daily-sales-footnote">
-                Upozorenje: {mismatchCount} redova ima mismatch izmeÃ„â€˜u total kolone i top+others sabiranja.
+                Upozorenje: {mismatchCount} redova ima mismatch između total kolone i top+others sabiranja.
               </p>
             ) : null}
           </section>
@@ -1420,8 +1393,8 @@ export default function DailySalesStatsPage() {
             <section className="daily-sales-no-data-banner">
               <p>
                 Nema prodaje u izabranom periodu. Podaci su dostupni od{" "}
-                <strong>{formatDate(data.metadata.minAvailableDate)}</strong> do{" "}
-                <strong>{formatDate(data.metadata.maxAvailableDate!)}</strong>.
+                <strong>{fmtDate(data.metadata.minAvailableDate)}</strong> do{" "}
+                <strong>{fmtDate(data.metadata.maxAvailableDate!)}</strong>.
               </p>
               <button type="button" onClick={handleJumpToAvailableData}>
                 Prikazi dostupne podatke
@@ -1440,7 +1413,7 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-panel-head">
                 <div>
                   <h2 className="with-tip">
-                    <span>PoreÃ„â€˜enje sa prethodnim periodom</span>
+                    <span>Poređenje sa prethodnim periodom</span>
                     <InfoTip text="Trenutni opseg se poredi sa prethodnim periodom istog trajanja." />
                   </h2>
                   <p>
@@ -1467,9 +1440,9 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Kvalitet podataka</span>
-                    <InfoTip text="Signali koji utiÃ„Âu na pouzdanost odluka u ovom periodu. Nepoznati dobavljaÃ„Â: prodaja bez mapiranog dobavljaÃ„Âa. Dani nepodudaranja: zbir po dobavljaÃ„Âima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neusklaÃ„â€˜eni raÃ„Âuni: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadrÃ…Â¾ite oprez pri interpretaciji trendova." />
+                    <InfoTip text="Signali koji utiču na pouzdanost odluka u ovom periodu. Nepoznati dobavljač: prodaja bez mapiranog dobavljača. Dani nepodudaranja: zbir po dobavljačima ne odgovara dnevnom totalu. Dani bez satnice: nema pouzdanog smenskog razdvajanja. Dupli/neusklađeni računi: neregularnosti u kasi. Visoke vrednosti na bilo kom signalu = zadržite oprez pri interpretaciji trendova." />
                   </h2>
-                  <p>Dijagnosticki sloj Ã¢â‚¬â€ bitno samo ako planirate dublje analize pouzdanosti.</p>
+                  <p>Dijagnosticki sloj — bitno samo ako planirate dublje analize pouzdanosti.</p>
                 </div>
                 <button
                   type="button"
@@ -1479,7 +1452,7 @@ export default function DailySalesStatsPage() {
                   title={qualityPanelOpen ? "Sakrij detalje kvaliteta" : "Prikaži detalje kvaliteta"}
                 >
                   {dataHealthSummary.label}
-                  <span className="daily-sales-health-caret">{qualityPanelOpen ? "Ã¢â€“Â²" : "Ã¢â€“Â¼"}</span>
+                  <span className="daily-sales-health-caret">{qualityPanelOpen ? "▲" : "▼"}</span>
                 </button>
               </div>
 
@@ -1590,7 +1563,7 @@ export default function DailySalesStatsPage() {
                 <div>
                   <h2 className="with-tip">
                     <span>Koncentracija dobavljača</span>
-                    <InfoTip text="Koliki deo prodaje nose vodeÃ„â€¡i dobavljaÃ„Âi i koliko dobavljaÃ„Âa treba za 80% komada." />
+                    <InfoTip text="Koliki deo prodaje nose vodeći dobavljači i koliko dobavljača treba za 80% komada." />
                   </h2>
                   <p>Pareto pogled za procenu zavisnosti od nekoliko dobavljača.</p>
                 </div>
@@ -1706,11 +1679,11 @@ export default function DailySalesStatsPage() {
               <div className="daily-sales-anomaly-summary">
                 <div>
                   <span>Najbolji dan</span>
-                  <strong>{bestRevenueDay ? `${formatDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{bestRevenueDay ? `${fmtDate(bestRevenueDay.date)} | ${fmtRsdShort(bestRevenueDay.totalRevenue)}` : "N/A"}</strong>
                 </div>
                 <div>
                   <span>Najslabiji dan</span>
-                  <strong>{weakestRevenueDay ? `${formatDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "N/A"}</strong>
+                  <strong>{weakestRevenueDay ? `${fmtDate(weakestRevenueDay.date)} | ${fmtRsdShort(weakestRevenueDay.totalRevenue)}` : "N/A"}</strong>
                 </div>
                 <div>
                   <span>Najveci skok</span>

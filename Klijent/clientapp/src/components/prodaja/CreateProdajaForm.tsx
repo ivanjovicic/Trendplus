@@ -1,25 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-    CalculatedField,
-    EntitySearchCombobox,
-    FormField,
-    FormLayout,
-    FormProgress,
-    FormSection,
-    LineItemsEditor,
-    ReadonlyField,
-    StickyActionBar,
-    SummaryPanel,
-    ValidationChecklist,
-    useLineItems,
-    type EntitySearchItem,
-    type LineItem,
-} from "../forms/FormSystem";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { KreirajProdajuDto } from "../../types/prodaja/prodaja";
 import { useToast } from "../Toast";
 
 type ArtikalOption = { id: number; naziv: string; cena: number };
-type ProdajaLine = { idArtikal: number; kolicina: number; cena: number };
 
 interface CreateProdajaFormProps {
     artikli: ArtikalOption[];
@@ -46,39 +29,41 @@ function normalizeRacun(value: string): string {
 function buildNextRacunSuggestion(value: string): string | null {
     const trimmed = normalizeRacun(value);
     if (!trimmed) return null;
+
     const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
     if (!match) return null;
+
     const [, prefix, digits, suffix] = match;
     const next = (Number(digits) + 1).toString().padStart(digits.length, "0");
     return `${prefix}${next}${suffix}`;
 }
 
-function makeLine(id: number | string, artikal?: ArtikalOption): LineItem<ProdajaLine> {
-    return {
-        id,
-        title: artikal?.naziv ?? "Nova stavka",
-        status: artikal?.id ? "ok" : "error",
-        data: {
-            idArtikal: artikal?.id ?? 0,
-            kolicina: 1,
-            cena: safeNumber(artikal?.cena, 0),
-        },
-        error: artikal?.id ? null : "Izaberite artikal.",
-    };
-}
-
 export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }: CreateProdajaFormProps) {
     const toast = useToast();
-    const nextLineId = useRef(1);
+
     const [knownArtikli, setKnownArtikli] = useState<ArtikalOption[]>(artikli);
     const [brojRacuna, setBrojRacuna] = useState("");
-    const [rows, dispatchRows] = useLineItems<ProdajaLine>([makeLine(0, artikli[0])]);
+    const [stavke, setStavke] = useState<{ idArtikal: number; kolicina: number; cena: number }[]>([
+        { idArtikal: artikli[0]?.id ?? 0, kolicina: 1, cena: artikli[0]?.cena ?? 0 },
+    ]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const artikalOptions = useMemo(() => {
+        return knownArtikli.map((a) => (
+            <option key={a.id} value={a.id}>
+                {a.naziv} - {a.cena} RSD
+            </option>
+        ));
+    }, [knownArtikli]);
+
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [filteredArtikli, setFilteredArtikli] = useState<ArtikalOption[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
     const remoteSearchSeq = useRef(0);
 
     useEffect(() => {
@@ -87,29 +72,39 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
 
     useEffect(() => {
         if (!knownArtikli.length) return;
-        dispatchRows({
-            type: "reset",
-            rows: rows.length > 0
-                ? rows.map((row, index) => {
-                    if (index !== 0 || row.data.idArtikal !== 0) return row;
-                    return makeLine(row.id, knownArtikli[0]);
-                })
-                : [makeLine(0, knownArtikli[0])],
+        setStavke((prev) => {
+            if (!prev.length) {
+                return [{ idArtikal: knownArtikli[0].id, kolicina: 1, cena: knownArtikli[0].cena }];
+            }
+            return prev.map((s, idx) => {
+                if (idx === 0 && s.idArtikal === 0) {
+                    return { ...s, idArtikal: knownArtikli[0].id, cena: knownArtikli[0].cena };
+                }
+                return s;
+            });
         });
-        // keep this effect tied to catalogue bootstrap only
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [knownArtikli.length]);
+    }, [knownArtikli]);
 
     useEffect(() => {
-        const timer = window.setTimeout(() => setDebouncedQuery(searchQuery), 250);
-        return () => window.clearTimeout(timer);
+        const timer = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 250);
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
     useEffect(() => {
         if (onSearchArtikli) return;
         const q = debouncedQuery.trim().toLowerCase();
+        if (!q) {
+            setFilteredArtikli([]);
+            setIsSearching(false);
+            return;
+        }
+        const local = knownArtikli
+            .filter((a) => a.naziv.toLowerCase().includes(q))
+            .slice(0, 10);
+        setFilteredArtikli(local);
         setIsSearching(false);
-        setFilteredArtikli(q ? knownArtikli.filter((a) => a.naziv.toLowerCase().includes(q)).slice(0, 10) : []);
     }, [debouncedQuery, knownArtikli, onSearchArtikli]);
 
     useEffect(() => {
@@ -126,19 +121,23 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         setIsSearching(true);
 
         onSearchArtikli(q)
-            .then((items) => {
+            .then((rows) => {
                 if (cancelled || seq !== remoteSearchSeq.current) return;
-                const data = (items ?? []).slice(0, 20);
+                const data = (rows ?? []).slice(0, 20);
                 setFilteredArtikli(data);
-                setKnownArtikli((prev) => mergeArtikli(prev, data));
+                if (data.length > 0) {
+                    setKnownArtikli((prev) => mergeArtikli(prev, data));
+                }
             })
-            .catch((reason) => {
+            .catch((err) => {
                 if (cancelled || seq !== remoteSearchSeq.current) return;
-                console.error("Search artikli failed:", reason);
+                console.error("Search artikli failed:", err);
                 setFilteredArtikli([]);
             })
             .finally(() => {
-                if (!cancelled && seq === remoteSearchSeq.current) setIsSearching(false);
+                if (!cancelled && seq === remoteSearchSeq.current) {
+                    setIsSearching(false);
+                }
             });
 
         return () => {
@@ -146,92 +145,96 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         };
     }, [debouncedQuery, onSearchArtikli]);
 
-    const itemById = useMemo(() => new Map(knownArtikli.map((item) => [item.id, item])), [knownArtikli]);
+    useEffect(() => {
+        setSelectedIndex(0);
+    }, [filteredArtikli.length]);
 
-    const normalizedRacun = normalizeRacun(brojRacuna);
-    const invalidRows = useMemo(
-        () =>
-            rows.filter((row) => (
-                row.data.idArtikal <= 0 ||
-                safeNumber(row.data.kolicina, 0) <= 0 ||
-                safeNumber(row.data.cena, 0) < 0
-            )),
-        [rows]
-    );
-    const ukupno = useMemo(
-        () => rows.reduce((sum, row) => sum + safeNumber(row.data.kolicina, 0) * safeNumber(row.data.cena, 0), 0),
-        [rows]
-    );
-    const canSubmit = normalizedRacun.length >= 3 && rows.length > 0 && invalidRows.length === 0 && !isSubmitting;
-    const disabledReason =
-        normalizedRacun.length < 3
-            ? "Unesite broj računa od najmanje 3 karaktera."
-            : rows.length === 0
-                ? "Dodajte bar jednu stavku."
-                : invalidRows.length > 0
-                    ? "Ispravite stavke sa greškom."
-                    : undefined;
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowSearchResults(false);
+            }
+        };
 
-    const racunSuggestions = useMemo(() => {
-        const suggestions = new Set<string>();
-        const next = buildNextRacunSuggestion(brojRacuna);
-        if (next) suggestions.add(next);
-        if (!normalizedRacun) suggestions.add(`POS-${new Date().getFullYear()}-001`);
-        return Array.from(suggestions).slice(0, 4);
-    }, [brojRacuna, normalizedRacun]);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
-    const searchItems = useMemo<EntitySearchItem[]>(
-        () =>
-            filteredArtikli.map((item) => ({
-                id: item.id,
-                title: item.naziv,
-                meta: `ID: ${item.id}`,
-                value: `${item.cena} RSD`,
-            })),
-        [filteredArtikli]
-    );
+    const addStavka = () =>
+        setStavke((s) => [
+            ...s,
+            { idArtikal: knownArtikli[0]?.id ?? 0, kolicina: 1, cena: knownArtikli[0]?.cena ?? 0 },
+        ]);
 
-    const addEmptyLine = useCallback(() => {
-        const artikal = knownArtikli[0];
-        dispatchRows({ type: "add", row: makeLine(nextLineId.current++, artikal) });
-    }, [dispatchRows, knownArtikli]);
-
-    const addArtikal = useCallback((artikal: ArtikalOption) => {
+    const quickAddArtikal = useCallback((artikal: ArtikalOption) => {
         setKnownArtikli((prev) => mergeArtikli(prev, [artikal]));
-        dispatchRows({ type: "add", row: makeLine(nextLineId.current++, artikal) });
+        setStavke((s) => [...s, { idArtikal: artikal.id, kolicina: 1, cena: safeNumber(artikal.cena, 0) }]);
         setSearchQuery("");
-        setError(null);
-    }, [dispatchRows]);
+        setShowSearchResults(false);
+        setSelectedIndex(0);
+    }, []);
 
-    const updateLine = useCallback((row: LineItem<ProdajaLine>, patch: Partial<ProdajaLine>) => {
-        const next = { ...row.data, ...patch };
-        const artikal = itemById.get(next.idArtikal);
-        const rowError =
-            next.idArtikal <= 0
-                ? "Izaberite artikal."
-                : safeNumber(next.kolicina, 0) <= 0
-                    ? "Količina mora biti veća od 0."
-                    : safeNumber(next.cena, 0) < 0
-                        ? "Cena ne može biti negativna."
-                        : null;
+    const removeStavka = (index: number) => setStavke((s) => s.filter((_, i) => i !== index));
 
-        dispatchRows({
-            type: "patch",
-            id: row.id,
-            patch,
-            rowPatch: {
-                title: artikal?.naziv ?? row.title,
-                status: rowError ? "error" : "ok",
-                error: rowError,
-            },
+    const updateStavka = (
+        index: number,
+        patch: Partial<{ idArtikal: number; kolicina: number; cena: number }>
+    ) =>
+        setStavke((s) => {
+            const copy = [...s];
+            const prev = copy[index];
+
+            const next = {
+                ...prev,
+                ...patch,
+                kolicina: safeNumber(patch.kolicina ?? prev.kolicina, 1),
+                cena: safeNumber(patch.cena ?? prev.cena, 0),
+            };
+
+            copy[index] = next;
+            return copy;
         });
-        setError(null);
-    }, [dispatchRows, itemById]);
 
-    const handleSubmit = useCallback(async () => {
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!showSearchResults || filteredArtikli.length === 0) return;
+
+        switch (e.key) {
+            case "ArrowDown":
+                e.preventDefault();
+                setSelectedIndex((prev) => (prev + 1) % filteredArtikli.length);
+                break;
+            case "ArrowUp":
+                e.preventDefault();
+                setSelectedIndex((prev) => (prev - 1 + filteredArtikli.length) % filteredArtikli.length);
+                break;
+            case "Enter":
+                e.preventDefault();
+                if (filteredArtikli[selectedIndex]) {
+                    quickAddArtikal(filteredArtikli[selectedIndex]);
+                }
+                break;
+            case "Escape":
+                setShowSearchResults(false);
+                break;
+        }
+    };
+
+    const handleSubmit = async () => {
         setError(null);
-        if (!canSubmit) {
-            setError(disabledReason ?? "Forma nije validna.");
+
+        const normalizedRacun = normalizeRacun(brojRacuna);
+        if (normalizedRacun.length < 3) {
+            setError("Broj racuna mora imati najmanje 3 karaktera.");
+            return;
+        }
+
+        if (!stavke.length) {
+            setError("Dodajte bar jednu stavku.");
+            return;
+        }
+
+        if (invalidStavkeCount > 0) {
+            setError("Proverite stavke: kolicina mora biti > 0 i cena ne moze biti negativna.");
             return;
         }
 
@@ -239,10 +242,10 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
             brojRacuna: normalizedRacun,
             idObjekat: 1,
             nacinPlacanja: "Gotovina",
-            stavke: rows.map((row) => ({
-                idArtikal: row.data.idArtikal,
-                kolicina: Math.max(1, Math.trunc(safeNumber(row.data.kolicina, 1))),
-                cena: safeNumber(row.data.cena, 0),
+            stavke: stavke.map((s) => ({
+                ...s,
+                kolicina: Math.max(1, Math.trunc(safeNumber(s.kolicina, 1))),
+                cena: safeNumber(s.cena, 0),
             })),
         };
 
@@ -250,17 +253,41 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         try {
             await onSubmit(payload);
             setBrojRacuna("");
-            dispatchRows({ type: "reset", rows: [makeLine(0, knownArtikli[0])] });
-            toast.success("Prodaja uspešno sačuvana.");
-        } catch (reason: unknown) {
-            console.error(reason);
-            const message = reason instanceof Error ? reason.message : "Greška pri kreiranju prodaje";
-            setError(message);
-            toast.error(message);
+            setStavke([{ idArtikal: knownArtikli[0]?.id ?? 0, kolicina: 1, cena: knownArtikli[0]?.cena ?? 0 }]);
+            toast.success("Prodaja uspesna");
+        } catch (err: unknown) {
+            console.error(err);
+            const msg = err instanceof Error ? err.message : "Greska pri kreiranju prodaje";
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }
-    }, [canSubmit, disabledReason, dispatchRows, knownArtikli, normalizedRacun, onSubmit, rows, toast]);
+    };
+
+    const ukupno = useMemo(() => {
+        return stavke.reduce((sum, s) => sum + safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0), 0);
+    }, [stavke]);
+
+    const invalidStavkeCount = useMemo(() => {
+        return stavke.filter((s) => safeNumber(s.kolicina, 0) <= 0 || safeNumber(s.cena, 0) < 0 || s.idArtikal <= 0).length;
+    }, [stavke]);
+
+    const racunSuggestions = useMemo(() => {
+        const suggestions = new Set<string>();
+        const next = buildNextRacunSuggestion(brojRacuna);
+        if (next) suggestions.add(next);
+        if (!normalizeRacun(brojRacuna)) {
+            suggestions.add(`POS-${new Date().getFullYear()}-001`);
+        }
+        return Array.from(suggestions).slice(0, 4);
+    }, [brojRacuna]);
+
+    const canSubmit =
+        normalizeRacun(brojRacuna).length >= 3 &&
+        stavke.length > 0 &&
+        invalidStavkeCount === 0 &&
+        !isSubmitting;
 
     useEffect(() => {
         const onWindowKeyDown = (event: KeyboardEvent) => {
@@ -274,162 +301,174 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
         return () => window.removeEventListener("keydown", onWindowKeyDown);
     }, [canSubmit, handleSubmit]);
 
-    const renderRow = useCallback((row: LineItem<ProdajaLine>) => (
-        <>
-            <FormField label="Artikal" required>
-                <select
-                    className="form-control"
-                    value={row.data.idArtikal}
-                    onChange={(event) => {
-                        const id = Number(event.target.value);
-                        const artikal = itemById.get(id);
-                        updateLine(row, { idArtikal: id, cena: artikal?.cena ?? row.data.cena });
-                    }}
-                >
-                    <option value={0}>Izaberite artikal</option>
-                    {knownArtikli.map((item) => (
-                        <option key={item.id} value={item.id}>
-                            {item.naziv} - {item.cena} RSD
-                        </option>
-                    ))}
-                </select>
-            </FormField>
-            <FormField label="Količina" required>
-                <input
-                    className="form-control form-control--number"
-                    type="number"
-                    min={1}
-                    value={row.data.kolicina}
-                    onChange={(event) => updateLine(row, { kolicina: Number(event.target.value) })}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") addEmptyLine();
-                    }}
-                />
-            </FormField>
-            <FormField label="Cena" required>
-                <input
-                    className="form-control form-control--number"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={row.data.cena}
-                    onChange={(event) => updateLine(row, { cena: Number(event.target.value) })}
-                />
-            </FormField>
-            <CalculatedField
-                label="Iznos"
-                value={`${(safeNumber(row.data.kolicina, 0) * safeNumber(row.data.cena, 0)).toFixed(2)} RSD`}
-                tone={row.error ? "warning" : "success"}
-            />
-            <button
-                type="button"
-                className="btn btn--warning"
-                disabled={rows.length === 1}
-                onClick={() => dispatchRows({ type: "remove", id: row.id })}
-            >
-                Ukloni
-            </button>
-        </>
-    ), [addEmptyLine, dispatchRows, itemById, knownArtikli, rows.length, updateLine]);
-
     return (
-        <>
-            <FormProgress
-                steps={[
-                    { label: "Broj računa", state: normalizedRacun.length >= 3 ? "complete" : "pending" },
-                    { label: `Stavke: ${rows.length}`, state: rows.length > 0 ? "complete" : "pending" },
-                    { label: invalidRows.length === 0 ? "Validacija OK" : `${invalidRows.length} problema`, state: invalidRows.length === 0 ? "complete" : "warning" },
-                ]}
-            />
+        <div className="space-y-4">
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <h2 className="mb-4 text-xl font-semibold text-foreground">Nova prodaja</h2>
+                <div className="mb-3 grid gap-2 md:grid-cols-3">
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${normalizeRacun(brojRacuna).length >= 3 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
+                        Broj racuna
+                    </div>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${stavke.length > 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
+                        Stavke: {stavke.length}
+                    </div>
+                    <div className={`rounded-lg border px-3 py-2 text-xs ${invalidStavkeCount === 0 ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-amber-700 bg-amber-950/20 text-amber-300"}`}>
+                        Validacija: {invalidStavkeCount === 0 ? "OK" : `${invalidStavkeCount} problema`}
+                    </div>
+                </div>
 
-            <FormLayout
-                main={(
-                    <>
-                        <FormSection title="Račun" description="Identifikacija prodaje i priprema za unos stavki." complete={normalizedRacun.length >= 3}>
-                            <div className="form-grid">
-                                <FormField label="Broj računa" required helper="Ctrl+Enter čuva prodaju kada je forma validna.">
-                                    <input
-                                        className="form-control"
-                                        placeholder="Npr. POS-2026-001"
-                                        value={brojRacuna}
-                                        onChange={(event) => {
-                                            setBrojRacuna(event.target.value);
-                                            setError(null);
-                                        }}
-                                    />
-                                </FormField>
-                                {racunSuggestions.length > 0 ? (
-                                    <div className="line-row__header">
-                                        {racunSuggestions.map((suggestion) => (
-                                            <button key={suggestion} type="button" className="btn btn--secondary" onClick={() => setBrojRacuna(suggestion)}>
-                                                {suggestion}
-                                            </button>
-                                        ))}
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
+                <input
+                    placeholder="Broj racuna"
+                    value={brojRacuna}
+                    onChange={(e) => setBrojRacuna(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                />
+                {racunSuggestions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {racunSuggestions.map((suggestion) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => setBrojRacuna(suggestion)}
+                                className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
+            </section>
+
+            <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretrazi i dodaj artikal</label>
+                <input
+                    type="text"
+                    placeholder="Pretrazi artikle po nazivu..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setShowSearchResults(true);
+                    }}
+                    onFocus={() => setShowSearchResults(true)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+                />
+
+                {showSearchResults && searchQuery.trim() && (
+                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
+                        {isSearching ? (
+                            <div className="px-3 py-5 text-center text-sm text-muted">Pretrazujem...</div>
+                        ) : filteredArtikli.length > 0 ? (
+                            filteredArtikli.map((art, idx) => (
+                                    <button
+                                    key={art.id}
+                                    type="button"
+                                    onClick={() => quickAddArtikal(art)}
+                                        className={`flex w-full items-center justify-between border-b border-border px-3 py-3 text-left transition ${idx === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"}`}
+                                    onMouseEnter={() => setSelectedIndex(idx)}
+                                >
+                                    <div>
+                                        <div className="font-semibold text-foreground">{art.naziv}</div>
+                                        <div className="text-xs text-muted">ID: {art.id}</div>
                                     </div>
-                                ) : null}
-                            </div>
-                        </FormSection>
-
-                        <FormSection title="Dodavanje artikala" description="Pretražite artikal i dodajte ga u listu stavki." complete={rows.length > 0}>
-                            <EntitySearchCombobox
-                                label="Pretraži artikal"
-                                value={searchQuery}
-                                placeholder="Naziv artikla..."
-                                items={searchItems}
-                                loading={isSearching}
-                                onQueryChange={setSearchQuery}
-                                onSelect={(item) => {
-                                    const artikal = filteredArtikli.find((x) => x.id === Number(item.id));
-                                    if (artikal) addArtikal(artikal);
-                                }}
-                            />
-                        </FormSection>
-
-                        <FormSection title="Stavke prodaje" description="Količina i cena su izmenjivi; iznos je obračunat." complete={invalidRows.length === 0 && rows.length > 0} warning={invalidRows.length > 0}>
-                            <LineItemsEditor
-                                title={`Stavke (${rows.length})`}
-                                rows={rows}
-                                grid="sale"
-                                onAdd={addEmptyLine}
-                                addLabel="Dodaj stavku"
-                                renderRow={renderRow}
-                            />
-                        </FormSection>
-                    </>
-                )}
-                aside={(
-                    <SummaryPanel
-                        title="Pregled prodaje"
-                        actions={(
-                            <>
-                                {error ? <p className="form-error">{error}</p> : null}
-                                {disabledReason && !canSubmit ? <p className="form-helper">{disabledReason}</p> : null}
-                                <button type="button" className="btn btn--primary btn--full" disabled={!canSubmit} onClick={() => void handleSubmit()}>
-                                    {isSubmitting ? "Čuvam..." : "Sačuvaj prodaju"}
+                                    <div className="text-sm font-semibold text-success">{art.cena} RSD</div>
                                 </button>
-                            </>
+                            ))
+                        ) : (
+                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
                         )}
-                    >
-                        <ReadonlyField label="Broj računa" value={normalizedRacun || "Nije unet"} />
-                        <ReadonlyField label="Broj stavki" value={rows.length} />
-                        <CalculatedField label="Ukupno" value={`${safeNumber(ukupno, 0).toFixed(2)} RSD`} tone="success" />
-                        <ValidationChecklist
-                            items={[
-                                { label: "Broj računa je unet", valid: normalizedRacun.length >= 3 },
-                                { label: "Postoji bar jedna stavka", valid: rows.length > 0 },
-                                { label: "Sve stavke su validne", valid: invalidRows.length === 0 },
-                            ]}
-                        />
-                    </SummaryPanel>
+                    </div>
                 )}
-            />
+            </section>
 
-            <StickyActionBar
-                primaryLabel={isSubmitting ? "Čuvam..." : "Sačuvaj prodaju"}
-                disabled={!canSubmit}
-                disabledReason={disabledReason}
-                onPrimary={() => void handleSubmit()}
-            />
-        </>
+            <section className="rounded-xl border border-border bg-surface p-4">
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Stavke ({stavke.length})</h3>
+                    <button
+                        type="button"
+                        onClick={addStavka}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-semibold border-success bg-success-10 text-success hover:bg-success"
+                    >
+                        + Dodaj stavku
+                    </button>
+                </div>
+
+                <div className="space-y-3">
+                    {stavke.map((s, i) => (
+                        <div key={i} className="grid gap-2 rounded-lg border border-border bg-surface p-3 lg:grid-cols-[1.7fr_0.7fr_0.8fr_0.8fr_auto]"> 
+                            <div>
+                                <label className="mb-1 block text-xs text-muted">Artikal</label>
+                                <select
+                                    value={s.idArtikal}
+                                    onChange={(e) => {
+                                        const id = Number(e.target.value);
+                                        const art = knownArtikli.find((a) => a.id === id);
+                                        updateStavka(i, { idArtikal: id, cena: art?.cena ?? s.cena });
+                                    }}
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                >
+                                    {artikalOptions}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs text-muted">Kolicina</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={s.kolicina}
+                                    onChange={(e) => updateStavka(i, { kolicina: Number(e.target.value) })}
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs text-muted">Cena</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={s.cena}
+                                    onChange={(e) => updateStavka(i, { cena: Number(e.target.value) })}
+                                    className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs text-muted">Iznos</label>
+                                <div className="rounded-lg border border-border bg-surface px-2 py-2 text-sm font-semibold text-success">
+                                    {(safeNumber(s.kolicina, 0) * safeNumber(s.cena, 0)).toFixed(2)} RSD
+                                </div>
+                            </div>
+
+                            <div className="flex items-end">
+                                <button
+                                    type="button"
+                                    onClick={() => removeStavka(i)}
+                                    className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-xs font-semibold text-danger"
+                                >
+                                    Ukloni
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="text-base font-semibold text-foreground">Ukupno: <span className="text-success">{safeNumber(ukupno, 0).toFixed(2)} RSD</span></div>
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!canSubmit}
+                    className="rounded-xl border border-primary bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition hover:bg-primary-hover disabled:opacity-60"
+                >
+                    {isSubmitting ? "Kreiram..." : "Sacuvaj prodaju"}
+                </button>
+            </section>
+
+            {error && <p className="rounded-lg border border-danger bg-danger-10 px-3 py-2 text-sm text-danger">{error}</p>}
+        </div>
     );
 }

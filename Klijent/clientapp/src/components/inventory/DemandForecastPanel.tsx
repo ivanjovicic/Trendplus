@@ -1,5 +1,4 @@
 ﻿import { TrendingDown, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
 import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { TONE } from "./toneMap";
 import type { InventoryRow } from "./types";
@@ -60,7 +59,6 @@ export function DemandForecastPanel({
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           {forecastLoading ? "Ucitavam forecast..." : forecastError ?? "Forecast nije dostupan. Snapshot tabela je prazna."}
           {forecast?.warning ? <div className="mt-2 text-xs text-warning">{forecast.warning}</div> : null}
-          <div className="mt-2 text-xs">Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris zasto signal nije popravljivo dostupan.</div>
         </div>
       ) : (
         <div className="mt-4 grid gap-5 xl:grid-cols-2">
@@ -89,7 +87,6 @@ export function DemandForecastPanel({
                       <div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-surface-light">
                         <div className="h-full rounded-full bg-gradient-to-r from-success via-warning to-danger" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
                       </div>
-                      <div className="mt-1 text-xs text-muted">Confidence: {Math.round(item.confidenceScore * 100)}%</div>
                       <div className="mt-1 text-xs text-muted">7d: {item.forecast7d.toFixed(1)}</div>
                       <button type="button" aria-label={`Predlozi dopunu za SKU ${item.skuId} velicinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
                         Predlozi dopunu
@@ -124,7 +121,6 @@ export function DemandForecastPanel({
                       <div className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)]">
                         {Math.round(item.overstockRisk * 100)}% over
                       </div>
-                      <div className="mt-1 text-xs text-[var(--text-primary)]">Confidence: {Math.round(item.confidenceScore * 100)}%</div>
                       <div className="mt-1 text-xs text-[var(--text-primary)]">28d: {item.forecast28d.toFixed(1)}</div>
                     </div>
                   </div>

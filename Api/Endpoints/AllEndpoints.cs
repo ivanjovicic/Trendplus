@@ -36,7 +36,6 @@ using System.Globalization;
 using System.Diagnostics;
 using System.Text.Json;
 using Serilog.Context;
-using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -3148,7 +3147,6 @@ public static class AllEndpoints
         .RequireRateLimiting("analytics");
 
         app.MapGet("/api/analytics/vendor-sales-nivelacija", async (
-            HttpContext httpContext,
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
@@ -3175,7 +3173,6 @@ public static class AllEndpoints
                 var eventDateOnly = eventDate?.Date;
                 var fromDateOnly = from?.ToUniversalTime().Date;
                 var toDateOnly = to?.ToUniversalTime().Date;
-                var correlationId = ResolveAnalyticsCorrelationId(httpContext);
 
                 if (fromDateOnly.HasValue && toDateOnly.HasValue && fromDateOnly.Value > toDateOnly.Value)
                 {
@@ -3204,9 +3201,6 @@ public static class AllEndpoints
                 var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
                 if (cachedResponse is not null)
                 {
-                    cachedResponse.Meta ??= BuildVendorSalesNivelacijaMeta(cachedResponse, correlationId);
-                    cachedResponse.Meta.CorrelationId = correlationId;
-
                     logger.LogInformation(
                         "Vendor sales nivelacija cache hit. VendorId={VendorId}, EventDate={EventDate}, From={From}, To={To}, CategorySet={CategorySet}, IncludeInactive={IncludeInactive}, MaxRows={MaxRows}, ElapsedMs={ElapsedMs}",
                         vendorId,
@@ -3992,8 +3986,6 @@ public static class AllEndpoints
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal))
                 };
 
-                response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
-
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
                 logger.LogInformation(
@@ -4030,20 +4022,14 @@ public static class AllEndpoints
                     to,
                     string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
                     includeInactive,
-                    reason,
-                    ResolveAnalyticsCorrelationId(httpContext)));
+                    reason));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return Results.Ok(CreateVendorSalesNivelacijaFallbackResponse(
-                    vendorId,
-                    eventDate?.Date,
-                    from,
-                    to,
-                    string.IsNullOrWhiteSpace(category) ? null : category.Trim(),
-                    includeInactive,
-                    "Vendor sales nivelacija analytics fallback: unexpected error.",
-                    ResolveAnalyticsCorrelationId(httpContext)));
+                return Results.Problem(
+                    title: "Failed to load pre/post nivelacija analytics",
+                    detail: ex.Message,
+                    statusCode: 500);
             }
         })
         .WithName("GetVendorSalesNivelacija")
@@ -6480,8 +6466,7 @@ public static class AllEndpoints
         DateTime? to,
         string? category,
         bool includeInactive,
-        string reason,
-        string correlationId)
+        string reason)
     {
         return new VendorSalesNivelacijaResponseDto
         {
@@ -6515,60 +6500,8 @@ public static class AllEndpoints
             AvgDidRevenue = null,
             AvgLostSalesOOS = null,
             OOSRate = null,
-            MetricsStatus = reason,
-            Meta = AnalyticsResponseMetaFactory.Error(
-                "analytics_db_unavailable",
-                "Pre/post nivelacija podaci trenutno nisu dostupni.",
-                correlationId,
-                message: reason)
+            MetricsStatus = reason
         };
-    }
-
-    private static AnalyticsResponseMetaDto BuildVendorSalesNivelacijaMeta(
-        VendorSalesNivelacijaResponseDto response,
-        string correlationId)
-    {
-        AnalyticsResponseMetaDto meta;
-        if (response.DataQuality.AnalyzedRows == 0)
-        {
-            meta = AnalyticsResponseMetaFactory.Empty(
-                "no_data_in_period",
-                "Nema prodaje za izabrani period.");
-        }
-        else if (!string.IsNullOrWhiteSpace(response.MetricsStatus))
-        {
-            meta = AnalyticsResponseMetaFactory.Warning(
-                "ANALYTICS_PARTIAL_DATA",
-                response.MetricsStatus,
-                dataQualityStatus: "warning",
-                lastRefreshAtUtc: response.GeneratedAt);
-        }
-        else
-        {
-            meta = AnalyticsResponseMetaFactory.Success(
-                dataQualityStatus: "good",
-                lastRefreshAtUtc: response.GeneratedAt);
-        }
-
-        meta.CorrelationId = correlationId;
-        return meta;
-    }
-
-    private static string ResolveAnalyticsCorrelationId(HttpContext httpContext)
-    {
-        var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(responseHeader))
-        {
-            return responseHeader;
-        }
-
-        var requestHeader = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(requestHeader))
-        {
-            return requestHeader;
-        }
-
-        return httpContext.TraceIdentifier;
     }
 
     private sealed record SalesDataWindowCacheEntry(DateTime? FromDate, DateTime? ToDate);
