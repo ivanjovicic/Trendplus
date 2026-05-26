@@ -12,6 +12,172 @@ namespace Api.Tests;
 public sealed class AnalyticsReportsContractTests
 {
     [Fact]
+    public void SupplierDecisionReport_Success_ReturnsSuccessMeta()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)
+            ],
+            0,
+            0,
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.True(report.Meta?.Success);
+        Assert.False(report.UsedFallback);
+        Assert.NotEmpty(report.Kpis);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_Fallback_ReturnsWarningMetaAndUsedFallback()
+    {
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 80m, 82m, 200000m, 400m, fromUtc, toUtc)
+            ],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.True(report.UsedFallback);
+        Assert.False(report.RecommendationAllowed);
+        Assert.True(report.Meta?.IsPartial);
+        Assert.Equal("FALLBACK_DATASET_USED", report.Meta?.WarningCode);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_EmptyDataset_ReturnsEmptyMetaWithoutFakeZero()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset([], 0, 0, toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.True(report.Meta?.Success);
+        Assert.Equal("no_data_in_period", report.Meta?.EmptyReason);
+        Assert.Equal("insufficient_data", report.DataQualityStatus);
+        Assert.Empty(report.Kpis);
+    }
+
+    [Fact]
+    public void SupplierDecisionReport_Error_ReturnsErrorMeta()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionErrorReportResponse(filters, "SQL_TIMEOUT", "Timed out.", "corr-123");
+
+        Assert.False(report.Meta?.Success);
+        Assert.Equal("SQL_TIMEOUT", report.Meta?.ErrorCode);
+        Assert.Empty(report.Kpis);
+    }
+
+    [Fact]
+    public void PilotIntakeReport_ReadyDataset_ReturnsSuccessMeta()
+    {
+        var intake = CreatePilotIntakeReport(85, AnalyticsResponseMetaFactory.Success("good"));
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.True(report.Meta?.Success);
+        Assert.True(report.RecommendationAllowed);
+        Assert.Contains(report.Kpis, k => k.Key == "readinessScore");
+    }
+
+    [Fact]
+    public void PilotIntakeReport_NoImport_ReturnsEmptyMetaAndRecommendedActions()
+    {
+        var intake = CreatePilotIntakeReport(
+            25,
+            AnalyticsResponseMetaFactory.Empty("no_import", "Pilot intake izvestaj nema import batch u periodu.", "insufficient_data"));
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.True(report.Meta?.Success);
+        Assert.Equal("no_import", report.Meta?.EmptyReason);
+        Assert.False(report.RecommendationAllowed);
+        Assert.NotEmpty(report.RecommendedActions);
+        Assert.Empty(report.Kpis);
+    }
+
+    [Fact]
+    public void PilotIntakeReport_Error_ReturnsErrorMeta()
+    {
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeErrorReportResponse(period, null, null, "all", "corr-456");
+
+        Assert.False(report.Meta?.Success);
+        Assert.Equal("pilot_intake_report_error", report.Meta?.ErrorCode);
+        Assert.Empty(report.Kpis);
+    }
+
+    [Fact]
     public void SupplierDecisionReportBuilder_ProducesRichSuccessReportForValidDataset()
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -254,6 +420,44 @@ public sealed class AnalyticsReportsContractTests
         Assert.False(report.RecommendationAllowed);
         // Requested dataset must be "30d", not silently expanded to "180d"
         Assert.Equal("30d", report.Period.RequestedDataset);
+    }
+
+    [Fact]
+    public void SupplierScorecard_Explicit30dNoRows_DoesNotFallbackTo180d()
+    {
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset([], 0, 0, toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.Equal("30d", report.Period.RequestedDataset);
+        Assert.NotEqual("180d", report.Period.RequestedDataset);
+        Assert.Equal("insufficient_data", report.DataQualityStatus);
+    }
+
+    [Fact]
+    public void SupplierScorecard_Fallback_GatesRecommendation()
+    {
+        var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = toUtc.AddDays(-29);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc, toUtc, true, null, null, null, null, false, false, null, null, "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m, fromUtc, toUtc)],
+            0,
+            0,
+            toUtc);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.True(report.UsedFallback);
+        Assert.False(report.RecommendationAllowed);
+        Assert.False(string.IsNullOrWhiteSpace(report.FallbackReason));
     }
 
     [Fact]

@@ -221,6 +221,22 @@ public sealed class AnalyticsResponseMetaContractTests
     }
 
     [Fact]
+    public void ProductDecisionCenter_DbError_ReturnsErrorMeta()
+    {
+        var dto = new ProductDecisionCenterResponseDto
+        {
+            Meta = AnalyticsResponseMetaFactory.Error(
+                errorCode: "ANALYTICS_DB_UNAVAILABLE",
+                errorMessage: "Product Decision Center podaci trenutno nisu dostupni zbog greske baze.",
+                correlationId: "test-corr-002")
+        };
+
+        Assert.False(dto.Meta.Success);
+        Assert.Equal("ANALYTICS_DB_UNAVAILABLE", dto.Meta.ErrorCode);
+        Assert.Empty(dto.Rows);
+    }
+
+    [Fact]
     public void ProductDecisionCenter_DbException_ResponseHasErrorMeta_NotFakeZero()
     {
         // Simulate what the PDC handler returns on NpgsqlException.
@@ -281,6 +297,45 @@ public sealed class AnalyticsResponseMetaContractTests
     }
 
     [Fact]
+    public void Inventory_EmptyDataset_ReturnsEmptyMeta()
+    {
+        var response = new InventoryBalanceDto(
+            TotalSku: 0,
+            TotalOnHand: 0,
+            LowStockCount: 0,
+            OutOfStockCount: 0,
+            EstimatedInventoryValue: 0m,
+            Meta: AnalyticsResponseMetaFactory.Empty(
+                emptyReason: "no_inventory_data",
+                message: "Nema podataka o zalihama.",
+                dataQualityStatus: "insufficient_data"));
+
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_inventory_data", response.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+    }
+
+    [Fact]
+    public void Inventory_PartialData_ReturnsWarningMeta()
+    {
+        var response = new InventoryBalanceDto(
+            TotalSku: 125,
+            TotalOnHand: 880,
+            LowStockCount: 24,
+            OutOfStockCount: 7,
+            EstimatedInventoryValue: 1560000m,
+            Meta: AnalyticsResponseMetaFactory.Warning(
+                warningCode: "STALE_DATA",
+                warningMessage: "Podaci su delimicno zastareli.",
+                dataQualityStatus: "warning"));
+
+        Assert.True(response.Meta!.Success);
+        Assert.True(response.Meta.IsPartial);
+        Assert.Equal("STALE_DATA", response.Meta.WarningCode);
+        Assert.Equal("warning", response.Meta.DataQualityStatus);
+    }
+
+    [Fact]
     public void PreNivelacijaPriority_EmptyDataset_ReturnsEmptyMeta()
     {
         var response = new Api.Models.PreNivelacijaPriorityResponseDto
@@ -300,6 +355,22 @@ public sealed class AnalyticsResponseMetaContractTests
     }
 
     [Fact]
+    public void PrePostNivelacija_EmptyDataset_ReturnsEmptyMeta()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            Meta = AnalyticsResponseMetaFactory.Empty(
+                emptyReason: "no_data_in_period",
+                message: "Nema podataka za pre/post nivelaciju.",
+                dataQualityStatus: "insufficient_data")
+        };
+
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_data_in_period", response.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+    }
+
+    [Fact]
     public void PrePostNivelacija_Exception_ReturnsErrorMetaWithCorrelationId()
     {
         var response = new Api.Models.VendorSalesNivelacijaResponseDto
@@ -314,6 +385,22 @@ public sealed class AnalyticsResponseMetaContractTests
         Assert.False(response.Meta!.Success);
         Assert.Equal("vendor_sales_nivelacija_error", response.Meta.ErrorCode);
         Assert.Equal("nivelacija-corr-001", response.Meta.CorrelationId);
+    }
+
+    [Fact]
+    public void PrePostNivelacija_Exception_ReturnsErrorMetaWithCorrelation()
+    {
+        var response = new Api.Models.VendorSalesNivelacijaResponseDto
+        {
+            Meta = AnalyticsResponseMetaFactory.Error(
+                errorCode: "vendor_sales_nivelacija_error",
+                errorMessage: "Pre/post nivelacija nije dostupna.",
+                correlationId: "nivelacija-corr-002")
+        };
+
+        Assert.False(response.Meta!.Success);
+        Assert.Equal("vendor_sales_nivelacija_error", response.Meta.ErrorCode);
+        Assert.Equal("nivelacija-corr-002", response.Meta.CorrelationId);
     }
 
     [Fact]
