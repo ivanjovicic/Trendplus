@@ -117,7 +117,9 @@ describe("InventoryPage queue status sync", () => {
 
     expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceType: "inventory",
+        items: expect.arrayContaining([
+          expect.objectContaining({ sourceType: "inventory" }),
+        ]),
       }),
     );
   });

@@ -19,6 +19,121 @@ namespace Api.Tests;
 public sealed class AnalyticsActionsEndpointsTests
 {
     [Fact]
+    public async Task PostStatus_ExistingKey_ReturnsExistsWithOutcomeStatus()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var actionId = await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "inventory:sku:123",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending,
+            status: AnalyticsActionConstants.Statuses.Accepted);
+
+        using var response = await host.Client.PostAsJsonAsync("/api/analytics/actions/status", new
+        {
+            items = new[]
+            {
+                new { sourceType = "inventory", sourceKey = "inventory:sku:123" }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionSourceStatusResponse>();
+        Assert.NotNull(payload);
+        var item = Assert.Single(payload!.Items);
+        Assert.Equal("inventory", item.SourceType);
+        Assert.Equal("inventory:sku:123", item.SourceKey);
+        Assert.True(item.Exists);
+        Assert.Equal(actionId, item.ActionId);
+        Assert.Equal(AnalyticsActionConstants.Statuses.Accepted, item.Status);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Pending, item.OutcomeStatus);
+        Assert.False(item.CanCreateNew);
+    }
+
+    [Fact]
+    public async Task PostStatus_MissingKey_ReturnsExistsFalse()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+
+        using var response = await host.Client.PostAsJsonAsync("/api/analytics/actions/status", new
+        {
+            items = new[]
+            {
+                new { sourceType = "inventory", sourceKey = "inventory:sku:404" }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionSourceStatusResponse>();
+        Assert.NotNull(payload);
+        var item = Assert.Single(payload!.Items);
+        Assert.Equal("inventory", item.SourceType);
+        Assert.Equal("inventory:sku:404", item.SourceKey);
+        Assert.False(item.Exists);
+        Assert.Null(item.ActionId);
+        Assert.True(item.CanCreateNew);
+    }
+
+    [Fact]
+    public async Task PostStatus_DifferentSourceTypeSameSourceKey_NoCollision()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "shared:key:1",
+            status: AnalyticsActionConstants.Statuses.Accepted);
+
+        using var response = await host.Client.PostAsJsonAsync("/api/analytics/actions/status", new
+        {
+            items = new[]
+            {
+                new { sourceType = "supplier", sourceKey = "shared:key:1" }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionSourceStatusResponse>();
+        Assert.NotNull(payload);
+        var item = Assert.Single(payload!.Items);
+        Assert.Equal("supplier", item.SourceType);
+        Assert.Equal("shared:key:1", item.SourceKey);
+        Assert.False(item.Exists);
+        Assert.Null(item.ActionId);
+        Assert.True(item.CanCreateNew);
+    }
+
+    [Fact]
+    public async Task PostStatus_ClosedOnlyAction_ReturnsExistsFalseAndAllowsNew()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "inventory:sku:closed",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            status: AnalyticsActionConstants.Statuses.Done);
+
+        using var response = await host.Client.PostAsJsonAsync("/api/analytics/actions/status", new
+        {
+            items = new[]
+            {
+                new { sourceType = "inventory", sourceKey = "inventory:sku:closed" }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionSourceStatusResponse>();
+        Assert.NotNull(payload);
+        var item = Assert.Single(payload!.Items);
+        Assert.False(item.Exists);
+        Assert.Equal(AnalyticsActionConstants.Statuses.Done, item.Status);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, item.OutcomeStatus);
+        Assert.True(item.CanCreateNew);
+    }
+
+    [Fact]
     public async Task PatchOutcome_ValidStatusUpdatesFields_AndReturnsDetailedAction()
     {
         await using var host = await AnalyticsActionsTestHost.CreateAsync();
@@ -135,20 +250,23 @@ public sealed class AnalyticsActionsEndpointsTests
             string? outcomeStatus = null,
             decimal? measuredImpactRsd = null,
             DateTime? outcomeMeasuredAtUtc = null,
-            string? outcomeNotes = null)
+            string? outcomeNotes = null,
+            string? sourceType = null,
+            string? sourceKey = null,
+            string? status = null)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
             var item = new AnalyticsActionItem
             {
-                SourceType = AnalyticsActionConstants.SourceTypes.Inventory,
-                SourceKey = $"inventory-{Guid.NewGuid():N}",
+                SourceType = sourceType ?? AnalyticsActionConstants.SourceTypes.Inventory,
+                SourceKey = sourceKey ?? $"inventory-{Guid.NewGuid():N}",
                 SourceId = 101,
                 Title = "Proveri dopunu",
                 Description = "Proveriti efekat akcije",
                 RecommendationStatus = "dopuna",
                 Priority = AnalyticsActionConstants.Priorities.P1,
-                Status = AnalyticsActionConstants.Statuses.Accepted,
+                Status = status ?? AnalyticsActionConstants.Statuses.Accepted,
                 CreatedAtUtc = new DateTime(2026, 5, 26, 12, 0, 0, DateTimeKind.Utc),
                 UpdatedAtUtc = new DateTime(2026, 5, 26, 12, 0, 0, DateTimeKind.Utc),
                 DueAtUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -170,4 +288,16 @@ public sealed class AnalyticsActionsEndpointsTests
             await App.DisposeAsync();
         }
     }
+
+    private sealed record AnalyticsActionSourceStatusResponse(
+        List<AnalyticsActionSourceStatusItem> Items);
+
+    private sealed record AnalyticsActionSourceStatusItem(
+        string SourceType,
+        string SourceKey,
+        bool Exists,
+        long? ActionId,
+        string? Status,
+        string? OutcomeStatus,
+        bool CanCreateNew);
 }

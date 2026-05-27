@@ -1182,16 +1182,24 @@ type AnalyticsActionUpsertResponse = {
 };
 
 type AnalyticsActionSourceStatusInput = {
+  items: Array<{
+    sourceType: string;
+    sourceKey: string;
+  }>;
+} | {
   sourceType: string;
   sourceKeys: string[];
 };
 
 type AnalyticsActionSourceStatusResponse = {
   items: Array<{
+    sourceType: string;
     sourceKey: string;
     exists: boolean;
-    status?: string | null;
     actionId?: number | null;
+    status?: string | null;
+    outcomeStatus?: string | null;
+    canCreateNew?: boolean;
   }>;
 };
 
@@ -1215,9 +1223,18 @@ export async function upsertAnalyticsActionWithResult(
 export async function getAnalyticsActionSourceStatuses(
   input: AnalyticsActionSourceStatusInput
 ): Promise<AnalyticsActionSourceStatusResponse> {
+  const payload = "items" in input
+    ? input
+    : {
+      items: input.sourceKeys.map((sourceKey) => ({
+        sourceType: input.sourceType,
+        sourceKey,
+      })),
+    };
+
   return postJson<AnalyticsActionSourceStatusResponse>(
     "/api/analytics/actions/status",
-    input,
+    payload,
     "Greška pri proveri statusa akcija"
   );
 }

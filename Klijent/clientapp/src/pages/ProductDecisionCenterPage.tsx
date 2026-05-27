@@ -516,10 +516,11 @@ export default function ProductDecisionCenterPage() {
       };
     });
 
-    const productKeys = Array.from(new Set(candidates.filter((entry) => entry.sourceType === "product").map((entry) => entry.sourceKey)));
-    const dataQualityKeys = Array.from(new Set(candidates.filter((entry) => entry.sourceType === "data_quality").map((entry) => entry.sourceKey)));
+    const lookupItems = Array.from(new Map(
+      candidates.map((entry) => [`${entry.sourceType}::${entry.sourceKey}`, entry])
+    ).values());
 
-    if (productKeys.length === 0 && dataQualityKeys.length === 0) {
+    if (lookupItems.length === 0) {
       setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
       return () => {
         cancelled = true;
@@ -528,19 +529,14 @@ export default function ProductDecisionCenterPage() {
 
     (async () => {
       try {
-        const [productStatuses, dataQualityStatuses] = await Promise.all([
-          productKeys.length > 0
-            ? getAnalyticsActionSourceStatuses({ sourceType: "product", sourceKeys: productKeys })
-            : Promise.resolve({ items: [] }),
-          dataQualityKeys.length > 0
-            ? getAnalyticsActionSourceStatuses({ sourceType: "data_quality", sourceKeys: dataQualityKeys })
-            : Promise.resolve({ items: [] }),
-        ]);
+        const statuses = await getAnalyticsActionSourceStatuses({
+          items: lookupItems,
+        });
 
         if (cancelled) return;
 
         const keys = new Set<string>();
-        for (const item of [...productStatuses.items, ...dataQualityStatuses.items]) {
+        for (const item of statuses.items) {
           if (item.exists && item.sourceKey) keys.add(item.sourceKey);
         }
 

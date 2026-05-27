@@ -273,22 +273,30 @@ public class AnalyticsActionItemServiceTests
         var closed = await service.UpsertAsync(CreateRequest("inventory", "exists-closed"), userId: "u1");
         await service.UpdateStatusAsync(closed.Id, AnalyticsActionConstants.Statuses.Done, note: null, userId: "u1", userName: "tester");
 
-        var statuses = await service.GetSourceStatusesAsync("inventory", new[] { "exists-open", "exists-closed", "missing-key" });
+        var statuses = await service.GetSourceStatusesAsync(new[]
+        {
+            new AnalyticsActionSourceStatusLookupInput("inventory", "exists-open"),
+            new AnalyticsActionSourceStatusLookupInput("inventory", "exists-closed"),
+            new AnalyticsActionSourceStatusLookupInput("inventory", "missing-key"),
+        });
 
-        var open = statuses.Single(x => x.SourceKey == "exists-open");
+        var open = statuses.Single(x => x.SourceType == "inventory" && x.SourceKey == "exists-open");
         Assert.True(open.Exists);
         Assert.Equal(AnalyticsActionConstants.Statuses.New, open.Status);
         Assert.NotNull(open.ActionId);
+        Assert.False(open.CanCreateNew);
 
-        var closedStatus = statuses.Single(x => x.SourceKey == "exists-closed");
+        var closedStatus = statuses.Single(x => x.SourceType == "inventory" && x.SourceKey == "exists-closed");
         Assert.False(closedStatus.Exists);
         Assert.Equal(AnalyticsActionConstants.Statuses.Done, closedStatus.Status);
         Assert.NotNull(closedStatus.ActionId);
+        Assert.True(closedStatus.CanCreateNew);
 
-        var missing = statuses.Single(x => x.SourceKey == "missing-key");
+        var missing = statuses.Single(x => x.SourceType == "inventory" && x.SourceKey == "missing-key");
         Assert.False(missing.Exists);
         Assert.Null(missing.Status);
         Assert.Null(missing.ActionId);
+        Assert.True(missing.CanCreateNew);
     }
 
     [Fact]

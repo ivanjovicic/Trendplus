@@ -533,8 +533,10 @@ export default function InventoryPage() {
     void (async () => {
       try {
         const response = await getAnalyticsActionSourceStatuses({
-          sourceType: "inventory",
-          sourceKeys,
+          items: sourceKeys.map((sourceKey) => ({
+            sourceType: "inventory",
+            sourceKey,
+          })),
         });
 
         if (cancelled) return;

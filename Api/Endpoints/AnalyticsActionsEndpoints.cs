@@ -126,25 +126,37 @@ public static class AnalyticsActionsEndpoints
         .WithName("UpsertAnalyticsAction");
 
         // POST /api/analytics/actions/status
-        // Batch status probe by sourceType + sourceKeys.
+        // Batch status probe by sourceType + sourceKey tuples.
         group.MapPost("/status", async (
-            AnalyticsActionSourceStatusBody body,
+            AnalyticsActionSourceStatusLookupBody body,
             AnalyticsActionItemService svc,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(body.SourceType))
-                return Results.BadRequest("sourceType is required");
+            if (body.Items is null || body.Items.Count == 0)
+                return Results.BadRequest("items is required");
 
-            if (!AnalyticsActionConstants.IsValidSourceType(body.SourceType))
-                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+            if (body.Items.Count > 1000)
+                return Results.BadRequest("items must contain at most 1000 entries");
 
-            if (body.SourceKeys is null || body.SourceKeys.Count == 0)
-                return Results.BadRequest("sourceKeys is required");
+            foreach (var item in body.Items)
+            {
+                if (string.IsNullOrWhiteSpace(item.SourceType))
+                    return Results.BadRequest("items[].sourceType is required");
 
-            if (body.SourceKeys.Count > 1000)
-                return Results.BadRequest("sourceKeys must contain at most 1000 items");
+                if (!AnalyticsActionConstants.IsValidSourceType(item.SourceType))
+                    return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
 
-            var items = await svc.GetSourceStatusesAsync(body.SourceType, body.SourceKeys, ct);
+                if (string.IsNullOrWhiteSpace(item.SourceKey))
+                    return Results.BadRequest("items[].sourceKey is required");
+            }
+
+            // exists=true means an open action exists for the exact sourceType+sourceKey tuple.
+            // exists=false with status=done/rejected means only closed actions exist and a new action is allowed.
+            var items = await svc.GetSourceStatusesAsync(
+                body.Items
+                    .Select(x => new AnalyticsActionSourceStatusLookupInput(x.SourceType, x.SourceKey))
+                    .ToArray(),
+                ct);
             return Results.Ok(new { items });
         })
         .WithName("GetAnalyticsActionSourceStatuses");
@@ -246,7 +258,11 @@ public sealed record AnalyticsActionOutcomeUpdateBody(
     string? OutcomeNotes
 );
 
-public sealed record AnalyticsActionSourceStatusBody(
+public sealed record AnalyticsActionSourceStatusLookupBody(
+    IReadOnlyList<AnalyticsActionSourceStatusLookupItemBody> Items
+);
+
+public sealed record AnalyticsActionSourceStatusLookupItemBody(
     string SourceType,
-    IReadOnlyList<string> SourceKeys
+    string SourceKey
 );

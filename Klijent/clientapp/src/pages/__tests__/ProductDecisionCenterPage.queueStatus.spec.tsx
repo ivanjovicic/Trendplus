@@ -96,7 +96,9 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceType: "product",
+        items: expect.arrayContaining([
+          expect.objectContaining({ sourceType: "product" }),
+        ]),
       }),
     );
 

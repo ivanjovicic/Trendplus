@@ -229,68 +229,90 @@ public sealed class AnalyticsActionItemService
     }
 
     public async Task<IReadOnlyList<AnalyticsActionSourceStatusDto>> GetSourceStatusesAsync(
-        string sourceType,
-        IReadOnlyCollection<string> sourceKeys,
+        IReadOnlyCollection<AnalyticsActionSourceStatusLookupInput> inputs,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(sourceType) || sourceKeys.Count == 0)
+        if (inputs.Count == 0)
         {
             return Array.Empty<AnalyticsActionSourceStatusDto>();
         }
 
-        var normalizedKeys = sourceKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Select(key => key.Trim())
-            .Distinct(StringComparer.Ordinal)
+        var normalizedInputs = inputs
+            .Where(x => !string.IsNullOrWhiteSpace(x.SourceType) && !string.IsNullOrWhiteSpace(x.SourceKey))
+            .Select(x => new AnalyticsActionSourceStatusLookupInput(x.SourceType.Trim(), x.SourceKey.Trim()))
+            .Distinct()
             .ToArray();
 
-        if (normalizedKeys.Length == 0)
+        if (normalizedInputs.Length == 0)
         {
             return Array.Empty<AnalyticsActionSourceStatusDto>();
         }
+
+        var sourceTypes = normalizedInputs
+            .Select(x => x.SourceType)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var sourceKeys = normalizedInputs
+            .Select(x => x.SourceKey)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var requestedPairs = normalizedInputs
+            .Select(x => (x.SourceType, x.SourceKey))
+            .ToHashSet();
 
         var candidates = await _db.AnalyticsActionItems
             .AsNoTracking()
-            .Where(x => x.SourceType == sourceType && normalizedKeys.Contains(x.SourceKey))
+            .Where(x => sourceTypes.Contains(x.SourceType) && sourceKeys.Contains(x.SourceKey))
             .Select(x => new
             {
                 x.Id,
+                x.SourceType,
                 x.SourceKey,
                 x.Status,
+                x.OutcomeStatus,
                 x.UpdatedAtUtc,
                 OpenRank = IsOpenStatus(x.Status) ? 1 : 0,
             })
             .ToListAsync(ct);
 
-        var bestByKey = candidates
-            .GroupBy(x => x.SourceKey)
+        var filteredCandidates = candidates
+            .Where(x => requestedPairs.Contains((x.SourceType, x.SourceKey)))
+            .ToArray();
+
+        var bestByPair = filteredCandidates
+            .GroupBy(x => (x.SourceType, x.SourceKey))
             .ToDictionary(
                 g => g.Key,
                 g => g
                     .OrderByDescending(x => x.OpenRank)
                     .ThenByDescending(x => x.UpdatedAtUtc)
-                    .First(),
-                StringComparer.Ordinal);
+                    .First());
 
-        var items = new List<AnalyticsActionSourceStatusDto>(normalizedKeys.Length);
-        foreach (var key in normalizedKeys)
+        var items = new List<AnalyticsActionSourceStatusDto>(normalizedInputs.Length);
+        foreach (var input in normalizedInputs)
         {
-            if (!bestByKey.TryGetValue(key, out var candidate))
+            if (!bestByPair.TryGetValue((input.SourceType, input.SourceKey), out var candidate))
             {
                 items.Add(new AnalyticsActionSourceStatusDto(
-                    SourceKey: key,
+                    SourceType: input.SourceType,
+                    SourceKey: input.SourceKey,
                     Exists: false,
+                    ActionId: null,
                     Status: null,
-                    ActionId: null));
+                    OutcomeStatus: null,
+                    CanCreateNew: true));
                 continue;
             }
 
-            var exists = IsOpenStatus(candidate.Status);
+            var existsOpen = IsOpenStatus(candidate.Status);
             items.Add(new AnalyticsActionSourceStatusDto(
-                SourceKey: key,
-                Exists: exists,
+                SourceType: input.SourceType,
+                SourceKey: input.SourceKey,
+                Exists: existsOpen,
+                ActionId: candidate.Id,
                 Status: candidate.Status,
-                ActionId: candidate.Id));
+                OutcomeStatus: candidate.OutcomeStatus,
+                CanCreateNew: !existsOpen));
         }
 
         return items;
@@ -523,10 +545,18 @@ public sealed record AnalyticsActionUpsertResult(
 );
 
 public sealed record AnalyticsActionSourceStatusDto(
+    string SourceType,
     string SourceKey,
     bool Exists,
+    long? ActionId,
     string? Status,
-    long? ActionId
+    string? OutcomeStatus,
+    bool CanCreateNew
+);
+
+public sealed record AnalyticsActionSourceStatusLookupInput(
+    string SourceType,
+    string SourceKey
 );
 
     public sealed record AnalyticsActionOutcomeUpdateRequest(

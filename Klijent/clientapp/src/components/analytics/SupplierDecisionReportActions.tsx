@@ -82,8 +82,10 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     void (async () => {
       try {
         const response = await getAnalyticsActionSourceStatuses({
-          sourceType: "supplier",
-          sourceKeys: [sourceKey],
+          items: [{
+            sourceType: "supplier",
+            sourceKey,
+          }],
         });
         if (cancelled) return;
         const item = response.items.find((entry: { sourceKey: string; exists: boolean }) => entry.sourceKey === sourceKey);
