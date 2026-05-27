@@ -10,6 +10,7 @@ using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using MediatR;
+using Domain.Model;
 using Trendplus2.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -24,6 +25,8 @@ namespace Trendplus2.Endpoints;
 /// </summary>
 public static class CachedAnalyticsEndpoints
 {
+    private const int MovementStatsBatchSize = 5_000;
+
     private static readonly string[] SerbianDayNames =
     {
         "Nedelja",
@@ -539,21 +542,38 @@ public static class CachedAnalyticsEndpoints
                             })
                             .ToDictionaryAsync(x => x.ProductId, x => x.UnitsSold, ct);
 
+                        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsFromJournalAsync(
+                            db,
+                            articleIds,
+                            storeId,
+                            salesFromDate,
+                            DateTime.UtcNow,
+                            ct);
+
                         var items = new List<InventoryListItemDto>(rawItems.Count);
                         foreach (var item in rawItems)
                         {
                             var quantity = item.Kolicina ?? 0;
                             var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
+                            var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
+                                ? stats
+                                : new InventorySignalWindowStats(0, 0);
+                            var openingStockUnits = Math.Max(quantity - movementWindowStats.NetMovementUnits, 0);
+                            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
                             var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
-                            var hasSufficientData = soldUnits30d > 0 || quantity > 0;
-                            var signalDataQuality = soldUnits30d > 0 ? "good" : quantity > 0 ? "warning" : "insufficient_data";
+                            var hasSufficientData = soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs;
+                            var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
+                                ? "good"
+                                : hasSufficientData
+                                    ? "warning"
+                                    : "insufficient_data";
 
                             var signal = InventorySignalCalculator.Calculate(
                                 currentOnHandUnits: quantity,
                                 avgDailySalesUnits: avgDailySalesUnits,
                                 soldUnits: soldUnits30d,
-                                openingStockUnits: null,
-                                inboundUnits: null,
+                                openingStockUnits: openingStockUnits,
+                                inboundUnits: movementWindowStats.InboundUnits,
                                 dataQualityStatus: signalDataQuality,
                                 hasSufficientData: hasSufficientData);
 
@@ -4966,6 +4986,13 @@ public static class CachedAnalyticsEndpoints
         var currentByProduct = currentSales.ToDictionary(x => x.ProductId);
         var previousByProduct = previousRevenue.ToDictionary(x => x.ProductId, x => x.Revenue);
         var lastSaleByProduct = lastSales.ToDictionary(x => x.ProductId, x => x.LastSaleAtUtc);
+        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsFromJournalAsync(
+            db,
+            articles.Select(x => x.ProductId).ToArray(),
+            storeId,
+            periodFromUtc,
+            periodToExclusiveUtc,
+            ct);
 
         var rows = new List<ProductDecisionCenterRowDto>(articles.Count);
         var totalLostSalesEstimate = 0m;
@@ -5076,14 +5103,26 @@ public static class CachedAnalyticsEndpoints
                 ? Math.Round((article.UnitCost ?? 0m) * article.CurrentStock, 2)
                 : 0m;
 
+            var movementWindowStats = movementWindowStatsByArticle.TryGetValue(article.ProductId, out var stats)
+                ? stats
+                : new InventorySignalWindowStats(0, 0);
+            var openingStockUnits = Math.Max(article.CurrentStock - movementWindowStats.NetMovementUnits, 0);
+            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+            var hasSufficientSignalData = unitsSold > 0 || article.CurrentStock > 0 || hasReliableSellThroughInputs;
+            var signalDataQuality = unitsSold > 0 && hasReliableSellThroughInputs
+                ? "good"
+                : hasSufficientSignalData
+                    ? "warning"
+                    : "insufficient_data";
+
             var signal = InventorySignalCalculator.Calculate(
                 currentOnHandUnits: article.CurrentStock,
                 avgDailySalesUnits: velocityUnitsPerDay,
                 soldUnits: unitsSold,
-                openingStockUnits: null,
-                inboundUnits: null,
-                dataQualityStatus: dataQualityStatus,
-                hasSufficientData: unitsSold > 0 || article.CurrentStock > 0);
+                openingStockUnits: openingStockUnits,
+                inboundUnits: movementWindowStats.InboundUnits,
+                dataQualityStatus: signalDataQuality,
+                hasSufficientData: hasSufficientSignalData);
 
             var combinedReasonCodes = reasonCodes
                 .Concat(signal.ReasonCodes)
@@ -5388,6 +5427,57 @@ public static class CachedAnalyticsEndpoints
         return normalized is "all" or "imported" or "existing" ? normalized : "all";
     }
 
+    private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsFromJournalAsync(
+        ITrendplusDbContext db,
+        IReadOnlyCollection<int> articleIds,
+        int? storeId,
+        DateTime fromUtc,
+        DateTime toExclusiveUtc,
+        CancellationToken ct)
+    {
+        var stats = new Dictionary<int, InventorySignalWindowStats>();
+        if (articleIds.Count == 0)
+        {
+            return stats;
+        }
+
+        foreach (var batch in articleIds.Chunk(MovementStatsBatchSize))
+        {
+            var movementRows = await db.DnevnikPromena
+                .AsNoTracking()
+                .Where(x => x.ArtikalId.HasValue
+                    && batch.Contains(x.ArtikalId.Value)
+                    && x.Datum >= fromUtc
+                    && x.Datum < toExclusiveUtc
+                    && (!storeId.HasValue || x.IDObjekat == storeId.Value))
+                .Select(x => new
+                {
+                    ArtikalId = x.ArtikalId!.Value,
+                    Quantity = x.Kolicina ?? 0,
+                    x.TipPromene,
+                })
+                .ToListAsync(ct);
+
+            foreach (var movement in movementRows)
+            {
+                stats.TryGetValue(movement.ArtikalId, out var current);
+
+                var netMovement = current.NetMovementUnits + movement.Quantity;
+                var inboundUnits = current.InboundUnits;
+
+                if (!string.IsNullOrWhiteSpace(movement.TipPromene)
+                    && TipPromeneConstants.UlazTypes.Contains(movement.TipPromene, StringComparer.OrdinalIgnoreCase))
+                {
+                    inboundUnits += Math.Max(movement.Quantity, 0);
+                }
+
+                stats[movement.ArtikalId] = new InventorySignalWindowStats(netMovement, inboundUnits);
+            }
+        }
+
+        return stats;
+    }
+
     private static string ResolveCorrelationId(HttpContext httpContext)
     {
         var responseHeader = httpContext.Response.Headers["X-Correlation-ID"].FirstOrDefault();
@@ -5421,6 +5511,7 @@ public static class CachedAnalyticsEndpoints
         || ex.InnerException is PostgresException innerPg && innerPg.SqlState == "42P01";
 
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
+    private sealed record InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
 }
 
 // DTOs za cache (moraju biti klase za JSON serijalizaciju)

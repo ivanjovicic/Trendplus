@@ -64,7 +64,7 @@ public sealed class SupplierNegotiationPackReportTests
         var finalAdvice = Assert.Single(section.Rows.Where(row =>
             string.Equals(Convert.ToString(row.GetValueOrDefault("item")), "Finalni savet", StringComparison.Ordinal)));
 
-        Assert.Contains("blokirana", Convert.ToString(finalAdvice.GetValueOrDefault("value")), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pomoćni signal", Convert.ToString(finalAdvice.GetValueOrDefault("value")), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -185,6 +185,9 @@ public static class AnalyticsActionsEndpoints
             if (!AnalyticsActionConstants.IsValidOutcomeStatus(body.OutcomeStatus))
                 return Results.BadRequest($"outcomeStatus must be one of: {string.Join(", ", AnalyticsActionConstants.OutcomeStatuses.AllValues)}");
 
+            if (!string.IsNullOrWhiteSpace(body.OutcomeNotes) && body.OutcomeNotes.Trim().Length > 4000)
+                return Results.BadRequest("outcomeNotes must be 4000 characters or fewer");
+
             var userId = httpContext.User?.FindFirst("sub")?.Value
                       ?? httpContext.User?.FindFirst("userId")?.Value;
             var userName = httpContext.User?.FindFirst("name")?.Value

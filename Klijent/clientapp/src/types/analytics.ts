@@ -837,6 +837,16 @@ export interface InventoryListItem {
   idDobavljac?: number | null;
   velicina?: string | null;
   velicinaGroup?: string | null;
+  stockCoverDays?: number | null;
+  stockCoverStatus?: string | null;
+  stockCoverStatusLabel?: string | null;
+  sellThroughRatio?: number | null;
+  sellThroughStatus?: string | null;
+  sellThroughStatusLabel?: string | null;
+  signalConfidencePct?: number | null;
+  recommendationAllowed?: boolean | null;
+  reasonCodes?: string[] | null;
+  dataQualityStatus?: string | null;
 }
 
 export interface InventoryPagedResponse {

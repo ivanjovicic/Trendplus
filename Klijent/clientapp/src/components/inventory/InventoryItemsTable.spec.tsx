@@ -125,4 +125,35 @@ describe("Inventory signal presentation", () => {
 
     expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
   });
+
+  it("shows action CTA when recommendation is blocked even with healthy cover", () => {
+    render(
+      <InventoryItemsTable
+        rows={[
+          makeRow({
+            stockCoverStatus: "healthy",
+            stockCoverStatusLabel: "Zdrava pokrivenost",
+            sellThroughRatio: null,
+            sellThroughStatus: "insufficient_data",
+            sellThroughStatusLabel: "Nedovoljno podataka",
+            recommendationAllowed: false,
+            signalText: "Nedovoljno podataka",
+          }),
+        ]}
+        loading={false}
+        totalCount={1}
+        pageNumber={1}
+        totalPages={1}
+        onOpenDetail={vi.fn()}
+        onPreviousPage={vi.fn()}
+        onNextPage={vi.fn()}
+        onAddToActions={vi.fn()}
+        onReviewSlowStock={vi.fn()}
+        isRowQueued={() => false}
+        isRowQueueBusy={() => false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
+  });
 });

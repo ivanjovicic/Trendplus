@@ -87,6 +87,19 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
 } {
   const dueAtUtc = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
+  const normalizedSellThrough = (row.sellThroughStatus ?? "").trim().toLowerCase();
+
+  if (row.recommendationAllowed === false || normalizedCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
+    return {
+      sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
+      title: `Proveri signal zalihe: ${row.naziv}`,
+      recommendationStatus: "SIGNAL_REVIEW",
+      priority: "P2",
+      description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
+      dueAtUtc,
+      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+    };
+  }
 
   if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
     const isCritical = normalizedCover === "out_of_stock_risk";

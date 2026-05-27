@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Domain.Model.Analytics;
 
 public class AnalyticsActionNote
@@ -5,6 +7,7 @@ public class AnalyticsActionNote
     public long Id { get; set; }
 
     public long ActionItemId { get; set; }
+    [JsonIgnore]
     public AnalyticsActionItem ActionItem { get; set; } = null!;
 
     public string StatusFrom { get; set; } = string.Empty;

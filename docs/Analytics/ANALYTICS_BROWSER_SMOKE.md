@@ -67,23 +67,23 @@ Dodatno za durable report rute:
 
 | Route | Expected | PASS/FAIL | Notes |
 |---|---|---|---|
-| /analytics | Analytics dashboard render, bez crash-a, trust info vidljiv |  |  |
-| /analytics/products | Product decision page render, bez crash-a |  |  |
-| /analytics/supplier | Supplier consolidated page render, bez crash-a |  |  |
-| /analytics/inventory | Inventory analytics page render, bez crash-a |  |  |
-| /analytics/data-quality | Data quality page render, bez crash-a |  |  |
-| /analytics/actions | Action queue analytics page render, bez crash-a |  |  |
-| /analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a |  |  |
-| /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a |  |  |
-| /admin/configuration | Configuration page render, bez crash-a |  |  |
-| /configuration | Redirect na /admin/configuration i stabilan render |  |  |
+| /analytics | Analytics dashboard render, bez crash-a, trust info vidljiv | PASS | Direktan URL i refresh stabilni; TrustHeader i data-quality info vidljivi; nema blank/crash/mojibake. |
+| /analytics/products | Product decision page render, bez crash-a | FAIL | Ruta često ostaje na "Učitavanje..." bez stabilnog sadržaja nakon refresh-a; UX nije stabilan za sign-off. |
+| /analytics/supplier | Supplier consolidated page render, bez crash-a | FAIL | Detektovan blank/empty prikaz u delu run-a i nestabilan render između direktnog otvaranja i refresh-a. |
+| /analytics/inventory | Inventory analytics page render, bez crash-a | FAIL | Stranica u više prolaza ostaje na loading stanju (bez pouzdanog kompletnog prikaza ekrana). |
+| /analytics/data-quality | Data quality page render, bez crash-a | FAIL | Ruta se učitava, ali je prikaz nestabilan; primećeni su 503/API fail tragovi i nejasan loading-heavy UX za pilot sign-off. |
+| /analytics/actions | Action queue analytics page render, bez crash-a | FAIL | Nije crash, ali render nije konzistentan (učitavanje/partial state) i nije dovoljno stabilan za PASS. |
+| /analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a | FAIL | URL ostaje stabilan posle refresh-a, ali stranica ostaje u "Učitavam..." stanju bez pouzdanog report rendera/payload-a. |
+| /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all | Durable report render; refresh ostaje na istoj stranici; expired bez export dugmadi bez payload-a | FAIL | URL stabilan, ali ostaje loading/partial prikaz; nije potvrđen stabilan report prikaz za browser sign-off. |
+| /admin/configuration | Configuration page render, bez crash-a | FAIL | Povremeno ostaje na "Učitavanje..." i beleži API request fail tragove (nepouzdan prikaz tokom smoke-a). |
+| /configuration | Redirect na /admin/configuration i stabilan render | FAIL | Redirect radi na /admin/configuration, ali ciljni render nije stabilan (loading/fail tragovi). |
 
 ## Result Summary (fill after run)
 
-- Environment:
-- Browser:
-- Date/time:
-- Executed by:
-- Overall result: PASS / FAIL
-- Blocking findings:
-- Follow-up actions:
+- Environment: Local dev (frontend `http://localhost:5173`, backend `http://localhost:8080`)
+- Browser: VS Code integrated browser (Playwright-driven manual smoke)
+- Date/time: 2026-05-27 (UTC)
+- Executed by: GitHub Copilot (GPT-5.3-Codex)
+- Overall result: FAIL
+- Blocking findings: Više core ruta ne daje stabilan finalni prikaz (loading/blank/partial state), uz API 503/fetch failure tragove tokom smoke sesije; durable report rute nisu stabilno renderovane.
+- Follow-up actions: Otvoriti poseban fix task za stabilizaciju ruta označenih kao FAIL, zatim ponoviti isti browser smoke i tek tada razmatrati pilot sign-off.

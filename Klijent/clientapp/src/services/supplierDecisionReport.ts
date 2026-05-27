@@ -9,9 +9,29 @@ import {
 import { resolveAnalyticsTablePayload } from "./analyticsTableState";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
 import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
-import type { ScorecardTrustMetadata, SummaryResponse } from "./supplierDecisionHubApi";
+import type { SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+
+type ScorecardTrustMetadata = {
+  lastRefreshAtUtc?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  requestedFrom?: string | null;
+  requestedTo?: string | null;
+  requestedDataset?: string | null;
+  effectiveDataset?: string | null;
+  effectivePeriodLabel?: string | null;
+  usedFallback?: boolean;
+  fallbackReason?: string | null;
+  fallbackReasonCode?: string | null;
+  recommendationAllowed?: boolean;
+  dataCoverageStatus?: string | null;
+  dataNote?: string | null;
+  missingSupplierNameCount?: number;
+  ignoredRowCount?: number;
+  rowCount?: number;
+};
 
 export type SupplierDecisionReportRow = {
   supplierId: number;
@@ -165,6 +185,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     .filter((row) => row.status === "increase_focus" && row.deadStockRate <= 0.2)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 3);
+  const missingCostSignalDetected = input.rows.some((row) => row.reasonCodes.some((code) => code.toLowerCase().includes("missing_cost")));
 
   detailRows.push(
     buildSectionRow("supplier_negotiation_pack", "Dobavljač", input.supplierLabel, "Sažetak", ""),
@@ -179,25 +200,25 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   );
 
   if (topMarginRows.length > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Najbolji artikli po maržnom doprinosu", topMarginRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Top 3 po maržnom doprinosu"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Najbolji artikli po maržnom doprinosu", topMarginRows.map((row) => row.supplierName).join(", "), "Argumenti", "Top 3 po maržnom doprinosu"));
   }
   if (slowStockRows.length > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa sporom zalihom", slowStockRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Visok lager u riziku"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa sporom zalihom", slowStockRows.map((row) => row.supplierName).join(", "), "Argumenti", "Visok lager u riziku"));
   }
   if (markdownDependentRows.length > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli zavisni od sniženja", markdownDependentRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Visoka markdown zavisnost"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli zavisni od sniženja", markdownDependentRows.map((row) => row.supplierName).join(", "), "Argumenti", "Visoka markdown zavisnost"));
   }
   if (replenishRows.length > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za dopunu", replenishRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Stabilna tražnja i nizak dead stock"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za dopunu", replenishRows.map((row) => row.supplierName).join(", "), "Argumenti", "Stabilna tražnja i nizak dead stock"));
   }
   if (reduceRows.length > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za smanjenje narudžbine", reduceRows.map((row) => row.supplierName).join(", "), "Argumenti za pregovor", "Signal za smanjenje fokusa"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli za smanjenje narudžbine", reduceRows.map((row) => row.supplierName).join(", "), "Argumenti", "Signal za smanjenje fokusa"));
   }
   if ((trust?.missingSupplierNameCount ?? 0) > 0) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing supplier problemom", String(trust?.missingSupplierNameCount ?? 0), "Argumenti za pregovor", "Nedostaje dobavljač i signal je manje pouzdan"));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing supplier problemom", String(trust?.missingSupplierNameCount ?? 0), "Argumenti", "Nedostaje dobavljač i signal je manje pouzdan"));
   }
-  if ((meta?.dataQualityStatus ?? trust?.dataCoverageStatus) && normalizeDataQualityStatus(meta?.dataQualityStatus ?? trust?.dataCoverageStatus) !== "good") {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing cost problemom", "Maržni doprinos je procena", "Argumenti za pregovor", "Deo nabavne cene nije istorijski potvrđen"));
+  if (missingCostSignalDetected) {
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Artikli sa missing cost problemom", "Maržni doprinos može biti nepouzdan", "Argumenti", "Detektovan missing_cost signal u reasonCodes."));
   }
 
   detailRows.push(
@@ -206,18 +227,36 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("supplier_negotiation_pack", "Pregovaraj bolje uslove", input.supplierCounts.caution > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Marža i markdown signal ukazuju na prostor za pregovor."),
     buildSectionRow("supplier_negotiation_pack", "Smanji narednu narudžbinu", input.supplierCounts.reduce > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Signal upozorava na rizičan asortiman."),
     buildSectionRow("supplier_negotiation_pack", "Traži zamenu/povrat spore robe", slowStockRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Spor obrt i visok lager u riziku."),
-    buildSectionRow("supplier_negotiation_pack", "Traži rabat za robu koja se prodaje samo kroz sniženje", markdownDependentRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Zavisnost od sniženja smanjuje kvalitet marže.")
+    buildSectionRow("supplier_negotiation_pack", "Traži rabat za robu koja se prodaje samo kroz sniženje", markdownDependentRows.length > 0 ? "Preporučeno" : "Razmotriti", "Predlog razgovora", "Zavisnost od sniženja smanjuje kvalitet marže."),
+    buildSectionRow(
+      "supplier_negotiation_pack",
+      "Finalni savet",
+      trust?.recommendationAllowed === false
+        ? "Pomoćni signal - proveriti podatke pre odluke"
+        : (input.supplierCounts.boost >= input.supplierCounts.reduce ? "Pojačaj saradnju" : "Smanji narednu narudžbinu"),
+      "Predlog razgovora",
+      trust?.recommendationAllowed === false
+        ? "Finalni savet je blokiran jer recommendationAllowed=false."
+        : "Koristiti kao polazni predlog razgovora sa dobavljačem."
+    )
   );
 
   if (trust?.recommendationAllowed === false) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Finalna preporuka je blokirana", "Da", "Upozorenja", "Nedovoljno podataka za finalni savet."));
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Pomoćni signal", "Pomoćni signal - proveriti podatke pre odluke", "Upozorenja", "Finalna preporuka nije dozvoljena za ovaj signal."));
   }
   if (trust?.usedFallback) {
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Korišćen je fallback dataset", "Da", "Upozorenja", trust?.effectivePeriodLabel ?? trust?.fallbackReason ?? ""));
+    const fallbackContext = [
+      trust?.effectiveDataset ? `dataset: ${trust.effectiveDataset}` : null,
+      trust?.effectivePeriodLabel ? `period: ${trust.effectivePeriodLabel}` : null,
+      trust?.fallbackReason ? trust.fallbackReason : null,
+    ].filter((part): part is string => Boolean(part)).join(" | ");
+    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Korišćen fallback dataset", "Da", "Upozorenja", fallbackContext || "Korišćen fallback dataset"));
   }
   if ((meta?.dataQualityStatus ?? trust?.dataCoverageStatus) && normalizeDataQualityStatus(meta?.dataQualityStatus ?? trust?.dataCoverageStatus) !== "good") {
     detailRows.push(buildSectionRow("supplier_negotiation_pack", "Kvalitet podataka nije idealan", dataQualityStatusLabel(meta?.dataQualityStatus), "Upozorenja", meta?.warningMessage ?? meta?.message ?? ""));
-    detailRows.push(buildSectionRow("supplier_negotiation_pack", "Maržni doprinos je procena", "Da", "Upozorenja", "Marža je procena jer deo nabavne cene nije istorijski potvrđen."));
+    if (missingCostSignalDetected) {
+      detailRows.push(buildSectionRow("supplier_negotiation_pack", "Maržni doprinos je procena", "Da", "Upozorenja", "Marža je procena jer deo nabavne cene nije istorijski potvrđen."));
+    }
   }
 
   detailRows.push(

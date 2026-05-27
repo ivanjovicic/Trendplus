@@ -109,9 +109,13 @@ export function sellThroughStatusLabel(status: string): string {
   }
 }
 
-export function buildSignalText(stockCoverStatus: string, sellThroughStatus: string): string {
+export function buildSignalText(stockCoverStatus: string, sellThroughStatus: string, recommendationAllowed?: boolean | null): string {
   const normalizedStockCover = (stockCoverStatus ?? "").trim().toLowerCase();
   const normalizedSellThrough = (sellThroughStatus ?? "").trim().toLowerCase();
+
+  if (recommendationAllowed === false) {
+    return "Nedovoljno podataka";
+  }
 
   if (normalizedStockCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
     return "Nedovoljno podataka";
@@ -175,7 +179,7 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     sellThroughStatusLabel: sellThroughStatusLabelValue,
     signalConfidencePct: item.signalConfidencePct ?? null,
     recommendationAllowed: item.recommendationAllowed ?? null,
-    signalText: buildSignalText(stockCoverStatus, sellThroughStatus),
+    signalText: buildSignalText(stockCoverStatus, sellThroughStatus, item.recommendationAllowed),
     dataQualityStatus: item.dataQualityStatus ?? "insufficient_data",
     reasonCodes: item.reasonCodes ?? [],
   };

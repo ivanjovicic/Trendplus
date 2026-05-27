@@ -76,7 +76,7 @@ function filterValue(payload: ResolvedAnalyticsTablePayload, key: string): strin
 
 function buildNegotiationMeetingSummary(rows: ReportRow[]): string {
   const summaryRows = rows.filter((row) => row.secondary === "Sažetak");
-  const argumentRows = rows.filter((row) => row.secondary === "Argumenti za dobavljača" || row.secondary === "Argumenti za pregovor");
+  const argumentRows = rows.filter((row) => row.secondary === "Argumenti" || row.secondary === "Argumenti za dobavljača" || row.secondary === "Argumenti za pregovor");
   const proposalRows = rows.filter((row) => row.secondary === "Predlog razgovora" || row.secondary === "Pomoćni signal");
   const warningRows = rows.filter((row) => row.secondary === "Upozorenja");
 
@@ -177,7 +177,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   };
 
   const negotiationSummaryRows = negotiationPack.filter((row) => row.secondary === "Sažetak");
-  const negotiationArgumentRows = negotiationPack.filter((row) => row.secondary === "Argumenti za dobavljača" || row.secondary === "Argumenti za pregovor");
+  const negotiationArgumentRows = negotiationPack.filter((row) => row.secondary === "Argumenti" || row.secondary === "Argumenti za dobavljača" || row.secondary === "Argumenti za pregovor");
   const negotiationProposalRows = negotiationPack.filter((row) => row.secondary === "Predlog razgovora" || row.secondary === "Pomoćni signal");
   const negotiationWarningRows = negotiationPack.filter((row) => row.secondary === "Upozorenja");
 
