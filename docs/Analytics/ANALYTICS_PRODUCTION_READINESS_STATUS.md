@@ -1,6 +1,6 @@
 # Analytics Production Readiness Status
 
-Datum verifikacije: 2026-05-26
+Datum verifikacije: 2026-05-27
 Repo: ivanjovicic/Trendplus
 Osnovni checklist: docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md
 Routing/smoke standard: docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md
@@ -20,7 +20,7 @@ Preostala ograničenja su manual browser smoke i UX/copy provere koje nisu izvr�
 
 | Oblast | Status | Dokaz | Gap | Prioritet |
 |---|---|---|---|---|
-| Build/test gates | PASS (explicit gate) | `dotnet build` prolazi; `npm run check:analytics-guardrails` prolazi; `npm run build` prolazi. `dotnet test Api.Tests/Api.Tests.csproj` prolazi (`Failed: 0, Passed: 448`). | `dotnet test` na root-u i dalje nije pouzdan signal za test execution u ovom okruženju; eksplicitni test projekat ostaje izvor istine. | P1 |
+| Build/test gates | PASS (explicit gate) | `dotnet build` prolazi; `npm run check:analytics-guardrails` prolazi (guardrails script vraćen i verifikovan); `npm run build` prolazi. `npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx` prolazi (`9/9`). `dotnet test Api.Tests/Api.Tests.csproj` prolazi (`Failed: 0, Passed: 448`). | `dotnet test` na root-u i dalje nije pouzdan signal za test execution u ovom okruženju; eksplicitni test projekat ostaje izvor istine. | P1 |
 | Trust/data contract | PASS (code+tests) | No-fake-zero i meta kontrakti pokriveni testovima u `Api.Tests/AnalyticsResponseMetaContractTests.cs`, `Api.Tests/AnalyticsMetaContractTests.cs`, `Api.Tests/AnalyticsReportsContractTests.cs`. Durable report builder koristi `AnalyticsResponseMeta` i eksplicitne error/empty grane (`Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api/Endpoints/DataQualityEndpoints.cs`). | Nema novog funkcionalnog gapa potvrđenog u ovoj verifikaciji. | P2 |
 | Durable reports | PARTIAL | Backend durable endpointi postoje: `/api/analytics/reports/supplier-decision` i `/api/analytics/reports/pilot-intake` (`Api/Endpoints/AnalyticsReportsEndpoints.cs`). Frontend API klijent koristi te rute (`Klijent/clientapp/src/services/analyticsApi.ts`). Durable report rute su mapirane u `Klijent/clientapp/src/App.tsx`, a route smoke guardrail prolazi (`npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx`). | PASS code-level; browser smoke za direktno otvaranje/refresh durable URL-a nije izvršen u ovom pass-u. | P2 |
 | Cache/report invalidation | PASS (code+tests) | Cache status payload vraća `cacheMode`, `reportCacheVersion`, `lastReportCacheClearAtUtc` i ostala status polja iz istog shared handler-a za obe rute (`/api/analytics/cache/status` i `/api/analytics/cached/cache/status`) u `Api/Endpoints/CachedAnalyticsEndpoints.cs`. `CoreFamilies` invalidation i bump report verzije pokriveni (`Infrastructure/Services/Caching/AnalyticsCacheAdminService.cs`, `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`, `Api.Tests/AnalyticsCacheAdminServiceTests.cs`). Worker/import invalidacija koristi `CoreFamilies` (`Workers/NightlyAnalyticsRefreshWorker.cs`, `Workers/AnalyticsDataQualityHealthWorker.cs`, `Api/Services/AccessImportService.cs`). | Nema aktivnog rute gapa za cache status; frontend i dalje koristi legacy putanju zbog minimalnog rizika. | P2 |
@@ -39,11 +39,11 @@ Backend:
 Frontend:
 - `cd Klijent/clientapp && npm run check:analytics-guardrails`: PASS.
 - `cd Klijent/clientapp && npm run build`: PASS.
-- `cd Klijent/clientapp && npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx`: PASS (`8/8` testova).
+- `cd Klijent/clientapp && npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx`: PASS (`9/9` testova).
 
 Napomena:
 - Route smoke je automated/code-level verifikacija i prolazi i sa lazy route resolution.
-- Manual browser smoke nije izvršen u ovom pass-u.
+- Manual browser smoke nije izvršen u ovom pass-u (prethodni browser smoke status ostaje nepromenjen).
 
 ## Core rute verifikacija
 

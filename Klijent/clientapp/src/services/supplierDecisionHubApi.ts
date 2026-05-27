@@ -1,4 +1,5 @@
-import { makeUrl } from "./analyticsApi";
+﻿import { makeUrl } from "./analyticsApi";
+import type { AnalyticsResponseMeta } from "../types/analytics";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -62,6 +63,35 @@ export type KeyInsightItem = {
   tone: string;
 };
 
+export type ScorecardTrustMetadata = {
+  requestedFrom?: string | null;
+  requestedTo?: string | null;
+  requestedPeriodFrom?: string | null;
+  requestedPeriodTo?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  requestedDataset?: string | null;
+  effectiveDataset?: string | null;
+  effectivePeriodLabel?: string | null;
+  dataCoverageStatus?: string | null;
+  dataScope?: string | null;
+  coverage?: string | null;
+  usedFallback?: boolean;
+  fallbackReason?: string | null;
+  fallbackReasonCode?: string | null;
+  rowCount?: number;
+  ignoredRowCount?: number;
+  zeroRevenueRowsExcludedCount?: number;
+  missingSupplierNameCount?: number;
+  recommendationAllowed?: boolean;
+  hasData?: boolean;
+  hasExplicitDateRange?: boolean;
+  noSilentFallback?: boolean;
+  windowDays?: number;
+  dataNote?: string | null;
+  lastRefreshAtUtc?: string | null;
+};
+
 export type SummaryResponse = {
   from: string;
   to: string;
@@ -75,6 +105,8 @@ export type SummaryResponse = {
   topRiskSuppliers: SummarySupplierItem[];
   keyInsights: KeyInsightItem[];
   dataNote?: string | null;
+  trustMetadata?: ScorecardTrustMetadata | null;
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type QuadrantItem = {
@@ -109,6 +141,10 @@ export type RankingItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct?: number | null;
+  dataQualityStatus?: string | null;
+  statusReason?: string | null;
+  reasonCodes?: string[] | null;
 };
 
 export type RankingResponse = {
@@ -117,6 +153,8 @@ export type RankingResponse = {
   totalCount: number;
   items: RankingItem[];
   dataNote?: string | null;
+  trustMetadata?: ScorecardTrustMetadata | null;
+  meta?: AnalyticsResponseMeta | null;
 };
 
 export type SupplierHeaderDto = {
@@ -198,6 +236,52 @@ export type SupplierDecisionDetailsResponse = {
   recommendationHistory: RecommendationHistoryItem[];
 };
 
+export class SupplierDecisionApiError extends Error {
+  readonly status: number;
+  readonly errorCode: string | null;
+  readonly correlationId: string | null;
+
+  constructor(message: string, status: number, errorCode?: string | null, correlationId?: string | null) {
+    super(message);
+    this.name = "SupplierDecisionApiError";
+    this.status = status;
+    this.errorCode = errorCode ?? null;
+    this.correlationId = correlationId ?? null;
+  }
+}
+
+function normalizeDatasetName(value: string | null | undefined): string | null {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "all_history" || normalized === "all-time") return "all_time";
+  return normalized;
+}
+
+function normalizeTrustMetadata(raw: unknown): ScorecardTrustMetadata | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+
+  const requestedFrom = typeof value.requestedFrom === "string"
+    ? value.requestedFrom
+    : typeof value.requestedPeriodFrom === "string"
+      ? value.requestedPeriodFrom
+      : null;
+
+  const requestedTo = typeof value.requestedTo === "string"
+    ? value.requestedTo
+    : typeof value.requestedPeriodTo === "string"
+      ? value.requestedPeriodTo
+      : null;
+
+  return {
+    ...value,
+    requestedFrom,
+    requestedTo,
+    requestedDataset: normalizeDatasetName(typeof value.requestedDataset === "string" ? value.requestedDataset : null),
+    effectiveDataset: normalizeDatasetName(typeof value.effectiveDataset === "string" ? value.effectiveDataset : null),
+  } as ScorecardTrustMetadata;
+}
+
 function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHubFilters) {
   if (filters.fromDate) params.append("fromDate", filters.fromDate);
   if (filters.toDate) params.append("toDate", filters.toDate);
@@ -220,9 +304,34 @@ function appendFilterParams(params: URLSearchParams, filters: SupplierDecisionHu
 async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage: string): Promise<T> {
   const response = await fetch(makeUrl(path, params));
   if (!response.ok) {
-    throw new Error(errorMessage);
+    let message = errorMessage;
+    let errorCode: string | null = null;
+    let correlationId: string | null = null;
+
+    try {
+      const body = (await response.json()) as Record<string, unknown>;
+      if (typeof body.title === "string" && body.title.trim().length > 0) {
+        message = body.title;
+      } else if (typeof body.message === "string" && body.message.trim().length > 0) {
+        message = body.message;
+      }
+      if (typeof body.errorCode === "string") errorCode = body.errorCode;
+      if (typeof body.correlationId === "string") correlationId = body.correlationId;
+    } catch {
+      // Ignore parse errors and keep fallback message.
+    }
+
+    throw new SupplierDecisionApiError(message, response.status, errorCode, correlationId);
   }
-  return (await response.json()) as T;
+
+  const parsed = (await response.json()) as T;
+  if (parsed && typeof parsed === "object") {
+    const withTrust = parsed as { trustMetadata?: unknown };
+    if (withTrust.trustMetadata !== undefined) {
+      withTrust.trustMetadata = normalizeTrustMetadata(withTrust.trustMetadata);
+    }
+  }
+  return parsed;
 }
 
 export async function getSupplierDecisionSummary(

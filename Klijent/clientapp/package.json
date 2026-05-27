@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "check:analytics-guardrails": "node ./scripts/check-analytics-guardrails.mjs && npm run typecheck",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
