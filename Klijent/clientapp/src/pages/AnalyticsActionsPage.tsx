@@ -7,7 +7,7 @@ import {
   updateAnalyticsActionOutcome,
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
-import { fmtNumber, fmtRsd } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
@@ -72,11 +72,11 @@ const DATA_QUALITY_CSS: Record<string, string> = {
 };
 
 const OUTCOME_LABELS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], string> = {
-  pending: "Na čekanju",
-  success: "Uspešno",
-  neutral: "Neutralno",
-  negative: "Negativno",
-  not_measured: "Nije mereno",
+  pending: "Ceka proveru",
+  success: "Pozitivan ishod",
+  neutral: "Neutralan ishod",
+  negative: "Negativan ishod",
+  not_measured: "Nije izmereno",
 };
 
 const OUTCOME_CSS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], string> = {
@@ -121,16 +121,23 @@ function parseSourceTypeQuery(value: string | null): AnalyticsActionSourceType |
 }
 
 function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return "-";
+  return formatDateTime(value, "-");
+}
+
+function isoToDateTimeLocal(value: string | null | undefined): string {
+  if (!value) return "";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("sr-RS", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function dateTimeLocalToIso(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
 }
 
 function formatMetadataJson(value: string | null | undefined): string | null {
@@ -162,6 +169,7 @@ type OutcomeModalState = {
   title: string;
   outcomeStatus: AnalyticsActionOutcomeUpdateInput["outcomeStatus"];
   measuredImpactRsd: string;
+  outcomeMeasuredAtLocal: string;
   outcomeNotes: string;
 };
 
@@ -310,35 +318,56 @@ export default function AnalyticsActionsPage() {
       title: item.title,
       outcomeStatus: normalizeOutcomeStatus(item.outcomeStatus) ?? "pending",
       measuredImpactRsd: item.measuredImpactRsd != null ? String(item.measuredImpactRsd) : "",
+      outcomeMeasuredAtLocal: isoToDateTimeLocal(item.outcomeMeasuredAtUtc),
       outcomeNotes: item.outcomeNotes ?? "",
     });
   }
 
   async function submitOutcomeModal() {
     if (!outcomeModal) return;
-    const measuredImpact = outcomeModal.measuredImpactRsd.trim();
-    const parsedImpact = measuredImpact.length > 0 ? Number(measuredImpact) : null;
+
+    if (!outcomeModal.outcomeStatus) {
+      setOutcomeModalError("Status ishoda je obavezan.");
+      return;
+    }
+
+    const isPending = outcomeModal.outcomeStatus === "pending";
+    const measuredImpactRaw = outcomeModal.measuredImpactRsd.trim();
+    const parsedImpact = isPending || measuredImpactRaw.length === 0
+      ? null
+      : Number(measuredImpactRaw.replace(",", "."));
+
     if (parsedImpact != null && !Number.isFinite(parsedImpact)) {
-      setOutcomeModalError("Unesite ispravan broj za izmereni uticaj.");
+      setOutcomeModalError("Ishod nije sačuvan. Proverite status i iznos.");
+      return;
+    }
+
+    const measuredAtIso = isPending ? null : dateTimeLocalToIso(outcomeModal.outcomeMeasuredAtLocal);
+    if (!isPending && outcomeModal.outcomeMeasuredAtLocal.trim().length > 0 && !measuredAtIso) {
+      setOutcomeModalError("Unesite validan datum merenja ishoda.");
       return;
     }
 
     setOutcomeModalBusy(true);
     setOutcomeModalError(null);
     try {
-      const isPending = outcomeModal.outcomeStatus === "pending";
       const result = await updateAnalyticsActionOutcome(outcomeModal.id, {
         outcomeStatus: outcomeModal.outcomeStatus,
         measuredImpactRsd: isPending ? null : parsedImpact,
-        outcomeMeasuredAtUtc: isPending ? null : undefined,
+        outcomeMeasuredAtUtc: measuredAtIso,
         outcomeNotes: outcomeModal.outcomeNotes.trim().length > 0 ? outcomeModal.outcomeNotes.trim() : null,
       });
       setItems((prev) => prev.map((it) => (it.id === result.id ? result : it)));
       setDetailsById((prev) => ({ ...prev, [result.id]: result }));
       setOutcomeModal(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Ishod nije sacuvan. Pokusajte ponovo.";
-      setOutcomeModalError(message);
+      const message = e instanceof Error ? e.message : "";
+      const lower = message.toLowerCase();
+      if (lower.includes("400") || lower.includes("badrequest") || lower.includes("bad request")) {
+        setOutcomeModalError("Ishod nije sačuvan. Proverite status i iznos.");
+      } else {
+        setOutcomeModalError(message || "Greška pri čuvanju ishoda akcije.");
+      }
     } finally {
       setOutcomeModalBusy(false);
     }
@@ -480,8 +509,8 @@ export default function AnalyticsActionsPage() {
                   <th className="th-num">Očekivani uticaj</th>
                   <th className="th-num">Conf%</th>
                   <th>Data Q</th>
-                  <th>Ishod</th>
-                  <th>Status</th>
+                  <th>Status ishoda</th>
+                  <th>Status akcije</th>
                   <th>Akcije</th>
                   <th>Detalji</th>
                 </tr>
@@ -619,7 +648,7 @@ export default function AnalyticsActionsPage() {
                               <div><strong>SourceType:</strong> {detailsItem.sourceType}</div>
                               <div><strong>SourceKey:</strong> {detailsItem.sourceKey}</div>
                               <div><strong>SourceId:</strong> {detailsItem.sourceId ?? "-"}</div>
-                              <div><strong>DueAtUtc:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
+                              <div><strong>Rok provere:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
                               <div><strong>CreatedAtUtc:</strong> {formatTimestamp(detailsItem.createdAtUtc)}</div>
                               <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(detailsItem.updatedAtUtc)}</div>
                               <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(detailsItem.resolvedAtUtc)}</div>
@@ -627,7 +656,7 @@ export default function AnalyticsActionsPage() {
                               <div><strong>Izmereni uticaj:</strong> {fmtRsd(detailsItem.measuredImpactRsd, 0, "-")}</div>
                               <div><strong>Status akcije:</strong> {STATUS_LABELS[detailsItem.status]}</div>
                               <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(detailsItem.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(detailsItem.outcomeStatus)!] : "-"}</div>
-                              <div><strong>Izmereno:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
+                              <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
                               <div><strong>CreatedByUserId:</strong> {detailsItem.createdByUserId ?? "-"}</div>
                               <div><strong>UpdatedByUserName:</strong> {detailsItem.updatedByUserName ?? "-"}</div>
                               <div>
@@ -756,7 +785,7 @@ export default function AnalyticsActionsPage() {
             aria-labelledby="aaq-outcome-modal-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="aaq-outcome-modal-title">{outcomeModal.outcomeStatus === "pending" ? "Oznaci ishod" : "Azuriraj ishod"}</h2>
+            <h2 id="aaq-outcome-modal-title">Azuriraj ishod</h2>
             <p className="aaq-modal-subtitle">
               Beležite ishod za akciju <strong>{outcomeModal.title}</strong>.
             </p>
@@ -767,7 +796,20 @@ export default function AnalyticsActionsPage() {
               value={outcomeModal.outcomeStatus}
               onChange={(e) => {
                 setOutcomeModalError(null);
-                setOutcomeModal((current) => current ? { ...current, outcomeStatus: e.target.value as OutcomeModalState["outcomeStatus"] } : current);
+                setOutcomeModal((current) => {
+                  if (!current) return current;
+                  const nextStatus = e.target.value as OutcomeModalState["outcomeStatus"];
+                  if (nextStatus === "pending") {
+                    return {
+                      ...current,
+                      outcomeStatus: nextStatus,
+                      measuredImpactRsd: "",
+                      outcomeMeasuredAtLocal: "",
+                    };
+                  }
+
+                  return { ...current, outcomeStatus: nextStatus };
+                });
               }}
               disabled={outcomeModalBusy}
             >
@@ -786,7 +828,18 @@ export default function AnalyticsActionsPage() {
                 setOutcomeModal((current) => current ? { ...current, measuredImpactRsd: e.target.value } : current);
               }}
               placeholder="npr. 12500"
-              disabled={outcomeModalBusy}
+              disabled={outcomeModalBusy || outcomeModal.outcomeStatus === "pending"}
+            />
+            <label htmlFor="aaq-outcome-measured-at">Datum merenja ishoda</label>
+            <input
+              id="aaq-outcome-measured-at"
+              type="datetime-local"
+              value={outcomeModal.outcomeMeasuredAtLocal}
+              onChange={(e) => {
+                setOutcomeModalError(null);
+                setOutcomeModal((current) => current ? { ...current, outcomeMeasuredAtLocal: e.target.value } : current);
+              }}
+              disabled={outcomeModalBusy || outcomeModal.outcomeStatus === "pending"}
             />
             <label htmlFor="aaq-outcome-notes">Napomena</label>
             <textarea

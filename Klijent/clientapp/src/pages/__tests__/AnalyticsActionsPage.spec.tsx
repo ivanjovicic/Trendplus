@@ -120,7 +120,7 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
-    expect(screen.getByText("Uspešno")).toBeInTheDocument();
+    expect(screen.getByText("Pozitivan ishod")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
 
@@ -137,12 +137,12 @@ describe("AnalyticsActionsPage", () => {
           outcomeStatus: "negative",
           measuredImpactRsd: -500,
           outcomeNotes: "Pad marže posle akcije.",
-          outcomeMeasuredAtUtc: undefined,
+          outcomeMeasuredAtUtc: expect.any(String),
         }),
       );
     });
 
-    expect(await screen.findByText("Negativno")).toBeInTheDocument();
+    expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Pad marže posle akcije\./)).toBeInTheDocument();
   });
 
@@ -156,6 +156,6 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Azuriraj ishod" }));
     fireEvent.click(screen.getByRole("button", { name: "Potvrdi" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("outcomeNotes must be 4000 characters or fewer");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ishod nije sačuvan. Proverite status i iznos.");
   });
 });

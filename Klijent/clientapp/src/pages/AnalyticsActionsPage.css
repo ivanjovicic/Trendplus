@@ -227,6 +227,19 @@
 .dq-fair { background: #fff3cd; color: #664d03; }
 .dq-poor { background: #f8d7da; color: #58151c; }
 
+.badge-outcome {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-pending { background: #e2e3e5; color: #383d41; }
+.badge-success { background: #d1e7dd; color: #0a3622; }
+.badge-neutral { background: #fff3cd; color: #664d03; }
+.badge-negative { background: #f8d7da; color: #58151c; }
+.badge-not-measured { background: #e2e3e5; color: #383d41; }
+
 /* Action buttons */
 .td-actions {
   white-space: nowrap;
@@ -431,6 +444,18 @@
   font-size: 0.85rem;
   font-family: inherit;
   color: var(--color-text-primary, #111);
+}
+
+.aaq-modal select,
+.aaq-modal input {
+  width: 100%;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 0.375rem;
+  padding: 0.55rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.7rem;
+  color: var(--color-text-primary, #111);
+  background: var(--color-surface, #fff);
 }
 
 .aaq-modal-actions {
