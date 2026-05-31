@@ -46,7 +46,10 @@ export type AnalyticsMetricKey =
   | "grossMarginPct"
   | "inventoryTurnover"
   | "missingCostRevenueShare"
-  | "unknownSupplierRevenueShare";
+  | "unknownSupplierRevenueShare"
+  | "dataQualityStatus"
+  | "confidence"
+  | "reliability";
 
 export const canonicalMetricKeys = [
   "revenue",
@@ -501,6 +504,9 @@ export const metricAliases = {
   stockUnits: "onHandUnits",
   quantity: "unitsSold",
   sellThroughRatio: "sellThrough",
+  dataQualityStatus: "dataReadinessScore",
+  confidence: "confidencePct",
+  reliability: "reliabilityPct",
 } as const satisfies Partial<Record<AnalyticsMetricKey, CanonicalMetricKey>>;
 
 const canonicalMetricDefinitions = {
@@ -539,8 +545,11 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   velocity: ["Brzina prodaje", "Velocity"],
   reliabilityPct: ["Pouzdanost signala", "Reliability"],
   confidencePct: ["Sigurnost preporuke", "Confidence"],
+  confidence: ["Confidence"],
   markdownDependency: ["Zavisnost od nivelacija", "Markdown dependency"],
   outOfStockRisk: ["OOS rizik", "Rizik nestanka zalihe"],
+  reliability: ["Reliability"],
+  dataQualityStatus: ["Status kvaliteta podataka", "Data quality status"],
   blockedRecommendationsCount: ["Blokirane preporuke"],
   ignoredRowsCount: ["Ignorisani redovi"],
   grossMarginPct: ["Bruto marža %", "Gross margin %"],

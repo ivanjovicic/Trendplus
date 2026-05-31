@@ -179,11 +179,14 @@ export default function InventoryPage() {
   const [forecastError, setForecastError] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<InventoryAlertListDto | null>(null);
   const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<"" | "critical" | "warning" | "info">("");
   const [rebalance, setRebalance] = useState<RebalanceListDto | null>(null);
   const [rebalanceLoading, setRebalanceLoading] = useState(true);
+  const [rebalanceError, setRebalanceError] = useState<string | null>(null);
   const [sizeCurve, setSizeCurve] = useState<SizeCurveDto | null>(null);
   const [sizeCurveLoading, setSizeCurveLoading] = useState(false);
+  const [sizeCurveError, setSizeCurveError] = useState<string | null>(null);
   const [sizeCurveSkuId, setSizeCurveSkuId] = useState<number | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const deferredSearch = useDeferredValue(searchInput);
@@ -265,6 +268,8 @@ export default function InventoryPage() {
       setAlertsLoading(true);
       setRebalanceLoading(true);
       setForecastError(null);
+      setAlertsError(null);
+      setRebalanceError(null);
     }
 
     const setFirstError = (reason: unknown, fallback: string) => {
@@ -358,8 +363,15 @@ export default function InventoryPage() {
               if (task.key === "forecast") {
                 const nextError = toInventoryPageError(result.reason, "Forecast podaci trenutno nisu dostupni.");
                 setForecastError(nextError.message);
+              } else if (task.key === "alerts") {
+                const nextError = toInventoryPageError(result.reason, "Alert signali trenutno nisu dostupni.");
+                setAlertsError(nextError.message);
+              } else if (task.key === "rebalance") {
+                const nextError = toInventoryPageError(result.reason, "Predlozi za redistribuciju trenutno nisu dostupni.");
+                setRebalanceError(nextError.message);
               } else {
-                setFirstError(result.reason, "Signalni inventory paneli trenutno nisu dostupni.");
+                const nextError = toInventoryPageError(result.reason, "Signalni inventory paneli trenutno nisu dostupni.");
+                setForecastError((current) => current ?? nextError.message);
               }
               return;
             }
@@ -428,7 +440,9 @@ export default function InventoryPage() {
       .then((nextCurve) => {
         if (!cancelled) setDetailSizeCurve(nextCurve);
       })
-      .catch(console.error)
+      .catch(() => {
+        if (!cancelled) setDetailSizeCurve(null);
+      })
       .finally(() => {
         if (!cancelled) setDetailSizeCurveLoading(false);
       });
@@ -438,15 +452,22 @@ export default function InventoryPage() {
   useEffect(() => {
     if (sizeCurveSkuId == null) {
       setSizeCurve(null);
+      setSizeCurveError(null);
       return;
     }
     let cancelled = false;
     setSizeCurveLoading(true);
+    setSizeCurveError(null);
     void getSizeCurve({ skuId: sizeCurveSkuId, storeId: selectedStoreId })
       .then((data) => {
         if (!cancelled) setSizeCurve(data);
       })
-      .catch(console.error)
+      .catch((reason) => {
+        if (!cancelled) {
+          setSizeCurve(null);
+          setSizeCurveError(toInventoryPageError(reason, "Size-curve signal trenutno nije dostupan.").message);
+        }
+      })
       .finally(() => {
         if (!cancelled) setSizeCurveLoading(false);
       });
@@ -1128,7 +1149,7 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osveži stranicu.</div>}>
-          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
+          <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
         </ErrorBoundary>
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Forecast nije dostupan. Osveži stranicu.</div>}>
           <DemandForecastPanel forecast={forecast} forecastLoading={forecastLoading} forecastError={forecastError} rows={rows} stores={stores} oosThreshold={OOS_RISK_THRESHOLD} overstockThreshold={OVERSTOCK_RISK_THRESHOLD} oosDisplayCount={FORECAST_OOS_DISPLAY} overstockDisplayCount={FORECAST_OVERSTOCK_DISPLAY} onSuggestRestock={queueForecastRestock} />
@@ -1137,7 +1158,7 @@ export default function InventoryPage() {
 
       {/* Rebalancing & Transfer Suggestions */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osveži stranicu.</div>}>
-        <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
+        <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rebalanceError={rebalanceError} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
       </ErrorBoundary>
 
       <div className="space-y-1">
@@ -1151,7 +1172,7 @@ export default function InventoryPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <StoreComparisonPanel sectionId={STORE_COMPARISON_SECTION_ID} stores={stores} compareStoreIds={compareStoreIds} comparison={storeComparison} operationsLoading={operationsLoading} onToggleStore={toggleCompareStore} />
-        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} onChangeSkuId={setSizeCurveSkuId} />
+        <SizeCurvePanel sizeCurveSkuId={sizeCurveSkuId} sizeCurve={sizeCurve} sizeCurveLoading={sizeCurveLoading} sizeCurveError={sizeCurveError} onChangeSkuId={setSizeCurveSkuId} />
       </div>
 
       {/* Detail Table - scrollable inventory list */}

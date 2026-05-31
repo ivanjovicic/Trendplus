@@ -38,7 +38,9 @@ export function DemandForecastPanel({
     .sort((left, right) => right.overstockRisk - left.overstockRisk)
     .slice(0, overstockDisplayCount);
 
-    return (
+  const warningText = forecast?.warning;
+
+  return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex items-center gap-3">
@@ -46,26 +48,34 @@ export function DemandForecastPanel({
             <TrendingDown size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Demand Forecast &amp; Out-of-Stock Risk</h2>
-            <p className="text-sm text-muted">Prognoza potraznje po SKU i velicini. Rizik OOS u 7 dana i overstock signali.</p>
+            <h2 className="text-lg font-semibold text-foreground">Prognoza potražnje i rizik nestanka zaliha</h2>
+            <p className="text-sm text-muted">Prognoza potražnje po SKU i veličini. Rizik nestanka zaliha u 7 dana i rizik prevelike zalihe.</p>
           </div>
         </div>
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
-          {forecastLoading ? "Ucitavam..." : `${forecast?.totalCount ?? 0} SKU u prognozi`}
+          {forecastLoading ? "Učitavam..." : `${forecast?.totalCount ?? 0} SKU u prognozi`}
         </div>
       </div>
 
-      {!forecast?.snapshotAvailable ? (
+      {forecastError ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]">
+          {forecastError}
+        </div>
+      ) : !forecast?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          {forecastLoading ? "Ucitavam forecast..." : forecastError ?? "Forecast nije dostupan. Snapshot tabela je prazna."}
-          {forecast?.warning ? <div className="mt-2 text-xs text-warning">{forecast.warning}</div> : null}
+          {forecastLoading ? "Učitavam prognozu..." : "Prognoza trenutno nije dostupna. Snapshot tabela je prazna."}
+          {warningText ? <div className="mt-2 text-xs text-warning">{warningText}</div> : null}
+        </div>
+      ) : (forecast.items ?? []).length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+          Nema podataka za prognozu potražnje za trenutne filtere.
         </div>
       ) : (
         <div className="mt-4 grid gap-5 xl:grid-cols-2">
           <div className="rounded-2xl border border-border bg-surface p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <TrendingDown size={14} className="text-warning" />
-              Najveci OOS rizik u 7 dana
+              Najveći rizik nestanka zaliha u 7 dana
             </h3>
             <div className="mt-3 space-y-2">
               {highOosItems.map((item) => {
@@ -84,12 +94,15 @@ export function DemandForecastPanel({
                       <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${tone}`}>
                         {Math.round(item.probabilityOfOOSIn7d * 100)}% OOS
                       </div>
+                      <div className="mt-1 text-[11px] font-medium text-muted">
+                        {item.probabilityOfOOSIn7d > 0.7 ? "Status: kritično" : item.probabilityOfOOSIn7d > 0.4 ? "Status: upozorenje" : "Status: stabilno"}
+                      </div>
                       <div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-surface-light">
                         <div className="h-full rounded-full bg-gradient-to-r from-success via-warning to-danger" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
                       </div>
                       <div className="mt-1 text-xs text-muted">7d: {item.forecast7d.toFixed(1)}</div>
-                      <button type="button" aria-label={`Predlozi dopunu za SKU ${item.skuId} velicinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
-                        Predlozi dopunu
+                      <button type="button" aria-label={`Predloži dopunu za SKU ${item.skuId} veličinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
+                        Predloži dopunu
                       </button>
                     </div>
                   </div>
@@ -104,7 +117,7 @@ export function DemandForecastPanel({
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
               <TrendingUp size={14} className="text-[var(--text-primary)]" />
-              Overstock rizik (28 dana)
+              Rizik prevelike zalihe (28 dana)
             </h3>
             <div className="mt-3 space-y-2">
               {overstockItems.map((item) => {
@@ -114,12 +127,15 @@ export function DemandForecastPanel({
                 return (
                   <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">{name}</div>
+                      <div className="truncate text-sm font-semibold text-foreground">{name}</div>
                       <div className="truncate text-xs text-[var(--text-primary)]">{store} | vel. {item.sizeCode}</div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)]">
-                        {Math.round(item.overstockRisk * 100)}% over
+                        {Math.round(item.overstockRisk * 100)}% višak
+                      </div>
+                      <div className="mt-1 text-[11px] font-medium text-muted">
+                        {item.overstockRisk > 0.7 ? "Status: kritično" : item.overstockRisk > 0.4 ? "Status: upozorenje" : "Status: stabilno"}
                       </div>
                       <div className="mt-1 text-xs text-[var(--text-primary)]">28d: {item.forecast28d.toFixed(1)}</div>
                     </div>
@@ -127,12 +143,13 @@ export function DemandForecastPanel({
                 );
               })}
               {overstockItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema overstock signala za trenutne filtere.</div>
+                <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]">Nema signala za višak zaliha za trenutne filtere.</div>
               ) : null}
             </div>
           </div>
         </div>
       )}
+      {warningText ? <p className="mt-3 text-xs text-warning">Napomena: {warningText}</p> : null}
     </section>
   );
 }

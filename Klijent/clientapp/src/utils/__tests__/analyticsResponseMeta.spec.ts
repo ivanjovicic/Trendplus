@@ -72,6 +72,16 @@ describe("analyticsResponseMeta", () => {
     expect(shouldShowAnalyticsEmptyState(emptyMeta, 0)).toBe(true);
   });
 
+  it("Product Decision regression: insufficient_data with rows>0 does not hide table", () => {
+    const meta: AnalyticsResponseMeta = {
+      success: true,
+      dataQualityStatus: "insufficient_data",
+      emptyReason: "no_rows_for_period",
+    };
+
+    expect(shouldShowAnalyticsEmptyState(meta, 3)).toBe(false);
+  });
+
   it("has empty reason helper returns true only for success + emptyReason", () => {
     expect(hasAnalyticsMetaEmptyReason({ success: true, emptyReason: "no_data_in_period" })).toBe(true);
     expect(hasAnalyticsMetaEmptyReason({ success: false, emptyReason: "no_data_in_period" })).toBe(false);
