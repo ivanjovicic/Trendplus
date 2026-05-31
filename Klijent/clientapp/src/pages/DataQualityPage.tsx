@@ -399,102 +399,117 @@ export default function DataQualityPage() {
     setError(null);
     setHealthError(null);
     setIntakeReportError(null);
+    try {
+      const [issuesResult, healthResult, refreshResult, intakeResult, durableIntakeResult] = await Promise.allSettled([
+        getDataQualityIssues({
+          type: issueType,
+          page,
+          pageSize,
+          q,
+          sortBy,
+          sortDir,
+          dataScope: contextDataScope,
+        }),
+        getAnalyticsDataQualityHealth(undefined, contextDataScope),
+        getAnalyticsRefreshStatus(),
+        getPilotDataQualityIntakeReport({
+          fromDate: contextFromDate,
+          toDate: contextToDate,
+          storeId: contextStoreId ? Number(contextStoreId) : null,
+          supplierId: contextSupplierId ? Number(contextSupplierId) : null,
+          dataScope: contextDataScope,
+        }),
+        getPilotIntakeDurableReport({
+          fromDate: contextFromDate,
+          toDate: contextToDate,
+          storeId: contextStoreId ? Number(contextStoreId) : null,
+          supplierId: contextSupplierId ? Number(contextSupplierId) : null,
+          dataScope: contextDataScope,
+        }),
+      ]);
 
-    const [issuesResult, healthResult, refreshResult, intakeResult, durableIntakeResult] = await Promise.allSettled([
-      getDataQualityIssues({
-        type: issueType,
-        page,
-        pageSize,
-        q,
-        sortBy,
-        sortDir,
-        dataScope: contextDataScope,
-      }),
-      getAnalyticsDataQualityHealth(undefined, contextDataScope),
-      getAnalyticsRefreshStatus(),
-      getPilotDataQualityIntakeReport({
-        fromDate: contextFromDate,
-        toDate: contextToDate,
-        storeId: contextStoreId ? Number(contextStoreId) : null,
-        supplierId: contextSupplierId ? Number(contextSupplierId) : null,
-        dataScope: contextDataScope,
-      }),
-      getPilotIntakeDurableReport({
-        fromDate: contextFromDate,
-        toDate: contextToDate,
-        storeId: contextStoreId ? Number(contextStoreId) : null,
-        supplierId: contextSupplierId ? Number(contextSupplierId) : null,
-        dataScope: contextDataScope,
-      }),
-    ]);
-
-    if (issuesResult.status === "fulfilled") {
-      setData(issuesResult.value);
-    } else {
-      setData(null);
-      if (issuesResult.reason instanceof AnalyticsMetaError) {
-        setError({
-          message: issuesResult.reason.message,
-          errorCode: issuesResult.reason.errorCode,
-          correlationId: issuesResult.reason.correlationId,
-        });
+      if (issuesResult.status === "fulfilled") {
+        setData(issuesResult.value);
       } else {
-        setError({
-          message: issuesResult.reason instanceof Error
-            ? issuesResult.reason.message
-            : "Data quality podaci nisu dostupni.",
-        });
+        setData(null);
+        if (issuesResult.reason instanceof AnalyticsMetaError) {
+          setError({
+            message: issuesResult.reason.message,
+            errorCode: issuesResult.reason.errorCode,
+            correlationId: issuesResult.reason.correlationId,
+          });
+        } else {
+          setError({
+            message: issuesResult.reason instanceof Error
+              ? issuesResult.reason.message
+              : "Data quality podaci nisu dostupni.",
+          });
+        }
       }
-    }
 
-    if (healthResult.status === "fulfilled") {
-      setHealth(healthResult.value);
-    } else {
-      setHealth(null);
-      setHealthError(
-        healthResult.reason instanceof Error
-          ? healthResult.reason.message
-          : "Health snapshot nije dostupan."
-      );
-    }
+      if (healthResult.status === "fulfilled") {
+        setHealth(healthResult.value);
+      } else {
+        setHealth(null);
+        setHealthError(
+          healthResult.reason instanceof Error
+            ? healthResult.reason.message
+            : "Health snapshot nije dostupan."
+        );
+      }
 
-    if (refreshResult.status === "fulfilled") {
-      setRefreshStatus(refreshResult.value);
-      setRefreshStatusError(null);
-    } else {
-      setRefreshStatus(null);
-      setRefreshStatusError(
-        refreshResult.reason instanceof Error
-          ? refreshResult.reason.message
-          : "Status osvežavanja analitike nije dostupan."
-      );
-    }
+      if (refreshResult.status === "fulfilled") {
+        setRefreshStatus(refreshResult.value);
+        setRefreshStatusError(null);
+      } else {
+        setRefreshStatus(null);
+        setRefreshStatusError(
+          refreshResult.reason instanceof Error
+            ? refreshResult.reason.message
+            : "Status osvežavanja analitike nije dostupan."
+        );
+      }
 
-    if (durableIntakeResult.status === "fulfilled") {
-      setDurableIntakeReport(durableIntakeResult.value);
-      if (intakeResult.status === "fulfilled") {
+      if (durableIntakeResult.status === "fulfilled") {
+        setDurableIntakeReport(durableIntakeResult.value);
+        if (intakeResult.status === "fulfilled") {
+          setIntakeReport(intakeResult.value);
+        } else {
+          setIntakeReport(null);
+        }
+        setIntakeReportError(null);
+      } else if (intakeResult.status === "fulfilled") {
+        setDurableIntakeReport(null);
         setIntakeReport(intakeResult.value);
+        setIntakeReportError(null);
       } else {
+        setDurableIntakeReport(null);
         setIntakeReport(null);
+        setIntakeReportError(
+          durableIntakeResult.reason instanceof Error
+            ? durableIntakeResult.reason.message
+            : intakeResult.reason instanceof Error
+              ? intakeResult.reason.message
+              : "Pilot intake report nije dostupan."
+        );
       }
-      setIntakeReportError(null);
-    } else if (intakeResult.status === "fulfilled") {
-      setDurableIntakeReport(null);
-      setIntakeReport(intakeResult.value);
-      setIntakeReportError(null);
-    } else {
+    } catch (reason) {
+      setData(null);
+      setHealth(null);
       setDurableIntakeReport(null);
       setIntakeReport(null);
-      setIntakeReportError(
-        durableIntakeResult.reason instanceof Error
-          ? durableIntakeResult.reason.message
-          : intakeResult.reason instanceof Error
-            ? intakeResult.reason.message
-            : "Pilot intake report nije dostupan."
-      );
+      setError({
+        message: reason instanceof Error
+          ? reason.message
+          : "Data quality podaci nisu dostupni.",
+      });
+      setHealthError(null);
+      setRefreshStatus(null);
+      setRefreshStatusError(null);
+      setIntakeReportError(null);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [contextDataScope, contextFromDate, contextStoreId, contextSupplierId, contextToDate, issueType, page, pageSize, q, sortBy, sortDir]);
 
   useEffect(() => {

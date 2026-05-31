@@ -186,55 +186,67 @@ export default function PilotIntakeReportPage() {
     setBackendError(null);
 
     void (async () => {
-      const refreshTask = getAnalyticsRefreshStatus();
-      const reportTask = hasDurableParams
-        ? getPilotIntakeDurableReport({
-            fromDate,
-            toDate,
-            scope,
-            dataScope,
-            storeId: parsedStoreId,
-            supplierId: parsedSupplierId,
-          })
-        : Promise.resolve(null);
+      try {
+        const refreshTask = getAnalyticsRefreshStatus();
+        const reportTask = hasDurableParams
+          ? getPilotIntakeDurableReport({
+              fromDate,
+              toDate,
+              scope,
+              dataScope,
+              storeId: parsedStoreId,
+              supplierId: parsedSupplierId,
+            })
+          : Promise.resolve(null);
 
-      const [refreshResult, reportResult] = await Promise.allSettled([refreshTask, reportTask]);
-      if (cancelled) return;
+        const [refreshResult, reportResult] = await Promise.allSettled([refreshTask, reportTask]);
+        if (cancelled) return;
 
-      if (refreshResult.status === "fulfilled") {
-        setRefreshStatus(refreshResult.value);
-        setRefreshStatusError(null);
-      } else {
-        setRefreshStatus(null);
-        setRefreshStatusError(
-          refreshResult.reason instanceof Error
-            ? refreshResult.reason.message
-            : "Status osvežavanja analitike nije dostupan."
-        );
-      }
-
-      if (!hasDurableParams) {
-        setDurableReport(null);
-      } else if (reportResult.status === "fulfilled") {
-        setDurableReport(reportResult.value);
-      } else if (reportResult.status === "rejected") {
-        setDurableReport(null);
-        if (reportResult.reason instanceof AnalyticsMetaError) {
-          setBackendError({
-            message: reportResult.reason.message,
-            errorCode: reportResult.reason.errorCode,
-            correlationId: reportResult.reason.correlationId,
-          });
+        if (refreshResult.status === "fulfilled") {
+          setRefreshStatus(refreshResult.value);
+          setRefreshStatusError(null);
         } else {
-          setBackendError({
-            message: reportResult.reason instanceof Error
-              ? reportResult.reason.message
-              : "Pilot intake report trenutno nije dostupan.",
-          });
+          setRefreshStatus(null);
+          setRefreshStatusError(
+            refreshResult.reason instanceof Error
+              ? refreshResult.reason.message
+              : "Status osvežavanja analitike nije dostupan."
+          );
+        }
+
+        if (!hasDurableParams) {
+          setDurableReport(null);
+        } else if (reportResult.status === "fulfilled") {
+          setDurableReport(reportResult.value);
+        } else if (reportResult.status === "rejected") {
+          setDurableReport(null);
+          if (reportResult.reason instanceof AnalyticsMetaError) {
+            setBackendError({
+              message: reportResult.reason.message,
+              errorCode: reportResult.reason.errorCode,
+              correlationId: reportResult.reason.correlationId,
+            });
+          } else {
+            setBackendError({
+              message: reportResult.reason instanceof Error
+                ? reportResult.reason.message
+                : "Pilot intake report trenutno nije dostupan.",
+            });
+          }
+        }
+      } catch (reason) {
+        if (cancelled) return;
+        setDurableReport(null);
+        setRefreshStatus(null);
+        setRefreshStatusError(null);
+        setBackendError({
+          message: reason instanceof Error ? reason.message : "Pilot intake report trenutno nije dostupan.",
+        });
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
-
-      setLoading(false);
     })();
 
     return () => {
