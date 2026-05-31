@@ -316,7 +316,7 @@ namespace Infrastructure.DbContexts
 
                 entity.Property(e => e.JobKey)
                     .IsRequired()
-                    .HasMaxLength(128);
+                    .HasMaxLength(120);
                 entity.Property(e => e.JobName)
                     .IsRequired()
                     .HasMaxLength(200);
@@ -337,27 +337,30 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.ErrorCode)
                     .HasMaxLength(120);
                 entity.Property(e => e.ErrorMessage)
-                    .HasMaxLength(4000);
+                    .HasMaxLength(2000);
                 entity.Property(e => e.CorrelationId)
-                    .HasMaxLength(120);
+                    .HasMaxLength(100);
 
                 entity.Property(e => e.TriggeredBy)
                     .IsRequired()
-                    .HasMaxLength(32);
+                    .HasMaxLength(80);
                 entity.Property(e => e.ProcessMode)
                     .IsRequired()
-                    .HasMaxLength(16);
+                    .HasMaxLength(32);
                 entity.Property(e => e.WorkerName)
-                    .HasMaxLength(128);
+                    .HasMaxLength(200);
 
                 entity.Property(e => e.CreatedAtUtc)
                     .IsRequired()
                     .HasDefaultValueSql("now()");
 
                 entity.HasIndex(e => new { e.JobKey, e.StartedAtUtc })
+                    .IsDescending(false, true)
                     .HasDatabaseName("idx_analytics_refresh_runs_job_started");
-                entity.HasIndex(e => new { e.Status, e.StartedAtUtc })
-                    .HasDatabaseName("idx_analytics_refresh_runs_status_started");
+                entity.HasIndex(e => e.Status)
+                    .HasDatabaseName("idx_analytics_refresh_runs_status");
+                entity.HasIndex(e => e.CreatedAtUtc)
+                    .HasDatabaseName("idx_analytics_refresh_runs_created_at");
                 entity.HasIndex(e => new { e.WorkerName, e.StartedAtUtc })
                     .HasDatabaseName("idx_analytics_refresh_runs_worker_started");
             });

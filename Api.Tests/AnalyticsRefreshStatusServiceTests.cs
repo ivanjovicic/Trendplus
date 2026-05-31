@@ -30,7 +30,8 @@ public sealed class AnalyticsRefreshStatusServiceTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.Contains("idx_analytics_refresh_runs_job_started", indexNames);
-        Assert.Contains("idx_analytics_refresh_runs_status_started", indexNames);
+        Assert.Contains("idx_analytics_refresh_runs_status", indexNames);
+        Assert.Contains("idx_analytics_refresh_runs_created_at", indexNames);
         Assert.Contains("idx_analytics_refresh_runs_worker_started", indexNames);
     }
 
