@@ -1,0 +1,72 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend – Build & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore Trendplus2.sln
+
+      - name: Build
+        run: dotnet build Trendplus2.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        # Skip integration tests – they require a live Postgres connection not
+        # available in the lightweight CI runner.
+        run: >
+          dotnet test Trendplus2.sln
+          --no-build
+          --configuration Release
+          --filter "Category=Unit"
+          --verbosity minimal
+
+  frontend:
+    name: Frontend – Guardrails, Tests & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Klijent/clientapp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Klijent/clientapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analytics guardrails + typecheck
+        # Checks for forbidden local formatters, business-logic thresholds and
+        # assignments that must stay on the backend. Exits with code 2 on
+        # violation. Also runs tsc -b (typecheck).
+        run: npm run check:analytics-guardrails
+
+      - name: Unit & regression tests (incl. mojibake scan)
+        # --run disables watch mode so the terminal does not hang in CI.
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build

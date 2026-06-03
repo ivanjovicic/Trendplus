@@ -120,6 +120,12 @@ export default function AnalyticsRefreshStatusBanner({
             <span>Automatsko osvežavanje nije aktivno u web procesu. Potrebna je deployacija radnika (worker).</span>
           </div>
         ) : null}
+        {freshness === "critical" ? (
+          <div className="arb-row arb-error">
+            <strong>Kritično:</strong>
+            <span>Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.</span>
+          </div>
+        ) : null}
         {failedJobs.length > 0 ? (
           <div className="arb-row arb-error">
             <strong>Poslovi sa greškom:</strong>
