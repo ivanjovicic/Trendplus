@@ -10,6 +10,8 @@ import AnalyticsDashboard from "../AnalyticsDashboard";
 import DataQualityPage from "../DataQualityPage";
 import InventoryPage from "../InventoryPage";
 import PilotIntakeReportPage from "../PilotIntakeReportPage";
+import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
+import SupplierDecisionHubPage from "../SupplierDecisionHubPage";
 
 vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
   default: () => <div data-testid="charts-stub" />,
@@ -29,6 +31,16 @@ vi.mock("../../components/analytics/KpiExplainButton", () => ({
 
 vi.mock("../../components/analytics/PilotDataQualityIntakeReport", () => ({
   default: () => <div data-testid="pilot-intake-panel-stub" />,
+}));
+
+vi.mock("recharts", () => ({
+  BarChart: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  CartesianGrid: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  Tooltip: () => null,
+  Bar: () => null,
 }));
 
 describe("Analytics sales-readiness regressions", () => {
@@ -130,6 +142,47 @@ describe("Analytics sales-readiness regressions", () => {
     expect(screen.getByText(/privremeno u browseru/i)).toBeInTheDocument();
   });
 
+  it("ProductDecisionCenter API failure renders error state without fake zeros", async () => {
+    server.use(
+      rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
+      rest.get("/api/analytics/cached/filters/suppliers", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
+      rest.get("/api/analytics/filters/suppliers", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
+      rest.get("/api/analytics/cached/products/decision-center", (_req, res, ctx) => res(ctx.status(500))),
+      rest.post("/api/analytics/actions/status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ items: [] }))),
+    );
+
+    render(
+      <MemoryRouter>
+        <ProductDecisionCenterPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Podaci trenutno nisu dostupni/i)).toBeInTheDocument();
+    expect(screen.queryByText(/0 RSD/i)).not.toBeInTheDocument();
+  });
+
+  it("SupplierDecisionHub API failure renders error state without fake zeros", async () => {
+    server.use(
+      rest.get("/api/analytics/suppliers/decision-hub/summary", (_req, res, ctx) => res(ctx.status(500))),
+      rest.get("/api/analytics/suppliers/decision-hub/ranking", (_req, res, ctx) => res(ctx.status(500))),
+      rest.get("/api/analytics/suppliers/decision-hub/quadrant", (_req, res, ctx) => res(ctx.status(500))),
+      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
+      rest.get("/api/sezone", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
+      rest.get("/api/analytics/actions", (_req, res, ctx) => res(ctx.status(200), ctx.json({ items: [], total: 0 }))),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-decision-hub"]}>
+        <Routes>
+          <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Podaci trenutno nisu dostupni/i)).toBeInTheDocument();
+    expect(screen.queryByText(/0 RSD/i)).not.toBeInTheDocument();
+  });
+
   it("mojibake guardrail for analytics TSX does not introduce new corrupt tokens", () => {
     const root = path.resolve(process.cwd(), "src");
     const files: string[] = [];
@@ -145,7 +198,8 @@ describe("Analytics sales-readiness regressions", () => {
 
     const mojibakeToken = /[ÃÅÄâ�]/;
     const offenders = files.filter((file) => mojibakeToken.test(fs.readFileSync(file, "utf8")));
-    // Baseline guard: prevent new spread. We already know legacy pockets exist.
+    // TODO: reduce baseline to 0 — legacy pockets need explicit UTF-8 repair pass.
+    // Baseline guard: prevent new spread. Current known offenders: ≤8.
     expect(offenders.length).toBeLessThanOrEqual(8);
   });
 
