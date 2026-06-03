@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
@@ -82,7 +82,48 @@ describe("Analytics sales-readiness regressions", () => {
         meta: { success: true },
       }))),
       rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
-      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(200), ctx.json({ readinessStatus: "warning", recommendedActions: [], meta: { success: true } }))),
+      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(200), ctx.json({
+        generatedAtUtc: "2026-06-01T08:00:00Z",
+        periodFromUtc: "2026-05-01T00:00:00Z",
+        periodToUtc: "2026-05-31T23:59:59Z",
+        dataScope: "all",
+        lastImportAtUtc: "2026-06-01T06:00:00Z",
+        lastImportStatus: "partial",
+        lastRefreshAtUtc: "2026-06-01T07:30:00Z",
+        dataFreshnessStatus: "stale",
+        readinessStatus: "warning",
+        readinessLabel: "Upotrebljivo uz upozorenja",
+        readinessScore: 76,
+        loadedData: {
+          articlesCount: 1000,
+          saleItemsCount: 5000,
+          receiptsCount: 1200,
+          suppliersCount: 35,
+          storesCount: 8,
+          firstSaleDate: "2026-05-01T00:00:00Z",
+          lastSaleDate: "2026-05-31T23:59:59Z",
+        },
+        issues: {
+          missingSupplierCount: 10,
+          missingCostCount: 40,
+          missingCategoryCount: 12,
+          missingColorCount: 9,
+          missingSizeCount: 14,
+          saleWithoutArticleCount: 2,
+          zeroOrNegativePriceCount: 1,
+          duplicateSkuCount: 3,
+          missingSupplierNameCount: 4,
+        },
+        impact: {
+          revenueWithoutCostPercent: 0.12,
+          articlesWithoutSupplierPercent: 0.05,
+          recommendationsBlockedCount: 55,
+          ignoredRowsCount: 11,
+          insufficientSignalCount: 17,
+        },
+        recommendedActions: ["Povežite dobavljače", "Dopunite nabavne cene"],
+        meta: { success: true },
+      }))),
       rest.get("/api/analytics/reports/pilot-intake", (_req, res, ctx) => res(ctx.status(200), ctx.json({ rows: [], payload: { rows: [] }, meta: { success: true, emptyReason: "no_import" } }))),
       rest.get("/api/analytics/data-quality/top-offenders", (_req, res, ctx) => res(ctx.status(200), ctx.json({ issueType: "missingSupplier", limit: 10, count: 0, items: [], meta: { success: true, emptyReason: "no_top_offenders" } }))),
       rest.get("/api/analytics/data-quality/trend", (_req, res, ctx) => res(ctx.status(200), ctx.json({ days: 7, points: [], dataScope: "all", meta: { success: true } }))),
@@ -97,6 +138,47 @@ describe("Analytics sales-readiness regressions", () => {
     );
 
     expect(await screen.findByText(/Podaci trenutno nisu dostupni|Nema otvorenih data quality problema/i)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
+    expect(screen.getByText(/Spremno uz upozorenja|Nepoznato/i)).toBeInTheDocument();
+  });
+
+  it("DataQuality pilot status shows unknown when intake report is unavailable", async () => {
+    // jsdom/msw interop guard for fetch signal in this suite
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).AbortSignal = window.AbortSignal;
+    server.use(
+      rest.get("/api/analytics/data-quality/list", (_req, res, ctx) => res(ctx.status(200), ctx.json({
+        page: 1,
+        pageSize: 25,
+        total: 0,
+        items: [],
+        meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
+      }))),
+      rest.get("/api/analytics/data-quality/health", (_req, res, ctx) => res(ctx.status(200), ctx.json({
+        scoreStatus: "warning",
+        scoreValue: 55,
+        orphanArticleCount: 0,
+        thresholds: { orphanArticleCount: 5, missingCostRevenueSharePct: 5, unknownSupplierRevenueSharePct: 5 },
+        meta: { success: true },
+      }))),
+      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
+      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(500))),
+      rest.get("/api/analytics/reports/pilot-intake", (_req, res, ctx) => res(ctx.status(200), ctx.json({ rows: [], payload: { rows: [] }, meta: { success: true, emptyReason: "no_import" } }))),
+      rest.get("/api/analytics/data-quality/top-offenders", (_req, res, ctx) => res(ctx.status(200), ctx.json({ issueType: "missingSupplier", limit: 10, count: 0, items: [], meta: { success: true, emptyReason: "no_top_offenders" } }))),
+      rest.get("/api/analytics/data-quality/trend", (_req, res, ctx) => res(ctx.status(200), ctx.json({ days: 7, points: [], dataScope: "all", meta: { success: true } }))),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/data-quality?view=issues"]}>
+        <Routes>
+          <Route path="/analytics/data-quality" element={<DataQualityPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
+    expect(screen.getByText(/Nepoznato/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nije moguće potvrditi/i)).toBeInTheDocument();
   });
 
   it("Inventory API failure renders error state instead of hanging loader", async () => {
@@ -196,10 +278,10 @@ describe("Analytics sales-readiness regressions", () => {
       }
     }
 
-    const mojibakeToken = /[ÃÅÄâ�]/;
+    const mojibakeToken = /[ÃƒÃ…Ã„Ã¢ï¿½]/;
     const offenders = files.filter((file) => mojibakeToken.test(fs.readFileSync(file, "utf8")));
-    // TODO: reduce baseline to 0 — legacy pockets need explicit UTF-8 repair pass.
-    // Baseline guard: prevent new spread. Current known offenders: ≤8.
+    // TODO: reduce baseline to 0 - legacy pockets need explicit UTF-8 repair pass.
+    // Baseline guard: prevent new spread. Current known offenders: <=8.
     expect(offenders.length).toBeLessThanOrEqual(8);
   });
 

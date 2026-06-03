@@ -111,6 +111,130 @@ function scoreTone(status: AnalyticsDataQualityHealth["scoreStatus"] | undefined
   }
 }
 
+type PilotImportGateStatus = "ready" | "ready_with_warnings" | "not_ready" | "unknown";
+
+function buildPilotImportReadinessPreview(
+  report: PilotDataQualityIntakeReportDto | null,
+  refreshStatus: AnalyticsRefreshStatus | null,
+  intakeError: string | null,
+): {
+  status: PilotImportGateStatus;
+  label: string;
+  summary: string;
+  reasons: string[];
+  links: Array<{ label: string; href: string }>;
+} {
+  if (!report) {
+    return {
+      status: "unknown",
+      label: "Nepoznato",
+      summary: intakeError
+        ? "Pilot import nije potvrđen jer izveštaj nije dostupan."
+        : "Pilot import nije potvrđen.",
+      reasons: [
+        intakeError ? `Izveštaj nije dostupan: ${intakeError}` : "Pilot intake report nije dostupan.",
+        "Nije moguće potvrditi da su podaci spremni za prikaz dashboard-a.",
+      ],
+      links: [
+        { label: "Data quality", href: "/analytics/data-quality" },
+        { label: "Refresh status", href: "/admin/configuration?panel=workers" },
+        { label: "Import", href: "/access-import" },
+      ],
+    };
+  }
+
+  const reasons: string[] = [];
+  let status: PilotImportGateStatus = "ready";
+
+  if (!report.loadedData.articlesCount || !report.loadedData.saleItemsCount || !report.loadedData.receiptsCount || !report.loadedData.suppliersCount) {
+    status = "not_ready";
+    reasons.push("Nedostaju osnovni signali za pilot.");
+  }
+
+  if (!report.loadedData.firstSaleDate || !report.loadedData.lastSaleDate) {
+    status = "not_ready";
+    reasons.push("Nedostaje datum prve ili poslednje prodaje.");
+  }
+
+  if ((report.readinessStatus ?? "").toLowerCase() === "critical") {
+    status = "not_ready";
+    reasons.push("Readiness score je kritičan.");
+  } else if ((report.readinessStatus ?? "").toLowerCase() === "warning" && status === "ready") {
+    status = "ready_with_warnings";
+  }
+
+  const freshness = (refreshStatus?.dataFreshnessStatus ?? report.dataFreshnessStatus ?? "").toLowerCase();
+  if (freshness === "critical") {
+    status = "not_ready";
+    reasons.push("Refresh je kritično zastareo.");
+  } else if (freshness === "stale" && status === "ready") {
+    status = "ready_with_warnings";
+  }
+
+  if (refreshStatus?.lastSuccessfulRefreshAtUtc && refreshStatus.lastFailureAtUtc) {
+    const lastSuccess = Date.parse(refreshStatus.lastSuccessfulRefreshAtUtc);
+    const lastFailure = Date.parse(refreshStatus.lastFailureAtUtc);
+    if (!Number.isNaN(lastSuccess) && !Number.isNaN(lastFailure) && lastFailure >= lastSuccess) {
+      status = "not_ready";
+      reasons.push("Zabeležen je pad nakon poslednjeg uspešnog refresh-a.");
+    }
+  }
+
+  if ((report.lastImportStatus ?? "").toLowerCase() === "failed") {
+    status = "not_ready";
+    reasons.push("Poslednji import je neuspešan.");
+  } else if (["partial", "running", "queued"].includes((report.lastImportStatus ?? "").toLowerCase()) && status === "ready") {
+    status = "ready_with_warnings";
+    reasons.push(`Poslednji import je u statusu ${report.lastImportStatus}.`);
+  }
+
+  if (report.lastImportAtUtc) {
+    reasons.push(`Poslednji import: ${formatDateTime(report.lastImportAtUtc)}`);
+  }
+  if (report.lastImportStatus) {
+    reasons.push(`Status importa: ${report.lastImportStatus}`);
+  }
+  if ((report.impact.revenueWithoutCostPercent ?? 0) > 0) {
+    reasons.push(`Prihod bez nabavne cene: ${fmtPct(report.impact.revenueWithoutCostPercent, 1)}`);
+  }
+  if ((report.impact.articlesWithoutSupplierPercent ?? 0) > 0) {
+    reasons.push(`Artikli bez dobavljača: ${fmtPct(report.impact.articlesWithoutSupplierPercent, 1)}`);
+  }
+  if ((report.impact.insufficientSignalCount ?? 0) > 0) {
+    reasons.push(`Nedovoljni signali: ${fmtNumber(report.impact.insufficientSignalCount, 0)}`);
+  }
+
+  if (status === "ready" && reasons.length === 0) {
+    reasons.push("Svi ključni ulazni signali su dostupni i stabilni.");
+  }
+
+  const labelByStatus: Record<PilotImportGateStatus, string> = {
+    ready: "Spremno",
+    ready_with_warnings: "Spremno uz upozorenja",
+    not_ready: "Nije spremno",
+    unknown: "Nepoznato",
+  };
+
+  const summaryByStatus: Record<PilotImportGateStatus, string> = {
+    ready: "Dashboard se može prikazati kao pilot.",
+    ready_with_warnings: "Dashboard se može prikazati, ali uz upozorenja.",
+    not_ready: "Podaci trenutno nisu spremni za prikaz dashboard-a.",
+    unknown: "Nije moguće potvrditi da su podaci spremni.",
+  };
+
+  return {
+    status,
+    label: labelByStatus[status],
+    summary: summaryByStatus[status],
+    reasons,
+    links: [
+      { label: "Data quality", href: "/analytics/data-quality" },
+      { label: "Refresh status", href: "/admin/configuration?panel=workers" },
+      { label: "Import", href: "/access-import" },
+    ],
+  };
+}
+
 function buildLinePath(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number, width: number, height: number) {
   const padding = 14;
   const values = points.map(selector);
@@ -606,6 +730,11 @@ export default function DataQualityPage() {
         missingSupplierCount: health?.orphanArticleCount ?? null,
       };
 
+  const pilotImportPreview = useMemo(
+    () => buildPilotImportReadinessPreview(intakeReport, refreshStatus, intakeReportError),
+    [intakeReport, intakeReportError, refreshStatus],
+  );
+
   const changeView = (nextView: "issues" | "intake") => {
     updateParams({ view: nextView, page: 1 });
   };
@@ -652,6 +781,22 @@ export default function DataQualityPage() {
               <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunat data quality score" />
             </section>
           ) : null}
+          <section className={`data-quality-score-card ${pilotImportPreview.status === "ready" ? "good" : pilotImportPreview.status === "unknown" ? "warning" : pilotImportPreview.status === "ready_with_warnings" ? "warning" : "critical"}`} aria-label="Status pilota">
+            <span className="data-quality-score-label">Status pilota</span>
+            <strong>{pilotImportPreview.label}</strong>
+            <p>{pilotImportPreview.summary}</p>
+            <div className="data-quality-score-status">Provera import-a pre prikaza dashboard-a.</div>
+            <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+              {pilotImportPreview.reasons.slice(0, 3).map((reason) => (
+                <span key={reason} className="data-quality-subtitle">{reason}</span>
+              ))}
+            </div>
+            <div className="data-quality-meta" style={{ display: "grid", gap: 4, marginTop: 8 }}>
+              {pilotImportPreview.links.map((link) => (
+                <Link key={link.href} to={link.href}>{link.label}</Link>
+              ))}
+            </div>
+          </section>
           <div className="data-quality-meta">
             <span>Signal filter: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
             <Link to={pilotIntakeReportHref}>Otvori pilot intake report</Link>
@@ -687,6 +832,7 @@ export default function DataQualityPage() {
           error={intakeReportError}
           filters={toolbarFilters}
           durableReport={durableIntakeReport}
+          refreshStatus={refreshStatus}
           onRetry={() => {
             void load();
           }}

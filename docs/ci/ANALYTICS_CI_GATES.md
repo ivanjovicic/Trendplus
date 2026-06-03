@@ -1,89 +1,37 @@
 # Analytics CI Gates
 
-_Last audited: 2026-06-02_
+Trendplus currently uses two GitHub Actions workflows to keep analytics regressions from slipping into main:
 
----
+- `.github/workflows/ci.yml`
+- `.github/workflows/analytics-tests.yml`
 
-## Workflow inventory
+The split is intentional:
 
-| File | Trigger | Purpose |
-|---|---|---|
-| `.github/workflows/ci.yml` | PR + push → `main`/`master` | **Primary quality gate** (see below) |
-| `.github/workflows/analytics-tests.yml` | PR + push → `main`/`master` (backend paths only) | Backend unit + integration tests with live Postgres |
-| `.github/workflows/db-migrate.yml` | push → `main` (migration paths) + manual | EF Core `database update` |
-| `.github/workflows/fly-deploy.yml` | push → `main` | Deploy to Fly.io — no build/test gates |
-| `.github/workflows/nivelacija-repair-dry-run.yml` | Manual | Nivelacija repair dry-run |
-| `.github/workflows/deploy-render-manual.yml` | Manual | Render deploy fallback |
+- `ci.yml` runs the solution build, frontend analytics guardrails, frontend build, and frontend regression tests.
+- `analytics-tests.yml` runs the API test project with a local Postgres service so the backend can exercise unit and integration coverage without a full browser or deployment stack.
 
----
+## Checks
 
-## Primary quality gate — `ci.yml`
+| Check | Command | Runs on PR | Runs on main | Blocks merge | Notes |
+|---|---|---:|---:|---:|---|
+| Backend solution build | `dotnet restore Trendplus2.sln` then `dotnet build Trendplus2.sln --no-restore --configuration Release` | Yes | Yes | Yes | Defined in `ci.yml`. This is the compile gate for the repo. |
+| Backend unit tests | `dotnet test Trendplus2.sln --no-build --configuration Release --filter "Category=Unit" --verbosity minimal` | Yes | Yes | Yes | Defined in `ci.yml`. This is the lightweight backend safety net. |
+| Backend integration tests | `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Integration" --verbosity normal` | Yes | Yes, for backend-path pushes | Yes | Defined in `analytics-tests.yml`. Uses a local Postgres service. This is the targeted backend test coverage instead of a single monolithic `dotnet test` across the entire repo. |
+| Analytics guardrails + typecheck | `cd Klijent/clientapp && npm run check:analytics-guardrails` | Yes | Yes | Yes | Defined in `ci.yml`. The script already includes the frontend typecheck. No separate mojibake scan exists in the current scripts. |
+| Frontend unit and regression tests | `cd Klijent/clientapp && npm run test -- --run` | Yes | Yes | Yes | Defined in `ci.yml`. `--run` keeps Vitest out of watch mode in CI. |
+| Frontend build | `cd Klijent/clientapp && npm run build` | Yes | Yes | Yes | Defined in `ci.yml`. This catches TypeScript and Vite bundle regressions. |
 
-Added 2026-06-02. Runs on every PR and every push to `main`/`master`.
+## Why the backend tests are split
 
-### `backend` job
+A single repo-wide `dotnet test` is not the current gate. The backend test strategy is split into:
 
-| Check | Command | Status |
-|---|---|---|
-| dotnet build | `dotnet build Trendplus2.sln --configuration Release` | ✅ enabled |
-| dotnet test (unit) | `dotnet test --filter "Category=Unit"` | ✅ enabled |
-| dotnet test (integration) | skipped — requires live Postgres | ⚠️ not in lightweight gate (covered by `analytics-tests.yml`) |
+- a solution build plus unit tests in `ci.yml`
+- API integration tests with Postgres in `analytics-tests.yml`
 
-### `frontend` job
+That keeps PR checks lighter while still giving analytics-related backend coverage a real database-backed path.
 
-| Check | Command | Status |
-|---|---|---|
-| Analytics guardrails | `npm run check:analytics-guardrails` | ✅ enabled |
-| Typecheck | included via `check:analytics-guardrails` → `tsc -b` | ✅ enabled |
-| Unit + regression tests | `npm run test -- --run` | ✅ enabled |
-| Mojibake scan | covered by `AnalyticsSalesReadinessRegression.spec.tsx` vitest test | ✅ enabled |
-| Build | `npm run build` | ✅ enabled |
+## What is not claimed
 
----
-
-## Pre-existing `analytics-tests.yml`
-
-Covers backend integration tests against a real Postgres service container.
-
-**Gap:** path filter restricts the trigger to `Api/**`, `Api.Tests/**`, `Domain/**`, `Infrastructure/**`.  
-Frontend-only PRs do **not** trigger this workflow.  
-The new `ci.yml` fills this gap for both stacks.
-
----
-
-## Guardrails script
-
-`Klijent/clientapp/scripts/check-analytics-guardrails.mjs`
-
-Scans `src/pages`, `src/components`, `src/services`, `src/utils` for forbidden patterns:
-
-- Local `fmtRsd` / `fmtPct` / `formatCurrency` / `formatPercent` definitions
-- `decisionScore =`, `confidencePct =`, `reliabilityPct =`, `recommendationStatus =` assignments
-- Business-logic thresholds: `BOOST_SCORE_THRESHOLD`, `KEEP_SCORE_THRESHOLD`
-- Score multiplication constants (`score * 0.`, `marginCoveragePct * 0.`)
-- Intermediate normalisation variables: `trendNorm`, `shareNorm`
-
-Exits with code `2` on violation. Allowed paths (formatters, constants, test files) are excluded.
-
----
-
-## Mojibake scan
-
-Covered by the vitest test `AnalyticsSalesReadinessRegression.spec.tsx`:
-
-```
-it("mojibake guardrail for analytics TSX does not introduce new corrupt tokens")
-```
-
-Regex: `/[ÃÅÄâ\uFFFD]/` across all source `.ts`/`.tsx` files.  
-Runs as part of `npm run test -- --run` in the `frontend` CI job.
-
----
-
-## Known blockers / limitations
-
-| Item | Notes |
-|---|---|
-| Integration tests need Postgres | Only `analytics-tests.yml` spins up a service container. Not included in `ci.yml` to keep gate fast. |
-| `fly-deploy.yml` deploys without waiting for CI | Deploy and CI are separate jobs. Consider adding a `needs: [ci / backend, ci / frontend]` dependency if strict gate-before-deploy is required. |
-| No e2e / browser smoke in CI | Out of scope per task instructions. |
+- There is no fake email, Slack, Teams, or webhook alerting in CI.
+- There is no dedicated mojibake scan in the current scripts.
+- There is no browser or E2E suite in the CI gate.

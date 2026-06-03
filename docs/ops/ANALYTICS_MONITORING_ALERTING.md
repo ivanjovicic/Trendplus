@@ -78,9 +78,10 @@ When freshness is critical, the UI copy should be:
 
 > Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.
 
+This exact copy is already present in the analytics refresh status banner. If the banner changes later, the critical state must remain equally obvious or the docs should be updated to describe the new gap.
+
 ## What this plan does not claim
 
 - It does not claim that email alerts are already implemented.
 - It does not claim Slack, Teams, or webhook delivery is already active.
 - It does not replace auth, authorization, or operational access control.
-

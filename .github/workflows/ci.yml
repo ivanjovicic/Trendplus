@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend – Build & Unit Tests
+    name: Backend - Build & Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +29,7 @@ jobs:
         run: dotnet build Trendplus2.sln --no-restore --configuration Release
 
       - name: Unit tests
-        # Skip integration tests – they require a live Postgres connection not
+        # Skip integration tests - they require a live Postgres connection not
         # available in the lightweight CI runner.
         run: >
           dotnet test Trendplus2.sln
@@ -39,7 +39,7 @@ jobs:
           --verbosity minimal
 
   frontend:
-    name: Frontend – Guardrails, Tests & Build
+    name: Frontend - Guardrails, Tests & Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,7 +64,7 @@ jobs:
         # violation. Also runs tsc -b (typecheck).
         run: npm run check:analytics-guardrails
 
-      - name: Unit & regression tests (incl. mojibake scan)
+      - name: Unit & regression tests
         # --run disables watch mode so the terminal does not hang in CI.
         run: npm run test -- --run
 

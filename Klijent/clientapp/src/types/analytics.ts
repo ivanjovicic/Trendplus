@@ -625,7 +625,9 @@ export interface PilotDataQualityIntakeReport {
   storeId?: string | null;
   supplierId?: string | null;
   lastImportAtUtc?: string | null;
+  lastImportStatus?: string | null;
   lastRefreshAtUtc?: string | null;
+  dataFreshnessStatus?: string | null;
   readinessStatus: PilotDataQualityReadinessStatus;
   readinessLabel: string;
   readinessScore: number;

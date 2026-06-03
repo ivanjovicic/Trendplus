@@ -124,7 +124,8 @@ describe("Analytics methodology registry usage", () => {
     );
 
     expect(screen.getByText("Metodologija metrika")).toBeInTheDocument();
-    expect(screen.getByText("Spremnost podataka")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
+    expect(screen.getByText(/Spremno uz upozorenja/i)).toBeInTheDocument();
     expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Data quality checks/i).length).toBeGreaterThan(0);
   });
