@@ -1238,6 +1238,36 @@ export interface AnalyticsActionCounts {
   p1Open: number;
 }
 
+export interface AnalyticsActionOutcomeSummaryBucket {
+  key: string;
+  label: string;
+  totalActions: number;
+  accepted: number;
+  deferred: number;
+  rejected: number;
+  done: number;
+  doneRate: number;
+  rejectionRate: number;
+  averageTimeToDoneHours?: number | null;
+}
+
+export interface AnalyticsActionOutcomeSummary {
+  fromDateUtc?: string | null;
+  toDateUtc?: string | null;
+  totalActions: number;
+  accepted: number;
+  deferred: number;
+  rejected: number;
+  done: number;
+  doneRate: number;
+  rejectionRate: number;
+  averageTimeToDoneHours?: number | null;
+  bySourceType: AnalyticsActionOutcomeSummaryBucket[];
+  byRecommendationStatus: AnalyticsActionOutcomeSummaryBucket[];
+  byPriority: AnalyticsActionOutcomeSummaryBucket[];
+  byDataQualityStatus: AnalyticsActionOutcomeSummaryBucket[];
+}
+
 export interface AnalyticsActionUpsertInput {
   sourceType: AnalyticsActionSourceType;
   sourceKey: string;

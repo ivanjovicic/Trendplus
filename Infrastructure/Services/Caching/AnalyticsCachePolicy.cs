@@ -7,7 +7,9 @@ public static class AnalyticsCachePolicy
 {
     public const string DashboardFamily = "dashboard";
     public const string ProductDecisionCenterFamily = "product-decision-center";
+    public const string ProductDecisionFamily = ProductDecisionCenterFamily;
     public const string SupplierDecisionHubFamily = "supplier-decision-hub";
+    public const string SupplierDecisionFamily = SupplierDecisionHubFamily;
     public const string InventoryFamily = "inventory";
     public const string DataQualityFamily = "data-quality";
     public const string PrePostFamily = "pre-post";

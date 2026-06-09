@@ -62,6 +62,23 @@ public static class AnalyticsActionsEndpoints
         })
         .WithName("GetAnalyticsActionCounts");
 
+        // GET /api/analytics/actions/outcome-summary
+        group.MapGet("/outcome-summary", async (
+            AnalyticsActionItemService svc,
+            DateTime? fromDate,
+            DateTime? toDate,
+            CancellationToken ct) =>
+        {
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Results.BadRequest("fromDate must be less than or equal to toDate");
+            }
+
+            var summary = await svc.GetOutcomeSummaryAsync(fromDate, toDate, ct);
+            return Results.Ok(summary);
+        })
+        .WithName("GetAnalyticsActionOutcomeSummary");
+
         // GET /api/analytics/actions/{id}
         group.MapGet("/{id:long}", async (
             long id,

@@ -18,6 +18,7 @@ vi.mock("react-router-dom", async () => {
 
 const getAnalyticsActionsMock = vi.fn();
 const getAnalyticsActionCountsMock = vi.fn();
+const getAnalyticsActionOutcomeSummaryMock = vi.fn();
 const getAnalyticsActionByIdMock = vi.fn();
 const updateAnalyticsActionOutcomeMock = vi.fn();
 const updateAnalyticsActionStatusMock = vi.fn();
@@ -25,6 +26,7 @@ const updateAnalyticsActionStatusMock = vi.fn();
 vi.mock("../../services/analyticsApi", () => ({
   getAnalyticsActions: (...args: unknown[]) => getAnalyticsActionsMock(...args),
   getAnalyticsActionCounts: (...args: unknown[]) => getAnalyticsActionCountsMock(...args),
+  getAnalyticsActionOutcomeSummary: (...args: unknown[]) => getAnalyticsActionOutcomeSummaryMock(...args),
   getAnalyticsActionById: (...args: unknown[]) => getAnalyticsActionByIdMock(...args),
   updateAnalyticsActionOutcome: (...args: unknown[]) => updateAnalyticsActionOutcomeMock(...args),
   updateAnalyticsActionStatus: (...args: unknown[]) => updateAnalyticsActionStatusMock(...args),
@@ -81,6 +83,74 @@ describe("AnalyticsActionsPage", () => {
       done: 0,
       p1Open: 1,
     });
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValue({
+      fromDateUtc: null,
+      toDateUtc: null,
+      totalActions: 1,
+      accepted: 1,
+      deferred: 0,
+      rejected: 0,
+      done: 0,
+      doneRate: 0,
+      rejectionRate: 0,
+      averageTimeToDoneHours: null,
+      bySourceType: [
+        {
+          key: "inventory",
+          label: "Zalihe",
+          totalActions: 1,
+          accepted: 1,
+          deferred: 0,
+          rejected: 0,
+          done: 0,
+          doneRate: 0,
+          rejectionRate: 0,
+          averageTimeToDoneHours: null,
+        },
+      ],
+      byRecommendationStatus: [
+        {
+          key: "dopuna",
+          label: "dopuna",
+          totalActions: 1,
+          accepted: 1,
+          deferred: 0,
+          rejected: 0,
+          done: 0,
+          doneRate: 0,
+          rejectionRate: 0,
+          averageTimeToDoneHours: null,
+        },
+      ],
+      byPriority: [
+        {
+          key: "P1",
+          label: "P1",
+          totalActions: 1,
+          accepted: 1,
+          deferred: 0,
+          rejected: 0,
+          done: 0,
+          doneRate: 0,
+          rejectionRate: 0,
+          averageTimeToDoneHours: null,
+        },
+      ],
+      byDataQualityStatus: [
+        {
+          key: "good",
+          label: "good",
+          totalActions: 1,
+          accepted: 1,
+          deferred: 0,
+          rejected: 0,
+          done: 0,
+          doneRate: 0,
+          rejectionRate: 0,
+          averageTimeToDoneHours: null,
+        },
+      ],
+    });
     getAnalyticsActionByIdMock.mockResolvedValue(item);
     updateAnalyticsActionStatusMock.mockResolvedValue(item);
     updateAnalyticsActionOutcomeMock.mockResolvedValue(item);
@@ -120,6 +190,7 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Učinak preporuka" })).toBeInTheDocument();
     expect(screen.getByText("Pozitivan ishod")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
@@ -157,5 +228,44 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ishod nije sačuvan. Proverite status i iznos.");
+  });
+
+  it("shows empty-state summary when there are no actions", async () => {
+    getAnalyticsActionsMock.mockResolvedValue({
+      items: [],
+      totalCount: 0,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+    getAnalyticsActionCountsMock.mockResolvedValue({
+      new: 0,
+      accepted: 0,
+      deferred: 0,
+      rejected: 0,
+      done: 0,
+      p1Open: 0,
+    });
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValue({
+      fromDateUtc: null,
+      toDateUtc: null,
+      totalActions: 0,
+      accepted: 0,
+      deferred: 0,
+      rejected: 0,
+      done: 0,
+      doneRate: 0,
+      rejectionRate: 0,
+      averageTimeToDoneHours: null,
+      bySourceType: [],
+      byRecommendationStatus: [],
+      byPriority: [],
+      byDataQualityStatus: [],
+    });
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Nema akcija.")).toBeInTheDocument();
+    expect(screen.getByText("Nema akcija u izabranom periodu.")).toBeInTheDocument();
   });
 });

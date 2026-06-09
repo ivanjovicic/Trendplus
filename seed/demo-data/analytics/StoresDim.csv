@@ -1,0 +1,4 @@
+StoreKey,StoreId,StoreName,City,Region,Telefon,Menedzer,DataOrigin
+1,1,Demo City Center,Beograd,Central,+3811110001,Jelena Vukovic,access
+2,2,Demo Shopping Park,Novi Sad,North,+3811110002,Marko Petrovic,access
+3,3,Demo Outlet,Nis,South,+3811110003,Ivana Jovanovic,access

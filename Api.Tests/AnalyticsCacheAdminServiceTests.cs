@@ -116,6 +116,45 @@ public sealed class AnalyticsCacheAdminServiceTests
     }
 
     [Fact]
+    public async Task ClearAnalyticsCacheFamily_ReportsFamily_BumpsReportVersionToken()
+    {
+        var cache = new RecordingAnalyticsCacheService
+        {
+            IsRedisAvailable = false,
+            IsRedisEnabled = false
+        };
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var before = await sut.GetReportCacheVersionAsync();
+        var state = await sut.ClearAnalyticsCacheFamily(AnalyticsCachePolicy.ReportsFamily, CancellationToken.None, "manual");
+        var after = await sut.GetReportCacheVersionAsync();
+
+        Assert.Equal([AnalyticsCacheKeys.ReportNamespace], cache.RemovedPrefixes);
+        Assert.Equal(before + 1, after);
+        Assert.Equal(after, state.ReportCacheVersion);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+    }
+
+    [Fact]
+    public async Task ClearAllAnalyticsCache_RemovesCoreAnalyticsPrefixes()
+    {
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var state = await sut.ClearAllAnalyticsCache(CancellationToken.None, "nightly");
+
+        Assert.Contains(AnalyticsCacheKeys.Prefix, cache.RemovedPrefixes);
+        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+    }
+
+    [Fact]
     public async Task ClearFamiliesAsync_CoreFamilies_BumpsReportCacheVersion()
     {
         // CoreFamilies includes ReportsFamily → bumps report version

@@ -565,6 +565,24 @@ public static class SupplierDecisionHubEndpoints
         {
             return Results.Ok(BuildSupplierDecisionErrorReportResponse(activeFilters, ex.ErrorCode, ex.Message, correlationId));
         }
+        catch (Exception ex)
+        {
+            var logger = loggerFactory.CreateLogger("SupplierDecisionReport");
+            logger.LogError(
+                ex,
+                "Supplier decision durable report failed unexpectedly. SupplierId={SupplierId} StoreId={StoreId} DataScope={DataScope} FromDate={FromDate} ToDate={ToDate}",
+                activeFilters.SupplierId,
+                activeFilters.StoreId,
+                activeFilters.DataScope,
+                activeFilters.FromDate,
+                activeFilters.ToDate);
+
+            return Results.Ok(BuildSupplierDecisionErrorReportResponse(
+                activeFilters,
+                "supplier_decision_report_error",
+                "Supplier decision report trenutno nije dostupan.",
+                correlationId));
+        }
     }
 
     internal sealed record SupplierDecisionHubFilters(

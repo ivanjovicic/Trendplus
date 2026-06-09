@@ -2495,7 +2495,7 @@ using NpgsqlTypes;
                         try
                         {
                             if (_cacheAdmin is not null)
-                                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, transactionCt);
+                                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, transactionCt, triggeredBy: "import");
                             else
                                 await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
                         }
@@ -3643,7 +3643,7 @@ using NpgsqlTypes;
         if (includeAnalytics && (_cacheAdmin is not null || _analyticsCache is not null))
         {
             if (_cacheAdmin is not null)
-                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct);
+                await _cacheAdmin.ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies, ct, triggeredBy: "delete");
             else
                 await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
             cacheInvalidated = true;

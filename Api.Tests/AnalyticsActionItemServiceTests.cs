@@ -46,6 +46,96 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_AggregatesCountsAndGroupBreakdowns()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_AggregatesCountsAndGroupBreakdowns));
+        var service = CreateService(db);
+
+        db.AnalyticsActionItems.AddRange(
+            new Domain.Model.Analytics.AnalyticsActionItem
+            {
+                SourceType = AnalyticsActionConstants.SourceTypes.Inventory,
+                SourceKey = "inventory-1",
+                SourceId = 1,
+                Title = "Inventory accepted",
+                RecommendationStatus = "dopuna",
+                Priority = AnalyticsActionConstants.Priorities.P1,
+                DataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Good,
+                Status = AnalyticsActionConstants.Statuses.Accepted,
+                CreatedAtUtc = new DateTime(2026, 6, 1, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAtUtc = new DateTime(2026, 6, 1, 8, 0, 0, DateTimeKind.Utc),
+            },
+            new Domain.Model.Analytics.AnalyticsActionItem
+            {
+                SourceType = AnalyticsActionConstants.SourceTypes.Supplier,
+                SourceKey = "supplier-1",
+                SourceId = 2,
+                Title = "Supplier rejected",
+                RecommendationStatus = "pregled",
+                Priority = AnalyticsActionConstants.Priorities.P2,
+                DataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Warning,
+                Status = AnalyticsActionConstants.Statuses.Rejected,
+                CreatedAtUtc = new DateTime(2026, 6, 2, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAtUtc = new DateTime(2026, 6, 4, 8, 0, 0, DateTimeKind.Utc),
+                ResolvedAtUtc = new DateTime(2026, 6, 4, 8, 0, 0, DateTimeKind.Utc),
+            },
+            new Domain.Model.Analytics.AnalyticsActionItem
+            {
+                SourceType = AnalyticsActionConstants.SourceTypes.Dashboard,
+                SourceKey = "dashboard-1",
+                SourceId = 3,
+                Title = "Dashboard done",
+                RecommendationStatus = "monitoring",
+                Priority = AnalyticsActionConstants.Priorities.P1,
+                DataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Critical,
+                Status = AnalyticsActionConstants.Statuses.Done,
+                CreatedAtUtc = new DateTime(2026, 6, 3, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAtUtc = new DateTime(2026, 6, 5, 8, 0, 0, DateTimeKind.Utc),
+                ResolvedAtUtc = new DateTime(2026, 6, 5, 8, 0, 0, DateTimeKind.Utc),
+            },
+            new Domain.Model.Analytics.AnalyticsActionItem
+            {
+                SourceType = AnalyticsActionConstants.SourceTypes.Product,
+                SourceKey = "product-1",
+                SourceId = 4,
+                Title = "Product deferred",
+                RecommendationStatus = "analiza",
+                Priority = AnalyticsActionConstants.Priorities.P3,
+                DataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
+                Status = AnalyticsActionConstants.Statuses.Deferred,
+                CreatedAtUtc = new DateTime(2026, 6, 6, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAtUtc = new DateTime(2026, 6, 6, 8, 0, 0, DateTimeKind.Utc),
+            });
+        await db.SaveChangesAsync();
+
+        var summary = await service.GetOutcomeSummaryAsync(
+            new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 6, 30, 23, 59, 59, DateTimeKind.Utc));
+
+        Assert.Equal(4, summary.TotalActions);
+        Assert.Equal(1, summary.Accepted);
+        Assert.Equal(1, summary.Deferred);
+        Assert.Equal(1, summary.Rejected);
+        Assert.Equal(1, summary.Done);
+        Assert.Equal(25.0m, summary.DoneRate);
+        Assert.Equal(25.0m, summary.RejectionRate);
+        Assert.Equal(48.0m, summary.AverageTimeToDoneHours);
+
+        var inventory = Assert.Single(summary.BySourceType, x => x.Key == AnalyticsActionConstants.SourceTypes.Inventory);
+        Assert.Equal("Zalihe", inventory.Label);
+        Assert.Equal(1, inventory.TotalActions);
+        Assert.Equal(1, inventory.Accepted);
+
+        var p1 = Assert.Single(summary.ByPriority, x => x.Key == AnalyticsActionConstants.Priorities.P1);
+        Assert.Equal(2, p1.TotalActions);
+        Assert.Equal(2, p1.Done + p1.Accepted);
+
+        var dqCritical = Assert.Single(summary.ByDataQualityStatus, x => x.Key == AnalyticsActionConstants.DataQualityStatuses.Critical);
+        Assert.Equal(1, dqCritical.TotalActions);
+        Assert.Equal(1, dqCritical.Done);
+    }
+
+    [Fact]
     public async Task UpdateStatusAsync_CreatesAuditNote_WhenStatusChanges_WithNote()
     {
         await using var db = CreateDbContext(nameof(UpdateStatusAsync_CreatesAuditNote_WhenStatusChanges_WithNote));

@@ -43,6 +43,12 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
         legacyAliases: [],
     },
     {
+        path: "/analytics/pilot-readiness",
+        label: "Pilot readiness",
+        isDurableReport: false,
+        legacyAliases: ["/pilot/readiness"],
+    },
+    {
         path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all",
         label: "Izveštaj dobavljača",
         isDurableReport: true,
@@ -61,4 +67,5 @@ export const CORE_ANALYTICS_SMOKE_ROUTES = CORE_ANALYTICS_ROUTE_DEFINITIONS.map(
 export const CORE_ANALYTICS_LEGACY_ALIASES = {
     productDecisionCenter: "/analytics/product-decision-center",
     pilotIntakeReport: "/analytics/data-quality/pilot-intake-report",
+    pilotReadiness: "/pilot/readiness",
 } as const;

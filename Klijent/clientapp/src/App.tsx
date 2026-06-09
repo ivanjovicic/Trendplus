@@ -68,6 +68,7 @@ const SupplierConsolidatedPage = lazy(() => import("./pages/SupplierConsolidated
 const AnalyticsActionsPage = lazy(() => import("./pages/AnalyticsActionsPage"));
 const SupplierDecisionReportPage = lazy(() => import("./pages/SupplierDecisionReportPage"));
 const PilotIntakeReportPage = lazy(() => import("./pages/PilotIntakeReportPage"));
+const PilotReadinessPage = lazy(() => import("./pages/PilotReadinessPage"));
 
 function RouteFallback() {
     return <div className="page-loading">Učitavanje...</div>;
@@ -105,6 +106,8 @@ function AppShell() {
                     <Route path="/analytics/inventory" element={<InventoryPage />} />
                     <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
                     <Route path="/analytics/data-quality" element={<DataQualityPage />} />
+                    <Route path="/analytics/pilot-readiness" element={<PilotReadinessPage />} />
+                    <Route path="/pilot/readiness" element={<PilotReadinessPage />} />
                     <Route path="/analytics/actions" element={<AnalyticsActionsPage />} />
                     <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
                     <Route path="/analytics/reports/pilot-intake" element={<PilotIntakeReportPage />} />

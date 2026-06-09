@@ -47,5 +47,6 @@ describe("analyticsMetricDefinitions", () => {
     expect(getAnalyticsMetricDefinition("ignoredRowsCount").label).toContain("Ignorisani");
     expect(getAnalyticsMetricDefinition("grossMarginPct").formula).toContain("prihod");
     expect(getAnalyticsMetricDefinition("inventoryTurnover").formula).toContain("/");
+    expect(getAnalyticsMetricDefinition("recommendationAllowed").label).toContain("Preporuke dozvoljene");
   });
 });

@@ -2124,7 +2124,7 @@ public static class CachedAnalyticsEndpoints
             string? family,
             CancellationToken ct) =>
         {
-            var state = await cacheAdmin.ClearAsync(family, ct);
+            var state = await cacheAdmin.ClearAnalyticsCacheFamily(family, ct, triggeredBy: "api-cache-invalidate");
             return Results.Ok(new
             {
                 success = true,

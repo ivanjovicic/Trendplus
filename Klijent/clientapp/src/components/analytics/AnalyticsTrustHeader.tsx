@@ -164,6 +164,7 @@ export default function AnalyticsTrustHeader({
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = recommendationAllowed === false && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
+  const showCriticalBanner = freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
 
@@ -232,6 +233,18 @@ export default function AnalyticsTrustHeader({
       {showPartialBanner ? (
         <div className="ath-banner ath-banner-warning" role="note">
           <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
+        </div>
+      ) : null}
+
+      {showCriticalBanner ? (
+        <div className="ath-banner ath-banner-critical" role="alert" aria-live="assertive">
+          <strong>Podaci su kritično zastareli.</strong>{" "}
+          Ne preporučuje se donošenje odluka bez provere osvežavanja.
+          <div className="ath-banner-actions">
+            {renderLink(resolvedRefreshStatusHref, "Worker status", "ath-banner-link")}
+            {renderLink(resolvedDataQualityHref, "Data Quality", "ath-banner-link")}
+            {renderLink(resolvedRefreshStatusHref, "Ručno osvežavanje", "ath-banner-link")}
+          </div>
         </div>
       ) : null}
 

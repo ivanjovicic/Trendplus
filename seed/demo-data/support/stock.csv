@@ -1,0 +1,361 @@
+ProductId,StoreId,StoreName,StockOnHand,MinimumStock,RiskLabel
+1,1,Demo City Center,4,8,Healthy
+1,2,Demo Shopping Park,2,8,Healthy
+1,3,Demo Outlet,3,8,Healthy
+2,1,Demo City Center,2,8,Healthy
+2,2,Demo Shopping Park,3,8,Healthy
+2,3,Demo Outlet,4,8,Healthy
+3,1,Demo City Center,3,8,Healthy
+3,2,Demo Shopping Park,4,8,Healthy
+3,3,Demo Outlet,2,8,Healthy
+4,1,Demo City Center,4,8,Healthy
+4,2,Demo Shopping Park,2,8,Healthy
+4,3,Demo Outlet,3,8,Healthy
+5,1,Demo City Center,2,8,Healthy
+5,2,Demo Shopping Park,3,8,Healthy
+5,3,Demo Outlet,4,8,Healthy
+6,1,Demo City Center,3,8,Healthy
+6,2,Demo Shopping Park,4,8,Healthy
+6,3,Demo Outlet,2,8,Healthy
+7,1,Demo City Center,4,8,Healthy
+7,2,Demo Shopping Park,2,8,Healthy
+7,3,Demo Outlet,3,8,Healthy
+8,1,Demo City Center,2,8,Healthy
+8,2,Demo Shopping Park,3,8,Healthy
+8,3,Demo Outlet,4,8,Healthy
+9,1,Demo City Center,3,8,Healthy
+9,2,Demo Shopping Park,4,8,Healthy
+9,3,Demo Outlet,2,8,Healthy
+10,1,Demo City Center,4,8,Healthy
+10,2,Demo Shopping Park,2,8,Healthy
+10,3,Demo Outlet,3,8,Healthy
+11,1,Demo City Center,2,8,Healthy
+11,2,Demo Shopping Park,3,8,Healthy
+11,3,Demo Outlet,4,8,Healthy
+12,1,Demo City Center,3,8,Healthy
+12,2,Demo Shopping Park,4,8,Healthy
+12,3,Demo Outlet,2,8,Healthy
+13,1,Demo City Center,4,8,Healthy
+13,2,Demo Shopping Park,2,8,Healthy
+13,3,Demo Outlet,3,8,Healthy
+14,1,Demo City Center,2,8,Healthy
+14,2,Demo Shopping Park,3,8,Healthy
+14,3,Demo Outlet,4,8,Healthy
+15,1,Demo City Center,3,8,Healthy
+15,2,Demo Shopping Park,4,8,Healthy
+15,3,Demo Outlet,2,8,Healthy
+16,1,Demo City Center,1,6,OOS risk
+16,2,Demo Shopping Park,0,6,OOS risk
+16,3,Demo Outlet,1,6,OOS risk
+17,1,Demo City Center,0,6,OOS risk
+17,2,Demo Shopping Park,1,6,OOS risk
+17,3,Demo Outlet,0,6,OOS risk
+18,1,Demo City Center,1,6,OOS risk
+18,2,Demo Shopping Park,0,6,OOS risk
+18,3,Demo Outlet,1,6,OOS risk
+19,1,Demo City Center,0,6,OOS risk
+19,2,Demo Shopping Park,1,6,OOS risk
+19,3,Demo Outlet,0,6,OOS risk
+20,1,Demo City Center,1,6,OOS risk
+20,2,Demo Shopping Park,0,6,OOS risk
+20,3,Demo Outlet,1,6,OOS risk
+21,1,Demo City Center,0,6,OOS risk
+21,2,Demo Shopping Park,1,6,OOS risk
+21,3,Demo Outlet,0,6,OOS risk
+22,1,Demo City Center,1,6,OOS risk
+22,2,Demo Shopping Park,0,6,OOS risk
+22,3,Demo Outlet,1,6,OOS risk
+23,1,Demo City Center,0,6,OOS risk
+23,2,Demo Shopping Park,1,6,OOS risk
+23,3,Demo Outlet,0,6,OOS risk
+24,1,Demo City Center,1,6,OOS risk
+24,2,Demo Shopping Park,0,6,OOS risk
+24,3,Demo Outlet,1,6,OOS risk
+25,1,Demo City Center,0,6,OOS risk
+25,2,Demo Shopping Park,1,6,OOS risk
+25,3,Demo Outlet,0,6,OOS risk
+26,1,Demo City Center,1,6,OOS risk
+26,2,Demo Shopping Park,0,6,OOS risk
+26,3,Demo Outlet,1,6,OOS risk
+27,1,Demo City Center,0,6,OOS risk
+27,2,Demo Shopping Park,1,6,OOS risk
+27,3,Demo Outlet,0,6,OOS risk
+28,1,Demo City Center,1,6,OOS risk
+28,2,Demo Shopping Park,0,6,OOS risk
+28,3,Demo Outlet,1,6,OOS risk
+29,1,Demo City Center,0,6,OOS risk
+29,2,Demo Shopping Park,1,6,OOS risk
+29,3,Demo Outlet,0,6,OOS risk
+30,1,Demo City Center,1,6,OOS risk
+30,2,Demo Shopping Park,0,6,OOS risk
+30,3,Demo Outlet,1,6,OOS risk
+31,1,Demo City Center,0,6,OOS risk
+31,2,Demo Shopping Park,1,6,OOS risk
+31,3,Demo Outlet,0,6,OOS risk
+32,1,Demo City Center,1,6,OOS risk
+32,2,Demo Shopping Park,0,6,OOS risk
+32,3,Demo Outlet,1,6,OOS risk
+33,1,Demo City Center,0,6,OOS risk
+33,2,Demo Shopping Park,1,6,OOS risk
+33,3,Demo Outlet,0,6,OOS risk
+34,1,Demo City Center,1,6,OOS risk
+34,2,Demo Shopping Park,0,6,OOS risk
+34,3,Demo Outlet,1,6,OOS risk
+35,1,Demo City Center,0,6,OOS risk
+35,2,Demo Shopping Park,1,6,OOS risk
+35,3,Demo Outlet,0,6,OOS risk
+36,1,Demo City Center,13,5,Healthy
+36,2,Demo Shopping Park,14,5,Healthy
+36,3,Demo Outlet,15,5,Healthy
+37,1,Demo City Center,14,5,Healthy
+37,2,Demo Shopping Park,15,5,Healthy
+37,3,Demo Outlet,16,5,Healthy
+38,1,Demo City Center,15,5,Healthy
+38,2,Demo Shopping Park,16,5,Healthy
+38,3,Demo Outlet,17,5,Healthy
+39,1,Demo City Center,16,5,Healthy
+39,2,Demo Shopping Park,17,5,Healthy
+39,3,Demo Outlet,18,5,Dead stock
+40,1,Demo City Center,17,5,Healthy
+40,2,Demo Shopping Park,18,5,Dead stock
+40,3,Demo Outlet,19,5,Dead stock
+41,1,Demo City Center,18,5,Dead stock
+41,2,Demo Shopping Park,19,5,Dead stock
+41,3,Demo Outlet,20,5,Dead stock
+42,1,Demo City Center,19,5,Dead stock
+42,2,Demo Shopping Park,20,5,Dead stock
+42,3,Demo Outlet,12,5,Healthy
+43,1,Demo City Center,20,5,Dead stock
+43,2,Demo Shopping Park,12,5,Healthy
+43,3,Demo Outlet,13,5,Healthy
+44,1,Demo City Center,12,5,Healthy
+44,2,Demo Shopping Park,13,5,Healthy
+44,3,Demo Outlet,14,5,Healthy
+45,1,Demo City Center,13,5,Healthy
+45,2,Demo Shopping Park,14,5,Healthy
+45,3,Demo Outlet,15,5,Healthy
+46,1,Demo City Center,14,5,Healthy
+46,2,Demo Shopping Park,15,5,Healthy
+46,3,Demo Outlet,16,5,Healthy
+47,1,Demo City Center,15,5,Healthy
+47,2,Demo Shopping Park,16,5,Healthy
+47,3,Demo Outlet,17,5,Healthy
+48,1,Demo City Center,16,5,Healthy
+48,2,Demo Shopping Park,17,5,Healthy
+48,3,Demo Outlet,18,5,Dead stock
+49,1,Demo City Center,17,5,Healthy
+49,2,Demo Shopping Park,18,5,Dead stock
+49,3,Demo Outlet,19,5,Dead stock
+50,1,Demo City Center,18,5,Dead stock
+50,2,Demo Shopping Park,19,5,Dead stock
+50,3,Demo Outlet,20,5,Dead stock
+51,1,Demo City Center,19,5,Dead stock
+51,2,Demo Shopping Park,20,5,Dead stock
+51,3,Demo Outlet,12,5,Healthy
+52,1,Demo City Center,20,5,Dead stock
+52,2,Demo Shopping Park,12,5,Healthy
+52,3,Demo Outlet,13,5,Healthy
+53,1,Demo City Center,12,5,Healthy
+53,2,Demo Shopping Park,13,5,Healthy
+53,3,Demo Outlet,14,5,Healthy
+54,1,Demo City Center,31,10,Dead stock
+54,2,Demo Shopping Park,18,10,Dead stock
+54,3,Demo Outlet,19,10,Dead stock
+55,1,Demo City Center,18,10,Dead stock
+55,2,Demo Shopping Park,19,10,Dead stock
+55,3,Demo Outlet,20,10,Dead stock
+56,1,Demo City Center,19,10,Dead stock
+56,2,Demo Shopping Park,20,10,Dead stock
+56,3,Demo Outlet,21,10,Dead stock
+57,1,Demo City Center,20,10,Dead stock
+57,2,Demo Shopping Park,21,10,Dead stock
+57,3,Demo Outlet,22,10,Dead stock
+58,1,Demo City Center,21,10,Dead stock
+58,2,Demo Shopping Park,22,10,Dead stock
+58,3,Demo Outlet,23,10,Dead stock
+59,1,Demo City Center,22,10,Dead stock
+59,2,Demo Shopping Park,23,10,Dead stock
+59,3,Demo Outlet,24,10,Dead stock
+60,1,Demo City Center,23,10,Dead stock
+60,2,Demo Shopping Park,24,10,Dead stock
+60,3,Demo Outlet,25,10,Dead stock
+61,1,Demo City Center,24,10,Dead stock
+61,2,Demo Shopping Park,25,10,Dead stock
+61,3,Demo Outlet,26,10,Dead stock
+62,1,Demo City Center,25,10,Dead stock
+62,2,Demo Shopping Park,26,10,Dead stock
+62,3,Demo Outlet,27,10,Dead stock
+63,1,Demo City Center,26,10,Dead stock
+63,2,Demo Shopping Park,27,10,Dead stock
+63,3,Demo Outlet,28,10,Dead stock
+64,1,Demo City Center,7,4,Healthy
+64,2,Demo Shopping Park,8,4,Healthy
+64,3,Demo Outlet,9,4,Healthy
+65,1,Demo City Center,8,4,Healthy
+65,2,Demo Shopping Park,9,4,Healthy
+65,3,Demo Outlet,10,4,Healthy
+66,1,Demo City Center,9,4,Healthy
+66,2,Demo Shopping Park,10,4,Healthy
+66,3,Demo Outlet,11,4,Healthy
+67,1,Demo City Center,10,4,Healthy
+67,2,Demo Shopping Park,11,4,Healthy
+67,3,Demo Outlet,5,4,Healthy
+68,1,Demo City Center,11,4,Healthy
+68,2,Demo Shopping Park,5,4,Healthy
+68,3,Demo Outlet,6,4,Healthy
+69,1,Demo City Center,5,4,Healthy
+69,2,Demo Shopping Park,6,4,Healthy
+69,3,Demo Outlet,7,4,Healthy
+70,1,Demo City Center,6,4,Healthy
+70,2,Demo Shopping Park,7,4,Healthy
+70,3,Demo Outlet,8,4,Healthy
+71,1,Demo City Center,7,4,Healthy
+71,2,Demo Shopping Park,8,4,Healthy
+71,3,Demo Outlet,9,4,Healthy
+72,1,Demo City Center,8,4,Healthy
+72,2,Demo Shopping Park,9,4,Healthy
+72,3,Demo Outlet,10,4,Healthy
+73,1,Demo City Center,9,4,Healthy
+73,2,Demo Shopping Park,10,4,Healthy
+73,3,Demo Outlet,11,4,Healthy
+74,1,Demo City Center,10,4,Healthy
+74,2,Demo Shopping Park,11,4,Healthy
+74,3,Demo Outlet,5,4,Healthy
+75,1,Demo City Center,11,4,Healthy
+75,2,Demo Shopping Park,5,4,Healthy
+75,3,Demo Outlet,6,4,Healthy
+76,1,Demo City Center,5,4,Healthy
+76,2,Demo Shopping Park,6,4,Healthy
+76,3,Demo Outlet,7,4,Healthy
+77,1,Demo City Center,6,4,Healthy
+77,2,Demo Shopping Park,7,4,Healthy
+77,3,Demo Outlet,8,4,Healthy
+78,1,Demo City Center,7,4,Healthy
+78,2,Demo Shopping Park,8,4,Healthy
+78,3,Demo Outlet,9,4,Healthy
+79,1,Demo City Center,8,4,Healthy
+79,2,Demo Shopping Park,9,4,Healthy
+79,3,Demo Outlet,10,4,Healthy
+80,1,Demo City Center,9,4,Healthy
+80,2,Demo Shopping Park,10,4,Healthy
+80,3,Demo Outlet,11,4,Healthy
+81,1,Demo City Center,10,4,Healthy
+81,2,Demo Shopping Park,11,4,Healthy
+81,3,Demo Outlet,5,4,Healthy
+82,1,Demo City Center,11,4,Healthy
+82,2,Demo Shopping Park,5,4,Healthy
+82,3,Demo Outlet,6,4,Healthy
+83,1,Demo City Center,5,4,Healthy
+83,2,Demo Shopping Park,6,4,Healthy
+83,3,Demo Outlet,7,4,Healthy
+84,1,Demo City Center,6,4,Healthy
+84,2,Demo Shopping Park,7,4,Healthy
+84,3,Demo Outlet,8,4,Healthy
+85,1,Demo City Center,7,4,Healthy
+85,2,Demo Shopping Park,8,4,Healthy
+85,3,Demo Outlet,9,4,Healthy
+86,1,Demo City Center,8,4,Healthy
+86,2,Demo Shopping Park,9,4,Healthy
+86,3,Demo Outlet,10,4,Healthy
+87,1,Demo City Center,9,4,Healthy
+87,2,Demo Shopping Park,10,4,Healthy
+87,3,Demo Outlet,11,4,Healthy
+88,1,Demo City Center,10,4,Healthy
+88,2,Demo Shopping Park,11,4,Healthy
+88,3,Demo Outlet,5,4,Healthy
+89,1,Demo City Center,11,4,Healthy
+89,2,Demo Shopping Park,5,4,Healthy
+89,3,Demo Outlet,6,4,Healthy
+90,1,Demo City Center,5,4,Healthy
+90,2,Demo Shopping Park,6,4,Healthy
+90,3,Demo Outlet,7,4,Healthy
+91,1,Demo City Center,6,4,Healthy
+91,2,Demo Shopping Park,7,4,Healthy
+91,3,Demo Outlet,8,4,Healthy
+92,1,Demo City Center,7,4,Healthy
+92,2,Demo Shopping Park,8,4,Healthy
+92,3,Demo Outlet,9,4,Healthy
+93,1,Demo City Center,8,4,Healthy
+93,2,Demo Shopping Park,9,4,Healthy
+93,3,Demo Outlet,10,4,Healthy
+94,1,Demo City Center,9,4,Healthy
+94,2,Demo Shopping Park,10,4,Healthy
+94,3,Demo Outlet,11,4,Healthy
+95,1,Demo City Center,10,4,Healthy
+95,2,Demo Shopping Park,11,4,Healthy
+95,3,Demo Outlet,5,4,Healthy
+96,1,Demo City Center,11,4,Healthy
+96,2,Demo Shopping Park,5,4,Healthy
+96,3,Demo Outlet,6,4,Healthy
+97,1,Demo City Center,5,4,Healthy
+97,2,Demo Shopping Park,6,4,Healthy
+97,3,Demo Outlet,7,4,Healthy
+98,1,Demo City Center,6,4,Healthy
+98,2,Demo Shopping Park,7,4,Healthy
+98,3,Demo Outlet,8,4,Healthy
+99,1,Demo City Center,7,4,Healthy
+99,2,Demo Shopping Park,8,4,Healthy
+99,3,Demo Outlet,9,4,Healthy
+100,1,Demo City Center,8,4,Healthy
+100,2,Demo Shopping Park,9,4,Healthy
+100,3,Demo Outlet,10,4,Healthy
+101,1,Demo City Center,3,3,Healthy
+101,2,Demo Shopping Park,4,3,Healthy
+101,3,Demo Outlet,1,3,OOS risk
+102,1,Demo City Center,4,3,Healthy
+102,2,Demo Shopping Park,1,3,OOS risk
+102,3,Demo Outlet,2,3,Healthy
+103,1,Demo City Center,1,3,OOS risk
+103,2,Demo Shopping Park,2,3,Healthy
+103,3,Demo Outlet,3,3,Healthy
+104,1,Demo City Center,2,3,Healthy
+104,2,Demo Shopping Park,3,3,Healthy
+104,3,Demo Outlet,4,3,Healthy
+105,1,Demo City Center,3,3,Healthy
+105,2,Demo Shopping Park,4,3,Healthy
+105,3,Demo Outlet,1,3,OOS risk
+106,1,Demo City Center,4,3,Healthy
+106,2,Demo Shopping Park,1,3,OOS risk
+106,3,Demo Outlet,2,3,Healthy
+107,1,Demo City Center,1,3,OOS risk
+107,2,Demo Shopping Park,2,3,Healthy
+107,3,Demo Outlet,3,3,Healthy
+108,1,Demo City Center,2,3,Healthy
+108,2,Demo Shopping Park,3,3,Healthy
+108,3,Demo Outlet,4,3,Healthy
+109,1,Demo City Center,3,3,Healthy
+109,2,Demo Shopping Park,4,3,Healthy
+109,3,Demo Outlet,1,3,OOS risk
+110,1,Demo City Center,4,3,Healthy
+110,2,Demo Shopping Park,1,3,OOS risk
+110,3,Demo Outlet,2,3,Healthy
+111,1,Demo City Center,0,2,OOS risk
+111,2,Demo Shopping Park,1,2,OOS risk
+111,3,Demo Outlet,0,2,OOS risk
+112,1,Demo City Center,1,2,OOS risk
+112,2,Demo Shopping Park,0,2,OOS risk
+112,3,Demo Outlet,1,2,OOS risk
+113,1,Demo City Center,0,2,OOS risk
+113,2,Demo Shopping Park,1,2,OOS risk
+113,3,Demo Outlet,0,2,OOS risk
+114,1,Demo City Center,1,2,OOS risk
+114,2,Demo Shopping Park,0,2,OOS risk
+114,3,Demo Outlet,1,2,OOS risk
+115,1,Demo City Center,0,2,OOS risk
+115,2,Demo Shopping Park,1,2,OOS risk
+115,3,Demo Outlet,0,2,OOS risk
+116,1,Demo City Center,1,2,OOS risk
+116,2,Demo Shopping Park,0,2,OOS risk
+116,3,Demo Outlet,1,2,OOS risk
+117,1,Demo City Center,0,2,OOS risk
+117,2,Demo Shopping Park,1,2,OOS risk
+117,3,Demo Outlet,0,2,OOS risk
+118,1,Demo City Center,1,2,OOS risk
+118,2,Demo Shopping Park,0,2,OOS risk
+118,3,Demo Outlet,1,2,OOS risk
+119,1,Demo City Center,0,2,OOS risk
+119,2,Demo Shopping Park,1,2,OOS risk
+119,3,Demo Outlet,0,2,OOS risk
+120,1,Demo City Center,1,2,OOS risk
+120,2,Demo Shopping Park,0,2,OOS risk
+120,3,Demo Outlet,1,2,OOS risk

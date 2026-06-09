@@ -58,14 +58,22 @@ describe("AnalyticsRefreshStatusBanner", () => {
       buildStatus({
         dataFreshnessStatus: "critical",
         lastErrorMessage: "supplier_decision_mv failed",
+        lastFailureAtUtc: "2026-05-22T09:00:00Z",
         failedObjects: ["supplier_decision_mv"],
+        workerWarning: "Worker nije aktivan u ovom procesu",
       })
     );
 
     expect(screen.getByText("Kritično")).toBeInTheDocument();
     expect(screen.getByText("Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText(/Poslednji pad:/)).toBeInTheDocument();
     expect(screen.getByText(/supplier_decision_mv failed/i)).toBeInTheDocument();
     expect(screen.getByText(/Neuspešni objekti:/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Worker nije aktivan u ovom procesu/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("link", { name: "Worker status" })).toHaveAttribute("href", "/admin/configuration?panel=workers");
+    expect(screen.getByRole("link", { name: "Data Quality" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(screen.getByRole("link", { name: "Ručno osvežavanje" })).toHaveAttribute("href", "/admin/configuration?panel=workers");
   });
 
   it("shows running message with current step", () => {

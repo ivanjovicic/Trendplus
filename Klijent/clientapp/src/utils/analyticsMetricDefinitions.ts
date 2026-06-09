@@ -6,6 +6,7 @@ export type AnalyticsMetricKey =
   | "stockCoverDays"
   | "lostSalesEstimate"
   | "dataReadinessScore"
+  | "recommendationAllowed"
   | "missingCostCount"
   | "missingSupplierCount"
   | "sellThrough"
@@ -60,6 +61,7 @@ export const canonicalMetricKeys = [
   "slowStockCapital",
   "lostSalesEstimate",
   "dataReadinessScore",
+  "recommendationAllowed",
   "missingCostCount",
   "missingSupplierCount",
   "sellThrough",
@@ -240,6 +242,16 @@ const baseMetrics = {
     limitations: ["Visok skor ne garantuje da su sve pojedinačne metrike bez problema."],
     dataQualityDependencies: ["missing_cost", "missing_supplier", "insufficient_signal", "refresh_freshness"],
     relatedScreens: ["/analytics/data-quality", "/analytics"],
+  }),
+  recommendationAllowed: defineMetric("recommendationAllowed", {
+    label: "Preporuke dozvoljene",
+    shortDescription: "Gate koji pokazuje da li je preporuka dovoljno pouzdana da se prikaže kao aktivna odluka.",
+    formula: "recommendation_allowed = true kada su freshness i data quality pragovi ispunjeni",
+    dataSource: "Data quality checks + freshness gate",
+    interpretation: "Kada je false, preporuku treba tretirati kao ograničen signal, ne kao finalnu preporuku za akciju.",
+    limitations: ["Ovo je gate, ne finansijska KPI metrika.", "Može biti false čak i kada deo signala izgleda dobar."],
+    dataQualityDependencies: ["refresh_freshness", "missing_cost", "missing_supplier", "insufficient_signal"],
+    relatedScreens: ["/analytics/data-quality", "/analytics/supplier", "/analytics/reports/pilot-intake"],
   }),
   missingCostCount: defineMetric("missingCostCount", {
     label: "Redovi bez nabavne cene",
@@ -538,6 +550,7 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   slowStockCapital: ["Kapital u sporoj zalihi"],
   lostSalesEstimate: ["Procena izgubljene prodaje", "Izgubljena prodaja"],
   dataReadinessScore: ["Spremnost podataka", "Data readiness", "Data quality score"],
+  recommendationAllowed: ["Preporuke dozvoljene", "Recommendation allowed", "Recommendations allowed"],
   missingCostCount: ["Bez nabavne cene", "Redovi bez nabavne cene"],
   missingSupplierCount: ["Bez dobavljača", "Artikli bez dobavljača"],
   sellThrough: ["Sell-through"],

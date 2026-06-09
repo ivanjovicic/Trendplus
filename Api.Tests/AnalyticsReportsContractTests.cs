@@ -919,6 +919,7 @@ public sealed class AnalyticsReportsContractTests
             null,
             null,
             new DateTime(2026, 6, 29, 22, 0, 0, DateTimeKind.Utc),
+            "succeeded",
             new DateTime(2026, 6, 30, 4, 0, 0, DateTimeKind.Utc),
             "fresh",
             readinessScore,

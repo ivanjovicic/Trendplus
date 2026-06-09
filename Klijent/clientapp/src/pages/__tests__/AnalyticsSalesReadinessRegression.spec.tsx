@@ -13,6 +13,12 @@ import PilotIntakeReportPage from "../PilotIntakeReportPage";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
 import SupplierDecisionHubPage from "../SupplierDecisionHubPage";
 
+// jsdom/msw interop guard for fetch signal in this suite
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).AbortSignal = window.AbortSignal;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).AbortController = window.AbortController;
+
 vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
   default: () => <div data-testid="charts-stub" />,
 }));
@@ -29,9 +35,13 @@ vi.mock("../../components/analytics/KpiExplainButton", () => ({
   default: () => null,
 }));
 
-vi.mock("../../components/analytics/PilotDataQualityIntakeReport", () => ({
-  default: () => <div data-testid="pilot-intake-panel-stub" />,
-}));
+vi.mock("../../components/analytics/PilotDataQualityIntakeReport", async () => {
+  const actual = await vi.importActual<typeof import("../../components/analytics/PilotDataQualityIntakeReport")>("../../components/analytics/PilotDataQualityIntakeReport");
+  return {
+    ...actual,
+    default: () => <div data-testid="pilot-intake-panel-stub" />,
+  };
+});
 
 vi.mock("recharts", () => ({
   BarChart: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -138,8 +148,9 @@ describe("Analytics sales-readiness regressions", () => {
     );
 
     expect(await screen.findByText(/Podaci trenutno nisu dostupni|Nema otvorenih data quality problema/i)).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
-    expect(screen.getByText(/Spremno uz upozorenja|Nepoznato/i)).toBeInTheDocument();
+    const statusRegion = screen.getByRole("region", { name: /Status pilota/i });
+    expect(statusRegion).toBeInTheDocument();
+    expect(statusRegion).toHaveTextContent(/Spremno uz upozorenja|Nepoznato/i);
   });
 
   it("DataQuality pilot status shows unknown when intake report is unavailable", async () => {
@@ -176,8 +187,9 @@ describe("Analytics sales-readiness regressions", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
-    expect(screen.getByText(/Nepoznato/i)).toBeInTheDocument();
+    const statusRegion = await screen.findByRole("region", { name: /Status pilota/i });
+    expect(statusRegion).toBeInTheDocument();
+    expect(statusRegion).toHaveTextContent(/Nepoznato/i);
     expect(screen.getByText(/Nije moguće potvrditi/i)).toBeInTheDocument();
   });
 

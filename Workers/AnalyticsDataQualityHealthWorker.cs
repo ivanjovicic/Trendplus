@@ -156,7 +156,8 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                     {
                         var cacheState = await cacheAdmin.ClearFamiliesAsync(
                             [AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily],
-                            stoppingToken);
+                            stoppingToken,
+                            triggeredBy: manualRunRequested ? "manual" : "system");
                         _logger.LogInformation(
                             "Data quality refresh invalidated cache families {Families}. ReportCacheVersion={ReportCacheVersion} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
                             new[] { AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily },

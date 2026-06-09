@@ -4,10 +4,11 @@ import {
   getAnalyticsActionById,
   getAnalyticsActions,
   getAnalyticsActionCounts,
+  getAnalyticsActionOutcomeSummary,
   updateAnalyticsActionOutcome,
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
-import { fmtNumber, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
@@ -17,8 +18,8 @@ import type {
   AnalyticsActionSourceType,
   AnalyticsActionPriority,
   AnalyticsActionDataQualityStatus,
-  AnalyticsActionAnyDataQualityStatus,
   AnalyticsActionOutcomeUpdateInput,
+  AnalyticsActionOutcomeSummary,
 } from "../types/analytics";
 import "./AnalyticsActionsPage.css";
 
@@ -96,7 +97,7 @@ function normalizeDataQualityStatus(value: string | null | undefined): Analytics
   return null;
 }
 
-function getDataQualityLabel(value: AnalyticsActionAnyDataQualityStatus | null | undefined): string {
+function getDataQualityLabel(value: string | null | undefined): string {
   if (!value) return "-";
   const normalized = normalizeDataQualityStatus(value);
   if (!normalized) return value;
@@ -157,6 +158,14 @@ function formatOutcomeNotesPreview(value: string | null | undefined): string | n
   return `${trimmed.slice(0, OUTCOME_NOTES_PREVIEW_LIMIT - 3)}...`;
 }
 
+function formatAverageTimeToDoneHours(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return `${fmtNumber(value, 1)} h`;
+}
+
 type StatusModalState = {
   id: number;
   title: string;
@@ -177,6 +186,9 @@ export default function AnalyticsActionsPage() {
   const location = useLocation();
   const [items, setItems] = useState<AnalyticsActionItem[]>([]);
   const [counts, setCounts] = useState<AnalyticsActionCounts | null>(null);
+  const [outcomeSummary, setOutcomeSummary] = useState<AnalyticsActionOutcomeSummary | null>(null);
+  const [outcomeSummaryLoading, setOutcomeSummaryLoading] = useState(false);
+  const [outcomeSummaryError, setOutcomeSummaryError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -228,10 +240,28 @@ export default function AnalyticsActionsPage() {
     }
   }, []);
 
+  const loadOutcomeSummary = useCallback(async () => {
+    setOutcomeSummaryLoading(true);
+    setOutcomeSummaryError(null);
+    try {
+      const summary = await getAnalyticsActionOutcomeSummary();
+      setOutcomeSummary(summary);
+    } catch (e) {
+      setOutcomeSummary(null);
+      setOutcomeSummaryError(e instanceof Error ? e.message : "Sažetak ishoda akcija nije dostupan.");
+    } finally {
+      setOutcomeSummaryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadItems(filters);
     void loadCounts();
   }, [filters, loadItems, loadCounts]);
+
+  useEffect(() => {
+    void loadOutcomeSummary();
+  }, [loadOutcomeSummary]);
 
   useEffect(() => {
     const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
@@ -258,6 +288,7 @@ export default function AnalyticsActionsPage() {
         return next;
       });
       void loadCounts();
+      void loadOutcomeSummary();
       return true;
     } catch (e) {
       alert(e instanceof Error ? e.message : "Greška pri ažuriranju statusa");
@@ -359,6 +390,7 @@ export default function AnalyticsActionsPage() {
       });
       setItems((prev) => prev.map((it) => (it.id === result.id ? result : it)));
       setDetailsById((prev) => ({ ...prev, [result.id]: result }));
+      void loadOutcomeSummary();
       setOutcomeModal(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : "";
@@ -426,6 +458,184 @@ export default function AnalyticsActionsPage() {
           </div>
         </div>
       )}
+
+      <section className="aaq-summary-panel" aria-labelledby="aaq-outcome-summary-title">
+        <div className="aaq-summary-header">
+          <div>
+            <h2 id="aaq-outcome-summary-title" className="aaq-summary-title">Učinak preporuka</h2>
+            <p className="aaq-summary-subtitle">
+              Prikazuje da li su akcije prihvaćene, odložene, odbijene ili završene, i koji izvori daju korisne preporuke.
+            </p>
+          </div>
+          <a href="/analytics/actions" className="action-link">Pregled akcija</a>
+        </div>
+
+        {outcomeSummaryLoading && !outcomeSummary ? (
+          <div className="aaq-loading">Učitavanje učinka preporuka...</div>
+        ) : null}
+
+        {outcomeSummaryError ? (
+          <div className="aaq-error" role="alert">{outcomeSummaryError}</div>
+        ) : null}
+
+        {outcomeSummary && outcomeSummary.totalActions === 0 ? (
+          <div className="aaq-summary-empty">
+            <p>Nema akcija u izabranom periodu.</p>
+            <p className="aaq-empty-hint">
+              Kada se pojave preporuke, ovde ćete videti prihvatanje, odbijanje, završetak i prosečno vreme do završetka.
+            </p>
+          </div>
+        ) : null}
+
+        {outcomeSummary && outcomeSummary.totalActions > 0 ? (
+          <>
+            <div className="aaq-summary-kpis">
+              <div className="aaq-summary-kpi-card">
+                <span className="kpi-value">{outcomeSummary.totalActions}</span>
+                <span className="kpi-label">Ukupno akcija</span>
+              </div>
+              <div className="aaq-summary-kpi-card aaq-summary-kpi-good">
+                <span className="kpi-value">{outcomeSummary.accepted}</span>
+                <span className="kpi-label">Prihvaćeno</span>
+              </div>
+              <div className="aaq-summary-kpi-card aaq-summary-kpi-warn">
+                <span className="kpi-value">{outcomeSummary.deferred}</span>
+                <span className="kpi-label">Odloženo</span>
+              </div>
+              <div className="aaq-summary-kpi-card aaq-summary-kpi-bad">
+                <span className="kpi-value">{outcomeSummary.rejected}</span>
+                <span className="kpi-label">Odbijeno</span>
+              </div>
+              <div className="aaq-summary-kpi-card">
+                <span className="kpi-value">{outcomeSummary.done}</span>
+                <span className="kpi-label">Završeno</span>
+              </div>
+              <div className="aaq-summary-kpi-card">
+                <span className="kpi-value">{fmtPct(outcomeSummary.doneRate, 1)}</span>
+                <span className="kpi-label">Done rate</span>
+              </div>
+              <div className="aaq-summary-kpi-card">
+                <span className="kpi-value">{fmtPct(outcomeSummary.rejectionRate, 1)}</span>
+                <span className="kpi-label">Rejection rate</span>
+              </div>
+              <div className="aaq-summary-kpi-card">
+                <span className="kpi-value">{formatAverageTimeToDoneHours(outcomeSummary.averageTimeToDoneHours)}</span>
+                <span className="kpi-label">Prosek do završetka</span>
+              </div>
+            </div>
+
+            <div className="aaq-summary-grid">
+              <section className="aaq-summary-section">
+                <h3>Po sourceType</h3>
+                <table className="aaq-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Izvor</th>
+                      <th className="th-num">Ukupno</th>
+                      <th className="th-num">Done</th>
+                      <th className="th-num">Rejected</th>
+                      <th className="th-num">Done rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outcomeSummary.bySourceType.map((bucket) => (
+                      <tr key={bucket.key}>
+                        <td>{bucket.label}</td>
+                        <td className="th-num">{bucket.totalActions}</td>
+                        <td className="th-num">{bucket.done}</td>
+                        <td className="th-num">{bucket.rejected}</td>
+                        <td className="th-num">{fmtPct(bucket.doneRate, 1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+
+              <section className="aaq-summary-section">
+                <h3>Po recommendationStatus</h3>
+                <table className="aaq-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Status preporuke</th>
+                      <th className="th-num">Ukupno</th>
+                      <th className="th-num">Prihvaćeno</th>
+                      <th className="th-num">Done</th>
+                      <th className="th-num">Avg h</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outcomeSummary.byRecommendationStatus.map((bucket) => (
+                      <tr key={bucket.key}>
+                        <td>{bucket.label}</td>
+                        <td className="th-num">{bucket.totalActions}</td>
+                        <td className="th-num">{bucket.accepted}</td>
+                        <td className="th-num">{bucket.done}</td>
+                        <td className="th-num">{formatAverageTimeToDoneHours(bucket.averageTimeToDoneHours)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+
+              <section className="aaq-summary-section">
+                <h3>Po prioritetu</h3>
+                <table className="aaq-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Prioritet</th>
+                      <th className="th-num">Ukupno</th>
+                      <th className="th-num">Prihvaćeno</th>
+                      <th className="th-num">Rejected</th>
+                      <th className="th-num">Rejection rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outcomeSummary.byPriority.map((bucket) => (
+                      <tr key={bucket.key}>
+                        <td>{bucket.label}</td>
+                        <td className="th-num">{bucket.totalActions}</td>
+                        <td className="th-num">{bucket.accepted}</td>
+                        <td className="th-num">{bucket.rejected}</td>
+                        <td className="th-num">{fmtPct(bucket.rejectionRate, 1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+
+              <section className="aaq-summary-section">
+                <h3>Po kvalitetu podataka</h3>
+                <table className="aaq-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Kvalitet</th>
+                      <th className="th-num">Ukupno</th>
+                      <th className="th-num">Done</th>
+                      <th className="th-num">Rejected</th>
+                      <th className="th-num">Rejection rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outcomeSummary.byDataQualityStatus.map((bucket) => (
+                      <tr key={bucket.key}>
+                        <td>
+                          <span className={`dq-badge ${DATA_QUALITY_CSS[bucket.key] ?? "dq-insufficient"}`}>
+                            {getDataQualityLabel(bucket.key)}
+                          </span>
+                        </td>
+                        <td className="th-num">{bucket.totalActions}</td>
+                        <td className="th-num">{bucket.done}</td>
+                        <td className="th-num">{bucket.rejected}</td>
+                        <td className="th-num">{fmtPct(bucket.rejectionRate, 1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          </>
+        ) : null}
+      </section>
 
       <div className="aaq-filters">
         <select

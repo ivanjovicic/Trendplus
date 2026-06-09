@@ -1,0 +1,6 @@
+IssueType,ProductId,Severity,Description
+missing_supplier,111,critical,Product 111 has no supplier assigned.
+missing_cost,115,critical,Product 115 has a zero cost price.
+missing_category,116,warning,Product 116 has no category.
+duplicate_plu,119,warning,Product 119 reuses PLU DEMO-0118.
+zero_revenue_line,12,warning,A few sales lines have zero revenue to simulate returns.

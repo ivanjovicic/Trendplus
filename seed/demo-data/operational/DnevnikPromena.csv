@@ -1,0 +1,7 @@
+Id,TipPromene,Datum,Iznos,BrojRacuna,DobavljacId,ArtikalId,StaraProdajnaCena,NovaProdajnaCena,Kolicina,IDObjekat,RedniBroj,Komentar,KorisnikIme,DataOrigin,SourceTableKey,SourceRowId,SourceUpdatedAtUtc,SourceHash,SourceBatchId
+1,Nivelacija cena,2026-06-02T02:00:00Z,1500.00,MD-001,4,12,6890.00,5990.00,6,1,1,Demo markdown on slowing sneaker,demo-operator,access,demo_movements,200001,2026-06-02T02:00:00Z,demo-mov-0001,1001
+2,Nivelacija,2026-06-01T02:00:00Z,1000.00,NV-002,4,27,5490.00,4990.00,4,2,2,Seasonal price correction,demo-operator,access,demo_movements,200002,2026-06-01T02:00:00Z,demo-mov-0002,1001
+3,Nivelacija cena,2026-05-31T02:00:00Z,2000.00,MD-003,5,44,7390.00,6490.00,8,3,3,Outlet markdown,demo-operator,access,demo_movements,200003,2026-05-31T02:00:00Z,demo-mov-0003,1001
+4,UlazRobe,2026-05-30T02:00:00Z,6000.00,UL-004,1,68,,,24,1,4,Replenishment inbound,demo-operator,access,demo_movements,200004,2026-05-30T02:00:00Z,demo-mov-0004,1001
+5,UlazRobe,2026-05-29T02:00:00Z,4500.00,UL-005,1,81,,,18,2,5,Replenishment inbound,demo-operator,access,demo_movements,200005,2026-05-29T02:00:00Z,demo-mov-0005,1001
+6,PovratKupca,2026-05-28T02:00:00Z,500.00,PV-006,4,92,,,2,3,6,Customer return,demo-operator,access,demo_movements,200006,2026-05-28T02:00:00Z,demo-mov-0006,1001

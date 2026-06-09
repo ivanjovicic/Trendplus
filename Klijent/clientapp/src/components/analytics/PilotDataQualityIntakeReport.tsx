@@ -30,14 +30,14 @@ type Props = {
   onRetry: () => void;
 };
 
-type PilotImportReadinessStatus = "ready" | "ready_with_warnings" | "not_ready" | "unknown";
+export type PilotImportReadinessStatus = "ready" | "ready_with_warnings" | "not_ready" | "unknown";
 
 type PilotStatusLink = {
   label: string;
   href: string;
 };
 
-type PilotStatusAssessment = {
+export type PilotStatusAssessment = {
   status: PilotImportReadinessStatus;
   label: string;
   summary: string;
@@ -54,10 +54,90 @@ const PILOT_STATUS_LABELS: Record<PilotImportReadinessStatus, string> = {
   unknown: "Nepoznato",
 };
 
+const PILOT_STATUS_LINKS: PilotStatusLink[] = [
+  { label: "Kvalitet podataka", href: "/analytics/data-quality" },
+  { label: "Status osvežavanja", href: "/admin/configuration?panel=workers" },
+  { label: "Uvoz iz Accessa", href: "/access-import" },
+];
+
+const READINESS_WARNING_SHARE_THRESHOLD = 0.02;
+
+function appendUnique(items: string[], value: string | null | undefined) {
+  if (!value) return;
+  if (!items.includes(value)) {
+    items.push(value);
+  }
+}
+
+function hasUsableSalePeriod(firstSaleDate: string | null | undefined, lastSaleDate: string | null | undefined): boolean {
+  if (!firstSaleDate || !lastSaleDate) return false;
+  const firstSale = Date.parse(firstSaleDate);
+  const lastSale = Date.parse(lastSaleDate);
+  return !Number.isNaN(firstSale) && !Number.isNaN(lastSale) && firstSale <= lastSale;
+}
+
+function hasRefreshFailure(refreshStatus: AnalyticsRefreshStatus | null, freshnessStatus: string): boolean {
+  if (freshnessStatus === "critical") {
+    return true;
+  }
+
+  const failureAt = Date.parse(refreshStatus?.lastFailureAtUtc ?? "");
+  const successAt = Date.parse(refreshStatus?.lastSuccessfulRefreshAtUtc ?? "");
+
+  if (!Number.isNaN(failureAt) && Number.isNaN(successAt)) {
+    return true;
+  }
+
+  return !Number.isNaN(failureAt) && !Number.isNaN(successAt) && failureAt >= successAt;
+}
+
+function buildReadyReasons(report: PilotDataQualityIntakeReport, refreshAtUtc: string | null | undefined): string[] {
+  const reasons = [
+    "Artikli i stavke prodaje postoje za pilot dashboard.",
+    `Prodajni period je upotrebljiv: ${formatDate(report.loadedData.firstSaleDate, "-")} - ${formatDate(report.loadedData.lastSaleDate, "-")}.`,
+  ];
+
+  if (report.lastImportStatus) {
+    reasons.push(`Poslednji import je u statusu ${report.lastImportStatus}.`);
+  } else if (report.lastImportAtUtc) {
+    reasons.push(`Poslednji import je zabeležen ${formatDateTime(report.lastImportAtUtc, "-")}.`);
+  }
+
+  if (refreshAtUtc) {
+    reasons.push(`Poslednje uspešno osvežavanje analitike: ${formatDateTime(refreshAtUtc, "-")}.`);
+  }
+
+  reasons.push("Nedostajući trošak ili dobavljač nisu na nivou koji blokira pilot prikaz.");
+  return reasons;
+}
+
+function buildWarningActions(report: PilotDataQualityIntakeReport, refreshStatus: AnalyticsRefreshStatus | null): string[] {
+  const actions: string[] = [];
+
+  for (const action of report.recommendedActions) {
+    appendUnique(actions, action);
+  }
+
+  if (refreshStatus?.isRunning || (refreshStatus?.dataFreshnessStatus ?? report.dataFreshnessStatus ?? "").toLowerCase() === "stale") {
+    appendUnique(actions, "Proverite status osvežavanja pre prikaza dashboard-a.");
+  }
+
+  if (["partial", "queued", "running"].includes(normalizeImportStatus(report.lastImportStatus))) {
+    appendUnique(actions, "Proverite poslednji batch u Uvozu iz Accessa pre prikaza dashboard-a.");
+  }
+
+  if (actions.length === 0) {
+    appendUnique(actions, "Otvorite Kvalitet podataka i rešite upozorenja koja utiču na preporuke.");
+  }
+
+  return actions;
+}
+
 function readinessTone(status: string): "excellent" | "good" | "warning" | "critical" {
-  if (status === "excellent") return "excellent";
-  if (status === "good") return "good";
-  if (status === "warning") return "warning";
+  const normalized = status.trim().toLowerCase();
+  if (normalized === "excellent" || normalized === "ready") return "excellent";
+  if (normalized === "good" || normalized === "ready_with_warnings") return "good";
+  if (normalized === "warning" || normalized === "unknown") return "warning";
   return "critical";
 }
 
@@ -79,47 +159,33 @@ function ageInHours(value: string | null | undefined): number | null {
   return Math.max(0, (Date.now() - parsed) / (1000 * 60 * 60));
 }
 
-function assessPilotImportReadiness(
+export function assessPilotImportReadiness(
   report: PilotDataQualityIntakeReport | null,
   refreshStatus: AnalyticsRefreshStatus | null,
+  intakeError?: string | null,
 ): PilotStatusAssessment {
   if (!report) {
     return {
       status: "unknown",
       label: PILOT_STATUS_LABELS.unknown,
-      summary: "Nepoznat je status spremnosti, zato dashboard ne treba smatrati potvrđeno spremnim.",
+      summary: "Status importa ili osvežavanja nije potvrđen, zato dashboard ne treba prikazivati kao spreman.",
       tone: "warning",
       reasons: [
-        "Pilot intake izveštaj nije dostupan.",
+        intakeError ? `Pilot intake izveštaj nije dostupan: ${intakeError}` : "Pilot intake izveštaj nije dostupan.",
         "Nije moguće potvrditi da su podaci spremni za prikaz dashboard-a.",
       ],
       nextActions: [
-        "Proverite status importa.",
-        "Proverite refresh status.",
-        "Otvori data quality ekran.",
+        "Proverite poslednji import u Uvozu iz Accessa.",
+        "Proverite Status osvežavanja i worker proces.",
+        "Osvežite pilot intake izveštaj pre prikaza dashboard-a.",
       ],
-      links: [
-        { label: "Data quality", href: "/analytics/data-quality" },
-        { label: "Refresh status", href: "/admin/configuration?panel=workers" },
-        { label: "Import", href: "/access-import" },
-      ],
+      links: PILOT_STATUS_LINKS,
     };
   }
 
   const reasons: string[] = [];
-  const nextActions = [
-    "Proverite status importa.",
-    "Proverite refresh status.",
-    "Pokrenite ručni refresh ako je bezbedno.",
-    "Očistite cache samo ako je potrebno i bezbedno.",
-    "Pregledajte logove za greške.",
-  ];
-
-  const links: PilotStatusLink[] = [
-    { label: "Data quality", href: "/analytics/data-quality" },
-    { label: "Refresh status", href: "/admin/configuration?panel=workers" },
-    { label: "Import", href: "/access-import" },
-  ];
+  const nextActions: string[] = [];
+  const links = PILOT_STATUS_LINKS;
 
   const articleCount = report.loadedData.articlesCount;
   const saleLineCount = report.loadedData.saleItemsCount;
@@ -133,97 +199,172 @@ function assessPilotImportReadiness(
   const readinessStatus = (report.readinessStatus ?? "").toLowerCase();
   const importStatus = normalizeImportStatus(report.lastImportStatus);
   const freshnessStatus = (refreshStatus?.dataFreshnessStatus ?? report.dataFreshnessStatus ?? "").toLowerCase();
-  const refreshAgeHours = ageInHours(refreshStatus?.lastSuccessfulRefreshAtUtc ?? report.lastRefreshAtUtc);
+  const refreshAtUtc = refreshStatus?.lastSuccessfulRefreshAtUtc ?? report.lastRefreshAtUtc;
+  const refreshAgeHours = ageInHours(refreshAtUtc);
+  const usableDateRange = hasUsableSalePeriod(firstSaleDate, lastSaleDate);
+  const refreshFailed = hasRefreshFailure(refreshStatus, freshnessStatus);
+  const importStatusKnown = importStatus !== "unknown" || Boolean(report.lastImportAtUtc);
+  const refreshStatusKnown = freshnessStatus !== "unknown" || Boolean(refreshAtUtc || refreshStatus?.lastFailureAtUtc);
+  const recommendationImpactDetected =
+    report.impact.recommendationsBlockedCount > 0
+    || missingCostShare >= READINESS_WARNING_SHARE_THRESHOLD
+    || missingSupplierShare >= READINESS_WARNING_SHARE_THRESHOLD
+    || report.issues.missingCategoryCount > 0
+    || (report.issues.missingColorCount ?? 0) > 0
+    || (report.issues.missingSizeCount ?? 0) > 0
+    || insufficientSignalCount > 0
+    || supplierCount === 0;
 
-  let status: PilotImportReadinessStatus = "ready";
-  let tone: PilotStatusAssessment["tone"] = "good";
-
-  if (!articleCount || !saleLineCount || !receiptCount || !supplierCount) {
-    status = "not_ready";
+  if (!articleCount) {
+    appendUnique(reasons, "Nema artikala u importovanom skupu.");
   }
 
-  if (!firstSaleDate || !lastSaleDate) {
-    status = "not_ready";
+  if (!saleLineCount) {
+    appendUnique(reasons, "Nema stavki prodaje u izabranom periodu.");
   }
 
-  if (readinessStatus === "critical") {
-    status = "not_ready";
-  } else if (readinessStatus === "warning" && status !== "not_ready") {
-    status = "ready_with_warnings";
-  }
-
-  if (freshnessStatus === "critical") {
-    status = "not_ready";
-  } else if (freshnessStatus === "stale" && status === "ready") {
-    status = "ready_with_warnings";
-  }
-
-  if (refreshStatus?.isRunning && status === "ready") {
-    status = "ready_with_warnings";
+  if (!usableDateRange) {
+    appendUnique(reasons, "Ne postoji upotrebljiv period prodaje za pilot prikaz.");
   }
 
   if (importStatus === "failed") {
-    status = "not_ready";
-  } else if ((importStatus === "running" || importStatus === "queued" || importStatus === "partial") && status === "ready") {
-    status = "ready_with_warnings";
+    appendUnique(reasons, "Poslednji import je neuspešan.");
   }
 
-  if (refreshStatus?.lastFailureAtUtc && refreshStatus.lastSuccessfulRefreshAtUtc) {
-    const failureAt = Date.parse(refreshStatus.lastFailureAtUtc);
-    const successAt = Date.parse(refreshStatus.lastSuccessfulRefreshAtUtc);
-    if (!Number.isNaN(failureAt) && !Number.isNaN(successAt) && failureAt >= successAt) {
-      status = "not_ready";
+  if (refreshFailed) {
+    appendUnique(reasons, "Poslednje osvežavanje analitike je neuspešno ili kritično zastarelo.");
+  }
+
+  let status: PilotImportReadinessStatus;
+  let tone: PilotStatusAssessment["tone"];
+
+  if (reasons.length > 0) {
+    status = "not_ready";
+    tone = "critical";
+
+    if (!articleCount || !saleLineCount) {
+      appendUnique(nextActions, "Ponovite import tako da artikli i prodaja budu učitani pre prikaza dashboard-a.");
+    }
+
+    if (!usableDateRange) {
+      appendUnique(nextActions, "Proverite mapiranje datuma i proširite period da postoji upotrebljiv raspon prodaje.");
+    }
+
+    if (importStatus === "failed") {
+      appendUnique(nextActions, "Otvorite Uvoz iz Accessa i proverite poslednji neuspešan batch.");
+    }
+
+    if (refreshFailed) {
+      appendUnique(nextActions, "Otvorite Status osvežavanja i pokrenite refresh kada je bezbedno.");
+    }
+  } else if (!importStatusKnown || !refreshStatusKnown) {
+    status = "unknown";
+    tone = "warning";
+
+    if (!importStatusKnown) {
+      appendUnique(reasons, "Status poslednjeg importa nije dostupan.");
+      appendUnique(nextActions, "Proverite poslednji import batch u Uvozu iz Accessa.");
+    }
+
+    if (!refreshStatusKnown) {
+      appendUnique(reasons, "Status poslednjeg osvežavanja analitike nije dostupan.");
+      appendUnique(nextActions, "Proverite Status osvežavanja i worker proces.");
+    }
+
+    appendUnique(reasons, "Sistem trenutno ne može pouzdano da proceni da li je dashboard bezbedan za prikaz.");
+    appendUnique(nextActions, "Osvežite pilot intake izveštaj pre prikaza dashboard-a.");
+  } else {
+    const warningReasons: string[] = [];
+
+    if (!receiptCount) {
+      appendUnique(warningReasons, "Nema računa u izabranom periodu.");
+    }
+
+    if (!supplierCount) {
+      appendUnique(warningReasons, "Nema dobavljača u importu, pa dobavljačke preporuke nisu pouzdane.");
+    }
+
+    if (importStatus === "partial" || importStatus === "running" || importStatus === "queued") {
+      appendUnique(warningReasons, `Poslednji import je u statusu ${report.lastImportStatus}.`);
+    }
+
+    if (freshnessStatus === "stale") {
+      appendUnique(warningReasons, "Osvežavanje je zastarelo i treba ga potvrditi pre demo prikaza.");
+    }
+
+    if (refreshStatus?.isRunning) {
+      appendUnique(warningReasons, "Refresh je trenutno u toku.");
+    }
+
+    if (refreshAgeHours != null && refreshAgeHours > 72) {
+      appendUnique(warningReasons, "Poslednje uspešno osvežavanje je starije od 72h.");
+    }
+
+    if (missingCostShare >= READINESS_WARNING_SHARE_THRESHOLD) {
+      appendUnique(warningReasons, `Prihod bez nabavne cene: ${fmtPctFromRatio(missingCostShare, 1, "-")}.`);
+    }
+
+    if (missingSupplierShare >= READINESS_WARNING_SHARE_THRESHOLD) {
+      appendUnique(warningReasons, `Artikli bez dobavljača: ${fmtPctFromRatio(missingSupplierShare, 1, "-")}.`);
+    }
+
+    if (report.issues.missingCategoryCount > 0) {
+      appendUnique(warningReasons, `Artikli bez kategorije: ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}.`);
+    }
+
+    if ((report.issues.missingColorCount ?? 0) > 0 || (report.issues.missingSizeCount ?? 0) > 0) {
+      appendUnique(warningReasons, "Nedostaju atributi boje ili veličine koji utiču na deo preporuka.");
+    }
+
+    if (report.impact.recommendationsBlockedCount > 0) {
+      appendUnique(warningReasons, `Blokirane preporuke: ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}.`);
+    }
+
+    if (insufficientSignalCount > 0) {
+      appendUnique(warningReasons, `Nedovoljni signali: ${fmtNumber(insufficientSignalCount, 0, "-")}.`);
+    }
+
+    if ((readinessStatus === "warning" || readinessStatus === "critical") && !recommendationImpactDetected) {
+      appendUnique(warningReasons, `Ukupan readiness skor traži ručnu proveru: ${report.readinessLabel}.`);
+    }
+
+    if (warningReasons.length > 0 || recommendationImpactDetected) {
+      status = "ready_with_warnings";
+      tone = "warning";
+      reasons.push(...warningReasons);
+      nextActions.push(...buildWarningActions(report, refreshStatus));
+    } else {
+      status = "ready";
+      tone = "good";
+      reasons.push(...buildReadyReasons(report, refreshAtUtc));
+      appendUnique(nextActions, "Možete otvoriti dashboard za pilot prikaz.");
+      appendUnique(nextActions, "Pratite Kvalitet podataka i Status osvežavanja tokom demo sesije.");
     }
   }
 
-  if (refreshAgeHours != null && refreshAgeHours > 72 && status === "ready") {
-    status = "ready_with_warnings";
+  if (report.lastImportAtUtc && status !== "ready") {
+    appendUnique(reasons, `Poslednji import: ${formatDateTime(report.lastImportAtUtc, "-")}.`);
   }
 
-  if ((missingCostShare > 0 || missingSupplierShare > 0 || insufficientSignalCount > 0) && status === "ready") {
-    status = "ready_with_warnings";
+  if (report.lastImportStatus && status !== "ready") {
+    appendUnique(reasons, `Status importa: ${report.lastImportStatus}.`);
   }
 
-  if (status === "not_ready") {
-    tone = "critical";
-  } else if (status === "ready_with_warnings") {
-    tone = "warning";
+  if (refreshAtUtc && status !== "ready") {
+    appendUnique(reasons, `Poslednje uspešno osvežavanje: ${formatDateTime(refreshAtUtc, "-")}.`);
   }
 
-  if (!articleCount) reasons.push("Nema artikala u importovanom skupu.");
-  if (!saleLineCount) reasons.push("Nema stavki prodaje u izabranom periodu.");
-  if (!receiptCount) reasons.push("Nema računa u izabranom periodu.");
-  if (!supplierCount) reasons.push("Nema dobavljača u importu.");
-  if (!firstSaleDate || !lastSaleDate) reasons.push("Nedostaje datum prve ili poslednje prodaje.");
-  if (report.lastImportAtUtc) reasons.push(`Poslednji import: ${formatDateTime(report.lastImportAtUtc)}`);
-  if (report.lastImportStatus) reasons.push(`Status importa: ${report.lastImportStatus}`);
-  if (refreshStatus?.dataFreshnessStatus) reasons.push(`Freshness refresh status: ${refreshStatus.dataFreshnessStatus}`);
-  if (missingCostShare > 0) reasons.push(`Prihod bez nabavne cene: ${fmtPctFromRatio(missingCostShare, 1, "-")}`);
-  if (missingSupplierShare > 0) reasons.push(`Artikli bez dobavljača: ${fmtPctFromRatio(missingSupplierShare, 1, "-")}`);
-  if (insufficientSignalCount > 0) reasons.push(`Nedovoljni signali: ${fmtNumber(insufficientSignalCount, 0, "-")}`);
-  if (refreshStatus?.isRunning) reasons.push("Refresh je trenutno u toku.");
-  if (refreshAgeHours != null && refreshAgeHours > 72) reasons.push("Poslednji uspešan refresh je stariji od 72h.");
-  if (refreshStatus?.lastFailureAtUtc && refreshStatus.lastSuccessfulRefreshAtUtc) {
-    reasons.push("Zabeležen je pad nakon poslednjeg uspešnog refresh-a.");
-  }
-  if (importStatus === "failed") {
-    reasons.push("Poslednji import je neuspešan.");
-  } else if (importStatus === "partial" || importStatus === "running" || importStatus === "queued") {
-    reasons.push(`Poslednji import je u statusu ${report.lastImportStatus}.`);
-  }
-
-  if (status === "ready") {
-    reasons.length = 0;
-    reasons.push("Svi ključni ulazni signali su dostupni i stabilni.");
+  if (freshnessStatus !== "unknown" && status !== "ready") {
+    appendUnique(reasons, `Status osvežavanja: ${refreshStatus?.dataFreshnessStatus ?? report.dataFreshnessStatus}.`);
   }
 
   const summary = status === "ready"
-    ? "Dashboard se može prikazati kao pouzdan pilot."
+    ? "Dashboard je bezbedan za pilot prikaz."
     : status === "ready_with_warnings"
-      ? "Dashboard se može prikazati, ali postoje upozorenja koja smanjuju pouzdanost."
+      ? "Dashboard može da se prikaže, ali preporuke i poverenje treba objasniti kroz upozorenja."
       : status === "not_ready"
-        ? "Podaci trenutno nisu spremni za bezbedan prikaz dashboard-a."
-        : "Nije moguće potvrditi da su podaci spremni za pilot prikaz.";
+        ? "Pilot nije bezbedan za prikaz dok se ne reše osnovni import ili refresh blokeri."
+        : "Status nije dovoljno jasan da bi dashboard izgledao potvrđeno uspešno.";
 
   return {
     status,
@@ -485,7 +626,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
   }, [durableReport]);
 
   const readiness = useMemo(() => readinessTone(report?.readinessStatus ?? "critical"), [report?.readinessStatus]);
-  const pilotImportAssessment = useMemo(() => assessPilotImportReadiness(report, refreshStatus ?? null), [refreshStatus, report]);
+  const pilotImportAssessment = useMemo(() => assessPilotImportReadiness(report, refreshStatus ?? null, error), [error, refreshStatus, report]);
   const durableRows = durableReport?.rows ?? [];
   const durableActions = durableReport?.recommendedActions ?? [];
   const reportPeriodFrom = report?.periodFromUtc ?? durableReport?.periodFrom ?? durableReport?.period?.fromUtc ?? null;
@@ -763,12 +904,20 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
 
       {exportState ? <div className="pilot-intake-state no-print">{exportState}</div> : null}
 
-      <section className="pilot-card" aria-label="Status pilota">
-        <h3>Status pilota</h3>
-        <div className="pilot-intake-state" style={{ marginBottom: 8 }}>
-          <strong>{pilotImportAssessment.label}</strong> {pilotImportAssessment.summary}
-        </div>
-        <div className="pilot-intake-grid" style={{ gridTemplateColumns: "repeat(2, minmax(220px, 1fr))" }}>
+      <section aria-label="Status pilota">
+        <article className={`pilot-intake-score ${pilotImportAssessment.tone}`}>
+          <div>
+            <span>Status pilota</span>
+            <strong>{pilotImportAssessment.label}</strong>
+            <p>{pilotImportAssessment.summary}</p>
+          </div>
+          <div className="pilot-intake-thresholds">
+            {pilotImportAssessment.reasons.slice(0, 3).map((reason, index) => (
+              <span key={`pilot-status-highlight-${index}`}>{reason}</span>
+            ))}
+          </div>
+        </article>
+        <div className="pilot-intake-grid" style={{ gridTemplateColumns: "repeat(2, minmax(220px, 1fr))", marginTop: 10 }}>
           <div className="pilot-card">
             <h3>Razlozi</h3>
             <ul>

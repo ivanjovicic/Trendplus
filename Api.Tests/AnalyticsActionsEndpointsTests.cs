@@ -179,6 +179,42 @@ public sealed class AnalyticsActionsEndpointsTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummary_ReturnsAggregatedMetrics()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var acceptedId = await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "inventory:accepted",
+            status: AnalyticsActionConstants.Statuses.Accepted);
+        var doneId = await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Supplier,
+            sourceKey: "supplier:done",
+            status: AnalyticsActionConstants.Statuses.Accepted);
+
+        using (var scope = host.App.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<AnalyticsActionItemService>();
+            await service.UpdateStatusAsync(doneId, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+            await service.UpdateStatusAsync(acceptedId, AnalyticsActionConstants.Statuses.Accepted, null, "u1", "tester");
+        }
+
+        using var response = await host.Client.GetAsync("/api/analytics/actions/outcome-summary");
+
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionOutcomeSummaryResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal(2, payload!.TotalActions);
+        Assert.Equal(1, payload.Accepted);
+        Assert.Equal(0, payload.Deferred);
+        Assert.Equal(0, payload.Rejected);
+        Assert.Equal(1, payload.Done);
+        Assert.Equal(50.0m, payload.DoneRate);
+        Assert.Equal(2, payload.BySourceType.Count);
+        Assert.Single(payload.ByPriority);
+    }
+
+    [Fact]
     public async Task PatchOutcome_PendingClearsMeasuredFields_AndKeepsAuditTrail()
     {
         await using var host = await AnalyticsActionsTestHost.CreateAsync();
@@ -291,6 +327,34 @@ public sealed class AnalyticsActionsEndpointsTests
 
     private sealed record AnalyticsActionSourceStatusResponse(
         List<AnalyticsActionSourceStatusItem> Items);
+
+    private sealed record AnalyticsActionOutcomeSummaryResponse(
+        DateTime? FromDateUtc,
+        DateTime? ToDateUtc,
+        int TotalActions,
+        int Accepted,
+        int Deferred,
+        int Rejected,
+        int Done,
+        decimal DoneRate,
+        decimal RejectionRate,
+        decimal? AverageTimeToDoneHours,
+        List<AnalyticsActionOutcomeSummaryBucketResponse> BySourceType,
+        List<AnalyticsActionOutcomeSummaryBucketResponse> ByRecommendationStatus,
+        List<AnalyticsActionOutcomeSummaryBucketResponse> ByPriority,
+        List<AnalyticsActionOutcomeSummaryBucketResponse> ByDataQualityStatus);
+
+    private sealed record AnalyticsActionOutcomeSummaryBucketResponse(
+        string Key,
+        string Label,
+        int TotalActions,
+        int Accepted,
+        int Deferred,
+        int Rejected,
+        int Done,
+        decimal DoneRate,
+        decimal RejectionRate,
+        decimal? AverageTimeToDoneHours);
 
     private sealed record AnalyticsActionSourceStatusItem(
         string SourceType,

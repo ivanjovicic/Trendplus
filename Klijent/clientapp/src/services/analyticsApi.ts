@@ -46,6 +46,7 @@ import type {
   AnalyticsActionItem,
   AnalyticsActionListResponse,
   AnalyticsActionCounts,
+  AnalyticsActionOutcomeSummary,
   AnalyticsActionUpsertInput,
   AnalyticsActionStatusUpdateInput,
   AnalyticsActionOutcomeUpdateInput,
@@ -1162,6 +1163,21 @@ export async function getAnalyticsActionCounts(): Promise<AnalyticsActionCounts>
     "/api/analytics/actions/counts",
     undefined,
     "Greška pri učitavanju brojača akcija"
+  );
+}
+
+export async function getAnalyticsActionOutcomeSummary(
+  fromDate?: string,
+  toDate?: string
+): Promise<AnalyticsActionOutcomeSummary> {
+  const params = new URLSearchParams();
+  if (fromDate) params.append("fromDate", fromDate);
+  if (toDate) params.append("toDate", toDate);
+
+  return fetchJson<AnalyticsActionOutcomeSummary>(
+    "/api/analytics/actions/outcome-summary",
+    params,
+    "Greška pri učitavanju sažetka ishoda akcija"
   );
 }
 

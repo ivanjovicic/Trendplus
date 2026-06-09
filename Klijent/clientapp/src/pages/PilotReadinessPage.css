@@ -1,0 +1,284 @@
+.pilot-readiness-page {
+  display: grid;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.pilot-readiness-loading {
+  padding: 1.25rem;
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+  color: var(--text-secondary);
+}
+
+.pilot-readiness-summary,
+.pilot-readiness-snapshot-card,
+.pilot-readiness-step {
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface-default) 100%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.pilot-readiness-summary {
+  padding: 1.25rem;
+}
+
+.pilot-readiness-summary-ready { border-color: rgba(var(--success-rgb, 22, 185, 129), 0.35); }
+.pilot-readiness-summary-warning { border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.45); }
+.pilot-readiness-summary-critical { border-color: rgba(var(--error-rgb, 239, 68, 68), 0.45); }
+
+.pilot-readiness-summary-head,
+.pilot-readiness-step-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pilot-readiness-overline {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.pilot-readiness-summary h2,
+.pilot-readiness-step h3,
+.pilot-readiness-snapshot-card h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.pilot-readiness-summary-text,
+.pilot-readiness-step p,
+.pilot-readiness-snapshot-card p {
+  color: var(--text-secondary);
+}
+
+.pilot-readiness-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.pilot-readiness-badge-ready,
+.pilot-readiness-badge-good {
+  color: var(--success, rgb(var(--success-rgb, 22, 185, 129)));
+  background: rgba(var(--success-rgb, 22, 185, 129), 0.14);
+  border-color: rgba(var(--success-rgb, 22, 185, 129), 0.25);
+}
+
+.pilot-readiness-badge-ready_with_warnings,
+.pilot-readiness-badge-warning {
+  color: var(--warning, rgb(var(--warning-rgb, 245, 158, 11)));
+  background: rgba(var(--warning-rgb, 245, 158, 11), 0.16);
+  border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.25);
+}
+
+.pilot-readiness-badge-not_ready,
+.pilot-readiness-badge-critical {
+  color: var(--error, rgb(var(--error-rgb, 239, 68, 68)));
+  background: rgba(var(--error-rgb, 239, 68, 68), 0.16);
+  border-color: rgba(var(--error-rgb, 239, 68, 68), 0.25);
+}
+
+.pilot-readiness-badge-unknown,
+.pilot-readiness-badge-neutral {
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.14);
+  border-color: var(--border-default);
+}
+
+.pilot-readiness-progress {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.pilot-readiness-progress div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-secondary);
+}
+
+.pilot-readiness-progress strong {
+  color: var(--text-primary);
+}
+
+.pilot-readiness-progress progress {
+  width: 100%;
+  height: 10px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  accent-color: var(--accent-primary, var(--info));
+}
+
+.pilot-readiness-actions,
+.pilot-readiness-step-actions,
+.pilot-readiness-chip-row,
+.pilot-readiness-compact-links,
+.pilot-readiness-step-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.pilot-readiness-primary-link,
+.pilot-readiness-secondary-link,
+.pilot-readiness-step-links a,
+.pilot-readiness-compact-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  text-decoration: none;
+  font-weight: 700;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.pilot-readiness-primary-link {
+  background: var(--accent-primary, var(--info));
+  border-color: var(--accent-primary, var(--info));
+  color: var(--text-on-primary, #fff);
+}
+
+.pilot-readiness-secondary-link,
+.pilot-readiness-step-links a,
+.pilot-readiness-compact-links a {
+  color: var(--text-primary);
+  background: var(--surface-light, var(--surface-default));
+}
+
+.pilot-readiness-primary-link:hover,
+.pilot-readiness-secondary-link:hover,
+.pilot-readiness-step-links a:hover,
+.pilot-readiness-compact-links a:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-primary, var(--info));
+}
+
+.pilot-readiness-lists,
+.pilot-readiness-snapshot,
+.pilot-readiness-checklist {
+  display: grid;
+  gap: 1rem;
+}
+
+.pilot-readiness-lists {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pilot-readiness-lists h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+}
+
+.pilot-readiness-lists ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--text-secondary);
+}
+
+.pilot-readiness-snapshot {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pilot-readiness-snapshot-card {
+  padding: 1rem 1.1rem;
+}
+
+.pilot-readiness-snapshot-card dl {
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pilot-readiness-snapshot-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pilot-readiness-snapshot-card dt {
+  color: var(--text-secondary);
+}
+
+.pilot-readiness-snapshot-card dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.pilot-readiness-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.pilot-readiness-chip.is-yes {
+  background: rgba(var(--success-rgb, 22, 185, 129), 0.15);
+  color: var(--success, rgb(var(--success-rgb, 22, 185, 129)));
+  border-color: rgba(var(--success-rgb, 22, 185, 129), 0.25);
+}
+
+.pilot-readiness-chip.is-no {
+  background: rgba(var(--error-rgb, 239, 68, 68), 0.15);
+  color: var(--error, rgb(var(--error-rgb, 239, 68, 68)));
+  border-color: rgba(var(--error-rgb, 239, 68, 68), 0.25);
+}
+
+.pilot-readiness-chip.is-unknown {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.pilot-readiness-step {
+  padding: 1rem 1.1rem;
+}
+
+.pilot-readiness-step-good { border-color: rgba(var(--success-rgb, 22, 185, 129), 0.25); }
+.pilot-readiness-step-warning { border-color: rgba(var(--warning-rgb, 245, 158, 11), 0.3); }
+.pilot-readiness-step-critical { border-color: rgba(var(--error-rgb, 239, 68, 68), 0.35); }
+.pilot-readiness-step-neutral { border-color: var(--border-default); }
+
+.pilot-readiness-muted {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+}
+
+@media (max-width: 1100px) {
+  .pilot-readiness-snapshot,
+  .pilot-readiness-lists {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .pilot-readiness-summary-head,
+  .pilot-readiness-step-head,
+  .pilot-readiness-progress div {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

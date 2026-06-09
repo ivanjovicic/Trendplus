@@ -40,14 +40,16 @@ function createSupplierAsciiSectionPayload(): ResolvedAnalyticsTablePayload {
   };
 }
 
-function createPilotReport(): PilotReport {
-  return {
+function createPilotReport(overrides?: Partial<PilotReport>): PilotReport {
+  const base: PilotReport = {
     generatedAtUtc: "2026-05-25T08:00:00Z",
     periodFromUtc: "2026-04-25T00:00:00Z",
     periodToUtc: "2026-05-25T23:59:59Z",
     dataScope: "all",
     lastImportAtUtc: "2026-05-25T06:00:00Z",
+    lastImportStatus: "succeeded",
     lastRefreshAtUtc: "2026-05-25T07:30:00Z",
+    dataFreshnessStatus: "fresh",
     readinessStatus: "warning",
     readinessLabel: "Upotrebljivo uz upozorenja",
     readinessScore: 76,
@@ -80,6 +82,25 @@ function createPilotReport(): PilotReport {
     },
     recommendedActions: ["Povežite dobavljače", "Dopunite nabavne cene"],
     meta: null,
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    loadedData: {
+      ...base.loadedData,
+      ...overrides?.loadedData,
+    },
+    issues: {
+      ...base.issues,
+      ...overrides?.issues,
+    },
+    impact: {
+      ...base.impact,
+      ...overrides?.impact,
+    },
+    recommendedActions: overrides?.recommendedActions ?? base.recommendedActions,
+    meta: overrides?.meta ?? base.meta,
   };
 }
 
@@ -128,5 +149,61 @@ describe("Analytics methodology registry usage", () => {
     expect(screen.getByText(/Spremno uz upozorenja/i)).toBeInTheDocument();
     expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Data quality checks/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders pilot status as not ready when core intake signals are missing", () => {
+    render(
+      <MemoryRouter>
+        <PilotDataQualityIntakeReport
+          report={createPilotReport({
+            readinessStatus: "critical",
+            readinessLabel: "Prvo srediti podatke",
+            readinessScore: 20,
+            loadedData: {
+              articlesCount: 0,
+              saleItemsCount: 0,
+              receiptsCount: 0,
+              suppliersCount: 10,
+              storesCount: 8,
+              firstSaleDate: null,
+              lastSaleDate: null,
+            },
+          })}
+          loading={false}
+          error={null}
+          filters={[]}
+          durableReport={null}
+          onRetry={() => {}}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("region", { name: /Status pilota/i })).toBeInTheDocument();
+    const statusRegion = screen.getByRole("region", { name: /Status pilota/i });
+    expect(statusRegion).toHaveTextContent(/Nije spremno/i);
+    expect(statusRegion).toHaveTextContent(/Nema stavki prodaje u izabranom periodu/i);
+  });
+
+  it("renders pilot status tone as warning for ready_with_warnings", () => {
+    render(
+      <MemoryRouter>
+        <PilotDataQualityIntakeReport
+          report={createPilotReport({
+            readinessStatus: "ready_with_warnings",
+            readinessLabel: "Spremno uz upozorenja",
+            readinessScore: 78,
+          })}
+          loading={false}
+          error={null}
+          filters={[]}
+          durableReport={null}
+          onRetry={() => {}}
+        />
+      </MemoryRouter>
+    );
+
+    const scoreCard = screen.getByRole("region", { name: /Status pilota/i });
+    expect(scoreCard).toHaveTextContent(/Spremno uz upozorenja/i);
+    expect(scoreCard).not.toHaveTextContent(/Nije spremno/i);
   });
 });

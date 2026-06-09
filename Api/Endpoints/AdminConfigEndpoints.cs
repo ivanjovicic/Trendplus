@@ -4,6 +4,7 @@ using Api.Services.Access;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -90,6 +91,12 @@ public static class AdminConfigEndpoints
             .WithSummary("Disable scheduled execution for a worker (manual start still allowed)")
             .Produces<WorkerActionResponse>(StatusCodes.Status200OK)
             .Produces<object>(StatusCodes.Status400BadRequest)
+            .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/analytics/cache/clear", ClearAnalyticsCache)
+            .WithName("ClearAnalyticsCache")
+            .WithSummary("Clear analytics cache families or all analytics cache")
+            .Produces<object>(StatusCodes.Status200OK)
             .Produces<object>(StatusCodes.Status401Unauthorized);
     }
 
@@ -322,6 +329,35 @@ public static class AdminConfigEndpoints
         return success
             ? TypedResults.Ok(new WorkerActionResponse { Success = true, Message = $"Schedule disabled for worker {workerName}" })
             : TypedResults.BadRequest<object>(new { error = "Failed to disable schedule" });
+    }
+
+    private static async Task<IResult> ClearAnalyticsCache(
+        HttpContext context,
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        AnalyticsCacheAdminService cacheAdmin,
+        [FromQuery] string? family,
+        CancellationToken ct = default)
+    {
+        if (!IsAdminRequest(context, configuration, environment))
+            return Results.Unauthorized();
+
+        var triggeredBy = context.User.Identity?.Name ?? "admin-api";
+        var state = await cacheAdmin.ClearAnalyticsCacheFamily(family, ct, triggeredBy);
+
+        return Results.Ok(new
+        {
+            success = true,
+            message = "Analytics cache i report cache su ocisceni.",
+            lastClearAtUtc = state.LastClearAtUtc,
+            lastClearFamily = state.LastClearFamily,
+            lastAnalyticsCacheClearAtUtc = state.LastAnalyticsCacheClearAtUtc,
+            lastReportCacheClearAtUtc = state.LastReportCacheClearAtUtc,
+            reportCacheVersion = state.ReportCacheVersion,
+            isShared = state.IsShared,
+            warning = state.Warning,
+            storage = state.Storage
+        });
     }
 
     private static bool IsAdminRequest(

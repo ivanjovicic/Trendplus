@@ -126,6 +126,37 @@
   color: #7a5600;
 }
 
+.ath-banner-critical {
+  background: #fdecec;
+  border-color: #f5c2c7;
+  color: #842029;
+}
+
+.ath-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.ath-banner-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(132, 32, 41, 0.25);
+  background: rgba(132, 32, 41, 0.06);
+  color: #842029;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ath-banner-link:hover {
+  text-decoration: underline;
+}
+
 .ath-banner-neutral {
   background: #eef1f5;
   border-color: #d5dbe3;

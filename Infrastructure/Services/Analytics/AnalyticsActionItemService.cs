@@ -131,6 +131,27 @@ public sealed class AnalyticsActionItemService
         );
     }
 
+    public async Task<AnalyticsActionOutcomeSummaryDto> GetOutcomeSummaryAsync(
+        DateTime? fromDateUtc = null,
+        DateTime? toDateUtc = null,
+        CancellationToken ct = default)
+    {
+        var query = _db.AnalyticsActionItems.AsNoTracking();
+
+        if (fromDateUtc.HasValue)
+        {
+            query = query.Where(x => x.CreatedAtUtc >= fromDateUtc.Value);
+        }
+
+        if (toDateUtc.HasValue)
+        {
+            query = query.Where(x => x.CreatedAtUtc <= toDateUtc.Value);
+        }
+
+        var items = await query.ToListAsync(ct);
+        return BuildOutcomeSummary(items, fromDateUtc, toDateUtc);
+    }
+
     // ── Upsert (idempotent by sourceType + sourceKey for open actions) ─────
 
     public async Task<AnalyticsActionItem> UpsertAsync(
@@ -505,6 +526,117 @@ public sealed class AnalyticsActionItemService
         var note = string.Join(" | ", segments);
         return note.Length <= MaxOutcomeNotesLength ? note : note[..MaxOutcomeNotesLength];
     }
+
+    private static AnalyticsActionOutcomeSummaryDto BuildOutcomeSummary(
+        IReadOnlyCollection<AnalyticsActionItem> items,
+        DateTime? fromDateUtc,
+        DateTime? toDateUtc)
+    {
+        var total = items.Count;
+        var accepted = items.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Accepted, StringComparison.Ordinal));
+        var deferred = items.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Deferred, StringComparison.Ordinal));
+        var rejected = items.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal));
+        var done = items.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal));
+        var doneItems = items
+            .Where(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal) && x.ResolvedAtUtc.HasValue)
+            .ToArray();
+
+        decimal doneRate = total == 0 ? 0 : Math.Round((decimal)done * 100m / total, 1);
+        decimal rejectionRate = total == 0 ? 0 : Math.Round((decimal)rejected * 100m / total, 1);
+        decimal? averageTimeToDoneHours = doneItems.Length == 0
+            ? null
+            : Math.Round((decimal)doneItems.Average(x => (x.ResolvedAtUtc!.Value - x.CreatedAtUtc).TotalHours), 1);
+
+        return new AnalyticsActionOutcomeSummaryDto(
+            FromDateUtc: fromDateUtc,
+            ToDateUtc: toDateUtc,
+            TotalActions: total,
+            Accepted: accepted,
+            Deferred: deferred,
+            Rejected: rejected,
+            Done: done,
+            DoneRate: doneRate,
+            RejectionRate: rejectionRate,
+            AverageTimeToDoneHours: averageTimeToDoneHours,
+            BySourceType: BuildOutcomeSummaryBuckets(items, x => NormalizeBucketKey(x.SourceType, "(bez izvora)"), SourceTypeLabel),
+            ByRecommendationStatus: BuildOutcomeSummaryBuckets(items, x => NormalizeBucketKey(x.RecommendationStatus, "(bez preporuke)")),
+            ByPriority: BuildOutcomeSummaryBuckets(items, x => NormalizeBucketKey(x.Priority, "(bez prioriteta)")),
+            ByDataQualityStatus: BuildOutcomeSummaryBuckets(items, x => NormalizeDataQualityBucketKey(x.DataQualityStatus))
+        );
+    }
+
+    private static IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> BuildOutcomeSummaryBuckets(
+        IReadOnlyCollection<AnalyticsActionItem> items,
+        Func<AnalyticsActionItem, string> keySelector,
+        Func<string, string>? labelSelector = null)
+    {
+        return items
+            .GroupBy(keySelector)
+            .Select(group =>
+            {
+                var groupItems = group.ToArray();
+                var total = groupItems.Length;
+                var accepted = groupItems.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Accepted, StringComparison.Ordinal));
+                var deferred = groupItems.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Deferred, StringComparison.Ordinal));
+                var rejected = groupItems.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal));
+                var done = groupItems.Count(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal));
+                var doneItems = groupItems
+                    .Where(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal) && x.ResolvedAtUtc.HasValue)
+                    .ToArray();
+
+                decimal doneRate = total == 0 ? 0 : Math.Round((decimal)done * 100m / total, 1);
+                decimal rejectionRate = total == 0 ? 0 : Math.Round((decimal)rejected * 100m / total, 1);
+                decimal? averageTimeToDoneHours = doneItems.Length == 0
+                    ? null
+                    : Math.Round((decimal)doneItems.Average(x => (x.ResolvedAtUtc!.Value - x.CreatedAtUtc).TotalHours), 1);
+
+                var key = group.Key;
+                var label = labelSelector is null ? key : labelSelector(key);
+
+                return new AnalyticsActionOutcomeSummaryBucketDto(
+                    Key: key,
+                    Label: label,
+                    TotalActions: total,
+                    Accepted: accepted,
+                    Deferred: deferred,
+                    Rejected: rejected,
+                    Done: done,
+                    DoneRate: doneRate,
+                    RejectionRate: rejectionRate,
+                    AverageTimeToDoneHours: averageTimeToDoneHours);
+            })
+            .OrderByDescending(x => x.TotalActions)
+            .ThenBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string NormalizeBucketKey(string? value, string fallback)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? fallback : trimmed;
+    }
+
+    private static string NormalizeDataQualityBucketKey(string? value)
+    {
+        var normalized = AnalyticsActionConstants.NormalizeDataQualityStatus(value);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            return normalized!;
+        }
+
+        return NormalizeBucketKey(value, "(bez kvaliteta)");
+    }
+
+    private static string SourceTypeLabel(string key) => key switch
+    {
+        AnalyticsActionConstants.SourceTypes.Dashboard => "Dashboard",
+        AnalyticsActionConstants.SourceTypes.Product => "Proizvodi",
+        AnalyticsActionConstants.SourceTypes.Supplier => "Dobavljači",
+        AnalyticsActionConstants.SourceTypes.Inventory => "Zalihe",
+        AnalyticsActionConstants.SourceTypes.Nivelacija => "Nivelacija",
+        AnalyticsActionConstants.SourceTypes.DataQuality => "Kvalitet podataka",
+        _ => key
+    };
 }
 
 // ── DTOs scoped to service (no separate file to keep it lean) ────────────────
@@ -559,9 +691,39 @@ public sealed record AnalyticsActionSourceStatusLookupInput(
     string SourceKey
 );
 
-    public sealed record AnalyticsActionOutcomeUpdateRequest(
-        string OutcomeStatus,
-        decimal? MeasuredImpactRsd,
-        DateTime? OutcomeMeasuredAtUtc,
-        string? OutcomeNotes
-    );
+public sealed record AnalyticsActionOutcomeSummaryDto(
+    DateTime? FromDateUtc,
+    DateTime? ToDateUtc,
+    int TotalActions,
+    int Accepted,
+    int Deferred,
+    int Rejected,
+    int Done,
+    decimal DoneRate,
+    decimal RejectionRate,
+    decimal? AverageTimeToDoneHours,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> BySourceType,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByRecommendationStatus,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByPriority,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByDataQualityStatus
+);
+
+public sealed record AnalyticsActionOutcomeSummaryBucketDto(
+    string Key,
+    string Label,
+    int TotalActions,
+    int Accepted,
+    int Deferred,
+    int Rejected,
+    int Done,
+    decimal DoneRate,
+    decimal RejectionRate,
+    decimal? AverageTimeToDoneHours
+);
+
+public sealed record AnalyticsActionOutcomeUpdateRequest(
+    string OutcomeStatus,
+    decimal? MeasuredImpactRsd,
+    DateTime? OutcomeMeasuredAtUtc,
+    string? OutcomeNotes
+);

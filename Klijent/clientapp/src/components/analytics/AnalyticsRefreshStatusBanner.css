@@ -20,6 +20,7 @@
 
 .analytics-refresh-banner-critical {
   border-color: color-mix(in srgb, var(--error, #e03131) 60%, var(--border-muted, #d3dce9));
+  background: color-mix(in srgb, var(--error, #e03131) 4%, var(--surface-elevated, #ffffff));
 }
 
 .analytics-refresh-banner-unknown {
@@ -29,6 +30,84 @@
 .arb-main {
   display: grid;
   gap: 6px;
+}
+
+.arb-critical-callout {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--error, #e03131) 45%, var(--border-muted, #d3dce9));
+  background: color-mix(in srgb, var(--error, #e03131) 8%, var(--surface-elevated, #ffffff));
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+}
+
+.arb-critical-callout strong {
+  color: var(--error, #e03131);
+  font-size: 15px;
+}
+
+.arb-critical-callout > span {
+  color: var(--text-primary, #0f172a);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.arb-critical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.arb-critical-item {
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--error, #e03131) 20%, var(--border-muted, #d3dce9));
+  background: var(--surface-elevated, #ffffff);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.arb-critical-item-wide {
+  grid-column: 1 / -1;
+}
+
+.arb-critical-key {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #64748b);
+}
+
+.arb-critical-item strong {
+  color: var(--text-primary, #0f172a);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.arb-critical-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.arb-critical-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--error, #e03131) 35%, var(--border-muted, #d3dce9));
+  color: var(--error, #e03131);
+  background: color-mix(in srgb, var(--error, #e03131) 8%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.arb-critical-link:hover {
+  text-decoration: underline;
 }
 
 .arb-row {

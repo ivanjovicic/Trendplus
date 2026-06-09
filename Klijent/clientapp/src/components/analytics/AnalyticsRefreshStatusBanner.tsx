@@ -29,6 +29,11 @@ export default function AnalyticsRefreshStatusBanner({
   adminHref = "/admin/configuration?panel=workers",
 }: AnalyticsRefreshStatusBannerProps) {
   const freshness = normalizeFreshness(status?.dataFreshnessStatus);
+  const workerHref = adminHref;
+  const dataQualityHref = "/analytics/data-quality";
+  const isCritical = freshness === "critical";
+  const failedObjects = status?.failedObjects ?? [];
+  const workerWarning = status?.workerWarning ?? status?.workerProcessWarning ?? null;
 
   if (loading && !status) {
     return (
@@ -51,14 +56,47 @@ export default function AnalyticsRefreshStatusBanner({
   }
 
   const processMode = (status.processMode || status.processType || "unknown").toLowerCase();
-  const workerWarning = status.workerWarning ?? status.workerProcessWarning;
   const failedJobs = status.jobs.filter((job) => normalizeFreshness(job.dataFreshnessStatus) === "critical");
   const refreshedObjects = status.refreshedObjects ?? [];
-  const failedObjects = status.failedObjects ?? [];
 
   return (
-    <section className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`} aria-live="polite">
+    <section
+      className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`}
+      aria-live={isCritical ? "assertive" : "polite"}
+      role={isCritical ? "alert" : undefined}
+    >
       <div className="arb-main">
+        {isCritical ? (
+          <div className="arb-critical-callout">
+            <strong>Podaci su kritično zastareli.</strong>
+            <span>Ne preporučuje se donošenje odluka bez provere osvežavanja.</span>
+            <div className="arb-critical-grid" aria-label="Kritični signali osvežavanja">
+              <div className="arb-critical-item">
+                <span className="arb-critical-key">Poslednji uspešan refresh</span>
+                <strong>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabeležen"}</strong>
+              </div>
+              <div className="arb-critical-item">
+                <span className="arb-critical-key">Poslednji pad</span>
+                <strong>{status.lastFailureAtUtc ? formatDateTime(status.lastFailureAtUtc) : "Nije zabeležen"}</strong>
+              </div>
+              <div className="arb-critical-item">
+                <span className="arb-critical-key">Neuspešni objekti</span>
+                <strong>{failedObjects.length > 0 ? failedObjects.join(", ") : "Nema neuspešnih objekata"}</strong>
+              </div>
+              {workerWarning ? (
+                <div className="arb-critical-item arb-critical-item-wide">
+                  <span className="arb-critical-key">Worker warning</span>
+                  <strong>{workerWarning}</strong>
+                </div>
+              ) : null}
+            </div>
+            <div className="arb-critical-actions">
+              <Link to={workerHref} className="arb-critical-link">Worker status</Link>
+              <Link to={dataQualityHref} className="arb-critical-link">Data Quality</Link>
+              <Link to={workerHref} className="arb-critical-link">Ručno osvežavanje</Link>
+            </div>
+          </div>
+        ) : null}
         <div className="arb-row">
           <strong>Poslednji uspešan refresh:</strong>
           <span>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabeležen"}</span>

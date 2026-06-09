@@ -60,6 +60,106 @@
 .kpi-p1 { border-color: #dc3545; }
 .kpi-p1-val { color: #dc3545; }
 
+/* Outcome summary */
+.aaq-summary-panel {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 0.75rem;
+  background: var(--color-surface, #fff);
+}
+
+.aaq-summary-header {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.aaq-summary-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+  color: var(--color-text-primary, #111);
+}
+
+.aaq-summary-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #666);
+  margin: 0;
+  max-width: 72ch;
+}
+
+.aaq-summary-kpis {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.aaq-summary-kpi-card {
+  display: flex;
+  min-width: 96px;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  background: var(--color-surface-hover, #f8f9fa);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.aaq-summary-kpi-good .kpi-value { color: #198754; }
+.aaq-summary-kpi-warn .kpi-value { color: #fd7e14; }
+.aaq-summary-kpi-bad .kpi-value { color: #dc3545; }
+
+.aaq-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.aaq-summary-section {
+  padding: 0.85rem;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 0.65rem;
+  background: var(--color-surface, #fff);
+  overflow: hidden;
+}
+
+.aaq-summary-section h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #111);
+}
+
+.aaq-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.aaq-summary-table th,
+.aaq-summary-table td {
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid var(--color-border, #eee);
+  vertical-align: top;
+}
+
+.aaq-summary-table th {
+  color: var(--color-text-secondary, #555);
+  font-weight: 600;
+}
+
+.aaq-summary-empty {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-surface-hover, #f8f9fa);
+  border: 1px dashed var(--color-border, #dee2e6);
+  color: var(--color-text-secondary, #666);
+}
+
 /* Filters */
 .aaq-filters {
   display: flex;

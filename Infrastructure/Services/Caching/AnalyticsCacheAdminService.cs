@@ -122,13 +122,37 @@ public sealed class AnalyticsCacheAdminService
     }
 
     public async Task<AnalyticsCacheClearState> ClearAsync(string? family, CancellationToken ct = default)
+        => await ClearAsync(family, ct, triggeredBy: null);
+
+    public async Task<AnalyticsCacheClearState> ClearAsync(string? family, CancellationToken ct = default, string? triggeredBy = null)
     {
         var normalizedFamily = string.IsNullOrWhiteSpace(family) ? "all" : family.Trim().ToLowerInvariant();
+        var normalizedTriggeredBy = NormalizeTriggeredBy(triggeredBy);
+        var requestedAtUtc = DateTime.UtcNow;
+        _logger.LogInformation(
+            "Analytics cache clear requested. Family={Family} TriggeredBy={TriggeredBy} AtUtc={AtUtc:O}",
+            normalizedFamily,
+            normalizedTriggeredBy,
+            requestedAtUtc);
+
         var prefix = normalizedFamily == "all"
             ? AnalyticsCacheKeys.Prefix
             : AnalyticsCachePolicy.ResolveFamilyPrefix(normalizedFamily);
 
-        await _cache.RemoveByPrefixAsync(prefix, ct);
+        try
+        {
+            await _cache.RemoveByPrefixAsync(prefix, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Analytics cache clear failed. Family={Family} TriggeredBy={TriggeredBy} AtUtc={AtUtc:O}",
+                normalizedFamily,
+                normalizedTriggeredBy,
+                requestedAtUtc);
+            throw;
+        }
 
         _lastClearAtUtc = DateTime.UtcNow;
         _lastClearFamily = normalizedFamily;
@@ -162,8 +186,9 @@ public sealed class AnalyticsCacheAdminService
         }
 
         _logger.LogInformation(
-            "Analytics cache clear completed. Family={Family} Prefix={Prefix} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
+            "Analytics cache clear completed. Family={Family} TriggeredBy={TriggeredBy} Prefix={Prefix} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
             normalizedFamily,
+            normalizedTriggeredBy,
             prefix,
             _lastClearAtUtc.Value,
             state.IsShared,
@@ -174,21 +199,44 @@ public sealed class AnalyticsCacheAdminService
     }
 
     public async Task<AnalyticsCacheClearState> ClearFamiliesAsync(IEnumerable<string> families, CancellationToken ct = default)
+        => await ClearFamiliesAsync(families, ct, triggeredBy: null);
+
+    public async Task<AnalyticsCacheClearState> ClearFamiliesAsync(IEnumerable<string> families, CancellationToken ct = default, string? triggeredBy = null)
     {
         var normalizedFamilies = families
             .Where(static family => !string.IsNullOrWhiteSpace(family))
             .Select(static family => family.Trim().ToLowerInvariant())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var normalizedTriggeredBy = NormalizeTriggeredBy(triggeredBy);
+        var requestedAtUtc = DateTime.UtcNow;
+        _logger.LogInformation(
+            "Analytics cache clear requested. Families={Families} TriggeredBy={TriggeredBy} AtUtc={AtUtc:O}",
+            normalizedFamilies,
+            normalizedTriggeredBy,
+            requestedAtUtc);
 
         if (normalizedFamilies.Length == 0)
         {
-            return await ClearAsync("all", ct);
+            return await ClearAsync("all", ct, normalizedTriggeredBy);
         }
 
-        foreach (var family in normalizedFamilies)
+        try
         {
-            await _cache.RemoveByPrefixAsync(AnalyticsCachePolicy.ResolveFamilyPrefix(family), ct);
+            foreach (var family in normalizedFamilies)
+            {
+                await _cache.RemoveByPrefixAsync(AnalyticsCachePolicy.ResolveFamilyPrefix(family), ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Analytics cache clear failed. Families={Families} TriggeredBy={TriggeredBy} AtUtc={AtUtc:O}",
+                normalizedFamilies,
+                normalizedTriggeredBy,
+                requestedAtUtc);
+            throw;
         }
 
         _lastClearAtUtc = DateTime.UtcNow;
@@ -229,8 +277,9 @@ public sealed class AnalyticsCacheAdminService
         }
 
         _logger.LogInformation(
-            "Analytics cache clear completed for multiple families. Families={Families} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
+            "Analytics cache clear completed for multiple families. Families={Families} TriggeredBy={TriggeredBy} AtUtc={AtUtc:O} Shared={IsShared} Storage={Storage} ReportVersion={ReportVersion}",
             normalizedFamilies,
+            normalizedTriggeredBy,
             _lastClearAtUtc.Value,
             state.IsShared,
             state.Storage,
@@ -239,12 +288,29 @@ public sealed class AnalyticsCacheAdminService
         return state;
     }
 
+    public Task<AnalyticsCacheClearState> ClearAnalyticsCacheFamily(
+        string? family,
+        CancellationToken ct = default,
+        string? triggeredBy = null)
+        => ClearAsync(family, ct, triggeredBy);
+
+    public Task<AnalyticsCacheClearState> ClearAllAnalyticsCache(
+        CancellationToken ct = default,
+        string? triggeredBy = null)
+        => ClearAsync("all", ct, triggeredBy);
+
     public bool IsSharedCacheConfigured() => CanUseDistributedClearState();
 
     public string? GetTopologyWarning() => CanUseDistributedClearState() ? null : BuildNonSharedWarning();
 
     private bool CanUseDistributedClearState() =>
         _distributedCache is not null && _cache.IsRedisEnabled && _cache.IsRedisAvailable;
+
+    private static string NormalizeTriggeredBy(string? triggeredBy)
+    {
+        var normalized = (triggeredBy ?? "system").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "system" : normalized;
+    }
 
     private AnalyticsCacheClearState BuildCurrentState(bool? forceShared = null)
     {
