@@ -6,6 +6,12 @@ Ovo je uputstvo za Codex kada treba da izvršava `docs/ai/NEXT_PROMPT_QUEUE.md`.
 
 Codex ne treba da pokušava da završi ceo queue odjednom. Radi jedan task po sesiji i napravi jedan mali commit.
 
+Za UX / screen clarity taskove `Q10–Q18`:
+- `Q10`, `Q11`, `Q16` i `Q17` su frontend code polish taskovi i rade se jedan po jedan.
+- `Q12`, `Q13`, `Q14`, `Q15` i `Q18` su audit/docs taskovi; kod menjati samo ako task eksplicitno kaže da je mali fix bezbedan.
+- Ne raditi `Q10–Q18` automatski u jednom prolazu.
+- Svaki task mora imati poseban commit.
+
 ## Start prompt za Codex
 
 ```text

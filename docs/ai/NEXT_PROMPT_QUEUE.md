@@ -669,3 +669,383 @@ Acceptance:
 - Future SaaS risks are documented.
 - Current pilot model is clear.
 ```
+
+---
+
+## Q10 — Product Decision Center polish
+
+Status: TODO
+Commit suggestion: `feat(analytics): polish product decision center clarity`
+Priority: P1
+Type: frontend code polish
+Token budget: medium
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- shared analytics UI components already used by Product Decision Center
+- nearby CSS/module file only if already paired with the page
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Polish Product Decision Center for sales clarity.
+
+Do:
+1. Make recommendation status, action and reason easier to scan.
+2. Ensure period, freshness and data quality are visible without deep scrolling.
+3. Reduce visual noise around secondary metadata if it hides the primary decision.
+4. Keep "Zašto?" clarity for recommendation reasons and reason codes.
+5. Preserve existing backend semantics and no-fake-zero behavior.
+
+Do not:
+- change recommendation logic
+- introduce new filters unless obviously needed for clarity
+- refactor unrelated analytics pages
+
+Acceptance:
+- Primary decision is easier to scan.
+- Reason and trust context stay visible.
+- No recommendation is shown without explanation.
+```
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- targeted vitest only if an existing Product Decision spec is touched
+
+---
+
+## Q11 — Data Quality polish + silent empty panels
+
+Status: TODO
+Commit suggestion: `feat(data-quality): polish empty and silent panel states`
+Priority: P1
+Type: frontend code polish
+Token budget: medium
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/DataQualityPage.tsx`
+- `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`
+- shared empty/error state components already used by analytics pages
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Polish Data Quality screen and remove silent empty panels.
+
+Do:
+1. Find panels that render weak placeholders, blanks or ambiguous zero-like states.
+2. Replace silent empties with explicit empty, warning or unknown messaging.
+3. Keep pilot readiness, freshness and methodology context visible.
+4. Preserve existing intake semantics and trust messaging.
+
+Do not:
+- invent fake KPIs
+- change backend contracts
+- redesign unrelated analytics pages
+
+Acceptance:
+- Empty or missing sections are explicit.
+- Operators can tell the difference between no data, warning and error.
+- No silent empty panel remains in the main Data Quality flow.
+```
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- targeted vitest only if an existing Data Quality spec is touched
+
+---
+
+## Q12 — Analytics navigation audit
+
+Status: TODO
+Commit suggestion: `docs(frontend): audit analytics navigation clarity`
+Priority: P1
+Type: audit/docs
+Token budget: low
+
+### Scope only
+
+- analytics route registration files
+- analytics landing/navigation surfaces
+- new doc under `docs/Frontend/` or `docs/ai/` if needed by findings
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Audit analytics navigation clarity.
+
+Do:
+1. Map key analytics entry points and likely operator paths.
+2. Identify duplicated, unclear or legacy-feeling navigation labels.
+3. Note where a user may not know whether to open Dashboard, Data Quality, Supplier, Inventory or Actions.
+4. Recommend small, safe follow-up changes.
+
+Do not:
+- refactor routing in this task
+- remove compatibility routes
+- change code unless a very small copy fix is obviously safe and already patterned
+
+Acceptance:
+- Navigation confusion points are documented.
+- Follow-up polish targets are clear.
+```
+
+---
+
+## Q13 — Daily Sales UX audit
+
+Status: TODO
+Commit suggestion: `docs(analytics): audit daily sales ux clarity`
+Priority: P2
+Type: audit/docs
+Token budget: low
+
+### Scope only
+
+- daily sales page and its immediate helpers
+- new audit doc under `docs/Analytics/` or `docs/Frontend/`
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Audit Daily Sales UX clarity.
+
+Do:
+1. Review whether the page makes period, freshness and comparatives easy to understand.
+2. Identify confusing KPIs, overloaded charts or weak empty/error messaging.
+3. Note whether the screen helps a retail operator decide what to do next.
+4. Propose small safe polish items.
+
+Do not:
+- change metrics logic
+- redesign the page in this task
+- change code unless a very small fix is explicitly justified and safe
+
+Acceptance:
+- Daily Sales UX risks are documented.
+- Follow-up polish work is scoped.
+```
+
+---
+
+## Q14 — Inventory UX audit
+
+Status: TODO
+Commit suggestion: `docs(inventory): audit analytics inventory ux`
+Priority: P1
+Type: audit/docs
+Token budget: low
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- major inventory analytics panels
+- new audit doc under `docs/Analytics/` or `docs/Frontend/`
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Audit Inventory UX from a decision-making angle.
+
+Do:
+1. Check whether replenish, OOS risk, dead stock and transfer decisions are visually obvious.
+2. Identify places where export, scheduler or secondary controls overshadow the decision flow.
+3. Review empty, stale and warning states for operator clarity.
+4. Recommend a small follow-up set.
+
+Do not:
+- change inventory algorithms
+- change code unless a tiny safe clarity fix is explicitly justified
+- broaden scope beyond inventory analytics UX
+
+Acceptance:
+- Decision-flow gaps are documented.
+- Risks and next polish targets are clear.
+```
+
+---
+
+## Q15 — Secondary analytics screens audit
+
+Status: TODO
+Commit suggestion: `docs(analytics): audit secondary analytics screens`
+Priority: P2
+Type: audit/docs
+Token budget: low
+
+### Scope only
+
+- secondary analytics pages outside dashboard, data quality, product decision, supplier hub and inventory
+- new audit doc under `docs/Analytics/` or `docs/Frontend/`
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Audit secondary analytics screens for clarity and consistency.
+
+Do:
+1. Identify screens that feel legacy, under-explained or low-confidence.
+2. Check for missing freshness, period or trust context.
+3. Note where UX consistency drifts from the main analytics standard.
+4. Rank the most valuable small polish opportunities.
+
+Do not:
+- refactor multiple screens in this task
+- change code unless a tiny copy fix is explicitly safe and isolated
+
+Acceptance:
+- Secondary-screen clarity risks are documented.
+- A prioritized follow-up list exists.
+```
+
+---
+
+## Q16 — PreNivelacija small polish
+
+Status: TODO
+Commit suggestion: `feat(nivelacija): polish pre-nivelacija clarity`
+Priority: P2
+Type: frontend code polish
+Token budget: medium
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+- immediate helper components already used by the page
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Apply a small clarity polish to PreNivelacija priority screen.
+
+Do:
+1. Improve scanability of priorities, reasons and recommended next actions.
+2. Make warnings and data limitations easier to notice.
+3. Keep current business semantics intact.
+
+Do not:
+- change scoring logic
+- redesign the whole page
+- touch unrelated nivelacija screens
+
+Acceptance:
+- Priority list is easier to scan.
+- Warnings and next actions are clearer.
+```
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- targeted vitest only if an existing PreNivelacija spec is touched
+
+---
+
+## Q17 — Supplier consolidated minor clarity
+
+Status: TODO
+Commit suggestion: `feat(suppliers): polish consolidated clarity`
+Priority: P2
+Type: frontend code polish
+Token budget: medium
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+- immediate supplier analytics helpers already used by the page
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Apply minor clarity polish to Supplier Consolidated screen.
+
+Do:
+1. Improve visibility of period, trust and primary comparison cues.
+2. Reduce confusion between supporting metrics and primary supplier takeaways.
+3. Preserve current supplier analytics semantics.
+
+Do not:
+- change supplier scoring logic
+- redesign supplier reporting flows
+- touch unrelated supplier screens unless shared copy fix is tiny and safe
+
+Acceptance:
+- Main supplier takeaways are easier to understand.
+- Trust context remains visible.
+```
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- targeted vitest only if an existing supplier consolidated spec is touched
+
+---
+
+## Q18 — Action Outcome Analytics plan
+
+Status: TODO
+Commit suggestion: `docs(actions): plan action outcome analytics`
+Priority: P2
+Type: audit/docs
+Token budget: low
+
+### Scope only
+
+- action queue analytics surfaces
+- outcome-related docs and nearby action analytics files
+- new planning doc under `docs/Analytics/` or `docs/ai/`
+
+### Prompt
+
+```text
+Repo: ivanjovicic/Trendplus
+
+Task:
+Create Action Outcome Analytics plan.
+
+Do:
+1. Define what outcome analytics should answer for operators and managers.
+2. Identify minimal dimensions, metrics and trust constraints.
+3. Note dependencies on action status, resolution notes, timing and ownership fields.
+4. Recommend a staged implementation path.
+
+Do not:
+- implement new analytics now
+- refactor action queue behavior
+- change code unless a tiny safe docs-adjacent copy fix is explicitly justified
+
+Acceptance:
+- Action outcome analytics scope is documented.
+- Dependencies and rollout stages are clear.
+```
