@@ -882,7 +882,7 @@ Acceptance:
 
 ## Q12 — Analytics navigation audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(frontend): audit analytics navigation clarity`
 Priority: P1
 Type: audit/docs
@@ -917,6 +917,26 @@ Acceptance:
 - Navigation confusion points are documented.
 - Follow-up polish targets are clear.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/Frontend/ANALYTICS_NAVIGATION_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - mapirani su canonical analytics entry point-i, verovatni operator tokovi i mesta gde sidebar ili dashboard copy ne vode jasno do pravog decision ekrana
+  - dokumentovani su glavni confusion gapovi: nedostajući sidebar ulazi za `/analytics/products`, `/analytics/supplier` i `/analytics/actions`, kao i mešanje srpskih i engleskih labela
+  - predložen je mali, bezbedan UX backlog bez promene routinga ili uklanjanja compatibility ruta
+- Checks:
+  - `git diff --check` — pass
+  - `Get-Content -Encoding utf8 docs/Frontend/ANALYTICS_NAVIGATION_AUDIT.md` spot-check — pass
+  - frontend build/test — not run (docs-only task)
+- Rizici:
+  - audit ne rešava navigacionu konfuziju sam po sebi; potreban je mali frontend follow-up commit da bi canonical analytics entry point-i postali vidljivi
+  - deo confusion signala dolazi iz istorijskih/legacy ruta koje treba zadržati, pa budući polish mora paziti da ne polomi compatibility
+- Next queue item:
+  - `Q13 - Daily Sales UX audit`
 
 ---
 
