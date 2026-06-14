@@ -746,7 +746,7 @@ Acceptance:
 
 ## Q10 — Product Decision Center polish
 
-Status: IN_PROGRESS
+Status: DONE
 Commit suggestion: `feat(analytics): polish product decision center clarity`
 Priority: P1
 Type: frontend code polish
@@ -789,6 +789,26 @@ Acceptance:
 - `cd Klijent/clientapp && npm run check:analytics-guardrails`
 - `cd Klijent/clientapp && npm run build`
 - targeted vitest only if an existing Product Decision spec is touched
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - user-facing copy je prebačen na dosledne srpske poslovne nazive sa dijakritikom
+  - dodat je jasniji uvodni opis ekrana i očišćeni su recommendation/reason/detail labele
+  - prikaz preporuke sada koristi dosledne frontend label mapove bez promene enum vrednosti ili recommendation logike
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - targeted vitest — not run
+- Rizici:
+  - backend i dalje može vratiti nove user-facing stringove bez dijakritike koje ova stranica trenutno ne normalizuje osim kroz poznate copy replacement obrasce
+  - chunk-size warning u `vite build` ostaje postojeći, bez novih build grešaka
+- Next queue item:
+  - `Q11 - Data Quality polish + silent empty panels`
 
 ---
 

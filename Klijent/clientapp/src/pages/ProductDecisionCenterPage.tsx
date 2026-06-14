@@ -72,11 +72,11 @@ export type ProductDecisionSignalFields = {
 export type ProductDecisionRow = ProductDecisionCenterItem & ProductDecisionSignalFields;
 
 const RECOMMENDATION_LABELS: Record<ProductDecisionRecommendationStatus, string> = {
-  BOOST: "Pojacaj",
+  BOOST: "Pojačaj",
   REPLENISH: "Dopuni",
   WATCH: "Prati",
   MARKDOWN: "Snizi cenu",
-  DO_NOT_ORDER: "Ne narucivati",
+  DO_NOT_ORDER: "Ne naručivati",
   FIX_DATA: "Proveriti podatke",
   INSUFFICIENT_DATA: "Nedovoljno podataka",
 };
@@ -84,10 +84,10 @@ const RECOMMENDATION_LABELS: Record<ProductDecisionRecommendationStatus, string>
 const RECOMMENDATION_OPTIONS: Array<{ value: RecommendationFilter; label: string }> = [
   { value: "all", label: "Sve preporuke" },
   { value: "REPLENISH", label: "Dopuni" },
-  { value: "BOOST", label: "Pojacaj" },
+  { value: "BOOST", label: "Pojačaj" },
   { value: "WATCH", label: "Prati" },
   { value: "MARKDOWN", label: "Snizi cenu" },
-  { value: "DO_NOT_ORDER", label: "Ne narucivati" },
+  { value: "DO_NOT_ORDER", label: "Ne naručivati" },
   { value: "FIX_DATA", label: "Proveriti podatke" },
   { value: "INSUFFICIENT_DATA", label: "Nedovoljno podataka" },
 ];
@@ -105,7 +105,7 @@ const RECOMMENDATION_PRIORITY: Record<ProductDecisionRecommendationStatus, numbe
 const DATA_QUALITY_LABELS: Record<Exclude<DataQualityFilter, "all">, string> = {
   good: "Dobar",
   warning: "Upozorenje",
-  critical: "Kritican",
+  critical: "Kritičan",
   insufficient_data: "Nedovoljno podataka",
 };
 
@@ -119,13 +119,13 @@ const DATA_QUALITY_ORDER: Record<Exclude<DataQualityFilter, "all">, number> = {
 const REASON_CODE_MESSAGES: Record<string, string> = {
   high_velocity: "Artikal se brzo prodaje.",
   low_stock: "Zaliha je ispod bezbednog nivoa.",
-  poor_margin: "Marza je ispod zeljenog nivoa.",
+  poor_margin: "Marža je ispod željenog nivoa.",
   stale_stock: "Artikal dugo nema prodaju.",
   missing_cost: "Nedostaje nabavna cena.",
   missing_supplier: "Nedostaje dobavljač.",
   insufficient_history: "Nema dovoljno istorije za sigurnu preporuku.",
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
-  high_stock_risk: "Postoji rizik od viska zalihe.",
+  high_stock_risk: "Postoji rizik od viška zalihe.",
   data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
 };
 
@@ -133,15 +133,36 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "productName", header: "Artikal", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prodaja / komadi", dataType: "currency" },
-  { key: "velocityUnitsPerDay", header: "Velocity", dataType: "number" },
-  { key: "marginPct", header: "Marza", dataType: "percent" },
+  { key: "velocityUnitsPerDay", header: "Brzina prodaje", dataType: "number" },
+  { key: "marginPct", header: "Marža", dataType: "percent" },
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "trendPct", header: "Trend", dataType: "percent" },
   { key: "stockCoverDays", header: "Pokrivenost zalihe", dataType: "number" },
-  { key: "sellThroughRatio", header: "Sell-through", dataType: "percent" },
-  { key: "confidencePct", header: "Confidence", dataType: "number" },
-  { key: "dataQualityStatus", header: "Data quality", dataType: "text" },
+  { key: "sellThroughRatio", header: "Obrt zalihe", dataType: "percent" },
+  { key: "confidencePct", header: "Sigurnost preporuke", dataType: "number" },
+  { key: "dataQualityStatus", header: "Kvalitet podataka", dataType: "text" },
   { key: "recommendationLabel", header: "Preporuka", dataType: "text" },
+];
+
+const PRODUCT_DECISION_PAGE_EXPLANATION =
+  "Ovaj ekran predlaže šta uraditi sa artiklima: dopuniti, pojačati, sniziti cenu, pratiti ili proveriti podatke. Preporuka je blokirana kada podaci nisu dovoljno pouzdani.";
+
+const PRODUCT_DECISION_COPY_REPLACEMENTS: Array<[string, string]> = [
+  ["Pojacaj", "Pojačaj"],
+  ["Ne narucivati", "Ne naručivati"],
+  ["Ne narucuj", "Ne naručuj"],
+  ["Kritican", "Kritičan"],
+  ["Marza", "Marža"],
+  ["zeljenog", "željenog"],
+  ["viska", "viška"],
+  ["ucitavanju", "učitavanju"],
+  ["Ucitavanje", "Učitavanje"],
+  ["ucitane", "učitane"],
+  ["trazenom", "traženom"],
+  ["jos", "još"],
+  ["zavrseno", "završeno"],
+  ["Zasto", "Zašto"],
+  ["pokrice", "pokriće"],
 ];
 
 function toDateInputValue(date: Date): string {
@@ -196,6 +217,15 @@ function translateReasonCode(code: string): string {
   return REASON_CODE_MESSAGES[normalized] ?? code;
 }
 
+function polishProductDecisionCopy(value: string | null | undefined): string {
+  if (!value) return value ?? "";
+
+  return PRODUCT_DECISION_COPY_REPLACEMENTS.reduce(
+    (current, [from, to]) => current.replaceAll(from, to),
+    value,
+  );
+}
+
 function stockCoverStatusLabel(status: string | null | undefined): string {
   const normalized = (status ?? "").trim().toLowerCase();
   if (normalized === "low_cover" || normalized === "low") return "Niska pokrivenost";
@@ -209,9 +239,9 @@ function stockCoverStatusLabel(status: string | null | undefined): string {
 
 function sellThroughStatusLabel(status: string | null | undefined): string {
   const normalized = (status ?? "").trim().toLowerCase();
-  if (normalized === "good") return "Dobar sell-through";
-  if (normalized === "warning") return "Sell-through upozorenje";
-  if (normalized === "critical") return "Kritican sell-through";
+  if (normalized === "good") return "Dobar obrt zalihe";
+  if (normalized === "warning") return "Upozorenje za obrt zalihe";
+  if (normalized === "critical") return "Kritičan obrt zalihe";
   return "Nedovoljno podataka";
 }
 
@@ -254,9 +284,9 @@ function buildSourceKey(
 
 function recommendationActionTitle(status: ProductDecisionRecommendationStatus, productName: string): string {
   if (status === "REPLENISH") return `Dopuni: ${productName}`;
-  if (status === "BOOST") return `Pojacaj: ${productName}`;
+  if (status === "BOOST") return `Pojačaj: ${productName}`;
   if (status === "MARKDOWN") return `Snizi: ${productName}`;
-  if (status === "DO_NOT_ORDER") return `Ne narucuj: ${productName}`;
+  if (status === "DO_NOT_ORDER") return `Ne naručuj: ${productName}`;
   if (status === "FIX_DATA") return `Proveri podatke: ${productName}`;
   if (status === "WATCH") return `Prati: ${productName}`;
   return `Proveri: ${productName}`;
@@ -447,7 +477,7 @@ export default function ProductDecisionCenterPage() {
           correlationId: reason.correlationId,
         });
       } else {
-        const message = reason instanceof Error ? reason.message : "Greška pri ucitavanju Product Decision Center podataka.";
+        const message = reason instanceof Error ? reason.message : "Greška pri učitavanju podataka za Odluke o proizvodima.";
         setError({ message });
       }
       if (hasPreviousPayload) {
@@ -606,7 +636,7 @@ export default function ProductDecisionCenterPage() {
     { key: "storeId", label: "Prodavnica", value: storeId ?? "Sve" },
     { key: "supplierId", label: "Dobavljač", value: supplierId ?? "Svi" },
     { key: "recommendationFilter", label: "Preporuka", value: recommendationFilter },
-    { key: "dataQualityFilter", label: "Data quality", value: dataQualityFilter },
+    { key: "dataQualityFilter", label: "Kvalitet podataka", value: dataQualityFilter },
     { key: "search", label: "Pretraga", value: search || "-" },
   ], [dataQualityFilter, fromDate, recommendationFilter, search, storeId, supplierId, toDate]);
 
@@ -702,16 +732,16 @@ export default function ProductDecisionCenterPage() {
     <section className="product-decision-page">
       <AnalyticsTrustHeader
         title="Odluke o proizvodima"
-        description="Jedan ekran za dopunu, pojačanje, praćenje, sniženje, zaustavljanje narudžbine i proveru podataka."
+        description="Pregled preporuka za dopunu, pojačanje, cenu, praćenje i proveru podataka po artiklu."
         periodFrom={payload?.periodFromUtc ?? fromDate}
         periodTo={payload?.periodToUtc ?? toDate}
         lastRefreshAt={payload?.generatedAtUtc ?? null}
-        dataSource="Product decision snapshot"
+        dataSource="Pregled odluka o proizvodima"
         dataQualityStatus={responseMeta?.dataQualityStatus ?? null}
         dataQualitySummary={trustQualitySummary}
         mode="recommendation"
         isPartial={isAnalyticsMetaWarning(responseMeta)}
-        recommendationNote="Finalni recommendation status dolazi iz backend decision engine-a."
+        recommendationNote="Finalni status preporuke dolazi iz backend sistema za odlučivanje."
         emptyStateReason={!loading && !hasBlockingError && sortedRows.length === 0 ? (responseMetaMessage ?? "Nema kandidata za izabrane filtere i period.") : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
@@ -728,7 +758,7 @@ export default function ProductDecisionCenterPage() {
       <header className="product-decision-header">
         <div>
           <h1>Odluke o proizvodima</h1>
-          <p>Jedan ekran za dopunu, pojačanje, praćenje, sniženje, zaustavljanje narudžbine i proveru podataka.</p>
+          <p>{PRODUCT_DECISION_PAGE_EXPLANATION}</p>
         </div>
         <AnalyticsTableToolbar
           tableKey="product-decision-center"
@@ -758,7 +788,7 @@ export default function ProductDecisionCenterPage() {
           <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
         </article>
         <article className="kpi-card">
-          <span>Ne narucivati</span>
+          <span>Ne naručivati</span>
           <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
           <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
         </article>
@@ -778,24 +808,24 @@ export default function ProductDecisionCenterPage() {
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
         <article className="kpi-card">
-          <span>Stock cover risk</span>
+          <span>Rizik pokrivenosti</span>
           <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
         </article>
         <article className="kpi-card">
-          <span>Low cover SKU</span>
+          <span>SKU sa niskom pokrivenošću</span>
           <strong>{fmtNumber(kpis.lowCoverSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj low cover SKU" />
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
         </article>
         <article className="kpi-card">
-          <span>Slow stock SKU</span>
+          <span>SKU sa sporim obrtom</span>
           <strong>{fmtNumber(kpis.slowStockSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj sporih SKU" />
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
         </article>
         <article className="kpi-card">
-          <span>Good sell-through SKU</span>
+          <span>SKU sa dobrim obrtom</span>
           <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj SKU sa dobrim sell-through signalom" />
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrim obrtom zalihe" />
         </article>
       </section>
       ) : null}
@@ -808,7 +838,7 @@ export default function ProductDecisionCenterPage() {
               <option value="last30">Poslednjih 30 dana</option>
               <option value="last60">Poslednjih 60 dana</option>
               <option value="last90">Poslednjih 90 dana</option>
-              <option value="custom">Custom</option>
+              <option value="custom">Prilagođeni period</option>
             </select>
           </label>
           <label>
@@ -866,30 +896,30 @@ export default function ProductDecisionCenterPage() {
             </select>
           </label>
           <label>
-            Data quality
+            Kvalitet podataka
             <select value={dataQualityFilter} onChange={(event) => setDataQualityFilter(event.target.value as DataQualityFilter)}>
               <option value="all">Sve</option>
               <option value="good">Dobar</option>
               <option value="warning">Upozorenje</option>
-              <option value="critical">Kritican</option>
+              <option value="critical">Kritičan</option>
               <option value="insufficient_data">Nedovoljno podataka</option>
             </select>
           </label>
           <label>
-            Sort
+            Sortiranje
             <select value={`${sortField}:${sortDir}`} onChange={(event) => {
               const [nextField, nextDir] = event.target.value.split(":");
               setSortField(nextField as SortField);
               setSortDir(nextDir as SortDir);
             }}>
               <option value="recommendationStatus:desc">Preporuka (prioritet)</option>
-              <option value="confidencePct:desc">Confidence opadajuce</option>
-              <option value="revenue:desc">Promet opadajuce</option>
-              <option value="velocityUnitsPerDay:desc">Velocity opadajuce</option>
-              <option value="stockCoverDays:asc">Pokrivenost zalihe rastuce</option>
-              <option value="sellThroughRatio:desc">Sell-through opadajuce</option>
-              <option value="trendPct:desc">Trend opadajuce</option>
-              <option value="dataQualityStatus:desc">Data quality (kriticno prvo)</option>
+              <option value="confidencePct:desc">Sigurnost preporuke opadajuće</option>
+              <option value="revenue:desc">Promet opadajuće</option>
+              <option value="velocityUnitsPerDay:desc">Brzina prodaje opadajuće</option>
+              <option value="stockCoverDays:asc">Pokrivenost zalihe rastuće</option>
+              <option value="sellThroughRatio:desc">Obrt zalihe opadajuće</option>
+              <option value="trendPct:desc">Trend opadajuće</option>
+              <option value="dataQualityStatus:desc">Kvalitet podataka (kritično prvo)</option>
               <option value="productName:asc">Artikal A-Z</option>
             </select>
           </label>
@@ -909,10 +939,10 @@ export default function ProductDecisionCenterPage() {
       {staleWarning ? <div className="product-decision-message product-decision-message-info">{staleWarning}</div> : null}
       {!hasBlockingError && error ? (
         <div className="product-decision-message product-decision-message-info">
-          Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.
+          Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}
-      {loading ? <div className="product-decision-message">Ucitavanje Product Decision Center podataka...</div> : null}
+      {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
@@ -931,14 +961,14 @@ export default function ProductDecisionCenterPage() {
           variant="insufficient_data"
           message="Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
           reasons={[
-            "U periodu nema dovoljno prodajnih događaja za recommendation signal.",
+            "U periodu nema dovoljno prodajnih događaja za signal preporuke.",
             "Filteri su previše uski (prodavnica/dobavljač).",
             "Nedostaju ključni ulazi (nabavna cena, dobavljač).",
           ]}
           actions={[
             { label: "Proširite period (npr. 60 ili 90 dana)." },
             { label: "Uklonite uske filtere i pokušajte ponovo." },
-            { label: "Otvorite Data Quality i proverite blokere signala.", href: "/analytics/data-quality" },
+            { label: "Otvorite Kvalitet podataka i proverite blokere signala.", href: "/analytics/data-quality" },
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -954,9 +984,9 @@ export default function ProductDecisionCenterPage() {
           variant="no_data"
           message={responseMetaMessage ?? "Nema podataka za izabrani period."}
           reasons={[
-            "Nije bilo prodaje u trazenom periodu.",
             "Izabrani period je preuzak.",
-            "Analytics osvežavanje jos nije zavrseno.",
+            "Nije bilo prodaje u traženom periodu.",
+            "Osvežavanje analitike još nije završeno.",
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -969,7 +999,7 @@ export default function ProductDecisionCenterPage() {
           variant="filtered_out"
           message="Promenite filtere ili proširite period."
           reasons={[
-            "Pretraga, recommendation filter ili data quality filter su previše restriktivni.",
+            "Pretraga, filter preporuke ili filter kvaliteta podataka su previše restriktivni.",
             "Kombinacija prodavnice i dobavljača trenutno nema kandidate.",
           ]}
           dataQualityHref="/analytics/data-quality"
@@ -988,14 +1018,14 @@ export default function ProductDecisionCenterPage() {
                 <th onClick={() => setSort("productName")}>Artikal</th>
                 <th onClick={() => setSort("supplierName")}>Dobavljač</th>
                 <th onClick={() => setSort("revenue")}>Prodaja / komadi</th>
-                <th onClick={() => setSort("velocityUnitsPerDay")}>Velocity</th>
-                <th onClick={() => setSort("marginPct")}>Marza</th>
+                <th onClick={() => setSort("velocityUnitsPerDay")}>Brzina prodaje</th>
+                <th onClick={() => setSort("marginPct")}>Marža</th>
                 <th onClick={() => setSort("currentStock")}>Zaliha</th>
                 <th onClick={() => setSort("trendPct")}>Trend</th>
                 <th onClick={() => setSort("stockCoverDays")}>Pokrivenost zalihe</th>
-                <th onClick={() => setSort("sellThroughRatio")}>Sell-through</th>
-                <th onClick={() => setSort("confidencePct")}>Confidence</th>
-                <th onClick={() => setSort("dataQualityStatus")}>Data quality</th>
+                <th onClick={() => setSort("sellThroughRatio")}>Obrt zalihe</th>
+                <th onClick={() => setSort("confidencePct")}>Sigurnost preporuke</th>
+                <th onClick={() => setSort("dataQualityStatus")}>Kvalitet podataka</th>
                 <th onClick={() => setSort("recommendationStatus")}>Preporuka</th>
                 <th>Akcija</th>
               </tr>
@@ -1029,7 +1059,7 @@ export default function ProductDecisionCenterPage() {
                         <td>{fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}</td>
                         <td>
                           <span>{fmtPct(row.marginPct, 1)}</span>
-                          <small>{row.marginQualityLabel ?? "N/A"} | pokrice: {fmtPct(row.marginCoveragePct, 1)}</small>
+                          <small>{polishProductDecisionCopy(row.marginQualityLabel) ?? "N/A"} | pokriće: {fmtPct(row.marginCoveragePct, 1)}</small>
                         </td>
                         <td>
                           <span>{fmtNumber(row.currentStock, 0, "0")}</span>
@@ -1046,14 +1076,14 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span>{fmtNumber(row.confidencePct, 0, "N/A")}%</span>
-                          <small>Reliability: {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
+                          <small>Pouzdanost: {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
                         </td>
                         <td>
                           <span className={dataQualityClass(dataQuality)}>{DATA_QUALITY_LABELS[dataQuality]}</span>
                         </td>
                         <td>
                           <span className={recommendationToneClass(row.recommendationStatus)}>
-                            {row.recommendationLabel}
+                            {RECOMMENDATION_LABELS[row.recommendationStatus] ?? polishProductDecisionCopy(row.recommendationLabel)}
                           </span>
                           <button
                             type="button"
@@ -1062,13 +1092,13 @@ export default function ProductDecisionCenterPage() {
                               event.stopPropagation();
                               toggleExpandedRow(row.productId);
                             }}
-                            title={row.recommendationReason}
+                            title={polishProductDecisionCopy(row.recommendationReason)}
                           >
-                            Zasto?
+                            Zašto?
                           </button>
                         </td>
                         <td>
-                          <span>{row.recommendedAction}</span>
+                          <span>{polishProductDecisionCopy(row.recommendedAction)}</span>
                           <small>{fmtRsd(row.lostSalesEstimate, 0, "N/A")} potencijalnog uticaja</small>
                           <button
                             type="button"
@@ -1078,7 +1108,7 @@ export default function ProductDecisionCenterPage() {
                               void addRowToCentralActions(row);
                             }}
                             disabled={isQueueBusy || isQueued}
-                            title={isQueued ? "Akcija je vec u centralnom redu." : "Dodaj u centralni red akcija"}
+                            title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
                           >
                             {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                           </button>
@@ -1095,21 +1125,21 @@ export default function ProductDecisionCenterPage() {
                                 </div>
                                 <div className="reason-statuses">
                                   <span className={recommendationToneClass(row.recommendationStatus)}>
-                                    {row.recommendationLabel} ({row.recommendationStatus})
+                                    {RECOMMENDATION_LABELS[row.recommendationStatus] ?? polishProductDecisionCopy(row.recommendationLabel)}
                                   </span>
                                   <span className={dataQualityClass(dataQuality)}>
                                     {DATA_QUALITY_LABELS[dataQuality]}
                                   </span>
-                                  <span className="confidence-badge">Confidence: {fmtNumber(row.confidencePct, 0, "N/A")}%</span>
+                                  <span className="confidence-badge">Sigurnost preporuke: {fmtNumber(row.confidencePct, 0, "N/A")}%</span>
                                 </div>
                               </div>
 
                               <div className="reason-block">
-                                <strong>Razlog:</strong> {row.recommendationReason || "Razlog nije dostupan."}
+                                <strong>Razlog:</strong> {polishProductDecisionCopy(row.recommendationReason) || "Razlog nije dostupan."}
                               </div>
 
                               <div className="reason-block">
-                                <strong>Reason codes:</strong>
+                                <strong>Razlozi preporuke:</strong>
                                 {reasonCodeItems?.length ? (
                                   <ul className="reason-code-list">
                                     {reasonCodeItems.map((item) => (
@@ -1120,54 +1150,54 @@ export default function ProductDecisionCenterPage() {
                                     ))}
                                   </ul>
                                 ) : (
-                                  <span> Nema reason code vrednosti. Koristi se samo tekst razloga.</span>
+                                  <span> Nema šifara razloga. Koristi se samo tekst razloga.</span>
                                 )}
                               </div>
 
                               <div className="reason-metric-grid">
                                 <div>
-                                  <strong>Revenue:</strong> {fmtRsd(row.revenue, 0, "N/A")}
+                                  <strong>Prihod:</strong> {fmtRsd(row.revenue, 0, "N/A")}
                                   <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat prihod" />
                                 </div>
                                 <div>
-                                  <strong>Units sold:</strong> {fmtNumber(row.unitsSold, 0, "0")}
+                                  <strong>Prodati komadi:</strong> {fmtNumber(row.unitsSold, 0, "0")}
                                   <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat broj prodatih jedinica" />
                                 </div>
                                 <div>
-                                  <strong>Velocity:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}
+                                  <strong>Brzina prodaje:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}
                                   <KpiExplainButton metricKey="velocity" ariaLabel="Kako je izračunata brzina prodaje" />
                                 </div>
-                                <div><strong>Marza:</strong> {fmtPct(row.marginPct, 1)}</div>
+                                <div><strong>Marža:</strong> {fmtPct(row.marginPct, 1)}</div>
                                 <div>
-                                  <strong>Margin contribution:</strong> {fmtRsd(row.marginContribution, 0, "N/A")}
+                                  <strong>Maržni doprinos:</strong> {fmtRsd(row.marginContribution, 0, "N/A")}
                                   <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                                 </div>
-                                <div><strong>Current stock:</strong> {fmtNumber(row.currentStock, 0, "0")}</div>
-                                <div><strong>Days since last sale:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : "N/A"}</div>
+                                <div><strong>Trenutna zaliha:</strong> {fmtNumber(row.currentStock, 0, "0")}</div>
+                                <div><strong>Dani od poslednje prodaje:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : "N/A"}</div>
                                 <div><strong>Trend:</strong> {fmtPct(row.trendPct, 1)}</div>
                                 <div>
-                                  <strong>Lost sales estimate:</strong> {fmtRsd(row.lostSalesEstimate, 0, "N/A")}
+                                  <strong>Procena izgubljene prodaje:</strong> {fmtRsd(row.lostSalesEstimate, 0, "N/A")}
                                   <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
                                 </div>
                                 <div>
-                                  <strong>Slow stock capital:</strong> {fmtRsd(row.slowStockCapital, 0, "N/A")}
+                                  <strong>Kapital u sporoj zalihi:</strong> {fmtRsd(row.slowStockCapital, 0, "N/A")}
                                   <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
                                 </div>
                                 <div>
-                                  <strong>Stock cover:</strong> {formatSignalMetricValue(row.stockCoverDays, row.stockCoverStatus, "days")}
+                                  <strong>Pokrivenost zalihe:</strong> {formatSignalMetricValue(row.stockCoverDays, row.stockCoverStatus, "days")}
                                   <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunata pokrivenost zalihe" />
                                 </div>
                                 <div>
-                                  <strong>Sell-through:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
-                                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat sell-through signal" />
+                                  <strong>Obrt zalihe:</strong> {formatSignalMetricValue(row.sellThroughRatio, row.sellThroughStatus, "ratio")}
+                                  <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat signal obrta zalihe" />
                                 </div>
-                                <div><strong>Cost coverage:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
+                                <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
                                 <div>
-                                  <strong>Reliability:</strong> {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}
+                                  <strong>Pouzdanost:</strong> {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}
                                   <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                                 </div>
                                 <div>
-                                  <strong>Data quality:</strong> {DATA_QUALITY_LABELS[dataQuality]}
+                                  <strong>Kvalitet podataka:</strong> {DATA_QUALITY_LABELS[dataQuality]}
                                   <KpiExplainButton metricKey="confidencePct" ariaLabel="Kako je izračunata sigurnost preporuke" />
                                 </div>
                               </div>
@@ -1178,7 +1208,7 @@ export default function ProductDecisionCenterPage() {
                                   className={`btn-add-to-queue${isQueued ? " added" : ""}`}
                                   disabled={isQueueBusy || isQueued}
                                   onClick={() => void addRowToCentralActions(row)}
-                                  title={isQueued ? "Akcija je vec u centralnom redu." : "Dodaj u centralni red akcija"}
+                                  title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
                                 >
                                   {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                                 </button>
