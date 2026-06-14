@@ -7,6 +7,7 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import PilotDataQualityIntakeReportPanel from "../components/analytics/PilotDataQualityIntakeReport";
+import PilotImportReadinessCard from "../components/analytics/PilotImportReadinessCard";
 import InfoTip from "../components/ui/InfoTip";
 import {
   AnalyticsMetaError,
@@ -665,6 +666,10 @@ export default function DataQualityPage() {
         error={refreshStatusError}
       />
 
+      {viewMode === "issues" && !loading && (intakeReport || durableIntakeReport) ? (
+        <PilotImportReadinessCard report={intakeReport} refreshStatus={refreshStatus} />
+      ) : null}
+
       <div className="data-quality-tabs" role="tablist" aria-label="Data quality views">
         {VIEW_TABS.map((tab) => (
           <button
@@ -687,6 +692,7 @@ export default function DataQualityPage() {
           error={intakeReportError}
           filters={toolbarFilters}
           durableReport={durableIntakeReport}
+          refreshStatus={refreshStatus}
           onRetry={() => {
             void load();
           }}

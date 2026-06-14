@@ -1,7 +1,11 @@
 ﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AnalyticsNamedValue } from "../../types/analyticsTable";
-import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../../types/analytics";
+import type {
+  AnalyticsRefreshStatus,
+  PilotDataQualityIntakeReport,
+  PilotIntakeDurableReport,
+} from "../../types/analytics";
 import { resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 import { downloadExport, generateExport, waitForExport } from "../../services/exportApi";
 import {
@@ -18,6 +22,7 @@ import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
 import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
+import PilotImportReadinessCard from "./PilotImportReadinessCard";
 import "./PilotDataQualityIntakeReport.css";
 
 type Props = {
@@ -26,6 +31,7 @@ type Props = {
   error: string | null;
   filters: AnalyticsNamedValue[];
   durableReport?: PilotIntakeDurableReport | null;
+  refreshStatus?: AnalyticsRefreshStatus | null;
   onRetry: () => void;
 };
 
@@ -252,7 +258,15 @@ function buildDurableSummary(report: PilotIntakeDurableReport): string {
   ].join("\n");
 }
 
-export default function PilotDataQualityIntakeReport({ report, loading, error, filters, durableReport, onRetry }: Props) {
+export default function PilotDataQualityIntakeReport({
+  report,
+  loading,
+  error,
+  filters,
+  durableReport,
+  refreshStatus,
+  onRetry,
+}: Props) {
   const [exportState, setExportState] = useState<string | null>(null);
   const methodologyKeys = useMemo<Array<AnalyticsMetricKey | string>>(() => {
     const fallbackKeys: AnalyticsMetricKey[] = [
@@ -553,6 +567,8 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
       </div>
 
       {exportState ? <div className="pilot-intake-state no-print">{exportState}</div> : null}
+
+      <PilotImportReadinessCard report={report} refreshStatus={refreshStatus} />
 
       <section className="pilot-card">
         <h3>Trendplus pilot izveštaj kvaliteta podataka</h3>

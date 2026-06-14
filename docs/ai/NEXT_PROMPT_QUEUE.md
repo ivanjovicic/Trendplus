@@ -302,7 +302,7 @@ Acceptance:
 
 ## Q04 — Pilot import readiness gate
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(data-quality): add pilot import readiness status`
 Priority: P0
 Token budget: medium
@@ -359,6 +359,32 @@ Acceptance:
 - npm run check:analytics-guardrails passes.
 - npm run build passes.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `Klijent/clientapp/src/utils/pilotImportReadiness.ts`
+  - `Klijent/clientapp/src/components/analytics/PilotImportReadinessCard.tsx`
+  - `Klijent/clientapp/src/utils/__tests__/pilotImportReadiness.spec.ts`
+  - `Klijent/clientapp/src/pages/DataQualityPage.tsx`
+  - `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`
+  - `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.css`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Audited:
+  - pilot import readiness inputs from the intake report and refresh status
+  - status labels, reasons, and next actions in the Data Quality UI
+  - links to data quality, refresh status, and import entry points
+- P0 gap:
+  - `lastImportStatus` is still optional/unwired from the page surface, so import-state detail can fall back to warning or unknown when metadata is missing
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/utils/__tests__/pilotImportReadiness.spec.ts` — pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - `dotnet build` — not run
+  - `dotnet test` — not run
+- Next step:
+  - `Q05 - Pilot data safety runbooks`
 
 ---
 
