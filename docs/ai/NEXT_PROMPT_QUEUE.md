@@ -390,7 +390,7 @@ Acceptance:
 
 ## Q05 — Pilot data safety runbooks
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(ops): add pilot data safety runbooks`
 Priority: P0
 Token budget: low
@@ -427,6 +427,32 @@ Acceptance:
 - Internal pilot data safety docs exist.
 - Gaps are honest and explicit.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/ops/PILOT_DATA_SAFETY_CHECKLIST.md`
+  - `docs/ops/BACKUP_RESTORE_RUNBOOK.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Audited:
+  - stored data surfaces: operational DB, analytics DB, import files, generated reports/snapshots, logs/error records, cache
+  - backup and restore flow expectations without adding automation
+  - export and cleanup guidance for pilot evidence and retention
+- P0 gaps:
+  - no confirmed automated backup scheduler
+  - no confirmed one-click restore flow
+  - log/report retention remains manual and organizational
+  - cache is not durable backup data and must not be treated as such
+- Checks:
+  - `git diff --check` — pass
+  - docs spot-check with `Get-Content -Encoding utf8` — pass
+  - `dotnet build` — not run
+  - `dotnet test` — not run
+  - `npm run check:analytics-guardrails` — not run
+  - `npm run build` — not run
+- Next step:
+  - `Q06 - Monitoring and alerting plan`
 
 ---
 
