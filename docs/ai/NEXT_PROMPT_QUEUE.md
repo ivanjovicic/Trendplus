@@ -592,7 +592,7 @@ Acceptance:
 
 ## Q08 — Demo mode and demo dataset plan
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(demo): add analytics demo dataset plan`
 Priority: P1
 Token budget: low
@@ -645,6 +645,30 @@ Do not:
 Acceptance:
 - Demo plan is ready for implementation prompt.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/demo/ANALYTICS_DEMO_MODE_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je dokumentovano:
+  - 30-day pilot demo story kroz Data Quality, Dashboard, Supplier, Inventory, Action Queue i Report
+  - demo dataset target za proizvode, dobavljače, prodaju, stock, cost i markdown/nivelacija signale
+  - pravila za `Demo podaci`, bez mešanja sa customer data i bez UI toggle/seed implementacije
+  - 10-minute demo script i otvoreni gapovi za reset/reseed i ownership
+- Checks:
+  - `git diff --check` — pass
+  - docs spot-check with `Get-Content -Encoding utf8` — pass
+  - `dotnet build` — not run
+  - `dotnet test` — not run
+  - `npm run check:analytics-guardrails` — not run
+  - `npm run build` — not run
+- Rizici:
+  - nema potvrđenog automated reset/reseed flow-a
+  - demo dataset governance i ownership ostaju operativni dogovor
+- Next queue item:
+  - `Q09 - Tenant-safety checklist`
 
 ---
 
