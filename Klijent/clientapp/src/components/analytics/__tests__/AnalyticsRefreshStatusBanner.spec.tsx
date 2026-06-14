@@ -63,8 +63,9 @@ describe("AnalyticsRefreshStatusBanner", () => {
     );
 
     expect(screen.getByText("Kritično")).toBeInTheDocument();
+    expect(screen.getByText("Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.")).toBeInTheDocument();
     expect(screen.getByText(/supplier_decision_mv failed/i)).toBeInTheDocument();
-    expect(screen.getByText(/Neuspesni objekti:/)).toBeInTheDocument();
+    expect(screen.getByText("Neuspešni objekti:")).toBeInTheDocument();
   });
 
   it("shows running message with current step", () => {

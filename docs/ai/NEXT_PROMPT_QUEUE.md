@@ -458,7 +458,7 @@ Acceptance:
 
 ## Q06 — Monitoring and alerting plan
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(ops): add analytics monitoring alerting plan`
 Priority: P1
 Token budget: low
@@ -493,6 +493,28 @@ Acceptance:
 - Monitoring plan exists.
 - Critical state is impossible to miss or documented as next gap.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/ops/ANALYTICS_MONITORING_ALERTING.md`
+  - `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsRefreshStatusBanner.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/AnalyticsRefreshStatusBanner.spec.tsx` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - `git diff --check` — pass
+- Result:
+  - monitoring/alerting plan documented
+  - critical freshness copy now appears in the refresh banner and matches the requested warning text
+  - banner test updated to lock the critical copy
+- Risks:
+  - there is still no alert delivery infrastructure; email/Slack/Teams/webhook remain future channels only
+  - incident ownership and escalation routing are still manual
+- Next task:
+  - `Q07 - Performance budgets`
 
 ---
 

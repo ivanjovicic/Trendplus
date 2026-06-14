@@ -55,6 +55,7 @@ export default function AnalyticsRefreshStatusBanner({
   const failedJobs = status.jobs.filter((job) => normalizeFreshness(job.dataFreshnessStatus) === "critical");
   const refreshedObjects = status.refreshedObjects ?? [];
   const failedObjects = status.failedObjects ?? [];
+  const showCriticalCopy = freshness === "critical";
 
   return (
     <section className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`} aria-live="polite">
@@ -64,6 +65,12 @@ export default function AnalyticsRefreshStatusBanner({
           <span>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabeležen"}</span>
           <span className={`arb-badge arb-badge-${freshness}`}>{freshnessLabel(freshness)}</span>
         </div>
+        {showCriticalCopy ? (
+          <div className="arb-row arb-error">
+            <strong>Upozorenje:</strong>
+            <span>Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.</span>
+          </div>
+        ) : null}
         <div className="arb-row">
           <strong>Poslednji pokušaj:</strong>
           <span>{status.lastAttemptAtUtc ? formatDateTime(status.lastAttemptAtUtc) : "Nema pokušaja u istoriji"}</span>
