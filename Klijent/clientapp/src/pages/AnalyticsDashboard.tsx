@@ -1320,79 +1320,6 @@ export default function AnalyticsDashboard() {
                       readinessLabel={executiveReadinessLabel}
                     />
                   </section>
-
-                  <aside className="analytics-panel analytics-mini-dq-panel">
-                    <div className="exec-section-head">
-                      <div>
-                        <h2>Kvalitet podataka i svežina</h2>
-                        <p className="section-note">
-                          Koliko možemo da verujemo dashboardu u ovom preseku.
-                        </p>
-                      </div>
-                      <Link
-                        to="/analytics/data-quality"
-                        className="decision-all-actions-link"
-                      >
-                        Data Quality
-                      </Link>
-                    </div>
-                    <div className="analytics-mini-dq-list">
-                      {executiveMiniQualityCards.map((item) => (
-                        <div
-                          key={item.key}
-                          className={`analytics-mini-dq-item tone-${item.tone}`}
-                        >
-                          <span>{item.label}</span>
-                          <strong>{item.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="analytics-mini-dq-meta">
-                      <span>
-                        Svežina:{" "}
-                        <strong>
-                          {freshnessStatusLabel(
-                            refreshStatus?.dataFreshnessStatus,
-                          )}
-                        </strong>
-                      </span>
-                      <span>
-                        Poslednje osveženje:{" "}
-                        <strong>
-                          {formatDateTime(
-                            dashboardLastRefreshAt,
-                            "Nije dostupno",
-                          )}
-                        </strong>
-                      </span>
-                    </div>
-                    <div className="analytics-mini-dq-meta">
-                      <span>
-                        Spremnost podataka:{" "}
-                        <strong>{executiveReadinessLabel}</strong>
-                      </span>
-                      {refreshStatus?.isRunning ? (
-                        <span>
-                          Osvežavanje je u toku:{" "}
-                          <strong>
-                            {refreshStatus.currentStep ?? "Obrada"}
-                          </strong>
-                        </span>
-                      ) : null}
-                    </div>
-                    {executiveDataQualityHighlights.length === 0 &&
-                    !showMetaWarning ? (
-                      <div className="analytics-empty success">
-                        Nema kritičnih count signala u ovom preseku.
-                      </div>
-                    ) : null}
-                    {showMetaWarning ? (
-                      <div className="analytics-empty warning" role="status">
-                        {dashboardMetaMessage ??
-                          "Prikazani podaci su delimični ili fallback. Proverite Data Quality i status osvežavanja."}
-                      </div>
-                    ) : null}
-                  </aside>
                 </div>
 
                 <div className="analytics-exec-fold analytics-exec-fold-single">
@@ -1617,8 +1544,8 @@ export default function AnalyticsDashboard() {
                                     {isQueueBusy
                                       ? "Dodajem..."
                                       : isQueued
-                                        ? "U akcijama"
-                                        : "Dodaj u akcije"}
+                                        ? "U Action Queue"
+                                        : "Dodaj u Action Queue"}
                                   </button>
                                   {queueError ? (
                                     <small className="decision-action-error">
@@ -1634,6 +1561,72 @@ export default function AnalyticsDashboard() {
                     )}
                   </section>
                 </div>
+
+                <aside className="analytics-panel analytics-mini-dq-panel">
+                  <div className="exec-section-head">
+                    <div>
+                      <h2>Kvalitet podataka i svežina</h2>
+                      <p className="section-note">
+                        Koliko možemo da verujemo dashboardu u ovom preseku.
+                      </p>
+                    </div>
+                    <Link
+                      to="/analytics/data-quality"
+                      className="decision-all-actions-link"
+                    >
+                      Data Quality
+                    </Link>
+                  </div>
+                  <div className="analytics-mini-dq-list">
+                    {executiveMiniQualityCards.map((item) => (
+                      <div
+                        key={item.key}
+                        className={`analytics-mini-dq-item tone-${item.tone}`}
+                      >
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="analytics-mini-dq-meta">
+                    <span>
+                      Svežina:{" "}
+                      <strong>
+                        {freshnessStatusLabel(refreshStatus?.dataFreshnessStatus)}
+                      </strong>
+                    </span>
+                    <span>
+                      Poslednje osveženje:{" "}
+                      <strong>
+                        {formatDateTime(dashboardLastRefreshAt, "Nije dostupno")}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="analytics-mini-dq-meta">
+                    <span>
+                      Spremnost podataka:{" "}
+                      <strong>{executiveReadinessLabel}</strong>
+                    </span>
+                    {refreshStatus?.isRunning ? (
+                      <span>
+                        Osvežavanje je u toku:{" "}
+                        <strong>{refreshStatus.currentStep ?? "Obrada"}</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                  {executiveDataQualityHighlights.length === 0 &&
+                  !showMetaWarning ? (
+                    <div className="analytics-empty success">
+                      Nema kritičnih count signala u ovom preseku.
+                    </div>
+                  ) : null}
+                  {showMetaWarning ? (
+                    <div className="analytics-empty warning" role="status">
+                      {dashboardMetaMessage ??
+                        "Prikazani podaci su delimični ili fallback. Proverite Data Quality i status osvežavanja."}
+                    </div>
+                  ) : null}
+                </aside>
               </section>
 
               <section className="analytics-lower-sections">
@@ -1769,7 +1762,7 @@ export default function AnalyticsDashboard() {
                 <section className="analytics-panel analytics-exec-lose">
                   <div className="exec-section-head">
                     <div>
-                      <h2>Gde gubimo?</h2>
+                      <h2>Gde gubimo novac?</h2>
                       <p className="section-note">
                         Rizičan lager, spora zaliha, OOS i data gaps koji traže
                         akciju.

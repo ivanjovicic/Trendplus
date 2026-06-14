@@ -26,6 +26,9 @@ namespace Trendplus2.Endpoints;
 public static class CachedAnalyticsEndpoints
 {
     private const int MovementStatsBatchSize = 5_000;
+    private static readonly TimeSpan DashboardSectionTtl = CacheExpiration.Medium;
+    private static readonly TimeSpan DashboardFastSectionTtl = CacheExpiration.Short;
+    private static readonly TimeSpan DashboardReferenceSectionTtl = CacheExpiration.Long;
 
     private static readonly string[] SerbianDayNames =
     {
@@ -49,6 +52,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -107,7 +111,9 @@ public static class CachedAnalyticsEndpoints
 
                         return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
                     },
-                    ct);
+                    ct,
+                    loggerFactory: loggerFactory,
+                    routeName: "sales.summary");
                 var result = cacheResult.Value;
 
                 var correlationId = ResolveCorrelationId(httpContext);
@@ -182,6 +188,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext trendDb,
             IMediator mediator,
+            ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -246,7 +253,9 @@ public static class CachedAnalyticsEndpoints
 
                         return new TopProductsResult(topRevenue, topUnits);
                     },
-                    ct);
+                    ct,
+                    loggerFactory: loggerFactory,
+                    routeName: "sales.top-products");
                 var result = cacheResult.Value;
 
                 var correlationId = ResolveCorrelationId(httpContext);
@@ -327,7 +336,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await GetTopProductsAdvancedSnapshotAsync(db, top, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                CacheExpiration.Short,
+                DashboardFastSectionTtl,
                 ct);
 
             return Results.Ok(result);
@@ -1390,6 +1399,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             ILogger<Program> logger,
+            ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -1416,7 +1426,9 @@ public static class CachedAnalyticsEndpoints
                     AnalyticsCachePolicy.ProductDecisionCenterFamily,
                     AnalyticsCachePolicy.ProductDecisionCenter,
                     async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct),
-                    ct);
+                    ct,
+                    loggerFactory: loggerFactory,
+                    routeName: "products.decision-center");
                 var result = cacheResult.Value;
 
                 result.Meta ??= BuildSuccessMeta();
@@ -1538,7 +1550,7 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                CacheExpiration.Short,
+                DashboardFastSectionTtl,
                 ct);
 
             return Results.Ok(result);
@@ -1549,6 +1561,7 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             IMediator mediator,
             ILogger<Program> logger,
+            ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -1582,7 +1595,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Sažetak prodaje nije dostupan.");
@@ -1591,7 +1604,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.Inventory(2),
                                 async () => await BuildInventoryStatusSnapshotAsync(db, mediator, 2, ct),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Status zaliha nije dostupan.");
@@ -1600,7 +1613,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Dnevni trend prodaje nije dostupan.");
@@ -1609,7 +1622,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po kategorijama nije dostupna.");
@@ -1618,7 +1631,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po polu nije dostupna.");
@@ -1627,7 +1640,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po dobavljačima nije dostupna.");
@@ -1636,7 +1649,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId, normalizedDataScope),
                                 async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct, normalizedDataScope),
-                                CacheExpiration.Long,
+                                DashboardReferenceSectionTtl,
                                 ct),
                             response.Errors,
                             "Lista dobavljača za filter nije dostupna.");
@@ -1645,7 +1658,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po danima nije dostupna.");
@@ -1654,7 +1667,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po satima nije dostupna.");
@@ -1663,7 +1676,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Prodaja po nacinu placanja nije dostupna.");
@@ -1672,7 +1685,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildQuickInsightsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Brzi uvidi nisu dostupni.");
@@ -1681,7 +1694,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildTransactionStatsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Medium,
+                                DashboardSectionTtl,
                                 ct),
                             response.Errors,
                             "Statistika transakcija nije dostupna.");
@@ -1690,7 +1703,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Napredne metrike nisu dostupne.");
@@ -1699,7 +1712,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope),
                                 async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Product Decision Center nije dostupan.");
@@ -1725,7 +1738,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await GetTopProductsAdvancedSnapshotAsync(db, 10, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Napredna tabela top proizvoda nije dostupna.");
@@ -1734,7 +1747,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationCompleteness,
                                 async () => await BuildCompletenessValidationAsync(db, ct),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Completeness validacija nije dostupna.");
@@ -1743,7 +1756,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationFreshness,
                                 async () => await BuildFreshnessValidationAsync(db, ct),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Freshness validacija nije dostupna.");
@@ -1752,7 +1765,7 @@ public static class CachedAnalyticsEndpoints
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationLostSales,
                                 async () => await BuildLostSalesValidationAsync(db, ct),
-                                CacheExpiration.Short,
+                                DashboardFastSectionTtl,
                                 ct),
                             response.Errors,
                             "Lost-sales validacija nije dostupna.");
@@ -1766,7 +1779,9 @@ public static class CachedAnalyticsEndpoints
 
                         return response;
                     },
-                    ct);
+                    ct,
+                    loggerFactory: loggerFactory,
+                    routeName: "dashboard.bootstrap");
                 var result = cacheResult.Value;
 
                 result.Meta ??= BuildSuccessMeta();
@@ -2191,11 +2206,15 @@ public static class CachedAnalyticsEndpoints
         string family,
         AnalyticsCachePolicyEntry policy,
         Func<Task<T>> factory,
-        CancellationToken ct) where T : class
+        CancellationToken ct,
+        ILoggerFactory? loggerFactory = null,
+        string? routeName = null) where T : class
     {
         var sw = Stopwatch.StartNew();
         var metadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
         var provider = ResolveCacheProvider(cache);
+        var cacheLogger = loggerFactory?.CreateLogger("AnalyticsCachePolicy");
+        var normalizedRouteName = string.IsNullOrWhiteSpace(routeName) ? family : routeName.Trim();
 
         var cached = await cache.GetAsync<T>(cacheKey, ct);
         if (cached is not null)
@@ -2207,6 +2226,16 @@ public static class CachedAnalyticsEndpoints
                     Family = family,
                     Provider = provider
                 };
+            sw.Stop();
+            cacheLogger?.LogInformation(
+                "Cache HIT route={Route} family={Family} provider={Provider} key={KeyHash} ageSec={AgeSec} ttlSec={TtlSec} elapsedMs={ElapsedMs}",
+                normalizedRouteName,
+                family,
+                provider,
+                AnalyticsCacheKeys.SafeKeyFingerprint(cacheKey),
+                Math.Max(0, (DateTime.UtcNow - metadata.CreatedAtUtc).TotalSeconds),
+                policy.Ttl.TotalSeconds,
+                sw.ElapsedMilliseconds);
 
             return new CacheReadResult<T>(cached, true, metadata);
         }
@@ -2220,6 +2249,15 @@ public static class CachedAnalyticsEndpoints
         };
         await cache.SetAsync(cacheKey, value, policy.Ttl, ct);
         await cache.SetAsync(metadataKey, entryMetadata, policy.Ttl, ct);
+        sw.Stop();
+        cacheLogger?.LogInformation(
+            "Cache MISS route={Route} family={Family} provider={Provider} key={KeyHash} ttlSec={TtlSec} elapsedMs={ElapsedMs}",
+            normalizedRouteName,
+            family,
+            provider,
+            AnalyticsCacheKeys.SafeKeyFingerprint(cacheKey),
+            policy.Ttl.TotalSeconds,
+            sw.ElapsedMilliseconds);
 
         return new CacheReadResult<T>(value, false, entryMetadata);
     }

@@ -42,6 +42,11 @@ export function fmtPct(value: number | null | undefined, digits = 1): string {
   return `${fmtNumber(value, digits)}%`;
 }
 
+export function fmtPctFromRatio(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+  if (value == null || Number.isNaN(value)) return fallback;
+  return fmtPct(value * 100, digits);
+}
+
 export function fmtSignedPct(value: number | null | undefined, digits = 1): string {
   if (value == null || Number.isNaN(value)) return "N/A";
   const sign = value > 0 ? "+" : "";

@@ -62,6 +62,7 @@ const routeCases = CORE_ANALYTICS_SMOKE_ROUTES.map((path) => ({
 
 afterEach(() => {
   cleanup();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("App analytics core route smoke", () => {
@@ -76,5 +77,23 @@ describe("App analytics core route smoke", () => {
 
     expect(() => render(<App />)).not.toThrow();
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it("ignores stale background route state for non-modal analytics routes", async () => {
+    window.history.replaceState(
+      {
+        backgroundLocation: {
+          pathname: "/analytics",
+          search: "",
+          hash: "",
+        },
+      },
+      "",
+      "/analytics/products",
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId("route-analytics-products")).toBeInTheDocument();
   });
 });

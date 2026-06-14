@@ -76,7 +76,8 @@ function RouteFallback() {
 function AppShell() {
     const location = useLocation();
     const routeState = location.state as { backgroundLocation?: Location } | undefined;
-    const backgroundLocation = routeState?.backgroundLocation;
+    const isAnalyticsDetailRoute = /^\/analitika\/[^/]+\/[^/]+$/.test(location.pathname);
+    const backgroundLocation = isAnalyticsDetailRoute ? routeState?.backgroundLocation : undefined;
 
     return (
         <>

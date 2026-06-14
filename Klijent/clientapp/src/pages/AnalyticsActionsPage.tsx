@@ -35,10 +35,10 @@ const SOURCE_LABELS: Record<AnalyticsActionSourceType, string> = {
 
 const STATUS_LABELS: Record<AnalyticsActionStatus, string> = {
   new: "Novo",
-  accepted: "Prihvaceno",
-  deferred: "Odlozeno",
+  accepted: "Prihvaćeno",
+  deferred: "Odloženo",
   rejected: "Odbijeno",
-  done: "Zavrseno",
+  done: "Završeno",
 };
 
 const STATUS_CSS: Record<AnalyticsActionStatus, string> = {
@@ -58,7 +58,7 @@ const PRIORITY_CSS: Record<AnalyticsActionPriority, string> = {
 const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus, string> = {
   good: "Dobar",
   warning: "Upozorenje",
-  critical: "Kritican",
+  critical: "Kritičan",
   insufficient_data: "Nedovoljno podataka",
 };
 
@@ -72,7 +72,7 @@ const DATA_QUALITY_CSS: Record<string, string> = {
 };
 
 const OUTCOME_LABELS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], string> = {
-  pending: "Ceka proveru",
+  pending: "Čeka proveru",
   success: "Pozitivan ishod",
   neutral: "Neutralan ishod",
   negative: "Negativan ishod",
@@ -213,7 +213,7 @@ export default function AnalyticsActionsPage() {
       setPage(res.page);
       setTotalPages(res.totalPages);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Greska pri ucitavanju");
+      setError(e instanceof Error ? e.message : "Greška pri učitavanju");
     } finally {
       setLoading(false);
     }
@@ -260,7 +260,7 @@ export default function AnalyticsActionsPage() {
       void loadCounts();
       return true;
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Greska pri azuriranju statusa");
+      alert(e instanceof Error ? e.message : "Greška pri ažuriranju statusa");
       return false;
     } finally {
       setUpdatingId(null);
@@ -286,7 +286,7 @@ export default function AnalyticsActionsPage() {
     } catch (e) {
       setDetailsErrorById((prev) => ({
         ...prev,
-        [id]: e instanceof Error ? e.message : "Greska pri ucitavanju detalja",
+        [id]: e instanceof Error ? e.message : "Greška pri učitavanju detalja",
       }));
     } finally {
       setDetailsLoadingId((current) => (current === id ? null : current));
@@ -379,7 +379,7 @@ export default function AnalyticsActionsPage() {
     <div className="aaq-page">
       <AnalyticsTrustHeader
         title="Akcije i preporuke"
-        description="Centralni red akcija iz dashboarda, analize proizvoda, dobavljaca, zaliha i nivelacija."
+        description="Centralni red akcija iz dashboarda, analize proizvoda, dobavljača, zaliha i nivelacija."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={null}
@@ -393,7 +393,7 @@ export default function AnalyticsActionsPage() {
       <div className="aaq-header">
         <h1 className="aaq-title">Akcije i preporuke</h1>
         <p className="aaq-subtitle">
-          Centralni red akcija iz dashboarda, analize proizvoda, dobavljaca, zaliha i nivelacija.
+          Centralni red akcija iz dashboarda, analize proizvoda, dobavljača, zaliha i nivelacija.
         </p>
         {filters.sourceType === "inventory" && (
           <p className="aaq-subtitle">
@@ -410,11 +410,11 @@ export default function AnalyticsActionsPage() {
           </div>
           <div className="aaq-kpi-card kpi-accepted">
             <span className="kpi-value">{counts.accepted}</span>
-            <span className="kpi-label">Prihvaceno</span>
+            <span className="kpi-label">Prihvaćeno</span>
           </div>
           <div className="aaq-kpi-card kpi-deferred">
             <span className="kpi-value">{counts.deferred}</span>
-            <span className="kpi-label">Odlozeno</span>
+            <span className="kpi-label">Odloženo</span>
           </div>
           <div className="aaq-kpi-card kpi-done">
             <span className="kpi-value">{counts.done + counts.rejected}</span>
@@ -470,23 +470,23 @@ export default function AnalyticsActionsPage() {
           <option value="">Svi kvaliteti</option>
           <option value="good">Dobar</option>
           <option value="warning">Upozorenje</option>
-          <option value="critical">Kritican</option>
+          <option value="critical">Kritičan</option>
           <option value="insufficient_data">Nedovoljno podataka</option>
         </select>
         <input
           type="search"
-          placeholder="Pretrazi..."
+          placeholder="Pretraži..."
           value={filters.search ?? ""}
           onChange={(e) => setFilter("search", e.target.value)}
           className="aaq-search"
-          aria-label="Pretrazi akcije"
+          aria-label="Pretraži akcije"
         />
       </div>
 
       {error && <div className="aaq-error">{error}</div>}
 
       {loading ? (
-        <div className="aaq-loading">Ucitavanje...</div>
+        <div className="aaq-loading">Učitavanje...</div>
       ) : items.length === 0 ? (
         <div className="aaq-empty">
           <p>Nema akcija.</p>
@@ -596,16 +596,16 @@ export default function AnalyticsActionsPage() {
                                 <button
                                   className="btn-action btn-defer"
                                   onClick={() => openStatusNoteModal(item, "deferred")}
-                                  title="Odlozi"
+                                  title="Odloži"
                                 >
-                                  Odlozi
+                                  Odloži
                                 </button>
                               )}
                               {item.status === "accepted" && (
                                 <button
                                   className="btn-action btn-done"
                                   onClick={() => openStatusNoteModal(item, "done")}
-                                  title="Oznaci kao zavrseno"
+                                  title="Označi kao završeno"
                                 >
                                   Zavrsi
                                 </button>
@@ -622,9 +622,9 @@ export default function AnalyticsActionsPage() {
                               <button
                                 className="btn-action btn-details"
                                 onClick={() => openOutcomeModal(item)}
-                                title={hasOutcomeUpdate ? "Azuriraj ishod" : "Oznaci ishod"}
+                                title={hasOutcomeUpdate ? "Ažuriraj ishod" : "Označi ishod"}
                               >
-                                {hasOutcomeUpdate ? "Azuriraj ishod" : "Oznaci ishod"}
+                                {hasOutcomeUpdate ? "Ažuriraj ishod" : "Označi ishod"}
                               </button>
                             </div>
                           )}
@@ -645,49 +645,47 @@ export default function AnalyticsActionsPage() {
                         <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
                           <td colSpan={13}>
                             <div className="aaq-details-grid">
-                              <div><strong>SourceType:</strong> {detailsItem.sourceType}</div>
-                              <div><strong>SourceKey:</strong> {detailsItem.sourceKey}</div>
-                              <div><strong>SourceId:</strong> {detailsItem.sourceId ?? "-"}</div>
-                              <div><strong>Rok provere:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
-                              <div><strong>CreatedAtUtc:</strong> {formatTimestamp(detailsItem.createdAtUtc)}</div>
-                              <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(detailsItem.updatedAtUtc)}</div>
-                              <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(detailsItem.resolvedAtUtc)}</div>
-                              <div><strong>Ocekivani uticaj:</strong> {fmtRsd(detailsItem.expectedImpactRsd, 0, "-")}</div>
-                              <div><strong>Izmereni uticaj:</strong> {fmtRsd(detailsItem.measuredImpactRsd, 0, "-")}</div>
-                              <div><strong>Status akcije:</strong> {STATUS_LABELS[detailsItem.status]}</div>
-                              <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(detailsItem.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(detailsItem.outcomeStatus)!] : "-"}</div>
-                              <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
-                              <div><strong>CreatedByUserId:</strong> {detailsItem.createdByUserId ?? "-"}</div>
-                              <div><strong>UpdatedByUserName:</strong> {detailsItem.updatedByUserName ?? "-"}</div>
                               <div>
                                 <strong>Izvorni ekran:</strong>{" "}
                                 {detailsItem.actionUrl ? <a href={detailsItem.actionUrl} className="action-link">Otvori</a> : "-"}
                               </div>
+                              <div><strong>Rok provere:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
+                              <div><strong>Očekivani uticaj:</strong> {fmtRsd(detailsItem.expectedImpactRsd, 0, "-")}</div>
+                              <div><strong>Izmereni uticaj:</strong> {fmtRsd(detailsItem.measuredImpactRsd, 0, "-")}</div>
+                              <div><strong>Status akcije:</strong> {STATUS_LABELS[detailsItem.status]}</div>
+                              <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(detailsItem.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(detailsItem.outcomeStatus)!] : "-"}</div>
+                              <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
+                              <div><strong>Napomena ishoda:</strong> {detailsItem.outcomeNotes?.trim() ? detailsItem.outcomeNotes : "-"}</div>
                             </div>
-                            {detailsItem.outcomeNotes ? (
-                              <div className="aaq-metadata-panel">
-                                <strong>Napomena ishoda:</strong>
-                                <p>{detailsItem.outcomeNotes}</p>
-                              </div>
-                            ) : null}
                             {isDetailLoading && (
-                              <div className="aaq-detail-loading">Ucitavanje istorije...</div>
+                              <div className="aaq-detail-loading">Učitavanje istorije...</div>
                             )}
                             {detailError && (
                               <div className="aaq-detail-error">{detailError}</div>
                             )}
-                            <div className="aaq-metadata-panel">
+                            <details className="aaq-metadata-panel">
+                              <summary>Tehnički detalji</summary>
+                              <div className="aaq-details-grid">
+                                <div><strong>SourceType:</strong> {detailsItem.sourceType}</div>
+                                <div><strong>SourceKey:</strong> {detailsItem.sourceKey}</div>
+                                <div><strong>SourceId:</strong> {detailsItem.sourceId ?? "-"}</div>
+                                <div><strong>CreatedAtUtc:</strong> {formatTimestamp(detailsItem.createdAtUtc)}</div>
+                                <div><strong>UpdatedAtUtc:</strong> {formatTimestamp(detailsItem.updatedAtUtc)}</div>
+                                <div><strong>ResolvedAtUtc:</strong> {formatTimestamp(detailsItem.resolvedAtUtc)}</div>
+                                <div><strong>CreatedByUserId:</strong> {detailsItem.createdByUserId ?? "-"}</div>
+                                <div><strong>UpdatedByUserName:</strong> {detailsItem.updatedByUserName ?? "-"}</div>
+                              </div>
                               <strong>MetadataJson:</strong>
                               {prettyMetadata ? (
                                 <pre>{prettyMetadata}</pre>
                               ) : (
                                 <p>Metadata nije dostupan.</p>
                               )}
-                            </div>
+                            </details>
                             <div className="aaq-notes-timeline">
                               <strong>Istorija statusa i napomena</strong>
                               {notes.length === 0 ? (
-                                <p className="aaq-note-empty">Nema zabelezenih promena statusa.</p>
+                                <p className="aaq-note-empty">Nema zabeleženih promena statusa.</p>
                               ) : (
                                 notes.map((entry) => (
                                   <div key={entry.id} className="aaq-note-item">
@@ -734,7 +732,7 @@ export default function AnalyticsActionsPage() {
                 onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
                 className="btn-page"
               >
-                Sledeca {"->"}
+                Sledeća {"->"}
               </button>
             </div>
           )}
@@ -766,10 +764,10 @@ export default function AnalyticsActionsPage() {
             />
             <div className="aaq-modal-actions">
               <button type="button" className="btn-page" onClick={() => setStatusModal(null)} disabled={statusModalBusy}>
-                Otkazi
+                Otkaži
               </button>
               <button type="button" className="btn-action btn-done" onClick={() => void submitStatusModal()} disabled={statusModalBusy}>
-                {statusModalBusy ? "Cuvanje..." : "Potvrdi"}
+                {statusModalBusy ? "Čuvanje..." : "Potvrdi"}
               </button>
             </div>
           </div>
@@ -785,7 +783,7 @@ export default function AnalyticsActionsPage() {
             aria-labelledby="aaq-outcome-modal-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="aaq-outcome-modal-title">Azuriraj ishod</h2>
+            <h2 id="aaq-outcome-modal-title">Ažuriraj ishod</h2>
             <p className="aaq-modal-subtitle">
               Beležite ishod za akciju <strong>{outcomeModal.title}</strong>.
             </p>
@@ -855,10 +853,10 @@ export default function AnalyticsActionsPage() {
             />
             <div className="aaq-modal-actions">
               <button type="button" className="btn-page" onClick={() => setOutcomeModal(null)} disabled={outcomeModalBusy}>
-                Otkazi
+                Otkaži
               </button>
               <button type="button" className="btn-action btn-done" onClick={() => void submitOutcomeModal()} disabled={outcomeModalBusy}>
-                {outcomeModalBusy ? "Cuvanje..." : "Potvrdi"}
+                {outcomeModalBusy ? "Čuvanje..." : "Ažuriraj ishod"}
               </button>
             </div>
           </div>

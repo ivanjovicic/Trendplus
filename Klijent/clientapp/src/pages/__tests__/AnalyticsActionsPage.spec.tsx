@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AnalyticsActionsPage from "../AnalyticsActionsPage";
 
@@ -124,11 +124,11 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Azuriraj ishod" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
     fireEvent.change(screen.getByLabelText("Ishod"), { target: { value: "negative" } });
     fireEvent.change(screen.getByLabelText("Merljivi uticaj (RSD)"), { target: { value: "-500" } });
     fireEvent.change(screen.getByLabelText("Napomena"), { target: { value: "Pad marže posle akcije." } });
-    fireEvent.click(screen.getByRole("button", { name: "Potvrdi" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
 
     await waitFor(() => {
       expect(updateAnalyticsActionOutcomeMock).toHaveBeenCalledWith(
@@ -153,8 +153,8 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Azuriraj ishod" }));
-    fireEvent.click(screen.getByRole("button", { name: "Potvrdi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ishod nije sačuvan. Proverite status i iznos.");
   });

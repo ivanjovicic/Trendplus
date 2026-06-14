@@ -307,8 +307,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CorrelationId")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
@@ -323,8 +323,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
                         .HasColumnType("character varying(120)");
 
                     b.Property<string>("ErrorMessage")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("FailedObjectsJson")
                         .HasColumnType("jsonb");
@@ -334,8 +334,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.Property<string>("JobKey")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
                     b.Property<string>("JobName")
                         .IsRequired()
@@ -344,8 +344,8 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.Property<string>("ProcessMode")
                         .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("RefreshedObjectsJson")
                         .HasColumnType("jsonb");
@@ -360,20 +360,24 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.Property<string>("TriggeredBy")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("WorkerName")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("JobKey", "StartedAtUtc")
+                        .IsDescending(false, true)
                         .HasDatabaseName("idx_analytics_refresh_runs_job_started");
 
-                    b.HasIndex("Status", "StartedAtUtc")
-                        .HasDatabaseName("idx_analytics_refresh_runs_status_started");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("idx_analytics_refresh_runs_status");
+
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("idx_analytics_refresh_runs_created_at");
 
                     b.HasIndex("WorkerName", "StartedAtUtc")
                         .HasDatabaseName("idx_analytics_refresh_runs_worker_started");

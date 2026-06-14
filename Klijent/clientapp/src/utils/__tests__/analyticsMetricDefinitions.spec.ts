@@ -35,6 +35,9 @@ describe("analyticsMetricDefinitions", () => {
     expect(getAnalyticsMetricDefinition("totalRevenue").label).toBe("Prihod");
     expect(normalizeMetricKey("stockUnits")).toBe("onHandUnits");
     expect(getAnalyticsMetricDefinition("stockUnits").label).toBe("Ukupno na stanju");
+    expect(normalizeMetricKey("dataQualityStatus")).toBe("dataReadinessScore");
+    expect(normalizeMetricKey("confidence")).toBe("confidencePct");
+    expect(normalizeMetricKey("reliability")).toBe("reliabilityPct");
   });
 
   it("contains methodology definitions for rollout metrics", () => {

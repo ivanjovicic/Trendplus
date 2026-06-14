@@ -40,8 +40,8 @@ public sealed class AnalyticsRefreshRunRecorderTests
         Assert.NotNull(run.ErrorMessage);
         Assert.NotNull(run.CorrelationId);
         Assert.True(run.ErrorCode!.Length <= 120);
-        Assert.True(run.ErrorMessage!.Length <= 4000);
-        Assert.True(run.CorrelationId!.Length <= 120);
+        Assert.True(run.ErrorMessage!.Length <= 2000);
+        Assert.True(run.CorrelationId!.Length <= 100);
         Assert.EndsWith("...", run.ErrorCode);
         Assert.EndsWith("...", run.ErrorMessage);
     }

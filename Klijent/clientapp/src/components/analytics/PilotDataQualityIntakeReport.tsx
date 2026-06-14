@@ -10,7 +10,7 @@ import {
 } from "../../utils/analyticsMetricDefinitions";
 import {
   fmtNumber,
-  fmtPct,
+  fmtPctFromRatio,
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
@@ -28,11 +28,6 @@ type Props = {
   durableReport?: PilotIntakeDurableReport | null;
   onRetry: () => void;
 };
-
-function formatPercentFromRatio(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "-";
-  return fmtPct(value * 100, digits);
-}
 
 function readinessTone(status: string): "excellent" | "good" | "warning" | "critical" {
   if (status === "excellent") return "excellent";
@@ -71,8 +66,8 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Problemi", "Nulta/negativna cena", String(report.issues.zeroOrNegativePriceCount)],
     ["Problemi", "Dupliran SKU", String(report.issues.duplicateSkuCount ?? 0)],
     ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
-    ["Uticaj", "Prihod bez cene", formatPercentFromRatio(report.impact.revenueWithoutCostPercent)],
-    ["Uticaj", "Artikli bez dobavljača", formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)],
+    ["Uticaj", "Prihod bez cene", fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")],
+    ["Uticaj", "Artikli bez dobavljača", fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")],
     ["Uticaj", "Blokirane preporuke", String(report.impact.recommendationsBlockedCount)],
     ["Uticaj", "Ignorisani redovi", String(report.impact.ignoredRowsCount)],
     ["Uticaj", "Nedovoljni signali", String(report.impact.insufficientSignalCount)],
@@ -96,7 +91,7 @@ function buildSummary(report: PilotDataQualityIntakeReport): string {
     `Skor spremnosti: ${report.readinessLabel} (${report.readinessScore}/100)`,
     `Učitano: ${fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala, ${fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje, ${fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa`,
     `Top problemi: bez dobavljača ${fmtNumber(report.issues.missingSupplierCount, 0, "-")}, bez nabavne cene ${fmtNumber(report.issues.missingCostCount, 0, "-")}, bez kategorije ${fmtNumber(report.issues.missingCategoryCount, 0, "-")}`,
-    `Uticaj: prihod bez cene ${formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}, artikli bez dobavljača ${formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
+    `Uticaj: prihod bez cene ${fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}, artikli bez dobavljača ${fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}, blokirane preporuke ${fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}`,
     `Preporučene akcije: ${report.recommendedActions.join("; ")}`,
   ].join("\n");
 }
@@ -122,8 +117,8 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     { section: "Problemi", item: "Nulta/negativna cena", value: String(report.issues.zeroOrNegativePriceCount) },
     { section: "Problemi", item: "Dupliran SKU", value: String(report.issues.duplicateSkuCount ?? 0) },
     { section: "Problemi", item: "Dobavljač bez naziva", value: String(report.issues.missingSupplierNameCount) },
-    { section: "Uticaj", item: "Prihod bez cene", value: formatPercentFromRatio(report.impact.revenueWithoutCostPercent) },
-    { section: "Uticaj", item: "Artikli bez dobavljača", value: formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent) },
+    { section: "Uticaj", item: "Prihod bez cene", value: fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-") },
+    { section: "Uticaj", item: "Artikli bez dobavljača", value: fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-") },
     { section: "Uticaj", item: "Blokirane preporuke", value: String(report.impact.recommendationsBlockedCount) },
     { section: "Uticaj", item: "Ignorisani redovi", value: String(report.impact.ignoredRowsCount) },
     { section: "Uticaj", item: "Nedovoljni signali", value: String(report.impact.insufficientSignalCount) },
@@ -362,7 +357,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
       },
       {
         label: "Prihod bez nabavne cene",
-        value: formatPercentFromRatio(report.impact.revenueWithoutCostPercent),
+        value: fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-"),
         metricKey: "revenueWithoutCost" as const,
       },
       {
@@ -444,8 +439,8 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
         ]}
         actions={[
           { label: "Proširite period." },
-          { label: "Proverite Data Quality", href: "/analytics/data-quality" },
-          { label: "Proverite worker status", href: "/admin/configuration?panel=workers" },
+          { label: "Proverite kvalitet podataka", href: "/analytics/data-quality" },
+          { label: "Proverite status osvežavanja", href: "/admin/configuration?panel=workers" },
         ]}
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
@@ -566,7 +561,7 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
           <li>Period do: {formatDate(reportPeriodTo, "-")}</li>
           <li>Generisano: {formatDateTime(reportGeneratedAt, "-")}</li>
           <li>Poslednje osveženje: {formatDateTime(reportLastRefreshAt, "-")}</li>
-          <li>Readiness score: {report ? `${fmtNumber(report.readinessScore, 0, "-")}/100` : durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</li>
+          <li>Skor spremnosti podataka: {report ? `${fmtNumber(report.readinessScore, 0, "-")}/100` : durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</li>
           <li>Status kvaliteta podataka: {reportDataQualityStatus ?? "-"}</li>
         </ul>
       </section>
@@ -637,8 +632,8 @@ export default function PilotDataQualityIntakeReport({ report, loading, error, f
             <section className="pilot-card">
               <h3>Uticaj</h3>
               <ul>
-                <li>Prihod bez nabavne cene: {formatPercentFromRatio(report.impact.revenueWithoutCostPercent)}</li>
-                <li>Artikli bez dobavljača: {formatPercentFromRatio(report.impact.articlesWithoutSupplierPercent)}</li>
+                <li>Prihod bez nabavne cene: {fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}</li>
+                <li>Artikli bez dobavljača: {fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}</li>
                 <li>Blokirane preporuke: {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}</li>
                 <li>Ignorisani redovi: {fmtNumber(report.impact.ignoredRowsCount, 0, "-")}</li>
                 <li>Nedovoljni signali: {fmtNumber(report.impact.insufficientSignalCount, 0, "-")}</li>

@@ -10,8 +10,8 @@ namespace Infrastructure.Services;
 public sealed class AnalyticsRefreshRunRecorder
 {
     private const int MaxErrorCodeLength = 120;
-    private const int MaxErrorMessageLength = 4000;
-    private const int MaxCorrelationIdLength = 120;
+    private const int MaxErrorMessageLength = 2000;
+    private const int MaxCorrelationIdLength = 100;
     private const int DefaultRetentionMaxRuns = 500;
     private const int DefaultRetentionMaxAgeDays = 30;
 
@@ -56,7 +56,7 @@ public sealed class AnalyticsRefreshRunRecorder
                 StartedAtUtc = DateTime.UtcNow,
                 TriggeredBy = NormalizeTriggeredBy(triggeredBy),
                 ProcessMode = NormalizeProcessMode(processMode),
-                WorkerName = TrimOrNull(workerName, 128),
+                WorkerName = TrimOrNull(workerName, 200),
                 CorrelationId = TrimOrNull(correlationId, MaxCorrelationIdLength),
                 CreatedAtUtc = DateTime.UtcNow
             };
