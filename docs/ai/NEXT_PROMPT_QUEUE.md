@@ -814,7 +814,7 @@ Acceptance:
 
 ## Q11 — Data Quality polish + silent empty panels
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(data-quality): polish empty and silent panel states`
 Priority: P1
 Type: frontend code polish
@@ -856,6 +856,27 @@ Acceptance:
 - `cd Klijent/clientapp && npm run check:analytics-guardrails`
 - `cd Klijent/clientapp && npm run build`
 - targeted vitest only if an existing Data Quality spec is touched
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `Klijent/clientapp/src/pages/DataQualityPage.tsx`
+  - `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - glavni Data Quality tok više nema tihe prazne panele za top probleme i trend, već jasne empty/error poruke sa sledećim korakom za operatera
+  - pilot intake izveštaj sada eksplicitno razlikuje validno prazno stanje od greške kada nema issue count-ova ili dodatnih impact signala
+  - vidljivi copy na ekranu je dodatno očišćen i lokalizovan bez promene backend contract-a ili KPI semantike
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - targeted vitest — not run
+- Rizici:
+  - build i dalje prijavljuje postojeći chunk-size warning, bez novih grešaka
+  - ako backend uvede nove neprevedene stringove za ovaj ekran, frontend copy polish ih neće automatski normalizovati van postojećih mapiranja
+- Next queue item:
+  - `Q12 - Analytics navigation audit`
 
 ---
 

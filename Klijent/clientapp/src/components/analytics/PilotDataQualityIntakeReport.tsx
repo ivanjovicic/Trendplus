@@ -193,6 +193,30 @@ function normalizeText(value: string | null | undefined): string {
     .trim();
 }
 
+function hasNoIssueCounts(report: PilotDataQualityIntakeReport): boolean {
+  return (
+    (report.issues.missingSupplierCount ?? 0) === 0
+    && (report.issues.missingCostCount ?? 0) === 0
+    && (report.issues.missingCategoryCount ?? 0) === 0
+    && (report.issues.missingColorCount ?? 0) === 0
+    && (report.issues.missingSizeCount ?? 0) === 0
+    && (report.issues.saleWithoutArticleCount ?? 0) === 0
+    && (report.issues.zeroOrNegativePriceCount ?? 0) === 0
+    && (report.issues.duplicateSkuCount ?? 0) === 0
+    && (report.issues.missingSupplierNameCount ?? 0) === 0
+  );
+}
+
+function hasNoImpactSignals(report: PilotDataQualityIntakeReport): boolean {
+  return (
+    (report.impact.revenueWithoutCostPercent ?? 0) === 0
+    && (report.impact.articlesWithoutSupplierPercent ?? 0) === 0
+    && (report.impact.recommendationsBlockedCount ?? 0) === 0
+    && (report.impact.ignoredRowsCount ?? 0) === 0
+    && (report.impact.insufficientSignalCount ?? 0) === 0
+  );
+}
+
 function parseNumberFromValue(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return null;
@@ -298,6 +322,8 @@ export default function PilotDataQualityIntakeReport({
   const reportGeneratedAt = report?.generatedAtUtc ?? durableReport?.generatedAtUtc ?? null;
   const reportLastRefreshAt = report?.lastRefreshAtUtc ?? durableReport?.lastRefreshAtUtc ?? null;
   const reportDataQualityStatus = report?.meta?.dataQualityStatus ?? durableReport?.dataQualityStatus ?? null;
+  const reportHasNoIssueCounts = report ? hasNoIssueCounts(report) : false;
+  const reportHasNoImpactSignals = report ? hasNoImpactSignals(report) : false;
 
   const groupedDurableRows = useMemo(() => {
     const groups = {
@@ -632,29 +658,39 @@ export default function PilotDataQualityIntakeReport({
 
             <section className="pilot-card">
               <h3>Problemi</h3>
-              <ul>
-                <li className="critical">Bez dobavljača: {fmtNumber(report.issues.missingSupplierCount, 0, "-")}</li>
-                <li className="critical">Bez nabavne cene: {fmtNumber(report.issues.missingCostCount, 0, "-")}</li>
-                <li className="warning">Bez kategorije: {fmtNumber(report.issues.missingCategoryCount, 0, "-")}</li>
-                <li className="warning">Bez boje: {fmtNumber(report.issues.missingColorCount ?? 0, 0, "-")}</li>
-                <li className="warning">Bez veličine: {fmtNumber(report.issues.missingSizeCount ?? 0, 0, "-")}</li>
-                <li className="critical">Prodaja bez artikla: {fmtNumber(report.issues.saleWithoutArticleCount, 0, "-")}</li>
-                <li className="critical">Nulta/negativna cena: {fmtNumber(report.issues.zeroOrNegativePriceCount, 0, "-")}</li>
-                <li className="warning">Dupliran SKU: {fmtNumber(report.issues.duplicateSkuCount ?? 0, 0, "-")}</li>
-                <li className="warning">Dobavljač bez naziva: {fmtNumber(report.issues.missingSupplierNameCount, 0, "-")}</li>
-              </ul>
+              {reportHasNoIssueCounts ? (
+                <p className="pilot-card-note">Nema otvorenih problema u ovom payload-u. Ovo je validno prazno stanje, ne greška.</p>
+              ) : (
+                <ul>
+                  <li className="critical">Bez dobavljača: {fmtNumber(report.issues.missingSupplierCount, 0, "-")}</li>
+                  <li className="critical">Bez nabavne cene: {fmtNumber(report.issues.missingCostCount, 0, "-")}</li>
+                  <li className="warning">Bez kategorije: {fmtNumber(report.issues.missingCategoryCount, 0, "-")}</li>
+                  <li className="warning">Bez boje: {fmtNumber(report.issues.missingColorCount ?? 0, 0, "-")}</li>
+                  <li className="warning">Bez veličine: {fmtNumber(report.issues.missingSizeCount ?? 0, 0, "-")}</li>
+                  <li className="critical">Prodaja bez artikla: {fmtNumber(report.issues.saleWithoutArticleCount, 0, "-")}</li>
+                  <li className="critical">Nulta/negativna cena: {fmtNumber(report.issues.zeroOrNegativePriceCount, 0, "-")}</li>
+                  <li className="warning">Dupliran SKU: {fmtNumber(report.issues.duplicateSkuCount ?? 0, 0, "-")}</li>
+                  <li className="warning">Dobavljač bez naziva: {fmtNumber(report.issues.missingSupplierNameCount, 0, "-")}</li>
+                </ul>
+              )}
             </section>
 
             <section className="pilot-card">
               <h3>Uticaj</h3>
-              <ul>
-                <li>Prihod bez nabavne cene: {fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}</li>
-                <li>Artikli bez dobavljača: {fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}</li>
-                <li>Blokirane preporuke: {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}</li>
-                <li>Ignorisani redovi: {fmtNumber(report.impact.ignoredRowsCount, 0, "-")}</li>
-                <li>Nedovoljni signali: {fmtNumber(report.impact.insufficientSignalCount, 0, "-")}</li>
-              </ul>
-              <p className="pilot-card-note">Visok procenat prihoda bez cene ili veliki broj blokiranih preporuka direktno smanjuje pouzdanost maržnih odluka.</p>
+              {reportHasNoImpactSignals ? (
+                <p className="pilot-card-note">Nema dodatnog negativnog uticaja u ovom opsegu. Ovo znači da trenutno nema blokiranih preporuka ni izdvojenih impact signala.</p>
+              ) : (
+                <>
+                  <ul>
+                    <li>Prihod bez nabavne cene: {fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}</li>
+                    <li>Artikli bez dobavljača: {fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}</li>
+                    <li>Blokirane preporuke: {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}</li>
+                    <li>Ignorisani redovi: {fmtNumber(report.impact.ignoredRowsCount, 0, "-")}</li>
+                    <li>Nedovoljni signali: {fmtNumber(report.impact.insufficientSignalCount, 0, "-")}</li>
+                  </ul>
+                  <p className="pilot-card-note">Visok procenat prihoda bez cene ili veliki broj blokiranih preporuka direktno smanjuje pouzdanost maržnih odluka.</p>
+                </>
+              )}
             </section>
           </div>
 

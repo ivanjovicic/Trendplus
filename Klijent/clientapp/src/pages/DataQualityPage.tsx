@@ -136,6 +136,28 @@ function trendTone(points: DataQualityTrendPoint[], selector: (point: DataQualit
   return selector(points[points.length - 1]) <= selector(points[0]) ? "improving" : "worsening";
 }
 
+function DataQualityPanelState({
+  title,
+  message,
+  detail,
+}: {
+  title: string;
+  message: string;
+  detail?: string | null;
+}) {
+  return (
+    <section className="data-quality-card">
+      <div className="data-quality-section-head">
+        <div>
+          <h2>{title}</h2>
+          <p>{message}</p>
+        </div>
+      </div>
+      {detail ? <div className="data-quality-loading">{detail}</div> : null}
+    </section>
+  );
+}
+
 function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIssueType; dataScope?: string | null }) {
   const [result, setResult] = useState<DataQualityTopOffendersResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,18 +187,30 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
   }, [dataScope, issueType]);
 
   if (error) {
-    return <div className="data-quality-inline-error">{error}</div>;
+    return (
+      <DataQualityPanelState
+        title="Top problemi"
+        message="Top lista trenutno nije dostupna."
+        detail={error}
+      />
+    );
   }
 
   if (!result || result.items.length === 0) {
-    return null;
+    return (
+      <DataQualityPanelState
+        title="Top problemi"
+        message="Nema artikala sa izdvojenim najvećim uticajem za trenutni tip problema i aktivni opseg."
+        detail="Promenite tip problema ili proširite period ako očekujete dodatne kandidate."
+      />
+    );
   }
 
   return (
     <section className="data-quality-top-offenders">
       <div className="data-quality-section-head">
         <div>
-          <h2>Top offenders</h2>
+          <h2>Top problemi</h2>
           <p>Rangirano po pogođenom prometu unutar aktivnog tipa problema.</p>
         </div>
         <span className="data-quality-top-offenders-meta">Top {result.count}</span>
@@ -190,8 +224,8 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
               <th>Artikal</th>
               <th>Dobavljač</th>
               <th className="align-right">Promet 30d</th>
-              <th className="align-right">Impact (RSD)</th>
-              <th className="align-right">Impact (%)</th>
+              <th className="align-right">Uticaj (RSD)</th>
+              <th className="align-right">Uticaj (%)</th>
               <th>Akcija</th>
             </tr>
           </thead>
@@ -267,19 +301,31 @@ function DataQualityTrendChart({ dataScope }: { dataScope?: string | null }) {
   }, [trend]);
 
   if (error) {
-    return <div className="data-quality-inline-error">{error}</div>;
+    return (
+      <DataQualityPanelState
+        title="Trend kvaliteta podataka"
+        message="Trend trenutno nije dostupan."
+        detail={error}
+      />
+    );
   }
 
   if (!trend || trend.points.length === 0 || !chart) {
-    return null;
+    return (
+      <DataQualityPanelState
+        title="Trend kvaliteta podataka"
+        message="Nema dovoljno istorije za prikaz trenda u izabranom opsegu."
+        detail="Trend se pojavljuje kada postoje tačke kroz poslednjih nekoliko dana i uspešno osvežavanje analitike."
+      />
+    );
   }
 
   return (
     <section className="data-quality-trend-card">
       <div className="data-quality-section-head">
         <div>
-          <h2>Data Quality Trend</h2>
-          <p>Posljednjih {trend.days} dana za missing cost i unknown supplier pokazatelje.</p>
+          <h2>Trend kvaliteta podataka</h2>
+          <p>Poslednjih {trend.days} dana za pokazatelje nedostajuće nabavne cene i nepoznatog dobavljača.</p>
         </div>
       </div>
 
@@ -291,8 +337,8 @@ function DataQualityTrendChart({ dataScope }: { dataScope?: string | null }) {
       </div>
 
       <div className="data-quality-trend-legend">
-        <span className={`legend-chip ${chart.missingCostTone}`}>Missing cost %</span>
-        <span className={`legend-chip ${chart.unknownSupplierTone}`}>Unknown supplier %</span>
+        <span className={`legend-chip ${chart.missingCostTone}`}>Nedostajuća nabavna cena %</span>
+        <span className={`legend-chip ${chart.unknownSupplierTone}`}>Nepoznat dobavljač %</span>
       </div>
 
       <div className="data-quality-trend-labels">
@@ -615,7 +661,7 @@ export default function DataQualityPage() {
     <div className="data-quality-page">
       <AnalyticsTrustHeader
         title="Provera kvaliteta podataka"
-        description="Centralni pregled problema koji direktno uticu na pouzdanost analitike i preporuka."
+        description="Centralni pregled problema koji direktno utiču na pouzdanost analitike i preporuka."
         periodFrom={contextFromDate ?? health?.windowFrom ?? null}
         periodTo={contextToDate ?? health?.windowTo ?? null}
         lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? health?.meta?.lastRefreshAtUtc ?? health?.generatedAt ?? null}
@@ -646,7 +692,7 @@ export default function DataQualityPage() {
         <div className="data-quality-header-side">
           {health ? (
             <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Data quality score">
-              <span className="data-quality-score-label">Data quality score</span>
+              <span className="data-quality-score-label">Skor kvaliteta podataka</span>
               <strong>{health.score}</strong>
               <span className="data-quality-score-status">{health.scoreStatus}</span>
               <p>{health.scoreSummary}</p>
@@ -655,7 +701,7 @@ export default function DataQualityPage() {
           ) : null}
           <div className="data-quality-meta">
             <span>Signal filter: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
-            <Link to={pilotIntakeReportHref}>Otvori pilot intake report</Link>
+            <Link to={pilotIntakeReportHref}>Otvori pilot intake izveštaj</Link>
           </div>
         </div>
       </header>
@@ -701,7 +747,7 @@ export default function DataQualityPage() {
 
       {showIssuesMetaWarning ? (
         <div className="data-quality-loading" role="status">
-          Prikazani podaci su delimični. {issuesMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {issuesMetaMessage ?? "Proverite status osvežavanja analitike."}
         </div>
       ) : null}
 
@@ -732,7 +778,7 @@ export default function DataQualityPage() {
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Promet bez nabavne cene</span>
             <strong>{fmtPct(health.missingCostRevenueSharePct, 1)}</strong>
-            <p>{fmtRsd(health.missingCostRevenue, 2)} bez pouzdane marze</p>
+            <p>{fmtRsd(health.missingCostRevenue, 2)} bez pouzdane marže</p>
             <KpiExplainButton metricKey="missingCostRevenueShare" ariaLabel="Kako je izračunat promet bez nabavne cene" />
           </article>
 
@@ -818,17 +864,17 @@ export default function DataQualityPage() {
             onChange={(event) => setSearchDraft(event.target.value)}
             placeholder="Pretraga po SKU, artiklu, dobavljaču, tipu..."
           />
-          <button type="submit">Pretrazi</button>
+          <button type="submit">Pretraži</button>
         </form>
 
         <div className="data-quality-selects">
           <label>
-            <span>Sort by</span>
+            <span>Sortiranje</span>
             <select value={sortBy} onChange={(event) => updateParams({ sortBy: event.target.value, page: 1 })}>
-              <option value="sales30d">Affected revenue 30d</option>
-              <option value="lastUpdated">Last updated</option>
-              <option value="stock">Stock</option>
-              <option value="name">Name</option>
+              <option value="sales30d">Pogođeni promet 30d</option>
+              <option value="lastUpdated">Poslednje ažuriranje</option>
+              <option value="stock">Zaliha</option>
+              <option value="name">Naziv</option>
             </select>
           </label>
 
@@ -914,7 +960,13 @@ export default function DataQualityPage() {
           emptyReason={issuesMeta?.emptyReason ?? issuesMetaMessage ?? null}
         />
       ) : null}
-      {viewMode === "issues" && healthError ? <div className="data-quality-loading">{healthError}</div> : null}
+      {viewMode === "issues" && healthError ? (
+        <DataQualityPanelState
+          title="Health snapshot"
+          message="Health pregled trenutno nije dostupan."
+          detail={healthError}
+        />
+      ) : null}
       {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam data quality probleme...</div> : null}
 
       {viewMode === "issues" && !loading && data ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
