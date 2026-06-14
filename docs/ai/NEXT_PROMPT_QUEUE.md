@@ -674,7 +674,7 @@ Acceptance:
 
 ## Q09 — Tenant-safety checklist
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(security): add tenant safety checklist`
 Priority: P2
 Token budget: low
@@ -717,6 +717,30 @@ Acceptance:
 - Future SaaS risks are documented.
 - Current pilot model is clear.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/security/TENANT_SAFETY_CHECKLIST.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je dokumentovano:
+  - trenutna pilot preporuka: jedan deployment po kupcu i odvojeni DB/storage gde je moguće
+  - tenant-sensitive oblasti: cache, snapshots, action queue, refresh history, import files, logs, exports i background jobs
+  - buduće pravilo da svaki query/cache/report/job mora biti `TenantId`-scoped
+  - tenant-safety tabela sa rizicima i future actions
+- Checks:
+  - `git diff --check` — pass
+  - docs spot-check with `Get-Content -Encoding utf8` — pass
+  - `dotnet build` — not run
+  - `dotnet test` — not run
+  - `npm run check:analytics-guardrails` — not run
+  - `npm run build` — not run
+- Rizici:
+  - `TenantId` još nije implementiran kroz query/cache/report/job slojeve
+  - shared SaaS deployment ostaje visok rizik bez dodatne auth i storage izolacije
+- Next queue item:
+  - `Q10 - Product Decision Center polish`
 
 ---
 
