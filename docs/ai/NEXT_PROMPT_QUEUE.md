@@ -215,7 +215,7 @@ Acceptance:
 
 ## Q03 — Pilot data requirements and import map
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(analytics): add pilot data requirements and import map`
 Priority: P0
 Token budget: low
@@ -272,6 +272,31 @@ Acceptance:
 - Non-developer can understand what data to send.
 - Docs explain blockers vs confidence reducers.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/analytics/PILOT_DATA_REQUIREMENTS.md`
+  - `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Audited:
+  - `Api/Services/AccessImportService.cs`
+  - `Api/Endpoints/AccessImportEndpoints.cs`
+  - `Api/Endpoints/AdminConfigEndpoints.cs`
+  - `Klijent/clientapp/src/App.tsx`
+  - `Klijent/clientapp/src/pages/ConfigurationPage.tsx`
+- P0 gaps:
+  - missing `ArticleId` / `SKU` breaks the product-sales join
+  - missing `SaleDate`, `Quantity` or `SalePrice` blocks reliable pilot KPIs
+  - missing `CostPrice` removes margin confidence
+  - missing `SupplierName` / `SupplierId` weakens supplier scorecard coverage
+  - missing `CurrentStock` limits inventory and OOS analytics
+- Checks:
+  - `git diff --check` - pass
+  - `Get-Content -Encoding utf8` spot-check of new docs - pass
+- Next step:
+  - `Q04 - Pilot import readiness gate`
 
 ---
 
