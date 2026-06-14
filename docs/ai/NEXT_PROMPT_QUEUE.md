@@ -112,7 +112,7 @@ Acceptance:
 
 ## Q02 — Access-control audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(security): audit analytics access control`
 Priority: P0
 Token budget: low
@@ -174,6 +174,41 @@ Acceptance:
 - Dangerous actions are identified.
 - Required roles are documented.
 - P0 gaps are explicit.
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Audited:
+  - frontend route guards/navigation
+  - analytics read dashboard
+  - product decision center
+  - supplier scorecard
+  - inventory analytics
+  - data quality
+  - reports/export
+  - action queue create/status/outcome
+  - manual analytics refresh
+  - analytics cache clear
+  - worker control
+  - access import
+  - admin configuration
+  - refresh status
+  - performance/logs
+- P0 gaps:
+  - no shared auth middleware
+  - no frontend protected routes
+  - public action queue write endpoints
+  - public cache invalidate / refresh / admin-routing / Redis toggle surfaces
+  - import/cleanup and worker control still depend on ad-hoc key checks
+  - export and logs surfaces need explicit role gating
+- Checks:
+  - `git diff --check` — not run yet
+  - content audit via targeted `rg`/`Get-Content` inspections — pass
+- Next step:
+  - `Q03 — Pilot data requirements and import map`
 ```
 
 ---
