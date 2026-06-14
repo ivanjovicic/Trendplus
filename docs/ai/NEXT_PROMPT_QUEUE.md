@@ -42,7 +42,7 @@ Pročitaj:
 
 ## Q01 — CI quality gates
 
-Status: TODO
+Status: DONE
 Commit suggestion: `ci(analytics): add sales-readiness quality gates`
 Priority: P0
 Token budget: low/medium
@@ -88,6 +88,24 @@ Acceptance:
 - There is a minimal workflow or an explicit blocker.
 - Frontend guardrails/build are automated.
 - Backend build/test is automated or documented.
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `.github/workflows/analytics-quality-gates.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` — pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit"` — pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Integration"` — pass
+- Risk:
+  - Backend CI remains targeted to `Api.Tests` categories rather than a full-solution `dotnet test`.
+- Next step:
+  - `Q02 — Access-control audit`
 ```
 
 ---

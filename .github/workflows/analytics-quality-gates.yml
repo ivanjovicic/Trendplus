@@ -1,0 +1,45 @@
+name: Analytics Quality Gates
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/**'
+      - 'Klijent/clientapp/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analytics-quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend guardrails and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Klijent/clientapp/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Klijent/clientapp
+        run: npm ci
+
+      - name: Check analytics guardrails
+        working-directory: Klijent/clientapp
+        run: npm run check:analytics-guardrails
+
+      - name: Build clientapp
+        working-directory: Klijent/clientapp
+        run: npm run build
