@@ -520,7 +520,7 @@ Acceptance:
 
 ## Q07 — Performance budgets
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(ops): add analytics performance budgets`
 Priority: P1
 Token budget: low
@@ -563,6 +563,30 @@ Acceptance:
 - Performance expectations are documented.
 - Demo blockers are clear.
 ```
+
+### Notes
+
+- Date: 2026-06-14
+- Changed files:
+  - `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je dokumentovano:
+  - performance budget tabela za dashboard/bootstrap, product decision, supplier scorecard, inventory, data quality, pre/post nivelacija i reports
+  - obavezna merenja: duration, cache hit/miss, row count, timeout, correlationId
+  - demo rule za warm cache/refresh pre demo toka
+  - demo blockers i top optimization candidates
+- Checks:
+  - `git diff --check` — pass
+  - docs spot-check with `Get-Content -Encoding utf8` — pass
+  - `dotnet build` — not run
+  - `dotnet test` — not run
+  - `npm run check:analytics-guardrails` — not run
+  - `npm run build` — not run
+- Rizici:
+  - budžeti su ciljevi i nisu potvrđeni automatskim merenjem u ovom tasku
+  - bez standardizovanog telemetry capture-a, `duration` i `cache hit/miss` mogu ostati ručno proveravani
+- Next queue item:
+  - `Q08 - Demo mode and demo dataset plan`
 
 ---
 
@@ -674,7 +698,7 @@ Acceptance:
 
 ## Q10 — Product Decision Center polish
 
-Status: TODO
+Status: IN_PROGRESS
 Commit suggestion: `feat(analytics): polish product decision center clarity`
 Priority: P1
 Type: frontend code polish
