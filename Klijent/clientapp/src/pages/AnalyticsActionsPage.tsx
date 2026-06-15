@@ -223,6 +223,25 @@ function isSummaryBucketActive(
   return (filters[key] ?? undefined) === bucketKey;
 }
 
+function getSummaryFilterLabel(key: SummaryFilterKey, value: string): string {
+  if (key === "sourceType" && value in SOURCE_LABELS) {
+    return `Izvor: ${SOURCE_LABELS[value as AnalyticsActionSourceType]}`;
+  }
+
+  if (key === "priority") {
+    return `Prioritet: ${value}`;
+  }
+
+  if (key === "dataQualityStatus") {
+    const normalized = normalizeDataQualityStatus(value);
+    if (normalized) {
+      return `Kvalitet: ${DATA_QUALITY_LABELS[normalized]}`;
+    }
+  }
+
+  return value;
+}
+
 type StatusModalState = {
   id: number;
   title: string;
@@ -343,6 +362,29 @@ export default function AnalyticsActionsPage() {
       [key]: current[key] === bucketKey ? undefined : bucketKey,
       page: 1,
     }));
+  }
+
+  const activeSummaryFilters: Array<{ key: SummaryFilterKey; value: string; label: string }> = [];
+  if (filters.sourceType) {
+    activeSummaryFilters.push({
+      key: "sourceType",
+      value: filters.sourceType,
+      label: getSummaryFilterLabel("sourceType", filters.sourceType),
+    });
+  }
+  if (filters.priority) {
+    activeSummaryFilters.push({
+      key: "priority",
+      value: filters.priority,
+      label: getSummaryFilterLabel("priority", filters.priority),
+    });
+  }
+  if (filters.dataQualityStatus) {
+    activeSummaryFilters.push({
+      key: "dataQualityStatus",
+      value: filters.dataQualityStatus,
+      label: getSummaryFilterLabel("dataQualityStatus", filters.dataQualityStatus),
+    });
   }
 
   async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string): Promise<boolean> {
@@ -698,6 +740,21 @@ export default function AnalyticsActionsPage() {
           </>
         ) : null}
       </section>
+
+      {activeSummaryFilters.length > 0 && (
+        <div className="aaq-active-summary-filters" aria-label="Aktivni summary filteri">
+          {activeSummaryFilters.map((filterItem) => (
+            <button
+              key={`${filterItem.key}:${filterItem.value}`}
+              type="button"
+              className="aaq-filter-chip"
+              onClick={() => applySummaryBucketFilter(filterItem.key, filterItem.value)}
+            >
+              {filterItem.label} ×
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="aaq-filters">
         <select

@@ -229,6 +229,27 @@
   white-space: nowrap;
 }
 
+.aaq-active-summary-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.aaq-filter-chip {
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 999px;
+  background: var(--color-info-surface, #eef2ff);
+  color: var(--color-text-primary, #111);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.aaq-filter-chip:hover {
+  background: var(--color-surface-hover, #f8f9fa);
+}
+
 /* Filters */
 .aaq-filters {
   display: flex;

@@ -400,7 +400,7 @@ describe("AnalyticsActionsPage", () => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("inventory");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Izvor: Zalihe/i }));
     await waitFor(() => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
     });
@@ -413,6 +413,21 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Dobar/i }));
     await waitFor(() => {
       expect(screen.getByLabelText("Filter po kvalitetu podataka")).toHaveValue("good");
+    });
+  });
+
+  it("shows a reset chip for active summary filters", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
+    const chip = await screen.findByRole("button", { name: /Izvor: Zalihe/i });
+    expect(chip).toBeInTheDocument();
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
     });
   });
 });
