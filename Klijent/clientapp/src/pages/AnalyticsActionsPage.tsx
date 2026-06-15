@@ -534,6 +534,9 @@ export default function AnalyticsActionsPage() {
               Read-only pregled za {formatSummaryWindow(outcomeSummary)}. Sažetak prati izvor, prioritet i kvalitet podataka,
               ali ne prati status liste ni tekstualnu pretragu.
             </p>
+            <p className="aaq-summary-hint">
+              Klik na red u sažetku primenjuje filter na listu akcija. Ponovni klik uklanja isti filter.
+            </p>
           </div>
         </div>
 

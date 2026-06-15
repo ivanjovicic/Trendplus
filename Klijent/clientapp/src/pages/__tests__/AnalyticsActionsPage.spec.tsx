@@ -393,10 +393,16 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(screen.getByText("Klik na red u sažetku primenjuje filter na listu akcija. Ponovni klik uklanja isti filter.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
     await waitFor(() => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("inventory");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
     });
 
     fireEvent.click(screen.getByRole("button", { name: /P1/i }));

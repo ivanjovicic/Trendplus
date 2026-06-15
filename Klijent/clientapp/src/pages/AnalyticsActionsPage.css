@@ -87,6 +87,12 @@
   color: var(--color-text-secondary, #666);
 }
 
+.aaq-summary-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary, #666);
+}
+
 .aaq-summary-loading,
 .aaq-summary-empty {
   padding: 0.9rem 1rem;
