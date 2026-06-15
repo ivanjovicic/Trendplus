@@ -213,6 +213,16 @@ function getBucketHeading(bucket: AnalyticsActionOutcomeSummaryBucket): string {
   return bucket.label;
 }
 
+type SummaryFilterKey = "sourceType" | "priority" | "dataQualityStatus";
+
+function isSummaryBucketActive(
+  filters: AnalyticsActionFilters,
+  key: SummaryFilterKey,
+  bucketKey: string,
+): boolean {
+  return (filters[key] ?? undefined) === bucketKey;
+}
+
 type StatusModalState = {
   id: number;
   title: string;
@@ -325,6 +335,14 @@ export default function AnalyticsActionsPage() {
   function setFilter(key: keyof AnalyticsActionFilters, value: string | number | undefined) {
     const normalizedValue = value === "" || value == null ? undefined : value;
     setFilters((f) => ({ ...f, [key]: normalizedValue, page: 1 }));
+  }
+
+  function applySummaryBucketFilter(key: SummaryFilterKey, bucketKey: string) {
+    setFilters((current) => ({
+      ...current,
+      [key]: current[key] === bucketKey ? undefined : bucketKey,
+      page: 1,
+    }));
   }
 
   async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string): Promise<boolean> {
@@ -579,7 +597,12 @@ export default function AnalyticsActionsPage() {
                 <h3 id="aaq-breakdown-source" className="aaq-breakdown-title">Po izvoru</h3>
                 <div className="aaq-breakdown-list">
                   {outcomeSummary.bySourceType.map((bucket) => (
-                    <div key={bucket.key} className="aaq-breakdown-row">
+                    <button
+                      key={bucket.key}
+                      type="button"
+                      className={`aaq-breakdown-row aaq-breakdown-button ${isSummaryBucketActive(filters, "sourceType", bucket.key) ? "is-active" : ""}`}
+                      onClick={() => applySummaryBucketFilter("sourceType", bucket.key)}
+                    >
                       <div>
                         <strong>{getBucketHeading(bucket)}</strong>
                         <div className="aaq-breakdown-meta">
@@ -590,7 +613,7 @@ export default function AnalyticsActionsPage() {
                         <span>Pozitivan {renderBucketRateLabel(bucket.positiveOutcomeRate)}</span>
                         <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>
@@ -599,7 +622,12 @@ export default function AnalyticsActionsPage() {
                 <h3 id="aaq-breakdown-priority" className="aaq-breakdown-title">Po prioritetu</h3>
                 <div className="aaq-breakdown-list">
                   {outcomeSummary.byPriority.map((bucket) => (
-                    <div key={bucket.key} className="aaq-breakdown-row">
+                    <button
+                      key={bucket.key}
+                      type="button"
+                      className={`aaq-breakdown-row aaq-breakdown-button ${isSummaryBucketActive(filters, "priority", bucket.key) ? "is-active" : ""}`}
+                      onClick={() => applySummaryBucketFilter("priority", bucket.key)}
+                    >
                       <div>
                         <strong>{bucket.label}</strong>
                         <div className="aaq-breakdown-meta">
@@ -610,7 +638,7 @@ export default function AnalyticsActionsPage() {
                         <span>Merljivo {fmtNumber(bucket.measuredCount, 0, "0")}</span>
                         <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>
@@ -620,7 +648,12 @@ export default function AnalyticsActionsPage() {
                   <h3 id="aaq-breakdown-quality" className="aaq-breakdown-title">Po kvalitetu podataka</h3>
                   <div className="aaq-breakdown-list">
                     {outcomeSummary.byDataQuality.map((bucket) => (
-                      <div key={bucket.key} className="aaq-breakdown-row">
+                      <button
+                        key={bucket.key}
+                        type="button"
+                        className={`aaq-breakdown-row aaq-breakdown-button ${isSummaryBucketActive(filters, "dataQualityStatus", bucket.key) ? "is-active" : ""}`}
+                        onClick={() => applySummaryBucketFilter("dataQualityStatus", bucket.key)}
+                      >
                         <div>
                           <strong>{getBucketHeading(bucket)}</strong>
                           <div className="aaq-breakdown-meta">
@@ -631,7 +664,7 @@ export default function AnalyticsActionsPage() {
                           <span>Pokrivenost {renderBucketRateLabel(bucket.outcomeCoverageRate)}</span>
                           <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </section>

@@ -388,4 +388,25 @@ describe("AnalyticsActionsPage", () => {
       });
     });
   });
+
+  it("applies list filters when a summary bucket is clicked", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("inventory");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /P1/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po prioritetu")).toHaveValue("P1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Dobar/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po kvalitetu podataka")).toHaveValue("good");
+    });
+  });
 });

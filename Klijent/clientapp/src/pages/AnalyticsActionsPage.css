@@ -184,6 +184,26 @@
   border-top: 1px solid var(--color-border, #dee2e6);
 }
 
+.aaq-breakdown-button {
+  width: 100%;
+  border-right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.aaq-breakdown-button:hover {
+  background: var(--color-surface-hover, #f8f9fa);
+}
+
+.aaq-breakdown-button.is-active {
+  background: var(--color-info-surface, #eef2ff);
+}
+
 .aaq-breakdown-row:first-child {
   padding-top: 0;
   border-top: 0;
