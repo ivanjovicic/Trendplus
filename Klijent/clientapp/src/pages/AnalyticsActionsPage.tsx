@@ -4,10 +4,11 @@ import {
   getAnalyticsActionById,
   getAnalyticsActions,
   getAnalyticsActionCounts,
+  getAnalyticsActionOutcomeSummary,
   updateAnalyticsActionOutcome,
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
-import { fmtNumber, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
@@ -19,6 +20,8 @@ import type {
   AnalyticsActionDataQualityStatus,
   AnalyticsActionAnyDataQualityStatus,
   AnalyticsActionOutcomeUpdateInput,
+  AnalyticsActionOutcomeSummaryBucket,
+  AnalyticsActionOutcomeSummaryResponse,
 } from "../types/analytics";
 import "./AnalyticsActionsPage.css";
 
@@ -85,6 +88,23 @@ const OUTCOME_CSS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], st
   neutral: "badge-outcome badge-neutral",
   negative: "badge-outcome badge-negative",
   not_measured: "badge-outcome badge-not-measured",
+};
+
+const PERIOD_MODE_LABELS: Record<string, string> = {
+  created: "po datumu kreiranja",
+  resolved: "po datumu zatvaranja",
+  measured: "po datumu merenja ishoda",
+  mixed: "po kombinovanom periodu",
+};
+
+const OUTCOME_SUMMARY_WARNING_LABELS: Record<string, string> = {
+  small_sample: "Mali uzorak. Trend čitajte orijentaciono.",
+  small_measured_sample: "Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.",
+  outcome_coverage_low: "Mali deo zatvorenih akcija ima upisan ishod.",
+  expected_impact_denominator_missing: "Očekivani uticaj nije dostupan za deo uzorka.",
+  measured_impact_missing: "Izmereni uticaj nije popunjen za deo evidentiranih ishoda.",
+  rejected_actions_present: "U uzorku postoje odbijene akcije; tumačite uspeh odvojeno od odbijanja.",
+  mixed_period_filters: "Kombinovani period filteri mogu otežati poređenje trendova.",
 };
 
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
@@ -157,6 +177,38 @@ function formatOutcomeNotesPreview(value: string | null | undefined): string | n
   return `${trimmed.slice(0, OUTCOME_NOTES_PREVIEW_LIMIT - 3)}...`;
 }
 
+function formatSummaryWindow(summary: AnalyticsActionOutcomeSummaryResponse | null): string {
+  if (!summary) return "poslednjih 90 dana";
+  const periodMode = PERIOD_MODE_LABELS[summary.meta.periodMode] ?? "po izabranom periodu";
+  const from = summary.meta.createdFrom ?? summary.meta.resolvedFrom ?? summary.meta.measuredFrom;
+  const to = summary.meta.createdTo ?? summary.meta.resolvedTo ?? summary.meta.measuredTo;
+  if (from && to) {
+    return `${formatDateTime(from, "-")} - ${formatDateTime(to, "-")} ${periodMode}`;
+  }
+
+  return `poslednjih 90 dana ${periodMode}`;
+}
+
+function getOutcomeSummaryWarningLabel(code: string): string {
+  return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? code;
+}
+
+function renderBucketRateLabel(rate: number | null | undefined): string {
+  return fmtPctFromRatio(rate, 0, "N/A");
+}
+
+function getBucketHeading(bucket: AnalyticsActionOutcomeSummaryBucket): string {
+  if (bucket.key in SOURCE_LABELS) {
+    return SOURCE_LABELS[bucket.key as AnalyticsActionSourceType];
+  }
+
+  if (bucket.key in DATA_QUALITY_LABELS) {
+    return DATA_QUALITY_LABELS[bucket.key as AnalyticsActionDataQualityStatus];
+  }
+
+  return bucket.label;
+}
+
 type StatusModalState = {
   id: number;
   title: string;
@@ -182,6 +234,9 @@ export default function AnalyticsActionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outcomeSummary, setOutcomeSummary] = useState<AnalyticsActionOutcomeSummaryResponse | null>(null);
+  const [outcomeSummaryLoading, setOutcomeSummaryLoading] = useState(false);
+  const [outcomeSummaryError, setOutcomeSummaryError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<AnalyticsActionFilters>(() => {
     const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
@@ -228,10 +283,32 @@ export default function AnalyticsActionsPage() {
     }
   }, []);
 
+  const loadOutcomeSummary = useCallback(async (f: AnalyticsActionFilters) => {
+    setOutcomeSummaryLoading(true);
+    setOutcomeSummaryError(null);
+    try {
+      const summary = await getAnalyticsActionOutcomeSummary({
+        sourceType: f.sourceType,
+        priority: f.priority,
+        dataQualityStatus: f.dataQualityStatus,
+      });
+      setOutcomeSummary(summary);
+    } catch (e) {
+      setOutcomeSummary(null);
+      setOutcomeSummaryError(e instanceof Error ? e.message : "Sažetak ishoda trenutno nije dostupan.");
+    } finally {
+      setOutcomeSummaryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadItems(filters);
     void loadCounts();
   }, [filters, loadItems, loadCounts]);
+
+  useEffect(() => {
+    void loadOutcomeSummary(filters);
+  }, [filters.sourceType, filters.priority, filters.dataQualityStatus, loadOutcomeSummary]);
 
   useEffect(() => {
     const sourceType = parseSourceTypeQuery(new URLSearchParams(location.search).get("sourceType"));
@@ -426,6 +503,117 @@ export default function AnalyticsActionsPage() {
           </div>
         </div>
       )}
+
+      <section className="aaq-summary-panel" aria-labelledby="aaq-summary-title">
+        <div className="aaq-summary-header">
+          <div>
+            <h2 id="aaq-summary-title" className="aaq-summary-title">Sažetak ishoda akcija</h2>
+            <p className="aaq-summary-subtitle">
+              Read-only pregled za {formatSummaryWindow(outcomeSummary)}. Sažetak prati izvor, prioritet i kvalitet podataka,
+              ali ne prati status liste ni tekstualnu pretragu.
+            </p>
+          </div>
+        </div>
+
+        {outcomeSummaryLoading ? (
+          <div className="aaq-summary-loading">Učitavanje sažetka ishoda...</div>
+        ) : outcomeSummaryError ? (
+          <div className="aaq-summary-error" role="status">
+            Sažetak ishoda trenutno nije dostupan. Lista akcija i dalje radi.
+          </div>
+        ) : outcomeSummary?.meta.emptyReason || outcomeSummary?.meta.sampleSize === 0 ? (
+          <div className="aaq-summary-empty">
+            Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.
+          </div>
+        ) : outcomeSummary ? (
+          <>
+            {outcomeSummary.meta.warnings.length > 0 && (
+              <div className="aaq-summary-warnings" aria-label="Upozorenja za sažetak ishoda">
+                {outcomeSummary.meta.warnings.map((warningCode) => (
+                  <span key={warningCode} className="aaq-summary-warning-chip">
+                    {getOutcomeSummaryWarningLabel(warningCode)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="aaq-summary-cards">
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Akcije u uzorku</span>
+                <strong className="aaq-summary-card-value">{fmtNumber(outcomeSummary.totals.createdCount, 0, "0")}</strong>
+                <span className="aaq-summary-card-note">Zatvoreno: {fmtNumber(outcomeSummary.totals.closedCount, 0, "0")}</span>
+              </div>
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Pokrivenost ishodom</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.totals.outcomeCoverageRate, 0, "N/A")}</strong>
+                <span className="aaq-summary-card-note">Na osnovu zatvorenih akcija</span>
+              </div>
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Pozitivan ishod</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.totals.positiveOutcomeRate, 0, "N/A")}</strong>
+                <span className="aaq-summary-card-note">Negativan: {fmtPctFromRatio(outcomeSummary.totals.negativeOutcomeRate, 0, "N/A")}</span>
+              </div>
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Izmereni uticaj</span>
+                <strong className="aaq-summary-card-value">{fmtRsd(outcomeSummary.impact.measuredImpactRsd, 0, "N/A")}</strong>
+                <span className="aaq-summary-card-note">Očekivano: {fmtRsd(outcomeSummary.impact.expectedImpactRsd, 0, "N/A")}</span>
+              </div>
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Realizacija plana</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.impact.realizationRatio, 0, "N/A")}</strong>
+                <span className="aaq-summary-card-note">Merenja: {fmtNumber(outcomeSummary.impact.measuredImpactSampleCount, 0, "0")}</span>
+              </div>
+              <div className="aaq-summary-card">
+                <span className="aaq-summary-card-label">Ishod čeka proveru</span>
+                <strong className="aaq-summary-card-value">{fmtNumber(outcomeSummary.totals.pendingOutcomeCount, 0, "0")}</strong>
+                <span className="aaq-summary-card-note">Otvoreno: {fmtNumber(outcomeSummary.totals.openCount, 0, "0")}</span>
+              </div>
+            </div>
+
+            <div className="aaq-summary-breakdowns">
+              <section className="aaq-breakdown-card" aria-labelledby="aaq-breakdown-source">
+                <h3 id="aaq-breakdown-source" className="aaq-breakdown-title">Po izvoru</h3>
+                <div className="aaq-breakdown-list">
+                  {outcomeSummary.bySourceType.map((bucket) => (
+                    <div key={bucket.key} className="aaq-breakdown-row">
+                      <div>
+                        <strong>{getBucketHeading(bucket)}</strong>
+                        <div className="aaq-breakdown-meta">
+                          {fmtNumber(bucket.totalCount, 0, "0")} akcija · pokrivenost {renderBucketRateLabel(bucket.outcomeCoverageRate)}
+                        </div>
+                      </div>
+                      <div className="aaq-breakdown-values">
+                        <span>Pozitivan {renderBucketRateLabel(bucket.positiveOutcomeRate)}</span>
+                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="aaq-breakdown-card" aria-labelledby="aaq-breakdown-priority">
+                <h3 id="aaq-breakdown-priority" className="aaq-breakdown-title">Po prioritetu</h3>
+                <div className="aaq-breakdown-list">
+                  {outcomeSummary.byPriority.map((bucket) => (
+                    <div key={bucket.key} className="aaq-breakdown-row">
+                      <div>
+                        <strong>{bucket.label}</strong>
+                        <div className="aaq-breakdown-meta">
+                          {fmtNumber(bucket.closedCount, 0, "0")} zatvoreno · negativan ishod {renderBucketRateLabel(bucket.negativeOutcomeRate)}
+                        </div>
+                      </div>
+                      <div className="aaq-breakdown-values">
+                        <span>Merljivo {fmtNumber(bucket.measuredCount, 0, "0")}</span>
+                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </>
+        ) : null}
+      </section>
 
       <div className="aaq-filters">
         <select

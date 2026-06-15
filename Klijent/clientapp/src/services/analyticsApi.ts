@@ -49,6 +49,8 @@ import type {
   AnalyticsActionUpsertInput,
   AnalyticsActionStatusUpdateInput,
   AnalyticsActionOutcomeUpdateInput,
+  AnalyticsActionOutcomeSummaryFilters,
+  AnalyticsActionOutcomeSummaryResponse,
   AnalyticsActionFilters,
   AnalyticsResponseMeta,
   SupplierDecisionDurableReport,
@@ -1162,6 +1164,27 @@ export async function getAnalyticsActionCounts(): Promise<AnalyticsActionCounts>
     "/api/analytics/actions/counts",
     undefined,
     "Greška pri učitavanju brojača akcija"
+  );
+}
+
+export async function getAnalyticsActionOutcomeSummary(
+  filters?: AnalyticsActionOutcomeSummaryFilters
+): Promise<AnalyticsActionOutcomeSummaryResponse> {
+  const params = new URLSearchParams();
+  if (filters?.createdFrom) params.append("createdFrom", filters.createdFrom);
+  if (filters?.createdTo) params.append("createdTo", filters.createdTo);
+  if (filters?.resolvedFrom) params.append("resolvedFrom", filters.resolvedFrom);
+  if (filters?.resolvedTo) params.append("resolvedTo", filters.resolvedTo);
+  if (filters?.measuredFrom) params.append("measuredFrom", filters.measuredFrom);
+  if (filters?.measuredTo) params.append("measuredTo", filters.measuredTo);
+  if (filters?.sourceType) params.append("sourceType", filters.sourceType);
+  if (filters?.priority) params.append("priority", filters.priority);
+  if (filters?.dataQualityStatus) params.append("dataQualityStatus", filters.dataQualityStatus);
+
+  return fetchJson<AnalyticsActionOutcomeSummaryResponse>(
+    "/api/analytics/actions/outcomes/summary",
+    params,
+    "Greška pri učitavanju sažetka ishoda akcija"
   );
 }
 

@@ -1266,6 +1266,89 @@ export interface AnalyticsActionOutcomeUpdateInput {
   outcomeNotes?: string | null;
 }
 
+export interface AnalyticsActionOutcomeSummaryFilters {
+  createdFrom?: string;
+  createdTo?: string;
+  resolvedFrom?: string;
+  resolvedTo?: string;
+  measuredFrom?: string;
+  measuredTo?: string;
+  sourceType?: AnalyticsActionSourceType;
+  priority?: AnalyticsActionPriority;
+  dataQualityStatus?: AnalyticsActionDataQualityStatus;
+}
+
+export interface AnalyticsActionOutcomeSummaryMeta {
+  success: boolean;
+  periodMode: string;
+  createdFrom?: string | null;
+  createdTo?: string | null;
+  resolvedFrom?: string | null;
+  resolvedTo?: string | null;
+  measuredFrom?: string | null;
+  measuredTo?: string | null;
+  generatedAtUtc: string;
+  sampleSize: number;
+  measuredSampleSize: number;
+  warnings: string[];
+  emptyReason?: string | null;
+}
+
+export interface AnalyticsActionOutcomeSummaryTotals {
+  createdCount: number;
+  closedCount: number;
+  openCount: number;
+  measuredCount: number;
+  pendingOutcomeCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  notMeasuredCount: number;
+  outcomeCoverageRate?: number | null;
+  positiveOutcomeRate?: number | null;
+  negativeOutcomeRate?: number | null;
+}
+
+export interface AnalyticsActionOutcomeSummaryImpact {
+  expectedImpactRsd?: number | null;
+  measuredImpactRsd?: number | null;
+  realizationRatio?: number | null;
+  measuredImpactSampleCount: number;
+}
+
+export interface AnalyticsActionOutcomeSummaryBucket {
+  key: string;
+  label: string;
+  totalCount: number;
+  closedCount: number;
+  measuredCount: number;
+  pendingOutcomeCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  notMeasuredCount: number;
+  expectedImpactRsd?: number | null;
+  measuredImpactRsd?: number | null;
+  outcomeCoverageRate?: number | null;
+  positiveOutcomeRate?: number | null;
+  negativeOutcomeRate?: number | null;
+  realizationRatio?: number | null;
+  measuredImpactSampleCount: number;
+  warningCodes: string[];
+}
+
+export interface AnalyticsActionOutcomeSummaryResponse {
+  meta: AnalyticsActionOutcomeSummaryMeta;
+  totals: AnalyticsActionOutcomeSummaryTotals;
+  impact: AnalyticsActionOutcomeSummaryImpact;
+  bySourceType: AnalyticsActionOutcomeSummaryBucket[];
+  byPriority: AnalyticsActionOutcomeSummaryBucket[];
+  byOutcomeStatus: AnalyticsActionOutcomeSummaryBucket[];
+  byDataQuality: AnalyticsActionOutcomeSummaryBucket[];
+  byConfidenceBucket: AnalyticsActionOutcomeSummaryBucket[];
+  byReliabilityBucket: AnalyticsActionOutcomeSummaryBucket[];
+}
+
 export interface AnalyticsActionFilters {
   status?: AnalyticsActionStatus;
   priority?: AnalyticsActionPriority;

@@ -18,6 +18,7 @@ vi.mock("react-router-dom", async () => {
 
 const getAnalyticsActionsMock = vi.fn();
 const getAnalyticsActionCountsMock = vi.fn();
+const getAnalyticsActionOutcomeSummaryMock = vi.fn();
 const getAnalyticsActionByIdMock = vi.fn();
 const updateAnalyticsActionOutcomeMock = vi.fn();
 const updateAnalyticsActionStatusMock = vi.fn();
@@ -25,6 +26,7 @@ const updateAnalyticsActionStatusMock = vi.fn();
 vi.mock("../../services/analyticsApi", () => ({
   getAnalyticsActions: (...args: unknown[]) => getAnalyticsActionsMock(...args),
   getAnalyticsActionCounts: (...args: unknown[]) => getAnalyticsActionCountsMock(...args),
+  getAnalyticsActionOutcomeSummary: (...args: unknown[]) => getAnalyticsActionOutcomeSummaryMock(...args),
   getAnalyticsActionById: (...args: unknown[]) => getAnalyticsActionByIdMock(...args),
   updateAnalyticsActionOutcome: (...args: unknown[]) => updateAnalyticsActionOutcomeMock(...args),
   updateAnalyticsActionStatus: (...args: unknown[]) => updateAnalyticsActionStatusMock(...args),
@@ -81,6 +83,91 @@ describe("AnalyticsActionsPage", () => {
       done: 0,
       p1Open: 1,
     });
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValue({
+      meta: {
+        success: true,
+        periodMode: "created",
+        createdFrom: "2026-03-17T00:00:00Z",
+        createdTo: "2026-06-15T00:00:00Z",
+        resolvedFrom: null,
+        resolvedTo: null,
+        measuredFrom: null,
+        measuredTo: null,
+        generatedAtUtc: "2026-06-15T00:00:00Z",
+        sampleSize: 3,
+        measuredSampleSize: 2,
+        warnings: ["small_measured_sample"],
+        emptyReason: null,
+      },
+      totals: {
+        createdCount: 3,
+        closedCount: 2,
+        openCount: 1,
+        measuredCount: 2,
+        pendingOutcomeCount: 1,
+        successCount: 1,
+        neutralCount: 0,
+        negativeCount: 1,
+        notMeasuredCount: 0,
+        outcomeCoverageRate: 0.5,
+        positiveOutcomeRate: 0.5,
+        negativeOutcomeRate: 0.5,
+      },
+      impact: {
+        expectedImpactRsd: 12000,
+        measuredImpactRsd: 3000,
+        realizationRatio: 0.25,
+        measuredImpactSampleCount: 2,
+      },
+      bySourceType: [
+        {
+          key: "inventory",
+          label: "inventory",
+          totalCount: 2,
+          closedCount: 1,
+          measuredCount: 1,
+          pendingOutcomeCount: 1,
+          successCount: 1,
+          neutralCount: 0,
+          negativeCount: 0,
+          notMeasuredCount: 0,
+          expectedImpactRsd: 12000,
+          measuredImpactRsd: 3000,
+          outcomeCoverageRate: 1,
+          positiveOutcomeRate: 1,
+          negativeOutcomeRate: 0,
+          realizationRatio: 0.25,
+          measuredImpactSampleCount: 1,
+          warningCodes: [],
+        },
+      ],
+      byPriority: [
+        {
+          key: "P1",
+          label: "P1",
+          totalCount: 2,
+          closedCount: 1,
+          measuredCount: 1,
+          pendingOutcomeCount: 1,
+          successCount: 1,
+          neutralCount: 0,
+          negativeCount: 0,
+          notMeasuredCount: 0,
+          expectedImpactRsd: 12000,
+          measuredImpactRsd: 3000,
+          outcomeCoverageRate: 1,
+          positiveOutcomeRate: 1,
+          negativeOutcomeRate: 0,
+          realizationRatio: 0.25,
+          measuredImpactSampleCount: 1,
+          warningCodes: [],
+        },
+      ],
+      byOutcomeStatus: [],
+      byDataQuality: [],
+      byConfidenceBucket: [],
+      byReliabilityBucket: [],
+    });
     getAnalyticsActionByIdMock.mockResolvedValue(item);
     updateAnalyticsActionStatusMock.mockResolvedValue(item);
     updateAnalyticsActionOutcomeMock.mockResolvedValue(item);
@@ -120,7 +207,11 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
-    expect(screen.getByText("Pozitivan ishod")).toBeInTheDocument();
+    expect(screen.getByText("Sažetak ishoda akcija")).toBeInTheDocument();
+    expect(screen.getByText("Pokrivenost ishodom")).toBeInTheDocument();
+    expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
+    expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
+    expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
 
@@ -157,5 +248,100 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ishod nije sačuvan. Proverite status i iznos.");
+  });
+
+  it("shows a non-blocking summary fallback when outcome summary fails", async () => {
+    getAnalyticsActionOutcomeSummaryMock.mockRejectedValueOnce(new Error("summary unavailable"));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(await screen.findByText("Sažetak ishoda trenutno nije dostupan. Lista akcija i dalje radi.")).toBeInTheDocument();
+    expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
+  });
+
+  it("shows an empty summary state when there are no measured closed outcomes", async () => {
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValueOnce({
+      meta: {
+        success: true,
+        periodMode: "created",
+        createdFrom: "2026-03-17T00:00:00Z",
+        createdTo: "2026-06-15T00:00:00Z",
+        resolvedFrom: null,
+        resolvedTo: null,
+        measuredFrom: null,
+        measuredTo: null,
+        generatedAtUtc: "2026-06-15T00:00:00Z",
+        sampleSize: 0,
+        measuredSampleSize: 0,
+        warnings: [],
+        emptyReason: "no_measured_closed_outcomes",
+      },
+      totals: {
+        createdCount: 0,
+        closedCount: 0,
+        openCount: 0,
+        measuredCount: 0,
+        pendingOutcomeCount: 0,
+        successCount: 0,
+        neutralCount: 0,
+        negativeCount: 0,
+        notMeasuredCount: 0,
+        outcomeCoverageRate: null,
+        positiveOutcomeRate: null,
+        negativeOutcomeRate: null,
+      },
+      impact: {
+        expectedImpactRsd: null,
+        measuredImpactRsd: null,
+        realizationRatio: null,
+        measuredImpactSampleCount: 0,
+      },
+      bySourceType: [],
+      byPriority: [],
+      byOutcomeStatus: [],
+      byDataQuality: [],
+      byConfidenceBucket: [],
+      byReliabilityBucket: [],
+    });
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(await screen.findByText("Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.")).toBeInTheDocument();
+  });
+
+  it("reloads summary only for source, priority and data quality filters", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    getAnalyticsActionOutcomeSummaryMock.mockClear();
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        sourceType: "supplier",
+        priority: undefined,
+        dataQualityStatus: undefined,
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P2" } });
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        sourceType: "supplier",
+        priority: "P2",
+        dataQualityStatus: undefined,
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText("Filter po kvalitetu podataka"), { target: { value: "warning" } });
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenLastCalledWith({
+        sourceType: "supplier",
+        priority: "P2",
+        dataQualityStatus: "warning",
+      });
+    });
   });
 });
