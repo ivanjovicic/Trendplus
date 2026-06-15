@@ -430,4 +430,24 @@ describe("AnalyticsActionsPage", () => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
     });
   });
+
+  it("clears all active summary filters with one reset action", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "inventory" } });
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P1" } });
+
+    const resetButton = await screen.findByRole("button", { name: "Resetuj summary filtere" });
+    expect(resetButton).toBeInTheDocument();
+
+    fireEvent.click(resetButton);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
+      expect(screen.getByLabelText("Filter po prioritetu")).toHaveValue("");
+      expect(screen.queryByRole("button", { name: "Resetuj summary filtere" })).not.toBeInTheDocument();
+    });
+  });
 });

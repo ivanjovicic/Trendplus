@@ -250,6 +250,14 @@
   background: var(--color-surface-hover, #f8f9fa);
 }
 
+.aaq-filter-chip-reset {
+  background: var(--color-surface, #fff);
+}
+
+.aaq-filter-chip-reset:hover {
+  background: var(--color-danger-surface, #fff1f2);
+}
+
 /* Filters */
 .aaq-filters {
   display: flex;

@@ -364,6 +364,16 @@ export default function AnalyticsActionsPage() {
     }));
   }
 
+  function clearSummaryFilters() {
+    setFilters((current) => ({
+      ...current,
+      sourceType: undefined,
+      priority: undefined,
+      dataQualityStatus: undefined,
+      page: 1,
+    }));
+  }
+
   const activeSummaryFilters: Array<{ key: SummaryFilterKey; value: string; label: string }> = [];
   if (filters.sourceType) {
     activeSummaryFilters.push({
@@ -753,6 +763,15 @@ export default function AnalyticsActionsPage() {
               {filterItem.label} ×
             </button>
           ))}
+          {activeSummaryFilters.length > 1 && (
+            <button
+              type="button"
+              className="aaq-filter-chip aaq-filter-chip-reset"
+              onClick={clearSummaryFilters}
+            >
+              Resetuj summary filtere
+            </button>
+          )}
         </div>
       )}
 
