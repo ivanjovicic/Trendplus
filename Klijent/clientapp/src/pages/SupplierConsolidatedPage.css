@@ -213,6 +213,20 @@
   display: inline-block;
 }
 
+.supplier-tab-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.supplier-tab-hint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-tertiary, var(--text-secondary));
+  line-height: 1.2;
+}
+
 .supplier-tab-badge {
   display: inline-flex;
   align-items: center;
@@ -231,6 +245,60 @@
 
 .supplier-consolidated-tab:not(.active) .supplier-tab-badge {
   display: none;
+}
+
+.supplier-consolidated-context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 1rem 2rem 0;
+  background-color: var(--surface-default);
+}
+
+.supplier-consolidated-context-card {
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface-subtle, var(--surface-default));
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.supplier-consolidated-context-card strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.supplier-consolidated-context-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.supplier-context-kicker {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.supplier-consolidated-context-card--primary {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-default));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-default));
+}
+
+.supplier-consolidated-context-card--warning {
+  border-color: color-mix(in srgb, var(--warning, #f59e0b) 38%, var(--border-default));
+  background: color-mix(in srgb, var(--warning, #f59e0b) 10%, var(--surface-default));
+}
+
+.supplier-consolidated-context-card--critical {
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 40%, var(--border-default));
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, var(--surface-default));
 }
 
 /* Tab Content */
@@ -254,6 +322,11 @@
 @media (max-width: 768px) {
   .supplier-consolidated-header {
     padding: 1.5rem 1rem 1rem 1rem;
+  }
+
+  .supplier-consolidated-context {
+    grid-template-columns: 1fr;
+    padding: 0.85rem 1rem 0;
   }
 
   .supplier-consolidated-header-content {

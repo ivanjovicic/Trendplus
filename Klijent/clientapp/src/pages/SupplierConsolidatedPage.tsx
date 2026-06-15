@@ -17,16 +17,52 @@ const tabLabels: Record<SupplierTab, string> = {
   assortment: "Asortiman",
 };
 
+const tabHints: Record<SupplierTab, string> = {
+  overview: "Finalna preporuka",
+  scorecard: "Poređenje dobavljača",
+  assortment: "Struktura i drilldown",
+};
+
 const tabDescriptions: Record<SupplierTab, string> = {
   overview: "Pregled: glavna preporuka za dobavljača i centralni ekran za poslovnu odluku.",
-  scorecard: "Skorkarta dobavljača — pomoćni signal. Skorkarta poredi dobavljače po scorecard signalu. Koristi se za proveru i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled.",
+  scorecard: "Skorkarta dobavljača — pomoćni signal. Koristi se za poređenje i objašnjenje, dok je finalna poslovna preporuka u tabu Pregled.",
   assortment: "Asortiman: drilldown strukture prometa po tipu obuće, bez posebne finalne preporuke.",
+};
+
+const dataScopeLabels: Record<string, string> = {
+  all: "Svi podaci",
+  existing: "Postojeći artikli",
+  imported: "Uvezeni podaci",
+};
+
+const dataQualityLabels: Record<string, string> = {
+  good: "Pouzdani podaci",
+  warning: "Potreban oprez",
+  insufficient_data: "Nedovoljno podataka",
+  error: "Problem u podacima",
+  unknown: "Pouzdanost nije potvrđena",
+};
+
+const tabTakeaways: Record<SupplierTab, { title: string; description: string }> = {
+  overview: {
+    title: "Pregled vodi finalnu odluku",
+    description: "Ovde prvo proveravaš da li dobavljač zaslužuje fokus. Ostali tabovi služe da objasne zašto.",
+  },
+  scorecard: {
+    title: "Skorkarta služi za poređenje",
+    description: "Koristi je da uporediš dobavljače i proveriš signal, ali finalnu odluku potvrdi u tabu Pregled.",
+  },
+  assortment: {
+    title: "Asortiman objašnjava strukturu",
+    description: "Ovde gledaš koji tipovi obuće nose promet i gde treba dodatni drilldown bez finalne preporuke.",
+  },
 };
 
 function buildStoreLabel(store: StoreOption): string {
   const extras = [store.city, store.region].filter(Boolean).join(", ");
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
+
 export default function SupplierConsolidatedPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -45,6 +81,48 @@ export default function SupplierConsolidatedPage() {
     resetFilters,
   } = useSupplierCanonicalState();
 
+  const selectedStoreLabel = canonicalFilters.storeId
+    ? stores.find((store) => String(store.storeId) === String(canonicalFilters.storeId))?.storeName ?? "Izabrani objekat"
+    : "Svi objekti";
+  const selectedSupplierLabel = canonicalFilters.supplierId
+    ? suppliers.find((supplier) => String(supplier.supplierId) === String(canonicalFilters.supplierId))?.supplierName ?? "Izabrani dobavljač"
+    : "Svi dobavljači";
+  const activeScopeLabel = dataScopeLabels[canonicalFilters.dataScope] ?? canonicalFilters.dataScope;
+  const activePeriodLabel = trustPayload?.effectivePeriodLabel?.trim()
+    ? trustPayload.effectivePeriodLabel
+    : `${canonicalFilters.fromDate} — ${canonicalFilters.toDate}`;
+  const datasetLabel = trustPayload?.effectiveDataset?.trim()
+    || trustPayload?.requestedDataset?.trim()
+    || "Aktivni dataset nije posebno označen";
+  const trustHeadline = trustPayload?.usedFallback
+    ? "Fallback ili sužen dataset je aktivan"
+    : trustPayload?.recommendationAllowed === false
+      ? "Signal je informativan i traži proveru"
+      : currentTab === "overview"
+        ? "Pregled je glavni izvor preporuke"
+        : currentTab === "scorecard"
+          ? "Skorkarta je pomoćni signal"
+          : "Asortiman je objašnjenje i drilldown";
+  const trustDescription = trustPayload?.usedFallback
+    ? (trustPayload.fallbackReason ?? "Pre konačnog zaključka proveri effective period i dataset u trust headeru.")
+    : trustPayload?.recommendationNote
+      ?? (currentTab === "scorecard"
+        ? "Poređenje dobavljača čitaj uz finalnu preporuku iz taba Pregled."
+        : currentTab === "assortment"
+          ? "Koristi ovaj prikaz da razumeš uzrok rezultata, ne kao samostalnu finalnu preporuku."
+          : "Skorkarta i asortiman služe da potvrde ili objasne ono što vidiš u pregledu.");
+  const trustToneClass = trustPayload?.dataQualityStatus === "error"
+    ? "critical"
+    : (trustPayload?.usedFallback
+      || trustPayload?.recommendationAllowed === false
+      || trustPayload?.dataQualityStatus === "warning"
+      || trustPayload?.dataQualityStatus === "insufficient_data")
+      ? "warning"
+      : "info";
+  const trustStatusLabel = trustPayload?.dataQualityStatus
+    ? (dataQualityLabels[trustPayload.dataQualityStatus] ?? trustPayload.dataQualityStatus)
+    : "Pouzdanost nije potvrđena";
+
   useEffect(() => {
     let cancelled = false;
     getStores(true)
@@ -62,7 +140,6 @@ export default function SupplierConsolidatedPage() {
   }, [canonicalFilters.fromDate, canonicalFilters.storeId, canonicalFilters.toDate, canonicalFilters.dataScope]);
 
   useEffect(() => {
-    // Avoid stale trust metadata while switching tabs/filters.
     if (!didInitTrustResetRef.current)
     {
       didInitTrustResetRef.current = true;
@@ -76,7 +153,7 @@ export default function SupplierConsolidatedPage() {
     <div className="supplier-consolidated-page">
       <AnalyticsTrustHeader
         title="Dobavljači"
-        description="Jedinstveni ekran za overview preporuku, scorecard signal i analizu asortimana dobavljača."
+        description="Jedinstveni ekran za glavnu preporuku, poređenje dobavljača i analizu asortimana."
         periodFrom={trustPayload?.periodFrom ?? canonicalFilters.fromDate}
         periodTo={trustPayload?.periodTo ?? canonicalFilters.toDate}
         lastRefreshAt={trustPayload?.lastRefreshAt ?? null}
@@ -191,11 +268,32 @@ export default function SupplierConsolidatedPage() {
             aria-selected={currentTab === tab}
             aria-current={currentTab === tab ? "page" : undefined}
           >
-            <span className="supplier-tab-label">{tabLabels[tab]}</span>
+            <span className="supplier-tab-copy">
+              <span className="supplier-tab-label">{tabLabels[tab]}</span>
+              <span className="supplier-tab-hint">{tabHints[tab]}</span>
+            </span>
             {tab === "overview" && <span className="supplier-tab-badge">Glavni</span>}
           </button>
         ))}
       </nav>
+
+      <section className="supplier-consolidated-context" aria-label="Kako čitati ekran dobavljača">
+        <article className="supplier-consolidated-context-card supplier-consolidated-context-card--primary">
+          <span className="supplier-context-kicker">Aktivni prikaz</span>
+          <strong>{tabTakeaways[currentTab].title}</strong>
+          <p>{tabTakeaways[currentTab].description}</p>
+        </article>
+        <article className="supplier-consolidated-context-card">
+          <span className="supplier-context-kicker">Period i filteri</span>
+          <strong>{activePeriodLabel}</strong>
+          <p>{`${activeScopeLabel} • ${selectedStoreLabel} • ${selectedSupplierLabel}`}</p>
+        </article>
+        <article className={`supplier-consolidated-context-card supplier-consolidated-context-card--${trustToneClass}`}>
+          <span className="supplier-context-kicker">Trust i poređenje</span>
+          <strong>{trustHeadline}</strong>
+          <p>{`${trustDescription} Kvalitet: ${trustStatusLabel}. Dataset: ${datasetLabel}.`}</p>
+        </article>
+      </section>
 
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (
@@ -217,4 +315,3 @@ export default function SupplierConsolidatedPage() {
     </div>
   );
 }
-

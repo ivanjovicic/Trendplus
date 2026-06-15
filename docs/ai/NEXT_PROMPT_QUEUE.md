@@ -1184,7 +1184,7 @@ Acceptance:
 
 ## Q17 — Supplier consolidated minor clarity
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(suppliers): polish consolidated clarity`
 Priority: P2
 Type: frontend code polish
@@ -1223,6 +1223,27 @@ Acceptance:
 - `cd Klijent/clientapp && npm run check:analytics-guardrails`
 - `cd Klijent/clientapp && npm run build`
 - targeted vitest only if an existing supplier consolidated spec is touched
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.css`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - tabovi sada jasnije razlikuju finalnu preporuku, poređenje dobavljača i asortimanski drilldown kroz kratke hint labele
+  - dodat je kratak kontekst panel za aktivni prikaz, period/filtere i trust status da glavni supplier takeaway ostane vidljiv iznad ugrađenih analytics ekrana
+  - user-facing copy na stranici je očišćen i usklađen sa poslovnim jezikom bez promene supplier scoring semantike
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - targeted vitest — not run
+- Rizici:
+  - postojeći `vite build` chunk-size warning ostaje, bez novih build grešaka
+  - context panel ponavlja deo trust informacija iz headera; ako se trust copy menja globalno, može tražiti malu sinhronizaciju
+- Next queue item:
+  - `Q18 - Action Outcome Analytics plan`
 
 ---
 
