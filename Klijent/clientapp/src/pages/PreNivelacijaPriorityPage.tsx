@@ -169,6 +169,14 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
+function getRecommendedNextStep(status: DecisionStatus): string {
+  if (status === "increase_focus") return "Pojačaj izlaganje i proveri dopunu pre nivelacije.";
+  if (status === "maintain") return "Zadrži pod nadzorom i prati naredni ciklus prodaje.";
+  if (status === "review") return "Pregledaj signal pre odluke o jačem isticanju ili markdown-u.";
+  if (status === "do_not_trust") return "Ne donosi odluku dok ne proveriš podatke i poslednju prodaju.";
+  return "Sačekaj jači signal ili proširi kontekst pre odluke.";
+}
+
 export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -368,6 +376,47 @@ export default function PreNivelacijaPriorityPage() {
       : focusFilter !== "all"
         ? "filtered_out"
         : "no_data";
+
+  const attentionNotices = useMemo(() => {
+    const notices: Array<{ key: string; title: string; detail: string; tone: "info" | "warning" | "critical" }> = [];
+
+    if (candidateCounts.highPriority > 0) {
+      notices.push({
+        key: "high-priority",
+        title: `${candidateCounts.highPriority} SKU traži brzu proveru`,
+        detail: "Visok prioritet znači da je signal dovoljno jak da odmah pregledaš izlaganje, zalihu i sledeći korak.",
+        tone: "info",
+      });
+    }
+
+    const limitedSignalCount = candidateCounts.doNotTrust + candidateCounts.insufficientData;
+    if (limitedSignalCount > 0) {
+      notices.push({
+        key: "limited-signal",
+        title: `${limitedSignalCount} SKU ima ograničen signal`,
+        detail: "Ove preporuke traže dodatnu proveru kvaliteta podataka, pouzdanosti ili poslednje prodaje pre odluke.",
+        tone: "warning",
+      });
+    }
+
+    if (showMetaWarning) {
+      notices.push({
+        key: "meta-warning",
+        title: "Prikaz je delimičan ili fallback",
+        detail: dataMetaMessage ?? "Proverite analytics refresh status i data quality signal pre jačih odluka.",
+        tone: "critical",
+      });
+    } else if (candidateCounts.review > 0) {
+      notices.push({
+        key: "review",
+        title: `${candidateCounts.review} SKU je za ručni pregled`,
+        detail: "Pregledaj razlog preporuke i sledeći korak pre nego što artikal pojačaš ili spustiš iz fokusa.",
+        tone: "warning",
+      });
+    }
+
+    return notices.slice(0, 3);
+  }, [candidateCounts.doNotTrust, candidateCounts.highPriority, candidateCounts.insufficientData, candidateCounts.review, dataMetaMessage, showMetaWarning]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
@@ -578,6 +627,17 @@ export default function PreNivelacijaPriorityPage() {
             </section>
           ) : null}
 
+          {attentionNotices.length > 0 ? (
+            <section className="pnp-attention-strip" aria-label="Prioriteti i ograničenja signala">
+              {attentionNotices.map((notice) => (
+                <article key={notice.key} className={`pnp-attention-card pnp-attention-card--${notice.tone}`}>
+                  <strong>{notice.title}</strong>
+                  <p>{notice.detail}</p>
+                </article>
+              ))}
+            </section>
+          ) : null}
+
           <section className="pnp-decision-kpis">
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora.">
               <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i imaju aktivan signal pre nivelacije (pre-nivelacioni skor ≥ min. skora). Ovo su artikli koji imaju zalihu i prodajni signal dovoljan za intervenciju." /></span>
@@ -741,13 +801,16 @@ export default function PreNivelacijaPriorityPage() {
                               <span className={`pnp-signal-pill ${reliabilityClass}`}>{reliabilityLabel}</span>
                             </td>
                             <td>
-                              <span
-                                className={statusClass(row.status)}
-                                title={buildStatusTooltip(row)}
-                                aria-label={buildStatusTooltip(row)}
-                              >
-                                {statusDisplayLabel(row.status)}
-                              </span>
+                              <div className="pnp-status-cell">
+                                <span
+                                  className={statusClass(row.status)}
+                                  title={buildStatusTooltip(row)}
+                                  aria-label={buildStatusTooltip(row)}
+                                >
+                                  {statusDisplayLabel(row.status)}
+                                </span>
+                                <small className="pnp-status-next">{getRecommendedNextStep(row.status)}</small>
+                              </div>
                             </td>
                             <td className="align-center">
                               <button
@@ -826,22 +889,57 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
               </div>
 
+              <div className="pnp-decision-callouts">
+                <article className="pnp-decision-callout pnp-decision-callout--action">
+                  <span>Sledeći korak</span>
+                  <strong>{getRecommendedNextStep(selectedRow.status)}</strong>
+                  <p>{selectedRow.statusReason}</p>
+                </article>
+                <article
+                  className={`pnp-decision-callout ${
+                    !selectedRow.reliabilityAvailable
+                    || !selectedRow.confidenceAvailable
+                    || selectedRow.dataQualityStatus !== "good"
+                      ? "pnp-decision-callout--warning"
+                      : "pnp-decision-callout--info"
+                  }`}
+                >
+                  <span>Ograničenja signala</span>
+                  <strong>
+                    {!selectedRow.reliabilityAvailable
+                    || !selectedRow.confidenceAvailable
+                    || selectedRow.dataQualityStatus !== "good"
+                      ? "Potrebna je dodatna provera"
+                      : "Signal je upotrebljiv za odluku"}
+                  </strong>
+                  <p>
+                    {!selectedRow.reliabilityAvailable
+                    || !selectedRow.confidenceAvailable
+                    || selectedRow.dataQualityStatus !== "good"
+                      ? "Proveri pouzdanost, sigurnost preporuke i kvalitet podataka pre jače intervencije."
+                      : "Pouzdanost i kvalitet podataka ne pokazuju blokirajuće rizike za ovu preporuku."}
+                  </p>
+                </article>
+              </div>
+
               <p className="pnp-decision-reason">
                 <strong>Razlog preporuke:</strong> {selectedRow.statusReason}
               </p>
               {selectedRow.reasonCodes.length > 0 ? (
-                <p className="pnp-decision-reason">
-                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
-                </p>
+                <div className="pnp-reason-code-list" aria-label="Kodovi signala">
+                  {selectedRow.reasonCodes.map((reasonCode) => (
+                    <span key={reasonCode} className="pnp-reason-code-chip">{reasonCode}</span>
+                  ))}
+                </div>
               ) : null}
               {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (
-                <p key={hint} className="pnp-decision-reason">
+                <p key={hint} className="pnp-decision-reason pnp-decision-reason--note">
                   <strong>Napomena:</strong> {hint}
                 </p>
               ))}
               {(!selectedRow.reliabilityAvailable || !selectedRow.confidenceAvailable || selectedRow.dataQualityStatus !== "good") ? (
-                <p className="pnp-decision-reason">
-                  <strong>Data quality:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveris i ispravis signal.
+                <p className="pnp-decision-reason pnp-decision-reason--warning">
+                  <strong>Kvalitet podataka:</strong> Otvori <Link to="/analytics/data-quality">Data Quality</Link> da proveriš i ispraviš signal.
                 </p>
               ) : null}
 

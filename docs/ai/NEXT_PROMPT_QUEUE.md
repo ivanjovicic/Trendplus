@@ -1119,7 +1119,7 @@ Acceptance:
 
 ## Q16 — PreNivelacija small polish
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(nivelacija): polish pre-nivelacija clarity`
 Priority: P2
 Type: frontend code polish
@@ -1158,6 +1158,27 @@ Acceptance:
 - `cd Klijent/clientapp && npm run check:analytics-guardrails`
 - `cd Klijent/clientapp && npm run build`
 - targeted vitest only if an existing PreNivelacija spec is touched
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - priority lista sada ispod preporuke prikazuje kratak sledeći korak, pa je brže jasno šta tim treba da uradi pre nivelacije
+  - warnings i ograničenja signala su istaknuti kroz attention kartice i callout blokove u detaljima selektovanog reda
+  - detalji prioriteta su pregledniji kroz akcioni sažetak, signal limitation poruku, chip prikaz reason code-ova i jasniji Data Quality hint
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` — pass
+  - `cd Klijent/clientapp && npm run build` — pass
+  - targeted vitest — not run
+- Rizici:
+  - postojeći `vite build` chunk-size warning ostaje, bez novih build grešaka
+  - sledeći koraci su frontend copy sloj; ako backend promeni semantics/status mapping, wording treba sinhronizovati
+- Next queue item:
+  - `Q17 - Supplier consolidated minor clarity`
 
 ---
 
