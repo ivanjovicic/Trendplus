@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Api.Endpoints;
 using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
@@ -131,6 +132,50 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(AnalyticsActionConstants.Statuses.Done, item.Status);
         Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, item.OutcomeStatus);
         Assert.True(item.CanCreateNew);
+    }
+
+    [Fact]
+    public async Task GetOutcomeSummary_ReturnsAggregatedPayload()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "summary-http-1",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd: 100m,
+            outcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            status: AnalyticsActionConstants.Statuses.Done);
+        await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Supplier,
+            sourceKey: "summary-http-2",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending,
+            status: AnalyticsActionConstants.Statuses.Done);
+        await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Product,
+            sourceKey: "summary-http-3",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Negative,
+            measuredImpactRsd: 50m,
+            outcomeMeasuredAtUtc: new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
+            status: AnalyticsActionConstants.Statuses.Accepted);
+
+        using var response = await host.Client.GetAsync("/api/analytics/actions/outcomes/summary");
+
+        response.EnsureSuccessStatusCode();
+
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = payload.RootElement;
+        Assert.Equal("created", root.GetProperty("meta").GetProperty("periodMode").GetString());
+        Assert.Equal(3, root.GetProperty("totals").GetProperty("createdCount").GetInt32());
+        Assert.Equal(2, root.GetProperty("totals").GetProperty("closedCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("openCount").GetInt32());
+        Assert.Equal(2, root.GetProperty("totals").GetProperty("measuredCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("pendingOutcomeCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("successCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("totals").GetProperty("negativeCount").GetInt32());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("outcomeCoverageRate").GetDecimal());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("positiveOutcomeRate").GetDecimal());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("negativeOutcomeRate").GetDecimal());
+        Assert.Equal(150m, root.GetProperty("impact").GetProperty("measuredImpactRsd").GetDecimal());
     }
 
     [Fact]

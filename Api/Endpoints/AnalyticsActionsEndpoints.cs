@@ -62,6 +62,64 @@ public static class AnalyticsActionsEndpoints
         })
         .WithName("GetAnalyticsActionCounts");
 
+        // GET /api/analytics/actions/outcomes/summary
+        group.MapGet("/outcomes/summary", async (
+            AnalyticsActionItemService svc,
+            DateTime? createdFrom,
+            DateTime? createdTo,
+            DateTime? resolvedFrom,
+            DateTime? resolvedTo,
+            DateTime? measuredFrom,
+            DateTime? measuredTo,
+            string? sourceType,
+            string? priority,
+            string? dataQualityStatus,
+            CancellationToken ct) =>
+        {
+            if (!string.IsNullOrWhiteSpace(sourceType) && !AnalyticsActionConstants.IsValidSourceType(sourceType))
+                return Results.BadRequest($"sourceType must be one of: {string.Join(", ", AnalyticsActionConstants.SourceTypes.AllValues)}");
+
+            if (!string.IsNullOrWhiteSpace(priority) && !AnalyticsActionConstants.IsValidPriority(priority))
+                return Results.BadRequest($"priority must be one of: {string.Join(", ", AnalyticsActionConstants.Priorities.AllValues)}");
+
+            var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus);
+            if (normalizedDataQualityStatus != null && !AnalyticsActionConstants.IsValidDataQualityStatus(normalizedDataQualityStatus))
+                return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
+
+            if (createdFrom.HasValue && createdTo.HasValue && createdFrom > createdTo)
+                return Results.BadRequest("createdFrom must be earlier than or equal to createdTo");
+
+            if (resolvedFrom.HasValue && resolvedTo.HasValue && resolvedFrom > resolvedTo)
+                return Results.BadRequest("resolvedFrom must be earlier than or equal to resolvedTo");
+
+            if (measuredFrom.HasValue && measuredTo.HasValue && measuredFrom > measuredTo)
+                return Results.BadRequest("measuredFrom must be earlier than or equal to measuredTo");
+
+            var effectiveCreatedFrom = createdFrom;
+            var effectiveCreatedTo = createdTo;
+            if (!createdFrom.HasValue && !createdTo.HasValue && !resolvedFrom.HasValue && !resolvedTo.HasValue && !measuredFrom.HasValue && !measuredTo.HasValue)
+            {
+                effectiveCreatedFrom = DateTime.UtcNow.AddDays(-90);
+                effectiveCreatedTo = DateTime.UtcNow;
+            }
+
+            var summary = await svc.GetOutcomeSummaryAsync(
+                new AnalyticsActionOutcomeSummaryQuery(
+                    CreatedFrom: effectiveCreatedFrom,
+                    CreatedTo: effectiveCreatedTo,
+                    ResolvedFrom: resolvedFrom,
+                    ResolvedTo: resolvedTo,
+                    MeasuredFrom: measuredFrom,
+                    MeasuredTo: measuredTo,
+                    SourceType: sourceType,
+                    Priority: priority,
+                    DataQualityStatus: normalizedDataQualityStatus),
+                ct);
+
+            return Results.Ok(summary);
+        })
+        .WithName("GetAnalyticsActionOutcomeSummary");
+
         // GET /api/analytics/actions/{id}
         group.MapGet("/{id:long}", async (
             long id,

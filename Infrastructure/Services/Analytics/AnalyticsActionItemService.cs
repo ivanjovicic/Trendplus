@@ -131,6 +131,153 @@ public sealed class AnalyticsActionItemService
         );
     }
 
+    public async Task<AnalyticsActionOutcomeSummaryDto> GetOutcomeSummaryAsync(
+        AnalyticsActionOutcomeSummaryQuery query,
+        CancellationToken ct = default)
+    {
+        var normalizedDataQualityStatus = AnalyticsActionConstants.NormalizeDataQualityStatus(query.DataQualityStatus);
+        var generatedAtUtc = DateTime.UtcNow;
+
+        var q = _db.AnalyticsActionItems.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(query.SourceType))
+            q = q.Where(x => x.SourceType == query.SourceType);
+
+        if (!string.IsNullOrWhiteSpace(query.Priority))
+            q = q.Where(x => x.Priority == query.Priority);
+
+        if (!string.IsNullOrWhiteSpace(normalizedDataQualityStatus))
+        {
+            var legacyKeys = AnalyticsActionConstants.DataQualityStatuses.LegacyMappings
+                .Where(kv => string.Equals(kv.Value, normalizedDataQualityStatus, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => kv.Key)
+                .ToArray();
+
+            if (legacyKeys.Length > 0)
+            {
+                q = q.Where(x => x.DataQualityStatus == normalizedDataQualityStatus || legacyKeys.Contains(x.DataQualityStatus!));
+            }
+            else
+            {
+                q = q.Where(x => x.DataQualityStatus == normalizedDataQualityStatus);
+            }
+        }
+
+        if (query.CreatedFrom.HasValue)
+            q = q.Where(x => x.CreatedAtUtc >= query.CreatedFrom.Value);
+
+        if (query.CreatedTo.HasValue)
+            q = q.Where(x => x.CreatedAtUtc <= query.CreatedTo.Value);
+
+        if (query.ResolvedFrom.HasValue)
+            q = q.Where(x => x.ResolvedAtUtc.HasValue && x.ResolvedAtUtc.Value >= query.ResolvedFrom.Value);
+
+        if (query.ResolvedTo.HasValue)
+            q = q.Where(x => x.ResolvedAtUtc.HasValue && x.ResolvedAtUtc.Value <= query.ResolvedTo.Value);
+
+        if (query.MeasuredFrom.HasValue)
+            q = q.Where(x => x.OutcomeMeasuredAtUtc.HasValue && x.OutcomeMeasuredAtUtc.Value >= query.MeasuredFrom.Value);
+
+        if (query.MeasuredTo.HasValue)
+            q = q.Where(x => x.OutcomeMeasuredAtUtc.HasValue && x.OutcomeMeasuredAtUtc.Value <= query.MeasuredTo.Value);
+
+        var items = await q.ToListAsync(ct);
+        var periodMode = ResolvePeriodMode(query);
+        var warningCodes = BuildSummaryWarningCodes(items, periodMode, query);
+
+        if (items.Count == 0)
+        {
+            return new AnalyticsActionOutcomeSummaryDto(
+                Meta: new AnalyticsActionOutcomeSummaryMetaDto(
+                    Success: true,
+                    PeriodMode: periodMode,
+                    CreatedFrom: query.CreatedFrom,
+                    CreatedTo: query.CreatedTo,
+                    ResolvedFrom: query.ResolvedFrom,
+                    ResolvedTo: query.ResolvedTo,
+                    MeasuredFrom: query.MeasuredFrom,
+                    MeasuredTo: query.MeasuredTo,
+                    GeneratedAtUtc: generatedAtUtc,
+                    SampleSize: 0,
+                    MeasuredSampleSize: 0,
+                    Warnings: warningCodes,
+                    EmptyReason: "Nema akcija za izabrane filtere."
+                ),
+                Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
+                    CreatedCount: 0,
+                    ClosedCount: 0,
+                    OpenCount: 0,
+                    MeasuredCount: 0,
+                    PendingOutcomeCount: 0,
+                    SuccessCount: 0,
+                    NeutralCount: 0,
+                    NegativeCount: 0,
+                    NotMeasuredCount: 0,
+                    OutcomeCoverageRate: null,
+                    PositiveOutcomeRate: null,
+                    NegativeOutcomeRate: null
+                ),
+                Impact: new AnalyticsActionOutcomeSummaryImpactDto(
+                    ExpectedImpactRsd: null,
+                    MeasuredImpactRsd: null,
+                    RealizationRatio: null,
+                    MeasuredImpactSampleCount: 0
+                ),
+                BySourceType: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                ByPriority: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                ByOutcomeStatus: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                ByDataQuality: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                ByConfidenceBucket: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                ByReliabilityBucket: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>()
+            );
+        }
+
+        var totals = BuildSummaryAggregate("__all__", "Ukupno", items);
+        return new AnalyticsActionOutcomeSummaryDto(
+            Meta: new AnalyticsActionOutcomeSummaryMetaDto(
+                Success: true,
+                PeriodMode: periodMode,
+                CreatedFrom: query.CreatedFrom,
+                CreatedTo: query.CreatedTo,
+                ResolvedFrom: query.ResolvedFrom,
+                ResolvedTo: query.ResolvedTo,
+                MeasuredFrom: query.MeasuredFrom,
+                MeasuredTo: query.MeasuredTo,
+                GeneratedAtUtc: generatedAtUtc,
+                SampleSize: items.Count,
+                MeasuredSampleSize: totals.MeasuredCount,
+                Warnings: warningCodes,
+                EmptyReason: null
+            ),
+            Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
+                CreatedCount: items.Count,
+                ClosedCount: totals.ClosedCount,
+                OpenCount: totals.TotalCount - totals.ClosedCount,
+                MeasuredCount: totals.MeasuredCount,
+                PendingOutcomeCount: totals.PendingOutcomeCount,
+                SuccessCount: totals.SuccessCount,
+                NeutralCount: totals.NeutralCount,
+                NegativeCount: totals.NegativeCount,
+                NotMeasuredCount: totals.NotMeasuredCount,
+                OutcomeCoverageRate: totals.OutcomeCoverageRate,
+                PositiveOutcomeRate: totals.PositiveOutcomeRate,
+                NegativeOutcomeRate: totals.NegativeOutcomeRate
+            ),
+            Impact: new AnalyticsActionOutcomeSummaryImpactDto(
+                ExpectedImpactRsd: totals.ExpectedImpactRsd,
+                MeasuredImpactRsd: totals.MeasuredImpactRsd,
+                RealizationRatio: totals.RealizationRatio,
+                MeasuredImpactSampleCount: totals.MeasuredImpactSampleCount
+            ),
+            BySourceType: BuildGroupedBuckets(items, x => x.SourceType, x => x),
+            ByPriority: BuildGroupedBuckets(items, x => x.Priority, x => x),
+            ByOutcomeStatus: BuildGroupedBuckets(items, x => NormalizeOutcomeStatus(x.OutcomeStatus), GetOutcomeLabel),
+            ByDataQuality: BuildGroupedBuckets(items, x => NormalizeDataQualityBucket(x.DataQualityStatus), GetDataQualityLabel),
+            ByConfidenceBucket: BuildGroupedBuckets(items, x => GetPercentBucketKey(x.ConfidencePct), GetPercentBucketLabel),
+            ByReliabilityBucket: BuildGroupedBuckets(items, x => GetPercentBucketKey(x.ReliabilityPct), GetPercentBucketLabel)
+        );
+    }
+
     // ── Upsert (idempotent by sourceType + sourceKey for open actions) ─────
 
     public async Task<AnalyticsActionItem> UpsertAsync(
@@ -505,6 +652,184 @@ public sealed class AnalyticsActionItemService
         var note = string.Join(" | ", segments);
         return note.Length <= MaxOutcomeNotesLength ? note : note[..MaxOutcomeNotesLength];
     }
+
+    private static string ResolvePeriodMode(AnalyticsActionOutcomeSummaryQuery query)
+    {
+        if (query.MeasuredFrom.HasValue || query.MeasuredTo.HasValue)
+            return "measured";
+        if (query.ResolvedFrom.HasValue || query.ResolvedTo.HasValue)
+            return "resolved";
+        return "created";
+    }
+
+    private static string NormalizeOutcomeStatus(string? outcomeStatus)
+    {
+        if (string.IsNullOrWhiteSpace(outcomeStatus))
+            return AnalyticsActionConstants.OutcomeStatuses.Pending;
+
+        var normalized = outcomeStatus.Trim().ToLowerInvariant();
+        return AnalyticsActionConstants.IsValidOutcomeStatus(normalized)
+            ? normalized
+            : AnalyticsActionConstants.OutcomeStatuses.Pending;
+    }
+
+    private static string NormalizeDataQualityBucket(string? dataQualityStatus)
+        => AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus) ?? "unknown";
+
+    private static string GetOutcomeLabel(string key)
+        => key switch
+        {
+            AnalyticsActionConstants.OutcomeStatuses.Pending => "Pending",
+            AnalyticsActionConstants.OutcomeStatuses.Success => "Success",
+            AnalyticsActionConstants.OutcomeStatuses.Neutral => "Neutral",
+            AnalyticsActionConstants.OutcomeStatuses.Negative => "Negative",
+            AnalyticsActionConstants.OutcomeStatuses.NotMeasured => "NotMeasured",
+            _ => key
+        };
+
+    private static string GetDataQualityLabel(string key)
+        => key switch
+        {
+            AnalyticsActionConstants.DataQualityStatuses.Good => "Good",
+            AnalyticsActionConstants.DataQualityStatuses.Warning => "Warning",
+            AnalyticsActionConstants.DataQualityStatuses.Critical => "Critical",
+            AnalyticsActionConstants.DataQualityStatuses.InsufficientData => "InsufficientData",
+            "unknown" => "Unknown",
+            _ => key
+        };
+
+    private static string GetPercentBucketKey(int? value)
+        => value switch
+        {
+            null => "unknown",
+            < 50 => "lt50",
+            < 70 => "50_69",
+            < 85 => "70_84",
+            _ => "85_plus"
+        };
+
+    private static string GetPercentBucketLabel(string key)
+        => key switch
+        {
+            "lt50" => "<50",
+            "50_69" => "50-69",
+            "70_84" => "70-84",
+            "85_plus" => "85+",
+            "unknown" => "Unknown",
+            _ => key
+        };
+
+    private static string[] BuildSummaryWarningCodes(
+        IReadOnlyList<AnalyticsActionItem> items,
+        string periodMode,
+        AnalyticsActionOutcomeSummaryQuery query)
+    {
+        if (items.Count == 0)
+            return Array.Empty<string>();
+
+        var warnings = new List<string>();
+        var aggregate = BuildSummaryAggregate("__warnings__", "Warnings", items);
+        var hasCreatedFilters = query.CreatedFrom.HasValue || query.CreatedTo.HasValue;
+        var hasResolvedFilters = query.ResolvedFrom.HasValue || query.ResolvedTo.HasValue;
+        var hasMeasuredFilters = query.MeasuredFrom.HasValue || query.MeasuredTo.HasValue;
+        var measuredFiltersMixed = (hasMeasuredFilters && hasCreatedFilters)
+            || (hasMeasuredFilters && hasResolvedFilters)
+            || (hasCreatedFilters && hasResolvedFilters);
+
+        if (items.Count < 10)
+            warnings.Add("small_sample");
+        if (aggregate.MeasuredCount < 10)
+            warnings.Add("small_measured_sample");
+        if (aggregate.OutcomeCoverageRate.HasValue && aggregate.OutcomeCoverageRate.Value < 0.5m)
+            warnings.Add("outcome_coverage_low");
+        if (aggregate.MeasuredImpactSampleCount > 0 && !aggregate.ExpectedImpactRsd.HasValue)
+            warnings.Add("expected_impact_denominator_missing");
+        if (aggregate.MeasuredCount > 0 && aggregate.MeasuredImpactSampleCount < aggregate.MeasuredCount)
+            warnings.Add("measured_impact_missing");
+        if (items.Any(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal)))
+            warnings.Add("rejected_actions_present");
+        if (measuredFiltersMixed || periodMode == "measured" && (hasCreatedFilters || hasResolvedFilters))
+            warnings.Add("mixed_period_filters");
+
+        return warnings.ToArray();
+    }
+
+    private static AnalyticsActionOutcomeSummaryBucketDto[] BuildGroupedBuckets(
+        IReadOnlyList<AnalyticsActionItem> items,
+        Func<AnalyticsActionItem, string> keySelector,
+        Func<string, string> labelSelector)
+        => items
+            .GroupBy(keySelector)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => BuildSummaryAggregate(g.Key, labelSelector(g.Key), g.ToList()))
+            .ToArray();
+
+    private static AnalyticsActionOutcomeSummaryBucketDto BuildSummaryAggregate(
+        string key,
+        string label,
+        IReadOnlyList<AnalyticsActionItem> items)
+    {
+        var totalCount = items.Count;
+        var closedItems = items
+            .Where(x => string.Equals(x.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.Ordinal)
+                || string.Equals(x.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.Ordinal))
+            .ToArray();
+        var closedCount = closedItems.Length;
+
+        var normalizedOutcomes = items.Select(item => NormalizeOutcomeStatus(item.OutcomeStatus)).ToArray();
+        var measuredItems = items
+            .Where(x => NormalizeOutcomeStatus(x.OutcomeStatus) != AnalyticsActionConstants.OutcomeStatuses.Pending)
+            .ToArray();
+        var measuredCount = measuredItems.Length;
+        var pendingOutcomeCount = totalCount - measuredCount;
+        var successCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Success);
+        var neutralCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Neutral);
+        var negativeCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Negative);
+        var notMeasuredCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.NotMeasured);
+        var measuredImpactItems = measuredItems.Where(x => x.MeasuredImpactRsd.HasValue).ToArray();
+        var measuredImpactSampleCount = measuredImpactItems.Length;
+        decimal? measuredImpactRsd = measuredImpactSampleCount > 0 ? measuredImpactItems.Sum(x => x.MeasuredImpactRsd!.Value) : null;
+        var expectedImpactSampleItems = measuredImpactItems.Where(x => x.ExpectedImpactRsd.HasValue).ToArray();
+        decimal? expectedImpactRsd = expectedImpactSampleItems.Length > 0 ? expectedImpactSampleItems.Sum(x => x.ExpectedImpactRsd!.Value) : null;
+        var closedMeasuredCount = closedItems.Count(x => NormalizeOutcomeStatus(x.OutcomeStatus) != AnalyticsActionConstants.OutcomeStatuses.Pending);
+        decimal? outcomeCoverageRate = closedCount > 0 ? Math.Round((decimal)closedMeasuredCount / closedCount, 4, MidpointRounding.AwayFromZero) : null;
+        decimal? positiveOutcomeRate = measuredCount > 0 ? Math.Round((decimal)successCount / measuredCount, 4, MidpointRounding.AwayFromZero) : null;
+        decimal? negativeOutcomeRate = measuredCount > 0 ? Math.Round((decimal)negativeCount / measuredCount, 4, MidpointRounding.AwayFromZero) : null;
+        decimal? realizationRatio = null;
+        if (measuredImpactRsd.HasValue && expectedImpactRsd.HasValue && expectedImpactRsd.Value > 0)
+        {
+            realizationRatio = Math.Round(measuredImpactRsd.Value / expectedImpactRsd.Value, 4, MidpointRounding.AwayFromZero);
+        }
+
+        var warningCodes = new List<string>();
+        if (totalCount < 5)
+            warningCodes.Add("small_sample");
+        if (measuredCount > 0 && measuredImpactSampleCount < measuredCount)
+            warningCodes.Add("measured_impact_missing");
+        if (measuredImpactSampleCount > 0 && !expectedImpactRsd.HasValue)
+            warningCodes.Add("expected_impact_denominator_missing");
+
+        return new AnalyticsActionOutcomeSummaryBucketDto(
+            Key: key,
+            Label: label,
+            TotalCount: totalCount,
+            ClosedCount: closedCount,
+            MeasuredCount: measuredCount,
+            PendingOutcomeCount: pendingOutcomeCount,
+            SuccessCount: successCount,
+            NeutralCount: neutralCount,
+            NegativeCount: negativeCount,
+            NotMeasuredCount: notMeasuredCount,
+            ExpectedImpactRsd: expectedImpactRsd,
+            MeasuredImpactRsd: measuredImpactRsd,
+            OutcomeCoverageRate: outcomeCoverageRate,
+            PositiveOutcomeRate: positiveOutcomeRate,
+            NegativeOutcomeRate: negativeOutcomeRate,
+            RealizationRatio: realizationRatio,
+            MeasuredImpactSampleCount: measuredImpactSampleCount,
+            WarningCodes: warningCodes.ToArray()
+        );
+    }
 }
 
 // ── DTOs scoped to service (no separate file to keep it lean) ────────────────
@@ -559,9 +884,92 @@ public sealed record AnalyticsActionSourceStatusLookupInput(
     string SourceKey
 );
 
-    public sealed record AnalyticsActionOutcomeUpdateRequest(
-        string OutcomeStatus,
-        decimal? MeasuredImpactRsd,
-        DateTime? OutcomeMeasuredAtUtc,
-        string? OutcomeNotes
-    );
+public sealed record AnalyticsActionOutcomeUpdateRequest(
+    string OutcomeStatus,
+    decimal? MeasuredImpactRsd,
+    DateTime? OutcomeMeasuredAtUtc,
+    string? OutcomeNotes
+);
+
+public sealed record AnalyticsActionOutcomeSummaryQuery(
+    DateTime? CreatedFrom,
+    DateTime? CreatedTo,
+    DateTime? ResolvedFrom,
+    DateTime? ResolvedTo,
+    DateTime? MeasuredFrom,
+    DateTime? MeasuredTo,
+    string? SourceType,
+    string? Priority,
+    string? DataQualityStatus
+);
+
+public sealed record AnalyticsActionOutcomeSummaryDto(
+    AnalyticsActionOutcomeSummaryMetaDto Meta,
+    AnalyticsActionOutcomeSummaryTotalsDto Totals,
+    AnalyticsActionOutcomeSummaryImpactDto Impact,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> BySourceType,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByPriority,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByOutcomeStatus,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByDataQuality,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByConfidenceBucket,
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByReliabilityBucket
+);
+
+public sealed record AnalyticsActionOutcomeSummaryMetaDto(
+    bool Success,
+    string PeriodMode,
+    DateTime? CreatedFrom,
+    DateTime? CreatedTo,
+    DateTime? ResolvedFrom,
+    DateTime? ResolvedTo,
+    DateTime? MeasuredFrom,
+    DateTime? MeasuredTo,
+    DateTime GeneratedAtUtc,
+    int SampleSize,
+    int MeasuredSampleSize,
+    IReadOnlyList<string> Warnings,
+    string? EmptyReason
+);
+
+public sealed record AnalyticsActionOutcomeSummaryTotalsDto(
+    int CreatedCount,
+    int ClosedCount,
+    int OpenCount,
+    int MeasuredCount,
+    int PendingOutcomeCount,
+    int SuccessCount,
+    int NeutralCount,
+    int NegativeCount,
+    int NotMeasuredCount,
+    decimal? OutcomeCoverageRate,
+    decimal? PositiveOutcomeRate,
+    decimal? NegativeOutcomeRate
+);
+
+public sealed record AnalyticsActionOutcomeSummaryImpactDto(
+    decimal? ExpectedImpactRsd,
+    decimal? MeasuredImpactRsd,
+    decimal? RealizationRatio,
+    int MeasuredImpactSampleCount
+);
+
+public sealed record AnalyticsActionOutcomeSummaryBucketDto(
+    string Key,
+    string Label,
+    int TotalCount,
+    int ClosedCount,
+    int MeasuredCount,
+    int PendingOutcomeCount,
+    int SuccessCount,
+    int NeutralCount,
+    int NegativeCount,
+    int NotMeasuredCount,
+    decimal? ExpectedImpactRsd,
+    decimal? MeasuredImpactRsd,
+    decimal? OutcomeCoverageRate,
+    decimal? PositiveOutcomeRate,
+    decimal? NegativeOutcomeRate,
+    decimal? RealizationRatio,
+    int MeasuredImpactSampleCount,
+    IReadOnlyList<string> WarningCodes
+);

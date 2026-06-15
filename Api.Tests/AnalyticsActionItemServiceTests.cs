@@ -164,6 +164,107 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_UsesClosedDenominator_AndPendingIsNotFailure()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_UsesClosedDenominator_AndPendingIsNotFailure));
+        var service = CreateService(db);
+
+        var doneSuccess = await service.UpsertAsync(CreateRequest("inventory", "summary-1", expectedImpactRsd: 200m), userId: "u1");
+        await service.UpdateStatusAsync(doneSuccess.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(doneSuccess.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                100m,
+                new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                "pozitivno"),
+            "u1",
+            "tester");
+
+        var donePending = await service.UpsertAsync(CreateRequest("inventory", "summary-2", expectedImpactRsd: 150m), userId: "u1");
+        await service.UpdateStatusAsync(donePending.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+
+        var rejectedNegative = await service.UpsertAsync(CreateRequest("supplier", "summary-3", expectedImpactRsd: 100m), userId: "u1");
+        await service.UpdateStatusAsync(rejectedNegative.Id, AnalyticsActionConstants.Statuses.Rejected, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(rejectedNegative.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                50m,
+                new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
+                "negativno"),
+            "u1",
+            "tester");
+
+        var openMeasured = await service.UpsertAsync(CreateRequest("product", "summary-4", expectedImpactRsd: 60m), userId: "u1");
+        await service.UpdateOutcomeAsync(openMeasured.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                30m,
+                new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc),
+                "mereno dok je otvoreno"),
+            "u1",
+            "tester");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(4, summary.Totals.CreatedCount);
+        Assert.Equal(3, summary.Totals.ClosedCount);
+        Assert.Equal(1, summary.Totals.OpenCount);
+        Assert.Equal(3, summary.Totals.MeasuredCount);
+        Assert.Equal(1, summary.Totals.PendingOutcomeCount);
+        Assert.Equal(2, summary.Totals.SuccessCount);
+        Assert.Equal(1, summary.Totals.NegativeCount);
+        Assert.Equal(0.6667m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(0.6667m, summary.Totals.PositiveOutcomeRate);
+        Assert.Equal(0.3333m, summary.Totals.NegativeOutcomeRate);
+        Assert.Equal(360m, summary.Impact.ExpectedImpactRsd);
+        Assert.Equal(180m, summary.Impact.MeasuredImpactRsd);
+        Assert.Equal(0.5000m, summary.Impact.RealizationRatio);
+    }
+
+    [Fact]
+    public async Task GetOutcomeSummaryAsync_ReturnsNullRates_WhenDenominatorIsMissing()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_ReturnsNullRates_WhenDenominatorIsMissing));
+        var service = CreateService(db);
+
+        var openPending = await service.UpsertAsync(CreateRequest("inventory", "summary-null-1", expectedImpactRsd: 100m), userId: "u1");
+        await service.UpdateOutcomeAsync(openPending.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Pending,
+                null,
+                null,
+                null),
+            "u1",
+            "tester");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(0, summary.Totals.ClosedCount);
+        Assert.Null(summary.Totals.OutcomeCoverageRate);
+        Assert.Null(summary.Totals.PositiveOutcomeRate);
+        Assert.Null(summary.Totals.NegativeOutcomeRate);
+        Assert.Null(summary.Impact.RealizationRatio);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
