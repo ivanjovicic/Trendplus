@@ -772,6 +772,11 @@ export default function AnalyticsActionsPage() {
               Resetuj summary filtere
             </button>
           )}
+          {activeSummaryFilters.length > 1 && (
+            <span className="aaq-summary-filter-helper">
+              Sažetak je sužen na {activeSummaryFilters.length} aktivna filtera.
+            </span>
+          )}
         </div>
       )}
 

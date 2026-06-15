@@ -258,6 +258,12 @@
   background: var(--color-danger-surface, #fff1f2);
 }
 
+.aaq-summary-filter-helper {
+  align-self: center;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary, #666);
+}
+
 /* Filters */
 .aaq-filters {
   display: flex;
