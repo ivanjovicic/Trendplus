@@ -206,6 +206,10 @@ function getBucketHeading(bucket: AnalyticsActionOutcomeSummaryBucket): string {
     return DATA_QUALITY_LABELS[bucket.key as AnalyticsActionDataQualityStatus];
   }
 
+  if (bucket.key in OUTCOME_LABELS) {
+    return OUTCOME_LABELS[bucket.key as AnalyticsActionOutcomeUpdateInput["outcomeStatus"]];
+  }
+
   return bucket.label;
 }
 
@@ -610,6 +614,50 @@ export default function AnalyticsActionsPage() {
                   ))}
                 </div>
               </section>
+
+              {outcomeSummary.byDataQuality.length > 0 && (
+                <section className="aaq-breakdown-card" aria-labelledby="aaq-breakdown-quality">
+                  <h3 id="aaq-breakdown-quality" className="aaq-breakdown-title">Po kvalitetu podataka</h3>
+                  <div className="aaq-breakdown-list">
+                    {outcomeSummary.byDataQuality.map((bucket) => (
+                      <div key={bucket.key} className="aaq-breakdown-row">
+                        <div>
+                          <strong>{getBucketHeading(bucket)}</strong>
+                          <div className="aaq-breakdown-meta">
+                            {fmtNumber(bucket.totalCount, 0, "0")} akcija · pozitivan ishod {renderBucketRateLabel(bucket.positiveOutcomeRate)}
+                          </div>
+                        </div>
+                        <div className="aaq-breakdown-values">
+                          <span>Pokrivenost {renderBucketRateLabel(bucket.outcomeCoverageRate)}</span>
+                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {outcomeSummary.byOutcomeStatus.length > 0 && (
+                <section className="aaq-breakdown-card" aria-labelledby="aaq-breakdown-outcome">
+                  <h3 id="aaq-breakdown-outcome" className="aaq-breakdown-title">Po statusu ishoda</h3>
+                  <div className="aaq-breakdown-list">
+                    {outcomeSummary.byOutcomeStatus.map((bucket) => (
+                      <div key={bucket.key} className="aaq-breakdown-row">
+                        <div>
+                          <strong>{getBucketHeading(bucket)}</strong>
+                          <div className="aaq-breakdown-meta">
+                            {fmtNumber(bucket.totalCount, 0, "0")} akcija · merljivo {fmtNumber(bucket.measuredCount, 0, "0")}
+                          </div>
+                        </div>
+                        <div className="aaq-breakdown-values">
+                          <span>Negativan {renderBucketRateLabel(bucket.negativeOutcomeRate)}</span>
+                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </>
         ) : null}

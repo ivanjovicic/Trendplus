@@ -163,8 +163,50 @@ describe("AnalyticsActionsPage", () => {
           warningCodes: [],
         },
       ],
-      byOutcomeStatus: [],
-      byDataQuality: [],
+      byOutcomeStatus: [
+        {
+          key: "success",
+          label: "success",
+          totalCount: 1,
+          closedCount: 1,
+          measuredCount: 1,
+          pendingOutcomeCount: 0,
+          successCount: 1,
+          neutralCount: 0,
+          negativeCount: 0,
+          notMeasuredCount: 0,
+          expectedImpactRsd: 12000,
+          measuredImpactRsd: 3000,
+          outcomeCoverageRate: 1,
+          positiveOutcomeRate: 1,
+          negativeOutcomeRate: 0,
+          realizationRatio: 0.25,
+          measuredImpactSampleCount: 1,
+          warningCodes: [],
+        },
+      ],
+      byDataQuality: [
+        {
+          key: "good",
+          label: "good",
+          totalCount: 2,
+          closedCount: 1,
+          measuredCount: 1,
+          pendingOutcomeCount: 1,
+          successCount: 1,
+          neutralCount: 0,
+          negativeCount: 0,
+          notMeasuredCount: 0,
+          expectedImpactRsd: 12000,
+          measuredImpactRsd: 3000,
+          outcomeCoverageRate: 1,
+          positiveOutcomeRate: 1,
+          negativeOutcomeRate: 0,
+          realizationRatio: 0.25,
+          measuredImpactSampleCount: 1,
+          warningCodes: [],
+        },
+      ],
       byConfidenceBucket: [],
       byReliabilityBucket: [],
     });
@@ -212,6 +254,8 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
     expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
     expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
+    expect(screen.getByText("Po kvalitetu podataka")).toBeInTheDocument();
+    expect(screen.getByText("Po statusu ishoda")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
 
