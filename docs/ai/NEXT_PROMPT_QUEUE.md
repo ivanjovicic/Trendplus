@@ -1001,7 +1001,7 @@ Acceptance:
 
 ## Q14 — Inventory UX audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(inventory): audit analytics inventory ux`
 Priority: P1
 Type: audit/docs
@@ -1036,6 +1036,26 @@ Acceptance:
 - Decision-flow gaps are documented.
 - Risks and next polish targets are clear.
 ```
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `docs/Analytics/INVENTORY_UX_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - auditovan je inventory ekran iz decision ugla sa fokusom na dopunu, OOS rizik, dead stock, transfer tok i odnos između signala, akcija i sekundarnih operativnih alata
+  - dokumentovan je P0 gap da `DecisionSummaryBar` trenutno ne prenosi stvarni quality warning signal, pa top-level summary može delovati lažno zdravo
+  - predložen je mali polish backlog za hijerarhiju odluka, copy cleanup i smanjenje export/control šuma bez diranja algoritama
+- Checks:
+  - `git diff --check` — pass
+  - `Get-Content -Encoding utf8 docs/Analytics/INVENTORY_UX_AUDIT.md` spot-check — pass
+  - frontend build/test — not run (docs-only task)
+- Rizici:
+  - P0 quality-summary gap ostaje otvoren dok se ne uradi mali frontend fix
+  - follow-up mora paziti da ne vrati export/scheduler kontrole nazad u fokus iznad decision flow-a
+- Next queue item:
+  - `Q15 - Secondary analytics screens audit`
 
 ---
 
