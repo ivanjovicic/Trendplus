@@ -942,7 +942,7 @@ Acceptance:
 
 ## Q13 — Daily Sales UX audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(analytics): audit daily sales ux clarity`
 Priority: P2
 Type: audit/docs
@@ -976,6 +976,26 @@ Acceptance:
 - Daily Sales UX risks are documented.
 - Follow-up polish work is scoped.
 ```
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `docs/Analytics/DAILY_SALES_UX_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - auditovana je `Daily Sales` stranica sa fokusom na period, poređenje, quality trust, chart prioritet i operator clarity
+  - dokumentovani su glavni UX gapovi: nedostatak freshness/trust signala na vrhu, skriven quality panel, previše ravnopravnih chart panela i odsustvo jasnog sledećeg koraka
+  - predložen je mali, bezbedan polish backlog bez diranja metrics logike ili broad redesign-a
+- Checks:
+  - `git diff --check` — pass
+  - `Get-Content -Encoding utf8 docs/Analytics/DAILY_SALES_UX_AUDIT.md` spot-check — pass
+  - frontend build/test — not run (docs-only task)
+- Rizici:
+  - deo freshness/trust poboljšanja verovatno traži i backend/generated-at signal koji ova ruta trenutno ne izlaže
+  - follow-up mora paziti da ne pretvori ekran u još veći dashboard bez jasne hijerarhije prioriteta
+- Next queue item:
+  - `Q14 - Inventory UX audit`
 
 ---
 
