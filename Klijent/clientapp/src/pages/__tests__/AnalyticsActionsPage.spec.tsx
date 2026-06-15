@@ -441,7 +441,8 @@ describe("AnalyticsActionsPage", () => {
 
     const resetButton = await screen.findByRole("button", { name: "Resetuj summary filtere" });
     expect(resetButton).toBeInTheDocument();
-    expect(screen.getByText("Sažetak je sužen na 2 aktivna filtera: Izvor: Zalihe, Prioritet: P1.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Izvor: Zalihe" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prioritet: P1" })).toBeInTheDocument();
 
     fireEvent.click(resetButton);
 
@@ -449,7 +450,26 @@ describe("AnalyticsActionsPage", () => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
       expect(screen.getByLabelText("Filter po prioritetu")).toHaveValue("");
       expect(screen.queryByRole("button", { name: "Resetuj summary filtere" })).not.toBeInTheDocument();
-      expect(screen.queryByText("Sažetak je sužen na 2 aktivna filtera: Izvor: Zalihe, Prioritet: P1.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Izvor: Zalihe" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Prioritet: P1" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("removes one active summary filter from the helper links", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "inventory" } });
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P1" } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Prioritet: P1" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("inventory");
+      expect(screen.getByLabelText("Filter po prioritetu")).toHaveValue("");
+      expect(screen.getByRole("button", { name: /Izvor: Zalihe/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Prioritet: P1" })).not.toBeInTheDocument();
     });
   });
 });

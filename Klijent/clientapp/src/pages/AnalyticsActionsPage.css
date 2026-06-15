@@ -264,6 +264,20 @@
   color: var(--color-text-secondary, #666);
 }
 
+.aaq-summary-filter-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-primary, #111);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.aaq-summary-filter-link:hover {
+  color: var(--color-info-text, #3730a3);
+}
+
 /* Filters */
 .aaq-filters {
   display: flex;

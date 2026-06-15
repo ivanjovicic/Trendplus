@@ -775,7 +775,18 @@ export default function AnalyticsActionsPage() {
           {activeSummaryFilters.length > 1 && (
             <span className="aaq-summary-filter-helper">
               Sažetak je sužen na {activeSummaryFilters.length} aktivna filtera:{" "}
-              {activeSummaryFilters.map((filterItem) => filterItem.label).join(", ")}.
+              {activeSummaryFilters.map((filterItem, index) => (
+                <Fragment key={`summary-helper-${filterItem.key}`}>
+                  <button
+                    type="button"
+                    className="aaq-summary-filter-link"
+                    onClick={() => applySummaryBucketFilter(filterItem.key, filterItem.value)}
+                  >
+                    {filterItem.label}
+                  </button>
+                  {index < activeSummaryFilters.length - 1 ? ", " : "."}
+                </Fragment>
+              ))}
             </span>
           )}
         </div>
