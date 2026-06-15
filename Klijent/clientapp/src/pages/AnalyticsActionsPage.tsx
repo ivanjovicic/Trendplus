@@ -753,16 +753,15 @@ export default function AnalyticsActionsPage() {
 
       {activeSummaryFilters.length > 0 && (
         <div className="aaq-active-summary-filters" aria-label="Aktivni summary filteri">
-          {activeSummaryFilters.map((filterItem) => (
+          {activeSummaryFilters.length === 1 && (
             <button
-              key={`${filterItem.key}:${filterItem.value}`}
               type="button"
               className="aaq-filter-chip"
-              onClick={() => applySummaryBucketFilter(filterItem.key, filterItem.value)}
+              onClick={() => applySummaryBucketFilter(activeSummaryFilters[0].key, activeSummaryFilters[0].value)}
             >
-              {filterItem.label} ×
+              {activeSummaryFilters[0].label} ×
             </button>
-          ))}
+          )}
           {activeSummaryFilters.length > 1 && (
             <button
               type="button"
