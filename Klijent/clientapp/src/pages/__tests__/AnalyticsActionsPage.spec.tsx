@@ -441,7 +441,7 @@ describe("AnalyticsActionsPage", () => {
 
     const resetButton = await screen.findByRole("button", { name: "Resetuj summary filtere" });
     expect(resetButton).toBeInTheDocument();
-    expect(screen.getByText("Sažetak je sužen na 2 aktivna filtera.")).toBeInTheDocument();
+    expect(screen.getByText("Sažetak je sužen na 2 aktivna filtera: Izvor: Zalihe, Prioritet: P1.")).toBeInTheDocument();
 
     fireEvent.click(resetButton);
 
@@ -449,7 +449,7 @@ describe("AnalyticsActionsPage", () => {
       expect(screen.getByLabelText("Filter po izvoru")).toHaveValue("");
       expect(screen.getByLabelText("Filter po prioritetu")).toHaveValue("");
       expect(screen.queryByRole("button", { name: "Resetuj summary filtere" })).not.toBeInTheDocument();
-      expect(screen.queryByText("Sažetak je sužen na 2 aktivna filtera.")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sažetak je sužen na 2 aktivna filtera: Izvor: Zalihe, Prioritet: P1.")).not.toBeInTheDocument();
     });
   });
 });

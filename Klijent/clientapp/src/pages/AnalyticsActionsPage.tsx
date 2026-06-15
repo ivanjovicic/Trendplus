@@ -774,7 +774,8 @@ export default function AnalyticsActionsPage() {
           )}
           {activeSummaryFilters.length > 1 && (
             <span className="aaq-summary-filter-helper">
-              Sažetak je sužen na {activeSummaryFilters.length} aktivna filtera.
+              Sažetak je sužen na {activeSummaryFilters.length} aktivna filtera:{" "}
+              {activeSummaryFilters.map((filterItem) => filterItem.label).join(", ")}.
             </span>
           )}
         </div>
