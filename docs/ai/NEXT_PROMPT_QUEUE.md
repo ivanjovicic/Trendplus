@@ -1061,7 +1061,7 @@ Acceptance:
 
 ## Q15 — Secondary analytics screens audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(analytics): audit secondary analytics screens`
 Priority: P2
 Type: audit/docs
@@ -1094,6 +1094,26 @@ Acceptance:
 - Secondary-screen clarity risks are documented.
 - A prioritized follow-up list exists.
 ```
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `docs/Analytics/SECONDARY_ANALYTICS_SCREENS_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - auditovani su sekundarni analytics ekrani van glavnih decision tokova i grupisani na modernije, mešovite i legacy/exploratory surface-e
+  - dokumentovani su najveći clarity gapovi za `ColorSalesStatsPage`, `AnalyticsDetails`, `AnalyticsDetailPage` i `InsightStudioPage`, kao i relativno jači pattern-i na `ShoeType`, `SupplierSales`, `Pre/Post Nivelacije` i durable supplier report-u
+  - napravljen je prioritetni backlog za male follow-up polish taskove bez broad refactor-a više ekrana odjednom
+- Checks:
+  - `git diff --check` — pass
+  - `Get-Content -Encoding utf8 docs/Analytics/SECONDARY_ANALYTICS_SCREENS_AUDIT.md` spot-check — pass
+  - frontend build/test — not run (docs-only task)
+- Rizici:
+  - deo sekundarnih ekrana i dalje ostaje nekonzistentan dok se ne uradi najmanje jedan mali frontend follow-up, posebno za `ColorSalesStatsPage` i `AnalyticsDetails`
+  - `InsightStudio` je funkcionalno moćan, ali bez jasnog trust/freshness okvira i dalje nosi visok kognitivni trošak za pilot korisnika
+- Next queue item:
+  - `Q16 - PreNivelacija small polish`
 
 ---
 
