@@ -1249,7 +1249,7 @@ Acceptance:
 
 ## Q18 — Action Outcome Analytics plan
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(actions): plan action outcome analytics`
 Priority: P2
 Type: audit/docs
@@ -1284,3 +1284,24 @@ Acceptance:
 - Action outcome analytics scope is documented.
 - Dependencies and rollout stages are clear.
 ```
+
+### Notes
+
+- Date: 2026-06-15
+- Changed files:
+  - `docs/Analytics/ACTION_OUTCOME_ANALYTICS_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Šta je promenjeno:
+  - definisana su glavna operativna i menadžerska pitanja koja outcome analytics treba da odgovori za action queue
+  - dokumentovane su minimalne dimenzije, metrike, trust constraints i zavisnosti od status/outcome/timing/ownership polja
+  - preporučen je staged rollout od metric definition faze do read-only summary i manager report sloja, bez promene action workflow-a
+- Checks:
+  - `git diff --check` — pass (samo postojeće LF/CRLF upozorenje)
+  - `Get-Content -Encoding utf8 docs/Analytics/ACTION_OUTCOME_ANALYTICS_PLAN.md` spot-check — pass
+  - frontend build/test — not run (docs-only task)
+  - `dotnet build` / `dotnet test` — not run
+- Rizici:
+  - nema eksplicitnog owner/assignee modela ni `acceptedAtUtc`, pa ownership i “time to first action” ostaju ograničeni u Phase 1
+  - action queue write/outcome rute ostaju P0 access-control gap iz ranijeg audita, pa outcome analytics treba da ostane read-only dok se auth ne stabilizuje
+- Next queue item:
+  - queue je trenutno iscrpljen; sledeći logičan mali task je Phase 1 audit agregacionog data shape-a za action outcome summary
