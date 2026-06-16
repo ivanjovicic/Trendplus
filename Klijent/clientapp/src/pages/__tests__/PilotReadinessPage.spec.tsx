@@ -355,7 +355,7 @@ const readyPilotReport = {
 
 const readySupplierReport = {
   reportId: "supplier-report-1",
-  stableQueryUrl: "/analytics/reports/supplier-decision",
+  stableQueryUrl: "/analytics/supplier/report",
   reportTitle: "Supplier decision",
   reportType: "supplier-decision",
   generatedAtUtc: "2026-06-15T10:00:00Z",

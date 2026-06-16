@@ -49,13 +49,13 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
         legacyAliases: [],
     },
     {
-        path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all",
+        path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&scope=all",
         label: "Izveštaj dobavljača",
         isDurableReport: true,
         legacyAliases: [],
     },
     {
-        path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all",
+        path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&scope=all",
         label: "Pilot intake izveštaj",
         isDurableReport: true,
         legacyAliases: ["/analytics/data-quality/pilot-intake-report"],
