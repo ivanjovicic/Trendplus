@@ -17,6 +17,7 @@ using Xunit;
 
 namespace Api.Tests;
 
+[Trait("Category", "Integration")]
 public sealed class AnalyticsActionsEndpointsTests
 {
     [Fact]
@@ -176,6 +177,19 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("positiveOutcomeRate").GetDecimal());
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("negativeOutcomeRate").GetDecimal());
         Assert.Equal(150m, root.GetProperty("impact").GetProperty("measuredImpactRsd").GetDecimal());
+    }
+
+    [Fact]
+    public async Task GetOutcomeSummary_InvalidResolvedRange_ReturnsBadRequest()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+
+        using var response = await host.Client.GetAsync(
+            "/api/analytics/actions/outcomes/summary?resolvedFrom=2026-06-20T00:00:00Z&resolvedTo=2026-06-10T00:00:00Z");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var message = await response.Content.ReadAsStringAsync();
+        Assert.Contains("resolvedFrom must be earlier than or equal to resolvedTo", message);
     }
 
     [Fact]

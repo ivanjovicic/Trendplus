@@ -265,6 +265,237 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_FiltersByResolvedWindow_AndDoesNotTreatMeasuredDateAsResolvedDate()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_FiltersByResolvedWindow_AndDoesNotTreatMeasuredDateAsResolvedDate));
+        var service = CreateService(db);
+
+        var resolvedInRangeDone = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "resolved-range-1",
+                expectedImpactRsd: 200m,
+                priority: AnalyticsActionConstants.Priorities.P1,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+        await service.UpdateStatusAsync(resolvedInRangeDone.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            resolvedInRangeDone.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                120m,
+                new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc),
+                "izmereno kasnije"),
+            "u1",
+            "tester");
+        await SetResolvedAtUtcAsync(db, resolvedInRangeDone.Id, new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc));
+
+        var resolvedInRangeRejected = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Supplier,
+                "resolved-range-2",
+                expectedImpactRsd: 300m,
+                priority: AnalyticsActionConstants.Priorities.P2,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning),
+            userId: "u1");
+        await service.UpdateStatusAsync(resolvedInRangeRejected.Id, AnalyticsActionConstants.Statuses.Rejected, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            resolvedInRangeRejected.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                30m,
+                new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc),
+                "odbijeno sa negativnim efektom"),
+            "u1",
+            "tester");
+        await SetResolvedAtUtcAsync(db, resolvedInRangeRejected.Id, new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc));
+
+        var resolvedBeforeRange = await service.UpsertAsync(
+            CreateRequest(AnalyticsActionConstants.SourceTypes.Product, "resolved-range-3", expectedImpactRsd: 180m),
+            userId: "u1");
+        await service.UpdateStatusAsync(resolvedBeforeRange.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            resolvedBeforeRange.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                60m,
+                new DateTime(2026, 6, 25, 0, 0, 0, DateTimeKind.Utc),
+                "zatvoreno pre opsega"),
+            "u1",
+            "tester");
+        await SetResolvedAtUtcAsync(db, resolvedBeforeRange.Id, new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc));
+
+        var resolvedAfterRange = await service.UpsertAsync(
+            CreateRequest(AnalyticsActionConstants.SourceTypes.Inventory, "resolved-range-4", expectedImpactRsd: 90m),
+            userId: "u1");
+        await service.UpdateStatusAsync(resolvedAfterRange.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            resolvedAfterRange.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                10m,
+                new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
+                "zatvoreno posle opsega"),
+            "u1",
+            "tester");
+        await SetResolvedAtUtcAsync(db, resolvedAfterRange.Id, new DateTime(2026, 6, 24, 0, 0, 0, DateTimeKind.Utc));
+
+        var unresolvedMeasured = await service.UpsertAsync(
+            CreateRequest(AnalyticsActionConstants.SourceTypes.Inventory, "resolved-range-5", expectedImpactRsd: 110m),
+            userId: "u1");
+        await service.UpdateOutcomeAsync(
+            unresolvedMeasured.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                40m,
+                new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc),
+                "izmereno bez zatvaranja"),
+            "u1",
+            "tester");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            ResolvedTo: new DateTime(2026, 6, 20, 23, 59, 59, DateTimeKind.Utc),
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal("resolved", summary.Meta.PeriodMode);
+        Assert.Equal(2, summary.Meta.SampleSize);
+        Assert.Equal(2, summary.Totals.CreatedCount);
+        Assert.Equal(2, summary.Totals.ClosedCount);
+        Assert.Equal(0, summary.Totals.OpenCount);
+        Assert.Equal(2, summary.Totals.MeasuredCount);
+        Assert.Equal(0, summary.Totals.PendingOutcomeCount);
+        Assert.Equal(1, summary.Totals.SuccessCount);
+        Assert.Equal(1, summary.Totals.NegativeCount);
+        Assert.Equal(1.0000m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(500m, summary.Impact.ExpectedImpactRsd);
+        Assert.Equal(150m, summary.Impact.MeasuredImpactRsd);
+        Assert.Equal(0.3000m, summary.Impact.RealizationRatio);
+    }
+
+    [Fact]
+    public async Task GetOutcomeSummaryAsync_ReturnsSupportedCohortBuckets_AndKeepsUnknownImpactNull()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_ReturnsSupportedCohortBuckets_AndKeepsUnknownImpactNull));
+        var service = CreateService(db);
+
+        var inventorySuccess = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "bucket-1",
+                priority: AnalyticsActionConstants.Priorities.P1,
+                expectedImpactRsd: 200m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+        await service.UpdateStatusAsync(inventorySuccess.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            inventorySuccess.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                100m,
+                new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                "uspeh"),
+            "u1",
+            "tester");
+
+        var supplierRejectedNegative = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Supplier,
+                "bucket-2",
+                priority: AnalyticsActionConstants.Priorities.P2,
+                expectedImpactRsd: 300m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning),
+            userId: "u1");
+        await service.UpdateStatusAsync(supplierRejectedNegative.Id, AnalyticsActionConstants.Statuses.Rejected, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            supplierRejectedNegative.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                null,
+                new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
+                "negativan bez iznosa"),
+            "u1",
+            "tester");
+
+        var productPending = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Product,
+                "bucket-3",
+                priority: AnalyticsActionConstants.Priorities.P3,
+                expectedImpactRsd: 150m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Critical),
+            userId: "u1");
+        await service.UpdateStatusAsync(productPending.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+
+        var inventoryNotMeasured = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "bucket-4",
+                priority: AnalyticsActionConstants.Priorities.P2,
+                expectedImpactRsd: 120m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.InsufficientData),
+            userId: "u1");
+        await service.UpdateOutcomeAsync(
+            inventoryNotMeasured.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                null,
+                null,
+                "nije izmereno"),
+            "u1",
+            "tester");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Contains("rejected_actions_present", summary.Meta.Warnings);
+
+        var inventoryBucket = Assert.Single(summary.BySourceType.Where(x => x.Key == AnalyticsActionConstants.SourceTypes.Inventory));
+        Assert.Equal(2, inventoryBucket.TotalCount);
+        Assert.Equal(1, inventoryBucket.SuccessCount);
+        Assert.Equal(1, inventoryBucket.NotMeasuredCount);
+
+        var p2Bucket = Assert.Single(summary.ByPriority.Where(x => x.Key == AnalyticsActionConstants.Priorities.P2));
+        Assert.Equal(2, p2Bucket.TotalCount);
+        Assert.Equal(2, p2Bucket.MeasuredCount);
+        Assert.Equal(0, p2Bucket.PendingOutcomeCount);
+        Assert.Null(p2Bucket.MeasuredImpactRsd);
+        Assert.Equal(0, p2Bucket.MeasuredImpactSampleCount);
+
+        var pendingBucket = Assert.Single(summary.ByOutcomeStatus.Where(x => x.Key == AnalyticsActionConstants.OutcomeStatuses.Pending));
+        Assert.Equal(1, pendingBucket.TotalCount);
+        Assert.Equal(1, pendingBucket.ClosedCount);
+        Assert.Equal(0, pendingBucket.MeasuredCount);
+        Assert.Equal(1, pendingBucket.PendingOutcomeCount);
+        Assert.Null(pendingBucket.PositiveOutcomeRate);
+        Assert.Null(pendingBucket.NegativeOutcomeRate);
+
+        var warningBucket = Assert.Single(summary.ByDataQuality.Where(x => x.Key == AnalyticsActionConstants.DataQualityStatuses.Warning));
+        Assert.Equal(1, warningBucket.TotalCount);
+        Assert.Equal(1, warningBucket.NegativeCount);
+        Assert.Null(warningBucket.MeasuredImpactRsd);
+        Assert.Equal(0, warningBucket.MeasuredImpactSampleCount);
+
+        Assert.Contains(summary.ByDataQuality, x => x.Key == AnalyticsActionConstants.DataQualityStatuses.Good);
+        Assert.Contains(summary.ByDataQuality, x => x.Key == AnalyticsActionConstants.DataQualityStatuses.Critical);
+        Assert.Contains(summary.ByDataQuality, x => x.Key == AnalyticsActionConstants.DataQualityStatuses.InsufficientData);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
@@ -434,7 +665,8 @@ public class AnalyticsActionItemServiceTests
         string title = "Predlog akcije",
         string priority = AnalyticsActionConstants.Priorities.P2,
         DateTime? dueAtUtc = null,
-        decimal? expectedImpactRsd = null)
+        decimal? expectedImpactRsd = null,
+        string dataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Warning)
         => new(
             SourceType: sourceType,
             SourceKey: sourceKey,
@@ -448,8 +680,16 @@ public class AnalyticsActionItemServiceTests
             ExpectedImpactRsd: expectedImpactRsd,
             ConfidencePct: 80,
             ReliabilityPct: 75,
-            DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning,
+            DataQualityStatus: dataQualityStatus,
             ActionUrl: "/analytics/inventory",
             MetadataJson: null
         );
+
+    private static async Task SetResolvedAtUtcAsync(AnalyticsDbContext db, long actionId, DateTime resolvedAtUtc)
+    {
+        var entity = await db.AnalyticsActionItems.SingleAsync(x => x.Id == actionId);
+        entity.ResolvedAtUtc = resolvedAtUtc;
+        entity.UpdatedAtUtc = resolvedAtUtc;
+        await db.SaveChangesAsync();
+    }
 }
