@@ -147,24 +147,6 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
 const PRODUCT_DECISION_PAGE_EXPLANATION =
   "Ovaj ekran predlaže šta uraditi sa artiklima: dopuniti, pojačati, sniziti cenu, pratiti ili proveriti podatke. Preporuka je blokirana kada podaci nisu dovoljno pouzdani.";
 
-const PRODUCT_DECISION_COPY_REPLACEMENTS: Array<[string, string]> = [
-  ["Pojacaj", "Pojačaj"],
-  ["Ne narucivati", "Ne naručivati"],
-  ["Ne narucuj", "Ne naručuj"],
-  ["Kritican", "Kritičan"],
-  ["Marza", "Marža"],
-  ["zeljenog", "željenog"],
-  ["viska", "viška"],
-  ["ucitavanju", "učitavanju"],
-  ["Ucitavanje", "Učitavanje"],
-  ["ucitane", "učitane"],
-  ["trazenom", "traženom"],
-  ["jos", "još"],
-  ["zavrseno", "završeno"],
-  ["Zasto", "Zašto"],
-  ["pokrice", "pokriće"],
-];
-
 function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -217,15 +199,6 @@ function translateReasonCode(code: string): string {
   return REASON_CODE_MESSAGES[normalized] ?? code;
 }
 
-function polishProductDecisionCopy(value: string | null | undefined): string {
-  if (!value) return value ?? "";
-
-  return PRODUCT_DECISION_COPY_REPLACEMENTS.reduce(
-    (current, [from, to]) => current.replaceAll(from, to),
-    value,
-  );
-}
-
 function stockCoverStatusLabel(status: string | null | undefined): string {
   const normalized = (status ?? "").trim().toLowerCase();
   if (normalized === "low_cover" || normalized === "low") return "Niska pokrivenost";
@@ -269,6 +242,13 @@ function buildInventoryDecisionUrl(row: ProductDecisionRow): string {
   params.set("productId", String(row.productId));
   const query = params.toString();
   return query ? `/analytics/inventory?${query}` : "/analytics/inventory";
+}
+
+// Source enums, backend recommendation text and reason payloads stay canonical.
+// We localize only UI-owned labels/maps here so backend copy drift stays visible
+// instead of being silently rewritten on arbitrary source text.
+function displayRecommendationLabel(row: ProductDecisionRow): string {
+  return RECOMMENDATION_LABELS[row.recommendationStatus] ?? row.recommendationLabel;
 }
 
 function buildSourceKey(
@@ -1059,7 +1039,7 @@ export default function ProductDecisionCenterPage() {
                         <td>{fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}</td>
                         <td>
                           <span>{fmtPct(row.marginPct, 1)}</span>
-                          <small>{polishProductDecisionCopy(row.marginQualityLabel) ?? "N/A"} | pokriće: {fmtPct(row.marginCoveragePct, 1)}</small>
+                          <small>{row.marginQualityLabel ?? "N/A"} | pokriće: {fmtPct(row.marginCoveragePct, 1)}</small>
                         </td>
                         <td>
                           <span>{fmtNumber(row.currentStock, 0, "0")}</span>
@@ -1083,7 +1063,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span className={recommendationToneClass(row.recommendationStatus)}>
-                            {RECOMMENDATION_LABELS[row.recommendationStatus] ?? polishProductDecisionCopy(row.recommendationLabel)}
+                            {displayRecommendationLabel(row)}
                           </span>
                           <button
                             type="button"
@@ -1092,13 +1072,13 @@ export default function ProductDecisionCenterPage() {
                               event.stopPropagation();
                               toggleExpandedRow(row.productId);
                             }}
-                            title={polishProductDecisionCopy(row.recommendationReason)}
+                            title={row.recommendationReason}
                           >
                             Zašto?
                           </button>
                         </td>
                         <td>
-                          <span>{polishProductDecisionCopy(row.recommendedAction)}</span>
+                          <span>{row.recommendedAction}</span>
                           <small>{fmtRsd(row.lostSalesEstimate, 0, "N/A")} potencijalnog uticaja</small>
                           <button
                             type="button"
@@ -1125,7 +1105,7 @@ export default function ProductDecisionCenterPage() {
                                 </div>
                                 <div className="reason-statuses">
                                   <span className={recommendationToneClass(row.recommendationStatus)}>
-                                    {RECOMMENDATION_LABELS[row.recommendationStatus] ?? polishProductDecisionCopy(row.recommendationLabel)}
+                                    {displayRecommendationLabel(row)}
                                   </span>
                                   <span className={dataQualityClass(dataQuality)}>
                                     {DATA_QUALITY_LABELS[dataQuality]}
@@ -1135,7 +1115,7 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-block">
-                                <strong>Razlog:</strong> {polishProductDecisionCopy(row.recommendationReason) || "Razlog nije dostupan."}
+                                <strong>Razlog:</strong> {row.recommendationReason || "Razlog nije dostupan."}
                               </div>
 
                               <div className="reason-block">

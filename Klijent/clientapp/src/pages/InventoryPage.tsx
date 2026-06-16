@@ -611,6 +611,16 @@ export default function InventoryPage() {
   const warningMeta = inventoryMetas.find((meta) => isAnalyticsMetaWarning(meta)) ?? null;
   const inventoryMetaMessage = getAnalyticsMetaMessage(warningMeta ?? primaryMeta);
   const showMetaWarning = !loading && !error && warningMeta != null;
+  const dataQualityNeedsReview = !loading
+    && !error
+    && inventoryMetas.some((meta) => {
+      const normalizedStatus = meta.dataQualityStatus?.trim().toLowerCase() ?? "";
+      return isAnalyticsMetaWarning(meta)
+        || normalizedStatus === "warning"
+        || normalizedStatus === "critical"
+        || normalizedStatus === "insufficient_data"
+        || normalizedStatus === "error";
+    });
   const showInsufficientEmptyState = !loading
     && !error
     && shouldShowAnalyticsEmptyState(primaryMeta, totalCount)
@@ -1127,7 +1137,8 @@ export default function InventoryPage() {
         actionWorkflow={actionWorkflow}
         outOfStockCount={balance?.outOfStockCount}
         lowStockCount={balance?.lowStockCount}
-        dataQualityWarning={false}
+        dataQualityWarning={dataQualityNeedsReview}
+        dataQualityHref="/analytics/data-quality"
         loading={loading && !balance && !actionWorkflow}
       />
 

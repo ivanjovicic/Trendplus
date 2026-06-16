@@ -1,4 +1,5 @@
 import { AlertCircle, AlertTriangle, GitCompareArrows, ShoppingCart, TrendingDown, Workflow } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { InventoryActionWorkflow, InventoryBalance } from "../../types/analytics";
 import { formatNumber } from "./inventoryUtils";
 
@@ -8,6 +9,7 @@ type DecisionSummaryBarProps = {
   outOfStockCount?: number;
   lowStockCount?: number;
   dataQualityWarning?: boolean | null;
+  dataQualityHref?: string | null;
   loading?: boolean;
 };
 
@@ -17,6 +19,7 @@ export function DecisionSummaryBar({
   outOfStockCount,
   lowStockCount,
   dataQualityWarning,
+  dataQualityHref,
   loading,
 }: DecisionSummaryBarProps) {
   const p1DopuniOdmah = outOfStockCount ?? 0;
@@ -97,7 +100,14 @@ export function DecisionSummaryBar({
             <span className={dataQualityWarning ? "text-error" : "text-muted"}>Kvalitet</span>
           </div>
           <div className={`mt-2 text-lg font-bold ${dataQualityWarning ? "text-error" : "text-success"}`}>{dataQualityWarning ? "⚠" : "✓"}</div>
-          <div className="mt-1 text-[10px] text-muted">{dataQualityWarning ? "upozorenje" : "podaci OK"}</div>
+          <div className={`mt-1 text-[10px] ${dataQualityWarning ? "text-error" : "text-muted"}`}>
+            {dataQualityWarning ? "Kvalitet podataka traži proveru" : "podaci OK"}
+          </div>
+          {dataQualityWarning && dataQualityHref ? (
+            <Link to={dataQualityHref} className="mt-2 inline-flex text-[10px] font-medium text-error underline decoration-dotted underline-offset-2">
+              Otvori Data Quality
+            </Link>
+          ) : null}
         </div>
       </div>
     </section>

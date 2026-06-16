@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
@@ -103,5 +103,63 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     );
 
     unmount();
+  });
+
+  it("keeps explicit UI labels but does not rewrite backend reason or action text", async () => {
+    getProductDecisionCenterMock.mockResolvedValue({
+      rows: [
+        {
+          productId: 202,
+          productName: "Model Y",
+          sku: "SKU-202",
+          category: "Sneakers",
+          tipObuce: "Patike",
+          supplierName: "Supplier B",
+          supplierId: 88,
+          revenue: 95000,
+          unitsSold: 22,
+          velocityUnitsPerDay: 0.8,
+          marginPct: 18,
+          marginQualityLabel: "Visok kvalitet",
+          marginCoveragePct: 91,
+          currentStock: 6,
+          minStock: 4,
+          stockGap: 0,
+          trendPct: 5,
+          confidencePct: 82,
+          reliabilityPct: 70,
+          recommendationStatus: "BOOST",
+          recommendationLabel: "Pojacaj",
+          recommendedAction: "Nastavi pracenje.",
+          recommendationReason: "Marza je ispod zeljenog nivoa.",
+          reasonCodes: ["poor_margin"],
+          lostSalesEstimate: 10000,
+          dataQualityStatus: "good",
+          stockCoverDays: 7,
+          stockCoverStatus: "healthy",
+          sellThroughRatio: 0.7,
+          sellThroughStatus: "good",
+        },
+      ],
+      summary: {
+        lostSalesEstimate: 10000,
+        slowStockCapital: 0,
+      },
+      totalRows: 1,
+      generatedAtUtc: "2026-05-26T12:00:00Z",
+      periodFromUtc: "2026-04-27",
+      periodToUtc: "2026-05-26",
+      meta: {
+        success: true,
+        dataQualityStatus: "good",
+      },
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Pojačaj")).toBeInTheDocument();
+    expect(screen.queryByText("Pojacaj")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zašto?" })).toHaveAttribute("title", "Marza je ispod zeljenog nivoa.");
+    expect(screen.getByText("Nastavi pracenje.")).toBeInTheDocument();
   });
 });

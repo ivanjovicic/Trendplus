@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import SupplierDecisionReport from "../SupplierDecisionReport";
-import PilotDataQualityIntakeReport from "../PilotDataQualityIntakeReport";
+import PilotDataQualityIntakeReport, { impactSignalState, issueSignalState } from "../PilotDataQualityIntakeReport";
 import type { ResolvedAnalyticsTablePayload } from "../../../types/analyticsTable";
 import type { PilotDataQualityIntakeReport as PilotReport } from "../../../types/analytics";
 
@@ -40,8 +40,8 @@ function createSupplierAsciiSectionPayload(): ResolvedAnalyticsTablePayload {
   };
 }
 
-function createPilotReport(): PilotReport {
-  return {
+function createPilotReport(overrides?: Partial<PilotReport>): PilotReport {
+  const base: PilotReport = {
     generatedAtUtc: "2026-05-25T08:00:00Z",
     periodFromUtc: "2026-04-25T00:00:00Z",
     periodToUtc: "2026-05-25T23:59:59Z",
@@ -80,6 +80,23 @@ function createPilotReport(): PilotReport {
     },
     recommendedActions: ["Povežite dobavljače", "Dopunite nabavne cene"],
     meta: null,
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    loadedData: {
+      ...base.loadedData,
+      ...overrides?.loadedData,
+    },
+    issues: {
+      ...base.issues,
+      ...overrides?.issues,
+    },
+    impact: {
+      ...base.impact,
+      ...overrides?.impact,
+    },
   };
 }
 
@@ -124,8 +141,62 @@ describe("Analytics methodology registry usage", () => {
     );
 
     expect(screen.getByText("Metodologija metrika")).toBeInTheDocument();
-    expect(screen.getByText("Spremnost podataka")).toBeInTheDocument();
+    expect(screen.getAllByText("Spremnost podataka").length).toBeGreaterThan(0);
     expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Data quality checks/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows positive empty copy only when all issue and impact fields are explicitly zero", () => {
+    const report = createPilotReport({
+      issues: {
+        missingSupplierCount: 0,
+        missingCostCount: 0,
+        missingCategoryCount: 0,
+        missingColorCount: 0,
+        missingSizeCount: 0,
+        saleWithoutArticleCount: 0,
+        zeroOrNegativePriceCount: 0,
+        duplicateSkuCount: 0,
+        missingSupplierNameCount: 0,
+      },
+      impact: {
+        revenueWithoutCostPercent: 0,
+        articlesWithoutSupplierPercent: 0,
+        recommendationsBlockedCount: 0,
+        ignoredRowsCount: 0,
+        insufficientSignalCount: 0,
+      },
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+
+    expect(issueSignalState(report)).toBe("clear");
+    expect(impactSignalState(report)).toBe("clear");
+  });
+
+  it("does not present missing or partial issue signals as a clean state", () => {
+    const report = createPilotReport({
+      issues: {
+        missingSupplierCount: 0,
+        missingCostCount: 0,
+        missingCategoryCount: 0,
+        missingColorCount: null as unknown as number,
+        missingSizeCount: 0,
+        saleWithoutArticleCount: 0,
+        zeroOrNegativePriceCount: 0,
+        duplicateSkuCount: 0,
+        missingSupplierNameCount: 0,
+      },
+      impact: {
+        revenueWithoutCostPercent: 0,
+        articlesWithoutSupplierPercent: 0,
+        recommendationsBlockedCount: 0,
+        ignoredRowsCount: 0,
+        insufficientSignalCount: null as unknown as number,
+      },
+      meta: { success: true, dataQualityStatus: "warning", isPartial: true, warningCode: "partial_payload" },
+    });
+
+    expect(issueSignalState(report)).toBe("partial");
+    expect(impactSignalState(report)).toBe("partial");
   });
 });

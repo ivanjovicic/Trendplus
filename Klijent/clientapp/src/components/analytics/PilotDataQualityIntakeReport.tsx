@@ -18,6 +18,7 @@ import {
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
+import { isAnalyticsMetaWarning } from "../../utils/analyticsResponseMeta";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
 import KpiExplainButton from "./KpiExplainButton";
@@ -193,27 +194,52 @@ function normalizeText(value: string | null | undefined): string {
     .trim();
 }
 
-function hasNoIssueCounts(report: PilotDataQualityIntakeReport): boolean {
-  return (
-    (report.issues.missingSupplierCount ?? 0) === 0
-    && (report.issues.missingCostCount ?? 0) === 0
-    && (report.issues.missingCategoryCount ?? 0) === 0
-    && (report.issues.missingColorCount ?? 0) === 0
-    && (report.issues.missingSizeCount ?? 0) === 0
-    && (report.issues.saleWithoutArticleCount ?? 0) === 0
-    && (report.issues.zeroOrNegativePriceCount ?? 0) === 0
-    && (report.issues.duplicateSkuCount ?? 0) === 0
-    && (report.issues.missingSupplierNameCount ?? 0) === 0
+type TrustSignalState = "clear" | "partial" | "issues";
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function resolveTrustSignalState(
+  values: Array<number | null | undefined>,
+  options?: { hasMetaWarning?: boolean },
+): TrustSignalState {
+  const hasPositiveValue = values.some((value) => isFiniteNumber(value) && value > 0);
+  if (hasPositiveValue) return "issues";
+
+  const hasMissingValue = values.some((value) => !isFiniteNumber(value));
+  if (options?.hasMetaWarning || hasMissingValue) return "partial";
+
+  return "clear";
+}
+
+function issueSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
+  return resolveTrustSignalState(
+    [
+      report.issues.missingSupplierCount,
+      report.issues.missingCostCount,
+      report.issues.missingCategoryCount,
+      report.issues.missingColorCount,
+      report.issues.missingSizeCount,
+      report.issues.saleWithoutArticleCount,
+      report.issues.zeroOrNegativePriceCount,
+      report.issues.duplicateSkuCount,
+      report.issues.missingSupplierNameCount,
+    ],
+    { hasMetaWarning: isAnalyticsMetaWarning(report.meta) },
   );
 }
 
-function hasNoImpactSignals(report: PilotDataQualityIntakeReport): boolean {
-  return (
-    (report.impact.revenueWithoutCostPercent ?? 0) === 0
-    && (report.impact.articlesWithoutSupplierPercent ?? 0) === 0
-    && (report.impact.recommendationsBlockedCount ?? 0) === 0
-    && (report.impact.ignoredRowsCount ?? 0) === 0
-    && (report.impact.insufficientSignalCount ?? 0) === 0
+function impactSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
+  return resolveTrustSignalState(
+    [
+      report.impact.revenueWithoutCostPercent,
+      report.impact.articlesWithoutSupplierPercent,
+      report.impact.recommendationsBlockedCount,
+      report.impact.ignoredRowsCount,
+      report.impact.insufficientSignalCount,
+    ],
+    { hasMetaWarning: isAnalyticsMetaWarning(report.meta) },
   );
 }
 
@@ -322,8 +348,8 @@ export default function PilotDataQualityIntakeReport({
   const reportGeneratedAt = report?.generatedAtUtc ?? durableReport?.generatedAtUtc ?? null;
   const reportLastRefreshAt = report?.lastRefreshAtUtc ?? durableReport?.lastRefreshAtUtc ?? null;
   const reportDataQualityStatus = report?.meta?.dataQualityStatus ?? durableReport?.dataQualityStatus ?? null;
-  const reportHasNoIssueCounts = report ? hasNoIssueCounts(report) : false;
-  const reportHasNoImpactSignals = report ? hasNoImpactSignals(report) : false;
+  const reportIssueSignalState = report ? issueSignalState(report) : "issues";
+  const reportImpactSignalState = report ? impactSignalState(report) : "issues";
 
   const groupedDurableRows = useMemo(() => {
     const groups = {
@@ -658,8 +684,10 @@ export default function PilotDataQualityIntakeReport({
 
             <section className="pilot-card">
               <h3>Problemi</h3>
-              {reportHasNoIssueCounts ? (
+              {reportIssueSignalState === "clear" ? (
                 <p className="pilot-card-note">Nema otvorenih problema u ovom payload-u. Ovo je validno prazno stanje, ne greška.</p>
+              ) : reportIssueSignalState === "partial" ? (
+                <p className="pilot-card-note">Nije moguće potvrditi da nema problema jer deo signala nije dostupan.</p>
               ) : (
                 <ul>
                   <li className="critical">Bez dobavljača: {fmtNumber(report.issues.missingSupplierCount, 0, "-")}</li>
@@ -677,8 +705,10 @@ export default function PilotDataQualityIntakeReport({
 
             <section className="pilot-card">
               <h3>Uticaj</h3>
-              {reportHasNoImpactSignals ? (
+              {reportImpactSignalState === "clear" ? (
                 <p className="pilot-card-note">Nema dodatnog negativnog uticaja u ovom opsegu. Ovo znači da trenutno nema blokiranih preporuka ni izdvojenih impact signala.</p>
+              ) : reportImpactSignalState === "partial" ? (
+                <p className="pilot-card-note">Nije moguće potvrditi da nema problema jer deo signala nije dostupan.</p>
               ) : (
                 <>
                   <ul>
@@ -790,5 +820,7 @@ export default function PilotDataQualityIntakeReport({
     </section>
   );
 }
+
+export { impactSignalState, issueSignalState, resolveTrustSignalState };
 
 

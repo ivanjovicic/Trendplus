@@ -1246,7 +1246,7 @@ export default function AnalyticsDashboard() {
           correlationId={dashboardMeta?.correlationId ?? null}
           suggestions={[
             "Pokrenite osve\u017Eavanje analytics podataka i probajte ponovo.",
-            "Ako problem traje, proverite data quality i backend logove.",
+            "Ako problem traje, proverite Kvalitet podataka i backend logove.",
           ]}
           onRetry={() => {
             void load();
@@ -1269,7 +1269,7 @@ export default function AnalyticsDashboard() {
                   onClick: () => applyPreset("90d"),
                 },
                 {
-                  label: "Otvori Data Quality",
+                  label: "Otvori Kvalitet podataka",
                   href: "/analytics/data-quality",
                 },
               ]}
@@ -1336,7 +1336,7 @@ export default function AnalyticsDashboard() {
                         to="/analytics/actions"
                         className="decision-all-actions-link"
                       >
-                        Akcije i preporuke
+                        Centralne akcije
                       </Link>
                     </div>
                     {recommendationsBlocked ? (
@@ -1373,7 +1373,7 @@ export default function AnalyticsDashboard() {
                             onClick: () => applyPreset("90d"),
                           },
                           {
-                            label: "Otvori Data Quality",
+                            label: "Otvori Kvalitet podataka",
                             href: "/analytics/data-quality",
                           },
                         ]}
@@ -1456,7 +1456,7 @@ export default function AnalyticsDashboard() {
                                   <span
                                     className={`decision-quality quality-${normalizeDataQualityStatus(action.dataQualityStatus)}`}
                                   >
-                                    Data Quality:{" "}
+                                    Kvalitet podataka:{" "}
                                     {dataQualityStatusLabel(
                                       action.dataQualityStatus,
                                     )}
@@ -1574,7 +1574,7 @@ export default function AnalyticsDashboard() {
                       to="/analytics/data-quality"
                       className="decision-all-actions-link"
                     >
-                      Data Quality
+                      Kvalitet podataka
                     </Link>
                   </div>
                   <div className="analytics-mini-dq-list">
@@ -1623,7 +1623,7 @@ export default function AnalyticsDashboard() {
                   {showMetaWarning ? (
                     <div className="analytics-empty warning" role="status">
                       {dashboardMetaMessage ??
-                        "Prikazani podaci su delimični ili fallback. Proverite Data Quality i status osvežavanja."}
+                        "Prikazani podaci su delimični ili fallback. Proverite Kvalitet podataka i status osvežavanja."}
                     </div>
                   ) : null}
                 </aside>
@@ -1644,13 +1644,13 @@ export default function AnalyticsDashboard() {
                         to="/analytics/supplier"
                         className="decision-all-actions-link"
                       >
-                        Supplier pregled
+                        Pregled dobavljača
                       </Link>
                       <Link
                         to="/analytics/products"
                         className="decision-all-actions-link"
                       >
-                        Product decisions
+                        Odluke o proizvodima
                       </Link>
                     </div>
                   </div>
@@ -1773,13 +1773,13 @@ export default function AnalyticsDashboard() {
                         to="/analytics/inventory"
                         className="decision-all-actions-link"
                       >
-                        Inventory
+                        Zalihe i dopuna
                       </Link>
                       <Link
                         to="/analytics/data-quality"
                         className="decision-all-actions-link"
                       >
-                        Data Quality
+                        Kvalitet podataka
                       </Link>
                     </div>
                   </div>
@@ -1827,7 +1827,7 @@ export default function AnalyticsDashboard() {
                                 <span
                                   className={`exec-pill dq-${normalizeDataQualityStatus(signal.dataQualityStatus)}`}
                                 >
-                                  Data Quality:{" "}
+                                  Kvalitet podataka:{" "}
                                   {dataQualityStatusLabel(
                                     signal.dataQualityStatus,
                                   )}
@@ -2504,13 +2504,13 @@ export default function AnalyticsDashboard() {
                 {topTab === "margin" && !topAdvanced.marginAvailable && (
                   <div className="analytics-empty warning">
                     Nema dovoljno podataka za prikaz uticaja na maržu.{" "}
-                    <Link to="/analytics/data-quality">Data Quality</Link>
+                    <Link to="/analytics/data-quality">Kvalitet podataka</Link>
                   </div>
                 )}
                 <p className="section-note">
                   {topAdvanced.marginMessage ??
                     "Kvalitet marže po artiklu nije dostupan na ovom dashboard pogledu; backend još ne vraća cost coverage / margin quality tier po redu."}{" "}
-                  <Link to="/analytics/data-quality">Data Quality</Link>
+                  <Link to="/analytics/data-quality">Kvalitet podataka</Link>
                 </p>
                 {topRows.length === 0 ? (
                   <div className="analytics-empty">Nema podataka.</div>
