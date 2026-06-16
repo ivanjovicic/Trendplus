@@ -726,7 +726,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     setQueueBusyKey(sourceKey);
     setQueueMessage(null);
 
-    const recommendationStatus = recommendationAllowed ? row.status : "SIGNAL_REVIEW";
+    const nextRecommendationStatus = recommendationAllowed ? row.status : "SIGNAL_REVIEW";
     const title = recommendationAllowed
       ? `Pripremi razgovor sa dobavljačem: ${row.supplierName}`
       : `Proveri signal dobavljača: ${row.supplierName}`;
@@ -741,7 +741,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         sourceId: row.supplierId,
         title,
         description,
-        recommendationStatus,
+        recommendationStatus: nextRecommendationStatus,
         priority: mapSupplierActionPriority(row, recommendationAllowed),
         impactEstimateRsd: row.unsoldStockValue > 0 ? row.unsoldStockValue : undefined,
         confidencePct: row.confidenceAvailable ? Math.round(row.normalizedConfidence) : undefined,

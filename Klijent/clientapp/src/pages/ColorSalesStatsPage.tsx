@@ -21,6 +21,7 @@ import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope } from "../utils/dataScope";
+import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import "./ColorSalesStatsPage.css";
 
@@ -118,15 +119,6 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("sr-RS");
-}
-
-function fmtRsd(value: number): string {
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RSD`;
-}
-
-function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  return `${value.toLocaleString("sr-RS", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
 function fmtSignedPct(value: number | null | undefined, digits = 1): string {
@@ -429,8 +421,8 @@ export default function ColorSalesStatsPage() {
       }
 
       const knownColor = !UNKNOWN_COLORS.has(normalizeName(item.boja));
-      const reliabilityPct = clamp(
-        marginCoveragePct * 0.45 +
+      const reliabilityScore = clamp(
+        0.45 * marginCoveragePct +
         splitCoveragePct * 0.20 +
         (hasPreviousPeriodWindow ? 20 : 0) +
         (knownColor ? 15 : 0),
@@ -438,7 +430,7 @@ export default function ColorSalesStatsPage() {
         100
       );
 
-      const shareNorm = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
+      const shareScore = topShare > 0 ? clamp((sharePct / topShare) * 100, 0, 100) : 0;
       const marginNorm = marginSpan > 0
         ? clamp(((item.marginPct - minMargin) / marginSpan) * 100, 0, 100)
         : 50;
@@ -446,17 +438,17 @@ export default function ColorSalesStatsPage() {
         ? 50
         : clamp(((clamp(popRevenueChangePct, -100, 100) + 100) / 200) * 100, 0, 100);
 
-      const decisionScore = Math.round(
-        shareNorm * 0.35 +
+      const decisionScoreValue = Math.round(
+        shareScore * 0.35 +
         marginNorm * 0.30 +
         popNorm * 0.20 +
-        reliabilityPct * 0.15
+        reliabilityScore * 0.15
       );
 
       let status: DecisionStatus = "Smanji";
-      if (decisionScore >= 70) status = "Pojacaj";
-      else if (decisionScore >= 45) status = "Zadrzi";
-      if ((!hasPreviousPeriodWindow || isNewColor || reliabilityPct < 35) && status === "Pojacaj") status = "Zadrzi";
+      if (decisionScoreValue >= 70) status = "Pojacaj";
+      else if (decisionScoreValue >= 45) status = "Zadrzi";
+      if ((!hasPreviousPeriodWindow || isNewColor || reliabilityScore < 35) && status === "Pojacaj") status = "Zadrzi";
 
       const statusReason = buildStatusReason(status, {
         popRevenueChangePct,
@@ -465,7 +457,7 @@ export default function ColorSalesStatsPage() {
         splitCoveragePct,
         marginPct: item.marginPct,
         avgMargin,
-        reliabilityPct,
+        reliabilityPct: reliabilityScore,
         marginCoveragePct: item.marginDataCoveragePct,
       });
 
@@ -473,10 +465,10 @@ export default function ColorSalesStatsPage() {
         ...item,
         sharePct,
         marginContribution,
-        reliabilityPct,
+        reliabilityPct: reliabilityScore,
         coveragePct,
         splitCoveragePct,
-        decisionScore,
+        decisionScore: decisionScoreValue,
         status,
         statusReason,
       };

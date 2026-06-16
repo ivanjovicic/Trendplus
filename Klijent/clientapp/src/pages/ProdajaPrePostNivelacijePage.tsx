@@ -556,9 +556,9 @@ export default function ProdajaPrePostNivelacijePage() {
       );
       const trendPct = item.changePercent;
       const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
-      const reliabilityPct = recommendationReliabilityPct ?? 0;
+      const normalizedReliabilityPct = recommendationReliabilityPct ?? 0;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
-      const confidence = buildConfidenceMeta(reliabilityPct);
+      const confidence = buildConfidenceMeta(normalizedReliabilityPct);
       const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
 
       return {
@@ -566,7 +566,7 @@ export default function ProdajaPrePostNivelacijePage() {
         sharePct,
         postSharePct,
         trendPct,
-        reliabilityPct,
+        reliabilityPct: normalizedReliabilityPct,
         reliabilityAvailable: recommendationReliabilityPct != null,
         avgCoveragePost30,
         confidencePct: confidencePctValue ?? 0,

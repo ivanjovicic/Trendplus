@@ -324,8 +324,8 @@ function buildFallbackDecisionActionsFromAdvanced(
   if (!advanced?.actions?.length) return [];
 
   return advanced.actions.slice(0, 4).map((item) => {
-    const confidencePct = normalizeRecommendationPct(item.confidencePct);
-    const reliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
+    const normalizedConfidencePct = normalizeRecommendationPct(item.confidencePct);
+    const normalizedReliabilityPct = normalizeRecommendationPct(item.reliabilityPct);
     const dataQualityStatus = normalizeRecommendationQualityStatus(
       item.dataQualityStatus,
     );
@@ -349,8 +349,8 @@ function buildFallbackDecisionActionsFromAdvanced(
       recommendationStatus: null,
       expectedImpact: null,
       impactEstimateRsd: null,
-      confidencePct,
-      reliabilityPct,
+      confidencePct: normalizedConfidencePct,
+      reliabilityPct: normalizedReliabilityPct,
       recommendationAllowed: false,
       dataQualityStatus,
       actionUrl: mapLegacyActionLink(item.title || ""),

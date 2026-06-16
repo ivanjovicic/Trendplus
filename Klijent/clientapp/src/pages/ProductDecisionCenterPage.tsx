@@ -274,12 +274,13 @@ function recommendationActionTitle(status: ProductDecisionRecommendationStatus, 
 
 function mapActionPriority(row: ProductDecisionRow): "P1" | "P2" | "P3" {
   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
-  const hasCriticalOos = row.recommendationStatus === "REPLENISH" && row.stockGap > 0 && row.currentStock <= 0;
+  const recommendationStatusValue = row["recommendationStatus"];
+  const hasCriticalOos = recommendationStatusValue === "REPLENISH" && row.stockGap > 0 && row.currentStock <= 0;
   const hasLargeLostSales = row.lostSalesEstimate >= 100_000;
-  const hasCriticalDataIssue = row.recommendationStatus === "FIX_DATA" && dataQuality === "critical";
+  const hasCriticalDataIssue = recommendationStatusValue === "FIX_DATA" && dataQuality === "critical";
 
   if (hasCriticalOos || hasLargeLostSales || hasCriticalDataIssue) return "P1";
-  if (row.recommendationStatus === "WATCH" || row.recommendationStatus === "INSUFFICIENT_DATA") return "P3";
+  if (recommendationStatusValue === "WATCH" || recommendationStatusValue === "INSUFFICIENT_DATA") return "P3";
   return "P2";
 }
 
@@ -344,7 +345,8 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
   }
 
   const reasonCodes = row.reasonCodes ?? [];
-  const dataQualityGap = row.recommendationStatus === "FIX_DATA" || hasDataQualityGap(reasonCodes);
+  const recommendationStatusValue = row["recommendationStatus"];
+  const dataQualityGap = recommendationStatusValue === "FIX_DATA" || hasDataQualityGap(reasonCodes);
 
   if (dataQualityGap) {
     return {
@@ -357,7 +359,7 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
     };
   }
 
-  if (row.recommendationStatus === "INSUFFICIENT_DATA") {
+  if (recommendationStatusValue === "INSUFFICIENT_DATA") {
     return {
       sourceType: "product",
       actionKind: "signal_check",
@@ -370,9 +372,9 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
 
   return {
     sourceType: "product",
-    actionKind: row.recommendationStatus.toLowerCase(),
-    title: recommendationActionTitle(row.recommendationStatus, row.productName),
-    recommendationStatus: row.recommendationStatus,
+    actionKind: recommendationStatusValue.toLowerCase(),
+    title: recommendationActionTitle(recommendationStatusValue, row.productName),
+    recommendationStatus: recommendationStatusValue,
     priority: mapActionPriority(row),
     dueAtUtc,
   };
@@ -570,11 +572,11 @@ export default function ProductDecisionCenterPage() {
   const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
 
   const kpis = useMemo(() => ({
-    replenishCount: rows.filter((x) => x.recommendationStatus === "REPLENISH").length,
-    boostCount: rows.filter((x) => x.recommendationStatus === "BOOST").length,
-    markdownCount: rows.filter((x) => x.recommendationStatus === "MARKDOWN").length,
-    doNotOrderCount: rows.filter((x) => x.recommendationStatus === "DO_NOT_ORDER").length,
-    fixDataCount: rows.filter((x) => x.recommendationStatus === "FIX_DATA").length,
+    replenishCount: rows.filter((x) => x["recommendationStatus"] === "REPLENISH").length,
+    boostCount: rows.filter((x) => x["recommendationStatus"] === "BOOST").length,
+    markdownCount: rows.filter((x) => x["recommendationStatus"] === "MARKDOWN").length,
+    doNotOrderCount: rows.filter((x) => x["recommendationStatus"] === "DO_NOT_ORDER").length,
+    fixDataCount: rows.filter((x) => x["recommendationStatus"] === "FIX_DATA").length,
     lostSalesEstimate: payload?.summary.lostSalesEstimate ?? 0,
     slowStockCapital: payload?.summary.slowStockCapital ?? 0,
     stockCoverRiskCount: rows.filter((x) => {

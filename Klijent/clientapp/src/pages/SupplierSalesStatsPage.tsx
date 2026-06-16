@@ -631,10 +631,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const reliabilityPctValue = normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct);
       const confidenceAvailable = confidencePctValue != null;
       const reliabilityAvailable = reliabilityPctValue != null;
-      const confidencePct = confidencePctValue ?? 0;
+      const normalizedConfidencePct = confidencePctValue ?? 0;
       const reasonCodes = recommended?.reasonCodes ?? [];
       const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
-      const reliabilityPct = reliabilityPctValue ?? 0;
+      const normalizedReliabilityPct = reliabilityPctValue ?? 0;
       const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
       const footwearBreakdown = supplier.footwearBreakdown ?? [];
       const primaryFootwearType = supplier.primaryFootwearType
@@ -651,10 +651,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         totalCost,
         shareOfMarginContribution,
         shareOfUnits,
-        reliabilityPct,
+        reliabilityPct: normalizedReliabilityPct,
         reliabilityAvailable,
         splitCoveragePct,
-        confidencePct,
+        confidencePct: normalizedConfidencePct,
         confidenceAvailable,
         primaryFootwearType,
         primaryFootwearTypeSharePct,

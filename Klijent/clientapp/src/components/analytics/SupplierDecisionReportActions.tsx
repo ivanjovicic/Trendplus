@@ -173,7 +173,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
         const title = recommendationAllowed
           ? "Pripremi razgovor sa dobavljačem"
           : "Proveri signal dobavljača";
-        const recommendationStatus = recommendationAllowed ? "NEGOTIATE_SUPPLIER" : "SIGNAL_REVIEW";
+        const nextRecommendationStatus = recommendationAllowed ? "NEGOTIATE_SUPPLIER" : "SIGNAL_REVIEW";
         const description = recommendationAllowed
           ? "Pripremiti argumente i uslove za pregovor na osnovu scorecard signala."
           : "Finalna preporuka nije dozvoljena za ovaj izveštaj; potrebna je provera signala pre odluke.";
@@ -185,7 +185,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           sourceId: supplierId,
           title,
           description,
-          recommendationStatus,
+          recommendationStatus: nextRecommendationStatus,
           priority: recommendationAllowed ? "P1" : "P2",
           dueAtUtc,
           dataQualityStatus,
