@@ -496,6 +496,58 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_AddsMixedPeriodWarning_OnlyWhenPeriodsAreCombined()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_AddsMixedPeriodWarning_OnlyWhenPeriodsAreCombined));
+        var service = CreateService(db);
+
+        var action = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "mixed-period-1",
+                expectedImpactRsd: 200m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+        await service.UpdateStatusAsync(action.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            action.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                90m,
+                new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
+                "izmereno"),
+            "u1",
+            "tester");
+        await SetResolvedAtUtcAsync(db, action.Id, new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc));
+
+        var mixedSummary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            MeasuredTo: new DateTime(2026, 6, 20, 0, 0, 0, DateTimeKind.Utc),
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        var measuredOnlySummary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            MeasuredTo: new DateTime(2026, 6, 20, 0, 0, 0, DateTimeKind.Utc),
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal("measured", mixedSummary.Meta.PeriodMode);
+        Assert.Contains("mixed_period_filters", mixedSummary.Meta.Warnings);
+        Assert.DoesNotContain("mixed_period_filters", measuredOnlySummary.Meta.Warnings);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
