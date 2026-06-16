@@ -68,6 +68,7 @@ const SupplierConsolidatedPage = lazy(() => import("./pages/SupplierConsolidated
 const AnalyticsActionsPage = lazy(() => import("./pages/AnalyticsActionsPage"));
 const SupplierDecisionReportPage = lazy(() => import("./pages/SupplierDecisionReportPage"));
 const PilotIntakeReportPage = lazy(() => import("./pages/PilotIntakeReportPage"));
+const PilotReadinessPage = lazy(() => import("./pages/PilotReadinessPage"));
 
 function RouteFallback() {
     return <div className="page-loading">Učitavanje...</div>;
@@ -95,6 +96,7 @@ function AppShell() {
                     <Route path="/logs" element={<LogsPage />} />
                     <Route path="/performance" element={<PerformanceDashboard />} />
                     <Route path="/analytics" element={<AnalyticsDashboard />} />
+                    <Route path="/analytics/pilot-readiness" element={<PilotReadinessPage />} />
                     <Route path="/analytics/products" element={<ProductDecisionCenterPage />} />
                     <Route path={CORE_ANALYTICS_LEGACY_ALIASES.productDecisionCenter} element={<Navigate to="/analytics/products" replace />} />
                     <Route path="/analytics/supplier" element={<SupplierConsolidatedPage />} />

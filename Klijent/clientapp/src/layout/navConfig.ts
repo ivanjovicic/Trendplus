@@ -112,6 +112,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: BarChart3,
     items: [
       { to: "/analytics", label: "Trendplus pregled", icon: BarChart3 },
+      { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
       { to: "/analytics/supplier", label: "Pregled dobavljača", icon: Microscope },
       { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },

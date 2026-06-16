@@ -13,6 +13,12 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
         legacyAliases: [],
     },
     {
+        path: "/analytics/pilot-readiness",
+        label: "Pilot spremnost",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
         path: "/analytics/products",
         label: "Odluke o proizvodima",
         isDurableReport: false,

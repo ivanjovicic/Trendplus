@@ -16,6 +16,10 @@ vi.mock("../pages/AnalyticsDashboard", () => ({
   default: () => <div data-testid="route-analytics">analytics</div>,
 }));
 
+vi.mock("../pages/PilotReadinessPage", () => ({
+  default: () => <div data-testid="route-analytics-pilot-readiness">pilot-readiness</div>,
+}));
+
 vi.mock("../pages/ProductDecisionCenterPage", () => ({
   default: () => <div data-testid="route-analytics-products">products</div>,
 }));
@@ -46,6 +50,7 @@ vi.mock("../pages/PilotIntakeReportPage", () => ({
 
 const testIdByPath: Record<string, string> = {
   "/analytics": "route-analytics",
+  "/analytics/pilot-readiness": "route-analytics-pilot-readiness",
   "/analytics/products": "route-analytics-products",
   "/analytics/supplier": "route-analytics-supplier",
   "/analytics/inventory": "route-analytics-inventory",

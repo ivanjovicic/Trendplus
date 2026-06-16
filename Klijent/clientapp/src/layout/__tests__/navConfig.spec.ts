@@ -2,6 +2,15 @@ import { describe, it, expect } from "vitest";
 import { NAV_GROUPS } from "../navConfig";
 
 describe("navConfig", () => {
+  it("contains Pilot spremnost item in analytics group", () => {
+    const analyticsGroup = NAV_GROUPS.find((group) => group.id === "analytics");
+    expect(analyticsGroup).toBeDefined();
+
+    const readinessItem = analyticsGroup?.items.find((item) => item.to === "/analytics/pilot-readiness");
+    expect(readinessItem).toBeDefined();
+    expect(readinessItem?.label).toBe("Pilot spremnost");
+  });
+
   it("contains Konfiguracija item in admin group", () => {
     const adminGroup = NAV_GROUPS.find((group) => group.id === "admin");
     expect(adminGroup).toBeDefined();
