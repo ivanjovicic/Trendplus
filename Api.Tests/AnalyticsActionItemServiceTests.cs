@@ -618,6 +618,67 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_AddsExpectedImpactDenominatorWarning_WhenMeasuredImpactExistsWithoutExpectedImpact()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_AddsExpectedImpactDenominatorWarning_WhenMeasuredImpactExistsWithoutExpectedImpact));
+        var service = CreateService(db);
+
+        var measuredWithoutExpected = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "warning-expected-impact-1",
+                expectedImpactRsd: null,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+        await service.UpdateStatusAsync(measuredWithoutExpected.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            measuredWithoutExpected.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                120m,
+                new DateTime(2026, 6, 17, 0, 0, 0, DateTimeKind.Utc),
+                "izmereno bez plana"),
+            "u1",
+            "tester");
+
+        var secondMeasuredWithoutExpected = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Supplier,
+                "warning-expected-impact-2",
+                expectedImpactRsd: null,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning),
+            userId: "u1");
+        await service.UpdateStatusAsync(secondMeasuredWithoutExpected.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            secondMeasuredWithoutExpected.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                40m,
+                new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+                "izmereno bez denominatora"),
+            "u1",
+            "tester");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(2, summary.Totals.MeasuredCount);
+        Assert.Equal(2, summary.Impact.MeasuredImpactSampleCount);
+        Assert.Null(summary.Impact.ExpectedImpactRsd);
+        Assert.Null(summary.Impact.RealizationRatio);
+        Assert.Contains("expected_impact_denominator_missing", summary.Meta.Warnings);
+        Assert.DoesNotContain("measured_impact_missing", summary.Meta.Warnings);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));

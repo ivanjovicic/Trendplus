@@ -1305,3 +1305,41 @@ Acceptance:
   - action queue write/outcome rute ostaju P0 access-control gap iz ranijeg audita, pa outcome analytics treba da ostane read-only dok se auth ne stabilizuje
 - Next queue item:
   - queue je trenutno iscrpljen; sledeći logičan mali task je Phase 1 audit agregacionog data shape-a za action outcome summary
+
+
+---
+
+## Post-queue stabilization review - 2026-06-16
+
+Status: DONE
+Type: QA / stabilization review
+
+### Notes
+
+- Changed files:
+  - docs/qa/ANALYTICS_STABILIZATION_REVIEW.md
+  - docs/ai/NEXT_PROMPT_QUEUE.md
+- Reviewed:
+  - InventoryPage.tsx
+  - DecisionSummaryBar.tsx
+  - navConfig.ts
+  - DataQualityPage.tsx
+  - PilotDataQualityIntakeReport.tsx
+  - AnalyticsActionsPage.tsx
+  - analytics action summary endpoint/service/tests
+  - route smoke tests
+- Result:
+  - no new regression requiring code changes was found
+  - inventory quality card no longer masks warning/partial states as podaci OK
+  - data quality zero-vs-partial behavior remains aligned with no-fake-zero trust rules
+  - canonical sidebar analytics entry points remain visible while legacy routes stay intact
+  - outcome summary endpoint remains read-only and its frontend failure mode stays non-blocking for the action list
+- Checks:
+  - targeted frontend stabilization tests - pass
+  - frontend guardrails/build - see current task report
+  - backend build/test - see current task report
+- Risks:
+  - action outcome summary implementation remains broader than the minimal public spec
+  - there is still no dedicated component-level regression test for DecisionSummaryBar
+- Next step:
+  - targeted backend follow-up for resolvedFrom/resolvedTo and extra summary cohort bucket coverage
