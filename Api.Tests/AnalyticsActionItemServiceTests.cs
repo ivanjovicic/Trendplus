@@ -548,6 +548,76 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_AddsCoverageAndMissingImpactWarnings_WhenClosedCoverageIsLow()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_AddsCoverageAndMissingImpactWarnings_WhenClosedCoverageIsLow));
+        var service = CreateService(db);
+
+        var measuredSuccess = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "warning-coverage-1",
+                expectedImpactRsd: 200m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+        await service.UpdateStatusAsync(measuredSuccess.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            measuredSuccess.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Success,
+                90m,
+                new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
+                "pozitivno"),
+            "u1",
+            "tester");
+
+        var measuredWithoutImpact = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Supplier,
+                "warning-coverage-2",
+                expectedImpactRsd: 150m,
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning),
+            userId: "u1");
+        await service.UpdateStatusAsync(measuredWithoutImpact.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            measuredWithoutImpact.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Negative,
+                null,
+                new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc),
+                "negativno bez iznosa"),
+            "u1",
+            "tester");
+
+        for (var index = 0; index < 3; index++)
+        {
+            var pending = await service.UpsertAsync(
+                CreateRequest(AnalyticsActionConstants.SourceTypes.Product, $"warning-coverage-pending-{index}", expectedImpactRsd: 80m + index),
+                userId: "u1");
+            await service.UpdateStatusAsync(pending.Id, AnalyticsActionConstants.Statuses.Done, null, "u1", "tester");
+        }
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(5, summary.Totals.ClosedCount);
+        Assert.Equal(2, summary.Totals.MeasuredCount);
+        Assert.Equal(0.4000m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(1, summary.Impact.MeasuredImpactSampleCount);
+        Assert.Contains("outcome_coverage_low", summary.Meta.Warnings);
+        Assert.Contains("measured_impact_missing", summary.Meta.Warnings);
+        Assert.DoesNotContain("expected_impact_denominator_missing", summary.Meta.Warnings);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
