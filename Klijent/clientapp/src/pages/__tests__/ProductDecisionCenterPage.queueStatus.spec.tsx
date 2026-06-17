@@ -162,4 +162,14 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(screen.getByRole("button", { name: "Zašto?" })).toHaveAttribute("title", "Marza je ispod zeljenog nivoa.");
     expect(screen.getByText("Nastavi pracenje.")).toBeInTheDocument();
   });
+  it("keeps product recommendations visible when optional action status lookup fails", async () => {
+    getAnalyticsActionSourceStatusesMock.mockRejectedValue(new Error("404 Not Found"));
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Model X")).toBeInTheDocument();
+    expect(await screen.findByText("Status akcija trenutno nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("404 Not Found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
+  });
 });

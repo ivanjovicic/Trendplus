@@ -57,6 +57,10 @@ type SortDir = "asc" | "desc";
 type RecommendationFilter = "all" | ProductDecisionRecommendationStatus;
 type DataQualityFilter = "all" | "good" | "warning" | "critical" | "insufficient_data";
 type PeriodPreset = "last30" | "last60" | "last90" | "custom";
+type OptionalActionStatusWarning = {
+  message: string;
+  detail?: string | null;
+};
 
 export type ProductDecisionSignalFields = {
   stockCoverDays?: number | null;
@@ -300,6 +304,33 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function buildActionStatusWarning(reason: unknown): OptionalActionStatusWarning {
+  const message = "Status akcija trenutno nije dostupan.";
+
+  if (reason instanceof AnalyticsMetaError) {
+    const details = [
+      reason.message?.trim(),
+      reason.errorCode ? `Kod: ${reason.errorCode}` : null,
+      reason.correlationId ? `Correlation ID: ${reason.correlationId}` : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return {
+      message,
+      detail: details.length > 0 ? details.join(" | ") : null,
+    };
+  }
+
+  if (reason instanceof Error) {
+    const detail = reason.message.trim();
+    return {
+      message,
+      detail: detail && detail !== message ? detail : null,
+    };
+  }
+
+  return { message, detail: null };
+}
+
 export function buildProductQueueSpec(row: ProductDecisionRow): {
   sourceType: AnalyticsActionSourceType;
   actionKind: string;
@@ -402,9 +433,10 @@ export default function ProductDecisionCenterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [staleWarning, setStaleWarning] = useState<string | null>(null);
+  const [actionStatusWarning, setActionStatusWarning] = useState<OptionalActionStatusWarning | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
-  const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
+  const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,13 +565,16 @@ export default function ProductDecisionCenterPage() {
     ).values());
 
     if (lookupItems.length === 0) {
-      setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
+      setQueuedActionKeys(new Set());
+      setActionStatusWarning(null);
       return () => {
         cancelled = true;
       };
     }
 
     (async () => {
+      setActionStatusWarning(null);
+      setQueuedActionKeys(null);
       try {
         const statuses = await getAnalyticsActionSourceStatuses({
           items: lookupItems,
@@ -553,8 +588,12 @@ export default function ProductDecisionCenterPage() {
         }
 
         setQueuedActionKeys(keys);
-      } catch {
-        if (!cancelled) setQueuedActionKeys(new Set());
+        setActionStatusWarning(null);
+      } catch (reason) {
+        if (!cancelled) {
+          setQueuedActionKeys(null);
+          setActionStatusWarning(buildActionStatusWarning(reason));
+        }
       }
     })();
 
@@ -919,6 +958,12 @@ export default function ProductDecisionCenterPage() {
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}
       {staleWarning ? <div className="product-decision-message product-decision-message-info">{staleWarning}</div> : null}
+      {actionStatusWarning ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          <strong>{actionStatusWarning.message}</strong>
+          {actionStatusWarning.detail ? <div>{actionStatusWarning.detail}</div> : null}
+        </div>
+      ) : null}
       {!hasBlockingError && error ? (
         <div className="product-decision-message product-decision-message-info">
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
@@ -1017,8 +1062,9 @@ export default function ProductDecisionCenterPage() {
                   const expanded = expandedProductId === row.productId;
                   const queueSpec = buildProductQueueSpec(row);
                   const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
-                  const isQueued = queuedActionKeys.has(sourceKey);
+                  const isQueued = queuedActionKeys?.has(sourceKey) ?? false;
                   const isQueueBusy = queueBusyKey === sourceKey;
+                  const actionStatusKnown = queuedActionKeys != null;
                   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
                   const reasonCodeItems = row.reasonCodes.length
                     ? row.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
@@ -1090,7 +1136,11 @@ export default function ProductDecisionCenterPage() {
                               void addRowToCentralActions(row);
                             }}
                             disabled={isQueueBusy || isQueued}
-                            title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
+                            title={isQueued
+                              ? "Akcija je već u centralnom redu."
+                              : actionStatusKnown
+                                ? "Dodaj u centralni red akcija"
+                                : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                           >
                             {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                           </button>
@@ -1190,7 +1240,11 @@ export default function ProductDecisionCenterPage() {
                                   className={`btn-add-to-queue${isQueued ? " added" : ""}`}
                                   disabled={isQueueBusy || isQueued}
                                   onClick={() => void addRowToCentralActions(row)}
-                                  title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
+                                  title={isQueued
+                                    ? "Akcija je već u centralnom redu."
+                                    : actionStatusKnown
+                                      ? "Dodaj u centralni red akcija"
+                                      : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                                 >
                                   {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                                 </button>
