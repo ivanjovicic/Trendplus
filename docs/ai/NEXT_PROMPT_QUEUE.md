@@ -1343,3 +1343,29 @@ Type: QA / stabilization review
   - there is still no dedicated component-level regression test for DecisionSummaryBar
 - Next step:
   - targeted backend follow-up for resolvedFrom/resolvedTo and extra summary cohort bucket coverage
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: frontend regression test
+
+### Notes
+
+- Changed files:
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - Product Decision Center now shows a non-blocking warning when optional action-status lookup fails, while keeping main product recommendations visible
+  - dedicated regression coverage locks the fallback behavior and verifies that the real blocking error still appears when the main decision endpoint fails
+  - no fake action counts are shown when action-status data is unavailable
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risks:
+  - the worktree still contains unrelated local changes outside this task and they must stay out of the commit
+- Next step:
+  - re-run the latest analytics page smoke path after the next frontend deploy if Render or API action-status availability remains unstable

@@ -405,6 +405,7 @@ export default function ProductDecisionCenterPage() {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
+  const [actionStatusWarning, setActionStatusWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,6 +534,7 @@ export default function ProductDecisionCenterPage() {
     ).values());
 
     if (lookupItems.length === 0) {
+      setActionStatusWarning(null);
       setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
       return () => {
         cancelled = true;
@@ -553,8 +555,12 @@ export default function ProductDecisionCenterPage() {
         }
 
         setQueuedActionKeys(keys);
+        setActionStatusWarning(null);
       } catch {
-        if (!cancelled) setQueuedActionKeys(new Set());
+        if (!cancelled) {
+          setQueuedActionKeys(new Set());
+          setActionStatusWarning("Status akcija trenutno nije dostupan.");
+        }
       }
     })();
 
@@ -925,6 +931,11 @@ export default function ProductDecisionCenterPage() {
         </div>
       ) : null}
       {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
+      {!hasBlockingError && actionStatusWarning ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          {actionStatusWarning}
+        </div>
+      ) : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
