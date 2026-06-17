@@ -12,7 +12,7 @@ public static class AnalyticsActionsEndpoints
             .WithTags("Analytics");
 
         // GET /api/analytics/actions
-        group.MapGet("/", async (
+        group.MapGet("", async (
             AnalyticsActionItemService svc,
             string? status,
             string? priority,
@@ -133,7 +133,7 @@ public static class AnalyticsActionsEndpoints
 
         // POST /api/analytics/actions
         // Upserts: returns existing open action if same sourceType+sourceKey already open
-        group.MapPost("/", async (
+        group.MapPost("", async (
             AnalyticsActionUpsertBody body,
             AnalyticsActionItemService svc,
             HttpContext httpContext,
