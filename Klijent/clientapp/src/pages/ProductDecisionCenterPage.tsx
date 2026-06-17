@@ -406,6 +406,7 @@ export default function ProductDecisionCenterPage() {
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
   const [actionStatusWarning, setActionStatusWarning] = useState<string | null>(null);
+  const queueBusyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -661,6 +662,11 @@ export default function ProductDecisionCenterPage() {
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
 
+    if (queueBusyKeyRef.current === sourceKey || queuedActionKeys.has(sourceKey)) {
+      return;
+    }
+
+    queueBusyKeyRef.current = sourceKey;
     setQueueBusyKey(sourceKey);
     setQueueMessage(null);
     try {
@@ -712,9 +718,10 @@ export default function ProductDecisionCenterPage() {
     } catch (reason) {
       setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
     } finally {
+      queueBusyKeyRef.current = null;
       setQueueBusyKey(null);
     }
-  }, [fromDate, storeId, supplierId, toDate]);
+  }, [fromDate, queuedActionKeys, storeId, supplierId, toDate]);
 
   return (
     <section className="product-decision-page">
@@ -930,12 +937,12 @@ export default function ProductDecisionCenterPage() {
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}
-      {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
       {!hasBlockingError && actionStatusWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
           {actionStatusWarning}
         </div>
       ) : null}
+      {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
