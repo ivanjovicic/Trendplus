@@ -1447,3 +1447,29 @@ Type: demo reset runbook
   - a dedicated demo DB snapshot remains the safest reset path; batch-delete and cleanup flows require stricter human review
 - Next step:
   - if the team wants automation, implement a tiny demo-only wrapper around the existing Access import + worker refresh flow with an explicit environment guard
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: access-control implementation plan
+
+### Notes
+
+- Changed files:
+  - `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - translated the existing analytics access-control audit into a phase-by-phase P0 implementation plan
+  - defined the minimal role model: `Viewer`, `Analyst`, `Manager`, `Admin`
+  - mapped the P0 endpoint groups for refresh, cache clear, import/access-import, worker control, admin configuration, action writes and report/export surfaces
+  - documented for each group: current access, required role, backend enforcement location, frontend visibility rule and required tests
+  - proposed a minimal Phase 1 where read-only analytics stays available to `Viewer`, while dangerous actions move behind explicit backend enforcement and hidden UI controls
+- Checks:
+  - `git diff --check` - pass
+- Risks:
+  - the repo still lacks a shared authentication/policy layer, so Phase 1 must start with explicit per-group enforcement helpers before broader cleanup
+  - current admin-key compatibility paths should remain temporary and must not become the long-term substitute for role checks
+- Next step:
+  - implement the first smallest protected group: `POST /api/analytics/cached/cache/invalidate` plus matching frontend visibility test
