@@ -154,12 +154,18 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                     var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
                     if (cacheAdmin is not null)
                     {
+                        var invalidatedFamilies = new[]
+                        {
+                            AnalyticsCachePolicy.DashboardFamily,
+                            AnalyticsCachePolicy.DataQualityFamily,
+                            AnalyticsCachePolicy.ReportsFamily
+                        };
                         var cacheState = await cacheAdmin.ClearFamiliesAsync(
-                            [AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily],
+                            invalidatedFamilies,
                             stoppingToken);
                         _logger.LogInformation(
                             "Data quality refresh invalidated cache families {Families}. ReportCacheVersion={ReportCacheVersion} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
-                            new[] { AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily },
+                            invalidatedFamilies,
                             cacheState.ReportCacheVersion,
                             cacheState.LastReportCacheClearAtUtc);
                     }
