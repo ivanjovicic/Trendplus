@@ -1369,3 +1369,27 @@ Type: frontend regression test
   - the worktree still contains unrelated local changes outside this task and they must stay out of the commit
 - Next step:
   - re-run the latest analytics page smoke path after the next frontend deploy if Render or API action-status availability remains unstable
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: QA smoke checklist
+
+### Notes
+
+- Changed files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - added a repeatable manual smoke checklist for critical analytics backend routes, core frontend routes and durable report routes
+  - each route now has explicit success expectations, honest warning/error expectations, fail conditions, next action and required evidence to save
+  - the checklist explicitly protects against fake `0 RSD`, fake green unknown states, hidden stale refresh and reports that look ready when data is missing
+- Checks:
+  - `git diff --check` - pass
+  - docs spot-check - pass
+- Risks:
+  - this task documents the operator flow but does not itself prove that current deploy environments pass the smoke
+- Next step:
+  - run the checklist on the current Vercel and Render deployments before demo or merge sign-off
