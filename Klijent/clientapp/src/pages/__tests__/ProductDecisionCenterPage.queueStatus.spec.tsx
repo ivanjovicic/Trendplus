@@ -202,7 +202,6 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(screen.getByRole("button", { name: "Zašto?" })).toHaveAttribute("title", "Marza je ispod zeljenog nivoa.");
     expect(screen.getByText("Nastavi pracenje.")).toBeInTheDocument();
   });
-
   it("ignores immediate duplicate add-to-queue clicks for the same row", async () => {
     let resolveUpsert: ((value: unknown) => void) | null = null;
     upsertAnalyticsActionWithResultMock.mockImplementationOnce(
@@ -256,6 +255,8 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(await screen.findByText("Status akcija trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+    expect(screen.getByText("404 Not Found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
   });
 
   it("keeps blocking error state when the main product decision endpoint fails", async () => {
