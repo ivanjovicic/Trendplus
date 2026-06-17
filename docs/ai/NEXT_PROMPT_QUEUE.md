@@ -1393,3 +1393,30 @@ Type: QA smoke checklist
   - this task documents the operator flow but does not itself prove that current deploy environments pass the smoke
 - Next step:
   - run the checklist on the current Vercel and Render deployments before demo or merge sign-off
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: cache invalidation audit
+
+### Notes
+
+- Changed files:
+  - `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - confirmed that Access import, nightly analytics refresh, data-quality worker refresh and admin cache clear already invalidate the pilot-critical cache families
+  - confirmed that report routes use versioned cache keys and rely on report-family invalidation to rotate durable report outputs
+  - documented one real follow-up gap: `AnalyticsAggregationWorker` refreshes aggregate tables but intentionally skips cache invalidation, so dashboard-family cached responses can lag until TTL expiry
+  - documented that `docs/qa/STABLE_REPORT_URL_SMOKE.md` is currently missing, so earlier stable-report smoke expectations could not be reused
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit"` - pass
+  - `git diff --check` - pass
+- Risks:
+  - the safest invalidation scope for `AnalyticsAggregationWorker` still needs a deliberate choice between `dashboard` only and a slightly wider aggregate-backed scope
+  - no code fix was applied in this audit commit because that scope choice should be made explicitly instead of guessed
+- Next step:
+  - small backend follow-up: decide and implement the minimal safe invalidation for `AnalyticsAggregationWorker`, then add a focused regression test
