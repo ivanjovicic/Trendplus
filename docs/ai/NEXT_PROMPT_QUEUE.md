@@ -1420,3 +1420,30 @@ Type: cache invalidation audit
   - no code fix was applied in this audit commit because that scope choice should be made explicitly instead of guessed
 - Next step:
   - small backend follow-up: decide and implement the minimal safe invalidation for `AnalyticsAggregationWorker`, then add a focused regression test
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: demo reset runbook
+
+### Notes
+
+- Changed files:
+  - `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - documented the current confirmed demo-related capabilities across local seed helpers, Access import, cleanup preview, worker refresh and smoke verification
+  - defined strict demo-only safety rules, required environment proof, naming rules and stop conditions before any destructive action
+  - documented the minimal demo dataset shape for products, suppliers, sales, inventory, data quality issues, actions/outcomes and reports
+  - defined the safest run order: reset, seed via existing Access import flow, refresh analytics, verify Pilot Readiness, then run analytics smoke
+  - intentionally did not add a new script because the existing seed helpers are developer-only and not safe as a shared demo reset mechanism
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - not run (no code/script added)
+- Risks:
+  - the process still depends on operational discipline because there is no one-click demo-only reset guard in code
+  - a dedicated demo DB snapshot remains the safest reset path; batch-delete and cleanup flows require stricter human review
+- Next step:
+  - if the team wants automation, implement a tiny demo-only wrapper around the existing Access import + worker refresh flow with an explicit environment guard
