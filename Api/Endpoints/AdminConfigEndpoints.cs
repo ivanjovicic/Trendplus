@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace Api.Endpoints;
 
@@ -43,6 +44,11 @@ public static class AdminConfigEndpoints
             .WithSummary("Admin diagnostics")
             .Produces<AdminHealthCheckResponse>(StatusCodes.Status200OK)
             .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapGet("/demo-verification", DemoVerification)
+            .WithName("DemoEnvironmentVerification")
+            .WithSummary("Check whether the current environment is demo-safe")
+            .Produces<DemoEnvironmentVerificationResponse>(StatusCodes.Status200OK);
 
         group.MapGet("/audit-log", GetAuditLog)
             .WithName("GetAuditLog")
@@ -215,6 +221,100 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(response);
     }
 
+    private static Ok<DemoEnvironmentVerificationResponse> DemoVerification(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        return TypedResults.Ok(BuildDemoVerificationResponse(configuration, environment));
+    }
+
+    private static DemoEnvironmentVerificationResponse BuildDemoVerificationResponse(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var reasons = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(environment.EnvironmentName) &&
+            environment.EnvironmentName.Contains("demo", StringComparison.OrdinalIgnoreCase))
+        {
+            reasons.Add("environment_name_contains_demo");
+        }
+
+        if (configuration.GetValue<bool?>("AnalyticsDemo:Enabled") == true)
+        {
+            reasons.Add("analytics_demo_flag_enabled");
+        }
+
+        var marker = configuration["AnalyticsDemo:ConnectionMarker"];
+        if (string.IsNullOrWhiteSpace(marker))
+        {
+            marker = "demo";
+        }
+
+        if (ConnectionStringHasMarker(configuration.GetConnectionString("AnalyticsConnection"), marker, out var analyticsReason))
+        {
+            reasons.Add(analyticsReason);
+        }
+
+        if (ConnectionStringHasMarker(configuration.GetConnectionString("DefaultConnection"), marker, out var defaultReason))
+        {
+            reasons.Add(defaultReason);
+        }
+
+        return new DemoEnvironmentVerificationResponse
+        {
+            DemoSafe = reasons.Count > 0,
+            Reasons = reasons.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            CheckedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static bool ConnectionStringHasMarker(
+        string? connectionString,
+        string marker,
+        out string reason)
+    {
+        reason = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(marker))
+        {
+            return false;
+        }
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+            if (ContainsMarker(builder.Database, marker))
+            {
+                reason = "analytics_connection_database_contains_demo";
+                return true;
+            }
+
+            if (ContainsMarker(builder.Host, marker))
+            {
+                reason = "analytics_connection_host_contains_demo";
+                return true;
+            }
+
+            if (ContainsMarker(builder.ApplicationName, marker))
+            {
+                reason = "analytics_connection_application_name_contains_demo";
+                return true;
+            }
+        }
+        catch
+        {
+            // Keep the verifier non-destructive and avoid surfacing parse failures as secrets.
+        }
+
+        return false;
+    }
+
+    private static bool ContainsMarker(string? value, string marker) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.Contains(marker, StringComparison.OrdinalIgnoreCase);
+
     private static async Task<Ok<AuditLogResponse>> GetAuditLog(
         TrendplusDbContext db,
         [FromQuery] int take = 100,
@@ -361,6 +461,12 @@ public class AdminHealthCheckResponse
     public DateTime? WorkerRuntimeSettingsLastEnsureAttemptUtc { get; set; }
     public DateTime? WorkerRuntimeSettingsLastEnsureSuccessUtc { get; set; }
     public string? WorkerRuntimeSettingsSchemaError { get; set; }
+}
+public class DemoEnvironmentVerificationResponse
+{
+    public bool DemoSafe { get; set; }
+    public List<string> Reasons { get; set; } = [];
+    public DateTime CheckedAtUtc { get; set; }
 }
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }
 public class AuditEntry { public long Id { get; set; } public DateTime Timestamp { get; set; } public long BatchId { get; set; } public string Severity { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }

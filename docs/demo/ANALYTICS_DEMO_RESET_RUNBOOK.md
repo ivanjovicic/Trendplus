@@ -25,6 +25,7 @@ If the environment cannot prove that it is demo-only, stop and do not run any de
 | Access import batch delete | Exists via `DELETE /api/access-import/batches/{id}` | Yes, with caution | Safe only for known demo batches in a dedicated demo environment |
 | Cleanup preview | Exists via `/api/access-import/cleanup/preview` | Yes | Use to inspect blast radius before any cleanup |
 | Cleanup execute | Exists via `/api/access-import/cleanup/execute` | No by default | Too risky for mixed environments; use only in a dedicated demo environment with backup and explicit approval |
+| Demo environment verification | Exists via `/api/admin/demo-verification` | Yes | Returns `demoSafe` and reason codes only; use this before any destructive demo reset |
 | Worker/manual refresh control | Exists via worker/admin endpoints | Yes, with admin access | Can trigger refresh and data-quality worker runs after reseed |
 | Pilot readiness and smoke verification | Exists | Yes | Use `/analytics/pilot-readiness` and [ANALYTICS_PILOT_SMOKE_TEST.md](c:/Users/Ivan/source/repos/Trendplus2/docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md) as final proof |
 
@@ -49,9 +50,21 @@ At least one of the following must be true before destructive steps:
 - operations owner confirms in writing that no customer data is present
 - explicit demo-only environment flag is set and verified operationally
 
+Machine-checkable proof:
+
+- call `GET /api/admin/demo-verification`
+- require `demoSafe=true`
+- require at least one reason code:
+  - `environment_name_contains_demo`
+  - `analytics_demo_flag_enabled`
+  - `analytics_connection_database_contains_demo`
+  - `analytics_connection_host_contains_demo`
+  - `analytics_connection_application_name_contains_demo`
+
 Current repo note:
 
 - this runbook requires a demo-only proof, but it does not claim that the application already enforces such a flag in code
+- the machine-checkable proof is `GET /api/admin/demo-verification`; proceed only when `demoSafe=true`
 
 ## Naming Rules For Demo Data
 
@@ -173,11 +186,12 @@ This path is intentionally not the default because it is the easiest way to make
 ### Phase 0: Pre-flight
 
 1. Confirm demo-only environment proof.
-2. Confirm admin access for import and worker control endpoints.
-3. Record current date/time, operator and reason for reset.
-4. Save current backend health and refresh status.
-5. Confirm backup or snapshot reference.
-6. Save current batch list and any existing report URLs if they matter for comparison.
+2. Call `GET /api/admin/demo-verification` and store the response.
+3. Confirm admin access for import and worker control endpoints.
+4. Record current date/time, operator and reason for reset.
+5. Save current backend health and refresh status.
+6. Confirm backup or snapshot reference.
+7. Save current batch list and any existing report URLs if they matter for comparison.
 
 Recommended checks:
 
@@ -291,6 +305,7 @@ Save these artifacts:
 Stop immediately if any of these happen:
 
 - environment cannot be proven demo-only
+- `GET /api/admin/demo-verification` returns `demoSafe=false`
 - backup is missing
 - import source file origin is unclear
 - batch to delete is not clearly demo-only
