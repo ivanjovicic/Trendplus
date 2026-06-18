@@ -341,6 +341,10 @@ export type ProductDecisionRecommendationStatus =
 
 export interface ProductDecisionCenterItem {
   productId: number;
+  recommendationId?: string | null;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  recommendationType?: string | null;
   sku: string;
   productName: string;
   supplierId?: number | null;
@@ -364,12 +368,21 @@ export interface ProductDecisionCenterItem {
   lostSalesEstimate: number;
   slowStockCapital?: number | null;
   dataQualityStatus: string;
+  confidenceLevel?: "high" | "medium" | "low" | "insufficient_data" | string | null;
+  confidenceScore?: number | null;
   confidencePct: number;
   reliabilityPct: number;
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
   recommendationReason: string;
   reasonCodes: string[];
+  warningCodes?: string[] | null;
+  primaryDrivers?: string[] | null;
+  expectedImpactRsd?: number | null;
+  impactWindowDays?: number | null;
+  riskIfIgnored?: string | null;
+  explainabilityText?: string | null;
+  inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   recommendedAction: string;
 }
 

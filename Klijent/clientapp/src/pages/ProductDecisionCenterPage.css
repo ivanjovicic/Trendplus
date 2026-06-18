@@ -193,6 +193,30 @@
   font-size: 0.68rem;
 }
 
+.recommendation-warning-summary,
+.reason-warning-inline {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--warning, #f59e0b);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.confidence-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.confidence-high { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.confidence-medium { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
+.confidence-low { background: rgba(250, 204, 21, 0.16); color: #facc15; }
+.confidence-insufficient { background: rgba(148, 163, 184, 0.14); color: #94a3b8; }
+
 .btn-add-to-queue {
   display: block;
   margin-top: 0.3rem;
@@ -237,6 +261,25 @@
 .reason-block {
   font-size: 0.78rem;
   line-height: 1.4;
+}
+
+.reason-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0;
+  margin: 0.35rem 0 0;
+  list-style: none;
+}
+
+.reason-chip {
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-default);
+  color: var(--text-primary);
+  padding: 0.18rem 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1.2;
 }
 
 .reason-content-expanded {

@@ -5221,7 +5221,7 @@ public static class CachedAnalyticsEndpoints
             totalLostSalesEstimate += lostSalesEstimate;
             totalSlowStockCapital += slowStockCapital;
 
-            rows.Add(new ProductDecisionCenterRowDto
+            var row = new ProductDecisionCenterRowDto
             {
                 ProductId = article.ProductId,
                 Sku = article.Sku,
@@ -5262,7 +5262,24 @@ public static class CachedAnalyticsEndpoints
                 RecommendationReason = recommendationReason,
                 ReasonCodes = combinedReasonCodes,
                 RecommendedAction = recommendedAction
-            });
+            };
+
+            var confidenceProfile = BuildProductDecisionConfidenceProfile(row, periodFromUtc, periodToExclusiveUtc.AddDays(-1));
+            row.RecommendationId = confidenceProfile.RecommendationId;
+            row.SourceType = confidenceProfile.SourceType;
+            row.SourceKey = confidenceProfile.SourceKey;
+            row.RecommendationType = confidenceProfile.RecommendationType;
+            row.ConfidenceLevel = confidenceProfile.ConfidenceLevel;
+            row.ConfidenceScore = confidenceProfile.ConfidenceScore;
+            row.PrimaryDrivers = confidenceProfile.PrimaryDrivers.ToList();
+            row.WarningCodes = confidenceProfile.WarningCodes.ToList();
+            row.ExpectedImpactRsd = confidenceProfile.ExpectedImpactRsd;
+            row.ImpactWindowDays = confidenceProfile.ImpactWindowDays;
+            row.RiskIfIgnored = confidenceProfile.RiskIfIgnored;
+            row.ExplainabilityText = confidenceProfile.ExplainabilityText;
+            row.InputFreshnessStatus = confidenceProfile.InputFreshnessStatus;
+
+            rows.Add(row);
         }
 
         var sortedRows = rows
@@ -5448,6 +5465,270 @@ public static class CachedAnalyticsEndpoints
         return (int)Math.Round(reliability, MidpointRounding.AwayFromZero);
     }
 
+    internal static ProductDecisionConfidenceProfile BuildProductDecisionConfidenceProfile(
+        ProductDecisionCenterRowDto row,
+        DateTime periodFromUtc,
+        DateTime periodToUtc)
+    {
+        var recommendationStatus = NormalizeRecommendationStatus(row.RecommendationStatus);
+        var sourceType = "product";
+        var sourceKey = $"product:{row.ProductId}";
+        var recommendationId = $"{sourceKey}:{recommendationStatus}:{periodFromUtc:yyyyMMdd}:{periodToUtc:yyyyMMdd}";
+        var confidenceScore = row.ConfidencePct > 0 && !IsProductDecisionInsufficientData(row)
+            ? row.ConfidencePct
+            : (int?)null;
+        var warningCodes = BuildProductDecisionWarningCodes(row);
+        var confidenceLevel = ResolveProductDecisionConfidenceLevel(row, confidenceScore, warningCodes);
+        var primaryDrivers = BuildProductDecisionPrimaryDrivers(row, warningCodes);
+        var expectedImpactRsd = ResolveProductDecisionExpectedImpact(row);
+        var impactWindowDays = ResolveProductDecisionImpactWindowDays(recommendationStatus);
+        var riskIfIgnored = BuildProductDecisionRiskIfIgnored(recommendationStatus);
+        var explainabilityText = string.IsNullOrWhiteSpace(row.RecommendationReason)
+            ? BuildRecommendationReason(
+                recommendationStatus,
+                row.Revenue,
+                row.UnitsSold,
+                row.VelocityUnitsPerDay,
+                row.MarginPct,
+                row.TrendPct,
+                row.StockGap,
+                row.CurrentStock,
+                row.MinStock,
+                row.DaysSinceLastSale,
+                row.DataQualityStatus)
+            : row.RecommendationReason;
+        var inputFreshnessStatus = ResolveProductDecisionInputFreshnessStatus(row, confidenceLevel);
+
+        return new ProductDecisionConfidenceProfile(
+            RecommendationId: recommendationId,
+            SourceType: sourceType,
+            SourceKey: sourceKey,
+            RecommendationType: recommendationStatus,
+            ConfidenceLevel: confidenceLevel,
+            ConfidenceScore: confidenceScore,
+            PrimaryDrivers: primaryDrivers,
+            WarningCodes: warningCodes,
+            ExpectedImpactRsd: expectedImpactRsd,
+            ImpactWindowDays: impactWindowDays,
+            RiskIfIgnored: riskIfIgnored,
+            ExplainabilityText: explainabilityText,
+            InputFreshnessStatus: inputFreshnessStatus);
+    }
+
+    private static string NormalizeRecommendationStatus(string? recommendationStatus) =>
+        string.IsNullOrWhiteSpace(recommendationStatus)
+            ? "INSUFFICIENT_DATA"
+            : recommendationStatus.Trim().ToUpperInvariant();
+
+    private static bool IsProductDecisionInsufficientData(ProductDecisionCenterRowDto row) =>
+        string.Equals(row.RecommendationStatus, "INSUFFICIENT_DATA", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(row.RecommendationStatus, "FIX_DATA", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase);
+
+    private static string ResolveProductDecisionConfidenceLevel(
+        ProductDecisionCenterRowDto row,
+        int? confidenceScore,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        if (string.Equals(row.RecommendationStatus, "INSUFFICIENT_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "FIX_DATA", StringComparison.OrdinalIgnoreCase))
+        {
+            return "insufficient_data";
+        }
+
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return confidenceScore.HasValue && confidenceScore.Value >= 60 ? "low" : "insufficient_data";
+        }
+
+        if (warningCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase)
+            || warningCodes.Contains("missing_supplier", StringComparer.OrdinalIgnoreCase))
+        {
+            return confidenceScore.HasValue && confidenceScore.Value >= 60 ? "low" : "insufficient_data";
+        }
+
+        if (!confidenceScore.HasValue)
+        {
+            return "insufficient_data";
+        }
+
+        var strongEvidence = row.UnitsSold >= 20
+            && row.MarginCoveragePct >= 80m
+            && row.TrendPct.HasValue
+            && row.VelocityUnitsPerDay > 0.5m;
+
+        if (confidenceScore.Value >= 80 && strongEvidence)
+        {
+            return "high";
+        }
+
+        if (confidenceScore.Value >= 60)
+        {
+            return "medium";
+        }
+
+        return "low";
+    }
+
+    private static IReadOnlyList<string> BuildProductDecisionWarningCodes(ProductDecisionCenterRowDto row)
+    {
+        var warnings = new List<string>();
+
+        void AddWarning(string code)
+        {
+            if (!warnings.Contains(code, StringComparer.OrdinalIgnoreCase))
+            {
+                warnings.Add(code);
+            }
+        }
+
+        if (row.ReasonCodes.Any(code =>
+                string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)))
+        {
+            foreach (var code in row.ReasonCodes.Where(code =>
+                         string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)))
+            {
+                AddWarning(code);
+            }
+        }
+
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            AddWarning("data_quality_critical");
+        }
+
+        if (IsProductDecisionInsufficientData(row))
+        {
+            AddWarning("insufficient_data");
+        }
+
+        if (ResolveProductDecisionExpectedImpact(row) is null)
+        {
+            AddWarning("expected_impact_denominator_missing");
+        }
+
+        return warnings;
+    }
+
+    private static IReadOnlyList<string> BuildProductDecisionPrimaryDrivers(
+        ProductDecisionCenterRowDto row,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        var drivers = new List<string>();
+
+        void AddDriver(string code)
+        {
+            if (!drivers.Contains(code, StringComparer.OrdinalIgnoreCase))
+            {
+                drivers.Add(code);
+            }
+        }
+
+        if (row.VelocityUnitsPerDay > 0.5m || row.UnitsSold >= 20)
+        {
+            AddDriver("sales_velocity");
+        }
+
+        if (row.MarginPct.HasValue || row.MarginContribution > 0m)
+        {
+            AddDriver("margin");
+        }
+
+        if (row.StockGap > 0
+            || row.CurrentStock <= row.MinStock
+            || string.Equals(row.StockCoverStatus, "low_cover", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.StockCoverStatus, "out_of_stock_risk", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.StockCoverStatus, "slow_stock", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.StockCoverStatus, "no_velocity", StringComparison.OrdinalIgnoreCase))
+        {
+            AddDriver("stock_risk");
+        }
+
+        if (row.TrendPct.HasValue)
+        {
+            AddDriver("trend");
+        }
+
+        if (warningCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase))
+        {
+            AddDriver("missing_cost");
+        }
+
+        if (warningCodes.Contains("insufficient_history", StringComparer.OrdinalIgnoreCase)
+            || row.UnitsSold < 8
+            || !row.DaysSinceLastSale.HasValue)
+        {
+            AddDriver("sparse_sales");
+        }
+
+        return drivers;
+    }
+
+    private static decimal? ResolveProductDecisionExpectedImpact(ProductDecisionCenterRowDto row)
+    {
+        if (string.Equals(row.RecommendationStatus, "REPLENISH", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "BOOST", StringComparison.OrdinalIgnoreCase))
+        {
+            return row.LostSalesEstimate > 0m ? row.LostSalesEstimate : null;
+        }
+
+        if (string.Equals(row.RecommendationStatus, "MARKDOWN", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "DO_NOT_ORDER", StringComparison.OrdinalIgnoreCase))
+        {
+            return row.SlowStockCapital > 0m ? row.SlowStockCapital : null;
+        }
+
+        return null;
+    }
+
+    private static int? ResolveProductDecisionImpactWindowDays(string recommendationStatus) =>
+        recommendationStatus switch
+        {
+            "REPLENISH" => 14,
+            "BOOST" => 14,
+            "MARKDOWN" => 30,
+            "DO_NOT_ORDER" => 30,
+            "FIX_DATA" => 7,
+            _ => null
+        };
+
+    private static string BuildProductDecisionRiskIfIgnored(string recommendationStatus) =>
+        recommendationStatus switch
+        {
+            "REPLENISH" => "Rizik je izgubljena prodaja i pad dostupnosti na polici.",
+            "BOOST" => "Rizik je da se dobar signal ne iskoristi za dodatni prihod.",
+            "MARKDOWN" => "Rizik je da kapital ostane zarobljen u sporoj robi.",
+            "DO_NOT_ORDER" => "Rizik je dodatni lager i sporiji obrt zalihe.",
+            "FIX_DATA" => "Rizik je da sve naredne odluke ostanu zasnovane na nepouzdanim podacima.",
+            _ => "Rizik je da se odluka odloži bez dovoljno jakog signala."
+        };
+
+    private static string ResolveProductDecisionInputFreshnessStatus(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel)
+    {
+        if (string.Equals(confidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "critical";
+        }
+
+        if (row.DaysSinceLastSale is null)
+        {
+            return "unknown";
+        }
+
+        if (row.DaysSinceLastSale.Value > 60)
+        {
+            return "stale";
+        }
+
+        return "fresh";
+    }
+
     private static string BuildRecommendationReason(
         string recommendationStatus,
         decimal revenue,
@@ -5599,6 +5880,21 @@ public static class CachedAnalyticsEndpoints
         ex is PostgresException pg && pg.SqlState == "42P01"
         || ex.InnerException is PostgresException innerPg && innerPg.SqlState == "42P01";
 
+    internal sealed record ProductDecisionConfidenceProfile(
+        string RecommendationId,
+        string SourceType,
+        string SourceKey,
+        string RecommendationType,
+        string ConfidenceLevel,
+        int? ConfidenceScore,
+        IReadOnlyList<string> PrimaryDrivers,
+        IReadOnlyList<string> WarningCodes,
+        decimal? ExpectedImpactRsd,
+        int? ImpactWindowDays,
+        string RiskIfIgnored,
+        string ExplainabilityText,
+        string InputFreshnessStatus);
+
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
     private sealed record InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
 }
@@ -5726,6 +6022,10 @@ public class ProductDecisionCenterSummaryDto
 public class ProductDecisionCenterRowDto
 {
     public int ProductId { get; set; }
+    public string RecommendationId { get; set; } = string.Empty;
+    public string SourceType { get; set; } = "product";
+    public string SourceKey { get; set; } = string.Empty;
+    public string RecommendationType { get; set; } = string.Empty;
     public string Sku { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public int? SupplierId { get; set; }
@@ -5757,12 +6057,21 @@ public class ProductDecisionCenterRowDto
     public decimal SignalConfidencePct { get; set; }
     public bool RecommendationAllowed { get; set; }
     public string DataQualityStatus { get; set; } = "warning";
+    public string ConfidenceLevel { get; set; } = "insufficient_data";
+    public int? ConfidenceScore { get; set; }
     public int ConfidencePct { get; set; }
     public int ReliabilityPct { get; set; }
     public string RecommendationStatus { get; set; } = "INSUFFICIENT_DATA";
     public string RecommendationLabel { get; set; } = "Nedovoljno podataka";
     public string RecommendationReason { get; set; } = string.Empty;
     public List<string> ReasonCodes { get; set; } = [];
+    public List<string> WarningCodes { get; set; } = [];
+    public List<string> PrimaryDrivers { get; set; } = [];
+    public decimal? ExpectedImpactRsd { get; set; }
+    public int? ImpactWindowDays { get; set; }
+    public string RiskIfIgnored { get; set; } = string.Empty;
+    public string ExplainabilityText { get; set; } = string.Empty;
+    public string InputFreshnessStatus { get; set; } = "unknown";
     public string RecommendedAction { get; set; } = string.Empty;
 }
 
