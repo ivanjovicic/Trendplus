@@ -2120,10 +2120,19 @@ public static class CachedAnalyticsEndpoints
 
         // ========== CACHE INVALIDATE ENDPOINT (za admin) ==========
         group.MapPost("/cache/invalidate", async (
+            HttpContext context,
+            IConfiguration configuration,
             AnalyticsCacheAdminService cacheAdmin,
             string? family,
             CancellationToken ct) =>
         {
+            if (!IsAuthorizedAdmin(context, configuration))
+            {
+                return context.User.Identity?.IsAuthenticated == true
+                    ? Results.Forbid()
+                    : Results.Unauthorized();
+            }
+
             var state = await cacheAdmin.ClearAsync(family, ct);
             return Results.Ok(new
             {
@@ -2140,6 +2149,29 @@ public static class CachedAnalyticsEndpoints
             });
         });
 
+    }
+
+    private static bool IsAuthorizedAdmin(HttpContext context, IConfiguration configuration)
+    {
+        if (context.User.Identity?.IsAuthenticated == true && context.User.IsInRole("Admin"))
+        {
+            return true;
+        }
+
+        var configuredKey = configuration["Admin:ApiKey"];
+        if (string.IsNullOrWhiteSpace(configuredKey))
+        {
+            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+        }
+
+        if (string.IsNullOrWhiteSpace(configuredKey))
+        {
+            return false;
+        }
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        return !string.IsNullOrWhiteSpace(providedKey)
+            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 
     private static async Task<IResult> HandleCacheStatusAsync(

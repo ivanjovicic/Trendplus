@@ -180,10 +180,19 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
   };
 
   const handleClearCache = useCallback(async () => {
+    const adminKey = window.prompt("Unesite admin key za čišćenje analytics cache-a");
+    if (!adminKey || !adminKey.trim()) {
+      setCacheActionMessage({
+        type: "error",
+        text: "Admin key je obavezan za čišćenje analytics cache-a.",
+      });
+      return;
+    }
+
     try {
       setClearCacheBusy(true);
       setCacheActionMessage(null);
-      const result = await clearAnalyticsCache("all");
+      const result = await clearAnalyticsCache("all", adminKey.trim());
       setCacheActionMessage({ type: "success", text: result.message || "Analytics cache i report cache su očišćeni." });
       await fetchWorkers(false);
     } catch (error) {

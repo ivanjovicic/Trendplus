@@ -682,12 +682,19 @@ export async function getAnalyticsCacheStatus(): Promise<AnalyticsCacheStatus> {
   );
 }
 
-export async function clearAnalyticsCache(family = "all"): Promise<AnalyticsCacheInvalidateResponse> {
+export async function clearAnalyticsCache(family = "all", adminKey?: string): Promise<AnalyticsCacheInvalidateResponse> {
   const params = new URLSearchParams();
   if (family.trim()) params.set("family", family.trim());
+  const headers: Record<string, string> = {};
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
   const response = await fetchAnalyticsResponse(
     makeUrl("/api/analytics/cached/cache/invalidate", params),
-    { method: "POST" },
+    {
+      method: "POST",
+      headers,
+    },
     DEFAULT_ANALYTICS_GET_TIMEOUT_MS
   );
 
