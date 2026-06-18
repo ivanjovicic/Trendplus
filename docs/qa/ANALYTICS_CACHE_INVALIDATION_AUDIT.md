@@ -13,16 +13,36 @@ This audit confirms that the main pilot-facing cache families already have expli
 - successful `AnalyticsDataQualityHealthWorker` completion
 - manual admin cache clear
 
-The main remaining gap is different:
+The main remaining gap was:
 
-- `AnalyticsAggregationWorker` refreshes aggregate tables every 5 minutes, but intentionally skips cache invalidation afterward
-- that means dashboard-family cached responses can stay stale until TTL expiry even when aggregate refresh has already finished
-- this does not fake success, but it can delay visibility of newer aggregate data
+- `AnalyticsAggregationWorker` refreshed aggregate tables every 5 minutes, but used to skip cache invalidation afterward
+- that meant dashboard-family cached responses could stay stale until TTL expiry even when aggregate refresh had already finished
+- this did not fake success, but it could delay visibility of newer aggregate data
 
-No code change is included in this audit commit because the safest invalidation scope for `AnalyticsAggregationWorker` still needs one small implementation decision:
+## Final Decision
 
-1. invalidate only `dashboard`
-2. invalidate `dashboard` plus any aggregate-backed supplier summary routes
+`AnalyticsAggregationWorker` now clears the smallest safe set after a successful aggregate refresh:
+
+- `dashboard` family
+- aggregate-backed dashboard cache prefixes:
+  - `dashboard-bootstrap`
+  - `dashboard-advanced`
+  - `summary`
+  - `daily`
+  - `category`
+  - `gender`
+  - `supplier`
+  - `top`
+  - `top-advanced`
+
+Reports are intentionally not cleared by this worker.
+
+Why:
+
+- the worker refreshes the aggregate tables that back the dashboard summary and supplier snapshot surfaces
+- the dashboard bootstrap response composes separately cached sections, so clearing only the `dashboard` family would leave stale nested sections behind
+- report output is versioned separately and does not directly depend on this worker's refresh path
+- the blast radius stays smaller than `CoreFamilies`
 
 ## Input Gaps
 
@@ -79,11 +99,11 @@ There is no single universal manual refresh path. Manual run requests are worker
 
 - Manual run of `NightlyAnalyticsRefreshWorker` uses the same success path as scheduled nightly refresh and clears `CoreFamilies`
 - Manual run of `AnalyticsDataQualityHealthWorker` uses the same success path as the scheduled data-quality worker and clears `data-quality` and `reports`
-- Manual run of `AnalyticsAggregationWorker` does not invalidate cache after aggregate refresh
+- Manual run of `AnalyticsAggregationWorker` now clears the dashboard family and aggregate-backed dashboard prefixes after successful refresh
 
 | Family | Current behavior | Missing invalidation risk | User impact | Priority |
 |---|---|---|---|---|
-| `dashboard` | Covered for nightly manual refresh; not covered for aggregation-worker manual refresh | Medium | Operator may trigger refresh and still see stale dashboard summary until TTL expires | P1 gap |
+| `dashboard` | Covered for nightly manual refresh and aggregation-worker refresh | Low | Dashboard/bootstrap can refresh immediately after aggregate refresh | P0 covered |
 | `product-decision-center` | Covered when manual refresh means nightly worker | Low | Main product decision cache clears after real analytics refresh | P0 covered |
 | `supplier-decision-hub` | Covered when manual refresh means nightly worker | Low | Supplier decision cache clears after real analytics refresh | P0 covered |
 | `inventory` | Covered when manual refresh means nightly worker | Low | Inventory cache clears after real analytics refresh | P0 covered |
@@ -96,11 +116,11 @@ There is no single universal manual refresh path. Manual run requests are worker
 This trigger splits into two different worker behaviors.
 
 - `NightlyAnalyticsRefreshWorker`: clears `CoreFamilies` after success
-- `AnalyticsAggregationWorker`: intentionally skips broad cache invalidation after aggregate refresh
+- `AnalyticsAggregationWorker`: clears dashboard family plus aggregate-backed dashboard prefixes after successful refresh
 
 | Family | Current behavior | Missing invalidation risk | User impact | Priority |
 |---|---|---|---|---|
-| `dashboard` | Cleared after nightly worker; not cleared after aggregation worker | High | Sales summary, top products, daily-sales-derived dashboard sections can lag behind refreshed aggregate tables | P1 follow-up |
+| `dashboard` | Cleared after nightly worker and aggregation worker | Low | Sales summary, top products, daily-sales-derived dashboard sections refresh after the aggregate tables are rebuilt | P0 covered |
 | `product-decision-center` | Cleared after nightly worker; aggregation worker does not target this family | Low | Product decisions are not directly backed by the aggregation-worker tables inspected here | P2 low |
 | `supplier-decision-hub` | Cleared after nightly worker; aggregation worker writes supplier aggregate tables used by some cached summary routes without clear | Medium | Supplier summary cards that use aggregate tables can lag until TTL expiry | P1 follow-up |
 | `inventory` | Cleared after nightly worker; aggregation worker does not target inventory caches | Low | No direct stale risk from aggregation-worker tables confirmed | P2 low |
@@ -152,21 +172,11 @@ No dedicated analytics cache family was found for action outcome summary in the 
 
 ## Highest-Risk Findings
 
-1. `AnalyticsAggregationWorker` refreshes aggregate tables but intentionally skips cache invalidation.
-2. Report generation does not rotate report cache version on its own; it depends on import/nightly/data-quality/admin invalidation.
-3. Data-quality recalculation refreshes `data-quality` and `reports`, but not other trust-bearing cache families that may display older trust context until TTL expiry.
+1. Report generation does not rotate report cache version on its own; it still depends on import/nightly/data-quality/admin invalidation.
+2. Data-quality recalculation refreshes `data-quality` and `reports`, but not other trust-bearing cache families that may display older trust context until TTL expiry.
 
 ## Recommended Minimal Follow-Up
 
-1. Decide whether `AnalyticsAggregationWorker` should invalidate `dashboard` only, or `dashboard` plus the aggregate-backed supplier summary routes.
-2. Add one regression test around the chosen invalidation behavior if code is changed.
-3. Add the missing `docs/qa/STABLE_REPORT_URL_SMOKE.md` or merge its expectations into the existing pilot smoke checklist.
-
-## Why No Code Change In This Commit
-
-The missing invalidation is real, but the safe family scope still needs one explicit choice:
-
-- `dashboard` only is the smallest blast radius
-- `dashboard` plus aggregate-backed supplier summary endpoints may be more correct if those endpoints are operator-critical
-
-This audit documents the gap clearly so the next small backend follow-up can implement the fix intentionally instead of guessing.
+1. Keep the regression test that covers successful and failed aggregation refresh invalidation behavior.
+2. Consider a future smoke check that verifies the dashboard bootstrap refreshes immediately after the aggregation worker runs.
+3. Add the missing `docs/qa/STABLE_REPORT_URL_SMOKE.md` or merge its expectations into the existing pilot smoke checklist if report-link smoke is still needed.
