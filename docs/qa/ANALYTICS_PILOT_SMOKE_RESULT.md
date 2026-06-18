@@ -39,7 +39,10 @@ Backend base: `https://trendplus-api.onrender.com`
 - The two `No routes matched location` console warnings mean the production Vercel deployment is not serving the expected frontend route registration for pilot readiness and pilot intake report.
 - The supplier report warning is not a fail because the UI is explicit that the report is unavailable/expired rather than showing a false green ready state.
 - `GET /api/runtime/version` returned `404` during this run, so exact live backend SHA still could not be verified from the public surface.
+- Production HTML and JS were both served with `Last-Modified` timestamps from `2026-06-17`, while current `origin/main` is `1467e9e` from `2026-06-18`. That means the public Vercel site is serving an older production deployment, not the current branch tip.
+- The frontend build config in [vercel.json](/C:/Users/Ivan/source/repos/Trendplus2/vercel.json) points to `Klijent/clientapp` and the local build output contains the expected pilot routes, so this does not look like a repo build-root or route-manifest bug.
 
 ## Recommendation
 
 Do not use the current Vercel deployment as the final pilot smoke sign-off until `/analytics/pilot-readiness` and `/analytics/reports/pilot-intake` render the expected route content again.
+Next verification step: confirm that the next Vercel deploy is triggered from `origin/main` and that the production alias moves to a bundle that includes the pilot routes.
