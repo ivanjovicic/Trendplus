@@ -119,9 +119,14 @@ public static class AllEndpoints
             HttpContext httpContext,
             IConfiguration configuration) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, env))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
                 return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             if (!workerControl.IsRuntimeToggleAllowed)
@@ -154,9 +159,14 @@ public static class AllEndpoints
             HttpContext httpContext,
             IConfiguration configuration) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, env))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
                 return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             var changed = workerControl.SetEnabled(false, $"api:{env.EnvironmentName}");
@@ -324,7 +334,6 @@ public static class AllEndpoints
         app.MapDelete("/api/logs/clear", async (
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             TrendplusDbContext trendDb,
             IAnalyticsCacheService cache,
             ILogger<Program> logger,
@@ -332,7 +341,8 @@ public static class AllEndpoints
             string? level = null,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
                 await HandledErrorLogging.PersistHandledIssueAsync(
                     httpContext,
@@ -342,6 +352,17 @@ public static class AllEndpoints
                     stackTrace: null,
                     ct);
                 return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                await HandledErrorLogging.PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: "Forbidden admin action attempt: clear logs.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             try
@@ -465,9 +486,22 @@ public static class AllEndpoints
         
         app.MapPost("/api/admin/run-analytics-optimization", async (
             ITrendplusDbContext db,
+            HttpContext httpContext,
+            IConfiguration configuration,
             ILogger<Program> logger,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             try
             {
                 logger.LogInformation("🚀 Starting analytics optimization migration...");
@@ -666,8 +700,22 @@ public static class AllEndpoints
 
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
         
-        app.MapPost("/api/analytics/optimize", async (AnalyticsDbContext analyticsDb) =>
+        app.MapPost("/api/analytics/optimize", async (
+            AnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            IConfiguration configuration) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             try
             {
                 await analyticsDb.Database.ExecuteSqlRawAsync(@"
@@ -689,9 +737,22 @@ public static class AllEndpoints
 
         app.MapPost("/api/admin/init-scoring-tables", async (
             AnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            IConfiguration configuration,
             ILogger<Program> logger,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             try
             {
                 logger.LogInformation("🚀 Initializing scoring tables on analytics DB...");
@@ -4982,9 +5043,22 @@ public static class AllEndpoints
         app.MapPost("/api/admin/sync-analytics-db", async (
             ITrendplusDbContext trendDb,
             IAnalyticsDbContext analyticsDb,
+            HttpContext httpContext,
+            IConfiguration configuration,
             ILogger<Program> logger,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             try
             {
                 logger.LogInformation("🚀 Starting Analytics DB synchronization...");
@@ -6946,31 +7020,6 @@ public static class AllEndpoints
                 UserName: e.UserName,
                 ClientApp: e.ClientApp,
                 CorrelationId: e.CorrelationId));
-
-    private static bool IsAdminRequest(
-        HttpContext context,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        if (environment.IsDevelopment())
-        {
-            return true;
-        }
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-        {
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-        }
-        if (string.IsNullOrWhiteSpace(configuredKey))
-        {
-            return false;
-        }
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
-    }
 
     private static async Task<bool> RelationHasColumnAsync(
         NpgsqlConnection connection,

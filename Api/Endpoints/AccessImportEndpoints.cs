@@ -174,8 +174,20 @@ public static class AccessImportEndpoints
         group.MapPost("/batches/{batchId:long}/cancel", async (
             long batchId,
             IAccessImportService service,
+            HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct = default) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/batches/{batchId}", new { batchId, status = "cancellation-requested" })
@@ -187,8 +199,20 @@ public static class AccessImportEndpoints
         group.MapPost("/jobs/{batchId:long}/cancel", async (
             long batchId,
             IAccessImportService service,
+            HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct = default) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, status = "cancellation-requested" })
@@ -201,9 +225,20 @@ public static class AccessImportEndpoints
             long batchId,
             IAccessImportJobQueue queue,
             HttpContext httpContext,
+            IConfiguration configuration,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             var diagnostics = await queue.GetEnqueueDiagnosticsAsync(batchId, ct);
             if (!diagnostics.Exists)
             {
@@ -260,12 +295,12 @@ public static class AccessImportEndpoints
             long batchId,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             IAccessImportService service,
             bool includeAnalytics = true,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
                 await PersistHandledIssueAsync(
                     httpContext,
@@ -275,6 +310,17 @@ public static class AccessImportEndpoints
                     stackTrace: null,
                     ct);
                 return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: $"Forbidden admin action attempt: delete access-import batch {batchId}.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
@@ -416,12 +462,12 @@ public static class AccessImportEndpoints
             AnalyticsDbContext analyticsDb,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             HttpRequest request,
             ILogger<Program> logger,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
                 await PersistHandledIssueAsync(
                     httpContext,
@@ -431,6 +477,17 @@ public static class AccessImportEndpoints
                     stackTrace: null,
                     ct);
                 return Results.Unauthorized();
+            }
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                await PersistHandledIssueAsync(
+                    httpContext,
+                    level: "Warning",
+                    message: "Forbidden admin action attempt: cleanup execute.",
+                    exceptionType: nameof(UnauthorizedAccessException),
+                    stackTrace: null,
+                    ct);
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             try
@@ -1087,7 +1144,8 @@ public static class AccessImportEndpoints
             request.ContentLength,
             request.HasFormContentType);
 
-        if (!IsAdminRequest(httpContext, configuration, environment))
+        var access = AdminAccessControl.GetDecision(httpContext, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
         {
             outcome = "unauthorized";
             await PersistHandledIssueAsync(
@@ -1098,6 +1156,18 @@ public static class AccessImportEndpoints
                 stackTrace: null,
                 ct);
             return Results.Unauthorized();
+        }
+        if (access is AdminAccessDecision.Forbidden)
+        {
+            outcome = "forbidden";
+            await PersistHandledIssueAsync(
+                httpContext,
+                level: "Warning",
+                message: "Forbidden admin action attempt: start access-import job.",
+                exceptionType: nameof(UnauthorizedAccessException),
+                stackTrace: null,
+                ct);
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         var runtimeStatus = GetAccessImportRuntimeStatus();
@@ -1320,25 +1390,6 @@ public static class AccessImportEndpoints
         if (string.IsNullOrWhiteSpace(raw))
             return defaultValue;
         return bool.TryParse(raw, out var parsed) ? parsed : defaultValue;
-    }
-
-    private static bool IsAdminRequest(
-        HttpContext context,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        if (environment.IsDevelopment())
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 
     private static async Task PersistHandledExceptionAsync(

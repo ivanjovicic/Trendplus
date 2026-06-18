@@ -22,8 +22,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             var createdBy = ResolveRequestedBy(httpContext);
             var batch = await service.CreateBatchAsync(
@@ -43,8 +44,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             try
             {
@@ -67,8 +69,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             try
             {
@@ -91,8 +94,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             try
             {
@@ -115,8 +119,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             var batches = await service.ListBatchesAsync(scope, ct);
             return Results.Ok(batches.Select(ToBatchDto));
@@ -132,8 +137,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             var detail = await service.GetBatchDetailAsync(id, ct);
             if (detail is null)
@@ -172,8 +178,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             var health = await service.GetHealthAsync(ct);
             return Results.Ok(health);
@@ -195,8 +202,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             try
             {
@@ -235,8 +243,9 @@ public static class AnalyticsSnapshotEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsSnapshotAdminAllowed(httpContext, configuration, options.Value))
-                return Results.NotFound();
+            var denial = AuthorizeSnapshotAdmin(httpContext, configuration, options.Value);
+            if (denial is not null)
+                return denial;
 
             try
             {
@@ -263,29 +272,19 @@ public static class AnalyticsSnapshotEndpoints
 
     // ── Auth ─────────────────────────────────────────────────────────────
 
-    private static bool IsSnapshotAdminAllowed(
+    private static IResult? AuthorizeSnapshotAdmin(
         HttpContext context, IConfiguration configuration, AnalyticsSnapshotOptions options)
     {
         if (!options.SnapshotAdminEnabled)
-            return false;
+            return Results.NotFound();
 
-        return IsAuthorizedAdmin(context, configuration);
-    }
-
-    private static bool IsAuthorizedAdmin(HttpContext context, IConfiguration configuration)
-    {
-        if (context.User.Identity?.IsAuthenticated == true && context.User.IsInRole("Admin"))
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        return access switch
+        {
+            AdminAccessDecision.MissingCredential => Results.Unauthorized(),
+            AdminAccessDecision.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
+            _ => null
+        };
     }
 
     private static string ResolveRequestedBy(HttpContext context)

@@ -15,6 +15,38 @@ Backend base: `https://trendplus-api.onrender.com`
 - The supplier report route rendered an explicit unavailable/expired report state, which is acceptable as a warning, not a false ready state.
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
 
+## 2026-06-18 Deploy Proof Check
+
+### Before status
+
+- Earlier smoke evidence from the same day still showed:
+  - `/analytics/pilot-readiness` rendered the generic shell with `No routes matched location`.
+  - `/analytics/reports/pilot-intake` rendered the generic shell with `No routes matched location`.
+  - `GET /api/runtime/version` returned `404`.
+- Vercel response headers for the affected routes showed `Last-Modified: Wed, 17 Jun 2026 08:14:08 GMT` and `X-Vercel-Cache: HIT`, which is older than the current local `main` HEAD.
+
+### After status
+
+- Current local `main` HEAD is `098981681c2c9a183a505ca2cd75da9a574035dc`.
+- Current public Vercel HTML for `/analytics/pilot-readiness` serves a different bundle fingerprint than the local build:
+  - production: `index-XONGNubS.js`
+  - local build: `index-DAjqjWu_.js`
+- That mismatch confirms the live Vercel site is still serving an older deployment, not the current local bundle that contains the pilot routes.
+- Render still returns `404` for `GET /api/runtime/version`, so the exact deployed backend SHA remains unverified from the public surface.
+
+### Deployed SHA
+
+- Local HEAD / expected deployment target: `098981681c2c9a183a505ca2cd75da9a574035dc`
+- Vercel deployed SHA: not publicly visible from the live surface
+- Render deployed SHA: not publicly visible from the live surface
+
+### Remaining warnings
+
+- `/analytics/pilot-readiness` still needs a fresh Vercel deployment to serve the real checklist.
+- `/analytics/reports/pilot-intake` still needs a fresh Vercel deployment to serve the real report route.
+- `/api/runtime/version` still needs a fresh Render deployment to expose the read-only version proof.
+- Until those deploys move to the current `main` HEAD, smoke results should be treated as deploy-drift warnings, not as route-definition regressions in source.
+
 ## Results
 
 | Item | PASS / WARN / FAIL | Status code | Visible UI state | Correlation ID | Evidence / note |

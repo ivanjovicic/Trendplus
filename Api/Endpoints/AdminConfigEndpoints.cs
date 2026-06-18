@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
 
@@ -148,12 +149,20 @@ public static class AdminConfigEndpoints
         });
     }
 
-    private static async Task<Ok<RequeueResponse>> RequeueBatch(
+    private static async Task<IResult> RequeueBatch(
         long batchId,
+        HttpContext context,
+        IConfiguration configuration,
         TrendplusDbContext db,
         IAccessImportJobQueue queue,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         var batch = await db.DataImportBatches.FindAsync(new object[] { batchId }, ct);
         if (batch == null)
             return TypedResults.Ok(new RequeueResponse { Success = false, Message = $"Batch {batchId} not found." });
@@ -178,10 +187,18 @@ public static class AdminConfigEndpoints
         }
     }
 
-    private static async Task<Ok<DiagnosticsResult>> RunStaleRecovery(
+    private static async Task<IResult> RunStaleRecovery(
+        HttpContext context,
+        IConfiguration configuration,
         IAccessImportService importService,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         try
         {
             await importService.RefreshBatchStatusesAsync(batchId: null, ct);
@@ -352,16 +369,18 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(worker);
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> ResumeWorker(
+    private static async Task<IResult> ResumeWorker(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.ResumeWorkerAsync(workerName, userName, ct);
@@ -370,16 +389,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to resume worker" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> StopWorker(
+    private static async Task<IResult> StopWorker(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.StopWorkerAsync(workerName, userName, ct);
@@ -388,16 +409,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to stop worker" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> EnableWorkerSchedule(
+    private static async Task<IResult> EnableWorkerSchedule(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.EnableScheduleAsync(workerName, userName, ct);
@@ -406,16 +429,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to enable schedule" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> DisableWorkerSchedule(
+    private static async Task<IResult> DisableWorkerSchedule(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.DisableScheduleAsync(workerName, userName, ct);
@@ -424,25 +449,6 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to disable schedule" });
     }
 
-    private static bool IsAdminRequest(
-        HttpContext context,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        if (environment.IsDevelopment())
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-               && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
-    }
 }
 
 public class PendingBatchesResponse { public int Total { get; set; } public List<PendingBatchDto> Batches { get; set; } = new(); }

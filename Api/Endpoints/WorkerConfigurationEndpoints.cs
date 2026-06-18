@@ -1,5 +1,6 @@
 using Api.Services;
 using Infrastructure.Services;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
 
@@ -21,13 +22,15 @@ public static class WorkerConfigurationEndpoints
             string workerName,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             WorkerConfigurationService workerConfigurationService,
             WorkerRuntimePolicyService runtimePolicyService,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var definition = WorkerRegistryCatalog.Find(workerName);
             if (definition is null)
@@ -57,12 +60,14 @@ public static class WorkerConfigurationEndpoints
             string workerName,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             WorkerConfigurationService workerConfigurationService,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var definition = WorkerRegistryCatalog.Find(workerName);
             if (definition is null)
@@ -91,13 +96,15 @@ public static class WorkerConfigurationEndpoints
             string workerName,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             WorkerConfigurationService workerConfigurationService,
             WorkerRuntimePolicyService runtimePolicyService,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var definition = WorkerRegistryCatalog.Find(workerName);
             if (definition is null)
@@ -129,12 +136,14 @@ public static class WorkerConfigurationEndpoints
             string workerName,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             WorkerConfigurationService workerConfigurationService,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var definition = WorkerRegistryCatalog.Find(workerName);
             if (definition is null)
@@ -163,12 +172,14 @@ public static class WorkerConfigurationEndpoints
             string workerName,
             HttpContext httpContext,
             IConfiguration configuration,
-            IHostEnvironment environment,
             WorkerConfigurationService workerConfigurationService,
             CancellationToken ct = default) =>
         {
-            if (!IsAdminRequest(httpContext, configuration, environment))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var definition = WorkerRegistryCatalog.Find(workerName);
             if (definition is null)
@@ -194,25 +205,4 @@ public static class WorkerConfigurationEndpoints
         .WithTags("Workers");
     }
 
-    private static bool IsAdminRequest(
-        HttpContext context,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        if (environment.IsDevelopment())
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-
-        // No key configured → unprotected internal deployment; allow all requests.
-        // Set Admin:ApiKey (or ADMIN_API_KEY env var) to require key-based access.
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return true;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-               && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
-    }
 }

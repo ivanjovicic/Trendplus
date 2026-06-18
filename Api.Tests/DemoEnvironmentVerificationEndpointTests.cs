@@ -4,6 +4,7 @@ using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Api.Services.Access;
+using Domain.Model;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
@@ -22,6 +23,8 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class DemoEnvironmentVerificationEndpointTests
 {
+    private const string AdminApiKey = "test-admin-key";
+
     [Fact]
     public async Task DemoVerification_ReturnsSafe_WhenEnvironmentNameContainsDemo()
     {
@@ -80,6 +83,108 @@ public sealed class DemoEnvironmentVerificationEndpointTests
         Assert.Empty(response.Reasons);
     }
 
+    [Fact]
+    public async Task RequeueBatch_RejectsRequestWithoutAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        using var response = await host.Client.PostAsync("/api/admin/requeue-batch/1", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, host.Queue.EnqueueCallCount);
+    }
+
+    [Fact]
+    public async Task RequeueBatch_RejectsRequestWithWrongAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/requeue-batch/1");
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, host.Queue.EnqueueCallCount);
+    }
+
+    [Fact]
+    public async Task RequeueBatch_AllowsRequestWithAdminKey_AndInvokesQueue()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        long batchId;
+        using (var scope = host.App.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            var now = DateTime.UtcNow;
+            var batch = new DataImportBatch
+            {
+                SourceSystem = "access",
+                SourceFileName = "repair.accdb",
+                SourceFilePath = "/tmp/repair.accdb",
+                Status = "failed",
+                QueuedAtUtc = now,
+                StartedAtUtc = now,
+                LastHeartbeatUtc = now
+            };
+            db.DataImportBatches.Add(batch);
+            await db.SaveChangesAsync();
+            batchId = batch.Id;
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/requeue-batch/{batchId}");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(1, host.Queue.EnqueueCallCount);
+    }
+
+    [Fact]
+    public async Task RunStaleRecovery_RejectsRequestWithWrongAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/run-stale-recovery");
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, host.ImportService.RefreshBatchStatusesCallCount);
+    }
+
+    [Fact]
+    public async Task RunStaleRecovery_AllowsRequestWithAdminKey_AndInvokesImportService()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/run-stale-recovery");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(1, host.ImportService.RefreshBatchStatusesCallCount);
+    }
+
     private static async Task<DemoEnvironmentVerificationResponse> GetResponseAsync(TestHost host)
     {
         using var response = await host.Client.GetAsync("/api/admin/demo-verification");
@@ -92,16 +197,23 @@ public sealed class DemoEnvironmentVerificationEndpointTests
 
     private sealed class TestHost : IAsyncDisposable
     {
-        private TestHost(WebApplication app)
+        private TestHost(WebApplication app, RecordingAccessImportJobQueue queue, RecordingAccessImportService importService)
         {
             App = app;
             Client = app.GetTestClient();
+            Queue = queue;
+            ImportService = importService;
         }
 
         public WebApplication App { get; }
         public HttpClient Client { get; }
+        public RecordingAccessImportJobQueue Queue { get; }
+        public RecordingAccessImportService ImportService { get; }
 
-        public static async Task<TestHost> CreateAsync(string environmentName, IDictionary<string, string?> configuration)
+        public static async Task<TestHost> CreateAsync(
+            string environmentName,
+            IDictionary<string, string?> configuration,
+            bool withAdminKey = false)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
@@ -119,13 +231,19 @@ public sealed class DemoEnvironmentVerificationEndpointTests
                 initialSource: "test"));
             builder.Services.AddScoped<WorkerConfigurationService>();
             builder.Services.AddScoped<WorkerRegistryService>();
-            builder.Services.AddSingleton<IAccessImportJobQueue, NoOpAccessImportJobQueue>();
-            builder.Services.AddSingleton<IAccessImportService, NoOpAccessImportService>();
+            var queue = new RecordingAccessImportJobQueue();
+            var importService = new RecordingAccessImportService();
+            builder.Services.AddSingleton<IAccessImportJobQueue>(queue);
+            builder.Services.AddSingleton<IAccessImportService>(importService);
             builder.Services.Configure<AccessImportOptions>(_ => { });
             builder.Services.Configure<TrendIngestionOptions>(_ => { });
             builder.Services.Configure<NightlyAnalyticsRefreshOptions>(_ => { });
             builder.Services.Configure<OpenTrainingModelTrainingOptions>(_ => { });
             builder.Services.Configure<AnalyticsDataQualityHealthOptions>(_ => { });
+            if (withAdminKey)
+            {
+                builder.Configuration["Admin:ApiKey"] = AdminApiKey;
+            }
             builder.Configuration.AddInMemoryCollection(configuration);
 
             var app = builder.Build();
@@ -133,7 +251,7 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             app.MapAdminConfigEndpoints();
             await app.StartAsync();
 
-            return new TestHost(app);
+            return new TestHost(app, queue, importService);
         }
 
         public async ValueTask DisposeAsync()
@@ -143,9 +261,15 @@ public sealed class DemoEnvironmentVerificationEndpointTests
         }
     }
 
-    private sealed class NoOpAccessImportJobQueue : IAccessImportJobQueue
+    private sealed class RecordingAccessImportJobQueue : IAccessImportJobQueue
     {
-        public Task EnqueueAsync(long batchId, CancellationToken ct = default) => Task.CompletedTask;
+        public int EnqueueCallCount { get; private set; }
+
+        public Task EnqueueAsync(long batchId, CancellationToken ct = default)
+        {
+            EnqueueCallCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<AccessImportQueuedJob?> ClaimNextAsync(CancellationToken ct = default)
             => Task.FromResult<AccessImportQueuedJob?>(null);
@@ -166,8 +290,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             => Task.FromResult(new AccessImportPendingRecoveryResult(0, 0, 0));
     }
 
-    private sealed class NoOpAccessImportService : IAccessImportService
+    private sealed class RecordingAccessImportService : IAccessImportService
     {
+        public int RefreshBatchStatusesCallCount { get; private set; }
+
         public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
             => Task.FromResult<AccessImportPreviewResponse>(null!);
 
@@ -181,7 +307,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             => Task.FromResult<AccessImportRunResponse>(null!);
 
         public Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default)
-            => Task.CompletedTask;
+        {
+            RefreshBatchStatusesCallCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default)
             => Task.FromResult(new List<AccessImportBatchDto>());

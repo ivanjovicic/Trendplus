@@ -22,6 +22,8 @@ namespace Api.Tests;
 
 public sealed class AccessImportRunEndpointTests
 {
+    private const string AdminApiKey = "test-admin-key";
+
     [Fact]
     public async Task OptionsRun_ReturnsQuickly_AndDoesNotTriggerImportService()
     {
@@ -47,7 +49,7 @@ public sealed class AccessImportRunEndpointTests
     public async Task PostRun_ReturnsAccepted_AndInvokesImportServiceOnce()
     {
         var service = new RecordingAccessImportService();
-        await using var host = await AccessImportRunTestHost.CreateAsync(service);
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true);
 
         using var content = new MultipartFormDataContent();
         using var fileContent = new ByteArrayContent([1, 2, 3, 4]);
@@ -60,6 +62,7 @@ public sealed class AccessImportRunEndpointTests
         {
             Content = content
         };
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
 
         using var response = await host.Client.SendAsync(request);
 
@@ -68,6 +71,46 @@ public sealed class AccessImportRunEndpointTests
         Assert.True(service.FileExistedWhenCalled);
         Assert.Equal(4, service.LastObservedFileSizeBytes);
         Assert.Equal("/api/access-import/batches/123", response.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task PostRun_RejectsRequestWithoutAdminKey()
+    {
+        var service = new RecordingAccessImportService();
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true);
+
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent([1, 2, 3, 4]);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        content.Add(fileContent, "file", "sample.accdb");
+
+        using var response = await host.Client.PostAsync("/api/access-import/run", content);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, service.StartImportCallCount);
+    }
+
+    [Fact]
+    public async Task PostRun_RejectsRequestWithWrongAdminKey()
+    {
+        var service = new RecordingAccessImportService();
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true);
+
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent([1, 2, 3, 4]);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        content.Add(fileContent, "file", "sample.accdb");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run")
+        {
+            Content = content
+        };
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, service.StartImportCallCount);
     }
 
     [Fact]
@@ -166,14 +209,24 @@ public sealed class AccessImportRunEndpointTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<AccessImportRunTestHost> CreateAsync(IAccessImportService service)
+        public static async Task<AccessImportRunTestHost> CreateAsync(IAccessImportService service, bool withAdminKey = false)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
-                EnvironmentName = Environments.Development
+                EnvironmentName = Environments.Production
             });
             builder.WebHost.UseTestServer();
 
+            var config = new Dictionary<string, string?>
+            {
+                ["PROCESS_TYPE"] = "web"
+            };
+            if (withAdminKey)
+            {
+                config["Admin:ApiKey"] = AdminApiKey;
+            }
+
+            builder.Configuration.AddInMemoryCollection(config);
             builder.Services.AddLogging();
             builder.Services.AddMemoryCache();
             builder.Services.AddSingleton(service);
