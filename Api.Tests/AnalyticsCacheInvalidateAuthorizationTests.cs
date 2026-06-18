@@ -38,6 +38,20 @@ public sealed class AnalyticsCacheInvalidateAuthorizationTests
     }
 
     [Fact]
+    public async Task CacheInvalidate_RejectsRequestWithWrongAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/analytics/cached/cache/invalidate?family=dashboard");
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(host.Cache.RemovedPrefixes);
+    }
+
+    [Fact]
     public async Task CacheInvalidate_AllowsRequestWithAdminKey()
     {
         await using var host = await TestHost.CreateAsync(withAdminKey: true);

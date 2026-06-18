@@ -46,3 +46,4 @@ Za pilot spremnost je prioritet da se prvo zatvore write/destructive rute, pa te
 ## Implemented Status
 
 - `POST /api/analytics/cached/cache/invalidate` is now protected in the backend by admin authorization or the `X-Admin-Key` compatibility path.
+- Missing credential returns `401`; present but insufficient credential returns `403`.

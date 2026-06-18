@@ -2126,11 +2126,15 @@ public static class CachedAnalyticsEndpoints
             string? family,
             CancellationToken ct) =>
         {
-            if (!IsAuthorizedAdmin(context, configuration))
+            var access = GetAdminAccessDecision(context, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
             {
-                return context.User.Identity?.IsAuthenticated == true
-                    ? Results.Forbid()
-                    : Results.Unauthorized();
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             var state = await cacheAdmin.ClearAsync(family, ct);
@@ -2151,11 +2155,26 @@ public static class CachedAnalyticsEndpoints
 
     }
 
-    private static bool IsAuthorizedAdmin(HttpContext context, IConfiguration configuration)
+    private enum AdminAccessDecision
     {
-        if (context.User.Identity?.IsAuthenticated == true && context.User.IsInRole("Admin"))
+        MissingCredential,
+        Forbidden,
+        Authorized
+    }
+
+    private static AdminAccessDecision GetAdminAccessDecision(HttpContext context, IConfiguration configuration)
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
         {
-            return true;
+            return context.User.IsInRole("Admin")
+                ? AdminAccessDecision.Authorized
+                : AdminAccessDecision.Forbidden;
+        }
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(providedKey))
+        {
+            return AdminAccessDecision.MissingCredential;
         }
 
         var configuredKey = configuration["Admin:ApiKey"];
@@ -2166,12 +2185,12 @@ public static class CachedAnalyticsEndpoints
 
         if (string.IsNullOrWhiteSpace(configuredKey))
         {
-            return false;
+            return AdminAccessDecision.Forbidden;
         }
 
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
+        return string.Equals(providedKey, configuredKey, StringComparison.Ordinal)
+            ? AdminAccessDecision.Authorized
+            : AdminAccessDecision.Forbidden;
     }
 
     private static async Task<IResult> HandleCacheStatusAsync(
