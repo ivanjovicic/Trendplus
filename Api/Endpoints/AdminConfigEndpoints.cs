@@ -250,9 +250,11 @@ public static class AdminConfigEndpoints
         IHostEnvironment environment)
     {
         var reasons = new List<string>();
+        var warnings = new List<string>();
+        var environmentName = environment.EnvironmentName ?? string.Empty;
 
-        if (!string.IsNullOrWhiteSpace(environment.EnvironmentName) &&
-            environment.EnvironmentName.Contains("demo", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(environmentName) &&
+            environmentName.Contains("demo", StringComparison.OrdinalIgnoreCase))
         {
             reasons.Add("environment_name_contains_demo");
         }
@@ -262,70 +264,53 @@ public static class AdminConfigEndpoints
             reasons.Add("analytics_demo_flag_enabled");
         }
 
-        var marker = configuration["AnalyticsDemo:ConnectionMarker"];
-        if (string.IsNullOrWhiteSpace(marker))
-        {
-            marker = "demo";
-        }
-
-        if (ConnectionStringHasMarker(configuration.GetConnectionString("AnalyticsConnection"), marker, out var analyticsReason))
-        {
-            reasons.Add(analyticsReason);
-        }
-
-        if (ConnectionStringHasMarker(configuration.GetConnectionString("DefaultConnection"), marker, out var defaultReason))
-        {
-            reasons.Add(defaultReason);
-        }
+        EvaluateConnectionString(configuration.GetConnectionString("AnalyticsConnection"), warnings, reasons);
+        EvaluateConnectionString(configuration.GetConnectionString("DefaultConnection"), warnings, reasons);
 
         return new DemoEnvironmentVerificationResponse
         {
             DemoSafe = reasons.Count > 0,
             Reasons = reasons.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Warnings = warnings.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Environment = string.IsNullOrWhiteSpace(environmentName) ? "unknown" : environmentName,
             CheckedAtUtc = DateTime.UtcNow
         };
     }
 
-    private static bool ConnectionStringHasMarker(
+    private static void EvaluateConnectionString(
         string? connectionString,
-        string marker,
-        out string reason)
+        List<string> warnings,
+        List<string> reasons)
     {
-        reason = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(marker))
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            return false;
+            warnings.Add("connection_string_unavailable_or_unreadable");
+            return;
         }
 
         try
         {
             var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
-            if (ContainsMarker(builder.Database, marker))
-            {
-                reason = "analytics_connection_database_contains_demo";
-                return true;
-            }
-
-            if (ContainsMarker(builder.Host, marker))
-            {
-                reason = "analytics_connection_host_contains_demo";
-                return true;
-            }
-
-            if (ContainsMarker(builder.ApplicationName, marker))
-            {
-                reason = "analytics_connection_application_name_contains_demo";
-                return true;
-            }
+            AppendProofReason(builder.Database, "analytics_connection_database_contains_demo", reasons);
+            AppendProofReason(builder.Host, "analytics_connection_host_contains_demo", reasons);
+            AppendProofReason(builder.ApplicationName, "analytics_connection_application_name_contains_demo", reasons);
         }
         catch
         {
-            // Keep the verifier non-destructive and avoid surfacing parse failures as secrets.
+            warnings.Add("connection_string_unavailable_or_unreadable");
         }
+    }
 
-        return false;
+    private static void AppendProofReason(
+        string? value,
+        string reason,
+        List<string> reasons)
+    {
+        if (ContainsMarker(value, "demo"))
+        {
+            reasons.Add(reason);
+        }
     }
 
     private static bool ContainsMarker(string? value, string marker) =>
@@ -472,6 +457,8 @@ public class DemoEnvironmentVerificationResponse
 {
     public bool DemoSafe { get; set; }
     public List<string> Reasons { get; set; } = [];
+    public List<string> Warnings { get; set; } = [];
+    public string Environment { get; set; } = string.Empty;
     public DateTime CheckedAtUtc { get; set; }
 }
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }

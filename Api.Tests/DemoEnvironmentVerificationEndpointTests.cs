@@ -61,13 +61,33 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             environmentName: "Production",
             configuration: new Dictionary<string, string?>
             {
-                ["ConnectionStrings:AnalyticsConnection"] = "Host=demo-db.local;Port=5432;Database=trendplus_demo;Username=trendplus;Password=secret;"
+                ["ConnectionStrings:AnalyticsConnection"] = "Host=prod-db.local;Port=5432;Database=trendplus_demo;Application Name=trendplus-app;Username=trendplus;Password=secret;"
             });
 
         var response = await GetResponseAsync(host);
 
         Assert.True(response.DemoSafe);
         Assert.Contains("analytics_connection_database_contains_demo", response.Reasons);
+        Assert.Equal("Production", response.Environment);
+        Assert.NotNull(response.Warnings);
+    }
+
+    [Fact]
+    public async Task DemoVerification_ReturnsSafe_WhenConnectionHostOrApplicationNameContainsDemo()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:AnalyticsConnection"] = "Host=demo-db.local;Port=5432;Database=trendplus;Application Name=trendplus-demo-verifier;Username=trendplus;Password=secret;"
+            });
+
+        var response = await GetResponseAsync(host);
+
+        Assert.True(response.DemoSafe);
+        Assert.Contains("analytics_connection_host_contains_demo", response.Reasons);
+        Assert.Contains("analytics_connection_application_name_contains_demo", response.Reasons);
+        Assert.Equal("Production", response.Environment);
     }
 
     [Fact]
@@ -81,6 +101,28 @@ public sealed class DemoEnvironmentVerificationEndpointTests
 
         Assert.False(response.DemoSafe);
         Assert.Empty(response.Reasons);
+        Assert.Equal("Production", response.Environment);
+        Assert.Contains("connection_string_unavailable_or_unreadable", response.Warnings);
+    }
+
+    [Fact]
+    public async Task DemoVerification_ResponseDoesNotExposeRawConnectionString()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:AnalyticsConnection"] = "Host=demo-db.local;Port=5432;Database=trendplus_demo;Application Name=trendplus-demo-verifier;Username=trendplus;Password=super-secret;"
+            });
+
+        using var response = await host.Client.GetAsync("/api/admin/demo-verification");
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("super-secret", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("trendplus-demo-verifier", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("demo-db.local", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password=", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
