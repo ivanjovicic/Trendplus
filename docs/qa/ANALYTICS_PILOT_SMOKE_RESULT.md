@@ -27,16 +27,17 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ### After status
 
-- Current local `main` HEAD is `098981681c2c9a183a505ca2cd75da9a574035dc`.
+- Current local and pushed `main` HEAD is `9563b99b94138391bd473465478550bf2e465af6`.
 - Current public Vercel HTML for `/analytics/pilot-readiness` serves a different bundle fingerprint than the local build:
   - production: `index-XONGNubS.js`
   - local build: `index-DAjqjWu_.js`
 - That mismatch confirms the live Vercel site is still serving an older deployment, not the current local bundle that contains the pilot routes.
+- The same old bundle remained live after the `9563b99` push and an additional wait, so this is not just a short CDN propagation delay.
 - Render still returns `404` for `GET /api/runtime/version`, so the exact deployed backend SHA remains unverified from the public surface.
 
 ### Deployed SHA
 
-- Local HEAD / expected deployment target: `098981681c2c9a183a505ca2cd75da9a574035dc`
+- Local HEAD / expected deployment target: `9563b99b94138391bd473465478550bf2e465af6`
 - Vercel deployed SHA: not publicly visible from the live surface
 - Render deployed SHA: not publicly visible from the live surface
 
@@ -71,7 +72,7 @@ Backend base: `https://trendplus-api.onrender.com`
 - The two `No routes matched location` console warnings mean the production Vercel deployment is not serving the expected frontend route registration for pilot readiness and pilot intake report.
 - The supplier report warning is not a fail because the UI is explicit that the report is unavailable/expired rather than showing a false green ready state.
 - `GET /api/runtime/version` returned `404` during this run, so exact live backend SHA still could not be verified from the public surface.
-- Production HTML and JS were both served with `Last-Modified` timestamps from `2026-06-17`, while current `origin/main` is `1467e9e` from `2026-06-18`. That means the public Vercel site is serving an older production deployment, not the current branch tip.
+- Production HTML and JS were both served with `Last-Modified` timestamps from `2026-06-17`, while current `origin/main` is `9563b99b94138391bd473465478550bf2e465af6` from `2026-06-18`. That means the public Vercel site is serving an older production deployment, not the current branch tip.
 - The frontend build config in [vercel.json](/C:/Users/Ivan/source/repos/Trendplus2/vercel.json) points to `Klijent/clientapp` and the local build output contains the expected pilot routes, so this does not look like a repo build-root or route-manifest bug.
 
 ## Recommendation
