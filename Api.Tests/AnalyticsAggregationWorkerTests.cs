@@ -66,6 +66,26 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         Assert.Equal(1, state.ReportCacheVersion);
     }
 
+    [Trait("Category", "Unit")]
+    [Fact]
+    public async Task RefreshAnalyticsAsync_WhenRefreshFails_DoesNotInvalidateCache()
+    {
+        await using var harness = CreateHarness(
+            connectionString: "Host=127.0.0.1;Port=1;Database=trendplus_agg_failure;Username=invalid;Password=invalid;Timeout=1;Command Timeout=1;Pooling=false",
+            useInMemoryDatabase: false);
+
+        await InvokeRefreshAnalyticsAsync(harness.Worker);
+
+        Assert.Empty(harness.Cache.RemovedPrefixes);
+
+        var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
+        Assert.Null(state.LastClearAtUtc);
+        Assert.Null(state.LastClearFamily);
+        Assert.Null(state.LastAnalyticsCacheClearAtUtc);
+        Assert.Null(state.LastReportCacheClearAtUtc);
+        Assert.Equal(1, state.ReportCacheVersion);
+    }
+
     private static List<string> ExpectedRemovedPrefixes() =>
     [
         AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),

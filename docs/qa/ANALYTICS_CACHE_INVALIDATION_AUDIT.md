@@ -36,6 +36,7 @@ The main remaining gap was:
   - `top-advanced`
 
 Reports are intentionally not cleared by this worker.
+`supplier-decision-hub` is intentionally not included here because the inspected hub caches read from separate precomputed decision-score caches rather than the aggregate tables refreshed by this worker.
 
 Why:
 
@@ -117,6 +118,7 @@ This trigger splits into two different worker behaviors.
 
 - `NightlyAnalyticsRefreshWorker`: clears `CoreFamilies` after success
 - `AnalyticsAggregationWorker`: clears dashboard family plus aggregate-backed dashboard prefixes after successful refresh
+- Regression coverage now asserts that a successful aggregation refresh clears those cache prefixes and a failed refresh leaves cache state untouched.
 
 | Family | Current behavior | Missing invalidation risk | User impact | Priority |
 |---|---|---|---|---|
