@@ -152,9 +152,26 @@ If SHA is older than expected:
 
 ## Gaps / Next Hardening Step
 
-The remaining observability gap is version proof.
+The remaining observability gap is now addressed by the runtime version endpoint.
 
-Recommended follow-up:
-- add a tiny read-only backend version endpoint or include commit SHA/build time in an existing health/version surface
+## Runtime Version Verification
 
-Without that, route smoke can prove capability presence, but not exact commit identity.
+`GET /api/runtime/version` now exposes a read-only payload with:
+
+- `service`
+- `environment`
+- `commitSha`
+- `buildTimeUtc`
+- `processType`
+- `provider`
+
+Verification steps:
+
+1. Call `GET /api/runtime/version`.
+2. Confirm `service` is `trendplus-api`.
+3. Confirm `provider` matches the runtime surface, typically `render` in production and `local` in developer/test hosts.
+4. Confirm `commitSha` matches `RENDER_GIT_COMMIT`, `GIT_COMMIT_SHA`, or `SOURCE_VERSION` when one is present.
+5. Confirm `buildTimeUtc` is populated and remains read-only.
+6. Keep `/health` and `/ready` behavior unchanged.
+
+If the commit environment variables are absent, `commitSha` falls back to `unknown`, which is still safe but less useful for deploy correlation.

@@ -76,6 +76,39 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         Assert.Contains("/api/analytics/refresh-status", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/actions", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/cached/products/decision-center", routes, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("/api/runtime/version", routes, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RuntimeVersionEndpoint_ReturnsExpectedMetadata()
+    {
+        await using var factory = await AnalyticsProgramRouteTestFactory.CreateAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/runtime/version");
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadAsStringAsync();
+        using var json = JsonDocument.Parse(body);
+        var root = json.RootElement;
+
+        Assert.Equal("trendplus-api", root.GetProperty("service").GetString());
+        Assert.Equal("Development", root.GetProperty("environment").GetString());
+        Assert.Equal("abc123def456", root.GetProperty("commitSha").GetString());
+        Assert.Equal("2026-06-17T12:34:56.0000000Z", root.GetProperty("buildTimeUtc").GetString());
+        Assert.Equal("web", root.GetProperty("processType").GetString());
+        Assert.Equal("render", root.GetProperty("provider").GetString());
+
+        var propertyNames = root.EnumerateObject().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
+        Assert.True(new HashSet<string>(StringComparer.Ordinal)
+        {
+            "service",
+            "environment",
+            "commitSha",
+            "buildTimeUtc",
+            "processType",
+            "provider"
+        }.SetEquals(propertyNames));
     }
 
     [Theory]
@@ -203,10 +236,15 @@ public sealed class AnalyticsCriticalRouteMappingsTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseEnvironment(Environments.Development);
+
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    ["BACKEND_PROVIDER"] = "render",
+                    ["RENDER_GIT_COMMIT"] = "abc123def456",
+                    ["BUILD_TIME_UTC"] = "2026-06-17T12:34:56Z",
                     ["PROCESS_TYPE"] = "web",
                     ["Database:AutoMigrate"] = "false",
                     ["StartupReadiness:GateApiTraffic"] = "false",
