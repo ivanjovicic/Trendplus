@@ -43,12 +43,12 @@ These rules are mandatory.
 
 ## Required Environment Proof
 
-At least one of the following must be true before destructive steps:
+At least one of the following environment proofs must be true before destructive steps:
 
 - deployment/environment name clearly contains `demo`
-- database instance is dedicated to demo use
-- operations owner confirms in writing that no customer data is present
-- explicit demo-only environment flag is set and verified operationally
+- explicit `AnalyticsDemo__Enabled=true` flag is set and verified operationally
+- database instance is dedicated to demo use and the connection marker proves it
+- explicit operator proof is recorded in this runbook
 
 Machine-checkable proof:
 
@@ -61,10 +61,20 @@ Machine-checkable proof:
   - `analytics_connection_host_contains_demo`
   - `analytics_connection_application_name_contains_demo`
 
+Operator proof template:
+
+- date and time
+- operator name
+- environment name or deployment id
+- backup or snapshot reference
+- explicit statement that this environment is demo-only and safe to reset
+- approval to proceed only after the API proof returns `demoSafe=true`
+
 Current repo note:
 
 - this runbook requires a demo-only proof, but it does not claim that the application already enforces such a flag in code
 - the machine-checkable proof is `GET /api/admin/demo-verification`; proceed only when `demoSafe=true`
+- the operator note documents human approval and does not replace the API proof
 
 ## Naming Rules For Demo Data
 
@@ -305,6 +315,7 @@ Save these artifacts:
 Stop immediately if any of these happen:
 
 - environment cannot be proven demo-only
+- operator proof is missing from this runbook
 - `GET /api/admin/demo-verification` returns `demoSafe=false`
 - backup is missing
 - import source file origin is unclear
