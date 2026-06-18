@@ -737,6 +737,24 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertWithResultAsync_WhenDbUpdateExceptionIsUnrelated_Rethrows()
+    {
+        var databaseName = nameof(UpsertWithResultAsync_WhenDbUpdateExceptionIsUnrelated_Rethrows);
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        await using var db = new NonUniqueFailureAnalyticsDbContext(options);
+        var service = CreateService(db);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            service.UpsertWithResultAsync(CreateRequest(AnalyticsActionConstants.SourceTypes.Inventory, "unrelated-db-error"), userId: "u1"));
+
+        Assert.Contains("Simulated unrelated database failure", ex.Message);
+        Assert.Empty(await db.AnalyticsActionItems.ToListAsync());
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide));
@@ -913,11 +931,37 @@ public class AnalyticsActionItemServiceTests
                     await competingContext.SaveChangesAsync(cancellationToken);
                 }
 
-                throw new DbUpdateException("Simulated concurrent insert for analytics action upsert.");
+                throw new DbUpdateException(
+                    "Simulated concurrent insert for analytics action upsert.",
+                    new FakeSqlStateException("23505"));
             }
 
             return await base.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private sealed class NonUniqueFailureAnalyticsDbContext : AnalyticsDbContext
+    {
+        public NonUniqueFailureAnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
+            : base(options)
+        {
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            => throw new DbUpdateException(
+                "Simulated unrelated database failure.",
+                new FakeSqlStateException("40001"));
+    }
+
+    private sealed class FakeSqlStateException : Exception
+    {
+        public FakeSqlStateException(string sqlState)
+            : base($"Fake SQLSTATE {sqlState}")
+        {
+            SqlState = sqlState;
+        }
+
+        public string SqlState { get; }
     }
 
     private static AnalyticsActionItemService CreateService(AnalyticsDbContext db)

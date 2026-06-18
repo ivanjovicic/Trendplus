@@ -3,7 +3,9 @@ using Application.Artikli.Common.Interfaces;
 using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using System.Linq;
+using System.Reflection;
 
 namespace Infrastructure.Services.Analytics;
 
@@ -377,9 +379,11 @@ public sealed class AnalyticsActionItemService
         }
         catch (DbUpdateException ex)
         {
-            if (_db is DbContext efDb)
+            DetachPendingEntity(item);
+
+            if (!IsUniqueOpenActionConflict(ex))
             {
-                efDb.Entry(item).State = EntityState.Detached;
+                throw;
             }
 
             var racedExisting = await FindExistingOpenActionAsync(request.SourceType, request.SourceKey, ct);
@@ -714,6 +718,41 @@ public sealed class AnalyticsActionItemService
 
     private static string NormalizeDataQualityBucket(string? dataQualityStatus)
         => AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus) ?? "unknown";
+
+    private static bool IsUniqueOpenActionConflict(DbUpdateException exception)
+        => GetSqlState(exception) == PostgresErrorCodes.UniqueViolation;
+
+    private static string? GetSqlState(Exception? exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgresException)
+            {
+                return postgresException.SqlState;
+            }
+
+            var sqlStateProperty = current.GetType().GetProperty(
+                "SqlState",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (sqlStateProperty?.PropertyType == typeof(string) &&
+                sqlStateProperty.GetValue(current) is string sqlState &&
+                !string.IsNullOrWhiteSpace(sqlState))
+            {
+                return sqlState;
+            }
+        }
+
+        return null;
+    }
+
+    private void DetachPendingEntity(AnalyticsActionItem item)
+    {
+        if (_db is DbContext efDb)
+        {
+            efDb.Entry(item).State = EntityState.Detached;
+        }
+    }
 
     private static string GetOutcomeLabel(string key)
         => key switch
