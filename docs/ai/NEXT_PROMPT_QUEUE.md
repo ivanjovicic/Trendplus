@@ -1470,6 +1470,49 @@ Type: access-control implementation plan
   - `git diff --check` - pass
 - Risks:
   - the repo still lacks a shared authentication/policy layer, so Phase 1 must start with explicit per-group enforcement helpers before broader cleanup
-  - current admin-key compatibility paths should remain temporary and must not become the long-term substitute for role checks
+- current admin-key compatibility paths should remain temporary and must not become the long-term substitute for role checks
 - Next step:
   - implement the first smallest protected group: `POST /api/analytics/cached/cache/invalidate` plus matching frontend visibility test
+
+---
+
+## Queue continuation - decision-support hardening
+
+Status summary:
+
+- Q01-Q18 are DONE.
+- Product Decision optional action-status fallback is DONE.
+- Analytics pilot smoke checklist is DONE.
+- Cache invalidation audit is DONE.
+- Demo reset runbook is DONE.
+- Demo environment verification endpoint exists and is tested.
+- Open production risk: Vercel deploy drift and Render runtime version 404.
+- Open decision-support gap: no shared decision confidence contract yet.
+
+## Q19 - Deploy proof cleanup
+
+Status: TODO
+
+## Q20 - Demo verification production smoke
+
+Status: TODO
+
+## Q21 - Analytics action idempotency production/migration verification
+
+Status: TODO
+
+## Q22 - Access-control next P0 group
+
+Status: TODO
+
+## Q23 - Decision confidence contract
+
+Status: TODO
+
+## Q24 - Product Decision confidence phase 1
+
+Status: TODO
+
+## Q25 - Action Impact Ledger plan
+
+Status: TODO
