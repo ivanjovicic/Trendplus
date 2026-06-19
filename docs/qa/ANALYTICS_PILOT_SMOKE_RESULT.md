@@ -18,6 +18,18 @@ Backend base: `https://trendplus-api.onrender.com`
 - A later 2026-06-19 redeploy proof is documented in `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`; it shows the required analytics routes rendering real content on `/assets/index-BxfHyN7W.js`.
 - The full live smoke pass after the redeploy is documented in `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`.
 
+## 2026-06-19 Current Live Recheck
+
+- Local `HEAD` is `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`.
+- `origin/main` is `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`.
+- Vercel now serves `/assets/index-DPyjYUlZ.js` with `Last-Modified: Fri, 19 Jun 2026 11:41:35 GMT`.
+- The required routes now render real content instead of the generic shell:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake`
+  - `/analytics/decision-board`
+- This recheck is PASS for the required frontend analytics routes.
+- The current live Vercel state is safe for the analytics pilot routes covered by this smoke.
+
 ## 2026-06-19 Live Smoke Recheck
 
 ### Current status

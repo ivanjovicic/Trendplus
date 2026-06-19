@@ -1721,18 +1721,18 @@ Priority: P1
 Evidence:
 - Date: 2026-06-19
 - Files:
-  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
-  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
   - `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
-  - `git rev-parse HEAD` - pass, `9851c8c08beb8c9dae558e61f3b6b61a4bbef236`
-  - `git rev-parse origin/main` - pass, `e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`
-  - live Vercel `GET /analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered from `/assets/index-BxfHyN7W.js`
-  - live Vercel `GET /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` - pass, real Pilot intake report rendered from `/assets/index-BxfHyN7W.js`
-  - live Vercel `GET /analytics/decision-board` - pass, real Executive decision board rendered from `/assets/index-BxfHyN7W.js`
+  - `git rev-parse HEAD` - pass, `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`
+  - `git rev-parse origin/main` - pass, `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - live Vercel `/analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered from `/assets/index-DPyjYUlZ.js`
+  - live Vercel `/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` - pass, real Pilot intake report rendered from `/assets/index-DPyjYUlZ.js`
+  - live Vercel `/analytics/decision-board` - pass, real Executive decision board rendered from `/assets/index-DPyjYUlZ.js`
 - Remaining risk:
-  - local `HEAD` is still ahead of `origin/main` by 2 docs-only commits, so production is current for the deployed frontend but not yet identical to the workspace tip
   - Vercel alias stability still depends on the next deployment cycle, so the proof should be rechecked if the bundle hash changes again
   - a follow-up watch item is still useful if the team wants an explicit soak check
 
