@@ -25,7 +25,7 @@ If the environment cannot prove that it is demo-only, stop and do not run any de
 | Access import batch delete | Exists via `DELETE /api/access-import/batches/{id}` | Yes, with caution | Safe only for known demo batches in a dedicated demo environment |
 | Cleanup preview | Exists via `/api/access-import/cleanup/preview` | Yes | Use to inspect blast radius before any cleanup |
 | Cleanup execute | Exists via `/api/access-import/cleanup/execute` | No by default | Too risky for mixed environments; use only in a dedicated demo environment with backup and explicit approval |
-| Demo environment verification | Exists via `/api/admin/demo-verification` | Yes | Returns `demoSafe`, `reasons`, `environment`, `checkedAtUtc`, and `warnings`; use this before any destructive demo reset |
+| Demo environment verification | Exists via `/api/admin/demo-verification` | Yes, with admin access | Returns `demoSafe`, `reasons`, `environment`, `checkedAtUtc`, and `warnings`; use this before any destructive demo reset |
 | Worker/manual refresh control | Exists via worker/admin endpoints | Yes, with admin access | Can trigger refresh and data-quality worker runs after reseed |
 | Pilot readiness and smoke verification | Exists | Yes | Use `/analytics/pilot-readiness` and [ANALYTICS_PILOT_SMOKE_TEST.md](c:/Users/Ivan/source/repos/Trendplus2/docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md) as final proof |
 
@@ -53,6 +53,7 @@ At least one of the following environment proofs must be true before destructive
 Machine-checkable proof:
 
 - call `GET /api/admin/demo-verification`
+- send the same admin credential header used by other `/api/admin` endpoints (`X-Admin-Key` compatibility path)
 - require `demoSafe=true`
 - require at least one reason code:
   - `environment_name_contains_demo`
@@ -74,7 +75,7 @@ Operator proof template:
 Current repo note:
 
 - this runbook requires a demo-only proof, but it does not claim that the application already enforces such a flag in code
-- the machine-checkable proof is `GET /api/admin/demo-verification`; proceed only when `demoSafe=true`
+- the machine-checkable proof is `GET /api/admin/demo-verification` with admin access; proceed only when `demoSafe=true`
 - the response includes `environment` and `warnings` for operator context, but those fields do not replace the API proof
 - the operator note documents human approval and does not replace the API proof
 

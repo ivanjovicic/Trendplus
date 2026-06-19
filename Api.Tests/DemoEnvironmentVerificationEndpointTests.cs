@@ -30,9 +30,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
     {
         await using var host = await TestHost.CreateAsync(
             environmentName: "Demo",
-            configuration: new Dictionary<string, string?>());
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
 
-        var response = await GetResponseAsync(host);
+        var response = await GetResponseAsync(host, includeAdminKey: true);
 
         Assert.True(response.DemoSafe);
         Assert.Contains("environment_name_contains_demo", response.Reasons);
@@ -46,9 +47,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             configuration: new Dictionary<string, string?>
             {
                 ["AnalyticsDemo:Enabled"] = "true"
-            });
+            },
+            withAdminKey: true);
 
-        var response = await GetResponseAsync(host);
+        var response = await GetResponseAsync(host, includeAdminKey: true);
 
         Assert.True(response.DemoSafe);
         Assert.Contains("analytics_demo_flag_enabled", response.Reasons);
@@ -62,9 +64,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             configuration: new Dictionary<string, string?>
             {
                 ["ConnectionStrings:AnalyticsConnection"] = "Host=prod-db.local;Port=5432;Database=trendplus_demo;Application Name=trendplus-app;Username=trendplus;Password=secret;"
-            });
+            },
+            withAdminKey: true);
 
-        var response = await GetResponseAsync(host);
+        var response = await GetResponseAsync(host, includeAdminKey: true);
 
         Assert.True(response.DemoSafe);
         Assert.Contains("analytics_connection_database_contains_demo", response.Reasons);
@@ -80,9 +83,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             configuration: new Dictionary<string, string?>
             {
                 ["ConnectionStrings:AnalyticsConnection"] = "Host=demo-db.local;Port=5432;Database=trendplus;Application Name=trendplus-demo-verifier;Username=trendplus;Password=secret;"
-            });
+            },
+            withAdminKey: true);
 
-        var response = await GetResponseAsync(host);
+        var response = await GetResponseAsync(host, includeAdminKey: true);
 
         Assert.True(response.DemoSafe);
         Assert.Contains("analytics_connection_host_contains_demo", response.Reasons);
@@ -95,9 +99,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
     {
         await using var host = await TestHost.CreateAsync(
             environmentName: "Production",
-            configuration: new Dictionary<string, string?>());
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
 
-        var response = await GetResponseAsync(host);
+        var response = await GetResponseAsync(host, includeAdminKey: true);
 
         Assert.False(response.DemoSafe);
         Assert.Empty(response.Reasons);
@@ -113,9 +118,13 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             configuration: new Dictionary<string, string?>
             {
                 ["ConnectionStrings:AnalyticsConnection"] = "Host=demo-db.local;Port=5432;Database=trendplus_demo;Application Name=trendplus-demo-verifier;Username=trendplus;Password=super-secret;"
-            });
+            },
+            withAdminKey: true);
 
-        using var response = await host.Client.GetAsync("/api/admin/demo-verification");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/demo-verification");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync();
@@ -123,6 +132,34 @@ public sealed class DemoEnvironmentVerificationEndpointTests
         Assert.DoesNotContain("trendplus-demo-verifier", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("demo-db.local", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Password=", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DemoVerification_RejectsRequestWithoutAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>());
+
+        using var response = await host.Client.GetAsync("/api/admin/demo-verification");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DemoVerification_RejectsRequestWithWrongAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(
+            environmentName: "Production",
+            configuration: new Dictionary<string, string?>(),
+            withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/demo-verification");
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -227,9 +264,17 @@ public sealed class DemoEnvironmentVerificationEndpointTests
         Assert.Equal(1, host.ImportService.RefreshBatchStatusesCallCount);
     }
 
-    private static async Task<DemoEnvironmentVerificationResponse> GetResponseAsync(TestHost host)
+    private static async Task<DemoEnvironmentVerificationResponse> GetResponseAsync(
+        TestHost host,
+        bool includeAdminKey = false)
     {
-        using var response = await host.Client.GetAsync("/api/admin/demo-verification");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/demo-verification");
+        if (includeAdminKey)
+        {
+            request.Headers.Add("X-Admin-Key", AdminApiKey);
+        }
+
+        using var response = await host.Client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<DemoEnvironmentVerificationResponse>();

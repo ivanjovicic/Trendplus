@@ -49,7 +49,9 @@ public static class AdminConfigEndpoints
         group.MapGet("/demo-verification", DemoVerification)
             .WithName("DemoEnvironmentVerification")
             .WithSummary("Check whether the current environment is demo-safe")
-            .Produces<DemoEnvironmentVerificationResponse>(StatusCodes.Status200OK);
+            .Produces<DemoEnvironmentVerificationResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/audit-log", GetAuditLog)
             .WithName("GetAuditLog")
@@ -238,10 +240,17 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(response);
     }
 
-    private static Ok<DemoEnvironmentVerificationResponse> DemoVerification(
+    private static IResult DemoVerification(
         IConfiguration configuration,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        HttpContext context)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return TypedResults.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return TypedResults.StatusCode(StatusCodes.Status403Forbidden);
+
         return TypedResults.Ok(BuildDemoVerificationResponse(configuration, environment));
     }
 
@@ -259,7 +268,7 @@ public static class AdminConfigEndpoints
             reasons.Add("environment_name_contains_demo");
         }
 
-        if (configuration.GetValue<bool?>("AnalyticsDemo:Enabled") == true)
+        if (IsAnalyticsDemoFlagEnabled(configuration))
         {
             reasons.Add("analytics_demo_flag_enabled");
         }
@@ -311,6 +320,13 @@ public static class AdminConfigEndpoints
         {
             reasons.Add(reason);
         }
+    }
+
+    private static bool IsAnalyticsDemoFlagEnabled(IConfiguration configuration)
+    {
+        return configuration.GetValue<bool?>("AnalyticsDemo:Enabled") == true
+            || configuration.GetValue<bool?>("AnalyticsDemo__Enabled") == true
+            || string.Equals(Environment.GetEnvironmentVariable("AnalyticsDemo__Enabled"), "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool ContainsMarker(string? value, string marker) =>
