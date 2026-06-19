@@ -2262,7 +2262,7 @@ Token budget: medium
 
 ## Q54 - Audit Markdown Optimizer MVP safety and trust boundaries
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): audit markdown optimizer mvp`
 Priority: P1
 Token budget: medium
@@ -2299,6 +2299,25 @@ Token budget: medium
 - Missing data blocks or downgrades recommendation.
 - Tests cover no-fake-money states.
 - Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- HEAD SHA: `8ad00a56ff6feaecea39d84032625c8303163108`
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+  - `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` pass
+- Risk:
+  - No standalone markdown optimizer screen exists yet; the fix only prevents insufficient-data rows from being treated as high priority on the pre-nivelacija surface.
+- Next:
+  - Q55 - Add KPI methodology consistency review and tests
 
 ## Q55 - Add KPI methodology consistency review and tests
 
