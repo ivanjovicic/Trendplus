@@ -1692,9 +1692,31 @@ Priority: P1
 
 ## Q34 - Re-run live analytics smoke after deploy
 
+Status: PARTIAL
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - live Render `GET /api/runtime/version` - pass, `200 OK` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Render `GET /api/admin/demo-verification` - pass as auth gate, `401 Unauthorized` without admin credentials
+  - live Render `GET /api/analytics/refresh-status?dataScope=all` - pass, `200 OK` with `dataFreshnessStatus=unknown`
+  - live Render `GET /api/analytics/actions?dataScope=all` - pass, `200 OK` with action data
+  - live Vercel `/analytics/pilot-readiness` - fail, generic SPA shell still served
+  - live Vercel `/analytics/reports/pilot-intake` - fail, generic SPA shell still served
+  - live Vercel `/analytics/decision-board` - fail, generic SPA shell still served
+- Remaining risk:
+  - Vercel deploy drift remains unresolved, so the analytics smoke is still partial even though Render now exposes the runtime version endpoint
+  - local `HEAD` is ahead of `origin/main` by 2 commits, so the latest local tip is still not what production is serving
+
+## Q35 - Redeploy Vercel frontend from current main
+
 Status: TODO
 
 Evidence:
-- Files: `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+- Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
 - Checks: none yet
-- Next action: re-run the live analytics smoke checklist after the next successful Vercel/Render redeploy and record the actual route results
+- Next action: trigger a fresh Vercel deployment from the current `main` tip, then re-run the live analytics smoke and confirm the required routes render real content instead of the generic shell

@@ -14,6 +14,36 @@ Backend base: `https://trendplus-api.onrender.com`
   - `/analytics/reports/pilot-intake`
 - The supplier report route rendered an explicit unavailable/expired report state, which is acceptable as a warning, not a false ready state.
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
+- A newer 2026-06-19 recheck is documented below: Render now exposes `GET /api/runtime/version` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`, but Vercel still serves the older SPA shell bundle.
+
+## 2026-06-19 Live Smoke Recheck
+
+### Current status
+
+- Local `HEAD` is `930b724e76b84fad2b021c94ffca37caf77b3719`.
+- Remote `origin/main` is `e9f3238a172fe61ade3844777d8576dade270dae`.
+- Local `HEAD` is ahead of `origin/main` by 2 commits.
+- Render now returns `200 OK` for `GET /api/runtime/version` and reports:
+  - `service = trendplus-api`
+  - `environment = Production`
+  - `commitSha = e9f3238a172fe61ade3844777d8576dade270dae`
+  - `buildTimeUtc = 2026-06-19T10:46:43.6241738Z`
+  - `processType = web`
+  - `provider = render`
+- `GET /api/admin/demo-verification` returns `401 Unauthorized` without an admin credential, which is expected for the protected admin route.
+- `GET /api/analytics/refresh-status?dataScope=all` returns `200 OK` with honest `dataFreshnessStatus = unknown`.
+- `GET /api/analytics/actions?dataScope=all` returns `200 OK` with action data.
+- Vercel still serves the older bundle and generic SPA shell for the required routes:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake`
+  - `/analytics/decision-board`
+- The Vercel HTML still points at `/assets/index-DelBmZl0.js` with the older `Last-Modified` timestamp from `2026-06-19 10:21:26 GMT`.
+
+### Recheck result
+
+- Backend deploy proof is improved because Render now exposes the runtime version endpoint.
+- Frontend deploy drift remains unresolved because the required analytics routes still do not render their intended content on Vercel.
+- This is a partial smoke recheck, not a full production sign-off.
 
 ## 2026-06-19 Current Deploy Proof Check
 
@@ -106,6 +136,7 @@ Backend base: `https://trendplus-api.onrender.com`
 - `GET /api/runtime/version` returned `404` during this run, so exact live backend SHA still could not be verified from the public surface.
 - Production HTML and JS were both served with `Last-Modified` timestamps from `2026-06-17`, while current `origin/main` is `9563b99b94138391bd473465478550bf2e465af6` from `2026-06-18`. That means the public Vercel site is serving an older production deployment, not the current branch tip.
 - The frontend build config in [vercel.json](/C:/Users/Ivan/source/repos/Trendplus2/vercel.json) points to `Klijent/clientapp` and the local build output contains the expected pilot routes, so this does not look like a repo build-root or route-manifest bug.
+- The latest recheck shows the backend moved forward, but the frontend alias still points to the older bundle, so the remaining blocker is a stale Vercel deployment rather than a route-definition regression.
 
 ## Recommendation
 
