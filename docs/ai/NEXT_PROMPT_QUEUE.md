@@ -1609,7 +1609,23 @@ Priority: P1
 
 ## Q30 - Executive Decision Board no-fake-confidence review
 
-Status: TODO
+Status: DONE
+Commit suggestion: `fix(analytics): keep executive board confidence honest`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - The review is covered for missing action and supplier confidence plus the existing product insufficient-data path, but broader module-by-module confidence policy is still a follow-up concern.
 
 ## Q31 - Product Decision confidence review and edge-case tests
 

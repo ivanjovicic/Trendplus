@@ -378,4 +378,37 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(productCard?.confidenceLabel).toContain("Nedovoljno podataka");
     expect(productCard?.expectedImpactRsd).toBeNull();
   });
+
+  it("keeps missing action and supplier confidence at insufficient instead of helper language", () => {
+    const payload = createBasePayload();
+
+    payload.actions = {
+      ...payload.actions!,
+      items: [
+        {
+          ...payload.actions!.items[0],
+          confidencePct: null,
+        } as Parameters<typeof buildExecutiveDecisionBoardModel>[0]["actions"]["items"][number],
+      ],
+    };
+
+    payload.supplierSummary = {
+      ...payload.supplierSummary!,
+      topGrowSuppliers: [
+        {
+          ...payload.supplierSummary!.topGrowSuppliers[0],
+          confidenceScore: null,
+        } as Parameters<typeof buildExecutiveDecisionBoardModel>[0]["supplierSummary"]["topGrowSuppliers"][number],
+      ],
+    };
+
+    const model = buildExecutiveDecisionBoardModel(payload);
+    const actionCard = model.sections.flatMap((section) => section.cards).find((card) => card.kind === "action");
+    const supplierCard = model.sections.flatMap((section) => section.cards).find((card) => card.kind === "supplier");
+
+    expect(actionCard?.confidenceTone).toBe("insufficient");
+    expect(actionCard?.confidenceLabel).toBe("Nedovoljno podataka");
+    expect(supplierCard?.confidenceTone).toBe("insufficient");
+    expect(supplierCard?.confidenceLabel).toBe("Nedovoljno podataka");
+  });
 });

@@ -41,7 +41,7 @@ import type {
   SummaryResponse,
   SummarySupplierItem,
 } from "../services/supplierDecisionHubApi";
-import { confidenceLabel as supplierConfidenceLabel, getRecommendationMeta } from "../components/supplierDecisionHub/utils";
+import { getRecommendationMeta } from "../components/supplierDecisionHub/utils";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
 import { normalizeRecommendationPct } from "../utils/canonicalRecommendationSemantics";
@@ -479,7 +479,7 @@ function buildSupplierCards(summary: SummaryResponse | null, states: Map<string,
       const actionKey = buildSupplierActionSourceKey(item, filters, recommendationAllowed);
       const actionState = resolveActionState("supplier", actionKey, states);
       const confidenceScore = normalizeRecommendationPct(item.confidenceScore);
-      const confidence = confidenceLabelFromValue(confidenceScore, supplierConfidenceLabel(item.confidenceScore));
+      const confidence = confidenceLabelFromValue(confidenceScore);
       const impact = item.revenue > 0 ? item.revenue : null;
 
       cards.push({
@@ -534,7 +534,7 @@ function buildActionCards(actions: AnalyticsActionListResponse | null): BoardCar
     })
     .slice(0, 12)
     .map((item, index) => {
-      const confidence = confidenceLabelFromValue(item.confidencePct, item.dataQualityStatus === "insufficient_data" ? "Nedovoljno podataka" : "Pomoćni signal");
+      const confidence = confidenceLabelFromValue(item.confidencePct);
       const state = item.status === "new" || item.status === "accepted" || item.status === "deferred" ? "open" : "none";
       const nextStep =
         item.status === "new"
@@ -625,7 +625,7 @@ function buildOutcomeCards(
 
   const pendingOutcomeActions = (actions?.items ?? []).filter((item) => openStatus(item.outcomeStatus) || item.outcomeStatus === "pending" || item.outcomeStatus === "not_measured");
   for (const item of pendingOutcomeActions.slice(0, 10)) {
-    const confidence = confidenceLabelFromValue(item.confidencePct, item.dataQualityStatus === "insufficient_data" ? "Nedovoljno podataka" : "Pomoćni signal");
+    const confidence = confidenceLabelFromValue(item.confidencePct);
     cards.push({
       id: `outcome:${item.id}`,
       sectionKey: "actionsOutcome",
