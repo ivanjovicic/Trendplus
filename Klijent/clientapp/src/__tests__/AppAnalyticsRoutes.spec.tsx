@@ -82,6 +82,13 @@ describe("App analytics core route smoke", () => {
     });
   });
 
+  it("keeps the executive decision board route explicitly registered in the production app shell", async () => {
+    window.history.pushState({}, "", "/analytics/decision-board");
+
+    expect(() => render(<App />)).not.toThrow();
+    expect(await screen.findByTestId("route-analytics-decision-board")).toBeInTheDocument();
+  });
+
   it.each(routeCases)("renders mapped route for $path", async ({ path, testId }) => {
     window.history.pushState({}, "", path);
 

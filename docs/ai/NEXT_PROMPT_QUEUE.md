@@ -1591,7 +1591,21 @@ Priority: P0
 
 ## Q29 - Executive Decision Board hardening tests
 
-Status: TODO
+Status: DONE
+Commit suggestion: `test(analytics): harden executive decision board route coverage`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/__tests__/AppAnalyticsRoutes.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - The board route is now covered explicitly in the production-style `App` route smoke, but it still depends on the existing lazy import and the route manifest staying aligned with `App.tsx`.
 
 ## Q30 - Executive Decision Board no-fake-confidence review
 
