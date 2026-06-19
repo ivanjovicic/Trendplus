@@ -11,6 +11,15 @@ describe("navConfig", () => {
     expect(readinessItem?.label).toBe("Pilot spremnost");
   });
 
+  it("contains Izvršni board item in analytics group", () => {
+    const analyticsGroup = NAV_GROUPS.find((group) => group.id === "analytics");
+    expect(analyticsGroup).toBeDefined();
+
+    const boardItem = analyticsGroup?.items.find((item) => item.to === "/analytics/decision-board");
+    expect(boardItem).toBeDefined();
+    expect(boardItem?.label).toBe("Izvršni board");
+  });
+
   it("contains Konfiguracija item in admin group", () => {
     const adminGroup = NAV_GROUPS.find((group) => group.id === "admin");
     expect(adminGroup).toBeDefined();

@@ -19,6 +19,12 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
         legacyAliases: [],
     },
     {
+        path: "/analytics/decision-board",
+        label: "Izvršni board",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
         path: "/analytics/products",
         label: "Odluke o proizvodima",
         isDurableReport: false,

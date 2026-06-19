@@ -113,6 +113,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/analytics", label: "Trendplus pregled", icon: BarChart3 },
       { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
+      { to: "/analytics/decision-board", label: "Izvršni board", icon: Sparkles },
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
       { to: "/analytics/supplier", label: "Pregled dobavljača", icon: Microscope },
       { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },
@@ -157,6 +158,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
       { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
+      { to: "/admin/configuration", label: "Konfiguracija", icon: Settings2 },
       { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
     ],
   },
