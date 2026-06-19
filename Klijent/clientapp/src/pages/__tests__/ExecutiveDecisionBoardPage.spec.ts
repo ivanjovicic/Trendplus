@@ -411,4 +411,121 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(supplierCard?.confidenceTone).toBe("insufficient");
     expect(supplierCard?.confidenceLabel).toBe("Nedovoljno podataka");
   });
+
+  it("demotes insufficient-data recommendations below higher-confidence product cards", () => {
+    const payload = createBasePayload();
+    const goodRow = payload.productDecisionCenter!.rows[0];
+
+    payload.productDecisionCenter = {
+      ...payload.productDecisionCenter!,
+      rows: [
+        {
+          ...goodRow,
+          productId: 2,
+          recommendationId: "rec-2",
+          sourceKey: "product:2",
+          productName: "Patike Y",
+          expectedImpactRsd: 500000,
+          lostSalesEstimate: 500000,
+          confidenceLevel: "insufficient_data",
+          confidenceScore: null,
+          confidencePct: null,
+          dataQualityStatus: "insufficient_data",
+          recommendationStatus: "INSUFFICIENT_DATA",
+          recommendationLabel: "Nedovoljno podataka",
+          recommendationReason: "Signal nije dovoljno pouzdan za rangiranje.",
+          reasonCodes: ["insufficient_data"],
+          warningCodes: ["insufficient_data"],
+          primaryDrivers: ["sparse_sales"],
+          recommendedAction: "Sačekaj novi signal.",
+          riskIfIgnored: "Signal je slab.",
+          explainabilityText: "Ova preporuka je samo signal.",
+        } as Parameters<typeof buildExecutiveDecisionBoardModel>[0]["productDecisionCenter"]["rows"][number],
+        {
+          ...goodRow,
+          productId: 1,
+          recommendationId: "rec-1",
+          sourceKey: "product:1",
+          productName: "Patike X",
+          expectedImpactRsd: 100000,
+          lostSalesEstimate: 100000,
+          confidenceLevel: "high",
+          confidenceScore: 88,
+          confidencePct: 88,
+          dataQualityStatus: "good",
+          recommendationStatus: "REPLENISH",
+          recommendationLabel: "Dopuni",
+          recommendationReason: "Brza prodaja i niska zaliha.",
+          reasonCodes: ["high_velocity", "low_stock"],
+          warningCodes: ["stock_risk"],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          recommendedAction: "Dopuni odmah.",
+          riskIfIgnored: "Moguća rasprodaja.",
+          explainabilityText: "Brza prodaja i nizak nivo zalihe znače da treba dopuniti.",
+        } as Parameters<typeof buildExecutiveDecisionBoardModel>[0]["productDecisionCenter"]["rows"][number],
+      ],
+    };
+
+    const model = buildExecutiveDecisionBoardModel(payload);
+    const products = model.sections.flatMap((section) => section.cards).filter((card) => card.kind === "product");
+    const highConfidenceProduct = products.find((card) => card.title === "Patike X");
+    const insufficientProduct = products.find((card) => card.title === "Patike Y");
+
+    expect(highConfidenceProduct?.confidenceTone).toBe("good");
+    expect(insufficientProduct?.confidenceTone).toBe("insufficient");
+    expect(highConfidenceProduct?.priorityScore ?? 0).toBeGreaterThan(insufficientProduct?.priorityScore ?? 0);
+    expect(insufficientProduct?.priorityScore).toBeLessThanOrEqual(40);
+  });
+
+  it("keeps stale refresh and partial signals surfaced as warnings", () => {
+    const payload = createBasePayload();
+    payload.refreshStatus = {
+      ...payload.refreshStatus!,
+      dataFreshnessStatus: "stale",
+      lastFailureAtUtc: "2026-06-19T10:00:00Z",
+      lastErrorMessage: "Refresh je zastareo.",
+    };
+
+    const model = buildExecutiveDecisionBoardModel(payload);
+    const refreshBlocker = model.sections
+      .find((section) => section.key === "blockers")
+      ?.cards.find((card) => card.id === "blocker-refresh");
+
+    expect(model.isPartial).toBe(true);
+    expect(refreshBlocker?.confidenceTone).toBe("warning");
+    expect(refreshBlocker?.warningCodes).toContain("stale");
+  });
+
+  it("does not let insufficient-data blockers outrank real decision cards", () => {
+    const payload = createBasePayload();
+    payload.pilotIntake = {
+      ...payload.pilotIntake!,
+      impact: {
+        ...payload.pilotIntake!.impact,
+        insufficientSignalCount: 3,
+      },
+      readinessStatus: "warning",
+      readinessLabel: "Upozorenje",
+    };
+
+    const model = buildExecutiveDecisionBoardModel(payload);
+    const blockers = model.sections.find((section) => section.key === "blockers")?.cards ?? [];
+    const blockerSignal = blockers.find((card) => card.id === "blocker-signal");
+    const productCard = model.sections.flatMap((section) => section.cards).find((card) => card.kind === "product");
+
+    expect(blockerSignal).toBeDefined();
+    expect(blockerSignal?.dataQualityStatus).toBe("insufficient_data");
+    expect(blockerSignal?.priorityScore).toBeLessThanOrEqual(40);
+    expect(productCard?.priorityScore ?? 0).toBeGreaterThanOrEqual(blockerSignal?.priorityScore ?? 0);
+  });
+
+  it("keeps repeated product recommendations clearly scoped by section context", () => {
+    const model = buildExecutiveDecisionBoardModel(createBasePayload());
+    const urgentProduct = model.sections.find((section) => section.key === "urgent")?.cards.find((card) => card.kind === "product");
+    const stockRiskProduct = model.sections.find((section) => section.key === "stockRisk")?.cards.find((card) => card.kind === "product");
+
+    expect(urgentProduct?.sourceKey).toBe(stockRiskProduct?.sourceKey);
+    expect(model.sections.find((section) => section.key === "urgent")?.title).toBe("Top 5 urgentnih odluka");
+    expect(model.sections.find((section) => section.key === "stockRisk")?.title).toBe("Odluke o riziku zaliha");
+  });
 });

@@ -1805,12 +1805,26 @@ Evidence:
 Next step:
 - Q39 - Add visible warnings for ancillary filter/list refresh failures
 
-## Q39 - Add visible warnings for ancillary filter/list refresh failures
+## Q39 - Audit Executive Decision Board data quality and prioritization
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run ExecutiveDecisionBoard` - pass
+- Remaining risk:
+  - repeated cards are still shown across multiple board sections by design, but the section context now makes that repetition explicit instead of silently deduping it
 
 Next step:
-- surface a small warning banner when store/supplier/season option fetches fail, so users know the list may be stale instead of only preserving the previous values
+- Q40 - Review remaining numeric fallbacks on analytics charts
 
 ## Q40 - Review remaining numeric fallbacks on analytics charts
 

@@ -227,6 +227,18 @@ function confidenceLabelFromValue(score: number | null | undefined, fallback = "
   return `Niska (${fmtPct(normalized, 0)})`;
 }
 
+function capInsufficientDataPriority(
+  priorityScore: number,
+  confidenceTone: BoardTone,
+  dataQualityStatus: string | null | undefined,
+): number {
+  if (confidenceTone === "insufficient" || (dataQualityStatus ?? "").trim().toLowerCase() === "insufficient_data") {
+    return Math.min(priorityScore, 40);
+  }
+
+  return priorityScore;
+}
+
 function confidenceLabelFromProduct(item: ProductDecisionCenterItem): { label: string; tone: BoardTone; score: number | null } {
   if (item.confidenceLevel === "insufficient_data") {
     const score = normalizeRecommendationPct(item.confidenceScore ?? item.confidencePct);
@@ -345,7 +357,11 @@ function buildProductCards(product: ProductDecisionCenterResponse | null, states
         warningCodes: warnings,
         dataQualityStatus: row.dataQualityStatus,
         generatedAtUtc: product.generatedAtUtc,
-        priorityScore: computePriorityScore(expectedImpact, confidence.score, row.dataQualityStatus, row.recommendationStatus),
+        priorityScore: capInsufficientDataPriority(
+          computePriorityScore(expectedImpact, confidence.score, row.dataQualityStatus, row.recommendationStatus),
+          confidence.tone,
+          row.dataQualityStatus,
+        ),
         impactScore: expectedImpact ?? 0,
       };
     });
@@ -438,7 +454,11 @@ function buildInventoryCards(
       warningCodes: row.reasonCodes ?? [],
       dataQualityStatus: row.dataQualityStatus,
       generatedAtUtc: inventoryInsights.meta?.generatedAtUtc ?? null,
-      priorityScore: computePriorityScore(impact, row.signalConfidencePct, row.dataQualityStatus, actionSpec.recommendationStatus),
+      priorityScore: capInsufficientDataPriority(
+        computePriorityScore(impact, row.signalConfidencePct, row.dataQualityStatus, actionSpec.recommendationStatus),
+        confidenceToneFromValue(row.signalConfidencePct),
+        row.dataQualityStatus,
+      ),
       impactScore: impact ?? 0,
     });
   }
@@ -480,6 +500,7 @@ function buildSupplierCards(summary: SummaryResponse | null, states: Map<string,
       const actionState = resolveActionState("supplier", actionKey, states);
       const confidenceScore = normalizeRecommendationPct(item.confidenceScore);
       const confidence = confidenceLabelFromValue(confidenceScore);
+      const confidenceTone = confidenceToneFromValue(confidenceScore);
       const impact = item.revenue > 0 ? item.revenue : null;
 
       cards.push({
@@ -510,7 +531,11 @@ function buildSupplierCards(summary: SummaryResponse | null, states: Map<string,
           : [],
         dataQualityStatus: trustMetadata?.dataCoverageStatus ?? "unknown",
         generatedAtUtc: summary.to,
-        priorityScore: computePriorityScore(impact, confidenceScore, trustMetadata?.dataCoverageStatus ?? "unknown", item.recommendationCode),
+        priorityScore: capInsufficientDataPriority(
+          computePriorityScore(impact, confidenceScore, trustMetadata?.dataCoverageStatus ?? "unknown", item.recommendationCode),
+          confidenceTone,
+          trustMetadata?.dataCoverageStatus,
+        ),
         impactScore: impact ?? 0,
       });
     });
@@ -535,6 +560,7 @@ function buildActionCards(actions: AnalyticsActionListResponse | null): BoardCar
     .slice(0, 12)
     .map((item, index) => {
       const confidence = confidenceLabelFromValue(item.confidencePct);
+      const confidenceTone = confidenceToneFromValue(item.confidencePct);
       const state = item.status === "new" || item.status === "accepted" || item.status === "deferred" ? "open" : "none";
       const nextStep =
         item.status === "new"
@@ -553,7 +579,7 @@ function buildActionCards(actions: AnalyticsActionListResponse | null): BoardCar
         title: item.title,
         summary: item.description ?? item.recommendationStatus ?? "Otvorena akcija još čeka odluku.",
         confidenceLabel: confidence,
-        confidenceTone: confidenceToneFromValue(item.confidencePct),
+        confidenceTone,
         confidenceScore: item.confidencePct ?? null,
         expectedImpactRsd: item.expectedImpactRsd ?? item.impactEstimateRsd ?? null,
         measuredImpactRsd: item.measuredImpactRsd ?? null,
@@ -569,7 +595,11 @@ function buildActionCards(actions: AnalyticsActionListResponse | null): BoardCar
         warningCodes: item.dataQualityStatus ? [String(item.dataQualityStatus)] : [],
         dataQualityStatus: item.dataQualityStatus ?? "unknown",
         generatedAtUtc: item.updatedAtUtc,
-        priorityScore: computePriorityScore(item.expectedImpactRsd ?? item.impactEstimateRsd, item.confidencePct, item.dataQualityStatus, item.recommendationStatus),
+        priorityScore: capInsufficientDataPriority(
+          computePriorityScore(item.expectedImpactRsd ?? item.impactEstimateRsd, item.confidencePct, item.dataQualityStatus, item.recommendationStatus),
+          confidenceTone,
+          item.dataQualityStatus,
+        ),
         impactScore: item.expectedImpactRsd ?? item.impactEstimateRsd ?? 0,
       } satisfies BoardCard;
     });
@@ -618,7 +648,11 @@ function buildOutcomeCards(
       warningCodes,
       dataQualityStatus: outcomeSummary.meta.measuredSampleSize < 10 ? "insufficient_data" : (warningCodes.length > 0 ? "warning" : "good"),
       generatedAtUtc: outcomeSummary.meta.generatedAtUtc,
-      priorityScore: (outcomeSummary.impact.expectedImpactRsd ?? 0) / 5_000 + (warningCodes.length > 0 ? 30 : 0),
+      priorityScore: capInsufficientDataPriority(
+        (outcomeSummary.impact.expectedImpactRsd ?? 0) / 5_000 + (warningCodes.length > 0 ? 30 : 0),
+        confidenceTone,
+        outcomeSummary.meta.measuredSampleSize < 10 ? "insufficient_data" : (warningCodes.length > 0 ? "warning" : "good"),
+      ),
       impactScore: outcomeSummary.impact.expectedImpactRsd ?? 0,
     });
   }
@@ -626,6 +660,7 @@ function buildOutcomeCards(
   const pendingOutcomeActions = (actions?.items ?? []).filter((item) => openStatus(item.outcomeStatus) || item.outcomeStatus === "pending" || item.outcomeStatus === "not_measured");
   for (const item of pendingOutcomeActions.slice(0, 10)) {
     const confidence = confidenceLabelFromValue(item.confidencePct);
+    const confidenceTone = confidenceToneFromValue(item.confidencePct);
     cards.push({
       id: `outcome:${item.id}`,
       sectionKey: "actionsOutcome",
@@ -636,7 +671,7 @@ function buildOutcomeCards(
       title: item.title,
       summary: item.outcomeNotes ?? item.description ?? "Ishod još nije izmeren.",
       confidenceLabel: confidence,
-      confidenceTone: confidenceToneFromValue(item.confidencePct),
+      confidenceTone,
       confidenceScore: item.confidencePct ?? null,
       expectedImpactRsd: item.expectedImpactRsd ?? item.impactEstimateRsd ?? null,
       measuredImpactRsd: item.measuredImpactRsd ?? null,
@@ -652,7 +687,11 @@ function buildOutcomeCards(
       warningCodes: item.outcomeStatus ? [item.outcomeStatus] : [],
       dataQualityStatus: item.dataQualityStatus ?? "unknown",
       generatedAtUtc: item.updatedAtUtc,
-      priorityScore: computePriorityScore(item.expectedImpactRsd ?? item.impactEstimateRsd, item.confidencePct, item.dataQualityStatus, item.recommendationStatus) - 20,
+      priorityScore: capInsufficientDataPriority(
+        computePriorityScore(item.expectedImpactRsd ?? item.impactEstimateRsd, item.confidencePct, item.dataQualityStatus, item.recommendationStatus) - 20,
+        confidenceTone,
+        item.dataQualityStatus,
+      ),
       impactScore: item.expectedImpactRsd ?? item.impactEstimateRsd ?? 0,
     });
   }
@@ -784,7 +823,11 @@ function buildBlockerCards(
         warningCodes: ["insufficient_signal"],
         dataQualityStatus: "insufficient_data",
         generatedAtUtc: intake.generatedAtUtc,
-        priorityScore: intake.readinessStatus === "critical" ? 260 : 180,
+        priorityScore: capInsufficientDataPriority(
+          intake.readinessStatus === "critical" ? 260 : 180,
+          intake.readinessStatus === "critical" ? "critical" : "warning",
+          "insufficient_data",
+        ),
         impactScore: 0,
       });
     }
