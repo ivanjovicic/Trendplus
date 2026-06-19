@@ -4926,7 +4926,7 @@ public static class CachedAnalyticsEndpoints
         public decimal CostCoveredRevenue { get; init; }
     }
 
-    private static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
+    internal static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
         DateTime? toDate,

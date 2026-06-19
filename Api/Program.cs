@@ -1235,6 +1235,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAllEndpoints();
     app.MapAnalyticsRefreshStatusEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapDecisionBoardEndpoints();
     app.MapInventoryEndpoints();
     app.MapAnalyticsActionsEndpoints();
     app.MapAnalyticsIntelligenceEndpoints();

@@ -1999,7 +1999,35 @@ Next step:
 
 ## Q47 - Decision Board backend aggregate implementation
 
+Status: DONE
+
+### Notes
+
+- Date: 2026-06-19
+- Commit: pending
+- Changed files:
+  - `Api/Dtos/DecisionBoardDtos.cs`
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+  - `Api/Program.cs`
+  - `Api.Tests/AnalyticsCriticalRouteMappingsTests.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~DecisionBoard|FullyQualifiedName~AnalyticsCriticalRouteMappings"` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - The aggregate now preserves nullable impact/confidence semantics, but the frontend still needs to switch to the new read-only board source before the contract is fully exercised in UI.
+- Next step:
+  - `Q48 - Decision Board frontend aggregate adoption`
+
+## Q48 - Decision Board frontend aggregate adoption
+
 Status: TODO
 
 Next step:
-- implement the read-only backend aggregate endpoint using the agreed contract and keep the frontend adapter parity tests honest
+- switch the Executive Decision Board frontend to consume the backend aggregate endpoint and keep route smoke honest

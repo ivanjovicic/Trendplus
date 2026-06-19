@@ -53,6 +53,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         Assert.Contains("/api/analytics/refresh-status", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/actions", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/cached/products/decision-center", routes, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("/api/analytics/decision-board", routes, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -76,6 +77,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         Assert.Contains("/api/analytics/refresh-status", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/actions", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/cached/products/decision-center", routes, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("/api/analytics/decision-board", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/runtime/version", routes, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -115,6 +117,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
     [InlineData("/api/analytics/refresh-status?dataScope=all")]
     [InlineData("/api/analytics/actions?status=new&sourceType=product&page=1&pageSize=1&dataScope=all")]
     [InlineData("/api/analytics/cached/products/decision-center?fromDate=2026-05-19&toDate=2026-06-17&top=10&dataScope=all")]
+    [InlineData("/api/analytics/decision-board?dataScope=all")]
     public async Task CriticalAnalyticsFrontendUrls_DoNotReturn404(string url)
     {
         await using var host = await AnalyticsRouteSmokeTestHost.CreateAsync();
@@ -176,8 +179,15 @@ public sealed class AnalyticsCriticalRouteMappingsTests
                 initialSource: "tests"));
             builder.Services.AddSingleton<IAnalyticsCacheService, InMemoryCacheService>();
             builder.Services.AddSingleton<AnalyticsCacheAdminService>();
+            builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
+            builder.Services.AddScoped<IInventoryActionDecisionService, Infrastructure.Services.Inventory.InventoryActionDecisionService>();
             builder.Services.AddScoped<AnalyticsRefreshStatusService>();
             builder.Services.AddScoped<AnalyticsActionItemService>();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = BuildConnectionString(trendDbName),
+                ["ConnectionStrings:AnalyticsConnection"] = BuildConnectionString(analyticsDbName)
+            });
             builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(trendDbName));
             builder.Services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             builder.Services.AddDbContext<AnalyticsDbContext>(options => options.UseInMemoryDatabase(analyticsDbName));
@@ -202,6 +212,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
             app.MapAnalyticsRefreshStatusEndpoints();
             app.MapAnalyticsActionsEndpoints();
             app.MapCachedAnalyticsEndpoints();
+            app.MapDecisionBoardEndpoints();
 
             using (var scope = app.Services.CreateScope())
             {

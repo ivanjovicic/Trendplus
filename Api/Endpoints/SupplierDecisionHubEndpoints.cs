@@ -628,7 +628,7 @@ public static class SupplierDecisionHubEndpoints
         int IgnoredRowCount,
         DateTime GeneratedAtUtc);
 
-    private static bool TryCreateFilters(
+    internal static bool TryCreateFilters(
         DateTime? fromDate,
         DateTime? toDate,
         string? category,
@@ -1923,7 +1923,7 @@ public static class SupplierDecisionHubEndpoints
     private static string NormalizeRankingSortDir(string? sortDir) =>
         string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
 
-    private static Task<SupplierRowsDataset> GetSupplierRowsCachedAsync(
+    internal static Task<SupplierRowsDataset> GetSupplierRowsCachedAsync(
         IAnalyticsCacheService cache,
         string analyticsConnectionString,
         SupplierDecisionHubFilters filters,
