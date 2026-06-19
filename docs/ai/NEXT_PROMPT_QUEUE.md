@@ -1879,10 +1879,26 @@ Next step:
 
 ## Q42 - Product Decision confidence calibration review
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+  - `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+  - `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run test -- --run ProductDecisionCenterPage.confidence` - pass
+- Remaining risk:
+  - Product Decision Center still does not have a separate calibration bucket UI; calibration learning belongs to the outcome summary / ledger layer rather than a local page-only score
 
 Next step:
-- review Product Decision confidence mapping, calibration buckets, and missing-impact behavior against the contract
+- Q43 - Supplier confidence contract mapping
 
 ## Q43 - Supplier confidence contract mapping
 
