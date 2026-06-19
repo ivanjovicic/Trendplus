@@ -303,6 +303,7 @@ Production analytics needs clear guardrails for refresh, cache, admin workflows,
 - Q43: Supplier confidence contract mapping
 - Q44: Inventory decision confidence mapping
 - Q45: Decision Board backend aggregate readiness review
+- Q46: Decision Board backend aggregate contract design
 
 ## Acceptance
 

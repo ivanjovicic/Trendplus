@@ -1967,7 +1967,7 @@ Next step:
   - `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_READINESS.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
-  - `git diff --check` - not run yet after this doc update
+  - `git diff --check` - pass, with repository line-ending warnings only
   - Existing board quality audit checks are already documented in `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
 - Risk:
   - The frontend board still composes from multiple source requests; the aggregate review is ready, but implementation should stay read-only and preserve nullable semantics.
@@ -1976,7 +1976,30 @@ Next step:
 
 ## Q46 - Decision Board backend aggregate contract design
 
+Status: DONE
+
+Next step:
+- use the read-only aggregate contract to implement the backend endpoint and adapter tests
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `c79f50bc87a98962c3da51dcb3e9bb8f30272017`
+- Changed files:
+  - `docs/analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md`
+  - `docs/analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - not run yet after this doc update
+  - Existing board quality audit checks are already documented in `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Risk:
+  - The frontend board still composes from multiple source requests; the backend aggregate should preserve the same nullable and section-context semantics.
+- Next step:
+  - `Q47 - Decision Board backend aggregate implementation`
+
+## Q47 - Decision Board backend aggregate implementation
+
 Status: TODO
 
 Next step:
-- design the read-only aggregate response shape and section metadata against the stable Phase 1 board model
+- implement the read-only backend aggregate endpoint using the agreed contract and keep the frontend adapter parity tests honest
