@@ -1779,7 +1779,7 @@ Evidence:
 Next step:
 - no queued follow-up task yet; revisit the same forbidden-state pattern if another analytics write surface is added
 
-## Q38 - Audit analytics screens for unknown regression risks and fake-success states
+## Q38 - Analytics regression risk audit
 
 Status: DONE
 
@@ -1805,7 +1805,7 @@ Evidence:
 Next step:
 - Q39 - Add visible warnings for ancillary filter/list refresh failures
 
-## Q39 - Audit Executive Decision Board data quality and prioritization
+## Q39 - Executive Decision Board quality audit
 
 Status: DONE
 
@@ -1824,11 +1824,46 @@ Evidence:
   - repeated cards are still shown across multiple board sections by design, but the section context now makes that repetition explicit instead of silently deduping it
 
 Next step:
-- Q40 - Review remaining numeric fallbacks on analytics charts
+- Q40 - Analytics observability/correlation-id hardening
 
-## Q40 - Review remaining numeric fallbacks on analytics charts
+## Q40 - Analytics observability/correlation-id hardening
 
 Status: TODO
 
 Next step:
-- review the remaining `?? 0` / `|| 0` cases on analytics charts and derived panels to confirm each one is a safe display default and not a hidden fake-success path
+- make correlation IDs visible across backend logs, live smoke docs, and frontend error states so partial failures are easier to trace
+
+## Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
+
+Status: TODO
+
+Next step:
+- compare the current action model with the ledger plan and document the smallest safe Phase 1 implementation gap
+
+## Q42 - Product Decision confidence calibration review
+
+Status: TODO
+
+Next step:
+- review Product Decision confidence mapping, calibration buckets, and missing-impact behavior against the contract
+
+## Q43 - Supplier confidence contract mapping
+
+Status: TODO
+
+Next step:
+- map supplier summary, list, and report confidence semantics onto the shared contract without inventing new values in the UI
+
+## Q44 - Inventory decision confidence mapping
+
+Status: TODO
+
+Next step:
+- align inventory recommendation confidence, warnings, and nullable impact behavior with the shared decision contract
+
+## Q45 - Decision Board backend aggregate readiness review
+
+Status: TODO
+
+Next step:
+- verify the phase 1 board model is stable enough to justify a backend aggregate endpoint design review
