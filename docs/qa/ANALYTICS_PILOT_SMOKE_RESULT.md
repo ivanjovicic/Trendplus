@@ -15,6 +15,40 @@ Backend base: `https://trendplus-api.onrender.com`
 - The supplier report route rendered an explicit unavailable/expired report state, which is acceptable as a warning, not a false ready state.
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
 
+## 2026-06-19 Deploy Proof Check
+
+### Before status
+
+- Local `HEAD` is `d6e120768c7aefdf8016a56c593ee49e2af4e182`.
+- Remote `origin/main` is `9563b99b94138391bd473465478550bf2e465af6`.
+- The live Vercel HTML for `/analytics/pilot-readiness` still serves `index-XONGNubS.js` with `Last-Modified: Wed, 17 Jun 2026 08:14:08 GMT`.
+- The current local production build serves `index-Dl6Nn41t.js`, so the live Vercel site is not serving the bundle produced from the current workspace state.
+- Render still returned `404` for `GET /api/runtime/version`, so the deployed backend SHA remained unverified from the public surface.
+
+### After status
+
+- `GET https://trendplus.vercel.app/analytics/pilot-readiness` still returned the generic SPA shell instead of the pilot readiness checklist.
+- `GET https://trendplus.vercel.app/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` still returned the generic SPA shell instead of the pilot intake report.
+- `GET https://trendplus-api.onrender.com/api/runtime/version` still returned `404`.
+- The route definitions in source are present in the current workspace:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake`
+  - `/api/runtime/version`
+- That points to deploy drift, not a missing route definition in source.
+
+### Deployed SHA
+
+- Local HEAD: `d6e120768c7aefdf8016a56c593ee49e2af4e182`
+- Remote `origin/main`: `9563b99b94138391bd473465478550bf2e465af6`
+- Vercel deployed SHA: not publicly visible from the live surface
+- Render deployed SHA: not publicly visible from the live surface
+
+### Remaining warnings
+
+- Vercel is still serving an older bundle than the current workspace build, so the production analytics shell does not match the current route registration.
+- Render still needs the runtime version endpoint deployed before exact backend SHA can be verified publicly.
+- Until the next successful deploy, these route misses should be treated as deployment drift, not as current-source route regressions.
+
 ## 2026-06-18 Deploy Proof Check
 
 ### Before status
