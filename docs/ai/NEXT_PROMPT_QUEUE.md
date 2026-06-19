@@ -1563,7 +1563,12 @@ Evidence:
 
 ## Q27 - Demo verification production smoke
 
-Status: TODO
+Status: PARTIAL
+
+Evidence:
+- Files: `docs/qa/DEMO_VERIFICATION_SMOKE_RESULT.md`, `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass.
+- Remaining risk: live Render returns `404` for `/api/admin/demo-verification`, so production/demo smoke cannot be finalized until the backend deploy catches up.
 
 ## Q28 - Protect analytics action write endpoints
 
