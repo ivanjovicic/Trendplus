@@ -15,11 +15,11 @@ Backend base: `https://trendplus-api.onrender.com`
 - The supplier report route rendered an explicit unavailable/expired report state, which is acceptable as a warning, not a false ready state.
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
 
-## 2026-06-19 Deploy Proof Check
+## 2026-06-19 Current Deploy Proof Check
 
 ### Before status
 
-- Local `HEAD` is `d6e120768c7aefdf8016a56c593ee49e2af4e182`.
+- Local `HEAD` is `161739cf071bb09adbe2d4d3bcae40d5379a0f72`.
 - Remote `origin/main` is `9563b99b94138391bd473465478550bf2e465af6`.
 - The live Vercel HTML for `/analytics/pilot-readiness` still serves `index-XONGNubS.js` with `Last-Modified: Wed, 17 Jun 2026 08:14:08 GMT`.
 - The current local production build serves `index-Dl6Nn41t.js`, so the live Vercel site is not serving the bundle produced from the current workspace state.
@@ -38,7 +38,7 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ### Deployed SHA
 
-- Local HEAD: `d6e120768c7aefdf8016a56c593ee49e2af4e182`
+- Local HEAD: `161739cf071bb09adbe2d4d3bcae40d5379a0f72`
 - Remote `origin/main`: `9563b99b94138391bd473465478550bf2e465af6`
 - Vercel deployed SHA: not publicly visible from the live surface
 - Render deployed SHA: not publicly visible from the live surface
