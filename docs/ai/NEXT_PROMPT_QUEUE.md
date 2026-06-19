@@ -1936,7 +1936,7 @@ Next step:
 ### Notes
 
 - Date: 2026-06-19
-- Verification HEAD: `ee23a61d43665630b163ddac43c29e49b09ed1c1`
+- Verification HEAD: `7b24b3801b8f2c11e7983c0d724ed1647576883f`
 - Changed files:
   - `Klijent/clientapp/src/pages/InventoryPage.tsx`
   - `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalActions.spec.ts`
