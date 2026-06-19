@@ -48,4 +48,14 @@ describe("analyticsMetricDefinitions", () => {
     expect(getAnalyticsMetricDefinition("grossMarginPct").formula).toContain("prihod");
     expect(getAnalyticsMetricDefinition("inventoryTurnover").formula).toContain("/");
   });
+
+  it("keeps denominator-sensitive metrics blocked when the denominator is missing", () => {
+    const sellThrough = getAnalyticsMetricDefinition("sellThrough");
+    const stockCoverDays = getAnalyticsMetricDefinition("stockCoverDays");
+
+    expect(sellThrough.formula).toBe("soldUnits / (openingStockUnits + inboundUnits)");
+    expect(stockCoverDays.formula).toBe("currentOnHandUnits / avgDailySalesUnits");
+    expect(sellThrough.blockedWhen.join(" ")).toContain("openingStockUnits + inboundUnits <= 0");
+    expect(stockCoverDays.blockedWhen.join(" ")).toContain("avgDailySalesUnits <= 0");
+  });
 });

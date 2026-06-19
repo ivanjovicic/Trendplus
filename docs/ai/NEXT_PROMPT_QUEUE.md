@@ -2341,7 +2341,7 @@ Token budget: medium
 
 ## Q55 - Add KPI methodology consistency review and tests
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): review kpi methodology consistency`
 Priority: P1
 Token budget: medium
@@ -2376,6 +2376,24 @@ Token budget: medium
 - Missing denominator does not become 0.
 - Any small tests added are focused.
 - Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- Changed files:
+  - `Klijent/clientapp/src/utils/__tests__/analyticsformatters.spec.ts`
+  - `Klijent/clientapp/src/utils/__tests__/analyticsMetricDefinitions.spec.ts`
+  - `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/utils/__tests__/analyticsformatters.spec.ts src/utils/__tests__/analyticsMetricDefinitions.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+- Risk:
+  - `inventoryTurnover` remains cost-based in code; the roadmap also documents a units-based proxy, so future docs must keep those variants distinct.
+- Next step:
+  - `Q56 - Close Analytics production readiness checklist`
 
 ## Q56 - Close Analytics production readiness checklist
 
