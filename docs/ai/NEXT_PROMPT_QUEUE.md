@@ -1692,7 +1692,7 @@ Priority: P1
 
 ## Q34 - Re-run live analytics smoke after deploy
 
-Status: PARTIAL
+Status: DONE
 
 Evidence:
 - Date: 2026-06-19
@@ -1701,22 +1701,43 @@ Evidence:
   - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
-  - live Render `GET /api/runtime/version` - pass, `200 OK` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Render `GET /api/runtime/version` - pass, `200 OK` with `commitSha=e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`
   - live Render `GET /api/admin/demo-verification` - pass as auth gate, `401 Unauthorized` without admin credentials
   - live Render `GET /api/analytics/refresh-status?dataScope=all` - pass, `200 OK` with `dataFreshnessStatus=unknown`
   - live Render `GET /api/analytics/actions?dataScope=all` - pass, `200 OK` with action data
-  - live Vercel `/analytics/pilot-readiness` - fail, generic SPA shell still served
-  - live Vercel `/analytics/reports/pilot-intake` - fail, generic SPA shell still served
-  - live Vercel `/analytics/decision-board` - fail, generic SPA shell still served
+  - live Vercel `/analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered
+  - live Vercel `/analytics/reports/pilot-intake` - pass, real Pilot intake report rendered
+  - live Vercel `/analytics/decision-board` - pass, real Executive decision board rendered
 - Remaining risk:
-  - Vercel deploy drift remains unresolved, so the analytics smoke is still partial even though Render now exposes the runtime version endpoint
-  - local `HEAD` is ahead of `origin/main` by 2 commits, so the latest local tip is still not what production is serving
+  - Vercel alias stability still depends on the next deployment cycle, so the proof should be rechecked if the bundle hash changes again
+  - a follow-up watch item is still useful if the team wants an explicit soak check
 
 ## Q35 - Redeploy Vercel frontend from current main
+
+Status: DONE
+Commit suggestion: `docs(qa): record live analytics smoke recheck`
+Priority: P1
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git push origin main` - pass, remote `main` advanced to `e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`
+  - live Vercel `GET /analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered
+  - live Vercel `GET /analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` - pass, real Pilot intake report rendered
+  - live Vercel `GET /analytics/decision-board` - pass, real Executive decision board rendered
+- Remaining risk:
+  - Vercel alias stability still depends on the next deployment cycle, so the proof should be rechecked if the bundle hash changes again
+  - a follow-up watch item is still useful if the team wants an explicit soak check
+
+## Q36 - Post-redeploy smoke watch
 
 Status: TODO
 
 Evidence:
 - Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
 - Checks: none yet
-- Next action: trigger a fresh Vercel deployment from the current `main` tip, then re-run the live analytics smoke and confirm the required routes render real content instead of the generic shell
+- Next action: re-run the live analytics smoke after the next deploy cycle or alias refresh to confirm the new bundle remains live and the required routes keep rendering correctly

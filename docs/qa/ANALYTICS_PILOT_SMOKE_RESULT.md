@@ -142,3 +142,36 @@ Backend base: `https://trendplus-api.onrender.com`
 
 Do not use the current Vercel deployment as the final pilot smoke sign-off until `/analytics/pilot-readiness` and `/analytics/reports/pilot-intake` render the expected route content again.
 Next verification step: confirm that the next Vercel deploy is triggered from `origin/main` and that the production alias moves to a bundle that includes the pilot routes.
+
+## 2026-06-19 Redeploy Success
+
+### Current status
+
+- Local `HEAD` and `origin/main` both point at `e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`.
+- `git push origin main` completed successfully and triggered the Vercel deployment.
+- Vercel now serves `/assets/index-BxfHyN7W.js` for the analytics shell.
+- The live routes now render the intended UI content:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all`
+  - `/analytics/decision-board`
+
+### Route render evidence
+
+- `/analytics/pilot-readiness`
+  - `Pilot spremnost`
+  - `PILOT READINESS CHECKLIST`
+  - `Spremnost nije potvrđena`
+- `/analytics/reports/pilot-intake`
+  - `Pilot izveštaj kvaliteta podataka`
+  - `Status pilota`
+  - `Skor spremnosti podataka: 77/100`
+- `/analytics/decision-board`
+  - `Izvršni board odluka`
+  - `URGENTNE ODLUKE`
+  - `Top 5 urgentnih odluka`
+
+### Verdict
+
+- The required production analytics routes are now live and rendering their real content.
+- The frontend deploy drift is resolved for this smoke check.
+- The live smoke sign-off is PASS for the required routes.

@@ -126,3 +126,10 @@ Expected after redeploy:
 - This document records recovery steps and proof targets only.
 - It does not claim production is fixed.
 - The live backend is closer than earlier proofs because `/api/runtime/version` now exists, but the frontend still shows a stale deploy.
+
+## Redeploy Result
+
+- `git push origin main` completed and advanced the remote branch to `e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`.
+- Vercel picked up the pushed `main` tip and moved the analytics shell to `/assets/index-BxfHyN7W.js`.
+- The required frontend routes now render their real content instead of the generic shell.
+- The redeploy path is proven for the current `main` tip.
