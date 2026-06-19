@@ -1855,10 +1855,27 @@ Next step:
 
 ## Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+  - `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+  - `docs/Analytics/ACTION_OUTCOME_DATA_SHAPE_AUDIT.md`
+  - `docs/Analytics/ACTION_OUTCOME_SUMMARY_API_PLAN.md`
+  - `Domain/Model/Analytics/AnalyticsActionItem.cs`
+  - `Domain/Model/Analytics/AnalyticsActionNote.cs`
+  - `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `git diff --check` - pass
+- Remaining risk:
+  - the current ledger contract is still only implicit in `MetadataJson` + notes, so Phase 1 still needs a canonical structured metadata schema before a true append-only table is worth adding
 
 Next step:
-- compare the current action model with the ledger plan and document the smallest safe Phase 1 implementation gap
+- Q42 - Product Decision confidence calibration review
 
 ## Q42 - Product Decision confidence calibration review
 
