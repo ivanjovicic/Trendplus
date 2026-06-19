@@ -1566,9 +1566,13 @@ Evidence:
 Status: PARTIAL
 
 Evidence:
+- Date: 2026-06-19
 - Files: `docs/qa/DEMO_VERIFICATION_SMOKE_RESULT.md`, `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
-- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass; live Render recheck on 2026-06-19 still returns `404` for `/api/admin/demo-verification`.
-- Remaining risk: the demo-verification endpoint is present in source and tested locally, but the production backend has not deployed it yet.
+- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass; public `GET https://trendplus-api.onrender.com/api/admin/demo-verification` returned `401 Unauthorized`; response secrecy is covered by local integration tests.
+- Remaining risk: the route exists in source and the local tests pass, but the live production surface is admin-gated so `demoSafe` cannot be confirmed from the public endpoint alone.
+
+Next step:
+- Q28 - Protect analytics action write endpoints
 
 ## Q28 - Protect analytics action write endpoints
 
