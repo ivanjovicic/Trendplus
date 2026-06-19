@@ -16,6 +16,7 @@ Backend base: `https://trendplus-api.onrender.com`
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
 - A newer 2026-06-19 recheck is documented below: Render now exposes `GET /api/runtime/version` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`, but Vercel still serves the older SPA shell bundle.
 - A later 2026-06-19 redeploy proof is documented in `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`; it shows the required analytics routes rendering real content on `/assets/index-BxfHyN7W.js`.
+- The full live smoke pass after the redeploy is documented in `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`.
 
 ## 2026-06-19 Live Smoke Recheck
 

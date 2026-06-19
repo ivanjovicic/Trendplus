@@ -1741,8 +1741,18 @@ Evidence:
 Status: DONE
 
 Evidence:
-- Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+- Files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
 - Checks:
   - later live browser recheck after the redeploy soak window - pass, same bundle hash still live and required routes continue to render correctly
+  - full live analytics smoke after Vercel redeploy - pass, backend and frontend work together on the production surfaces
 - Remaining risk:
   - Vercel alias stability still matters on future deploys, so another smoke watch may be useful after the next release if the bundle hash changes again
+
+## Q37 - Protected action write UX hardening
+
+Status: TODO
+
+Next step:
+- clarify and harden the UI for protected action-write surfaces without changing analytics calculations or backend auth semantics
