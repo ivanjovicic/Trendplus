@@ -1954,7 +1954,29 @@ Next step:
 
 ## Q45 - Decision Board backend aggregate readiness review
 
-Status: TODO
+Status: DONE
 
 Next step:
 - verify the phase 1 board model is stable enough to justify a backend aggregate endpoint design review
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `a8602ae75f9d60708c604dd3482576a4e7161ce3`
+- Changed files:
+  - `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_READINESS.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - not run yet after this doc update
+  - Existing board quality audit checks are already documented in `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Risk:
+  - The frontend board still composes from multiple source requests; the aggregate review is ready, but implementation should stay read-only and preserve nullable semantics.
+- Next step:
+  - `Q46 - Decision Board backend aggregate contract design`
+
+## Q46 - Decision Board backend aggregate contract design
+
+Status: TODO
+
+Next step:
+- design the read-only aggregate response shape and section metadata against the stable Phase 1 board model
