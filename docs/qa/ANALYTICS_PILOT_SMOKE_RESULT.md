@@ -15,6 +15,7 @@ Backend base: `https://trendplus-api.onrender.com`
 - The supplier report route rendered an explicit unavailable/expired report state, which is acceptable as a warning, not a false ready state.
 - `GET /api/runtime/version` returned `404` on production backend during this run, so the exact deployed SHA is still not publicly verifiable from the live surface.
 - A newer 2026-06-19 recheck is documented below: Render now exposes `GET /api/runtime/version` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`, but Vercel still serves the older SPA shell bundle.
+- A later 2026-06-19 redeploy proof is documented in `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`; it shows the required analytics routes rendering real content on `/assets/index-BxfHyN7W.js`.
 
 ## 2026-06-19 Live Smoke Recheck
 
@@ -184,3 +185,22 @@ Next verification step: confirm that the next Vercel deploy is triggered from `o
   - `/analytics/reports/pilot-intake`
   - `/analytics/decision-board`
 - This confirms the redeploy stayed live through the watch window and did not regress back to the generic shell.
+
+## 2026-06-19 Vercel Frontend Redeploy Proof
+
+### Current status
+
+- Local `HEAD` is `9851c8c08beb8c9dae558e61f3b6b61a4bbef236`.
+- Remote `origin/main` is `e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`.
+- Local `HEAD` is ahead of `origin/main` by 2 commits.
+- The live Vercel HTML now serves `/assets/index-BxfHyN7W.js` with `Last-Modified: Fri, 19 Jun 2026 10:59:03 GMT`.
+- The required routes render real content again:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all`
+  - `/analytics/decision-board`
+
+### Recheck result
+
+- The frontend redeploy proof is PASS for the required analytics routes.
+- The live Vercel alias is no longer stuck on the generic SPA shell.
+- The remaining caveat is operational, not functional: the current workspace tip is still ahead of `origin/main` by two docs-only commits, so push those before treating the local tip as fully reflected in production.
