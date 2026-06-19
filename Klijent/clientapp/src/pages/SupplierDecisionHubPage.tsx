@@ -34,6 +34,7 @@ import {
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
 import { fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -770,7 +771,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       });
       setQueueMessage(alreadyQueued ? "Akcija je već u centralnom redu." : "Akcija dodata u centralni red.");
     } catch (reason) {
-      setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
+      setQueueMessage(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }

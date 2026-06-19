@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { getAnalyticsActionSourceStatuses, upsertAnalyticsActionWithResult } from "../../services/analyticsApi";
 import type { AnalyticsActionDataQualityStatus } from "../../types/analytics";
+import { getAnalyticsActionWriteErrorMessage } from "../../utils/analyticsActionWriteErrors";
 import {
   buildSupplierDecisionReportSummaryText,
   exportSupplierDecisionReportCsv,
@@ -215,7 +216,11 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       await exportSupplierDecisionReportPdf(payload);
       setStatus("PDF izveštaj je preuzet.");
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Izvoz izveštaja nije uspeo.";
+      const message = type === "queue"
+        ? getAnalyticsActionWriteErrorMessage(reason)
+        : reason instanceof Error
+          ? reason.message
+          : "Izvoz izveštaja nije uspeo.";
       setStatus(message);
       onError?.(type === "pdf"
         ? "PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel."

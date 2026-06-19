@@ -9,6 +9,7 @@ import {
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
 import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
@@ -290,6 +291,7 @@ export default function AnalyticsActionsPage() {
   const [outcomeModal, setOutcomeModal] = useState<OutcomeModalState | null>(null);
   const [outcomeModalBusy, setOutcomeModalBusy] = useState(false);
   const [outcomeModalError, setOutcomeModalError] = useState<string | null>(null);
+  const [writeAccessMessage, setWriteAccessMessage] = useState<string | null>(null);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
     setLoading(true);
@@ -398,6 +400,7 @@ export default function AnalyticsActionsPage() {
   }
 
   async function changeStatus(id: number, status: AnalyticsActionStatus, note?: string): Promise<boolean> {
+    setWriteAccessMessage(null);
     setUpdatingId(id);
     try {
       const updated = await updateAnalyticsActionStatus(id, { status, note });
@@ -411,7 +414,7 @@ export default function AnalyticsActionsPage() {
       void loadCounts();
       return true;
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Greška pri ažuriranju statusa");
+      setWriteAccessMessage(getAnalyticsActionWriteErrorMessage(e));
       return false;
     } finally {
       setUpdatingId(null);
@@ -445,6 +448,7 @@ export default function AnalyticsActionsPage() {
   }
 
   function openStatusNoteModal(item: AnalyticsActionItem, status: AnalyticsActionStatus) {
+    setWriteAccessMessage(null);
     setStatusModal({
       id: item.id,
       title: item.title,
@@ -499,6 +503,7 @@ export default function AnalyticsActionsPage() {
       return;
     }
 
+    setWriteAccessMessage(null);
     setOutcomeModalBusy(true);
     setOutcomeModalError(null);
     try {
@@ -512,12 +517,10 @@ export default function AnalyticsActionsPage() {
       setDetailsById((prev) => ({ ...prev, [result.id]: result }));
       setOutcomeModal(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "";
-      const lower = message.toLowerCase();
-      if (lower.includes("400") || lower.includes("badrequest") || lower.includes("bad request")) {
-        setOutcomeModalError("Ishod nije sačuvan. Proverite status i iznos.");
+      if (isAnalyticsActionWriteForbidden(e)) {
+        setOutcomeModalError(getAnalyticsActionWriteErrorMessage(e));
       } else {
-        setOutcomeModalError(message || "Greška pri čuvanju ishoda akcije.");
+        setOutcomeModalError("Ishod nije sačuvan. Proverite status i iznos.");
       }
     } finally {
       setOutcomeModalBusy(false);
@@ -848,6 +851,7 @@ export default function AnalyticsActionsPage() {
       </div>
 
       {error && <div className="aaq-error">{error}</div>}
+      {writeAccessMessage ? <div className="aaq-error" role="status">{writeAccessMessage}</div> : null}
 
       {loading ? (
         <div className="aaq-loading">Učitavanje...</div>

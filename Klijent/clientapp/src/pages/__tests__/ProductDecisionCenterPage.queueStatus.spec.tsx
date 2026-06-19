@@ -214,6 +214,20 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     });
   });
 
+  it("shows a permission warning and keeps the recommendation visible when add-to-queue is forbidden", async () => {
+    upsertAnalyticsActionWithResultMock.mockRejectedValueOnce(Object.assign(new Error("Unauthorized"), { status: 403 }));
+
+    render(<ProductDecisionCenterPage />);
+
+    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u akcije" });
+    fireEvent.click(addButtons[0]);
+
+    expect(await screen.findByText("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.")).toBeInTheDocument();
+    expect(screen.getByText("Model X")).toBeInTheDocument();
+    expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+  });
+
   it("keeps product recommendations visible when optional action status lookup fails", async () => {
     getAnalyticsActionSourceStatusesMock.mockRejectedValueOnce(new Error("404 Not Found"));
 

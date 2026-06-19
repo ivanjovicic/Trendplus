@@ -25,6 +25,7 @@ import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
@@ -748,7 +749,7 @@ export default function InventoryPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje u centralne akcije nije uspelo.");
+      setExportStatus(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }
@@ -908,7 +909,7 @@ export default function InventoryPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje signalne akcije nije uspelo.");
+      setExportStatus(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }

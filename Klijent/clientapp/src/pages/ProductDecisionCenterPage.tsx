@@ -19,6 +19,7 @@ import {
   fmtPct,
   fmtRsd,
 } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -891,7 +892,7 @@ export default function ProductDecisionCenterPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
+      setQueueMessage(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       queueBusyKeyRef.current = null;
       setQueueBusyKey(null);

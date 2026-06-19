@@ -71,6 +71,7 @@ import {
   fmtRsd,
   formatDateTime,
 } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -1527,12 +1528,12 @@ export default function AnalyticsDashboard() {
                                           return next;
                                         });
                                       } catch (reason) {
+                                        const message = isAnalyticsActionWriteForbidden(reason)
+                                          ? getAnalyticsActionWriteErrorMessage(reason)
+                                          : getErrorText(reason, "Akcija nije dodata u centralni red.");
                                         setQueueErrorsByKey((prev) => ({
                                           ...prev,
-                                          [cardKey]: getErrorText(
-                                            reason,
-                                            "Akcija nije dodata u centralni red.",
-                                          ),
+                                          [cardKey]: message,
                                         }));
                                       } finally {
                                         setQueueBusyKeys((prev) => {

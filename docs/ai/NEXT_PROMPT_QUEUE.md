@@ -1752,7 +1752,29 @@ Evidence:
 
 ## Q37 - Protected action write UX hardening
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/utils/analyticsActionWriteErrors.ts`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx` - pass
+- Remaining risk:
+  - protected write endpoints still depend on backend auth responses in production, so future UI changes should keep the same forbidden-state handling and avoid optimistic success
 
 Next step:
-- clarify and harden the UI for protected action-write surfaces without changing analytics calculations or backend auth semantics
+- no queued follow-up task yet; revisit the same forbidden-state pattern if another analytics write surface is added

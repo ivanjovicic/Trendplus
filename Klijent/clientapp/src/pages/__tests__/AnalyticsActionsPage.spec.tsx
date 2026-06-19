@@ -281,6 +281,63 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText(/Napomena: Pad marže posle akcije\./)).toBeInTheDocument();
   });
 
+  it("shows a permission warning and keeps the row unchanged when status update is forbidden", async () => {
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: 7,
+          sourceType: "inventory",
+          sourceKey: "inventory-7",
+          title: "Dopuni artikal A",
+          description: "Brza prodaja i nizak stock cover.",
+          recommendationStatus: "dopuna",
+          priority: "P1",
+          impactEstimateRsd: 15000,
+          dueAtUtc: "2026-06-01T00:00:00Z",
+          expectedImpactRsd: 12000,
+          measuredImpactRsd: 3000,
+          outcomeStatus: "success",
+          outcomeMeasuredAtUtc: "2026-06-10T00:00:00Z",
+          outcomeNotes: "Prodaja se ubrzala posle dopune.",
+          confidencePct: 82,
+          reliabilityPct: 75,
+          dataQualityStatus: "good",
+          status: "new",
+          actionUrl: null,
+          metadataJson: null,
+          createdAtUtc: "2026-05-26T12:00:00Z",
+          updatedAtUtc: "2026-05-26T12:00:00Z",
+          resolvedAtUtc: null,
+          createdByUserId: null,
+          updatedByUserId: null,
+          updatedByUserName: null,
+          notes: [],
+        },
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+    getAnalyticsActionCountsMock.mockResolvedValueOnce({
+      new: 1,
+      accepted: 0,
+      deferred: 0,
+      rejected: 0,
+      done: 0,
+      p1Open: 1,
+    });
+    updateAnalyticsActionStatusMock.mockRejectedValueOnce(Object.assign(new Error("Unauthorized"), { status: 403 }));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prihvati" }));
+
+    expect(await screen.findByText("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.")).toBeInTheDocument();
+    expect(screen.getAllByText("Novo").length).toBeGreaterThan(1);
+  });
+
   it("shows a user-friendly error when outcome update fails", async () => {
     updateAnalyticsActionOutcomeMock.mockRejectedValue(new Error("outcomeNotes must be 4000 characters or fewer"));
 
@@ -292,6 +349,21 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ishod nije sačuvan. Proverite status i iznos.");
+  });
+
+  it("shows a permission warning and keeps the row unchanged when outcome update is forbidden", async () => {
+    updateAnalyticsActionOutcomeMock.mockRejectedValueOnce(Object.assign(new Error("Forbidden"), { status: 403 }));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.");
+    expect(updateAnalyticsActionOutcomeMock).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(1);
   });
 
   it("shows a non-blocking summary fallback when outcome summary fails", async () => {
