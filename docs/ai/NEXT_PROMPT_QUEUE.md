@@ -1735,9 +1735,11 @@ Evidence:
 
 ## Q36 - Post-redeploy smoke watch
 
-Status: TODO
+Status: DONE
 
 Evidence:
 - Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
-- Checks: none yet
-- Next action: re-run the live analytics smoke after the next deploy cycle or alias refresh to confirm the new bundle remains live and the required routes keep rendering correctly
+- Checks:
+  - later live browser recheck after the redeploy soak window - pass, same bundle hash still live and required routes continue to render correctly
+- Remaining risk:
+  - Vercel alias stability still matters on future deploys, so another smoke watch may be useful after the next release if the bundle hash changes again

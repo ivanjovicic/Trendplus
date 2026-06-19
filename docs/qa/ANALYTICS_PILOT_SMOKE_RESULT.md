@@ -175,3 +175,12 @@ Next verification step: confirm that the next Vercel deploy is triggered from `o
 - The required production analytics routes are now live and rendering their real content.
 - The frontend deploy drift is resolved for this smoke check.
 - The live smoke sign-off is PASS for the required routes.
+
+## 2026-06-19 Post-Redeploy Watch
+
+- A later recheck after the redeploy soak window still shows the same live bundle hash: `/assets/index-BxfHyN7W.js`.
+- The required routes continue to render real content:
+  - `/analytics/pilot-readiness`
+  - `/analytics/reports/pilot-intake`
+  - `/analytics/decision-board`
+- This confirms the redeploy stayed live through the watch window and did not regress back to the generic shell.
