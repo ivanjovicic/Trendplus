@@ -1665,4 +1665,36 @@ Priority: P2
 - Checks:
   - `git diff --check` - pass
 - Remaining risk:
-  - The backend aggregate path is still a Phase 2 design only; Phase 1 frontend composition remains the shipped board path until a server-side aggregate is explicitly implemented.
+- The backend aggregate path is still a Phase 2 design only; Phase 1 frontend composition remains the shipped board path until a server-side aggregate is explicitly implemented.
+
+## Q33 - Production deploy recovery and proof
+
+Status: DONE
+Commit suggestion: `docs(qa): document analytics deploy recovery`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git status -sb` - pass, local `HEAD` is ahead of `origin/main` by 1
+  - `git log --oneline -10` - pass
+  - `git rev-parse HEAD` - pass, `8cfdbe6983adfde0b1d6e249f981f1b4c7b887b3`
+  - `git rev-parse origin/main` - pass, `e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Render `/api/runtime/version` - pass, `200 OK` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Vercel route checks - pass, `/analytics/pilot-readiness`, `/analytics/reports/pilot-intake`, and `/analytics/decision-board` still serve the generic shell
+- Remaining risk:
+  - local `HEAD` is still ahead of `origin/main`, so production proof is not current with the latest local tip until that commit is pushed and redeployed
+  - frontend deploy drift remains on Vercel until the shell bundle moves off `index-DelBmZl0.js`
+
+## Q34 - Re-run live analytics smoke after deploy
+
+Status: TODO
+
+Evidence:
+- Files: `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+- Checks: none yet
+- Next action: re-run the live analytics smoke checklist after the next successful Vercel/Render redeploy and record the actual route results
