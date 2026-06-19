@@ -1928,10 +1928,29 @@ Next step:
 
 ## Q44 - Inventory decision confidence mapping
 
-Status: TODO
+Status: DONE
 
 Next step:
 - align inventory recommendation confidence, warnings, and nullable impact behavior with the shared decision contract
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `ee23a61d43665630b163ddac43c29e49b09ed1c1`
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalActions.spec.ts`
+  - `docs/qa/INVENTORY_DECISION_CONTRACT_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - Some inventory display widgets still render derived `estimatedValueAmount`; Q44 fixes the action impact contract, not a full inventory value-nullability refactor.
+- Next step:
+  - `Q45 - Decision Board backend aggregate readiness review`
 
 ## Q45 - Decision Board backend aggregate readiness review
 

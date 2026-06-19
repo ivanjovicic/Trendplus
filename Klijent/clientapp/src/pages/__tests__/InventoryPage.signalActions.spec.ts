@@ -81,4 +81,17 @@ describe("Inventory signal action mapping", () => {
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
   });
+
+  it("keeps expected impact nullable when evidence is missing", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        estimatedValue: null,
+        nabavnaCena: null,
+        kolicina: null,
+        stockCoverStatus: "low_cover",
+      })
+    );
+
+    expect(spec.expectedImpactRsd).toBeNull();
+  });
 });

@@ -77,6 +77,18 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function resolveInventoryExpectedImpactRsd(row: InventoryRow): number | null {
+  if (row.estimatedValue != null) {
+    return row.estimatedValue;
+  }
+
+  if (row.nabavnaCena == null || row.kolicina == null) {
+    return null;
+  }
+
+  return row.nabavnaCena * row.kolicina;
+}
+
 export function buildInventorySignalActionSpec(row: InventoryRow): {
   sourceKey: string;
   title: string;
@@ -98,7 +110,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: "P2",
       description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -111,7 +123,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: isCritical ? "P1" : "P2",
       description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -123,7 +135,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -134,7 +146,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
-    expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+    expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
   };
 }
 
