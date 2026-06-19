@@ -7,6 +7,81 @@ vi.mock("react-router-dom", async () => {
   return {
     Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   };
+  it("keeps confident recommendations honest when expected impact is missing", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce({
+      rows: [
+        makeRow({
+          productId: 303,
+          recommendationId: "product:303:REPLENISH:20260528:20260626",
+          sourceKey: "product:303",
+          productName: "Model Z",
+          sku: "SKU-303",
+          revenue: 180000,
+          unitsSold: 52,
+          velocityUnitsPerDay: 1.8,
+          marginContribution: 36000,
+          marginPct: 28,
+          marginCoveragePct: 91,
+          currentStock: 3,
+          minStock: 10,
+          stockGap: 7,
+          trendPct: 14,
+          lostSalesEstimate: 0,
+          stockCoverDays: 2,
+          stockCoverStatus: "low_cover",
+          sellThroughRatio: 0.5,
+          sellThroughStatus: "warning",
+          recommendationAllowed: true,
+          confidenceLevel: "high",
+          confidenceScore: 91,
+          confidencePct: 91,
+          reliabilityPct: 87,
+          recommendationReason: "Brza prodaja i niska zaliha.",
+          warningCodes: ["expected_impact_denominator_missing"],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          reasonCodes: ["high_velocity", "low_stock", "expected_impact_denominator_missing"],
+          expectedImpactRsd: null,
+          impactWindowDays: 14,
+          riskIfIgnored: "Moguća rasprodaja.",
+          explainabilityText: "Brza prodaja i niska zaliha.",
+          inputFreshnessStatus: "fresh",
+          recommendedAction: "Dopuni odmah.",
+        }),
+      ],
+      summary: {
+        lostSalesEstimate: 0,
+        slowStockCapital: 0,
+      },
+      totalRows: 1,
+      generatedAtUtc: "2026-05-26T12:00:00Z",
+      periodFromUtc: "2026-04-27",
+      periodToUtc: "2026-05-26",
+      meta: {
+        success: true,
+        dataQualityStatus: "warning",
+      },
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Visoka sigurnost Â· 91%")).toBeInTheDocument();
+    expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
+    expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+
+    await waitFor(() => {
+      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedImpactRsd: undefined,
+        impactEstimateRsd: undefined,
+        confidencePct: 91,
+      }),
+    );
+  });
 });
 
 const getStoresMock = vi.fn();

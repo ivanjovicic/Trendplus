@@ -1629,7 +1629,22 @@ Priority: P1
 
 ## Q31 - Product Decision confidence review and edge-case tests
 
-Status: TODO
+Status: DONE
+Commit suggestion: `test(analytics): cover product decision confidence edge cases`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - Confidence and missing-impact behavior are now locked for strong and insufficient recommendations, but broader module coverage still depends on future decision-board and cross-module review.
 
 ## Q32 - Decision Board backend aggregate plan
 
