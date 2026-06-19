@@ -1491,28 +1491,96 @@ Status summary:
 
 ## Q19 - Deploy proof cleanup
 
-Status: TODO
+Status: PARTIAL
+
+Evidence:
+- Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`, `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
+- Tests/checks: production HTTP proof was refreshed; Vercel/Render live responses were rechecked from the workspace.
+- Remaining risk: Vercel still serves `index-XONGNubS.js` with a stale `Last-Modified` header, and Render still returns `404` for `/api/runtime/version`.
 
 ## Q20 - Demo verification production smoke
 
-Status: TODO
+Status: OPEN
+
+Evidence:
+- Files: `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- Tests/checks: integration tests cover the admin-gated `/api/admin/demo-verification` endpoint and secret redaction behavior.
+- Remaining risk: there is no concrete production smoke result document proving the demo verifier on a live demo deployment.
 
 ## Q21 - Analytics action idempotency production/migration verification
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Files: `Infrastructure/DbContexts/AnalyticsDbContext.cs`, `Infrastructure/Migrations/AnalyticsDb/20260521123000_AddAnalyticsActionIndexes.cs`, `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`, `Api.Tests/AnalyticsActionItemServiceTests.cs`, `docs/qa/ANALYTICS_ACTION_IDEMPOTENCY_MIGRATION_NOTE.md`
+- Tests/checks: targeted analytics action service tests cover duplicate open-action races, unrelated `DbUpdateException`, and source-type/source-key isolation.
+- Remaining risk: older databases may still need duplicate cleanup before applying the filtered unique index if they predate the schema change.
 
 ## Q22 - Access-control next P0 group
 
-Status: TODO
+Status: OPEN
+
+Evidence:
+- Files: `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`, `Api/Endpoints/AnalyticsActionsEndpoints.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`
+- Tests/checks: admin-key compatibility exists for some admin surfaces, but analytics action write endpoints still need a dedicated protection pass.
+- Remaining risk: the next P0 group is the action write path unless it has already been protected elsewhere.
 
 ## Q23 - Decision confidence contract
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Files: `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`, `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- Tests/checks: docs-only contract; no runtime test required for this planning task.
+- Remaining risk: the contract still needs broader module-by-module enforcement outside Product Decision Center.
 
 ## Q24 - Product Decision confidence phase 1
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`, `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- Tests/checks: backend and frontend confidence coverage exists for Product Decision Center.
+- Remaining risk: the confidence story still needs later ledger/board reuse and more edge-case coverage.
 
 ## Q25 - Action Impact Ledger plan
+
+Status: DONE
+
+Evidence:
+- Files: `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`, `docs/Analytics/ACTION_OUTCOME_SUMMARY_ENDPOINT_SPEC.md`
+- Tests/checks: docs-only planning task; no runtime test required.
+- Remaining risk: backend DTO/entity implementation still needs a follow-up task.
+
+## Q26 - Production deploy proof finalization
+
+Status: DONE
+
+Evidence:
+- Files: `docs/qa/ANALYTICS_DEPLOY_PROOF.md`, `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+- Tests/checks: `git diff --check` pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass; `cd Klijent/clientapp && npm run check:analytics-guardrails` pass; `cd Klijent/clientapp && npm run build` pass.
+- Remaining risk: Vercel still serves `index-XONGNubS.js` and Render still returns `404` for `/api/runtime/version`, so the blocker is documented but not remediated.
+
+## Q27 - Demo verification production smoke
+
+Status: TODO
+
+## Q28 - Protect analytics action write endpoints
+
+Status: TODO
+
+## Q29 - Executive Decision Board hardening tests
+
+Status: TODO
+
+## Q30 - Executive Decision Board no-fake-confidence review
+
+Status: TODO
+
+## Q31 - Product Decision confidence review and edge-case tests
+
+Status: TODO
+
+## Q32 - Decision Board backend aggregate plan
 
 Status: TODO
