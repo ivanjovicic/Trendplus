@@ -842,18 +842,12 @@ export default function InventoryPage() {
   }
 
   function queueForecastRestock(item: ForecastDto["items"][number]) {
-    const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId)) ?? buildInventoryRow({
-      id: item.skuId,
-      naziv: `SKU #${item.skuId}`,
-      plu: null,
-      kolicina: 0,
-      minimalnaKolicina: Math.ceil(item.forecast7d),
-      nabavnaCena: 0,
-      estimatedValue: 0,
-      idObjekat: item.storeId,
-      idDobavljac: null,
-      velicina: item.sizeCode,
-    }, stores, suppliers);
+    const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId));
+    if (!row) {
+      setExportStatus("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.");
+      return;
+    }
+
     const suggestionKey = `forecast-${item.skuId}-${item.storeId}-${item.sizeCode}`;
     setActionWorkflow((current) => {
       const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };

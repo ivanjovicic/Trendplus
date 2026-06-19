@@ -2222,7 +2222,7 @@ Token budget: medium
 
 ## Q53 - Audit Replenishment/OOS decision workflow trust states
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): audit replenishment oos workflow`
 Priority: P1
 Token budget: medium
@@ -2259,6 +2259,26 @@ Token budget: medium
 - Estimates are labelled.
 - Missing data does not become 0.
 - Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- HEAD SHA: `72a1db59edfa332d66f31f2c930ecea69f0824a4`
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalActions.spec.ts`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx` pass
+- Risk:
+  - Forecast restock suggestions are deliberately blocked when the matching stock baseline is not loaded, so the user must load or search the item before queueing that action.
+- Next:
+  - Q55 - Add KPI methodology consistency review and tests
 
 ## Q54 - Audit Markdown Optimizer MVP safety and trust boundaries
 
