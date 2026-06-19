@@ -2444,3 +2444,457 @@ Token budget: low/medium
   - Cache/freshness is still warning-like in live smoke evidence, and markdown optimizer remains a future roadmap item.
 - Next step:
   - No follow-up task defined in the current queue snapshot.
+
+## Q57 - Action Impact Ledger Phase 1 implementation spec
+
+Status: TODO
+Commit suggestion: `docs(analytics): specify action impact ledger phase 1`
+Priority: P0
+Type: docs/spec
+Token budget: medium
+
+### Why
+
+- The ledger plan and gap review exist, but the next implementation step still needs a concrete schema and API contract.
+- We need a spec that keeps nullable impact fields honest and prevents fake outcome certainty.
+
+### Scope only
+
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- no implementation yet
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Do
+
+1. Turn the existing ledger plan and gap review into an implementation-ready Phase 1 spec.
+2. Define fields stored at action creation.
+3. Define fields stored at outcome resolution.
+4. Define metadata JSON shape, migration options, and API DTO changes.
+5. Define no-fake rules for expected vs measured impact and nullable fields.
+6. List backend and frontend tests required before implementation starts.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Phase 1 ledger spec is implementation-ready.
+- Required fields, DTO changes, migration options, and no-fake rules are explicit.
+- No application code changed.
+
+## Q58 - Action Impact Ledger Phase 1 backend implementation
+
+Status: TODO
+Commit suggestion: `feat(analytics): implement action impact ledger phase 1`
+Priority: P0
+Type: backend
+Token budget: medium/high
+
+### Why
+
+- Once the Phase 1 spec exists, we need the smallest safe backend slice that captures structured action outcome evidence without rewriting the action system.
+
+### Scope only
+
+- `Domain/Model/Analytics`
+- `Infrastructure/Services/Analytics`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Api.Tests`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Do
+
+1. Implement only the backend slice approved by Q57.
+2. Preserve the existing action flow and endpoint semantics.
+3. Keep nullable impact fields nullable.
+4. Avoid broad event sourcing or a new append-only store unless Q57 explicitly recommends it.
+5. Add focused backend tests for creation, resolution, null handling, and DTO shape.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "AnalyticsActions"`
+- `git diff --check`
+
+### Acceptance
+
+- Action Impact Ledger Phase 1 exists in the backend with focused tests.
+- Existing action flows still work.
+- Missing outcome data does not become fake zero.
+
+## Q59 - Action outcome UI detail panel
+
+Status: TODO
+Commit suggestion: `feat(analytics): show action outcome detail panel`
+Priority: P1
+Type: frontend
+Token budget: medium
+
+### Why
+
+- Once outcome data exists, operators need a safe UI that compares expected and measured impact without implying missing data is failure or zero.
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- action detail/modal if present
+- frontend types/tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+
+### Do
+
+1. Show expected vs measured outcome safely in the Analytics Actions UI.
+2. Keep pending outcome distinct from failure.
+3. Keep missing measured impact null or unavailable, never `0 RSD`.
+4. Hide confidence calibration UI when calibration data is unavailable.
+5. Add focused frontend tests for pending, measured, and missing-impact states.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsActionsPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Operators can inspect expected vs measured outcome without fake zero or fake failure states.
+- Missing calibration or impact data stays visibly unavailable.
+- Frontend tests cover the key outcome states.
+
+## Q60 - Confidence calibration audit
+
+Status: TODO
+Commit suggestion: `docs(qa): audit confidence calibration`
+Priority: P1
+Type: docs/audit
+Token budget: medium
+
+### Why
+
+- Confidence labels should eventually be audited against completed outcomes so the system learns whether its decision trust levels are honest.
+
+### Scope only
+
+- `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+- no implementation unless a tiny existing helper makes it trivial
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+
+### Do
+
+1. Identify which analytics surfaces can already be calibrated.
+2. Document missing data and outcome dependencies.
+3. Define calibration buckets and future metrics.
+4. Call out where current confidence is still descriptive rather than outcome-validated.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Calibration audit shows what can be measured now and what still blocks trustworthy calibration.
+- No application code is required unless a tiny helper is clearly safe.
+
+## Q61 - Pilot operator workflow runbook
+
+Status: TODO
+Commit suggestion: `docs(pilot): add analytics pilot operator runbook`
+Priority: P1
+Type: docs/ops
+Token budget: medium
+
+### Why
+
+- Internal and customer pilots need a repeatable operator workflow so analytics use is evidence-driven instead of ad hoc.
+
+### Scope only
+
+- `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+
+### Do
+
+1. Define the daily opening checklist.
+2. Define the weekly decision review cadence.
+3. Define action queue and data-quality review steps.
+4. Define supplier negotiation pack, OOS/replenishment, and markdown signal usage rules.
+5. Define escalation rules and evidence capture expectations.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Pilot operator workflow is repeatable and evidence-based.
+- Decision usage, data quality review, and escalation steps are explicit.
+
+## Q62 - Decision Board backend aggregate readiness gate
+
+Status: TODO
+Commit suggestion: `docs(qa): gate decision board aggregate readiness`
+Priority: P0
+Type: docs/review
+Token budget: medium
+
+### Why
+
+- The board backend aggregate endpoint should not be implemented just because it is desirable; it should be gated by evidence about quality, cache, ranking stability, and performance.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- no endpoint implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+
+### Do
+
+1. Decide whether backend aggregation is READY, WARN, or NOT READY.
+2. Evaluate data-quality evidence, performance expectations, cache behavior, dedupe strategy, and ranking stability.
+3. Document prerequisites that must exist before a backend aggregate endpoint is safe.
+4. Explicitly state whether Q63 may proceed.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Readiness gate is evidence-based.
+- The document clearly states whether backend aggregate work may start.
+- No endpoint is implemented in this task.
+
+## Q63 - Decision Board backend aggregate endpoint MVP
+
+Status: TODO
+Commit suggestion: `feat(analytics): add decision board aggregate endpoint mvp`
+Priority: P1
+Type: backend/frontend-integration
+Token budget: high
+
+### Why
+
+- If Q62 says the system is ready, the board can move from client-side composition toward a safer shared backend aggregate path.
+
+### Scope only
+
+- Api endpoint/service/tests
+- frontend keeps existing composition fallback
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+
+### Do
+
+1. Proceed only if Q62 explicitly says READY.
+2. Implement the backend aggregate endpoint and focused tests only within the approved contract.
+3. Keep the frontend composition fallback until live evidence proves parity.
+4. If Q62 says NOT READY, mark Q63 BLOCKED and do not implement.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "ExecutiveDecisionBoard|Analytics"`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `git diff --check`
+
+### Acceptance
+
+- Backend aggregate endpoint is implemented only if the readiness gate allows it.
+- Frontend fallback remains available.
+- Quality and ranking semantics stay explicit.
+
+## Q64 - Forecast/Replenishment safety guardrails
+
+Status: TODO
+Commit suggestion: `test(analytics): add forecast replenishment guardrails`
+Priority: P0
+Type: frontend/tests
+Token budget: medium
+
+### Why
+
+- Forecast and replenishment signals can easily be over-read as guaranteed reorder instructions unless the UI and tests keep uncertainty visible.
+
+### Scope only
+
+- Inventory/Product Decision relevant surfaces
+- tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+
+### Do
+
+1. Add guardrails that keep estimates labelled as estimates.
+2. Ensure missing stock baseline blocks action or lowers confidence.
+3. Ensure stale stock freshness warnings remain visible.
+4. Add focused tests for estimate wording, stale warnings, and blocked/low-confidence states.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage*.spec.ts* src/pages/__tests__/ProductDecisionCenterPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Forecast and replenishment signals cannot look like guaranteed instructions.
+- Missing baseline and stale data stay visible in UI and tests.
+
+## Q65 - Markdown optimizer safety guardrails
+
+Status: TODO
+Commit suggestion: `test(analytics): strengthen markdown optimizer guardrails`
+Priority: P0
+Type: frontend/tests
+Token budget: medium
+
+### Why
+
+- Markdown optimizer MVP should remain clearly experimental and data-dependent, not a guaranteed profit engine.
+
+### Scope only
+
+- PreNivelacija/markdown decision surfaces
+- tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- relevant markdown/product decision surfaces
+
+### Do
+
+1. Strengthen wording so the surface stays signal/proposal-oriented.
+2. Ensure missing cost blocks profit impact.
+3. Ensure sparse sales lower confidence.
+4. Ensure no fake expected impact appears when evidence is incomplete.
+5. Add focused tests for those guardrails.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/__tests__/ProductDecisionCenterPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Markdown optimizer MVP cannot read like guaranteed optimization.
+- Missing cost and sparse data stay visible through confidence and impact guardrails.
+
+## Q66 - Analytics pilot release checklist v2
+
+Status: TODO
+Commit suggestion: `docs(qa): add analytics pilot release checklist v2`
+Priority: P1
+Type: docs/release
+Token budget: medium
+
+### Why
+
+- After Q57-Q65, the pilot will need a refreshed evidence-based release gate that includes outcome measurement, calibration, and operator readiness.
+
+### Scope only
+
+- `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+- `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md`
+
+### Do
+
+1. Create a PASS/WARN/FAIL release checklist for the next pilot phase.
+2. Cover deploy proof, live smoke, data quality, action ledger, confidence calibration, pilot operator readiness, and rollback notes.
+3. Link each checklist row to evidence docs and tests where possible.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Release checklist v2 is evidence-based and ready to use after Q57-Q65 land.
+- Remaining risks and rollback expectations are explicit.

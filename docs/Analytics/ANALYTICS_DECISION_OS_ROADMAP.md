@@ -286,6 +286,40 @@ Production analytics needs clear guardrails for refresh, cache, admin workflows,
 3. Document the recovery flow.
 4. Re-run live smoke before calling anything stable.
 
+## Phase 5 - Decision Learning & Pilot Hardening
+
+This phase is the next execution wave after Q56. It turns the current internally pilot-ready analytics foundation into a measurable, repeatable, and operator-safe decision workflow without jumping ahead to ML or broad backend aggregation.
+
+### Current state
+
+- Analytics MVP is internally pilot-ready with warnings.
+- Deployment proof and live smoke have passed.
+- Executive Decision Board exists and has quality-state hardening coverage.
+- Product, Supplier, and Inventory confidence mapping exists.
+- Production readiness status exists and is evidence-based.
+
+### North star
+
+Trendplus Analytics becomes a retail decision operating system:
+
+`signal -> recommendation -> confidence -> action -> measured outcome -> learning`
+
+### Main remaining risks
+
+- Recommendations are not yet calibrated against measured outcomes.
+- The Action Impact Ledger is still not a first-class structured data model.
+- Forecast, replenishment, and markdown recommendations are MVP signals, not guaranteed optimizers.
+- Production readiness still depends on freshness and cache discipline.
+- Customer pilot execution still needs a repeatable operator workflow and evidence capture.
+
+### Phase 5 goals
+
+- Make outcomes measurable.
+- Make confidence calibration auditable.
+- Make pilot operations repeatable.
+- Prevent forecast, markdown, and OOS signals from overclaiming certainty.
+- Prepare the backend aggregate path only after evidence is sufficient.
+
 ## Do Not Do Yet
 
 - Do not build the backend aggregate Decision Board endpoint until the current frontend board model is stable.
@@ -304,6 +338,16 @@ Production analytics needs clear guardrails for refresh, cache, admin workflows,
 - Q44: Inventory decision confidence mapping
 - Q45: Decision Board backend aggregate readiness review
 - Q46: Decision Board backend aggregate contract design
+- Q57: Action Impact Ledger Phase 1 implementation spec
+- Q58: Action Impact Ledger Phase 1 backend implementation
+- Q59: Action outcome UI detail panel
+- Q60: Confidence calibration audit
+- Q61: Pilot operator workflow runbook
+- Q62: Decision Board backend aggregate readiness gate
+- Q63: Decision Board backend aggregate endpoint MVP
+- Q64: Forecast/Replenishment safety guardrails
+- Q65: Markdown optimizer safety guardrails
+- Q66: Analytics pilot release checklist v2
 
 ## Acceptance
 
