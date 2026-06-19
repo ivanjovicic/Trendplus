@@ -36,6 +36,7 @@ import type {
   InventoryScheduleRunResponse,
   SalesSummary,
   SizeCurveDto,
+  DecisionBoardAggregateResponse,
   StoreOption,
   SupplierFilterOption,
   SupplierData,
@@ -750,6 +751,41 @@ export async function getProductDecisionCenter(options?: {
     "/api/analytics/cached/products/decision-center",
     params,
     "Greska pri ucitavanju Product Decision Center pregleda"
+  );
+}
+
+export async function getDecisionBoardAggregate(options?: {
+  fromDate?: string;
+  toDate?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  dataScope?: string | null;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean | null;
+  excludeOosBeforeMarkdown?: boolean | null;
+  search?: string | null;
+}): Promise<DecisionBoardAggregateResponse> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.dataScope) params.append("dataScope", options.dataScope);
+  if (options?.category) params.append("category", options.category);
+  if (options?.gender) params.append("gender", options.gender);
+  if (options?.seasonId != null) params.append("seasonId", String(options.seasonId));
+  if (options?.minRevenue != null) params.append("minRevenue", String(options.minRevenue));
+  if (options?.onlyHighConfidence != null) params.append("onlyHighConfidence", String(options.onlyHighConfidence));
+  if (options?.excludeOosBeforeMarkdown != null) params.append("excludeOosBeforeMarkdown", String(options.excludeOosBeforeMarkdown));
+  if (options?.search?.trim()) params.append("search", options.search.trim());
+
+  return fetchJson(
+    "/api/analytics/decision-board",
+    params,
+    "Greška pri učitavanju executive decision board pregleda"
   );
 }
 

@@ -11,6 +11,7 @@ import {
   getAnalyticsActionOutcomeSummary,
   getAnalyticsActions,
   getAnalyticsDataQualityHealth,
+  getDecisionBoardAggregate,
   getAnalyticsRefreshStatus,
   getDashboardBootstrap,
   getInventoryInsights,
@@ -27,6 +28,7 @@ import type {
   AnalyticsActionOutcomeSummaryResponse,
   AnalyticsDashboardBootstrap,
   AnalyticsDataQualityHealth,
+  DecisionBoardAggregateResponse,
   AnalyticsRefreshStatus,
   InventoryInsights,
   InventoryListItem,
@@ -43,7 +45,7 @@ import type {
 } from "../services/supplierDecisionHubApi";
 import { getRecommendationMeta } from "../components/supplierDecisionHub/utils";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
-import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
+import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient } from "../utils/analyticsResponseMeta";
 import { normalizeRecommendationPct } from "../utils/canonicalRecommendationSemantics";
 import "./ExecutiveDecisionBoardPage.css";
 
@@ -112,21 +114,7 @@ type BoardMetric = {
   note?: string | null;
 };
 
-type BoardPayload = {
-  refreshStatus: AnalyticsRefreshStatus | null;
-  dashboard: AnalyticsDashboardBootstrap | null;
-  dataQualityHealth: AnalyticsDataQualityHealth | null;
-  pilotIntake: PilotDataQualityIntakeReport | null;
-  productDecisionCenter: ProductDecisionCenterResponse | null;
-  inventoryInsights: InventoryInsights | null;
-  inventoryRows: InventoryRow[];
-  stores: StoreOption[];
-  suppliers: SupplierFilterOption[];
-  supplierSummary: SummaryResponse | null;
-  actions: AnalyticsActionListResponse | null;
-  actionOutcomeSummary: AnalyticsActionOutcomeSummaryResponse | null;
-  errors: BoardLoadError[];
-};
+type BoardPayload = DecisionBoardAggregateResponse | null;
 
 type BoardModel = {
   sections: BoardSection[];
@@ -899,186 +887,119 @@ function buildBlockerCards(
   return cards.sort((a, b) => b.priorityScore - a.priorityScore);
 }
 
-function buildBoardModel(payload: BoardPayload): BoardModel {
-  const actionStates = actionStateIndex(payload.actions?.items ?? []);
+function boardActionState(card: { alreadyInAction: boolean; alreadyClosed: boolean }): ActionState {
+  if (card.alreadyInAction) return "open";
+  if (card.alreadyClosed) return "closed";
+  return "none";
+}
 
-  const productCards = buildProductCards(payload.productDecisionCenter, actionStates);
-  const inventoryCards = buildInventoryCards(payload.inventoryInsights, payload.inventoryRows, actionStates);
-  const supplierCards = buildSupplierCards(payload.supplierSummary, actionStates);
-  const actionCards = buildActionCards(payload.actions);
-  const outcomeCards = buildOutcomeCards(payload.actionOutcomeSummary, payload.actions);
-  const blockerCards = buildBlockerCards(payload.dashboard, payload.dataQualityHealth, payload.pilotIntake, payload.refreshStatus);
+function confidencePresentationFromBoardCard(
+  card: DecisionBoardAggregateResponse["sections"][number]["cards"][number],
+): { label: string; tone: BoardTone; score: number | null } {
+  const normalizedScore = normalizeRecommendationPct(card.confidenceScore);
+  const level = (card.confidenceLevel ?? "").trim().toLowerCase();
 
-  const stockRiskCards = [
-    ...inventoryCards,
-    ...productCards.filter((card) => card.kind === "product" && ((card.expectedImpactRsd ?? 0) > 0 || card.warningCodes.some((code) => /stock|low|cover|sell/i.test(code)) || card.title.length > 0)),
-  ]
-    .sort((a, b) => b.priorityScore - a.priorityScore)
-    .slice(0, 5);
+  if (level === "insufficient_data" || card.dataQualityStatus === "insufficient_data") {
+    return { label: confidenceLabelFromValue(normalizedScore, "Nedovoljno podataka"), tone: "insufficient", score: normalizedScore };
+  }
 
-  const urgentCards = [
-    ...blockerCards,
-    ...productCards,
-    ...inventoryCards,
-    ...supplierCards,
-    ...actionCards,
-    ...outcomeCards,
-  ]
-    .sort((a, b) => b.priorityScore - a.priorityScore)
-    .slice(0, 5);
+  if (level === "high" || (normalizedScore != null && normalizedScore >= 75)) {
+    return { label: confidenceLabelFromValue(normalizedScore, "Visoka"), tone: "good", score: normalizedScore };
+  }
 
-  const impactCards = [
-    ...productCards,
-    ...inventoryCards,
-    ...supplierCards,
-    ...actionCards,
-  ]
-    .filter((card) => (card.expectedImpactRsd ?? 0) > 0)
-    .sort((a, b) => (b.expectedImpactRsd ?? 0) - (a.expectedImpactRsd ?? 0))
-    .slice(0, 5);
+  if (level === "medium" || (normalizedScore != null && normalizedScore >= 55)) {
+    return { label: confidenceLabelFromValue(normalizedScore, "Srednja"), tone: "neutral", score: normalizedScore };
+  }
 
-  const supplierRiskCards = supplierCards.slice(0, 5);
-  const blockerSectionCards = blockerCards.slice(0, 5);
-  const actionDecisionCards = actionCards.slice(0, 5);
-  const actionOutcomeCards = outcomeCards.slice(0, 5);
+  if (level === "low" || normalizedScore != null) {
+    return { label: confidenceLabelFromValue(normalizedScore, "Niska"), tone: "warning", score: normalizedScore };
+  }
 
-  const sections: BoardSection[] = [
-    {
-      key: "urgent",
-      title: SECTION_TITLES.urgent,
-      description: SECTION_DESCRIPTIONS.urgent,
-      sourceLink: "/analytics",
-      emptyMessage: SECTION_EMPTY.urgent,
-      cards: urgentCards,
-    },
-    {
-      key: "impact",
-      title: SECTION_TITLES.impact,
-      description: SECTION_DESCRIPTIONS.impact,
-      sourceLink: "/analytics/products",
-      emptyMessage: SECTION_EMPTY.impact,
-      cards: impactCards,
-    },
-    {
-      key: "stockRisk",
-      title: SECTION_TITLES.stockRisk,
-      description: SECTION_DESCRIPTIONS.stockRisk,
-      sourceLink: "/analytics/inventory",
-      emptyMessage: SECTION_EMPTY.stockRisk,
-      cards: stockRiskCards,
-    },
-    {
-      key: "supplierRisk",
-      title: SECTION_TITLES.supplierRisk,
-      description: SECTION_DESCRIPTIONS.supplierRisk,
-      sourceLink: "/analytics/supplier?tab=overview",
-      emptyMessage: SECTION_EMPTY.supplierRisk,
-      cards: supplierRiskCards,
-    },
-    {
-      key: "blockers",
-      title: SECTION_TITLES.blockers,
-      description: SECTION_DESCRIPTIONS.blockers,
-      sourceLink: "/analytics/data-quality",
-      emptyMessage: SECTION_EMPTY.blockers,
-      cards: blockerSectionCards,
-    },
-    {
-      key: "actionsDecision",
-      title: SECTION_TITLES.actionsDecision,
-      description: SECTION_DESCRIPTIONS.actionsDecision,
-      sourceLink: "/analytics/actions",
-      emptyMessage: SECTION_EMPTY.actionsDecision,
-      cards: actionDecisionCards,
-    },
-    {
-      key: "actionsOutcome",
-      title: SECTION_TITLES.actionsOutcome,
-      description: SECTION_DESCRIPTIONS.actionsOutcome,
-      sourceLink: "/analytics/actions",
-      emptyMessage: SECTION_EMPTY.actionsOutcome,
-      cards: actionOutcomeCards,
-    },
-  ];
+  return { label: "Nedovoljno podataka", tone: "insufficient", score: normalizedScore };
+}
 
-  const periodFrom = payload.productDecisionCenter?.periodFromUtc
-    ?? payload.supplierSummary?.from
-    ?? payload.actionOutcomeSummary?.meta.createdFrom
-    ?? payload.pilotIntake?.periodFromUtc
-    ?? null;
-  const periodTo = payload.productDecisionCenter?.periodToUtc
-    ?? payload.supplierSummary?.to
-    ?? payload.actionOutcomeSummary?.meta.createdTo
-    ?? payload.pilotIntake?.periodToUtc
-    ?? null;
-  const lastRefreshAt = payload.refreshStatus?.lastSuccessfulRefreshAtUtc
-    ?? payload.dashboard?.meta?.lastRefreshAtUtc
-    ?? payload.pilotIntake?.lastRefreshAtUtc
-    ?? payload.productDecisionCenter?.generatedAtUtc
-    ?? payload.supplierSummary?.trustMetadata?.lastRefreshAtUtc
-    ?? null;
+function normalizeBoardTone(tone: string | null | undefined): BoardTone {
+  const normalized = tone?.trim().toLowerCase();
+  if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "neutral" || normalized === "insufficient") {
+    return normalized;
+  }
 
-  const metrics: BoardMetric[] = [
-    { label: "Urgentne odluke", value: fmtNumber(urgentCards.length, 0), tone: urgentCards.length > 0 ? "critical" : "good" },
-    { label: "Visok uticaj", value: fmtNumber(impactCards.length, 0), tone: impactCards.length > 0 ? "warning" : "neutral" },
-    { label: "Blokatori", value: fmtNumber(blockerSectionCards.length, 0), tone: blockerSectionCards.length > 0 ? "critical" : "good" },
-    { label: "Otvorene akcije", value: fmtNumber(actionDecisionCards.length, 0), tone: actionDecisionCards.length > 0 ? "warning" : "good" },
-    { label: "Ishodi na čekanju", value: fmtNumber(actionOutcomeCards.length, 0), tone: actionOutcomeCards.length > 0 ? "warning" : "good" },
-    {
-      label: "Pouzdani produkt signali",
-      value: fmtNumber(productCards.filter((card) => card.confidenceTone === "good").length, 0),
-      tone: productCards.some((card) => card.confidenceTone === "good") ? "good" : "neutral",
-    },
-  ];
+  return "neutral";
+}
 
-  const hasData = [
-    payload.refreshStatus,
-    payload.dashboard,
-    payload.dataQualityHealth,
-    payload.pilotIntake,
-    payload.productDecisionCenter,
-    payload.inventoryInsights,
-    payload.supplierSummary,
-    payload.actions,
-    payload.actionOutcomeSummary,
-  ].some(Boolean);
+function mapDecisionBoardCard(
+  section: DecisionBoardAggregateResponse["sections"][number],
+  card: DecisionBoardAggregateResponse["sections"][number]["cards"][number],
+): BoardCard {
+  const confidence = confidencePresentationFromBoardCard(card);
+  const actionState = boardActionState(card);
 
-  const hasAnyError = payload.errors.length > 0;
-  const warnings = [
-    ...(payload.refreshStatus && payload.refreshStatus.dataFreshnessStatus !== "fresh" ? [String(payload.refreshStatus.dataFreshnessStatus)] : []),
-    ...(payload.dataQualityHealth && payload.dataQualityHealth.scoreStatus !== "excellent" && payload.dataQualityHealth.scoreStatus !== "good" ? [payload.dataQualityHealth.scoreStatus] : []),
-    ...(payload.pilotIntake && payload.pilotIntake.readinessStatus !== "excellent" && payload.pilotIntake.readinessStatus !== "good" ? [String(payload.pilotIntake.readinessStatus)] : []),
-    ...(payload.productDecisionCenter?.meta?.dataQualityStatus && payload.productDecisionCenter.meta.dataQualityStatus !== "good" && payload.productDecisionCenter.meta.dataQualityStatus !== "excellent"
-      ? [String(payload.productDecisionCenter.meta.dataQualityStatus)]
-      : []),
-    ...(payload.supplierSummary?.trustMetadata?.dataCoverageStatus && payload.supplierSummary.trustMetadata.dataCoverageStatus !== "good" && payload.supplierSummary.trustMetadata.dataCoverageStatus !== "excellent"
-      ? [String(payload.supplierSummary.trustMetadata.dataCoverageStatus)]
-      : []),
-    ...(payload.actionOutcomeSummary?.meta.warnings ?? []),
-  ];
-  const overallDataQualityStatus = deriveWorstStatus([
-    payload.refreshStatus?.dataFreshnessStatus,
-    payload.dataQualityHealth?.scoreStatus,
-    payload.pilotIntake?.readinessStatus,
-    payload.productDecisionCenter?.meta?.dataQualityStatus,
-    payload.supplierSummary?.trustMetadata?.dataCoverageStatus,
-  ]);
+  return {
+    id: card.id,
+    sectionKey: section.key as BoardSectionKey,
+    kind: card.kind as BoardCardKind,
+    sourceModule: card.sourceModule,
+    sourceType: card.sourceType ?? null,
+    sourceKey: card.sourceKey ?? null,
+    title: card.title,
+    summary: card.summary ?? null,
+    confidenceLabel: confidence.label,
+    confidenceTone: confidence.tone,
+    confidenceScore: confidence.score,
+    expectedImpactRsd: card.expectedImpactRsd ?? null,
+    measuredImpactRsd: card.measuredImpactRsd ?? null,
+    realizationRatio: card.realizationRatio ?? null,
+    riskIfIgnored: card.riskIfIgnored,
+    recommendedNextAction: card.recommendedNextAction,
+    actionCta: openActionStateLabel(actionState),
+    sourceLink: section.sourceLink,
+    actionHref: card.actionHref,
+    alreadyInAction: card.alreadyInAction,
+    alreadyClosed: card.alreadyClosed,
+    actionStateLabel: openActionStateLabel(actionState),
+    warningCodes: card.warningCodes ?? [],
+    dataQualityStatus: card.dataQualityStatus,
+    generatedAtUtc: card.generatedAtUtc ?? null,
+    priorityScore: card.priorityScore,
+    impactScore: card.impactScore,
+  };
+}
 
-  const recommendationNote = payload.supplierSummary?.trustMetadata?.usedFallback
-    ? payload.supplierSummary.trustMetadata.fallbackReason ?? "Supplier signal koristi pomoćni dataset."
-    : "Backend ostaje izvor istine; board samo kompozira postojeće signale.";
+function buildBoardModel(payload: DecisionBoardAggregateResponse): BoardModel {
+  const sections: BoardSection[] = (payload.sections ?? []).map((section) => ({
+    key: section.key as BoardSectionKey,
+    title: section.title,
+    description: section.description,
+    sourceLink: section.sourceLink,
+    emptyMessage: section.emptyMessage,
+    cards: (section.cards ?? []).map((card) => mapDecisionBoardCard(section, card)),
+  }));
+
+  const metrics: BoardMetric[] = (payload.metrics ?? []).map((metric) => ({
+    label: metric.label,
+    value: metric.value,
+    tone: normalizeBoardTone(metric.tone),
+    note: metric.note ?? null,
+  }));
+
+  const hasData = sections.some((section) => section.cards.length > 0);
+  const normalizedOverallStatus = (payload.overallDataQualityStatus ?? "").trim().toLowerCase();
+  const hasPartialSource = (payload.sourceStates ?? []).some((state) => {
+    const status = (state.status ?? "").trim().toLowerCase();
+    return status !== "good" && status !== "fresh" && status !== "excellent";
+  });
 
   return {
     sections,
     metrics,
     hasData,
-    isPartial: hasAnyError || warnings.length > 0 || overallDataQualityStatus !== "good",
-    overallDataQualityStatus,
-    periodFrom,
-    periodTo,
-    lastRefreshAt,
-    recommendationNote,
-    emptyReason: hasData ? null : "Kombinovani analytics izvori trenutno ne vraćaju dovoljno signala za izvršni board.",
+    isPartial: Boolean(payload.meta?.isPartial || payload.warnings.length > 0 || hasPartialSource || normalizedOverallStatus !== "good"),
+    overallDataQualityStatus: payload.overallDataQualityStatus,
+    periodFrom: payload.periodFromUtc ?? null,
+    periodTo: payload.periodToUtc ?? null,
+    lastRefreshAt: payload.lastRefreshAtUtc ?? null,
+    recommendationNote: payload.recommendationNote,
+    emptyReason: hasData ? null : payload.meta?.emptyReason ?? "Kombinovani analytics izvori trenutno ne vraćaju dovoljno signala za izvršni board.",
   };
 }
 
@@ -1194,189 +1115,47 @@ function renderSection(section: BoardSection) {
 }
 
 export function buildExecutiveDecisionBoardModel(payload: BoardPayload): BoardModel {
+  if (!payload) {
+    return {
+      sections: [],
+      metrics: [],
+      hasData: false,
+      isPartial: false,
+      overallDataQualityStatus: null,
+      periodFrom: null,
+      periodTo: null,
+      lastRefreshAt: null,
+      recommendationNote: "Backend decision board aggregate nije dostupan.",
+      emptyReason: "Izvršni board trenutno nema dostupnih signala.",
+    };
+  }
+
   return buildBoardModel(payload);
 }
 
 export default function ExecutiveDecisionBoardPage() {
-  const [payload, setPayload] = useState<BoardPayload>({
-    refreshStatus: null,
-    dashboard: null,
-    dataQualityHealth: null,
-    pilotIntake: null,
-    productDecisionCenter: null,
-    inventoryInsights: null,
-    inventoryRows: [],
-    stores: [],
-    suppliers: [],
-    supplierSummary: null,
-    actions: null,
-    actionOutcomeSummary: null,
-    errors: [],
-  });
+  const [payload, setPayload] = useState<BoardPayload>(null);
+  const [loadError, setLoadError] = useState<BoardLoadError | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
 
   const loadBoard = useCallback(async (isCancelled?: () => boolean) => {
     setLoading(true);
 
-    const nextPayload: BoardPayload = {
-      refreshStatus: null,
-      dashboard: null,
-      dataQualityHealth: null,
-      pilotIntake: null,
-      productDecisionCenter: null,
-      inventoryInsights: null,
-      inventoryRows: [],
-      stores: [],
-      suppliers: [],
-      supplierSummary: null,
-      actions: null,
-      actionOutcomeSummary: null,
-      errors: [],
-    };
-
-    const tasks: LoadTask[] = [
-      {
-        key: "refreshStatus",
-        request: getAnalyticsRefreshStatus(),
-        assign: (value) => { nextPayload.refreshStatus = value as AnalyticsRefreshStatus; },
-        fallback: "Status osvežavanja nije dostupan.",
-      },
-      {
-        key: "dashboard",
-        request: getDashboardBootstrap(undefined, undefined, true),
-        assign: (value) => { nextPayload.dashboard = value as AnalyticsDashboardBootstrap; },
-        fallback: "Dashboard bootstrap nije dostupan.",
-      },
-      {
-        key: "dataQualityHealth",
-        request: getAnalyticsDataQualityHealth(),
-        assign: (value) => { nextPayload.dataQualityHealth = value as AnalyticsDataQualityHealth; },
-        fallback: "Data quality health nije dostupan.",
-      },
-      {
-        key: "pilotIntake",
-        request: getPilotDataQualityIntakeReport({}),
-        assign: (value) => { nextPayload.pilotIntake = value as PilotDataQualityIntakeReport; },
-        fallback: "Pilot intake report nije dostupan.",
-      },
-      {
-        key: "productDecisionCenter",
-        request: getProductDecisionCenter({ top: 20, dataScope: "all" }),
-        assign: (value) => { nextPayload.productDecisionCenter = value as ProductDecisionCenterResponse; },
-        fallback: "Product Decision Center nije dostupan.",
-      },
-      {
-        key: "inventoryInsights",
-        request: getInventoryInsights(),
-        assign: (value) => { nextPayload.inventoryInsights = value as InventoryInsights; },
-        fallback: "Inventory insights nisu dostupni.",
-      },
-      {
-        key: "inventoryList",
-        request: getInventoryList({ pageSize: 100 }),
-        assign: () => {
-          // Inventory list is merged with insights after all requests settle.
-        },
-        fallback: "Inventory list nije dostupna.",
-      },
-      {
-        key: "stores",
-        request: getStores(),
-        assign: (value) => { nextPayload.stores = value as StoreOption[]; },
-        fallback: "Lista prodavnica nije dostupna.",
-      },
-      {
-        key: "suppliers",
-        request: getSupplierFilters(),
-        assign: (value) => { nextPayload.suppliers = value as SupplierFilterOption[]; },
-        fallback: "Lista dobavljača nije dostupna.",
-      },
-      {
-        key: "supplierSummary",
-        request: getSupplierDecisionSummary({}),
-        assign: (value) => { nextPayload.supplierSummary = value as SummaryResponse; },
-        fallback: "Supplier summary nije dostupan.",
-      },
-      {
-        key: "actions",
-        request: getAnalyticsActions({ pageSize: 200 }),
-        assign: (value) => { nextPayload.actions = value as AnalyticsActionListResponse; },
-        fallback: "Action lista nije dostupna.",
-      },
-      {
-        key: "actionOutcomeSummary",
-        request: getAnalyticsActionOutcomeSummary(),
-        assign: (value) => { nextPayload.actionOutcomeSummary = value as AnalyticsActionOutcomeSummaryResponse; },
-        fallback: "Action outcome summary nije dostupan.",
-      },
-    ];
-
-    const results = await Promise.allSettled(tasks.map((task) => task.request));
-    if (isCancelled?.()) return;
-
-    results.forEach((result, index) => {
-      const task = tasks[index];
-      if (result.status === "fulfilled") {
-        if (task.key === "inventoryList" && nextPayload.inventoryInsights) {
-          const list = result.value as InventoryPagedResponse;
-          const rowsById = new Map<number, InventoryListItem>();
-          for (const row of list.items ?? []) {
-            rowsById.set(row.id, row);
-          }
-
-          const rows: InventoryRow[] = [];
-          for (const item of nextPayload.inventoryInsights.topAgedItems ?? []) {
-            const row = buildRowFromInsightItem(item, nextPayload.stores, nextPayload.suppliers);
-            const listItem = rowsById.get(row.id);
-            rows.push({
-              ...row,
-              stockCoverDays: listItem?.stockCoverDays ?? row.stockCoverDays,
-              stockCoverStatus: listItem?.stockCoverStatus ?? row.stockCoverStatus,
-              stockCoverStatusLabel: listItem?.stockCoverStatusLabel ?? row.stockCoverStatusLabel,
-              sellThroughRatio: listItem?.sellThroughRatio ?? row.sellThroughRatio,
-              sellThroughStatus: listItem?.sellThroughStatus ?? row.sellThroughStatus,
-              sellThroughStatusLabel: listItem?.sellThroughStatusLabel ?? row.sellThroughStatusLabel,
-              signalConfidencePct: listItem?.signalConfidencePct ?? row.signalConfidencePct,
-              recommendationAllowed: listItem?.recommendationAllowed ?? row.recommendationAllowed,
-              reasonCodes: listItem?.reasonCodes ?? row.reasonCodes,
-              dataQualityStatus: listItem?.dataQualityStatus ?? row.dataQualityStatus,
-            });
-          }
-
-          for (const item of nextPayload.inventoryInsights.topCapitalLockedItems ?? []) {
-            const row = buildRowFromInsightItem(item, nextPayload.stores, nextPayload.suppliers);
-            const listItem = rowsById.get(row.id);
-            rows.push({
-              ...row,
-              stockCoverDays: listItem?.stockCoverDays ?? row.stockCoverDays,
-              stockCoverStatus: listItem?.stockCoverStatus ?? row.stockCoverStatus,
-              stockCoverStatusLabel: listItem?.stockCoverStatusLabel ?? row.stockCoverStatusLabel,
-              sellThroughRatio: listItem?.sellThroughRatio ?? row.sellThroughRatio,
-              sellThroughStatus: listItem?.sellThroughStatus ?? row.sellThroughStatus,
-              sellThroughStatusLabel: listItem?.sellThroughStatusLabel ?? row.sellThroughStatusLabel,
-              signalConfidencePct: listItem?.signalConfidencePct ?? row.signalConfidencePct,
-              recommendationAllowed: listItem?.recommendationAllowed ?? row.recommendationAllowed,
-              reasonCodes: listItem?.reasonCodes ?? row.reasonCodes,
-              dataQualityStatus: listItem?.dataQualityStatus ?? row.dataQualityStatus,
-            });
-          }
-
-          nextPayload.inventoryRows = rows;
-          return;
-        }
-
-        task.assign(result.value);
-        return;
+    try {
+      const response = await getDecisionBoardAggregate({ dataScope: "all" });
+      if (isCancelled?.()) return;
+      setPayload(response);
+      setLoadError(null);
+    } catch (reason) {
+      if (isCancelled?.()) return;
+      setPayload(null);
+      setLoadError(buildLoadError("decisionBoard", reason, "Izvr�ni board nije dostupan."));
+    } finally {
+      if (!isCancelled?.()) {
+        setLoading(false);
       }
-
-      nextPayload.errors.push(buildLoadError(task.key, result.reason, task.fallback));
-    });
-
-    if (isCancelled?.()) return;
-    setPayload(nextPayload);
-    if (isCancelled?.()) return;
-    setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -1387,76 +1166,54 @@ export default function ExecutiveDecisionBoardPage() {
     };
   }, [loadBoard, reloadTick]);
 
-  const model = useMemo(() => buildBoardModel(payload), [payload]);
-  const globalError = !loading && !model.hasData && payload.errors.length > 0 ? payload.errors[0] : null;
-  const responseMeta = payload.productDecisionCenter?.meta
-    ?? payload.supplierSummary?.meta
-    ?? payload.actionOutcomeSummary?.meta
-    ?? payload.pilotIntake?.meta
-    ?? null;
-  const trustSummary = payload.pilotIntake
-    ? {
-      missingSupplierCount: payload.pilotIntake.issues.missingSupplierCount,
-      missingCostCount: payload.pilotIntake.issues.missingCostCount,
-      missingCategoryCount: payload.pilotIntake.issues.missingCategoryCount,
-      insufficientSignalCount: payload.pilotIntake.impact.insufficientSignalCount,
-      ignoredRowsCount: payload.pilotIntake.impact.ignoredRowsCount,
-    }
-    : payload.dashboard?.executive?.dataQualitySummary
-      ? {
-        missingSupplierCount: payload.dashboard.executive.dataQualitySummary.missingSupplierCount,
-        missingCostCount: payload.dashboard.executive.dataQualitySummary.missingCostCount,
-        missingCategoryCount: null,
-        insufficientSignalCount: payload.dashboard.executive.dataQualitySummary.insufficientSignalCount,
-        ignoredRowsCount: payload.dashboard.executive.dataQualitySummary.ignoredRowsCount,
-      }
-      : undefined;
-
+  const model = useMemo(() => buildExecutiveDecisionBoardModel(payload), [payload]);
+  const responseMeta = payload?.meta ?? null;
+  const refreshSourceState = payload?.sourceStates.find((state) => state.sourceKey === "refresh-status") ?? null;
   const analyticsMetaMessage = getAnalyticsMetaMessage(responseMeta);
-  const hasBlockingWarning = isAnalyticsMetaError(responseMeta);
+  const globalError = !loading && !model.hasData ? loadError : null;
   const isEmpty = !loading && !model.hasData && !globalError;
 
   return (
     <div className="decision-board-page">
       <AnalyticsTrustHeader
-        title="Izvršni board odluka"
-        description="Jedan pogled koji poređa najvažnije odluke, očekivani uticaj, rizik i šta je već u akciji."
+        title="Izvr�ni board odluka"
+        description="Jedan pogled koji poredi najva�nije odluke, ocekivani uticaj, rizik i �ta je vec u akciji."
         mode="recommendation"
         periodFrom={model.periodFrom}
         periodTo={model.periodTo}
         lastRefreshAt={model.lastRefreshAt}
-        dataFreshnessStatus={payload.refreshStatus?.dataFreshnessStatus ?? payload.dashboard?.meta?.dataQualityStatus ?? "unknown"}
-        refreshIsRunning={payload.refreshStatus?.isRunning ?? false}
-        refreshCurrentStep={payload.refreshStatus?.currentStep ?? null}
+        dataFreshnessStatus={refreshSourceState?.status ?? model.overallDataQualityStatus ?? "unknown"}
+        refreshIsRunning={false}
+        refreshCurrentStep={null}
         isPartial={model.isPartial}
-        dataSource="Dashboard, Pilot readiness, Product, Supplier, Inventory i Action Queue"
+        dataSource="Decision Board aggregate"
         dataQualityStatus={model.overallDataQualityStatus ?? undefined}
-        dataQualitySummary={trustSummary}
+        dataQualitySummary={undefined}
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
         methodologyHref="/analytics/actions"
-        methodologyLabel="Kako se čita board"
+        methodologyLabel="Kako se cita board"
         recommendationNote={model.recommendationNote}
         emptyStateReason={model.emptyReason}
         compact
       />
 
       <AnalyticsRefreshStatusBanner
-        status={payload.refreshStatus}
-        loading={loading && !payload.refreshStatus}
-        error={payload.errors.find((item) => item.key === "refreshStatus")?.message ?? null}
+        status={null}
+        loading={loading}
+        error={loadError?.message ?? null}
       />
 
       {globalError ? (
         <AnalyticsErrorState
-          title="Izvršni board trenutno nije dostupan"
+          title="Izvr�ni board trenutno nije dostupan"
           message={globalError.message}
           errorCode={globalError.errorCode ?? undefined}
           correlationId={globalError.correlationId ?? undefined}
           suggestions={[
-            "Proveri status osvežavanja i worker panel.",
+            "Proveri status osve�avanja i worker panel.",
             "Otvori kvalitet podataka i pilot readiness.",
-            "Pokušaj ponovo kada se izvori vrate.",
+            "Poku�aj ponovo kada se izvori vrate.",
           ]}
           onRetry={() => setReloadTick((value) => value + 1)}
           helpHref="/admin/configuration?panel=workers"
@@ -1467,12 +1224,12 @@ export default function ExecutiveDecisionBoardPage() {
       {isEmpty ? (
         <AnalyticsEmptyState
           variant={isAnalyticsMetaInsufficient(responseMeta) ? "insufficient_data" : "no_data"}
-          title="Nema dovoljno signala za izvršni board"
-          message="Board je uspešno učitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane."
+          title="Nema dovoljno signala za izvr�ni board"
+          message="Board je uspe�no ucitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane."
           reasons={[
             "Proveri pilot readiness i kvalitet podataka.",
-            "Proveri da li su Product, Supplier i Inventory signali osveženi.",
-            "Ponovo učitaj board nakon sledećeg refresh ciklusa.",
+            "Proveri da li su Product, Supplier i Inventory signali osve�eni.",
+            "Ponovo ucitaj board nakon sledeceg refresh ciklusa.",
           ]}
           actions={[
             { label: "Ponovo proveri", onClick: () => setReloadTick((value) => value + 1) },
@@ -1487,14 +1244,14 @@ export default function ExecutiveDecisionBoardPage() {
 
       {!loading && !globalError && model.isPartial ? (
         <section className="decision-board-partial-note" role="status">
-          <strong>Delimični signali su dostupni.</strong>
+          <strong>Delimicni signali su dostupni.</strong>
           <span>
-            {analyticsMetaMessage ?? "Board kombinuje samo potvrđene izvore i jasno označava blokirane ili zastarele signale."}
+            {analyticsMetaMessage ?? "Board kombinuje samo potvrdene izvore i jasno oznacava blokirane ili zastarele signale."}
           </span>
         </section>
       ) : null}
 
-      <section className="decision-board-summary-grid" aria-label="Sažetak board-a">
+      <section className="decision-board-summary-grid" aria-label="Sa�etak board-a">
         {model.metrics.map((metric) => (
           <article key={metric.label} className={`decision-board-summary-card tone-${metric.tone}`}>
             <span className="decision-board-summary-label">{metric.label}</span>

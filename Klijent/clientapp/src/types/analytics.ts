@@ -407,6 +407,74 @@ export interface ProductDecisionCenterResponse {
   meta?: AnalyticsResponseMeta | null;
 }
 
+export interface DecisionBoardMetric {
+  label: string;
+  value: string;
+  tone: "good" | "warning" | "critical" | "neutral" | "insufficient" | string;
+  note?: string | null;
+}
+
+export interface DecisionBoardSourceState {
+  sourceKey: string;
+  displayName: string;
+  status: "good" | "warning" | "critical" | "insufficient_data" | "fresh" | "stale" | "unknown" | string;
+  generatedAtUtc?: string | null;
+  warningCodes: string[];
+  message?: string | null;
+  sourceLink?: string | null;
+}
+
+export interface DecisionBoardCard {
+  id: string;
+  kind: "product" | "inventory" | "supplier" | "blocker" | "action" | "outcome" | string;
+  sectionKey: string;
+  sourceModule: string;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  title: string;
+  summary?: string | null;
+  confidenceLevel: "high" | "medium" | "low" | "insufficient_data" | string;
+  confidenceScore?: number | null;
+  reliabilityPct?: number | null;
+  expectedImpactRsd?: number | null;
+  measuredImpactRsd?: number | null;
+  realizationRatio?: number | null;
+  riskIfIgnored: string;
+  recommendedNextAction: string;
+  actionHref: string;
+  alreadyInAction: boolean;
+  alreadyClosed: boolean;
+  warningCodes: string[];
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  generatedAtUtc?: string | null;
+  priorityScore: number;
+  impactScore: number;
+}
+
+export interface DecisionBoardSection {
+  key: string;
+  title: string;
+  description: string;
+  sourceLink: string;
+  emptyMessage: string;
+  warnings: string[];
+  cards: DecisionBoardCard[];
+}
+
+export interface DecisionBoardAggregateResponse {
+  generatedAtUtc: string;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  lastRefreshAtUtc?: string | null;
+  overallDataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  recommendationNote: string;
+  warnings: string[];
+  metrics: DecisionBoardMetric[];
+  sourceStates: DecisionBoardSourceState[];
+  sections: DecisionBoardSection[];
+  meta?: AnalyticsResponseMeta | null;
+}
+
 export interface ExecutiveTopSupplier {
   supplierId?: number | null;
   supplierName: string;
