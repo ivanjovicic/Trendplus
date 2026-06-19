@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import InventoryPage from "../InventoryPage";
@@ -51,7 +51,14 @@ vi.mock("../../components/inventory/DemandForecastPanel", () => ({ DemandForecas
 vi.mock("../../components/inventory/ExportSchedulerPanel", () => ({ ExportSchedulerPanel: () => null }));
 vi.mock("../../components/inventory/InventoryAlertsFeed", () => ({ InventoryAlertsFeed: () => null }));
 vi.mock("../../components/inventory/InventoryInsightPanels", () => ({ InventoryInsightPanels: () => null }));
-vi.mock("../../components/inventory/InventoryItemsTable", () => ({ InventoryItemsTable: () => null }));
+vi.mock("../../components/inventory/InventoryItemsTable", () => ({
+  InventoryItemsTable: ({ rows, isRowQueued }: { rows: Array<Record<string, unknown>>; isRowQueued: (row: Record<string, unknown>) => boolean }) => (
+    <div
+      data-testid="inventory-items-table"
+      data-queued={rows.length > 0 ? String(isRowQueued(rows[0])) : "false"}
+    />
+  ),
+}));
 vi.mock("../../components/inventory/InventoryKPICards", () => ({ InventoryKPICards: () => null }));
 vi.mock("../../components/inventory/InventoryPriorityPanels", () => ({ InventoryPriorityPanels: () => null }));
 vi.mock("../../components/inventory/MailSchedulerPanel", () => ({ MailSchedulerPanel: () => null }));
@@ -122,5 +129,64 @@ describe("InventoryPage queue status sync", () => {
         ]),
       }),
     );
+  });
+
+  it("keeps queued inventory suggestions visible when source status lookup fails", async () => {
+    const refreshedInventoryList = {
+      items: [
+        {
+          id: 501,
+          naziv: "Artikal A",
+          plu: "PLU-501",
+          kolicina: 10,
+          minimalnaKolicina: 3,
+          nabavnaCena: 100,
+          estimatedValue: 1000,
+          idObjekat: 1,
+          idDobavljac: null,
+          stockCoverDays: 4,
+          stockCoverStatus: "low_cover",
+          sellThroughRatio: 0.5,
+          sellThroughStatus: "good",
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 50,
+      meta: { success: true, dataQualityStatus: "good" },
+    };
+    const refreshedActionWorkflow = {
+      generatedAtUtc: "2026-05-26T12:00:00Z",
+      pendingCount: 0,
+      approvedCount: 0,
+      deferredCount: 0,
+      closedCount: 0,
+      items: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    };
+
+    getAnalyticsActionSourceStatusesMock
+      .mockImplementationOnce(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
+        items: items.map(({ sourceKey }) => ({ sourceKey, exists: true })),
+      }))
+      .mockRejectedValueOnce(new Error("status lookup failed"));
+    getInventoryListMock.mockImplementationOnce(async () => refreshedInventoryList);
+    getInventoryActionSuggestionsMock.mockImplementationOnce(async () => refreshedActionWorkflow);
+
+    render(<InventoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-items-table").getAttribute("data-queued")).toBe("true");
+    });
+
+    fireEvent.change(screen.getByLabelText("Filter po prodavnici"), { target: { value: "1" } });
+
+    await waitFor(() => {
+      expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-items-table").getAttribute("data-queued")).toBe("true");
+    });
   });
 });

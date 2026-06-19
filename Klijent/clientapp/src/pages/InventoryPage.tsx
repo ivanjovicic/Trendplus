@@ -554,11 +554,11 @@ export default function InventoryPage() {
       };
     }
 
-    void (async () => {
-      try {
-        const response = await getAnalyticsActionSourceStatuses({
-          items: sourceKeys.map((sourceKey) => ({
-            sourceType: "inventory",
+      void (async () => {
+        try {
+          const response = await getAnalyticsActionSourceStatuses({
+            items: sourceKeys.map((sourceKey) => ({
+              sourceType: "inventory",
             sourceKey,
           })),
         });
@@ -569,9 +569,9 @@ export default function InventoryPage() {
             .filter((item: { exists: boolean }) => item.exists)
             .map((item: { sourceKey: string }) => item.sourceKey),
         );
-      } catch (reason) {
+        } catch (reason) {
         if (!cancelled) {
-          setQueuedSuggestionKeys([]);
+          // Keep the last known queue state when the lookup fails so queued items do not look unqueued.
           console.warn("Neuspešna provera statusa inventory akcija po sourceKey.", reason);
         }
       }

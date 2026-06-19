@@ -1798,9 +1798,11 @@ Evidence:
   - `git diff --check` - pass
   - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
   - `cd Klijent/clientapp && npm run build` - pass
+- Extra follow-up:
+  - Inventory page queued suggestion markers now survive transient source-status failures instead of being cleared to an empty state.
 - Remaining risk:
   - `?? 0` / `|| 0` patterns still exist in many analytics surfaces, but the audited ones were either intentional derived defaults or already protected by meta/error states
-  - follow-up visibility for ancillary filter refresh failures is still useful even though the fake-empty behavior is now reduced
+  - broader numeric fallback review is still useful even though the fake-empty behavior is now reduced
 
 Next step:
 - Q39 - Add visible warnings for ancillary filter/list refresh failures

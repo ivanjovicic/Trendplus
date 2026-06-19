@@ -1,6 +1,6 @@
 # Analytics Regression Risk Audit
 
-Date: 2026-06-19 14:04:44 +02:00
+Date: 2026-06-19 14:53:42 +02:00
 Repo: `ivanjovicic/Trendplus`
 
 ## Scope
@@ -36,6 +36,7 @@ Search focus:
 | [SupplierSalesStatsPage.tsx](../../Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx) | `catch` previously cleared store options with `[]` | Fixed in this task. Existing options remain visible if refresh fails. | Tiny fix applied. |
 | [InventoryPage.tsx](../../Klijent/clientapp/src/pages/InventoryPage.tsx) | `catch` previously cleared supplier options with `[]` | Fixed in this task. Existing options remain visible if refresh fails. | Tiny fix applied. |
 | [SupplierDecisionHubPage.tsx](../../Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx) | `catch` previously cleared season options with `[]` | Fixed in this task. Existing options remain visible if refresh fails. | Tiny fix applied. |
+| [InventoryPage.tsx](../../Klijent/clientapp/src/pages/InventoryPage.tsx) | `setQueuedSuggestionKeys([])` on source-status failure | Fixed in this task. Existing queued suggestion markers now stay visible when the status probe fails transiently instead of looking unqueued. | Tiny fix applied. |
 | [ExecutiveDecisionBoardPage.tsx](../../Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx) | `warningCodes` ignored / stale ignored | No issue found. `warningCodes` are preserved, combined with `reasonCodes`, and rendered into cards/sections. Stale and partial states are surfaced through the board model. | No code change. |
 | [AnalyticsActionsPage.tsx](../../Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx) | success assumed from empty response | No issue found. The page uses `meta`, summary warnings, and explicit empty/error states rather than treating empty data as success. | No code change. |
 | [PilotReadinessPage.tsx](../../Klijent/clientapp/src/pages/PilotReadinessPage.tsx) | stale ignored / empty assumed success | No issue found in the audited paths. Readiness cards use explicit warning/blocked states and partial/error metadata. | No code change. |
@@ -43,11 +44,10 @@ Search focus:
 
 ## Tiny Fix Applied
 
-The only code change made from this audit was to stop clearing already loaded option lists on transient load failures. That keeps the UI honest by avoiding a fake empty filter state while still letting the main analytics surfaces remain usable.
+The code changes made from this audit were to stop clearing already loaded option lists on transient load failures and to preserve queued inventory suggestion markers when source-status lookup fails. That keeps the UI honest by avoiding fake empty filter states and fake "not queued" states while still letting the main analytics surfaces remain usable.
 
 ## Remaining Follow-Ups
 
-- Add visible warning banners when ancillary filter/list refreshes fail, so users know an option list may be stale instead of only preserving the previous data.
 - Continue the broader numeric fallback review on other charts and derived panels that were not part of this audit pass.
 
 ## Verification
@@ -55,4 +55,3 @@ The only code change made from this audit was to stop clearing already loaded op
 - `git diff --check` - pass
 - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
 - `cd Klijent/clientapp && npm run build` - pass
-
