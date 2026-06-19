@@ -1494,9 +1494,9 @@ Status summary:
 Status: PARTIAL
 
 Evidence:
-- Files: `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`, `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
-- Tests/checks: production HTTP proof was refreshed; Vercel/Render live responses were rechecked from the workspace.
-- Remaining risk: Vercel still serves `index-XONGNubS.js` with a stale `Last-Modified` header, and Render still returns `404` for `/api/runtime/version`.
+- Files: `docs/qa/ANALYTICS_DEPLOY_PROOF.md`, `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`, `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
+- Tests/checks: live HTTP recheck on 2026-06-19 from the current workspace HEAD; Vercel still serves `index-XONGNubS.js` with a stale `Last-Modified` header, and Render still returns `404` for `/api/runtime/version`.
+- Remaining risk: the public deploy is still drifting from current source, so the blocker is documented but not remediated.
 
 ## Q20 - Demo verification production smoke
 
@@ -1567,8 +1567,8 @@ Status: PARTIAL
 
 Evidence:
 - Files: `docs/qa/DEMO_VERIFICATION_SMOKE_RESULT.md`, `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
-- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass.
-- Remaining risk: live Render returns `404` for `/api/admin/demo-verification`, so production/demo smoke cannot be finalized until the backend deploy catches up.
+- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass; live Render recheck on 2026-06-19 still returns `404` for `/api/admin/demo-verification`.
+- Remaining risk: the demo-verification endpoint is present in source and tested locally, but the production backend has not deployed it yet.
 
 ## Q28 - Protect analytics action write endpoints
 

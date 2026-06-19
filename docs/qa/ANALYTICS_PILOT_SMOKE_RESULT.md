@@ -19,10 +19,10 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ### Before status
 
-- Local `HEAD` is `161739cf071bb09adbe2d4d3bcae40d5379a0f72`.
-- Remote `origin/main` is `9563b99b94138391bd473465478550bf2e465af6`.
+- Local `HEAD` is `242e4e24e885ebe7eb6d8ababc535a99551a5bfe`.
+- Remote `origin/main` is `4253ec2fc99bb4c2b1fe65291de708145ef66ea1`.
 - The live Vercel HTML for `/analytics/pilot-readiness` still serves `index-XONGNubS.js` with `Last-Modified: Wed, 17 Jun 2026 08:14:08 GMT`.
-- The current local production build serves `index-Dl6Nn41t.js`, so the live Vercel site is not serving the bundle produced from the current workspace state.
+- The current workspace tip is ahead of `origin/main`, so the live Vercel site is not serving the bundle produced from the current workspace state.
 - Render still returned `404` for `GET /api/runtime/version`, so the deployed backend SHA remained unverified from the public surface.
 
 ### After status
@@ -38,14 +38,14 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ### Deployed SHA
 
-- Local HEAD: `161739cf071bb09adbe2d4d3bcae40d5379a0f72`
-- Remote `origin/main`: `9563b99b94138391bd473465478550bf2e465af6`
+- Local HEAD: `242e4e24e885ebe7eb6d8ababc535a99551a5bfe`
+- Remote `origin/main`: `4253ec2fc99bb4c2b1fe65291de708145ef66ea1`
 - Vercel deployed SHA: not publicly visible from the live surface
 - Render deployed SHA: not publicly visible from the live surface
 
 ### Remaining warnings
 
-- Vercel is still serving an older bundle than the current workspace build, so the production analytics shell does not match the current route registration.
+- Vercel is still serving an older bundle than the current workspace tip, so the production analytics shell does not match the current route registration.
 - Render still needs the runtime version endpoint deployed before exact backend SHA can be verified publicly.
 - Until the next successful deploy, these route misses should be treated as deployment drift, not as current-source route regressions.
 
@@ -61,12 +61,10 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ### After status
 
-- Current local and pushed `main` HEAD is `9563b99b94138391bd473465478550bf2e465af6`.
-- Current public Vercel HTML for `/analytics/pilot-readiness` serves a different bundle fingerprint than the local build:
-  - production: `index-XONGNubS.js`
-  - local build: `index-DAjqjWu_.js`
-- That mismatch confirms the live Vercel site is still serving an older deployment, not the current local bundle that contains the pilot routes.
-- The same old bundle remained live after the `9563b99` push and an additional wait, so this is not just a short CDN propagation delay.
+- Current local workspace HEAD is `242e4e24e885ebe7eb6d8ababc535a99551a5bfe` and current `origin/main` is `4253ec2fc99bb4c2b1fe65291de708145ef66ea1`.
+- Current public Vercel HTML for `/analytics/pilot-readiness` still serves `index-XONGNubS.js`.
+- That mismatch confirms the live Vercel site is still serving an older deployment, not the current workspace tip that contains the pilot routes.
+- The same old bundle remained live after the previous deploy and an additional wait, so this is not just a short CDN propagation delay.
 - Render still returns `404` for `GET /api/runtime/version`, so the exact deployed backend SHA remains unverified from the public surface.
 
 ### Deployed SHA

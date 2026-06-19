@@ -7,11 +7,11 @@ Backend base: `https://trendplus-api.onrender.com`
 
 ## Snapshot
 
-- Local `HEAD`: `fd90480eecb9e89ba3d29bd3deab8623635d528f`
-- Remote `origin/main`: `fd90480eecb9e89ba3d29bd3deab8623635d528f`
+- Local workspace `HEAD`: `242e4e24e885ebe7eb6d8ababc535a99551a5bfe`
+- Remote `origin/main`: `4253ec2fc99bb4c2b1fe65291de708145ef66ea1`
 - Vercel is still serving `index-XONGNubS.js` for `/analytics/pilot-readiness`
 - Vercel response headers still show `Last-Modified: Wed, 17 Jun 2026 08:14:08 GMT`
-- Current local build serves `index-Dl6Nn41t.js`
+- Current workspace `HEAD` is ahead of `origin/main`, so the live Vercel site is not serving the current branch tip
 - Render still returns `404` for `GET /api/runtime/version`
 
 ## Interpretation
@@ -19,7 +19,7 @@ Backend base: `https://trendplus-api.onrender.com`
 - The frontend failure is deploy drift, not a missing route definition in source.
 - The repo already maps `/analytics/pilot-readiness` and `/analytics/reports/pilot-intake`.
 - `vercel.json` already points builds at `Klijent/clientapp` and rewrites non-asset routes to `index.html`.
-- The current local build fingerprint differs from the live Vercel bundle, so the public site is serving an older deploy.
+- The current workspace tip differs from the live Vercel bundle, so the public site is serving an older deploy.
 - The backend failure is also deploy drift: the live surface does not yet expose the runtime version endpoint.
 
 ## Surface Table
