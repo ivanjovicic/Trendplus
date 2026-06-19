@@ -2027,7 +2027,326 @@ Status: DONE
 
 ## Q48 - Decision Board frontend aggregate adoption
 
-Status: TODO
+Status: DONE
 
-Next step:
-- switch the Executive Decision Board frontend to consume the backend aggregate endpoint and keep route smoke honest
+### Notes
+
+- Date: 2026-06-19
+- Commit: pending
+- Changed files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run typecheck` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - The board now consumes the backend aggregate endpoint, but legacy multi-source helper code remains in the file for now and should only be removed if a future cleanup task explicitly targets it.
+- Next step:
+  - No follow-up queue item is queued yet.
+
+## Q50 - Queue reconciliation after Q48/Q49 and latest multi-topic commit
+
+Status: DONE
+Commit suggestion: `docs(ai): reconcile analytics queue after q49`
+Priority: P0
+Token budget: low/medium
+
+### Why
+
+- Q48 and Q49 are being worked on or recently changed, and the latest multi-topic commit `8fb6141` mixes several analytics topics in one push.
+- The queue must reflect what is truly done, partial, open, or blocked before more feature work continues.
+
+### Scope only
+
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`
+- no app code changes
+
+### Do
+
+1. Identify current queue state from Q38 onward.
+2. Mark Q48 and Q49 accurately as DONE, PARTIAL, or BLOCKED.
+3. Add evidence for each recent item: commit SHA, files changed, tests added, remaining risk.
+4. Create `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`.
+5. Add Q51-Q56 as the next recommended tasks.
+6. Do not mark Vercel/production DONE if the latest commit status is failing.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Queue reflects real status after Q48/Q49.
+- No duplicate TODOs.
+- Next work is ordered.
+- Multi-topic commit is documented as a review risk.
+
+### Notes
+
+- Date: 2026-06-19
+- Changed files:
+  - `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+- Risk:
+  - Q49 is not present in the current queue snapshot, so the reconciliation doc marks it blocked instead of inventing an implementation status.
+- Next step:
+  - `Q51 - Fix Vercel status blocker caused by GitHub commit email settings`
+
+## Q51 - Fix Vercel status blocker caused by GitHub commit email settings
+
+Status: PARTIAL
+Commit suggestion: `docs(qa): document vercel commit email fix`
+Priority: P0
+Token budget: low
+
+### Why
+
+- The latest commit status for `8fb6141` points to a Vercel failure tied to GitHub commit email settings.
+- Future analytics work should not keep hitting the same deploy/status blocker.
+
+### Scope only
+
+- `docs/qa/VERCEL_STATUS_EMAIL_FIX.md`
+- optionally docs-only changes
+- no analytics feature changes
+
+### Do
+
+1. Record `git config user.name`, `git config user.email`, and recent commit author emails.
+2. Determine whether the latest commits use an email GitHub/Vercel rejects.
+3. Document the remediation path: verified email or GitHub no-reply email.
+4. Explain how to create a new small commit and push it after fixing local git config.
+5. Do not rewrite history unless explicitly chosen by the operator.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- Vercel email/status blocker has exact fix instructions.
+- Future commits should not repeat the same failure.
+- No analytics logic changed.
+
+### Notes
+
+- 2026-06-19
+- Current local HEAD:
+  - `3b488f6228846faeb7c53fc7efef61a0ae64df35`
+- Current local identity:
+  - `Ivan Jovicic <ivanjovicic1986@gmail.com>`
+- Files changed:
+  - `docs/qa/VERCEL_STATUS_EMAIL_FIX.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` pass
+  - `cd Klijent/clientapp && npm run build` pass
+- Risk:
+  - GitHub account verification and live Vercel status still need to be confirmed before calling the blocker fully resolved
+- Next step:
+  - `Q52 - Review and harden Supplier Negotiation Pack MVP`
+
+## Q52 - Review and harden Supplier Negotiation Pack MVP
+
+Status: TODO
+Commit suggestion: `test(analytics): harden supplier negotiation pack`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- The latest multi-topic commit added Supplier Negotiation Pack behavior to supplier decision reports.
+- This decision-support surface must never imply fake recommendations, hidden warnings, or blocked advice that still looks actionable.
+
+### Scope only
+
+- supplier decision report endpoint and tests
+- SupplierDecisionReport component and tests
+- `docs/qa/SUPPLIER_NEGOTIATION_PACK_REVIEW.md`
+- small fixes only if obvious
+
+### Do
+
+1. Verify backend negotiation pack section, cache key, fallback warning, missing-cost warning, and blocked final advice.
+2. Verify frontend copy button, fallback state, warning visibility, and blocked final advice styling.
+3. Add clipboard-safe tests if missing.
+4. Document known limitations and follow-ups.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecision"`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run SupplierDecisionReport`
+
+### Acceptance
+
+- Supplier Negotiation Pack cannot imply fake actionable advice.
+- Fallback/missing-cost warnings remain visible.
+- Copy UX is safe.
+- Queue updated.
+
+## Q53 - Audit Replenishment/OOS decision workflow trust states
+
+Status: TODO
+Commit suggestion: `docs(qa): audit replenishment oos workflow`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- Replenishment/OOS workflow is high-impact and can cause overstock or missed sales if trust states are unclear.
+- The MVP must clearly distinguish real OOS signal, estimated lost sales, low-confidence demand baseline, missing stock data, and stale inventory refresh.
+
+### Scope only
+
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- small tests/fixes only
+- no new forecasting engine
+
+### Do
+
+1. Identify all OOS/replenishment signals.
+2. Verify confidence, stale-data warning, missing-stock warning, estimate labels, and nullable impact behavior.
+3. Confirm the UI does not present stale or insufficient data as green.
+4. Add focused tests for missing baseline, stale refresh, and insufficient data.
+5. Document audit findings and follow-up items.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run relevant inventory/product tests`
+
+### Acceptance
+
+- OOS/replenishment workflow is safe for MVP.
+- Estimates are labelled.
+- Missing data does not become 0.
+- Queue updated.
+
+## Q54 - Audit Markdown Optimizer MVP safety and trust boundaries
+
+Status: TODO
+Commit suggestion: `docs(qa): audit markdown optimizer mvp`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- Markdown optimizer can strongly influence pricing decisions.
+- MVP wording must not look like guaranteed profit optimization when it is based on rule-based or pre/post signals.
+
+### Scope only
+
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+- small tests/fixes only
+- no new ML or forecasting model
+
+### Do
+
+1. Identify markdown optimizer surfaces.
+2. Verify wording emphasizes signal/proposal/estimate, not guaranteed optimization.
+3. Verify no-fake rules: missing cost, sparse sales, missing baseline, stale data.
+4. Verify outcome links and nullable impact behavior.
+5. Add focused tests for missing cost, sparse sales, and baseline blocking.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run relevant markdown/product/decision tests`
+
+### Acceptance
+
+- Markdown optimizer MVP cannot be mistaken for a guaranteed optimizer.
+- Missing data blocks or downgrades recommendation.
+- Tests cover no-fake-money states.
+- Queue updated.
+
+## Q55 - Add KPI methodology consistency review and tests
+
+Status: TODO
+Commit suggestion: `docs(qa): review kpi methodology consistency`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- The retail KPI roadmap introduces many metrics and the app must avoid inconsistent formulas between pages, reports, supplier, inventory, and the decision board.
+
+### Scope only
+
+- `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`
+- tests for shared formula helpers if present
+- no broad formula rewrite
+
+### Do
+
+1. List current KPI formulas used in code and docs.
+2. Compare them against the retail KPI roadmap.
+3. Identify formula, naming, denominator, and unit mismatches.
+4. Add helper tests for zero/null denominator behavior if helpers exist.
+5. Document consolidation plan if formulas are duplicated.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- KPI formula risks are documented.
+- Missing denominator does not become 0.
+- Any small tests added are focused.
+- Queue updated.
+
+## Q56 - Close Analytics production readiness checklist
+
+Status: TODO
+Commit suggestion: `docs(qa): close analytics production readiness status`
+Priority: P0
+Token budget: low/medium
+
+### Why
+
+- The production readiness checklist should become evidence-based, not just aspirational.
+- It needs a final PASS/WARN/FAIL/NOT TESTED status per item.
+
+### Scope only
+
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- no feature code
+
+### Do
+
+1. Review checklist items and mark each PASS, WARN, FAIL, or NOT TESTED.
+2. Add evidence for deploy proof, backend health, frontend smoke, no-fake-zero/no-fake-green, protected writes, supplier negotiation pack, OOS workflow, markdown optimizer, observability, and demo reset safety.
+3. Add a final recommendation: Ready for internal pilot, Ready with warnings, or Not ready.
+4. Update the queue.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Production readiness status is evidence-based.
+- Remaining risks are explicit.
+- Queue updated.
