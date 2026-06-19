@@ -1572,7 +1572,22 @@ Evidence:
 
 ## Q28 - Protect analytics action write endpoints
 
-Status: TODO
+Status: DONE
+Commit suggestion: `fix(security): protect analytics action write endpoints`
+Priority: P0
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsEndpointsTests"` - pass
+- Remaining risk:
+  - Read-only analytics routes remain public by design, and there is still no existing frontend capability/admin-key pattern for action-write visibility to reuse safely.
 
 ## Q29 - Executive Decision Board hardening tests
 
