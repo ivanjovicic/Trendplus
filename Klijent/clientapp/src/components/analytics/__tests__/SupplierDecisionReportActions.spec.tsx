@@ -217,4 +217,25 @@ describe("SupplierDecisionReportActions", () => {
 
     expect(buildSummaryMock.mock.calls[0][0].rows.some((row: { section?: string }) => row.section === "supplier_negotiation_pack")).toBe(true);
   });
+
+  it("shows a copy failure message when the clipboard fallback cannot copy the summary", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+    const execCommandMock = vi.fn(() => false);
+    Object.defineProperty(document, "execCommand", {
+      value: execCommandMock,
+      configurable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Kopiraj sažetak" }));
+
+    expect(await screen.findByText("Kopiranje sažetka nije uspelo. Sažetak ostaje dostupan za pregled.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kopiraj sažetak" })).toBeInTheDocument();
+    expect(execCommandMock).toHaveBeenCalledTimes(1);
+  });
 });

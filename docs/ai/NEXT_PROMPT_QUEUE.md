@@ -2158,7 +2158,7 @@ Token budget: low
 
 ## Q52 - Review and harden Supplier Negotiation Pack MVP
 
-Status: TODO
+Status: DONE
 Commit suggestion: `test(analytics): harden supplier negotiation pack`
 Priority: P1
 Token budget: medium
@@ -2196,6 +2196,29 @@ Token budget: medium
 - Fallback/missing-cost warnings remain visible.
 - Copy UX is safe.
 - Queue updated.
+
+### Notes
+
+- 2026-06-19
+- Current local HEAD before this task commit:
+  - `7a84848ac234ffd1e6029af01daafd1ae98f6fa8`
+- Files changed:
+  - `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`
+  - `docs/qa/SUPPLIER_NEGOTIATION_PACK_REVIEW.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx` pass
+  - `cd Klijent/clientapp && npm run test -- --run SupplierDecisionReport` pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass with existing repo warnings
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecision"` pass
+- Risk:
+  - the browser copy fallback still depends on `document.execCommand("copy")`, but it now fails safely instead of pretending success
+- Next step:
+  - `Q53 - Audit Replenishment/OOS decision workflow trust states`
 
 ## Q53 - Audit Replenishment/OOS decision workflow trust states
 

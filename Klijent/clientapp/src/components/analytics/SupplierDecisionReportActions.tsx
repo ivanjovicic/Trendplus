@@ -20,6 +20,8 @@ type SupplierDecisionReportActionsProps = {
   durableReportHref?: string | null;
 };
 
+const COPY_FAILURE_MESSAGE = "Kopiranje sažetka nije uspelo. Sažetak ostaje dostupan za pregled.";
+
 function readPayloadValue(payload: ResolvedAnalyticsTablePayload | null, key: string): string | null {
   if (!payload) return null;
   const fromMetadata = payload.metadata.find((entry) => entry.key === key)?.value;
@@ -111,14 +113,21 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       return;
     }
 
+    if (typeof document.execCommand !== "function") {
+      throw new Error(COPY_FAILURE_MESSAGE);
+    }
+
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.style.position = "fixed";
     textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
     document.body.removeChild(textarea);
+    if (!copied) {
+      throw new Error(COPY_FAILURE_MESSAGE);
+    }
   };
 
   const run = async (type: "durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | "queue") => {
@@ -218,6 +227,8 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     } catch (reason) {
       const message = type === "queue"
         ? getAnalyticsActionWriteErrorMessage(reason)
+        : type === "copy"
+          ? COPY_FAILURE_MESSAGE
         : reason instanceof Error
           ? reason.message
           : "Izvoz izveštaja nije uspeo.";
