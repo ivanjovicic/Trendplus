@@ -233,7 +233,9 @@ export default function InventoryPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setSuppliers([]);
+        if (!cancelled) {
+          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+        }
       });
     return () => { cancelled = true; };
   }, [selectedStoreId, selectedSupplierId]);

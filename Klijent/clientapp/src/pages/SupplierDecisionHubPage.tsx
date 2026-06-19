@@ -230,7 +230,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
   useEffect(() => {
     const loadSeasons = async () => {
-      try { setSeasons(await getSezone()); } catch { setSeasons([]); }
+      try {
+        setSeasons(await getSezone());
+      } catch {
+        // Preserve the last known season list on transient failures instead of faking an empty filter set.
+      }
     };
     void loadSeasons();
   }, []);

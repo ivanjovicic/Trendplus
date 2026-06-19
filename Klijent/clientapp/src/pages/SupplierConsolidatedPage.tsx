@@ -127,7 +127,11 @@ export default function SupplierConsolidatedPage() {
     let cancelled = false;
     getStores(true)
       .then((items) => { if (!cancelled) setStores(items); })
-      .catch(() => { if (!cancelled) setStores([]); });
+      .catch(() => {
+        if (!cancelled) {
+          // Preserve the last known store list on transient failures instead of faking an empty filter set.
+        }
+      });
     return () => { cancelled = true; };
   }, [canonicalFilters.dataScope]);
 
@@ -135,7 +139,11 @@ export default function SupplierConsolidatedPage() {
     let cancelled = false;
     getSupplierFilters(canonicalFilters.fromDate, canonicalFilters.toDate, true, canonicalFilters.storeId)
       .then((items) => { if (!cancelled) setSuppliers(items); })
-      .catch(() => { if (!cancelled) setSuppliers([]); });
+      .catch(() => {
+        if (!cancelled) {
+          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+        }
+      });
     return () => { cancelled = true; };
   }, [canonicalFilters.fromDate, canonicalFilters.storeId, canonicalFilters.toDate, canonicalFilters.dataScope]);
 

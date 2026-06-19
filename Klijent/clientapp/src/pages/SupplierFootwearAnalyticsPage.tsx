@@ -201,7 +201,11 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
 
   useEffect(() => {
     const loadVendors = async () => {
-      try { setVendors(await getDobavljaci()); } catch { setVendors([]); }
+      try {
+        setVendors(await getDobavljaci());
+      } catch {
+        // Preserve the last known vendor list on transient failures instead of faking an empty filter set.
+      }
     };
     void loadVendors();
   }, []);

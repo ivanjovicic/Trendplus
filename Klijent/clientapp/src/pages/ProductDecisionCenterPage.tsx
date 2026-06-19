@@ -572,7 +572,9 @@ export default function ProductDecisionCenterPage() {
         const items = await getStores();
         if (!cancelled) setStores(items);
       } catch {
-        if (!cancelled) setStores([]);
+        if (!cancelled) {
+          // Preserve the last known store list on transient failures instead of faking an empty filter set.
+        }
       }
     })();
     return () => {
@@ -587,7 +589,9 @@ export default function ProductDecisionCenterPage() {
         const items = await getSupplierFilters(fromDate, toDate, true, storeId);
         if (!cancelled) setSuppliers(items);
       } catch {
-        if (!cancelled) setSuppliers([]);
+        if (!cancelled) {
+          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+        }
       }
     })();
     return () => {

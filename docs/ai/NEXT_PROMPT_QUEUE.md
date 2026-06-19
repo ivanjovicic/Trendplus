@@ -1778,3 +1778,43 @@ Evidence:
 
 Next step:
 - no queued follow-up task yet; revisit the same forbidden-state pattern if another analytics write surface is added
+
+## Q38 - Audit analytics screens for unknown regression risks and fake-success states
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_REGRESSION_RISK_AUDIT.md`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Remaining risk:
+  - `?? 0` / `|| 0` patterns still exist in many analytics surfaces, but the audited ones were either intentional derived defaults or already protected by meta/error states
+  - follow-up visibility for ancillary filter refresh failures is still useful even though the fake-empty behavior is now reduced
+
+Next step:
+- Q39 - Add visible warnings for ancillary filter/list refresh failures
+
+## Q39 - Add visible warnings for ancillary filter/list refresh failures
+
+Status: TODO
+
+Next step:
+- surface a small warning banner when store/supplier/season option fetches fail, so users know the list may be stale instead of only preserving the previous values
+
+## Q40 - Review remaining numeric fallbacks on analytics charts
+
+Status: TODO
+
+Next step:
+- review the remaining `?? 0` / `|| 0` cases on analytics charts and derived panels to confirm each one is a safe display default and not a hidden fake-success path
