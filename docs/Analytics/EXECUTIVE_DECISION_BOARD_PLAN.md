@@ -1,6 +1,6 @@
 # Executive Decision Board Plan
 
-Updated: 2026-06-18
+Updated: 2026-06-19
 
 ## Purpose
 
@@ -295,6 +295,39 @@ Possible server-side benefits:
 
 Phase 2 should only be added after Phase 1 proves the section model and ranking rules are stable.
 
+### Backend aggregate contract sketch
+
+The backend aggregate should stay read-only and should not replace Phase 1 until the board card model is stable.
+
+Suggested response shape:
+
+| Field | Purpose |
+|---|---|
+| `sections` | Seven board lanes with cards already ranked server-side |
+| `metrics` | Executive summary counters for urgent, impact, blockers and action states |
+| `generatedAtUtc` | Freshness anchor for the whole board snapshot |
+| `periodFrom` / `periodTo` | Shared decision window for all lanes |
+| `overallDataQualityStatus` | Combined trust status for the snapshot |
+| `recommendationNote` | Short explanation of board composition and fallback behavior |
+| `warnings` | Snapshot-level warning codes if some lanes are partial or stale |
+
+Recommended server-side responsibilities:
+
+- compose from the same source modules used in Phase 1
+- preserve nullable confidence and nullable impact
+- keep stale data and data-quality blockers visible
+- deduplicate overlapping cards from the same source key
+- rank cards with a small shared ordering function rather than ad hoc frontend sorting
+
+Recommended server-side tests:
+
+- aggregate endpoint returns all seven sections
+- urgent lane still prioritizes blockers and strong opportunities
+- `insufficient_data` and missing impact remain nullable, not zero
+- action-linked cards keep `alreadyInAction` / `alreadyClosed` states
+- response metadata stays honest when one source is partial or missing
+- source link mapping still points back to the originating screen
+
 ## No-fake rules
 
 1. Never show `0 RSD` for unknown impact.
@@ -364,6 +397,7 @@ Phase 2 should only be added after Phase 1 proves the section model and ranking 
 - No broad auth or workflow redesign.
 - No full backend aggregate in Phase 1 unless explicitly promoted later.
 - No supplier/inventory/product algorithm changes.
+- No backend aggregate endpoint until Phase 1 composition proves the lane model in production.
 
 ## Acceptance
 
@@ -375,4 +409,3 @@ The plan is complete when:
 - prioritization rules protect against fake confidence and fake zero
 - Phase 1 composition and Phase 2 aggregate paths are both documented
 - the board reuses current modules instead of inventing a new decision system
-

@@ -1648,4 +1648,17 @@ Priority: P1
 
 ## Q32 - Decision Board backend aggregate plan
 
-Status: TODO
+Status: DONE
+Commit suggestion: `docs(analytics): plan decision board backend aggregate path`
+Priority: P2
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `docs/analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+- Remaining risk:
+  - The backend aggregate path is still a Phase 2 design only; Phase 1 frontend composition remains the shipped board path until a server-side aggregate is explicitly implemented.
