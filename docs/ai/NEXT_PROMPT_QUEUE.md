@@ -1830,10 +1830,28 @@ Next step:
 
 ## Q40 - Analytics observability/correlation-id hardening
 
-Status: TODO
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_OBSERVABILITY_REVIEW.md`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsRefreshStatusBanner.spec.tsx`
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run AnalyticsRefreshStatusBanner` - pass
+- Remaining risk:
+  - refresh-status still depends on recent run history for visible correlation IDs, but the shared API layer now preserves IDs whenever the backend emits them
 
 Next step:
-- make correlation IDs visible across backend logs, live smoke docs, and frontend error states so partial failures are easier to trace
+- Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
 
 ## Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
 

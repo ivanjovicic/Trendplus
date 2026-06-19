@@ -351,27 +351,52 @@ function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T 
   );
 }
 
+type ApiErrorPayload = {
+  detail?: string;
+  title?: string;
+  message?: string;
+  correlationId?: string;
+};
+
+function appendCorrelationId(message: string, correlationId?: string | null): string {
+  const trimmedCorrelationId = correlationId?.trim();
+  if (!trimmedCorrelationId) {
+    return message;
+  }
+
+  return message.includes(trimmedCorrelationId)
+    ? message
+    : `${message} (Correlation ID: ${trimmedCorrelationId})`;
+}
+
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
   const contentType = res.headers.get("content-type") ?? "";
+  const headerCorrelationId = res.headers.get("X-Correlation-ID") ?? res.headers.get("x-correlation-id") ?? null;
 
   if (contentType.includes("application/json")) {
-    const payload = (await res.json().catch(() => null)) as
-      | { detail?: string; title?: string; message?: string }
-      | null;
+    const payload = (await res.json().catch(() => null)) as ApiErrorPayload | null;
     const detail = payload?.detail ?? payload?.message ?? payload?.title;
+    const correlationId = payload?.correlationId ?? headerCorrelationId;
     if (detail && fallbackMessage) {
-      return detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
+      const normalizedDetail = detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
+      return appendCorrelationId(normalizedDetail, correlationId);
     }
-    if (detail) return detail;
+    if (detail) return appendCorrelationId(detail, correlationId);
+    if (correlationId) {
+      return appendCorrelationId(fallbackMessage ?? `HTTP ${res.status}`, correlationId);
+    }
   }
 
   const text = (await res.text()).trim();
   if (text && fallbackMessage) {
-    return text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`;
+    return appendCorrelationId(
+      text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`,
+      headerCorrelationId
+    );
   }
 
-  if (text) return text;
-  return fallbackMessage ?? `HTTP ${res.status}`;
+  if (text) return appendCorrelationId(text, headerCorrelationId);
+  return appendCorrelationId(fallbackMessage ?? `HTTP ${res.status}`, headerCorrelationId);
 }
 
 export async function checkAnalyticsHealth(): Promise<{
