@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import SupplierDecisionHubPage from "../SupplierDecisionHubPage";
@@ -35,6 +35,13 @@ function rankingItem(id: number, revenue = 100_000) {
     supplierQualityIndex: 72,
     recommendationCode: "EXPAND_SELECTIVELY",
     confidenceScore: 74,
+  };
+}
+
+function rankingItemWithOverrides(id: number, revenue = 100_000, overrides: Record<string, unknown> = {}) {
+  return {
+    ...rankingItem(id, revenue),
+    ...overrides,
   };
 }
 
@@ -292,5 +299,28 @@ describe("SupplierDecisionHubPage", () => {
 
     expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
+  });
+  it("keeps missing supplier confidence unavailable instead of inventing a 0% value", async () => {
+    installFetchMock((url) => ({
+      page: Number(url.searchParams.get("page") ?? "1"),
+      pageSize: 100,
+      totalCount: 1,
+      items: [
+        rankingItemWithOverrides(1, 100_000, {
+          confidenceScore: undefined,
+          recommendationCode: "HOLD",
+        }),
+      ],
+      dataNote: summaryResponse.dataNote,
+    }));
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: "Detalji" }).length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect((await screen.findAllByText(/backend nije dostavio confidence\/reliability signal/i)).length).toBeGreaterThan(0);
   });
 });

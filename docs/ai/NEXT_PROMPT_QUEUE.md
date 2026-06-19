@@ -1902,10 +1902,29 @@ Next step:
 
 ## Q43 - Supplier confidence contract mapping
 
-Status: TODO
+Status: DONE
 
 Next step:
 - map supplier summary, list, and report confidence semantics onto the shared contract without inventing new values in the UI
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `58165dc325621a84c5327705f2fe3554bca083d6`
+- Changed files:
+  - `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`
+  - `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`
+  - `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/SupplierDecisionHubPage.spec.tsx src/services/__tests__/supplierDecisionReport.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - Supplier ranking sorting still uses an internal `?? 0` fallback for ordering only; visible confidence output remains gated by backend presence.
+- Next step:
+  - `Q44 - Inventory decision confidence mapping`
 
 ## Q44 - Inventory decision confidence mapping
 
