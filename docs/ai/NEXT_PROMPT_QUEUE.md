@@ -2447,7 +2447,7 @@ Token budget: low/medium
 
 ## Q57 - Action Impact Ledger Phase 1 implementation spec
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(analytics): specify action impact ledger phase 1`
 Priority: P0
 Type: docs/spec
@@ -2491,6 +2491,20 @@ Token budget: medium
 - Phase 1 ledger spec is implementation-ready.
 - Required fields, DTO changes, migration options, and no-fake rules are explicit.
 - No application code changed.
+
+### Notes
+
+- Date: 2026-06-20
+- HEAD SHA: pending final commit
+- Changed files:
+  - `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` pass
+- Risk:
+  - The spec intentionally recommends a no-migration Phase 1 projection. If the next implementation task needs searchable ledger fields, we will need to revisit the migration options before adding columns.
+- Next step:
+  - Q58 - Action Impact Ledger Phase 1 backend implementation
 
 ## Q58 - Action Impact Ledger Phase 1 backend implementation
 
