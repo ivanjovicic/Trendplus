@@ -2898,3 +2898,54 @@ Token budget: medium
 
 - Release checklist v2 is evidence-based and ready to use after Q57-Q65 land.
 - Remaining risks and rollback expectations are explicit.
+
+## Q67 - Add automated encoding/mojibake guardrail
+
+Status: TODO
+Commit suggestion: `chore(ai): add encoding mojibake guardrail`
+Priority: P1
+Type: tooling/docs
+Token budget: medium
+
+### Why
+
+- Encoding regressions are still a repeated repo risk.
+- The current guardrail script protects analytics business-logic boundaries, but not mojibake drift.
+
+### Scope only
+
+- add a script to scan docs and frontend source for mojibake
+- wire it into frontend guardrails or CI only if safe
+- fail with `file:line`
+- do not alter business logic
+- include tests or a manual sample if feasible
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`
+- `Klijent/clientapp/package.json`
+
+### Do
+
+1. Design or implement the smallest safe script that scans docs and frontend source for mojibake patterns.
+2. Ensure the output includes `file:line`.
+3. Integrate it into `check:analytics-guardrails` or CI only if that integration is low-risk.
+4. Keep the task scoped to tooling and documentation.
+5. Add tests or a manual verification sample if practical.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- Encoding/mojibake guardrail exists or is safely wired for a future merge path.
+- Output is actionable with `file:line`.
+- No application business logic changed.

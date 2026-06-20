@@ -2,6 +2,12 @@
 
 Ovaj fajl je za Codex, Copilot agent mode i druge AI agente koji menjaju repo.
 
+Pre rada obavezno pogledaj i kanonske AI vodiče:
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+
 ## Misija
 
 Trendplus treba da postane pouzdan pilot/prodajni proizvod za maloprodaju obuće/odeće.
