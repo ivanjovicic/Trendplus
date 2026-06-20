@@ -2627,7 +2627,7 @@ Token budget: medium
 
 ## Q60 - Confidence calibration audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): audit confidence calibration`
 Priority: P1
 Type: docs/audit
@@ -2666,6 +2666,20 @@ Token budget: medium
 ### Acceptance
 
 - Calibration audit shows what can be measured now and what still blocks trustworthy calibration.
+
+### Notes
+
+- Date: 2026-06-21
+- Commit SHA: 43f5ca9
+- Changed files:
+  - `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+- Risk:
+  - calibration is still descriptive on the main recommendation surfaces and should not be treated as outcome-validated yet
+- Next step:
+  - Q61 - Pilot operator workflow runbook
 - No application code is required unless a tiny helper is clearly safe.
 
 ## Q61 - Pilot operator workflow runbook
