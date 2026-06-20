@@ -21,8 +21,22 @@ public static class RedisEndpoints
         })
         .WithName("GetRedisStatus");
 
-        group.MapPost("/toggle", (IAnalyticsCacheService cache) =>
+        group.MapPost("/toggle", (
+            IAnalyticsCacheService cache,
+            HttpContext httpContext,
+            IConfiguration configuration) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (access is AdminAccessDecision.Forbidden)
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
             cache.SetRedisEnabled(!cache.IsRedisEnabled);
             return Results.Ok(new RedisStatusDto(
                 Enabled: cache.IsRedisEnabled,

@@ -561,7 +561,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         const items = await getStores(true);
         setStores(items);
       } catch {
-        setStores([]);
+        // Preserve the last known store list on transient failures instead of faking an empty filter set.
       }
     };
 

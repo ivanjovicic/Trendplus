@@ -1,68 +1,79 @@
 # Trendplus AI Standards README
 
-## Fajlovi
+## Start here
 
-Preporučena struktura:
+After `AGENTS.md` and `.github/copilot-instructions.md`, read:
 
-```text
-.github/copilot-instructions.md
-AGENTS.md
-docs/ai/ANALYTICS_STANDARDS.md
-docs/ai/COMMON_FAILURES_AND_FIXES.md
-docs/ai/CODEX_TASK_CHECKLIST.md
-docs/ai/PROMPT_TEMPLATES.md
-docs/ai/COMMIT_STANDARDS.md
-docs/ai/BACKEND_STANDARDS.md
-docs/ai/FRONTEND_UX_STANDARDS.md
-docs/ai/AI_WORKFLOW_AND_TOKEN_BUDGET.md
-docs/analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md
-```
+1. `docs/ai/AGENT_START_HERE.md`
+2. `docs/ai/CODEX_TASK_CHECKLIST.md`
+3. task-specific standards and module docs
 
-## Ko čita šta
+## Canonical doc map
 
-GitHub Copilot:
-```text
-.github/copilot-instructions.md
-```
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/CODEX_TASK_CHECKLIST.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/BACKEND_STANDARDS.md`
+- `docs/ai/FRONTEND_UX_STANDARDS.md`
+- `docs/ai/COMMIT_STANDARDS.md`
+- `docs/ai/AI_WORKFLOW_AND_TOKEN_BUDGET.md`
+- `docs/ai/PROMPT_TEMPLATES.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 
-Codex/agents:
-```text
-AGENTS.md
-docs/ai/*
-```
+## Architecture and boundaries
 
-## Najkraći prompt za buduće taskove
+Use `docs/ai/ARCHITECTURE_BOUNDARIES.md` to identify:
 
-```text
-Pre izmene pročitaj .github/copilot-instructions.md i AGENTS.md.
-Poštuj Trendplus analytics standarde:
-- no fake zero
-- backend source of truth
-- shared formatteri
-- TrustHeader/ErrorState/EmptyState
-- UTF-8 bez mojibake
-- theme tokens
-- worker/refresh transparentnost
-- mali scope i stop rules
-Na kraju pokreni relevantne build/check/test komande.
-```
+- the owning backend layer
+- the owning frontend layer
+- shared UI/helpers
+- module tests
+- routes and endpoints that should not be changed casually
 
-## Kada dodavati nove standarde
+## Encoding and text safety
 
-Dodaj standard kada se greška ponovi bar drugi put:
-- period fallback
-- encoding
-- formatter drift
-- missing MV
-- fake zero
-- worker status
-- report export failure
-- API URL deployment bug
+Use `docs/ai/ENCODING_AND_TEXT_SAFETY.md` before editing Serbian UI copy or docs.
 
-Ne zatrpavati standarde pravilima koja nemaju realnu vrednost za ovaj repo.
+That doc covers:
 
-## Production Readiness (Analytics)
+- UTF-8 expectations
+- mojibake search patterns
+- safe text-only fix protocol
+- future encoding guardrail plan
 
-Pre merge-a za analytics promene obavezno koristi pre-merge checklist:
+## Common failure playbook
 
-- `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+Use `docs/ai/COMMON_FAILURES_AND_FIXES.md` when you see recurring failures such as:
+
+- fake zero / fake green
+- empty vs error confusion
+- route lazy-import test breakage
+- stale Vercel bundle
+- protected write fake success
+- frontend recomputing backend business decisions
+
+## When to update docs
+
+Update docs when:
+
+- a failure repeats
+- architecture changes
+- queue status changes
+- a new module becomes source of truth
+- a deploy or ops mistake becomes a recurring pattern
+
+## Do not duplicate standards
+
+- Keep canonical rules in one detailed doc and link to it from lighter docs.
+- `AGENTS.md` and `.github/copilot-instructions.md` should stay short and point to canonical docs.
+- Prefer updating the central doc over creating a contradictory duplicate.
+
+## Production and queue references
+
+- Queue workflow: `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Analytics roadmap: `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- Production readiness: `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`

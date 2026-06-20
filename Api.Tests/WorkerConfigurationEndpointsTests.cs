@@ -48,13 +48,25 @@ public sealed class WorkerConfigurationEndpointsTests
     }
 
     [Fact]
-    public async Task StartWorker_AllowsRequest_WhenNoAdminKeyIsConfigured()
+    public async Task StartWorker_RejectsRequest_WhenNoAdminKeyIsConfigured()
     {
-        // When ADMIN_API_KEY / Admin:ApiKey is not set, the endpoint is open (internal tool).
         await using var host = await WorkerConfigurationTestHost.CreateAsync(withAdminKey: false);
 
         using var response = await host.Client.PostAsync("/api/workers/TrendIngestionWorker/start", content: null);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task StartWorker_RejectsRequest_WithWrongAdminKey()
+    {
+        await using var host = await WorkerConfigurationTestHost.CreateAsync();
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/workers/TrendIngestionWorker/start");
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

@@ -34,6 +34,7 @@ import {
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
 import { fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -229,7 +230,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
   useEffect(() => {
     const loadSeasons = async () => {
-      try { setSeasons(await getSezone()); } catch { setSeasons([]); }
+      try {
+        setSeasons(await getSezone());
+      } catch {
+        // Preserve the last known season list on transient failures instead of faking an empty filter set.
+      }
     };
     void loadSeasons();
   }, []);
@@ -770,7 +775,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       });
       setQueueMessage(alreadyQueued ? "Akcija je već u centralnom redu." : "Akcija dodata u centralni red.");
     } catch (reason) {
-      setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
+      setQueueMessage(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }

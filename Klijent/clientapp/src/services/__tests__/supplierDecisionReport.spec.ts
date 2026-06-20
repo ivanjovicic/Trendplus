@@ -98,6 +98,75 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.metadata.some((item) => item.key === "dataFreshness" && String(item.value).toLowerCase().includes("sve"))).toBe(true);
   });
 
+  it("keeps missing supplier confidence unavailable in report rows", () => {
+    const payload = buildSupplierDecisionReportPayload({
+      periodLabel: "90d",
+      fromDate: "2026-05-01",
+      toDate: "2026-07-30",
+      supplierLabel: "Svi dobavljaci",
+      dataScopeLabel: "all",
+      freshnessStatus: "fresh",
+      summary: {
+        from: "2026-05-01T00:00:00Z",
+        to: "2026-07-30T23:59:59Z",
+        supplierCount: 1,
+        fullPriceRevenueShare: 0.6,
+        fullPriceSellthrough: 0.4,
+        markdownRevenueShare: 0.2,
+        preMarkdownMarginPct: 0.31,
+        capitalAtRisk: 21000,
+        topGrowSuppliers: [],
+        topRiskSuppliers: [],
+        keyInsights: [],
+      },
+      trustMetadata: {
+        requestedPeriodFrom: "2026-05-01T00:00:00Z",
+        requestedPeriodTo: "2026-07-30T23:59:59Z",
+        requestedFrom: "2026-05-01T00:00:00Z",
+        requestedTo: "2026-07-30T23:59:59Z",
+        effectiveFrom: "2026-05-01T00:00:00Z",
+        effectiveTo: "2026-07-30T23:59:59Z",
+        requestedDataset: "90d",
+        effectiveDataset: "90d",
+        effectivePeriodLabel: "Poslednjih 90 dana",
+        dataCoverageStatus: "warning",
+        usedFallback: false,
+        lastRefreshAtUtc: "2026-07-31T05:30:00Z",
+        rowCount: 1,
+        ignoredRowCount: 0,
+        zeroRevenueRowsExcludedCount: 0,
+        missingSupplierNameCount: 0,
+        hasData: true,
+        hasExplicitDateRange: true,
+        recommendationAllowed: true,
+        noSilentFallback: true,
+        windowDays: 90,
+        dataScope: "all",
+        coverage: "window_90d",
+      },
+      scorecardMeta: {
+        success: true,
+        dataQualityStatus: "warning",
+      },
+      totalRevenue: 120000,
+      totalMarginContribution: 28000,
+      top5SharePct: 0.81,
+      supplierCounts: {
+        boost: 0,
+        keep: 0,
+        caution: 0,
+        reduce: 1,
+        insufficient: 0,
+      },
+      rows: [sampleRow({ status: "do_not_trust", confidenceAvailable: false, normalizedConfidence: 0 })],
+    });
+
+    const reduceRow = payload.rows.find((row) => row.section === "Smanji" && row.item === "Dobavljac A");
+
+    expect(reduceRow).toBeTruthy();
+    expect(reduceRow?.secondary).toContain("nije dostupno");
+  });
+
   it("adds warning section for insufficient data and fallback", () => {
     const payload = buildSupplierDecisionReportPayload({
       periodLabel: "30d",

@@ -25,6 +25,7 @@ import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
@@ -76,6 +77,18 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function resolveInventoryExpectedImpactRsd(row: InventoryRow): number | null {
+  if (row.estimatedValue != null) {
+    return row.estimatedValue;
+  }
+
+  if (row.nabavnaCena == null || row.kolicina == null) {
+    return null;
+  }
+
+  return row.nabavnaCena * row.kolicina;
+}
+
 export function buildInventorySignalActionSpec(row: InventoryRow): {
   sourceKey: string;
   title: string;
@@ -97,7 +110,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: "P2",
       description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -110,7 +123,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: isCritical ? "P1" : "P2",
       description: `${row.signalText}. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -122,7 +135,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: normalizedCover === "slow_stock" || normalizedCover === "slow" ? "P2" : "P3",
       description: `${row.signalText}. Artikal zahteva proveru sporog obrta i odluke o markdown/transfer akciji.`,
       dueAtUtc,
-      expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
     };
   }
 
@@ -133,7 +146,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
-    expectedImpactRsd: row.estimatedValueAmount ?? row.estimatedValue ?? null,
+    expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
   };
 }
 
@@ -232,7 +245,9 @@ export default function InventoryPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setSuppliers([]);
+        if (!cancelled) {
+          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+        }
       });
     return () => { cancelled = true; };
   }, [selectedStoreId, selectedSupplierId]);
@@ -551,11 +566,11 @@ export default function InventoryPage() {
       };
     }
 
-    void (async () => {
-      try {
-        const response = await getAnalyticsActionSourceStatuses({
-          items: sourceKeys.map((sourceKey) => ({
-            sourceType: "inventory",
+      void (async () => {
+        try {
+          const response = await getAnalyticsActionSourceStatuses({
+            items: sourceKeys.map((sourceKey) => ({
+              sourceType: "inventory",
             sourceKey,
           })),
         });
@@ -566,9 +581,9 @@ export default function InventoryPage() {
             .filter((item: { exists: boolean }) => item.exists)
             .map((item: { sourceKey: string }) => item.sourceKey),
         );
-      } catch (reason) {
+        } catch (reason) {
         if (!cancelled) {
-          setQueuedSuggestionKeys([]);
+          // Keep the last known queue state when the lookup fails so queued items do not look unqueued.
           console.warn("Neuspešna provera statusa inventory akcija po sourceKey.", reason);
         }
       }
@@ -748,7 +763,7 @@ export default function InventoryPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje u centralne akcije nije uspelo.");
+      setExportStatus(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }
@@ -827,18 +842,12 @@ export default function InventoryPage() {
   }
 
   function queueForecastRestock(item: ForecastDto["items"][number]) {
-    const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId)) ?? buildInventoryRow({
-      id: item.skuId,
-      naziv: `SKU #${item.skuId}`,
-      plu: null,
-      kolicina: 0,
-      minimalnaKolicina: Math.ceil(item.forecast7d),
-      nabavnaCena: 0,
-      estimatedValue: 0,
-      idObjekat: item.storeId,
-      idDobavljac: null,
-      velicina: item.sizeCode,
-    }, stores, suppliers);
+    const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId));
+    if (!row) {
+      setExportStatus("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.");
+      return;
+    }
+
     const suggestionKey = `forecast-${item.skuId}-${item.storeId}-${item.sizeCode}`;
     setActionWorkflow((current) => {
       const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
@@ -908,7 +917,7 @@ export default function InventoryPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setExportStatus(reason instanceof Error ? reason.message : "Dodavanje signalne akcije nije uspelo.");
+      setExportStatus(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
       setQueueBusyKey(null);
     }

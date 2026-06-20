@@ -6,6 +6,12 @@ namespace Api.Services.Startup;
 
 public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 {
+    internal sealed record LocalApiProbeResult(
+        bool Ready,
+        string ProbePath,
+        int AttemptCount,
+        string? LastSignal);
+
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
     private readonly ILogger<AnalyticsCachePrewarmHostedService> _logger;
@@ -25,6 +31,28 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            await RunPrewarmOnceAsync(stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                "Analytics cache prewarm aborted unexpectedly and will be skipped. Reason={Reason}",
+                ex.GetBaseException().Message);
+        }
+    }
+
+    internal async Task RunPrewarmOnceAsync(
+        CancellationToken stoppingToken,
+        HttpMessageHandler? handler = null,
+        Func<TimeSpan, CancellationToken, Task>? delayAsync = null)
+    {
+        delayAsync ??= static (delay, ct) => Task.Delay(delay, ct);
+
         var enabled = _configuration.GetValue<bool?>("AnalyticsPrewarm:Enabled") ?? !_environment.IsDevelopment();
         if (!enabled)
         {
@@ -34,19 +62,24 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 
         var initialDelaySeconds = Math.Max(0, _configuration.GetValue<int?>("AnalyticsPrewarm:InitialDelaySeconds") ?? 12);
         var requestTimeoutSeconds = Math.Max(5, _configuration.GetValue<int?>("AnalyticsPrewarm:RequestTimeoutSeconds") ?? 45);
+        var maxStartupProbeAttempts = Math.Max(1, _configuration.GetValue<int?>("AnalyticsPrewarm:MaxStartupProbeAttempts") ?? 5);
+        var startupProbeDelaySeconds = Math.Max(1, _configuration.GetValue<int?>("AnalyticsPrewarm:StartupProbeDelaySeconds") ?? 2);
 
         // Best-effort wait for the host to signal ApplicationStarted. This reduces
         // connection-refused races where the HTTP listener isn't bound yet.
-        var waitForAppStartedSeconds = Math.Max(1, _configuration.GetValue<int?>("AnalyticsPrewarm:WaitForApplicationStartedSeconds") ?? 30);
+        var waitForAppStartedSeconds = Math.Max(0, _configuration.GetValue<int?>("AnalyticsPrewarm:WaitForApplicationStartedSeconds") ?? 30);
         try
         {
-            var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            using var reg = _hostApplicationLifetime.ApplicationStarted.Register(() => tcs.TrySetResult(null));
-
-            var completed = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(waitForAppStartedSeconds), stoppingToken));
-            if (completed != tcs.Task)
+            if (waitForAppStartedSeconds > 0)
             {
-                _logger.LogWarning("Analytics cache prewarm: ApplicationStarted event did not fire within {TimeoutSeconds}s, continuing anyway.", waitForAppStartedSeconds);
+                var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                using var reg = _hostApplicationLifetime.ApplicationStarted.Register(() => tcs.TrySetResult(null));
+
+                var completed = await Task.WhenAny(tcs.Task, delayAsync(TimeSpan.FromSeconds(waitForAppStartedSeconds), stoppingToken));
+                if (completed != tcs.Task)
+                {
+                    _logger.LogWarning("Analytics cache prewarm: ApplicationStarted event did not fire within {TimeoutSeconds}s, continuing with startup probe.", waitForAppStartedSeconds);
+                }
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -56,7 +89,7 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(initialDelaySeconds), stoppingToken);
+            await delayAsync(TimeSpan.FromSeconds(initialDelaySeconds), stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -90,17 +123,44 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
             $"/api/analytics/daily-sales?fromDate={previousFrom}&toDate={previousTo}&dataScope=all&prewarm=1"
         };
 
+        using var httpClient = handler is null
+            ? new HttpClient()
+            : new HttpClient(handler, disposeHandler: false);
+        httpClient.Timeout = TimeSpan.FromSeconds(requestTimeoutSeconds);
+
+        LocalApiProbeResult startupProbe;
+        try
+        {
+            startupProbe = await WaitForLocalApiReadyAsync(
+                httpClient,
+                baseUri,
+                maxStartupProbeAttempts,
+                TimeSpan.FromSeconds(startupProbeDelaySeconds),
+                delayAsync,
+                stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!startupProbe.Ready)
+        {
+            _logger.LogWarning(
+                "Analytics cache prewarm skipped because local API was not ready after {AttemptCount} attempts. BaseUrl={BaseUrl} LastSignal={LastSignal}",
+                startupProbe.AttemptCount,
+                baseUri,
+                startupProbe.LastSignal ?? "no_response");
+            return;
+        }
+
         _logger.LogInformation(
-            "Analytics cache prewarm starting. BaseUrl={BaseUrl} From={FromDate} To={ToDate} PathCount={PathCount}",
+            "Analytics cache prewarm starting. BaseUrl={BaseUrl} ProbePath={ProbePath} From={FromDate} To={ToDate} PathCount={PathCount}",
             baseUri,
+            startupProbe.ProbePath,
             fromUtc,
             toUtc,
             paths.Length);
-
-        using var httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(requestTimeoutSeconds)
-        };
 
         foreach (var path in paths)
         {
@@ -111,6 +171,53 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
 
             await WarmPathAsync(httpClient, baseUri, path, stoppingToken);
         }
+    }
+
+    internal static async Task<LocalApiProbeResult> WaitForLocalApiReadyAsync(
+        HttpClient httpClient,
+        Uri baseUri,
+        int maxAttempts,
+        TimeSpan attemptDelay,
+        Func<TimeSpan, CancellationToken, Task> delayAsync,
+        CancellationToken stoppingToken)
+    {
+        var readyEndpointUnavailable = false;
+        string? lastSignal = null;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            stoppingToken.ThrowIfCancellationRequested();
+
+            var readyProbe = await TryProbePathAsync(httpClient, baseUri, "/ready", stoppingToken);
+            if (readyProbe.Success)
+            {
+                return new LocalApiProbeResult(true, "/ready", attempt, readyProbe.Signal);
+            }
+
+            lastSignal = readyProbe.Signal;
+            if (readyProbe.EndpointUnavailable)
+            {
+                readyEndpointUnavailable = true;
+            }
+
+            if (readyEndpointUnavailable)
+            {
+                var healthProbe = await TryProbePathAsync(httpClient, baseUri, "/health", stoppingToken);
+                if (healthProbe.Success)
+                {
+                    return new LocalApiProbeResult(true, "/health", attempt, healthProbe.Signal);
+                }
+
+                lastSignal = healthProbe.Signal;
+            }
+
+            if (attempt < maxAttempts)
+            {
+                await delayAsync(attemptDelay, stoppingToken);
+            }
+        }
+
+        return new LocalApiProbeResult(false, readyEndpointUnavailable ? "/health" : "/ready", maxAttempts, lastSignal);
     }
 
     private async Task WarmPathAsync(HttpClient httpClient, Uri baseUri, string path, CancellationToken stoppingToken)
@@ -147,10 +254,40 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
         {
             stopwatch.Stop();
             _logger.LogWarning(
-                ex,
-                "Analytics cache prewarm failed for {Path} after {ElapsedMs}ms.",
+                "Analytics cache prewarm failed for {Path} after {ElapsedMs}ms. Reason={Reason}",
                 requestUri.PathAndQuery,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                ex.GetBaseException().Message);
+        }
+    }
+
+    private static async Task<(bool Success, bool EndpointUnavailable, string Signal)> TryProbePathAsync(
+        HttpClient httpClient,
+        Uri baseUri,
+        string path,
+        CancellationToken stoppingToken)
+    {
+        var requestUri = new Uri(baseUri, path.TrimStart('/'));
+
+        try
+        {
+            using var response = await httpClient.GetAsync(requestUri, stoppingToken);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, false, $"{path}:{(int)response.StatusCode}");
+            }
+
+            var endpointUnavailable = response.StatusCode == System.Net.HttpStatusCode.NotFound
+                || response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed;
+            return (false, endpointUnavailable, $"{path}:{(int)response.StatusCode}");
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return (false, false, $"{path}:{ex.GetType().Name}:{ex.GetBaseException().Message}");
         }
     }
 

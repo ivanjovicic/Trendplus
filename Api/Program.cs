@@ -138,6 +138,7 @@ try
     }
     Console.WriteLine(
         $"Access import worker config: WorkerEnabled={accessImportWorkerEnabled} RegisterWorkerInWebProcess={(accessImportRegisterInWebProcess ?? true)} WillRegisterInWeb={registerAccessImportWorkerInWebProcess}");
+    var processStartTimeUtc = Process.GetCurrentProcess().StartTime.ToUniversalTime();
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -825,6 +826,88 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         return "render";
     }
 
+    string ResolveRuntimeCommitSha()
+    {
+        var commitSha = new[]
+        {
+            "RENDER_GIT_COMMIT",
+            "GIT_COMMIT_SHA",
+            "SOURCE_VERSION",
+            "Build:CommitSha",
+            "BUILD_COMMIT_SHA"
+        }
+        .Select(key => builder.Configuration[key])
+        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+        return string.IsNullOrWhiteSpace(commitSha) ? "unknown" : commitSha.Trim();
+    }
+
+    string ResolveRuntimeBuildTimeUtc()
+    {
+        var rawBuildTime = new[]
+        {
+            builder.Configuration["BUILD_TIME_UTC"],
+            builder.Configuration["Build:TimeUtc"],
+            builder.Configuration["Runtime:BuildTimeUtc"]
+        }
+        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+        if (!string.IsNullOrWhiteSpace(rawBuildTime))
+        {
+            if (DateTimeOffset.TryParse(rawBuildTime, CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedOffset))
+            {
+                return parsedOffset.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
+            }
+
+            if (DateTime.TryParse(rawBuildTime, CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var parsedDateTime))
+            {
+                return DateTime.SpecifyKind(parsedDateTime, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture);
+            }
+        }
+
+        return processStartTimeUtc.ToString("O", CultureInfo.InvariantCulture);
+    }
+
+    string ResolveRuntimeProviderName(HttpContext? context)
+    {
+        var explicitProvider = builder.Configuration["BACKEND_PROVIDER"];
+        if (!string.IsNullOrWhiteSpace(explicitProvider))
+        {
+            return explicitProvider.Trim().ToLowerInvariant() switch
+            {
+                "local" => "local",
+                "render" or "render.com" => "render",
+                "unknown" => "unknown",
+                _ => "unknown"
+            };
+        }
+
+        if (builder.Environment.IsDevelopment())
+        {
+            return "local";
+        }
+
+        if (builder.Configuration["RENDER_GIT_COMMIT"] is not null ||
+            builder.Configuration["RENDER_SERVICE_NAME"] is not null ||
+            builder.Configuration["RENDER_EXTERNAL_URL"] is not null ||
+            builder.Configuration["RENDER"] is not null ||
+            builder.Configuration["RENDER_SERVICE_ID"] is not null)
+        {
+            return "render";
+        }
+
+        var host = context?.Request.Host.Host ?? string.Empty;
+        if (host.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("::1", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("onrender.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return host.Contains("onrender.com", StringComparison.OrdinalIgnoreCase) ? "render" : "local";
+        }
+
+        return "unknown";
+    }
+
     IResult CheckLiveness(HttpContext context)
     {
         var readinessState = app.Services.GetRequiredService<StartupReadinessState>();
@@ -1132,12 +1215,27 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             ? Results.Ok(payload)
             : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
     }).AllowAnonymous();
+    app.MapGet("/api/runtime/version", (HttpContext context) =>
+    {
+        var payload = new
+        {
+            service = "trendplus-api",
+            environment = builder.Environment.EnvironmentName,
+            commitSha = ResolveRuntimeCommitSha(),
+            buildTimeUtc = ResolveRuntimeBuildTimeUtc(),
+            processType = processType.ToString().ToLowerInvariant(),
+            provider = ResolveRuntimeProviderName(context)
+        };
+
+        return Results.Ok(payload);
+    }).AllowAnonymous();
 
     app.MapControllers();
     // Map all other endpoints from AllEndpoints.cs
     app.MapAllEndpoints();
     app.MapAnalyticsRefreshStatusEndpoints();
     app.MapCachedAnalyticsEndpoints();
+    app.MapDecisionBoardEndpoints();
     app.MapInventoryEndpoints();
     app.MapAnalyticsActionsEndpoints();
     app.MapAnalyticsIntelligenceEndpoints();

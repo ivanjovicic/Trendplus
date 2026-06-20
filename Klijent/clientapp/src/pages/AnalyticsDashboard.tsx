@@ -71,6 +71,7 @@ import {
   fmtRsd,
   formatDateTime,
 } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -1182,14 +1183,14 @@ export default function AnalyticsDashboard() {
     <div className="analytics-dashboard">
       <AnalyticsTrustHeader
         title="Pregled poslovanja"
-        description="Executive cockpit za prodaju i profit: prihod, mar\u017Eni doprinos, rizici i prioritetne odluke za izabrani period."
+        description="Ključni pregled prodaje i profita: prihod, maržni doprinos, rizici i prioritetne odluke za izabrani period."
         periodFrom={fromDate}
         periodTo={toDate}
         lastRefreshAt={dashboardLastRefreshAt}
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
-        dataSource="Analytics dashboard cache"
+        dataSource="Keširani analytics pregled"
         dataQualityStatus={
           dashboardMeta?.dataQualityStatus ??
           (validFreshness?.status === "good" ||
@@ -1224,8 +1225,8 @@ export default function AnalyticsDashboard() {
       <header className="analytics-header">
         <div>
           <h2 className="with-tip">
-            <span>Executive Dashboard</span>
-            <InfoTip text="Fokus na klju\u010Dne KPI-jeve, najva\u017Enije akcije i pouzdanost podataka. Grafikoni i detalji su ni\u017Ee na stranici." />
+            <span>Pregled poslovanja</span>
+            <InfoTip text="Fokus na ključne KPI-jeve, najvažnije akcije i pouzdanost podataka. Grafikoni i detalji su niže na stranici." />
           </h2>
         </div>
         <div className="analytics-controls">
@@ -1282,7 +1283,9 @@ export default function AnalyticsDashboard() {
                   <section className="analytics-section analytics-executive-kpis">
                     <div className="analytics-section-heading">
                       <div>
-                        <p className="analytics-eyebrow">Executive cockpit</p>
+                        <p className="analytics-eyebrow">
+                          Ključni KPI-jevi
+                        </p>
                         <h2>
                           U 30 sekundi: prodaja, marža, rizici i prioriteti
                         </h2>
@@ -1525,12 +1528,12 @@ export default function AnalyticsDashboard() {
                                           return next;
                                         });
                                       } catch (reason) {
+                                        const message = isAnalyticsActionWriteForbidden(reason)
+                                          ? getAnalyticsActionWriteErrorMessage(reason)
+                                          : getErrorText(reason, "Akcija nije dodata u centralni red.");
                                         setQueueErrorsByKey((prev) => ({
                                           ...prev,
-                                          [cardKey]: getErrorText(
-                                            reason,
-                                            "Akcija nije dodata u centralni red.",
-                                          ),
+                                          [cardKey]: message,
                                         }));
                                       } finally {
                                         setQueueBusyKeys((prev) => {
@@ -1869,7 +1872,7 @@ export default function AnalyticsDashboard() {
                   onClick={() => setShowOverviewHelp((prev) => !prev)}
                   aria-expanded={showOverviewHelp}
                 >
-                  Kako je izračunat ovaj pregled?
+                  Kako čitati ovaj pregled?
                 </button>
                 {showOverviewHelp ? (
                   <div className="overview-help-body">
@@ -1894,8 +1897,8 @@ export default function AnalyticsDashboard() {
                   <div>
                     <h2>Opseg i filteri</h2>
                     <p className="section-note">
-                      Menjajte period, prodavnicu ili dobavljača ovde; executive
-                      cockpit iznad ostaje fokusiran na odluku.
+                      Menjajte period, prodavnicu ili dobavljača ovde; ključni
+                      pregled iznad ostaje fokusiran na odluku.
                     </p>
                   </div>
                   <div className="analytics-controls">
@@ -2103,7 +2106,7 @@ export default function AnalyticsDashboard() {
                     label="Elasticnost (aproks.)"
                     value={
                       movingStats.elasticity == null
-                        ? "N/A"
+                        ? "Nije dostupno"
                         : fmtNumber(movingStats.elasticity, 2)
                     }
                     tone="neutral"
@@ -2127,8 +2130,8 @@ export default function AnalyticsDashboard() {
                 </h3>
                 <div className="analytics-card-grid compact">
                   <MetricCard
-                    label="Najjaci dan"
-                    value={quickInsights?.bestDay ?? "N/A"}
+                    label="Najjači dan"
+                    value={quickInsights?.bestDay ?? "Nije dostupno"}
                     tone="good"
                     infoTip="Dan u nedelji sa najvećim prometom."
                   />
@@ -2139,7 +2142,7 @@ export default function AnalyticsDashboard() {
                   />
                   <MetricCard
                     label="Top proizvod"
-                    value={quickInsights?.topProduct ?? "N/A"}
+                    value={quickInsights?.topProduct ?? "Nije dostupno"}
                     tone="neutral"
                   />
                   <MetricCard
@@ -2147,7 +2150,7 @@ export default function AnalyticsDashboard() {
                     value={
                       transactionStats
                         ? fmtNumber(transactionStats.avgItemsPerTransaction, 2)
-                        : "N/A"
+                        : "Nije dostupno"
                     }
                     tone="neutral"
                   />
@@ -2156,7 +2159,7 @@ export default function AnalyticsDashboard() {
                     value={
                       transactionStats
                         ? fmtRsd(transactionStats.avgTransactionValue)
-                        : "N/A"
+                        : "Nije dostupno"
                     }
                     tone="neutral"
                   />
@@ -2332,7 +2335,7 @@ export default function AnalyticsDashboard() {
                     <span>Elasticnost</span>
                     <strong>
                       {movingStats.elasticity == null
-                        ? "N/A"
+                        ? "Nije dostupno"
                         : fmtNumber(movingStats.elasticity, 2)}
                     </strong>
                   </article>
@@ -2591,7 +2594,7 @@ export default function AnalyticsDashboard() {
                             <td>
                               <div>
                                 {row.marginImpact == null
-                                  ? "N/A"
+                                  ? "Nije dostupno"
                                   : fmtRsd(row.marginImpact)}
                               </div>
                               <small>

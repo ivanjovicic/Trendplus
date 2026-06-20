@@ -1343,3 +1343,1609 @@ Type: QA / stabilization review
   - there is still no dedicated component-level regression test for DecisionSummaryBar
 - Next step:
   - targeted backend follow-up for resolvedFrom/resolvedTo and extra summary cohort bucket coverage
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: frontend regression test
+
+### Notes
+
+- Changed files:
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - Product Decision Center now shows a non-blocking warning when optional action-status lookup fails, while keeping main product recommendations visible
+  - dedicated regression coverage locks the fallback behavior and verifies that the real blocking error still appears when the main decision endpoint fails
+  - no fake action counts are shown when action-status data is unavailable
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risks:
+  - the worktree still contains unrelated local changes outside this task and they must stay out of the commit
+- Next step:
+  - re-run the latest analytics page smoke path after the next frontend deploy if Render or API action-status availability remains unstable
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: QA smoke checklist
+
+### Notes
+
+- Changed files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - added a repeatable manual smoke checklist for critical analytics backend routes, core frontend routes and durable report routes
+  - each route now has explicit success expectations, honest warning/error expectations, fail conditions, next action and required evidence to save
+  - the checklist explicitly protects against fake `0 RSD`, fake green unknown states, hidden stale refresh and reports that look ready when data is missing
+- Checks:
+  - `git diff --check` - pass
+  - docs spot-check - pass
+- Risks:
+  - this task documents the operator flow but does not itself prove that current deploy environments pass the smoke
+- Next step:
+  - run the checklist on the current Vercel and Render deployments before demo or merge sign-off
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: cache invalidation audit
+
+### Notes
+
+- Changed files:
+  - `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - confirmed that Access import, nightly analytics refresh, data-quality worker refresh and admin cache clear already invalidate the pilot-critical cache families
+  - confirmed that report routes use versioned cache keys and rely on report-family invalidation to rotate durable report outputs
+  - documented one real follow-up gap: `AnalyticsAggregationWorker` refreshes aggregate tables but intentionally skips cache invalidation, so dashboard-family cached responses can lag until TTL expiry
+  - documented that `docs/qa/STABLE_REPORT_URL_SMOKE.md` is currently missing, so earlier stable-report smoke expectations could not be reused
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit"` - pass
+  - `git diff --check` - pass
+- Risks:
+  - the safest invalidation scope for `AnalyticsAggregationWorker` still needs a deliberate choice between `dashboard` only and a slightly wider aggregate-backed scope
+  - no code fix was applied in this audit commit because that scope choice should be made explicitly instead of guessed
+- Next step:
+  - small backend follow-up: decide and implement the minimal safe invalidation for `AnalyticsAggregationWorker`, then add a focused regression test
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: demo reset runbook
+
+### Notes
+
+- Changed files:
+  - `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - documented the current confirmed demo-related capabilities across local seed helpers, Access import, cleanup preview, worker refresh and smoke verification
+  - defined strict demo-only safety rules, required environment proof, naming rules and stop conditions before any destructive action
+  - documented the minimal demo dataset shape for products, suppliers, sales, inventory, data quality issues, actions/outcomes and reports
+  - defined the safest run order: reset, seed via existing Access import flow, refresh analytics, verify Pilot Readiness, then run analytics smoke
+  - intentionally did not add a new script because the existing seed helpers are developer-only and not safe as a shared demo reset mechanism
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - not run (no code/script added)
+- Risks:
+  - the process still depends on operational discipline because there is no one-click demo-only reset guard in code
+  - a dedicated demo DB snapshot remains the safest reset path; batch-delete and cleanup flows require stricter human review
+- Next step:
+  - if the team wants automation, implement a tiny demo-only wrapper around the existing Access import + worker refresh flow with an explicit environment guard
+
+---
+
+## Ad-hoc follow-up - 2026-06-17
+
+Status: DONE
+Type: access-control implementation plan
+
+### Notes
+
+- Changed files:
+  - `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Result:
+  - translated the existing analytics access-control audit into a phase-by-phase P0 implementation plan
+  - defined the minimal role model: `Viewer`, `Analyst`, `Manager`, `Admin`
+  - mapped the P0 endpoint groups for refresh, cache clear, import/access-import, worker control, admin configuration, action writes and report/export surfaces
+  - documented for each group: current access, required role, backend enforcement location, frontend visibility rule and required tests
+  - proposed a minimal Phase 1 where read-only analytics stays available to `Viewer`, while dangerous actions move behind explicit backend enforcement and hidden UI controls
+- Checks:
+  - `git diff --check` - pass
+- Risks:
+  - the repo still lacks a shared authentication/policy layer, so Phase 1 must start with explicit per-group enforcement helpers before broader cleanup
+- current admin-key compatibility paths should remain temporary and must not become the long-term substitute for role checks
+- Next step:
+  - implement the first smallest protected group: `POST /api/analytics/cached/cache/invalidate` plus matching frontend visibility test
+
+---
+
+## Queue continuation - decision-support hardening
+
+Status summary:
+
+- Q01-Q18 are DONE.
+- Product Decision optional action-status fallback is DONE.
+- Analytics pilot smoke checklist is DONE.
+- Cache invalidation audit is DONE.
+- Demo reset runbook is DONE.
+- Demo environment verification endpoint exists and is tested.
+- Open production risk: Vercel deploy drift and Render runtime version 404.
+- Open decision-support gap: no shared decision confidence contract yet.
+
+## Q19 - Deploy proof cleanup
+
+Status: PARTIAL
+
+Evidence:
+- Files: `docs/qa/ANALYTICS_DEPLOY_PROOF.md`, `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`, `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
+- Tests/checks: live HTTP recheck on 2026-06-19 from the current workspace HEAD; Vercel still serves `index-XONGNubS.js` with a stale `Last-Modified` header, and Render still returns `404` for `/api/runtime/version`.
+- Remaining risk: the public deploy is still drifting from current source, so the blocker is documented but not remediated.
+
+## Q20 - Demo verification production smoke
+
+Status: OPEN
+
+Evidence:
+- Files: `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- Tests/checks: integration tests cover the admin-gated `/api/admin/demo-verification` endpoint and secret redaction behavior.
+- Remaining risk: there is no concrete production smoke result document proving the demo verifier on a live demo deployment.
+
+## Q21 - Analytics action idempotency production/migration verification
+
+Status: DONE
+
+Evidence:
+- Files: `Infrastructure/DbContexts/AnalyticsDbContext.cs`, `Infrastructure/Migrations/AnalyticsDb/20260521123000_AddAnalyticsActionIndexes.cs`, `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`, `Api.Tests/AnalyticsActionItemServiceTests.cs`, `docs/qa/ANALYTICS_ACTION_IDEMPOTENCY_MIGRATION_NOTE.md`
+- Tests/checks: targeted analytics action service tests cover duplicate open-action races, unrelated `DbUpdateException`, and source-type/source-key isolation.
+- Remaining risk: older databases may still need duplicate cleanup before applying the filtered unique index if they predate the schema change.
+
+## Q22 - Access-control next P0 group
+
+Status: OPEN
+
+Evidence:
+- Files: `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`, `Api/Endpoints/AnalyticsActionsEndpoints.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`
+- Tests/checks: admin-key compatibility exists for some admin surfaces, but analytics action write endpoints still need a dedicated protection pass.
+- Remaining risk: the next P0 group is the action write path unless it has already been protected elsewhere.
+
+## Q23 - Decision confidence contract
+
+Status: DONE
+
+Evidence:
+- Files: `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`, `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- Tests/checks: docs-only contract; no runtime test required for this planning task.
+- Remaining risk: the contract still needs broader module-by-module enforcement outside Product Decision Center.
+
+## Q24 - Product Decision confidence phase 1
+
+Status: DONE
+
+Evidence:
+- Files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`, `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- Tests/checks: backend and frontend confidence coverage exists for Product Decision Center.
+- Remaining risk: the confidence story still needs later ledger/board reuse and more edge-case coverage.
+
+## Q25 - Action Impact Ledger plan
+
+Status: DONE
+
+Evidence:
+- Files: `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`, `docs/Analytics/ACTION_OUTCOME_SUMMARY_ENDPOINT_SPEC.md`
+- Tests/checks: docs-only planning task; no runtime test required.
+- Remaining risk: backend DTO/entity implementation still needs a follow-up task.
+
+## Q26 - Production deploy proof finalization
+
+Status: DONE
+
+Evidence:
+- Files: `docs/qa/ANALYTICS_DEPLOY_PROOF.md`, `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+- Tests/checks: `git diff --check` pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass; `cd Klijent/clientapp && npm run check:analytics-guardrails` pass; `cd Klijent/clientapp && npm run build` pass.
+- Remaining risk: Vercel still serves `index-XONGNubS.js` and Render still returns `404` for `/api/runtime/version`, so the blocker is documented but not remediated.
+
+## Q27 - Demo verification production smoke
+
+Status: PARTIAL
+
+Evidence:
+- Date: 2026-06-19
+- Files: `docs/qa/DEMO_VERIFICATION_SMOKE_RESULT.md`, `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- Tests/checks: `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DemoEnvironmentVerification"` pass; public `GET https://trendplus-api.onrender.com/api/admin/demo-verification` returned `401 Unauthorized`; response secrecy is covered by local integration tests.
+- Remaining risk: the route exists in source and the local tests pass, but the live production surface is admin-gated so `demoSafe` cannot be confirmed from the public endpoint alone.
+
+Next step:
+- Q28 - Protect analytics action write endpoints
+
+## Q28 - Protect analytics action write endpoints
+
+Status: DONE
+Commit suggestion: `fix(security): protect analytics action write endpoints`
+Priority: P0
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsEndpointsTests"` - pass
+- Remaining risk:
+  - Read-only analytics routes remain public by design, and there is still no existing frontend capability/admin-key pattern for action-write visibility to reuse safely.
+
+## Q29 - Executive Decision Board hardening tests
+
+Status: DONE
+Commit suggestion: `test(analytics): harden executive decision board route coverage`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/__tests__/AppAnalyticsRoutes.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - The board route is now covered explicitly in the production-style `App` route smoke, but it still depends on the existing lazy import and the route manifest staying aligned with `App.tsx`.
+
+## Q30 - Executive Decision Board no-fake-confidence review
+
+Status: DONE
+Commit suggestion: `fix(analytics): keep executive board confidence honest`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - The review is covered for missing action and supplier confidence plus the existing product insufficient-data path, but broader module-by-module confidence policy is still a follow-up concern.
+
+## Q31 - Product Decision confidence review and edge-case tests
+
+Status: DONE
+Commit suggestion: `test(analytics): cover product decision confidence edge cases`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Remaining risk:
+  - Confidence and missing-impact behavior are now locked for strong and insufficient recommendations, but broader module coverage still depends on future decision-board and cross-module review.
+
+## Q32 - Decision Board backend aggregate plan
+
+Status: DONE
+Commit suggestion: `docs(analytics): plan decision board backend aggregate path`
+Priority: P2
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `docs/analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+- Remaining risk:
+- The backend aggregate path is still a Phase 2 design only; Phase 1 frontend composition remains the shipped board path until a server-side aggregate is explicitly implemented.
+
+## Q33 - Production deploy recovery and proof
+
+Status: DONE
+Commit suggestion: `docs(qa): document analytics deploy recovery`
+Priority: P1
+
+### Evidence
+
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git status -sb` - pass, local `HEAD` is ahead of `origin/main` by 1
+  - `git log --oneline -10` - pass
+  - `git rev-parse HEAD` - pass, `8cfdbe6983adfde0b1d6e249f981f1b4c7b887b3`
+  - `git rev-parse origin/main` - pass, `e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Render `/api/runtime/version` - pass, `200 OK` with `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`
+  - live Vercel route checks - pass, `/analytics/pilot-readiness`, `/analytics/reports/pilot-intake`, and `/analytics/decision-board` still serve the generic shell
+- Remaining risk:
+  - local `HEAD` is still ahead of `origin/main`, so production proof is not current with the latest local tip until that commit is pushed and redeployed
+  - frontend deploy drift remains on Vercel until the shell bundle moves off `index-DelBmZl0.js`
+
+## Q34 - Re-run live analytics smoke after deploy
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - live Render `GET /api/runtime/version` - pass, `200 OK` with `commitSha=e2c2901c8589be4f5cbf9c066b6f5fc74ddd3288`
+  - live Render `GET /api/admin/demo-verification` - pass as auth gate, `401 Unauthorized` without admin credentials
+  - live Render `GET /api/analytics/refresh-status?dataScope=all` - pass, `200 OK` with `dataFreshnessStatus=unknown`
+  - live Render `GET /api/analytics/actions?dataScope=all` - pass, `200 OK` with action data
+  - live Vercel `/analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered
+  - live Vercel `/analytics/reports/pilot-intake` - pass, real Pilot intake report rendered
+  - live Vercel `/analytics/decision-board` - pass, real Executive decision board rendered
+- Remaining risk:
+  - Vercel alias stability still depends on the next deployment cycle, so the proof should be rechecked if the bundle hash changes again
+  - a follow-up watch item is still useful if the team wants an explicit soak check
+
+## Q35 - Redeploy Vercel frontend from current main
+
+Status: DONE
+Commit suggestion: `docs(qa): record live analytics smoke recheck`
+Priority: P1
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git rev-parse HEAD` - pass, `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`
+  - `git rev-parse origin/main` - pass, `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - live Vercel `/analytics/pilot-readiness` - pass, real Pilot readiness checklist rendered from `/assets/index-DPyjYUlZ.js`
+  - live Vercel `/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` - pass, real Pilot intake report rendered from `/assets/index-DPyjYUlZ.js`
+  - live Vercel `/analytics/decision-board` - pass, real Executive decision board rendered from `/assets/index-DPyjYUlZ.js`
+- Remaining risk:
+  - Vercel alias stability still depends on the next deployment cycle, so the proof should be rechecked if the bundle hash changes again
+  - a follow-up watch item is still useful if the team wants an explicit soak check
+
+## Q36 - Post-redeploy smoke watch
+
+Status: DONE
+
+Evidence:
+- Files:
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- Checks:
+  - later live browser recheck after the redeploy soak window - pass, same bundle hash still live and required routes continue to render correctly
+  - full live analytics smoke after Vercel redeploy - pass, backend and frontend work together on the production surfaces
+- Remaining risk:
+  - Vercel alias stability still matters on future deploys, so another smoke watch may be useful after the next release if the bundle hash changes again
+
+## Q37 - Protected action write UX hardening
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/utils/analyticsActionWriteErrors.ts`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx` - pass
+- Remaining risk:
+  - protected write endpoints still depend on backend auth responses in production, so future UI changes should keep the same forbidden-state handling and avoid optimistic success
+
+Next step:
+- no queued follow-up task yet; revisit the same forbidden-state pattern if another analytics write surface is added
+
+## Q38 - Analytics regression risk audit
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_REGRESSION_RISK_AUDIT.md`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Extra follow-up:
+  - Inventory page queued suggestion markers now survive transient source-status failures instead of being cleared to an empty state.
+- Remaining risk:
+  - `?? 0` / `|| 0` patterns still exist in many analytics surfaces, but the audited ones were either intentional derived defaults or already protected by meta/error states
+  - broader numeric fallback review is still useful even though the fake-empty behavior is now reduced
+
+Next step:
+- Q39 - Add visible warnings for ancillary filter/list refresh failures
+
+## Q39 - Executive Decision Board quality audit
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run ExecutiveDecisionBoard` - pass
+- Remaining risk:
+  - repeated cards are still shown across multiple board sections by design, but the section context now makes that repetition explicit instead of silently deduping it
+
+Next step:
+- Q40 - Analytics observability/correlation-id hardening
+
+## Q40 - Analytics observability/correlation-id hardening
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ANALYTICS_OBSERVABILITY_REVIEW.md`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsRefreshStatusBanner.spec.tsx`
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run AnalyticsRefreshStatusBanner` - pass
+- Remaining risk:
+  - refresh-status still depends on recent run history for visible correlation IDs, but the shared API layer now preserves IDs whenever the backend emits them
+
+Next step:
+- Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
+
+## Q41 - Action Impact Ledger Phase 1 design-to-implementation gap review
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+  - `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+  - `docs/Analytics/ACTION_OUTCOME_DATA_SHAPE_AUDIT.md`
+  - `docs/Analytics/ACTION_OUTCOME_SUMMARY_API_PLAN.md`
+  - `Domain/Model/Analytics/AnalyticsActionItem.cs`
+  - `Domain/Model/Analytics/AnalyticsActionNote.cs`
+  - `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `git diff --check` - pass
+- Remaining risk:
+  - the current ledger contract is still only implicit in `MetadataJson` + notes, so Phase 1 still needs a canonical structured metadata schema before a true append-only table is worth adding
+
+Next step:
+- Q42 - Product Decision confidence calibration review
+
+## Q42 - Product Decision confidence calibration review
+
+Status: DONE
+
+Evidence:
+- Date: 2026-06-19
+- Files:
+  - `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+  - `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+  - `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run test -- --run ProductDecisionCenterPage.confidence` - pass
+- Remaining risk:
+  - Product Decision Center still does not have a separate calibration bucket UI; calibration learning belongs to the outcome summary / ledger layer rather than a local page-only score
+
+Next step:
+- Q43 - Supplier confidence contract mapping
+
+## Q43 - Supplier confidence contract mapping
+
+Status: DONE
+
+Next step:
+- map supplier summary, list, and report confidence semantics onto the shared contract without inventing new values in the UI
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `58165dc325621a84c5327705f2fe3554bca083d6`
+- Changed files:
+  - `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`
+  - `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`
+  - `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/SupplierDecisionHubPage.spec.tsx src/services/__tests__/supplierDecisionReport.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - Supplier ranking sorting still uses an internal `?? 0` fallback for ordering only; visible confidence output remains gated by backend presence.
+- Next step:
+  - `Q44 - Inventory decision confidence mapping`
+
+## Q44 - Inventory decision confidence mapping
+
+Status: DONE
+
+Next step:
+- align inventory recommendation confidence, warnings, and nullable impact behavior with the shared decision contract
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `7b24b3801b8f2c11e7983c0d724ed1647576883f`
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalActions.spec.ts`
+  - `docs/qa/INVENTORY_DECISION_CONTRACT_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - Some inventory display widgets still render derived `estimatedValueAmount`; Q44 fixes the action impact contract, not a full inventory value-nullability refactor.
+- Next step:
+  - `Q45 - Decision Board backend aggregate readiness review`
+
+## Q45 - Decision Board backend aggregate readiness review
+
+Status: DONE
+
+Next step:
+- verify the phase 1 board model is stable enough to justify a backend aggregate endpoint design review
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `a8602ae75f9d60708c604dd3482576a4e7161ce3`
+- Changed files:
+  - `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_READINESS.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+  - Existing board quality audit checks are already documented in `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Risk:
+  - The frontend board still composes from multiple source requests; the aggregate review is ready, but implementation should stay read-only and preserve nullable semantics.
+- Next step:
+  - `Q46 - Decision Board backend aggregate contract design`
+
+## Q46 - Decision Board backend aggregate contract design
+
+Status: DONE
+
+Next step:
+- use the read-only aggregate contract to implement the backend endpoint and adapter tests
+
+### Notes
+
+- Date: 2026-06-19
+- Verification HEAD: `c79f50bc87a98962c3da51dcb3e9bb8f30272017`
+- Changed files:
+  - `docs/analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md`
+  - `docs/analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - not run yet after this doc update
+  - Existing board quality audit checks are already documented in `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- Risk:
+  - The frontend board still composes from multiple source requests; the backend aggregate should preserve the same nullable and section-context semantics.
+- Next step:
+  - `Q47 - Decision Board backend aggregate implementation`
+
+## Q47 - Decision Board backend aggregate implementation
+
+Status: DONE
+
+### Notes
+
+- Date: 2026-06-19
+- Commit: pending
+- Changed files:
+  - `Api/Dtos/DecisionBoardDtos.cs`
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+  - `Api/Program.cs`
+  - `Api.Tests/AnalyticsCriticalRouteMappingsTests.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~DecisionBoard|FullyQualifiedName~AnalyticsCriticalRouteMappings"` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - The aggregate now preserves nullable impact/confidence semantics, but the frontend still needs to switch to the new read-only board source before the contract is fully exercised in UI.
+- Next step:
+  - `Q48 - Decision Board frontend aggregate adoption`
+
+## Q48 - Decision Board frontend aggregate adoption
+
+Status: DONE
+
+### Notes
+
+- Date: 2026-06-19
+- Commit: pending
+- Changed files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run typecheck` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - The board now consumes the backend aggregate endpoint, but legacy multi-source helper code remains in the file for now and should only be removed if a future cleanup task explicitly targets it.
+- Next step:
+  - No follow-up queue item is queued yet.
+
+## Q50 - Queue reconciliation after Q48/Q49 and latest multi-topic commit
+
+Status: DONE
+Commit suggestion: `docs(ai): reconcile analytics queue after q49`
+Priority: P0
+Token budget: low/medium
+
+### Why
+
+- Q48 and Q49 are being worked on or recently changed, and the latest multi-topic commit `8fb6141` mixes several analytics topics in one push.
+- The queue must reflect what is truly done, partial, open, or blocked before more feature work continues.
+
+### Scope only
+
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`
+- no app code changes
+
+### Do
+
+1. Identify current queue state from Q38 onward.
+2. Mark Q48 and Q49 accurately as DONE, PARTIAL, or BLOCKED.
+3. Add evidence for each recent item: commit SHA, files changed, tests added, remaining risk.
+4. Create `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`.
+5. Add Q51-Q56 as the next recommended tasks.
+6. Do not mark Vercel/production DONE if the latest commit status is failing.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Queue reflects real status after Q48/Q49.
+- No duplicate TODOs.
+- Next work is ordered.
+- Multi-topic commit is documented as a review risk.
+
+### Notes
+
+- Date: 2026-06-19
+- Changed files:
+  - `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with repository line-ending warnings only
+- Risk:
+  - Q49 is not present in the current queue snapshot, so the reconciliation doc marks it blocked instead of inventing an implementation status.
+- Next step:
+  - `Q51 - Fix Vercel status blocker caused by GitHub commit email settings`
+
+## Q51 - Fix Vercel status blocker caused by GitHub commit email settings
+
+Status: PARTIAL
+Commit suggestion: `docs(qa): document vercel commit email fix`
+Priority: P0
+Token budget: low
+
+### Why
+
+- The latest commit status for `8fb6141` points to a Vercel failure tied to GitHub commit email settings.
+- Future analytics work should not keep hitting the same deploy/status blocker.
+
+### Scope only
+
+- `docs/qa/VERCEL_STATUS_EMAIL_FIX.md`
+- optionally docs-only changes
+- no analytics feature changes
+
+### Do
+
+1. Record `git config user.name`, `git config user.email`, and recent commit author emails.
+2. Determine whether the latest commits use an email GitHub/Vercel rejects.
+3. Document the remediation path: verified email or GitHub no-reply email.
+4. Explain how to create a new small commit and push it after fixing local git config.
+5. Do not rewrite history unless explicitly chosen by the operator.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- Vercel email/status blocker has exact fix instructions.
+- Future commits should not repeat the same failure.
+- No analytics logic changed.
+
+### Notes
+
+- 2026-06-19
+- Current local HEAD:
+  - `3b488f6228846faeb7c53fc7efef61a0ae64df35`
+- Current local identity:
+  - `Ivan Jovicic <ivanjovicic1986@gmail.com>`
+- Files changed:
+  - `docs/qa/VERCEL_STATUS_EMAIL_FIX.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` pass
+  - `cd Klijent/clientapp && npm run build` pass
+- Risk:
+  - GitHub account verification and live Vercel status still need to be confirmed before calling the blocker fully resolved
+- Next step:
+  - `Q52 - Review and harden Supplier Negotiation Pack MVP`
+
+## Q52 - Review and harden Supplier Negotiation Pack MVP
+
+Status: DONE
+Commit suggestion: `test(analytics): harden supplier negotiation pack`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- The latest multi-topic commit added Supplier Negotiation Pack behavior to supplier decision reports.
+- This decision-support surface must never imply fake recommendations, hidden warnings, or blocked advice that still looks actionable.
+
+### Scope only
+
+- supplier decision report endpoint and tests
+- SupplierDecisionReport component and tests
+- `docs/qa/SUPPLIER_NEGOTIATION_PACK_REVIEW.md`
+- small fixes only if obvious
+
+### Do
+
+1. Verify backend negotiation pack section, cache key, fallback warning, missing-cost warning, and blocked final advice.
+2. Verify frontend copy button, fallback state, warning visibility, and blocked final advice styling.
+3. Add clipboard-safe tests if missing.
+4. Document known limitations and follow-ups.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecision"`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run SupplierDecisionReport`
+
+### Acceptance
+
+- Supplier Negotiation Pack cannot imply fake actionable advice.
+- Fallback/missing-cost warnings remain visible.
+- Copy UX is safe.
+- Queue updated.
+
+### Notes
+
+- 2026-06-19
+- Current local HEAD before this task commit:
+  - `7a84848ac234ffd1e6029af01daafd1ae98f6fa8`
+- Files changed:
+  - `Klijent/clientapp/src/components/analytics/SupplierDecisionReportActions.tsx`
+  - `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx`
+  - `docs/qa/SUPPLIER_NEGOTIATION_PACK_REVIEW.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/SupplierDecisionReportActions.spec.tsx` pass
+  - `cd Klijent/clientapp && npm run test -- --run SupplierDecisionReport` pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass with existing repo warnings
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecision"` pass
+- Risk:
+  - the browser copy fallback still depends on `document.execCommand("copy")`, but it now fails safely instead of pretending success
+- Next step:
+  - `Q53 - Audit Replenishment/OOS decision workflow trust states`
+
+## Q53 - Audit Replenishment/OOS decision workflow trust states
+
+Status: DONE
+Commit suggestion: `docs(qa): audit replenishment oos workflow`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- Replenishment/OOS workflow is high-impact and can cause overstock or missed sales if trust states are unclear.
+- The MVP must clearly distinguish real OOS signal, estimated lost sales, low-confidence demand baseline, missing stock data, and stale inventory refresh.
+
+### Scope only
+
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- small tests/fixes only
+- no new forecasting engine
+
+### Do
+
+1. Identify all OOS/replenishment signals.
+2. Verify confidence, stale-data warning, missing-stock warning, estimate labels, and nullable impact behavior.
+3. Confirm the UI does not present stale or insufficient data as green.
+4. Add focused tests for missing baseline, stale refresh, and insufficient data.
+5. Document audit findings and follow-up items.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run relevant inventory/product tests`
+
+### Acceptance
+
+- OOS/replenishment workflow is safe for MVP.
+- Estimates are labelled.
+- Missing data does not become 0.
+- Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- HEAD SHA: `72a1db59edfa332d66f31f2c930ecea69f0824a4`
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.signalActions.spec.ts`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx` pass
+- Risk:
+  - Forecast restock suggestions are deliberately blocked when the matching stock baseline is not loaded, so the user must load or search the item before queueing that action.
+- Next:
+  - Q55 - Add KPI methodology consistency review and tests
+
+## Q54 - Audit Markdown Optimizer MVP safety and trust boundaries
+
+Status: DONE
+Commit suggestion: `docs(qa): audit markdown optimizer mvp`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- Markdown optimizer can strongly influence pricing decisions.
+- MVP wording must not look like guaranteed profit optimization when it is based on rule-based or pre/post signals.
+
+### Scope only
+
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+- small tests/fixes only
+- no new ML or forecasting model
+
+### Do
+
+1. Identify markdown optimizer surfaces.
+2. Verify wording emphasizes signal/proposal/estimate, not guaranteed optimization.
+3. Verify no-fake rules: missing cost, sparse sales, missing baseline, stale data.
+4. Verify outcome links and nullable impact behavior.
+5. Add focused tests for missing cost, sparse sales, and baseline blocking.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run relevant markdown/product/decision tests`
+
+### Acceptance
+
+- Markdown optimizer MVP cannot be mistaken for a guaranteed optimizer.
+- Missing data blocks or downgrades recommendation.
+- Tests cover no-fake-money states.
+- Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- HEAD SHA: `8ad00a56ff6feaecea39d84032625c8303163108`
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+  - `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` pass
+  - `cd Klijent/clientapp && npm run build` pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` pass
+- Risk:
+  - No standalone markdown optimizer screen exists yet; the fix only prevents insufficient-data rows from being treated as high priority on the pre-nivelacija surface.
+- Next:
+  - Q55 - Add KPI methodology consistency review and tests
+
+## Q55 - Add KPI methodology consistency review and tests
+
+Status: DONE
+Commit suggestion: `docs(qa): review kpi methodology consistency`
+Priority: P1
+Token budget: medium
+
+### Why
+
+- The retail KPI roadmap introduces many metrics and the app must avoid inconsistent formulas between pages, reports, supplier, inventory, and the decision board.
+
+### Scope only
+
+- `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`
+- tests for shared formula helpers if present
+- no broad formula rewrite
+
+### Do
+
+1. List current KPI formulas used in code and docs.
+2. Compare them against the retail KPI roadmap.
+3. Identify formula, naming, denominator, and unit mismatches.
+4. Add helper tests for zero/null denominator behavior if helpers exist.
+5. Document consolidation plan if formulas are duplicated.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- KPI formula risks are documented.
+- Missing denominator does not become 0.
+- Any small tests added are focused.
+- Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- Changed files:
+  - `Klijent/clientapp/src/utils/__tests__/analyticsformatters.spec.ts`
+  - `Klijent/clientapp/src/utils/__tests__/analyticsMetricDefinitions.spec.ts`
+  - `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/utils/__tests__/analyticsformatters.spec.ts src/utils/__tests__/analyticsMetricDefinitions.spec.ts` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+- Risk:
+  - `inventoryTurnover` remains cost-based in code; the roadmap also documents a units-based proxy, so future docs must keep those variants distinct.
+- Next step:
+  - `Q56 - Close Analytics production readiness checklist`
+
+## Q56 - Close Analytics production readiness checklist
+
+Status: DONE
+Commit suggestion: `docs(qa): close analytics production readiness status`
+Priority: P0
+Token budget: low/medium
+
+### Why
+
+- The production readiness checklist should become evidence-based, not just aspirational.
+- It needs a final PASS/WARN/FAIL/NOT TESTED status per item.
+
+### Scope only
+
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- no feature code
+
+### Do
+
+1. Review checklist items and mark each PASS, WARN, FAIL, or NOT TESTED.
+2. Add evidence for deploy proof, backend health, frontend smoke, no-fake-zero/no-fake-green, protected writes, supplier negotiation pack, OOS workflow, markdown optimizer, observability, and demo reset safety.
+3. Add a final recommendation: Ready for internal pilot, Ready with warnings, or Not ready.
+4. Update the queue.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Production readiness status is evidence-based.
+- Remaining risks are explicit.
+- Queue updated.
+
+### Notes
+
+- Date: 2026-06-19
+- Changed files:
+  - `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+  - `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+- Risk:
+  - Cache/freshness is still warning-like in live smoke evidence, and markdown optimizer remains a future roadmap item.
+- Next step:
+  - No follow-up task defined in the current queue snapshot.
+
+## Q57 - Action Impact Ledger Phase 1 implementation spec
+
+Status: TODO
+Commit suggestion: `docs(analytics): specify action impact ledger phase 1`
+Priority: P0
+Type: docs/spec
+Token budget: medium
+
+### Why
+
+- The ledger plan and gap review exist, but the next implementation step still needs a concrete schema and API contract.
+- We need a spec that keeps nullable impact fields honest and prevents fake outcome certainty.
+
+### Scope only
+
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- no implementation yet
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Do
+
+1. Turn the existing ledger plan and gap review into an implementation-ready Phase 1 spec.
+2. Define fields stored at action creation.
+3. Define fields stored at outcome resolution.
+4. Define metadata JSON shape, migration options, and API DTO changes.
+5. Define no-fake rules for expected vs measured impact and nullable fields.
+6. List backend and frontend tests required before implementation starts.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Phase 1 ledger spec is implementation-ready.
+- Required fields, DTO changes, migration options, and no-fake rules are explicit.
+- No application code changed.
+
+## Q58 - Action Impact Ledger Phase 1 backend implementation
+
+Status: TODO
+Commit suggestion: `feat(analytics): implement action impact ledger phase 1`
+Priority: P0
+Type: backend
+Token budget: medium/high
+
+### Why
+
+- Once the Phase 1 spec exists, we need the smallest safe backend slice that captures structured action outcome evidence without rewriting the action system.
+
+### Scope only
+
+- `Domain/Model/Analytics`
+- `Infrastructure/Services/Analytics`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Api.Tests`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PLAN.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Do
+
+1. Implement only the backend slice approved by Q57.
+2. Preserve the existing action flow and endpoint semantics.
+3. Keep nullable impact fields nullable.
+4. Avoid broad event sourcing or a new append-only store unless Q57 explicitly recommends it.
+5. Add focused backend tests for creation, resolution, null handling, and DTO shape.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "AnalyticsActions"`
+- `git diff --check`
+
+### Acceptance
+
+- Action Impact Ledger Phase 1 exists in the backend with focused tests.
+- Existing action flows still work.
+- Missing outcome data does not become fake zero.
+
+## Q59 - Action outcome UI detail panel
+
+Status: TODO
+Commit suggestion: `feat(analytics): show action outcome detail panel`
+Priority: P1
+Type: frontend
+Token budget: medium
+
+### Why
+
+- Once outcome data exists, operators need a safe UI that compares expected and measured impact without implying missing data is failure or zero.
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- action detail/modal if present
+- frontend types/tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+
+### Do
+
+1. Show expected vs measured outcome safely in the Analytics Actions UI.
+2. Keep pending outcome distinct from failure.
+3. Keep missing measured impact null or unavailable, never `0 RSD`.
+4. Hide confidence calibration UI when calibration data is unavailable.
+5. Add focused frontend tests for pending, measured, and missing-impact states.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsActionsPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Operators can inspect expected vs measured outcome without fake zero or fake failure states.
+- Missing calibration or impact data stays visibly unavailable.
+- Frontend tests cover the key outcome states.
+
+## Q60 - Confidence calibration audit
+
+Status: TODO
+Commit suggestion: `docs(qa): audit confidence calibration`
+Priority: P1
+Type: docs/audit
+Token budget: medium
+
+### Why
+
+- Confidence labels should eventually be audited against completed outcomes so the system learns whether its decision trust levels are honest.
+
+### Scope only
+
+- `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+- no implementation unless a tiny existing helper makes it trivial
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `docs/qa/ACTION_IMPACT_LEDGER_GAP_REVIEW.md`
+- `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+
+### Do
+
+1. Identify which analytics surfaces can already be calibrated.
+2. Document missing data and outcome dependencies.
+3. Define calibration buckets and future metrics.
+4. Call out where current confidence is still descriptive rather than outcome-validated.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Calibration audit shows what can be measured now and what still blocks trustworthy calibration.
+- No application code is required unless a tiny helper is clearly safe.
+
+## Q61 - Pilot operator workflow runbook
+
+Status: TODO
+Commit suggestion: `docs(pilot): add analytics pilot operator runbook`
+Priority: P1
+Type: docs/ops
+Token budget: medium
+
+### Why
+
+- Internal and customer pilots need a repeatable operator workflow so analytics use is evidence-driven instead of ad hoc.
+
+### Scope only
+
+- `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+
+### Do
+
+1. Define the daily opening checklist.
+2. Define the weekly decision review cadence.
+3. Define action queue and data-quality review steps.
+4. Define supplier negotiation pack, OOS/replenishment, and markdown signal usage rules.
+5. Define escalation rules and evidence capture expectations.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Pilot operator workflow is repeatable and evidence-based.
+- Decision usage, data quality review, and escalation steps are explicit.
+
+## Q62 - Decision Board backend aggregate readiness gate
+
+Status: TODO
+Commit suggestion: `docs(qa): gate decision board aggregate readiness`
+Priority: P0
+Type: docs/review
+Token budget: medium
+
+### Why
+
+- The board backend aggregate endpoint should not be implemented just because it is desirable; it should be gated by evidence about quality, cache, ranking stability, and performance.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- no endpoint implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `docs/qa/EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+
+### Do
+
+1. Decide whether backend aggregation is READY, WARN, or NOT READY.
+2. Evaluate data-quality evidence, performance expectations, cache behavior, dedupe strategy, and ranking stability.
+3. Document prerequisites that must exist before a backend aggregate endpoint is safe.
+4. Explicitly state whether Q63 may proceed.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Readiness gate is evidence-based.
+- The document clearly states whether backend aggregate work may start.
+- No endpoint is implemented in this task.
+
+## Q63 - Decision Board backend aggregate endpoint MVP
+
+Status: TODO
+Commit suggestion: `feat(analytics): add decision board aggregate endpoint mvp`
+Priority: P1
+Type: backend/frontend-integration
+Token budget: high
+
+### Why
+
+- If Q62 says the system is ready, the board can move from client-side composition toward a safer shared backend aggregate path.
+
+### Scope only
+
+- Api endpoint/service/tests
+- frontend keeps existing composition fallback
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+
+### Do
+
+1. Proceed only if Q62 explicitly says READY.
+2. Implement the backend aggregate endpoint and focused tests only within the approved contract.
+3. Keep the frontend composition fallback until live evidence proves parity.
+4. If Q62 says NOT READY, mark Q63 BLOCKED and do not implement.
+
+### Checks
+
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "ExecutiveDecisionBoard|Analytics"`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `git diff --check`
+
+### Acceptance
+
+- Backend aggregate endpoint is implemented only if the readiness gate allows it.
+- Frontend fallback remains available.
+- Quality and ranking semantics stay explicit.
+
+## Q64 - Forecast/Replenishment safety guardrails
+
+Status: TODO
+Commit suggestion: `test(analytics): add forecast replenishment guardrails`
+Priority: P0
+Type: frontend/tests
+Token budget: medium
+
+### Why
+
+- Forecast and replenishment signals can easily be over-read as guaranteed reorder instructions unless the UI and tests keep uncertainty visible.
+
+### Scope only
+
+- Inventory/Product Decision relevant surfaces
+- tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/REPLENISHMENT_OOS_WORKFLOW_AUDIT.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+
+### Do
+
+1. Add guardrails that keep estimates labelled as estimates.
+2. Ensure missing stock baseline blocks action or lowers confidence.
+3. Ensure stale stock freshness warnings remain visible.
+4. Add focused tests for estimate wording, stale warnings, and blocked/low-confidence states.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage*.spec.ts* src/pages/__tests__/ProductDecisionCenterPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Forecast and replenishment signals cannot look like guaranteed instructions.
+- Missing baseline and stale data stay visible in UI and tests.
+
+## Q65 - Markdown optimizer safety guardrails
+
+Status: TODO
+Commit suggestion: `test(analytics): strengthen markdown optimizer guardrails`
+Priority: P0
+Type: frontend/tests
+Token budget: medium
+
+### Why
+
+- Markdown optimizer MVP should remain clearly experimental and data-dependent, not a guaranteed profit engine.
+
+### Scope only
+
+- PreNivelacija/markdown decision surfaces
+- tests
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/MARKDOWN_OPTIMIZER_MVP_AUDIT.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- relevant markdown/product decision surfaces
+
+### Do
+
+1. Strengthen wording so the surface stays signal/proposal-oriented.
+2. Ensure missing cost blocks profit impact.
+3. Ensure sparse sales lower confidence.
+4. Ensure no fake expected impact appears when evidence is incomplete.
+5. Add focused tests for those guardrails.
+
+### Checks
+
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+- `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/__tests__/ProductDecisionCenterPage*.spec.ts*`
+- `git diff --check`
+
+### Acceptance
+
+- Markdown optimizer MVP cannot read like guaranteed optimization.
+- Missing cost and sparse data stay visible through confidence and impact guardrails.
+
+## Q66 - Analytics pilot release checklist v2
+
+Status: TODO
+Commit suggestion: `docs(qa): add analytics pilot release checklist v2`
+Priority: P1
+Type: docs/release
+Token budget: medium
+
+### Why
+
+- After Q57-Q65, the pilot will need a refreshed evidence-based release gate that includes outcome measurement, calibration, and operator readiness.
+
+### Scope only
+
+- `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md`
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+- `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md`
+
+### Do
+
+1. Create a PASS/WARN/FAIL release checklist for the next pilot phase.
+2. Cover deploy proof, live smoke, data quality, action ledger, confidence calibration, pilot operator readiness, and rollback notes.
+3. Link each checklist row to evidence docs and tests where possible.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Release checklist v2 is evidence-based and ready to use after Q57-Q65 land.
+- Remaining risks and rollback expectations are explicit.
+
+## Q67 - Add automated encoding/mojibake guardrail
+
+Status: TODO
+Commit suggestion: `chore(ai): add encoding mojibake guardrail`
+Priority: P1
+Type: tooling/docs
+Token budget: medium
+
+### Why
+
+- Encoding regressions are still a repeated repo risk.
+- The current guardrail script protects analytics business-logic boundaries, but not mojibake drift.
+
+### Scope only
+
+- add a script to scan docs and frontend source for mojibake
+- wire it into frontend guardrails or CI only if safe
+- fail with `file:line`
+- do not alter business logic
+- include tests or a manual sample if feasible
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `Klijent/clientapp/scripts/check-analytics-guardrails.mjs`
+- `Klijent/clientapp/package.json`
+
+### Do
+
+1. Design or implement the smallest safe script that scans docs and frontend source for mojibake patterns.
+2. Ensure the output includes `file:line`.
+3. Integrate it into `check:analytics-guardrails` or CI only if that integration is low-risk.
+4. Keep the task scoped to tooling and documentation.
+5. Add tests or a manual verification sample if practical.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- Encoding/mojibake guardrail exists or is safely wired for a future merge path.
+- Output is actionable with `file:line`.
+- No application business logic changed.

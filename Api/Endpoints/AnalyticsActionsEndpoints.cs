@@ -1,6 +1,7 @@
 using Application.Analytics;
 using Infrastructure.Services.Analytics;
 using Microsoft.AspNetCore.Http;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
 
@@ -137,8 +138,16 @@ public static class AnalyticsActionsEndpoints
             AnalyticsActionUpsertBody body,
             AnalyticsActionItemService svc,
             HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+                return Results.Unauthorized();
+
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
             if (string.IsNullOrWhiteSpace(body.SourceType))
                 return Results.BadRequest("sourceType is required");
 
@@ -225,8 +234,16 @@ public static class AnalyticsActionsEndpoints
             AnalyticsActionStatusUpdateBody body,
             AnalyticsActionItemService svc,
             HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+                return Results.Unauthorized();
+
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
             if (!AnalyticsActionConstants.IsValidStatus(body.Status))
                 return Results.BadRequest($"status must be one of: {string.Join(", ", AnalyticsActionConstants.Statuses.AllValues)}");
 
@@ -250,8 +267,16 @@ public static class AnalyticsActionsEndpoints
             AnalyticsActionOutcomeUpdateBody body,
             AnalyticsActionItemService svc,
             HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct) =>
         {
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
+                return Results.Unauthorized();
+
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
             if (!AnalyticsActionConstants.IsValidOutcomeStatus(body.OutcomeStatus))
                 return Results.BadRequest($"outcomeStatus must be one of: {string.Join(", ", AnalyticsActionConstants.OutcomeStatuses.AllValues)}");
 

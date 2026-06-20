@@ -19,6 +19,7 @@ import {
   fmtPct,
   fmtRsd,
 } from "../utils/analyticsFormatters";
+import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -127,6 +128,28 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
   high_stock_risk: "Postoji rizik od viška zalihe.",
   data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
+  expected_impact_denominator_missing: "Nedostaje ulaz za procenu očekivanog uticaja.",
+  data_quality_critical: "Kvalitet podataka je kritičan i traži proveru.",
+  insufficient_data: "Signal nije dovoljno jak za pouzdanu preporuku.",
+};
+
+type ConfidenceLevel = "high" | "medium" | "low" | "insufficient_data";
+
+const CONFIDENCE_LEVEL_LABELS: Record<ConfidenceLevel, string> = {
+  high: "Visoka sigurnost",
+  medium: "Srednja sigurnost",
+  low: "Niska sigurnost",
+  insufficient_data: "Nedovoljno podataka",
+};
+
+const DRIVER_LABELS: Record<string, string> = {
+  sales_velocity: "Brzina prodaje",
+  margin: "Marža",
+  stock_risk: "Rizik zalihe",
+  trend: "Trend",
+  supplier_reliability: "Pouzdanost dobavljača",
+  missing_cost: "Nedostaje nabavna cena",
+  sparse_sales: "Malo prodaje",
 };
 
 const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
@@ -197,6 +220,140 @@ function dataQualityClass(status: Exclude<DataQualityFilter, "all">): string {
 function translateReasonCode(code: string): string {
   const normalized = (code ?? "").trim().toLowerCase();
   return REASON_CODE_MESSAGES[normalized] ?? code;
+}
+
+function normalizeConfidenceLevel(
+  value: string | null | undefined,
+  confidenceScore: number | null | undefined,
+): ConfidenceLevel {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "high" || normalized === "medium" || normalized === "low" || normalized === "insufficient_data") {
+    return normalized;
+  }
+
+  if (confidenceScore == null || Number.isNaN(confidenceScore)) {
+    return "insufficient_data";
+  }
+
+  if (confidenceScore >= 80) return "high";
+  if (confidenceScore >= 60) return "medium";
+  return "low";
+}
+
+function confidenceLevelClass(level: ConfidenceLevel): string {
+  if (level === "high") return "confidence-pill confidence-high";
+  if (level === "medium") return "confidence-pill confidence-medium";
+  if (level === "low") return "confidence-pill confidence-low";
+  return "confidence-pill confidence-insufficient";
+}
+
+function normalizeSignalList(values: string[] | null | undefined): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values ?? []) {
+    const normalized = (value ?? "").trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function resolveConfidenceScore(row: ProductDecisionRow): number | null {
+  if (row.confidenceScore != null && !Number.isNaN(row.confidenceScore)) {
+    return row.confidenceScore;
+  }
+
+  if (row.confidenceLevel === "insufficient_data") {
+    return null;
+  }
+
+  return Number.isNaN(row.confidencePct) ? null : row.confidencePct;
+}
+
+function resolveExpectedImpactRsd(row: ProductDecisionRow): number | null {
+  if (row.expectedImpactRsd != null && !Number.isNaN(row.expectedImpactRsd)) {
+    return row.expectedImpactRsd;
+  }
+
+  return row.lostSalesEstimate > 0 ? row.lostSalesEstimate : null;
+}
+
+function resolveWarningCodes(row: ProductDecisionRow): string[] {
+  const source = row.warningCodes?.length ? row.warningCodes : row.reasonCodes;
+  return normalizeSignalList(source).filter((code) => {
+    const normalized = code.toLowerCase();
+    return normalized === "missing_cost"
+      || normalized === "missing_supplier"
+      || normalized === "insufficient_history"
+      || normalized === "expected_impact_denominator_missing"
+      || normalized === "data_quality_critical"
+      || normalized === "insufficient_data"
+      || normalized === "data_quality_blocker";
+  });
+}
+
+function resolvePrimaryDrivers(row: ProductDecisionRow): string[] {
+  const drivers: string[] = [];
+  const add = (driver: string) => {
+    if (!drivers.includes(driver)) drivers.push(driver);
+  };
+
+  if (row.velocityUnitsPerDay > 0.5 || row.unitsSold >= 20) add("sales_velocity");
+  if (row.marginPct != null || row.marginContribution > 0) add("margin");
+  if (row.stockGap > 0 || row.currentStock <= row.minStock || ["low_cover", "out_of_stock_risk", "slow_stock", "no_velocity"].includes((row.stockCoverStatus ?? "").trim().toLowerCase())) {
+    add("stock_risk");
+  }
+  if (row.trendPct != null) add("trend");
+  if (resolveWarningCodes(row).some((code) => code === "missing_cost")) add("missing_cost");
+  if ((row.supplierName && row.reliabilityPct < 70) || resolveWarningCodes(row).some((code) => code === "missing_supplier")) {
+    add("supplier_reliability");
+  }
+  if (row.unitsSold < 8 || row.daysSinceLastSale == null) add("sparse_sales");
+
+  return drivers;
+}
+
+function resolveInputFreshnessStatus(row: ProductDecisionRow, confidenceLevel: ConfidenceLevel): "fresh" | "stale" | "critical" | "unknown" {
+  if (confidenceLevel === "insufficient_data" || canonicalDataQualityStatus(row.dataQualityStatus) === "critical") {
+    return "critical";
+  }
+
+  if (row.daysSinceLastSale == null) {
+    return "unknown";
+  }
+
+  if (row.daysSinceLastSale > 60) {
+    return "stale";
+  }
+
+  return "fresh";
+}
+
+function confidenceLevelLabel(level: ConfidenceLevel): string {
+  return CONFIDENCE_LEVEL_LABELS[level];
+}
+
+function confidenceScoreText(level: ConfidenceLevel, score: number | null): string {
+  if (level === "insufficient_data" || score == null) {
+    return confidenceLevelLabel(level);
+  }
+
+  return `${confidenceLevelLabel(level)} · ${fmtNumber(score, 0, "N/A")}%`;
+}
+
+function inputFreshnessLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "fresh") return "Sveže";
+  if (normalized === "stale") return "Zastarelo";
+  if (normalized === "critical") return "Kritično";
+  return "Nije poznato";
+}
+
+function primaryDriverLabel(value: string): string {
+  return DRIVER_LABELS[value] ?? value;
 }
 
 function stockCoverStatusLabel(status: string | null | undefined): string {
@@ -405,6 +562,8 @@ export default function ProductDecisionCenterPage() {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
+  const [actionStatusWarning, setActionStatusWarning] = useState<string | null>(null);
+  const queueBusyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -413,7 +572,9 @@ export default function ProductDecisionCenterPage() {
         const items = await getStores();
         if (!cancelled) setStores(items);
       } catch {
-        if (!cancelled) setStores([]);
+        if (!cancelled) {
+          // Preserve the last known store list on transient failures instead of faking an empty filter set.
+        }
       }
     })();
     return () => {
@@ -428,7 +589,9 @@ export default function ProductDecisionCenterPage() {
         const items = await getSupplierFilters(fromDate, toDate, true, storeId);
         if (!cancelled) setSuppliers(items);
       } catch {
-        if (!cancelled) setSuppliers([]);
+        if (!cancelled) {
+          // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
+        }
       }
     })();
     return () => {
@@ -533,6 +696,7 @@ export default function ProductDecisionCenterPage() {
     ).values());
 
     if (lookupItems.length === 0) {
+      setActionStatusWarning(null);
       setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
       return () => {
         cancelled = true;
@@ -553,8 +717,12 @@ export default function ProductDecisionCenterPage() {
         }
 
         setQueuedActionKeys(keys);
+        setActionStatusWarning(null);
       } catch {
-        if (!cancelled) setQueuedActionKeys(new Set());
+        if (!cancelled) {
+          setQueuedActionKeys(new Set());
+          setActionStatusWarning("Status akcija trenutno nije dostupan.");
+        }
       }
     })();
 
@@ -654,11 +822,22 @@ export default function ProductDecisionCenterPage() {
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+    const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel, row.confidenceScore ?? row.confidencePct);
+    const confidenceScore = resolveConfidenceScore(row);
+    const warningCodes = resolveWarningCodes(row);
+    const primaryDrivers = resolvePrimaryDrivers(row);
+    const expectedImpactRsd = resolveExpectedImpactRsd(row);
+    const inputFreshnessStatus = resolveInputFreshnessStatus(row, confidenceLevel);
 
+    if (queueBusyKeyRef.current === sourceKey || queuedActionKeys.has(sourceKey)) {
+      return;
+    }
+
+    queueBusyKeyRef.current = sourceKey;
     setQueueBusyKey(sourceKey);
     setQueueMessage(null);
     try {
-      const reasonText = row.recommendationReason;
+      const reasonText = row.explainabilityText ?? row.recommendationReason;
 
       const result = await upsertAnalyticsActionWithResult({
         sourceType: queueSpec.sourceType,
@@ -669,8 +848,8 @@ export default function ProductDecisionCenterPage() {
         recommendationStatus: queueSpec.recommendationStatus,
         priority: queueSpec.priority,
         dueAtUtc: queueSpec.dueAtUtc,
-        impactEstimateRsd: row.lostSalesEstimate > 0 ? row.lostSalesEstimate : undefined,
-        expectedImpactRsd: row.lostSalesEstimate > 0 ? row.lostSalesEstimate : undefined,
+        impactEstimateRsd: expectedImpactRsd ?? undefined,
+        expectedImpactRsd: expectedImpactRsd ?? undefined,
         confidencePct: row.confidencePct,
         reliabilityPct: row.reliabilityPct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
@@ -686,6 +865,19 @@ export default function ProductDecisionCenterPage() {
           stockCoverDays: row.stockCoverDays,
           sellThroughRatio: row.sellThroughRatio,
           recommendationAllowed: row.recommendationAllowed ?? null,
+          recommendationId: row.recommendationId ?? null,
+          sourceType: row.sourceType ?? null,
+          sourceKey: row.sourceKey ?? null,
+          recommendationType: row.recommendationType ?? null,
+          confidenceLevel,
+          confidenceScore,
+          primaryDrivers,
+          warningCodes,
+          expectedImpactRsd,
+          impactWindowDays: row.impactWindowDays ?? null,
+          riskIfIgnored: row.riskIfIgnored ?? null,
+          explainabilityText: reasonText,
+          inputFreshnessStatus,
           periodFrom: fromDate,
           periodTo: toDate,
           storeId: storeId ?? "all",
@@ -704,11 +896,12 @@ export default function ProductDecisionCenterPage() {
         ? "Akcija je već u centralnim akcijama."
         : "Akcija je dodata u centralni red.");
     } catch (reason) {
-      setQueueMessage(reason instanceof Error ? reason.message : "Dodavanje akcije nije uspelo.");
+      setQueueMessage(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
+      queueBusyKeyRef.current = null;
       setQueueBusyKey(null);
     }
-  }, [fromDate, storeId, supplierId, toDate]);
+  }, [fromDate, queuedActionKeys, storeId, supplierId, toDate]);
 
   return (
     <section className="product-decision-page">
@@ -924,6 +1117,11 @@ export default function ProductDecisionCenterPage() {
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}
+      {!hasBlockingError && actionStatusWarning ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          {actionStatusWarning}
+        </div>
+      ) : null}
       {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
@@ -1020,8 +1218,20 @@ export default function ProductDecisionCenterPage() {
                   const isQueued = queuedActionKeys.has(sourceKey);
                   const isQueueBusy = queueBusyKey === sourceKey;
                   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
+                  const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel, row.confidenceScore ?? row.confidencePct);
+                  const confidenceScore = resolveConfidenceScore(row);
+                  const warningCodes = resolveWarningCodes(row);
+                  const primaryDrivers = resolvePrimaryDrivers(row);
+                  const expectedImpactRsd = resolveExpectedImpactRsd(row);
+                  const inputFreshnessStatus = resolveInputFreshnessStatus(row, confidenceLevel);
                   const reasonCodeItems = row.reasonCodes.length
                     ? row.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
+                    : null;
+                  const warningCodeItems = warningCodes.length
+                    ? warningCodes.map((code) => ({ code, message: translateReasonCode(code) }))
+                    : null;
+                  const primaryDriverItems = primaryDrivers.length
+                    ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
@@ -1057,7 +1267,7 @@ export default function ProductDecisionCenterPage() {
                           <small>{row.sellThroughStatusLabel ?? sellThroughStatusLabel(row.sellThroughStatus)}</small>
                         </td>
                         <td>
-                          <span>{fmtNumber(row.confidencePct, 0, "N/A")}%</span>
+                          <span className={confidenceLevelClass(confidenceLevel)}>{confidenceScoreText(confidenceLevel, confidenceScore)}</span>
                           <small>Pouzdanost: {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
                         </td>
                         <td>
@@ -1067,6 +1277,11 @@ export default function ProductDecisionCenterPage() {
                           <span className={recommendationToneClass(row.recommendationStatus)}>
                             {displayRecommendationLabel(row)}
                           </span>
+                          {warningCodeItems?.length ? (
+                            <small className="recommendation-warning-summary">
+                              Upozorenja: {warningCodeItems.slice(0, 3).map((item) => item.message).join(" · ")}
+                            </small>
+                          ) : null}
                           <button
                             type="button"
                             className="why-button"
@@ -1074,14 +1289,17 @@ export default function ProductDecisionCenterPage() {
                               event.stopPropagation();
                               toggleExpandedRow(row.productId);
                             }}
-                            title={row.recommendationReason}
+                            title={row.explainabilityText ?? row.recommendationReason}
                           >
                             Zašto?
                           </button>
                         </td>
                         <td>
                           <span>{row.recommendedAction}</span>
-                          <small>{fmtRsd(row.lostSalesEstimate, 0, "N/A")} potencijalnog uticaja</small>
+                          <small>{expectedImpactRsd != null ? `${fmtRsd(expectedImpactRsd, 0, "N/A")} potencijalnog uticaja` : "Procena uticaja nije dostupna."}</small>
+                          {expectedImpactRsd == null ? (
+                            <small className="recommendation-warning-summary">Upozorenje: nedostaje ulaz za procenu uticaja.</small>
+                          ) : null}
                           <button
                             type="button"
                             className={`btn-add-to-queue${isQueued ? " added" : ""}`}
@@ -1112,12 +1330,56 @@ export default function ProductDecisionCenterPage() {
                                   <span className={dataQualityClass(dataQuality)}>
                                     {DATA_QUALITY_LABELS[dataQuality]}
                                   </span>
-                                  <span className="confidence-badge">Sigurnost preporuke: {fmtNumber(row.confidencePct, 0, "N/A")}%</span>
+                                  <span className={confidenceLevelClass(confidenceLevel)}>{confidenceScoreText(confidenceLevel, confidenceScore)}</span>
+                                  <span className="confidence-badge">Svežina ulaza: {inputFreshnessLabel(inputFreshnessStatus)}</span>
                                 </div>
                               </div>
 
                               <div className="reason-block">
-                                <strong>Razlog:</strong> {row.recommendationReason || "Razlog nije dostupan."}
+                                <strong>Zašto ova preporuka?</strong> {row.explainabilityText || row.recommendationReason || "Objašnjenje nije dostupno."}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Glavni pokretači:</strong>
+                                {primaryDriverItems?.length ? (
+                                  <ul className="reason-chip-list">
+                                    {primaryDriverItems.map((item) => (
+                                      <li key={item.code} className="reason-chip">
+                                        {item.label}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span> Nema dovoljno signala za izdvajanje glavnih pokretača.</span>
+                                )}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Upozorenja:</strong>
+                                {warningCodeItems?.length ? (
+                                  <ul className="reason-code-list">
+                                    {warningCodeItems.map((item) => (
+                                      <li key={item.code}>
+                                        <span>{item.message}</span>
+                                        {item.message !== item.code ? <small>{item.code}</small> : null}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span> Nema dodatnih upozorenja.</span>
+                                )}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Očekivani uticaj:</strong> {expectedImpactRsd != null ? fmtRsd(expectedImpactRsd, 0, "N/A") : "Nije dostupan"}
+                                {row.impactWindowDays != null ? <span> u prozoru od {fmtNumber(row.impactWindowDays, 0, "0")} dana</span> : null}
+                                {expectedImpactRsd == null ? (
+                                  <div className="reason-warning-inline">Nema pouzdane procene uticaja jer nedostaje ulazni signal.</div>
+                                ) : null}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Rizik ako se ignoriše:</strong> {row.riskIfIgnored || "Rizik nije specificiran."}
                               </div>
 
                               <div className="reason-block">

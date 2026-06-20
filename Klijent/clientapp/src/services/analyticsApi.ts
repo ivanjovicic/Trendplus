@@ -36,6 +36,7 @@ import type {
   InventoryScheduleRunResponse,
   SalesSummary,
   SizeCurveDto,
+  DecisionBoardAggregateResponse,
   StoreOption,
   SupplierFilterOption,
   SupplierData,
@@ -351,27 +352,52 @@ function assertAnalyticsMetaSuccess<T>(payload: T, fallbackMessage?: string): T 
   );
 }
 
+type ApiErrorPayload = {
+  detail?: string;
+  title?: string;
+  message?: string;
+  correlationId?: string;
+};
+
+function appendCorrelationId(message: string, correlationId?: string | null): string {
+  const trimmedCorrelationId = correlationId?.trim();
+  if (!trimmedCorrelationId) {
+    return message;
+  }
+
+  return message.includes(trimmedCorrelationId)
+    ? message
+    : `${message} (Correlation ID: ${trimmedCorrelationId})`;
+}
+
 async function parseApiError(res: Response, fallbackMessage?: string): Promise<string> {
   const contentType = res.headers.get("content-type") ?? "";
+  const headerCorrelationId = res.headers.get("X-Correlation-ID") ?? res.headers.get("x-correlation-id") ?? null;
 
   if (contentType.includes("application/json")) {
-    const payload = (await res.json().catch(() => null)) as
-      | { detail?: string; title?: string; message?: string }
-      | null;
+    const payload = (await res.json().catch(() => null)) as ApiErrorPayload | null;
     const detail = payload?.detail ?? payload?.message ?? payload?.title;
+    const correlationId = payload?.correlationId ?? headerCorrelationId;
     if (detail && fallbackMessage) {
-      return detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
+      const normalizedDetail = detail.startsWith(fallbackMessage) ? detail : `${fallbackMessage}: ${detail}`;
+      return appendCorrelationId(normalizedDetail, correlationId);
     }
-    if (detail) return detail;
+    if (detail) return appendCorrelationId(detail, correlationId);
+    if (correlationId) {
+      return appendCorrelationId(fallbackMessage ?? `HTTP ${res.status}`, correlationId);
+    }
   }
 
   const text = (await res.text()).trim();
   if (text && fallbackMessage) {
-    return text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`;
+    return appendCorrelationId(
+      text.startsWith(fallbackMessage) ? text : `${fallbackMessage}: ${text}`,
+      headerCorrelationId
+    );
   }
 
-  if (text) return text;
-  return fallbackMessage ?? `HTTP ${res.status}`;
+  if (text) return appendCorrelationId(text, headerCorrelationId);
+  return appendCorrelationId(fallbackMessage ?? `HTTP ${res.status}`, headerCorrelationId);
 }
 
 export async function checkAnalyticsHealth(): Promise<{
@@ -682,12 +708,19 @@ export async function getAnalyticsCacheStatus(): Promise<AnalyticsCacheStatus> {
   );
 }
 
-export async function clearAnalyticsCache(family = "all"): Promise<AnalyticsCacheInvalidateResponse> {
+export async function clearAnalyticsCache(family = "all", adminKey?: string): Promise<AnalyticsCacheInvalidateResponse> {
   const params = new URLSearchParams();
   if (family.trim()) params.set("family", family.trim());
+  const headers: Record<string, string> = {};
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
   const response = await fetchAnalyticsResponse(
     makeUrl("/api/analytics/cached/cache/invalidate", params),
-    { method: "POST" },
+    {
+      method: "POST",
+      headers,
+    },
     DEFAULT_ANALYTICS_GET_TIMEOUT_MS
   );
 
@@ -718,6 +751,41 @@ export async function getProductDecisionCenter(options?: {
     "/api/analytics/cached/products/decision-center",
     params,
     "Greska pri ucitavanju Product Decision Center pregleda"
+  );
+}
+
+export async function getDecisionBoardAggregate(options?: {
+  fromDate?: string;
+  toDate?: string;
+  storeId?: number | null;
+  supplierId?: number | null;
+  dataScope?: string | null;
+  category?: string | null;
+  gender?: string | null;
+  seasonId?: number | null;
+  minRevenue?: number | null;
+  onlyHighConfidence?: boolean | null;
+  excludeOosBeforeMarkdown?: boolean | null;
+  search?: string | null;
+}): Promise<DecisionBoardAggregateResponse> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.dataScope) params.append("dataScope", options.dataScope);
+  if (options?.category) params.append("category", options.category);
+  if (options?.gender) params.append("gender", options.gender);
+  if (options?.seasonId != null) params.append("seasonId", String(options.seasonId));
+  if (options?.minRevenue != null) params.append("minRevenue", String(options.minRevenue));
+  if (options?.onlyHighConfidence != null) params.append("onlyHighConfidence", String(options.onlyHighConfidence));
+  if (options?.excludeOosBeforeMarkdown != null) params.append("excludeOosBeforeMarkdown", String(options.excludeOosBeforeMarkdown));
+  if (options?.search?.trim()) params.append("search", options.search.trim());
+
+  return fetchJson(
+    "/api/analytics/decision-board",
+    params,
+    "Greška pri učitavanju executive decision board pregleda"
   );
 }
 

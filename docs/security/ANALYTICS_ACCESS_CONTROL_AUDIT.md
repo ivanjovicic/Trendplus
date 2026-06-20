@@ -25,7 +25,7 @@ Scope: `Api/Endpoints/*`, `Api/Program.cs`, `Klijent/clientapp/src/App.tsx`, `Kl
 | Action queue create | `/api/analytics/actions` (POST) | Javna write ruta; nema auth/role provere | Analyst | P0: svako može da kreira ili upsertuje action item | P0 |
 | Action queue update/status/outcome | `/api/analytics/actions/{id}/status`, `/api/analytics/actions/{id}/outcome` | Javne write rute; nema auth/role provere | Manager | P0: promena statusa i outcome-a je neautorizovana | P0 |
 | Manual analytics refresh | `/api/analytics/optimize`, `/api/admin/run-analytics-optimization`, `/api/admin/sync-analytics-db`, `/api/admin/init-scoring-tables` | Neke rute su potpuno javne; ostale su bez jedinstvenog role modela | Admin | P0: refresh/repair akcije mogu menjati analytics state bez konzistentne zaštite | P0 |
-| Clear analytics cache | `WorkersPanel` dugme `Očisti analytics cache`, `/api/analytics/cached/cache/invalidate` | Javna write ruta; UI je u admin-ish panelu, ali backend nije role-protected | Admin | P0: cache invalidacija je destruktivna i trenutno nije zaštićena rolom | P0 |
+| Clear analytics cache | `WorkersPanel` dugme `Očisti analytics cache`, `/api/analytics/cached/cache/invalidate` | Backend now requires admin authorization or `X-Admin-Key`; read-only analytics stays public | Admin | Implemented: cache invalidation is no longer public | P0 |
 | Worker control | `/api/workers/control`, `/api/workers/control/enable`, `/api/workers/control/disable`, `/api/workers/configuration`, `/api/workers/{workerName}/start|stop|restart|schedule/*` | Read rute su javne; write rute koriste `X-Admin-Key` u prod-u, dok je dev otvoren | Admin | P0: runtime kontrola zavisi od shared key-a, ne od role auth-a | P0 |
 | Import / access import | `/access-import`, `/api/access-import/*`, `/api/access-import/cleanup/execute`, `/api/access-import/cleanup/archive/export`, `/api/access-import/batches/{id}` delete/cancel | Status/read rute su javne; destruktivne rute koriste `X-Admin-Key` u prod-u, dev je otvoren | Admin | P0: import i cleanup menjaju core podatke i treba jaču zaštitu | P0 |
 | Admin configuration | `/admin/configuration`, `/api/admin/backend-routing`, `/api/redis/toggle`, `/api/admin/pending-batches`, `/api/admin/audit-log` | Frontend ruta je javna; backend je mešavina javnih i admin-key ruku | Admin | P0: backend routing, Redis toggle i admin dijagnostika su previše izloženi | P0 |
@@ -43,3 +43,7 @@ Scope: `Api/Endpoints/*`, `Api/Program.cs`, `Klijent/clientapp/src/App.tsx`, `Kl
 ## Zaključak
 
 Za pilot spremnost je prioritet da se prvo zatvore write/destructive rute, pa tek onda da se uvede konzistentan Viewer/Analyst/Manager/Admin model za read površine.
+## Implemented Status
+
+- `POST /api/analytics/cached/cache/invalidate` is now protected in the backend by admin authorization or the `X-Admin-Key` compatibility path.
+- Missing credential returns `401`; present but insufficient credential returns `403`.

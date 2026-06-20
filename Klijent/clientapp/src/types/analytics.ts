@@ -341,6 +341,10 @@ export type ProductDecisionRecommendationStatus =
 
 export interface ProductDecisionCenterItem {
   productId: number;
+  recommendationId?: string | null;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  recommendationType?: string | null;
   sku: string;
   productName: string;
   supplierId?: number | null;
@@ -364,12 +368,21 @@ export interface ProductDecisionCenterItem {
   lostSalesEstimate: number;
   slowStockCapital?: number | null;
   dataQualityStatus: string;
+  confidenceLevel?: "high" | "medium" | "low" | "insufficient_data" | string | null;
+  confidenceScore?: number | null;
   confidencePct: number;
   reliabilityPct: number;
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
   recommendationReason: string;
   reasonCodes: string[];
+  warningCodes?: string[] | null;
+  primaryDrivers?: string[] | null;
+  expectedImpactRsd?: number | null;
+  impactWindowDays?: number | null;
+  riskIfIgnored?: string | null;
+  explainabilityText?: string | null;
+  inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   recommendedAction: string;
 }
 
@@ -391,6 +404,74 @@ export interface ProductDecisionCenterResponse {
   ignoredRowsCount?: number;
   summary: ProductDecisionCenterSummary;
   rows: ProductDecisionCenterItem[];
+  meta?: AnalyticsResponseMeta | null;
+}
+
+export interface DecisionBoardMetric {
+  label: string;
+  value: string;
+  tone: "good" | "warning" | "critical" | "neutral" | "insufficient" | string;
+  note?: string | null;
+}
+
+export interface DecisionBoardSourceState {
+  sourceKey: string;
+  displayName: string;
+  status: "good" | "warning" | "critical" | "insufficient_data" | "fresh" | "stale" | "unknown" | string;
+  generatedAtUtc?: string | null;
+  warningCodes: string[];
+  message?: string | null;
+  sourceLink?: string | null;
+}
+
+export interface DecisionBoardCard {
+  id: string;
+  kind: "product" | "inventory" | "supplier" | "blocker" | "action" | "outcome" | string;
+  sectionKey: string;
+  sourceModule: string;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  title: string;
+  summary?: string | null;
+  confidenceLevel: "high" | "medium" | "low" | "insufficient_data" | string;
+  confidenceScore?: number | null;
+  reliabilityPct?: number | null;
+  expectedImpactRsd?: number | null;
+  measuredImpactRsd?: number | null;
+  realizationRatio?: number | null;
+  riskIfIgnored: string;
+  recommendedNextAction: string;
+  actionHref: string;
+  alreadyInAction: boolean;
+  alreadyClosed: boolean;
+  warningCodes: string[];
+  dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  generatedAtUtc?: string | null;
+  priorityScore: number;
+  impactScore: number;
+}
+
+export interface DecisionBoardSection {
+  key: string;
+  title: string;
+  description: string;
+  sourceLink: string;
+  emptyMessage: string;
+  warnings: string[];
+  cards: DecisionBoardCard[];
+}
+
+export interface DecisionBoardAggregateResponse {
+  generatedAtUtc: string;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  lastRefreshAtUtc?: string | null;
+  overallDataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
+  recommendationNote: string;
+  warnings: string[];
+  metrics: DecisionBoardMetric[];
+  sourceStates: DecisionBoardSourceState[];
+  sections: DecisionBoardSection[];
   meta?: AnalyticsResponseMeta | null;
 }
 

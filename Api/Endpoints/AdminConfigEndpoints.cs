@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
 
@@ -43,6 +45,13 @@ public static class AdminConfigEndpoints
             .WithSummary("Admin diagnostics")
             .Produces<AdminHealthCheckResponse>(StatusCodes.Status200OK)
             .Produces<object>(StatusCodes.Status401Unauthorized);
+
+        group.MapGet("/demo-verification", DemoVerification)
+            .WithName("DemoEnvironmentVerification")
+            .WithSummary("Check whether the current environment is demo-safe")
+            .Produces<DemoEnvironmentVerificationResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/audit-log", GetAuditLog)
             .WithName("GetAuditLog")
@@ -142,12 +151,20 @@ public static class AdminConfigEndpoints
         });
     }
 
-    private static async Task<Ok<RequeueResponse>> RequeueBatch(
+    private static async Task<IResult> RequeueBatch(
         long batchId,
+        HttpContext context,
+        IConfiguration configuration,
         TrendplusDbContext db,
         IAccessImportJobQueue queue,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         var batch = await db.DataImportBatches.FindAsync(new object[] { batchId }, ct);
         if (batch == null)
             return TypedResults.Ok(new RequeueResponse { Success = false, Message = $"Batch {batchId} not found." });
@@ -172,10 +189,18 @@ public static class AdminConfigEndpoints
         }
     }
 
-    private static async Task<Ok<DiagnosticsResult>> RunStaleRecovery(
+    private static async Task<IResult> RunStaleRecovery(
+        HttpContext context,
+        IConfiguration configuration,
         IAccessImportService importService,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         try
         {
             await importService.RefreshBatchStatusesAsync(batchId: null, ct);
@@ -215,6 +240,99 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(response);
     }
 
+    private static IResult DemoVerification(
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        HttpContext context)
+    {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return TypedResults.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return TypedResults.StatusCode(StatusCodes.Status403Forbidden);
+
+        return TypedResults.Ok(BuildDemoVerificationResponse(configuration, environment));
+    }
+
+    private static DemoEnvironmentVerificationResponse BuildDemoVerificationResponse(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var reasons = new List<string>();
+        var warnings = new List<string>();
+        var environmentName = environment.EnvironmentName ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(environmentName) &&
+            environmentName.Contains("demo", StringComparison.OrdinalIgnoreCase))
+        {
+            reasons.Add("environment_name_contains_demo");
+        }
+
+        if (IsAnalyticsDemoFlagEnabled(configuration))
+        {
+            reasons.Add("analytics_demo_flag_enabled");
+        }
+
+        EvaluateConnectionString(configuration.GetConnectionString("AnalyticsConnection"), warnings, reasons);
+        EvaluateConnectionString(configuration.GetConnectionString("DefaultConnection"), warnings, reasons);
+
+        return new DemoEnvironmentVerificationResponse
+        {
+            DemoSafe = reasons.Count > 0,
+            Reasons = reasons.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Warnings = warnings.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Environment = string.IsNullOrWhiteSpace(environmentName) ? "unknown" : environmentName,
+            CheckedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static void EvaluateConnectionString(
+        string? connectionString,
+        List<string> warnings,
+        List<string> reasons)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            warnings.Add("connection_string_unavailable_or_unreadable");
+            return;
+        }
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+            AppendProofReason(builder.Database, "analytics_connection_database_contains_demo", reasons);
+            AppendProofReason(builder.Host, "analytics_connection_host_contains_demo", reasons);
+            AppendProofReason(builder.ApplicationName, "analytics_connection_application_name_contains_demo", reasons);
+        }
+        catch
+        {
+            warnings.Add("connection_string_unavailable_or_unreadable");
+        }
+    }
+
+    private static void AppendProofReason(
+        string? value,
+        string reason,
+        List<string> reasons)
+    {
+        if (ContainsMarker(value, "demo"))
+        {
+            reasons.Add(reason);
+        }
+    }
+
+    private static bool IsAnalyticsDemoFlagEnabled(IConfiguration configuration)
+    {
+        return configuration.GetValue<bool?>("AnalyticsDemo:Enabled") == true
+            || configuration.GetValue<bool?>("AnalyticsDemo__Enabled") == true
+            || string.Equals(Environment.GetEnvironmentVariable("AnalyticsDemo__Enabled"), "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ContainsMarker(string? value, string marker) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.Contains(marker, StringComparison.OrdinalIgnoreCase);
+
     private static async Task<Ok<AuditLogResponse>> GetAuditLog(
         TrendplusDbContext db,
         [FromQuery] int take = 100,
@@ -252,16 +370,18 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(worker);
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> ResumeWorker(
+    private static async Task<IResult> ResumeWorker(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.ResumeWorkerAsync(workerName, userName, ct);
@@ -270,16 +390,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to resume worker" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> StopWorker(
+    private static async Task<IResult> StopWorker(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.StopWorkerAsync(workerName, userName, ct);
@@ -288,16 +410,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to stop worker" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> EnableWorkerSchedule(
+    private static async Task<IResult> EnableWorkerSchedule(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.EnableScheduleAsync(workerName, userName, ct);
@@ -306,16 +430,18 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to enable schedule" });
     }
 
-    private static async Task<Results<Ok<WorkerActionResponse>, BadRequest<object>>> DisableWorkerSchedule(
+    private static async Task<IResult> DisableWorkerSchedule(
         string workerName,
         WorkerConfigurationService service,
         HttpContext context,
         IConfiguration configuration,
-        IHostEnvironment environment,
         CancellationToken ct = default)
     {
-        if (!IsAdminRequest(context, configuration, environment))
-            return TypedResults.BadRequest<object>(new { error = "Unauthorized" });
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var userName = context.User.Identity?.Name ?? "system";
         var success = await service.DisableScheduleAsync(workerName, userName, ct);
@@ -324,25 +450,6 @@ public static class AdminConfigEndpoints
             : TypedResults.BadRequest<object>(new { error = "Failed to disable schedule" });
     }
 
-    private static bool IsAdminRequest(
-        HttpContext context,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        if (environment.IsDevelopment())
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-               && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
-    }
 }
 
 public class PendingBatchesResponse { public int Total { get; set; } public List<PendingBatchDto> Batches { get; set; } = new(); }
@@ -361,6 +468,14 @@ public class AdminHealthCheckResponse
     public DateTime? WorkerRuntimeSettingsLastEnsureAttemptUtc { get; set; }
     public DateTime? WorkerRuntimeSettingsLastEnsureSuccessUtc { get; set; }
     public string? WorkerRuntimeSettingsSchemaError { get; set; }
+}
+public class DemoEnvironmentVerificationResponse
+{
+    public bool DemoSafe { get; set; }
+    public List<string> Reasons { get; set; } = [];
+    public List<string> Warnings { get; set; } = [];
+    public string Environment { get; set; } = string.Empty;
+    public DateTime CheckedAtUtc { get; set; }
 }
 public class AuditLogResponse { public List<AuditEntry> Entries { get; set; } = new(); public int Total { get; set; } }
 public class AuditEntry { public long Id { get; set; } public DateTime Timestamp { get; set; } public long BatchId { get; set; } public string Severity { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }

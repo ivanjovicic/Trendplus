@@ -9,6 +9,9 @@ Smoke reference izvori:
 - `docs/Analytics/ANALYTICS_BROWSER_SMOKE.md`
 - `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`
 
+Evidence-based readiness status:
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+
 Ako makar jedna stavka iz odeljka Production blockers padne, promena nije spremna za merge.
 
 ## 1) Build/Test Gates

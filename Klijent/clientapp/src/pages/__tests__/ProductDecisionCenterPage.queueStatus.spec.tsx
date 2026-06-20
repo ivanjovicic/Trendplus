@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
@@ -13,6 +13,7 @@ const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
 const getProductDecisionCenterMock = vi.fn();
 const getAnalyticsActionSourceStatusesMock = vi.fn();
+const upsertAnalyticsActionWithResultMock = vi.fn();
 
 vi.mock("../../services/analyticsApi", () => ({
   AnalyticsMetaError: class extends Error {},
@@ -20,13 +21,26 @@ vi.mock("../../services/analyticsApi", () => ({
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
-  upsertAnalyticsActionWithResult: vi.fn(),
+  upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
+  default: ({
+    title,
+    message,
+  }: {
+    title: string;
+    message: string;
+  }) => (
+    <div role="alert">
+      <strong>{title}</strong>
+      <span>{message}</span>
+    </div>
+  ),
+}));
 vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => null }));
 vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
@@ -37,6 +51,13 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     getStoresMock.mockResolvedValue([]);
     getSupplierFiltersMock.mockResolvedValue([]);
     getAnalyticsActionSourceStatusesMock.mockResolvedValue({ items: [] });
+    upsertAnalyticsActionWithResultMock.mockResolvedValue({
+      item: { id: 1, sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all" },
+      created: true,
+      existing: false,
+      status: "new",
+      sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all",
+    });
     getProductDecisionCenterMock.mockResolvedValue({
       rows: [
         {
@@ -161,5 +182,74 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(screen.queryByText("Pojacaj")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zašto?" })).toHaveAttribute("title", "Marza je ispod zeljenog nivoa.");
     expect(screen.getByText("Nastavi pracenje.")).toBeInTheDocument();
+  });
+
+  it("ignores immediate duplicate add-to-queue clicks for the same row", async () => {
+    let resolveUpsert: ((value: unknown) => void) | null = null;
+    upsertAnalyticsActionWithResultMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpsert = resolve;
+        }),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u akcije" });
+    fireEvent.click(addButtons[0]);
+    fireEvent.click(addButtons[0]);
+
+    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
+
+    resolveUpsert?.({
+      item: { id: 1, sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all" },
+      created: true,
+      existing: false,
+      status: "new",
+      sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all",
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: "U akcijama" }).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows a permission warning and keeps the recommendation visible when add-to-queue is forbidden", async () => {
+    upsertAnalyticsActionWithResultMock.mockRejectedValueOnce(Object.assign(new Error("Unauthorized"), { status: 403 }));
+
+    render(<ProductDecisionCenterPage />);
+
+    const addButtons = await screen.findAllByRole("button", { name: "Dodaj u akcije" });
+    fireEvent.click(addButtons[0]);
+
+    expect(await screen.findByText("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.")).toBeInTheDocument();
+    expect(screen.getByText("Model X")).toBeInTheDocument();
+    expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+  });
+
+  it("keeps product recommendations visible when optional action status lookup fails", async () => {
+    getAnalyticsActionSourceStatusesMock.mockRejectedValueOnce(new Error("404 Not Found"));
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Model X")).toBeInTheDocument();
+    expect(await screen.findByText("Status akcija trenutno nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+  });
+
+  it("keeps blocking error state when the main product decision endpoint fails", async () => {
+    getProductDecisionCenterMock.mockRejectedValueOnce(
+      new Error("Product Decision Center podaci trenutno nisu dostupni."),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    expect(screen.getByText("Product Decision Center podaci trenutno nisu dostupni.")).toBeInTheDocument();
+    expect(screen.queryByText("Status akcija trenutno nije dostupan.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model X")).not.toBeInTheDocument();
   });
 });

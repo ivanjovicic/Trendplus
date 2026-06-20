@@ -148,6 +148,10 @@ function statusDisplayLabel(status: DecisionStatus): string {
   return recommendationStatusLabel(status);
 }
 
+function isHighPriorityCandidate(row: DecisionCandidate): boolean {
+  return (row.priorityBand ?? "").toLowerCase() === "high" && row.status !== "insufficient_data";
+}
+
 type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
@@ -321,7 +325,7 @@ export default function PreNivelacijaPriorityPage() {
     const review = sortedRows.filter((row) => row.status === "review").length;
     const doNotTrust = sortedRows.filter((row) => row.status === "do_not_trust").length;
     const insufficientData = sortedRows.filter((row) => row.status === "insufficient_data").length;
-    const highPriority = sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high").length;
+    const highPriority = sortedRows.filter(isHighPriorityCandidate).length;
     return { increaseFocus, maintain, review, doNotTrust, insufficientData, highPriority };
   }, [sortedRows]);
 
@@ -332,7 +336,7 @@ export default function PreNivelacijaPriorityPage() {
     if (focusFilter === "review") return sortedRows.filter((row) => row.status === "review");
     if (focusFilter === "doNotTrust") return sortedRows.filter((row) => row.status === "do_not_trust");
     if (focusFilter === "insufficientData") return sortedRows.filter((row) => row.status === "insufficient_data");
-    if (focusFilter === "highPriority") return sortedRows.filter((row) => (row.priorityBand ?? "").toLowerCase() === "high");
+    if (focusFilter === "highPriority") return sortedRows.filter(isHighPriorityCandidate);
     return sortedRows;
   }, [focusFilter, sortedRows]);
 
@@ -645,7 +649,7 @@ export default function PreNivelacijaPriorityPage() {
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
               <span>Visok prioritet <InfoTip text="SKU u prioritetnoj bandi 'high' – imaju najjači kompozitni signal (visok skor zalihe + stagnacija prodaje). Ovo su artikli gde je intervencija pre nivelacije najhitnija." /></span>
-              <strong>{data.summary.highPriorityCount}</strong>
+              <strong>{candidateCounts.highPriority}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU koji nose operativni rizik.">
               <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima svih prikazanih kandidatskih SKU (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik." /></span>

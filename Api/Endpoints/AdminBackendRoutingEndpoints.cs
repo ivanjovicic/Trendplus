@@ -1,6 +1,7 @@
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
 
@@ -54,8 +55,20 @@ public static class AdminBackendRoutingEndpoints
     private static IResult UpdatePreference(
         [FromBody] BackendRoutingPreferenceUpdate input,
         BackendRoutingPreferenceService service,
-        HttpContext httpContext)
+        HttpContext httpContext,
+        IConfiguration configuration)
     {
+        var access = AdminAccessControl.GetDecision(httpContext, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (access is AdminAccessDecision.Forbidden)
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
         var updatedBy = httpContext.Request.Headers.TryGetValue("X-Admin-User", out var headerValue)
             ? headerValue.ToString()
             : "api";

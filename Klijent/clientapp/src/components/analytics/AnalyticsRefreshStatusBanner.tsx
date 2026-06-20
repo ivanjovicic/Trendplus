@@ -29,6 +29,10 @@ export default function AnalyticsRefreshStatusBanner({
   adminHref = "/admin/configuration?panel=workers",
 }: AnalyticsRefreshStatusBannerProps) {
   const freshness = normalizeFreshness(status?.dataFreshnessStatus);
+  const latestCorrelationId = status?.recentRuns?.[0]?.correlationId?.trim() || null;
+  const shouldShowCorrelationId = Boolean(
+    latestCorrelationId && (error || status?.lastErrorMessage || freshness === "stale" || freshness === "critical")
+  );
 
   if (loading && !status) {
     return (
@@ -95,6 +99,12 @@ export default function AnalyticsRefreshStatusBanner({
           <div className="arb-row arb-error">
             <strong>Greška:</strong>
             <span>{status.lastErrorMessage}</span>
+          </div>
+        ) : null}
+        {shouldShowCorrelationId ? (
+          <div className="arb-row">
+            <strong>Correlation ID:</strong>
+            <span>{latestCorrelationId}</span>
           </div>
         ) : null}
         {status.durationSeconds != null ? (

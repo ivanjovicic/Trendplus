@@ -20,6 +20,139 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class AnalyticsActionsEndpointsTests
 {
+    private const string AdminApiKey = "test-admin-key";
+
+    [Fact]
+    public async Task PostUpsert_RejectsWithoutAdminKey_ReturnsUnauthorized()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+
+        using var request = CreateJsonRequest(HttpMethod.Post, "/api/analytics/actions", new
+        {
+            sourceType = AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey = "inventory:sku:auth-1",
+            title = "Zaštićena akcija",
+            priority = AnalyticsActionConstants.Priorities.P1
+        });
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUpsert_RejectsWithWrongAdminKey_ReturnsForbidden()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+
+        using var request = CreateJsonRequest(HttpMethod.Post, "/api/analytics/actions", new
+        {
+            sourceType = AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey = "inventory:sku:auth-2",
+            title = "Zaštićena akcija",
+            priority = AnalyticsActionConstants.Priorities.P1
+        }, adminKey: "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUpsert_AllowsWithAdminKey_AndCreatesAction()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+
+        using var request = CreateJsonRequest(HttpMethod.Post, "/api/analytics/actions", new
+        {
+            sourceType = AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey = "inventory:sku:auth-3",
+            title = "Zaštićena akcija",
+            priority = AnalyticsActionConstants.Priorities.P1
+        }, adminKey: AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionItem>();
+        Assert.NotNull(payload);
+        Assert.Equal("inventory:sku:auth-3", payload!.SourceKey);
+    }
+
+    [Fact]
+    public async Task PatchStatus_RejectsWithoutAdminKey_ReturnsUnauthorized()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync();
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/status", new
+        {
+            status = AnalyticsActionConstants.Statuses.Done,
+            note = "status protected"
+        });
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PatchStatus_AllowsWithAdminKey_AndUpdatesAction()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync();
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/status", new
+        {
+            status = AnalyticsActionConstants.Statuses.Done,
+            note = "status protected"
+        }, adminKey: AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionItem>();
+        Assert.NotNull(payload);
+        Assert.Equal(AnalyticsActionConstants.Statuses.Done, payload!.Status);
+    }
+
+    [Fact]
+    public async Task PatchOutcome_RejectsWithWrongAdminKey_ReturnsForbidden()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync();
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
+        {
+            outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd = 42m
+        }, adminKey: "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PatchOutcome_AllowsWithAdminKey_AndUpdatesAction()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync();
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
+        {
+            outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd = 42m
+        }, adminKey: AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionItem>();
+        Assert.NotNull(payload);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, payload!.OutcomeStatus);
+    }
+
     [Fact]
     public async Task PostStatus_ExistingKey_ReturnsExistsWithOutcomeStatus()
     {
@@ -281,7 +414,7 @@ public sealed class AnalyticsActionsEndpointsTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<AnalyticsActionsTestHost> CreateAsync()
+        public static async Task<AnalyticsActionsTestHost> CreateAsync(bool withAdminKey = false)
         {
             var databaseName = $"analytics-actions-endpoints-{Guid.NewGuid():N}";
 
@@ -297,6 +430,11 @@ public sealed class AnalyticsActionsEndpointsTests
                 options.UseInMemoryDatabase(databaseName));
             builder.Services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             builder.Services.AddScoped<AnalyticsActionItemService>();
+
+            if (withAdminKey)
+            {
+                builder.Configuration["Admin:ApiKey"] = AdminApiKey;
+            }
 
             var app = builder.Build();
             app.MapAnalyticsActionsEndpoints();
@@ -346,6 +484,21 @@ public sealed class AnalyticsActionsEndpointsTests
             Client.Dispose();
             await App.DisposeAsync();
         }
+    }
+
+    private static HttpRequestMessage CreateJsonRequest(HttpMethod method, string uri, object body, string? adminKey = null)
+    {
+        var request = new HttpRequestMessage(method, uri)
+        {
+            Content = JsonContent.Create(body)
+        };
+
+        if (!string.IsNullOrWhiteSpace(adminKey))
+        {
+            request.Headers.Add("X-Admin-Key", adminKey);
+        }
+
+        return request;
     }
 
     private sealed record AnalyticsActionSourceStatusResponse(

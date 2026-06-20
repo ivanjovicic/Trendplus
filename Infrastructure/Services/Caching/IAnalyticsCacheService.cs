@@ -68,6 +68,15 @@ public static class AnalyticsCacheKeys
     public const string PilotIntakeReportPrefix = $"{ReportNamespace}pilot-intake:";
     public const string ObservabilityLogsPrefix = $"{Prefix}observability:logs:";
     public const string ObservabilityPerformancePrefix = $"{Prefix}observability:performance:";
+    public const string SalesSummaryPrefix = $"{Prefix}summary:";
+    public const string DailySalesPrefix = $"{Prefix}daily:";
+    public const string CategoryDataPrefix = $"{Prefix}category:";
+    public const string GenderDataPrefix = $"{Prefix}gender:";
+    public const string SupplierDataPrefix = $"{Prefix}supplier:";
+    public const string TopProductsPrefix = $"{Prefix}top:";
+    public const string DashboardBootstrapPrefix = $"{Prefix}dashboard-bootstrap:";
+    public const string DashboardAdvancedPrefix = $"{Prefix}dashboard-advanced:";
+    public const string TopProductsAdvancedPrefix = $"{Prefix}top-advanced:";
 
     private static string NormalizeDataScope(string? dataScope)
     {
@@ -126,30 +135,30 @@ public static class AnalyticsCacheKeys
     
     // Sales Summary
     public static string SalesSummary(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}summary:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{SalesSummaryPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Daily Sales
     public static string DailySales(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null, int? topN = null)
     {
-        var baseKey = $"{Prefix}daily:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        var baseKey = $"{DailySalesPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
         return topN.HasValue ? $"{baseKey}:top:{topN.Value}" : baseKey;
     }
     
     // Top Products
     public static string TopProducts(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}top:{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{TopProductsPrefix}{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Category Data
     public static string CategoryData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}category:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{CategoryDataPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Gender Data
     public static string GenderData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}gender:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{GenderDataPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Supplier Data
     public static string SupplierData(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) => 
-        $"{Prefix}supplier:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{SupplierDataPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
     
     // Inventory
     public static string Inventory(int threshold) => 
@@ -192,11 +201,11 @@ public static class AnalyticsCacheKeys
 
     // Dashboard Advanced Snapshot
     public static string DashboardAdvanced(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
-        $"{Prefix}dashboard-advanced:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{DashboardAdvancedPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     // Top Products (advanced tabs)
     public static string TopProductsAdvanced(int top, DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
-        $"{Prefix}top-advanced:{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{TopProductsAdvancedPrefix}{top}:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     public static string SupplierFilters(DateTime? from, DateTime? to, int? storeId = null, string? dataScope = null) =>
         $"{Prefix}filters:suppliers:{FormatInstant(from)}:{FormatInstant(to)}:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}";
@@ -216,7 +225,7 @@ public static class AnalyticsCacheKeys
     public static string Metadata(string cacheKey) => $"{cacheKey}:metadata";
 
     public static string DashboardBootstrap(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, string? dataScope = null) =>
-        $"{Prefix}dashboard-bootstrap:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
+        $"{DashboardBootstrapPrefix}{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}";
 
     public static string ProductDecisionCenter(DateTime? from, DateTime? to, int? storeId = null, int? supplierId = null, int top = 500, string? dataScope = null) =>
         $"{Prefix}product-decision-center:{FormatInstant(from)}:{FormatInstant(to)}:{FilterSuffix(storeId, supplierId, dataScope)}:top:{top}";

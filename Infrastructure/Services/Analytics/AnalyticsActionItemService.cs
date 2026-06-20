@@ -3,7 +3,9 @@ using Application.Artikli.Common.Interfaces;
 using Domain.Model.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using System.Linq;
+using System.Reflection;
 
 namespace Infrastructure.Services.Analytics;
 
@@ -26,6 +28,19 @@ public sealed class AnalyticsActionItemService
         => status is AnalyticsActionConstants.Statuses.New
             or AnalyticsActionConstants.Statuses.Accepted
             or AnalyticsActionConstants.Statuses.Deferred;
+
+    private async Task<AnalyticsActionItem?> FindExistingOpenActionAsync(
+        string sourceType,
+        string sourceKey,
+        CancellationToken ct)
+    {
+        return await _db.AnalyticsActionItems
+            .FirstOrDefaultAsync(
+                x => x.SourceType == sourceType
+                    && x.SourceKey == sourceKey
+                    && IsOpenStatus(x.Status),
+                ct);
+    }
 
     // ── Query ─────────────────────────────────────────────────────────────
 
@@ -318,12 +333,7 @@ public sealed class AnalyticsActionItemService
         }
 
         // Check for existing open action with same sourceType + sourceKey
-        var existing = await _db.AnalyticsActionItems
-            .FirstOrDefaultAsync(x =>
-                x.SourceType == request.SourceType &&
-                x.SourceKey == request.SourceKey &&
-            IsOpenStatus(x.Status),
-                ct);
+        var existing = await FindExistingOpenActionAsync(request.SourceType, request.SourceKey, ct);
 
         if (existing is not null)
         {
@@ -362,7 +372,40 @@ public sealed class AnalyticsActionItemService
         };
 
         _db.AnalyticsActionItems.Add(item);
-        await _db.SaveChangesAsync(ct);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            DetachPendingEntity(item);
+
+            if (!IsUniqueOpenActionConflict(ex))
+            {
+                throw;
+            }
+
+            var racedExisting = await FindExistingOpenActionAsync(request.SourceType, request.SourceKey, ct);
+            if (racedExisting is not null)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "AnalyticsActionItem upsert detected concurrent open action for {SourceType}/{SourceKey}. Returning existing action {Id}.",
+                    request.SourceType,
+                    request.SourceKey,
+                    racedExisting.Id);
+
+                return new AnalyticsActionUpsertResult(
+                    Item: racedExisting,
+                    Created: false,
+                    Existing: true,
+                    Status: racedExisting.Status,
+                    SourceKey: racedExisting.SourceKey);
+            }
+
+            throw;
+        }
 
         _logger.LogInformation("AnalyticsActionItem created: Id={Id} SourceType={SourceType} SourceKey={SourceKey} Priority={Priority}",
             item.Id, item.SourceType, item.SourceKey, item.Priority);
@@ -675,6 +718,41 @@ public sealed class AnalyticsActionItemService
 
     private static string NormalizeDataQualityBucket(string? dataQualityStatus)
         => AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus) ?? "unknown";
+
+    private static bool IsUniqueOpenActionConflict(DbUpdateException exception)
+        => GetSqlState(exception) == PostgresErrorCodes.UniqueViolation;
+
+    private static string? GetSqlState(Exception? exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgresException)
+            {
+                return postgresException.SqlState;
+            }
+
+            var sqlStateProperty = current.GetType().GetProperty(
+                "SqlState",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (sqlStateProperty?.PropertyType == typeof(string) &&
+                sqlStateProperty.GetValue(current) is string sqlState &&
+                !string.IsNullOrWhiteSpace(sqlState))
+            {
+                return sqlState;
+            }
+        }
+
+        return null;
+    }
+
+    private void DetachPendingEntity(AnalyticsActionItem item)
+    {
+        if (_db is DbContext efDb)
+        {
+            efDb.Entry(item).State = EntityState.Detached;
+        }
+    }
 
     private static string GetOutcomeLabel(string key)
         => key switch

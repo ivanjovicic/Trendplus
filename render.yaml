@@ -19,6 +19,8 @@ services:
         value: web
       - key: Caching__UseRedis
         value: "false"
+      - key: AnalyticsPrewarm__Enabled
+        value: "false"
       - key: DOCUMENT_SIGNING_KEY
         sync: false # Set in Render Dashboard (secret, at least 32 random bytes/chars)
       - key: Database__CommandTimeoutSeconds

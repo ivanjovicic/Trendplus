@@ -174,6 +174,23 @@ describe("SupplierDecisionReportActions", () => {
     });
   });
 
+  it("shows a permission warning and keeps the queue button available when queue write is forbidden", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+    upsertAnalyticsActionWithResultMock.mockRejectedValueOnce(Object.assign(new Error("Forbidden"), { status: 403 }));
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30" />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+
+    expect(await screen.findByText("Nemate dozvolu za izmenu akcija. Preporuke ostaju dostupne za pregled.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+  });
+
   it("copies negotiation pack rows into summary text", async () => {
     vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
 
@@ -199,5 +216,26 @@ describe("SupplierDecisionReportActions", () => {
     });
 
     expect(buildSummaryMock.mock.calls[0][0].rows.some((row: { section?: string }) => row.section === "supplier_negotiation_pack")).toBe(true);
+  });
+
+  it("shows a copy failure message when the clipboard fallback cannot copy the summary", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+    const execCommandMock = vi.fn(() => false);
+    Object.defineProperty(document, "execCommand", {
+      value: execCommandMock,
+      configurable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierDecisionReportActions payload={payload} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Kopiraj sažetak" }));
+
+    expect(await screen.findByText("Kopiranje sažetka nije uspelo. Sažetak ostaje dostupan za pregled.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kopiraj sažetak" })).toBeInTheDocument();
+    expect(execCommandMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { getAnalyticsActionSourceStatuses, upsertAnalyticsActionWithResult } from "../../services/analyticsApi";
 import type { AnalyticsActionDataQualityStatus } from "../../types/analytics";
+import { getAnalyticsActionWriteErrorMessage } from "../../utils/analyticsActionWriteErrors";
 import {
   buildSupplierDecisionReportSummaryText,
   exportSupplierDecisionReportCsv,
@@ -18,6 +19,8 @@ type SupplierDecisionReportActionsProps = {
   onError?: (message: string) => void;
   durableReportHref?: string | null;
 };
+
+const COPY_FAILURE_MESSAGE = "Kopiranje sažetka nije uspelo. Sažetak ostaje dostupan za pregled.";
 
 function readPayloadValue(payload: ResolvedAnalyticsTablePayload | null, key: string): string | null {
   if (!payload) return null;
@@ -110,14 +113,21 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       return;
     }
 
+    if (typeof document.execCommand !== "function") {
+      throw new Error(COPY_FAILURE_MESSAGE);
+    }
+
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.style.position = "fixed";
     textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
     document.body.removeChild(textarea);
+    if (!copied) {
+      throw new Error(COPY_FAILURE_MESSAGE);
+    }
   };
 
   const run = async (type: "durable" | "preview" | "copy" | "csv" | "print" | "excel" | "pdf" | "queue") => {
@@ -215,7 +225,13 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       await exportSupplierDecisionReportPdf(payload);
       setStatus("PDF izveštaj je preuzet.");
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Izvoz izveštaja nije uspeo.";
+      const message = type === "queue"
+        ? getAnalyticsActionWriteErrorMessage(reason)
+        : type === "copy"
+          ? COPY_FAILURE_MESSAGE
+        : reason instanceof Error
+          ? reason.message
+          : "Izvoz izveštaja nije uspeo.";
       setStatus(message);
       onError?.(type === "pdf"
         ? "PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel."

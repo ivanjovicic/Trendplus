@@ -1,4 +1,5 @@
 using Application.Analytics;
+using Domain.Model.Analytics;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Analytics;
 using Microsoft.EntityFrameworkCore;
@@ -714,6 +715,46 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertWithResultAsync_WhenConcurrentInsertWins_ReturnsExistingInsteadOfThrowing()
+    {
+        var databaseName = nameof(UpsertWithResultAsync_WhenConcurrentInsertWins_ReturnsExistingInsteadOfThrowing);
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        await using var db = new RaceOnSaveAnalyticsDbContext(options);
+        var service = CreateService(db);
+
+        var result = await service.UpsertWithResultAsync(
+            CreateRequest(AnalyticsActionConstants.SourceTypes.Product, "race-key", title: "Race title"),
+            userId: "u1");
+
+        Assert.False(result.Created);
+        Assert.True(result.Existing);
+        Assert.Equal("race-key", result.SourceKey);
+        Assert.Equal("race-key", result.Item.SourceKey);
+        Assert.Equal(1, await db.AnalyticsActionItems.CountAsync());
+    }
+
+    [Fact]
+    public async Task UpsertWithResultAsync_WhenDbUpdateExceptionIsUnrelated_Rethrows()
+    {
+        var databaseName = nameof(UpsertWithResultAsync_WhenDbUpdateExceptionIsUnrelated_Rethrows);
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+        await using var db = new NonUniqueFailureAnalyticsDbContext(options);
+        var service = CreateService(db);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            service.UpsertWithResultAsync(CreateRequest(AnalyticsActionConstants.SourceTypes.Inventory, "unrelated-db-error"), userId: "u1"));
+
+        Assert.Contains("Simulated unrelated database failure", ex.Message);
+        Assert.Empty(await db.AnalyticsActionItems.ToListAsync());
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceKeyDifferentSourceType_DoesNotCollide));
@@ -837,6 +878,90 @@ public class AnalyticsActionItemServiceTests
             .UseInMemoryDatabase(databaseName)
             .Options;
         return new AnalyticsDbContext(options);
+    }
+
+    private sealed class RaceOnSaveAnalyticsDbContext : AnalyticsDbContext
+    {
+        private readonly DbContextOptions<AnalyticsDbContext> _options;
+        private bool _raceInjected;
+
+        public RaceOnSaveAnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
+            : base(options)
+        {
+            _options = options;
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var pendingAction = ChangeTracker
+                .Entries<AnalyticsActionItem>()
+                .FirstOrDefault(entry => entry.State == EntityState.Added)
+                ?.Entity;
+
+            if (!_raceInjected && pendingAction is not null)
+            {
+                _raceInjected = true;
+
+                await using (var competingContext = new AnalyticsDbContext(_options))
+                {
+                    competingContext.AnalyticsActionItems.Add(new AnalyticsActionItem
+                    {
+                        SourceType = pendingAction.SourceType,
+                        SourceKey = pendingAction.SourceKey,
+                        SourceId = pendingAction.SourceId,
+                        Title = pendingAction.Title,
+                        Description = pendingAction.Description,
+                        RecommendationStatus = pendingAction.RecommendationStatus,
+                        Priority = pendingAction.Priority,
+                        ImpactEstimateRsd = pendingAction.ImpactEstimateRsd,
+                        DueAtUtc = pendingAction.DueAtUtc,
+                        ExpectedImpactRsd = pendingAction.ExpectedImpactRsd,
+                        ConfidencePct = pendingAction.ConfidencePct,
+                        ReliabilityPct = pendingAction.ReliabilityPct,
+                        DataQualityStatus = pendingAction.DataQualityStatus,
+                        Status = AnalyticsActionConstants.Statuses.New,
+                        ActionUrl = pendingAction.ActionUrl,
+                        MetadataJson = pendingAction.MetadataJson,
+                        CreatedAtUtc = DateTime.UtcNow,
+                        UpdatedAtUtc = DateTime.UtcNow,
+                        CreatedByUserId = "race-winner",
+                        UpdatedByUserId = "race-winner",
+                    });
+
+                    await competingContext.SaveChangesAsync(cancellationToken);
+                }
+
+                throw new DbUpdateException(
+                    "Simulated concurrent insert for analytics action upsert.",
+                    new FakeSqlStateException("23505"));
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private sealed class NonUniqueFailureAnalyticsDbContext : AnalyticsDbContext
+    {
+        public NonUniqueFailureAnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
+            : base(options)
+        {
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            => throw new DbUpdateException(
+                "Simulated unrelated database failure.",
+                new FakeSqlStateException("40001"));
+    }
+
+    private sealed class FakeSqlStateException : Exception
+    {
+        public FakeSqlStateException(string sqlState)
+            : base($"Fake SQLSTATE {sqlState}")
+        {
+            SqlState = sqlState;
+        }
+
+        public string SqlState { get; }
     }
 
     private static AnalyticsActionItemService CreateService(AnalyticsDbContext db)

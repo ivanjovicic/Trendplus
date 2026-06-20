@@ -15,6 +15,19 @@ namespace Workers;
 /// </summary>
 public class AnalyticsAggregationWorker : BackgroundService
 {
+    private static readonly string[] AggregateBackedCachePrefixes =
+    [
+        AnalyticsCacheKeys.DashboardBootstrapPrefix,
+        AnalyticsCacheKeys.DashboardAdvancedPrefix,
+        AnalyticsCacheKeys.SalesSummaryPrefix,
+        AnalyticsCacheKeys.DailySalesPrefix,
+        AnalyticsCacheKeys.CategoryDataPrefix,
+        AnalyticsCacheKeys.GenderDataPrefix,
+        AnalyticsCacheKeys.SupplierDataPrefix,
+        AnalyticsCacheKeys.TopProductsPrefix,
+        AnalyticsCacheKeys.TopProductsAdvancedPrefix
+    ];
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalyticsAggregationWorker> _logger;
     private readonly WorkerHealthService _healthService;
@@ -199,14 +212,7 @@ public class AnalyticsAggregationWorker : BackgroundService
             await RefreshTopProductsAsync(connection, today, ct);
             await LogDataQualitySnapshotAsync(connection, ct);
 
-            // Intentionally avoid broad analytics cache purge every 5 minutes.
-            // Full-prefix invalidation (`analytics:`) causes frequent cold starts
-            // on heavy endpoints (for example dashboard bootstrap fan-in). We
-            // rely on endpoint TTLs and targeted invalidation in data-import paths.
-            if (cache != null)
-            {
-                _logger.LogDebug("Skipped broad analytics cache invalidation after periodic refresh.");
-            }
+            await InvalidateAggregateBackedCachesAsync(scope.ServiceProvider, cache, ct);
 
             stopwatch.Stop();
             _logger.LogInformation("✅ Analytics refresh completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
@@ -214,6 +220,60 @@ public class AnalyticsAggregationWorker : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Failed to refresh analytics aggregates");
+        }
+    }
+
+    private async Task InvalidateAggregateBackedCachesAsync(
+        IServiceProvider serviceProvider,
+        IAnalyticsCacheService? cache,
+        CancellationToken ct)
+    {
+        if (cache is null)
+        {
+            _logger.LogWarning("⚠️ Analytics cache invalidation skipped after successful aggregate refresh because cache service was unavailable.");
+            return;
+        }
+
+        var dashboardFamilyCleared = false;
+        var directPrefixesCleared = 0;
+
+        try
+        {
+            var cacheAdmin = serviceProvider.GetService<AnalyticsCacheAdminService>();
+            if (cacheAdmin is not null)
+            {
+                await cacheAdmin.ClearFamiliesAsync([AnalyticsCachePolicy.DashboardFamily], ct);
+                dashboardFamilyCleared = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Dashboard-family cache invalidation failed after successful aggregate refresh.");
+        }
+
+        try
+        {
+            foreach (var prefix in AggregateBackedCachePrefixes)
+            {
+                await cache.RemoveByPrefixAsync(prefix, ct);
+                directPrefixesCleared++;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Aggregate-backed cache prefix invalidation failed after successful aggregate refresh.");
+        }
+
+        if (dashboardFamilyCleared || directPrefixesCleared > 0)
+        {
+            _logger.LogInformation(
+                "✅ Analytics cache invalidation completed after aggregate refresh. DashboardFamilyCleared={DashboardFamilyCleared} DirectPrefixesCleared={DirectPrefixesCleared}.",
+                dashboardFamilyCleared,
+                directPrefixesCleared);
+        }
+        else
+        {
+            _logger.LogWarning("⚠️ Analytics cache invalidation made no changes after successful aggregate refresh.");
         }
     }
 

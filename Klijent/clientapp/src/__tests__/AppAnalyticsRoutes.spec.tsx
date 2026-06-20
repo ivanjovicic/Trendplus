@@ -40,6 +40,10 @@ vi.mock("../pages/AnalyticsActionsPage", () => ({
   default: () => <div data-testid="route-analytics-actions">actions</div>,
 }));
 
+vi.mock("../pages/ExecutiveDecisionBoardPage", () => ({
+  default: () => <div data-testid="route-analytics-decision-board">decision-board</div>,
+}));
+
 vi.mock("../pages/SupplierDecisionReportPage", () => ({
   default: () => <div data-testid="route-analytics-supplier-report">supplier-report</div>,
 }));
@@ -56,6 +60,7 @@ const testIdByPath: Record<string, string> = {
   "/analytics/inventory": "route-analytics-inventory",
   "/analytics/data-quality": "route-analytics-data-quality",
   "/analytics/actions": "route-analytics-actions",
+  "/analytics/decision-board": "route-analytics-decision-board",
   "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all": "route-analytics-supplier-report",
   "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all": "route-analytics-pilot-intake-report",
 };
@@ -75,6 +80,13 @@ describe("App analytics core route smoke", () => {
     routeCases.forEach(({ path, testId }) => {
       expect(testId, `Missing test id mapping for ${path}`).toBeDefined();
     });
+  });
+
+  it("keeps the executive decision board route explicitly registered in the production app shell", async () => {
+    window.history.pushState({}, "", "/analytics/decision-board");
+
+    expect(() => render(<App />)).not.toThrow();
+    expect(await screen.findByTestId("route-analytics-decision-board")).toBeInTheDocument();
   });
 
   it.each(routeCases)("renders mapped route for $path", async ({ path, testId }) => {

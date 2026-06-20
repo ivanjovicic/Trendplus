@@ -67,6 +67,25 @@ describe("Inventory signal action mapping", () => {
     );
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+    expect(spec.priority).toBe("P2");
+    expect(spec.expectedImpactRsd).toBe(10000);
+    expect(spec.description).toContain("Signal nije dovoljan za finalnu akciju.");
+  });
+
+  it("keeps missing baseline signals as SIGNAL_REVIEW with nullable impact", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        stockCoverStatus: "insufficient_data",
+        sellThroughStatus: "insufficient_data",
+        estimatedValue: null,
+        nabavnaCena: null,
+        kolicina: null,
+      })
+    );
+
+    expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+    expect(spec.expectedImpactRsd).toBeNull();
+    expect(spec.description).toContain("Signal nije dovoljan za finalnu akciju.");
   });
 
   it("maps recommendationAllowed=false to SIGNAL_REVIEW even if cover is low", () => {
@@ -80,5 +99,18 @@ describe("Inventory signal action mapping", () => {
     );
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+  });
+
+  it("keeps expected impact nullable when evidence is missing", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        estimatedValue: null,
+        nabavnaCena: null,
+        kolicina: null,
+        stockCoverStatus: "low_cover",
+      })
+    );
+
+    expect(spec.expectedImpactRsd).toBeNull();
   });
 });

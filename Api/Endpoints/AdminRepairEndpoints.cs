@@ -19,8 +19,11 @@ public static class AdminRepairEndpoints
             [AsParameters] PreflightQuery query,
             CancellationToken ct) =>
         {
-            if (!IsAuthorizedAdmin(httpContext, configuration))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var result = await repairService.RunPreflightAsync(query.SourceFilePath, ct);
             return Results.Ok(result);
@@ -34,8 +37,11 @@ public static class AdminRepairEndpoints
             IConfiguration configuration,
             CancellationToken ct) =>
         {
-            if (!IsAuthorizedAdmin(httpContext, configuration))
+            var access = AdminAccessControl.GetDecision(httpContext, configuration);
+            if (access is AdminAccessDecision.MissingCredential)
                 return Results.Unauthorized();
+            if (access is AdminAccessDecision.Forbidden)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var requestedBy = ResolveRequestedBy(httpContext);
 
@@ -87,22 +93,6 @@ public static class AdminRepairEndpoints
             }
         })
         .WithName("RepairNivelacije");
-    }
-
-    private static bool IsAuthorizedAdmin(HttpContext context, IConfiguration configuration)
-    {
-        if (context.User.Identity?.IsAuthenticated == true && context.User.IsInRole("Admin"))
-            return true;
-
-        var configuredKey = configuration["Admin:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            configuredKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
-        if (string.IsNullOrWhiteSpace(configuredKey))
-            return false;
-
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(providedKey)
-            && string.Equals(providedKey, configuredKey, StringComparison.Ordinal);
     }
 
     private static string ResolveRequestedBy(HttpContext context)

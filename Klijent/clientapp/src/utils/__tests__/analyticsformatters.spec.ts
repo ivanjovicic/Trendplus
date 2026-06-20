@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty, fmtNumber, getPresetRange } from "../analyticsFormatters";
+import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty, fmtNumber, fmtPctFromRatio, getPresetRange } from "../analyticsFormatters";
 
 describe("analyticsformatters", () => {
   it("formats RSD values and includes currency suffix", () => {
@@ -21,6 +21,12 @@ describe("analyticsformatters", () => {
     expect(fmtRsd(undefined)).toBe("N/A");
     expect(fmtNumber(undefined)).toBe("N/A");
     expect(fmtQty(null)).toBe("N/A");
+  });
+
+  it("fmtPctFromRatio keeps missing ratios as fallback and formats real ratios", () => {
+    expect(fmtPctFromRatio(null, 1, "-")).toBe("-");
+    expect(fmtPctFromRatio(undefined, 1, "-")).toBe("-");
+    expect(fmtPctFromRatio(0.125, 1, "-")).toBe("12,5%");
   });
 
   it("fmtQty appends unit", () => {

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.DbContexts;
+using Trendplus2.Endpoints;
 
 namespace Api.Endpoints
 {
@@ -11,8 +12,22 @@ namespace Api.Endpoints
     {
         public static void MapAccessImportRestoreEndpoints(this WebApplication app)
         {
-            app.MapPost("/api/access-import/cleanup/archive/restore-script", async (HttpRequest req, TrendplusDbContext _trendDb) =>
+            app.MapPost("/api/access-import/cleanup/archive/restore-script", async (
+                HttpRequest req,
+                HttpContext httpContext,
+                IConfiguration configuration,
+                TrendplusDbContext _trendDb) =>
             {
+                var access = AdminAccessControl.GetDecision(httpContext, configuration);
+                if (access is AdminAccessDecision.MissingCredential)
+                {
+                    return Results.Unauthorized();
+                }
+                if (access is AdminAccessDecision.Forbidden)
+                {
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+
                 var body = await JsonSerializer.DeserializeAsync<RestoreRequest>(req.Body);
                 var ids = body?.Ids ?? Array.Empty<int>();
                 if (ids.Length == 0) return Results.BadRequest(new { error = "ids required" });

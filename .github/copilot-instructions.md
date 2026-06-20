@@ -2,6 +2,12 @@
 
 Ove instrukcije važe za `ivanjovicic/Trendplus`, posebno za analytics, data quality, refresh/workers, supplier scorecard, product decisions, inventory i reports.
 
+Za kanonske detalje posle ovog fajla pogledaj:
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+
 ## Glavni cilj
 
 Trendplus treba da bude pilot/prodajno spreman proizvod, ne samo skup funkcija.

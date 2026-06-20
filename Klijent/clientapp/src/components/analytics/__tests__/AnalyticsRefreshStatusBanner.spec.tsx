@@ -1,8 +1,8 @@
-﻿import { render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AnalyticsRefreshStatusBanner from "../AnalyticsRefreshStatusBanner";
-import type { AnalyticsRefreshStatus } from "../../../types/analytics";
+import type { AnalyticsRefreshRun, AnalyticsRefreshStatus } from "../../../types/analytics";
 
 function renderBanner(status: AnalyticsRefreshStatus | null) {
   return render(
@@ -35,6 +35,28 @@ function buildStatus(overrides: Partial<AnalyticsRefreshStatus>): AnalyticsRefre
   };
 }
 
+function buildRecentRun(overrides: Partial<AnalyticsRefreshRun> = {}): AnalyticsRefreshRun {
+  return {
+    id: 77,
+    jobKey: "analytics_refresh",
+    jobName: "Analytics refresh",
+    status: "failed",
+    startedAtUtc: "2026-05-22T07:59:00Z",
+    finishedAtUtc: "2026-05-22T08:00:00Z",
+    durationSeconds: 60,
+    refreshedObjects: [],
+    failedObjects: ["supplier_decision_mv"],
+    errorCode: "analytics_refresh_failed",
+    errorMessage: "Refresh failed",
+    correlationId: "corr-123",
+    triggeredBy: "system",
+    processMode: "worker",
+    workerName: "analytics-refresh-worker",
+    createdAtUtc: "2026-05-22T08:00:00Z",
+    ...overrides,
+  };
+}
+
 describe("AnalyticsRefreshStatusBanner", () => {
   it("shows unknown state when status is missing", () => {
     renderBanner(null);
@@ -53,18 +75,21 @@ describe("AnalyticsRefreshStatusBanner", () => {
     expect(screen.getByText("Zastarelo")).toBeInTheDocument();
   });
 
-  it("shows critical badge with error", () => {
+  it("shows critical badge with error and correlation ID", () => {
     renderBanner(
       buildStatus({
         dataFreshnessStatus: "critical",
         lastErrorMessage: "supplier_decision_mv failed",
         failedObjects: ["supplier_decision_mv"],
+        recentRuns: [buildRecentRun()],
       })
     );
 
     expect(screen.getByText("Kritično")).toBeInTheDocument();
     expect(screen.getByText("Podaci su kritično zastareli. Ne preporučuje se donošenje odluka bez provere osvežavanja.")).toBeInTheDocument();
     expect(screen.getByText(/supplier_decision_mv failed/i)).toBeInTheDocument();
+    expect(screen.getByText("Correlation ID:")).toBeInTheDocument();
+    expect(screen.getByText("corr-123")).toBeInTheDocument();
     expect(screen.getByText("Neuspešni objekti:")).toBeInTheDocument();
   });
 
@@ -92,5 +117,4 @@ describe("AnalyticsRefreshStatusBanner", () => {
     expect(screen.getByText(/Worker nije aktivan u ovom procesu/i)).toBeInTheDocument();
   });
 });
-
 

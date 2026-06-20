@@ -31,20 +31,26 @@ public sealed class AdminBackendRoutingEndpointsTests
     [Fact]
     public async Task UpdatePreference_RejectsSamePrimaryAndFallback()
     {
-        await using var host = await BackendRoutingTestHost.CreateAsync();
+        await using var host = await BackendRoutingTestHost.CreateAsync(withAdminKey: true);
 
-        var response = await host.Client.PostAsJsonAsync("/api/admin/backend-routing", new
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/backend-routing")
         {
-            primaryProvider = "render",
-            fallbackEnabled = true,
-            fallbackProvider = "render"
-        });
+            Content = JsonContent.Create(new
+            {
+                primaryProvider = "render",
+                fallbackEnabled = true,
+                fallbackProvider = "render"
+            })
+        };
+        request.Headers.Add("X-Admin-Key", BackendRoutingTestHost.AdminApiKey);
+
+        var response = await host.Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task UpdatePreference_AcceptsFallbackToggleOff()
+    public async Task UpdatePreference_RejectsRequestWithoutAdminKey()
     {
         await using var host = await BackendRoutingTestHost.CreateAsync();
 
@@ -54,6 +60,48 @@ public sealed class AdminBackendRoutingEndpointsTests
             fallbackEnabled = false,
             fallbackProvider = "fly"
         });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdatePreference_RejectsRequestWithWrongAdminKey()
+    {
+        await using var host = await BackendRoutingTestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/backend-routing")
+        {
+            Content = JsonContent.Create(new
+            {
+                primaryProvider = "render",
+                fallbackEnabled = false,
+                fallbackProvider = "fly"
+            })
+        };
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdatePreference_AcceptsFallbackToggleOff()
+    {
+        await using var host = await BackendRoutingTestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/backend-routing")
+        {
+            Content = JsonContent.Create(new
+            {
+                primaryProvider = "render",
+                fallbackEnabled = false,
+                fallbackProvider = "fly"
+            })
+        };
+        request.Headers.Add("X-Admin-Key", BackendRoutingTestHost.AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<BackendRoutingPayload>();
@@ -79,11 +127,13 @@ public sealed class AdminBackendRoutingEndpointsTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<BackendRoutingTestHost> CreateAsync()
+        public const string AdminApiKey = "test-admin-key";
+
+        public static async Task<BackendRoutingTestHost> CreateAsync(bool withAdminKey = false)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
-                EnvironmentName = Environments.Development
+                EnvironmentName = Environments.Production
             });
             builder.WebHost.UseTestServer();
             builder.Services.AddRouting();
@@ -92,11 +142,19 @@ public sealed class AdminBackendRoutingEndpointsTests
                 client.Timeout = TimeSpan.FromSeconds(5);
             });
 
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            var config = new Dictionary<string, string?>
             {
+                ["PROCESS_TYPE"] = "web",
                 ["BackendRouting:Providers:RenderUrl"] = "https://example-render.local",
                 ["BackendRouting:Providers:FlyUrl"] = "https://example-fly.local"
-            });
+            };
+
+            if (withAdminKey)
+            {
+                config["Admin:ApiKey"] = AdminApiKey;
+            }
+
+            builder.Configuration.AddInMemoryCollection(config);
 
             builder.Services.AddSingleton<BackendRoutingPreferenceService>();
 
