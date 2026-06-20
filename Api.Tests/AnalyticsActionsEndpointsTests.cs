@@ -77,6 +77,8 @@ public sealed class AnalyticsActionsEndpointsTests
         var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionItem>();
         Assert.NotNull(payload);
         Assert.Equal("inventory:sku:auth-3", payload!.SourceKey);
+        Assert.NotNull(payload.ImpactLedger);
+        Assert.Equal("pending", payload.ImpactLedger!.Resolution.OutcomeStatus);
     }
 
     [Fact]
@@ -401,6 +403,31 @@ public sealed class AnalyticsActionsEndpointsTests
         var auditNote = payload.Notes.Single();
         Assert.Contains("Outcome: pending", auditNote.Note);
         Assert.DoesNotContain("MeasuredImpactRsd=42", auditNote.Note);
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsImpactLedgerProjection()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var actionId = await host.SeedActionAsync(
+            sourceType: AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey: "inventory:ledger-get-1",
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd: 77m,
+            outcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+            status: AnalyticsActionConstants.Statuses.Done);
+
+        using var response = await host.Client.GetAsync($"/api/analytics/actions/{actionId}");
+
+        response.EnsureSuccessStatusCode();
+
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var ledger = payload.RootElement.GetProperty("impactLedger");
+
+        Assert.Equal("inventory:ledger-get-1", ledger.GetProperty("sourceRecommendationId").GetString());
+        Assert.Equal("done", ledger.GetProperty("resolution").GetProperty("outcomeStatus").GetString());
+        Assert.Equal(77m, ledger.GetProperty("resolution").GetProperty("measuredImpactRsd").GetDecimal());
+        Assert.Equal("stock_risk + sales_velocity", ledger.GetProperty("snapshot").GetProperty("expectedImpactBasis").GetString());
     }
 
     private sealed class AnalyticsActionsTestHost : IAsyncDisposable

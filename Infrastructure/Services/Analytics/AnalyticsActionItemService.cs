@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Infrastructure.Services.Analytics;
 
@@ -115,7 +117,13 @@ public sealed class AnalyticsActionItemService
                 .Include(x => x.Notes.OrderBy(n => n.CreatedAtUtc));
         }
 
-        return await query.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var item = await query.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (item is not null)
+        {
+            AttachImpactLedgerProjection(item);
+        }
+
+        return item;
     }
 
     // ── Counts for KPI bar ─────────────────────────────────────────────────
@@ -339,6 +347,7 @@ public sealed class AnalyticsActionItemService
         {
             _logger.LogDebug("AnalyticsActionItem upsert: found existing open action {Id} for {SourceType}/{SourceKey}",
                 existing.Id, request.SourceType, request.SourceKey);
+            AttachImpactLedgerProjection(existing);
             return new AnalyticsActionUpsertResult(
                 Item: existing,
                 Created: false,
@@ -364,12 +373,13 @@ public sealed class AnalyticsActionItemService
             DataQualityStatus = normalizedDataQuality,
             Status = AnalyticsActionConstants.Statuses.New,
             ActionUrl = request.ActionUrl,
-            MetadataJson = request.MetadataJson,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
             CreatedByUserId = userId,
             UpdatedByUserId = userId,
         };
+
+        item.MetadataJson = BuildCanonicalMetadataJson(item, request.MetadataJson);
 
         _db.AnalyticsActionItems.Add(item);
 
@@ -396,6 +406,7 @@ public sealed class AnalyticsActionItemService
                     request.SourceKey,
                     racedExisting.Id);
 
+                AttachImpactLedgerProjection(racedExisting);
                 return new AnalyticsActionUpsertResult(
                     Item: racedExisting,
                     Created: false,
@@ -409,6 +420,8 @@ public sealed class AnalyticsActionItemService
 
         _logger.LogInformation("AnalyticsActionItem created: Id={Id} SourceType={SourceType} SourceKey={SourceKey} Priority={Priority}",
             item.Id, item.SourceType, item.SourceKey, item.Priority);
+
+        AttachImpactLedgerProjection(item);
 
         return new AnalyticsActionUpsertResult(
             Item: item,
@@ -574,8 +587,10 @@ public sealed class AnalyticsActionItemService
             });
         }
 
+        item.MetadataJson = BuildCanonicalMetadataJson(item, item.MetadataJson);
         await _db.SaveChangesAsync(ct);
 
+        AttachImpactLedgerProjection(item);
         _logger.LogInformation("AnalyticsActionItem status updated: Id={Id} NewStatus={Status} UserId={UserId}",
             item.Id, newStatus, userId);
 
@@ -624,6 +639,7 @@ public sealed class AnalyticsActionItemService
             item.OutcomeMeasuredAtUtc = null;
         }
 
+        item.MetadataJson = BuildCanonicalMetadataJson(item, item.MetadataJson);
         var outcomeChanged = !string.Equals(oldOutcomeStatus, item.OutcomeStatus, StringComparison.Ordinal)
             || oldMeasuredImpactRsd != item.MeasuredImpactRsd
             || oldOutcomeMeasuredAtUtc != item.OutcomeMeasuredAtUtc
@@ -645,6 +661,7 @@ public sealed class AnalyticsActionItemService
 
         await _db.SaveChangesAsync(ct);
 
+        AttachImpactLedgerProjection(item);
         _logger.LogInformation(
             "AnalyticsActionItem outcome updated: Id={Id} OutcomeStatus={OutcomeStatus} UserId={UserId}",
             item.Id,
@@ -718,6 +735,298 @@ public sealed class AnalyticsActionItemService
 
     private static string NormalizeDataQualityBucket(string? dataQualityStatus)
         => AnalyticsActionConstants.NormalizeDataQualityStatus(dataQualityStatus) ?? "unknown";
+
+    private static void AttachImpactLedgerProjection(AnalyticsActionItem item)
+    {
+        item.ImpactLedger = BuildImpactLedgerProjection(item);
+    }
+
+    private static AnalyticsActionImpactLedgerDto BuildImpactLedgerProjection(AnalyticsActionItem item)
+    {
+        var metadataLedger = TryGetImpactLedgerMetadata(item.MetadataJson);
+        var snapshot = BuildImpactLedgerSnapshot(item);
+        var resolution = BuildImpactLedgerResolution(item);
+
+        return new AnalyticsActionImpactLedgerDto(
+            Version: ReadInt(metadataLedger, "version") ?? 1,
+            SourceRecommendationId: ReadString(metadataLedger, "sourceRecommendationId") ?? BuildSourceRecommendationId(item),
+            SourceRecommendationIdDerivation: ReadString(metadataLedger, "sourceRecommendationIdDerivation") ?? "deterministic",
+            CapturedAtUtc: ReadDateTime(metadataLedger, "capturedAtUtc") ?? item.CreatedAtUtc,
+            Snapshot: new AnalyticsActionImpactLedgerSnapshotDto(
+                ExpectedImpactBasis: ReadString(metadataLedger, "expectedImpactBasis") ?? snapshot.ExpectedImpactBasis,
+                PrimaryDrivers: ReadStringArray(metadataLedger, "primaryDrivers") ?? snapshot.PrimaryDrivers,
+                DecisionReason: ReadString(metadataLedger, "decisionReason") ?? snapshot.DecisionReason,
+                ImpactWindowDays: ReadInt(metadataLedger, "impactWindowDays") ?? snapshot.ImpactWindowDays,
+                RecommendedAction: ReadString(metadataLedger, "recommendedAction") ?? snapshot.RecommendedAction,
+                InputFreshnessStatus: ReadString(metadataLedger, "inputFreshnessStatus") ?? snapshot.InputFreshnessStatus,
+                SourceModule: ReadString(metadataLedger, "sourceModule") ?? snapshot.SourceModule,
+                SourcePeriodStartUtc: ReadDateTime(metadataLedger, "sourcePeriodStartUtc") ?? snapshot.SourcePeriodStartUtc,
+                SourcePeriodEndUtc: ReadDateTime(metadataLedger, "sourcePeriodEndUtc") ?? snapshot.SourcePeriodEndUtc),
+            Resolution: new AnalyticsActionImpactLedgerResolutionDto(
+                OutcomeStatus: ReadString(metadataLedger, "outcomeStatus") ?? resolution.OutcomeStatus,
+                MeasuredImpactRsd: ReadDecimal(metadataLedger, "measuredImpactRsd") ?? resolution.MeasuredImpactRsd,
+                OutcomeMeasuredAtUtc: ReadDateTime(metadataLedger, "outcomeMeasuredAtUtc") ?? resolution.OutcomeMeasuredAtUtc,
+                ResolvedAtUtc: ReadDateTime(metadataLedger, "resolvedAtUtc") ?? resolution.ResolvedAtUtc,
+                EvidenceSource: ReadString(metadataLedger, "evidenceSource") ?? resolution.EvidenceSource,
+                MeasuredWindowDays: ReadInt(metadataLedger, "measuredWindowDays") ?? resolution.MeasuredWindowDays,
+                ResolutionNote: ReadString(metadataLedger, "resolutionNote") ?? resolution.ResolutionNote,
+                MeasurementMethod: ReadString(metadataLedger, "measurementMethod") ?? resolution.MeasurementMethod),
+            Derived: BuildImpactLedgerDerived(item));
+    }
+
+    private static AnalyticsActionImpactLedgerDto BuildImpactLedgerFromItem(AnalyticsActionItem item)
+        => new(
+            Version: 1,
+            SourceRecommendationId: BuildSourceRecommendationId(item),
+            SourceRecommendationIdDerivation: "deterministic",
+            CapturedAtUtc: item.CreatedAtUtc,
+            Snapshot: BuildImpactLedgerSnapshot(item),
+            Resolution: BuildImpactLedgerResolution(item),
+            Derived: BuildImpactLedgerDerived(item));
+
+    private static AnalyticsActionImpactLedgerSnapshotDto BuildImpactLedgerSnapshot(AnalyticsActionItem item)
+    {
+        var sourceType = string.IsNullOrWhiteSpace(item.SourceType) ? "unknown" : item.SourceType.Trim().ToLowerInvariant();
+        var expectedImpactBasis = sourceType switch
+        {
+            AnalyticsActionConstants.SourceTypes.Inventory => "stock_risk + sales_velocity",
+            AnalyticsActionConstants.SourceTypes.Supplier => "supplier_reliability + margin",
+            AnalyticsActionConstants.SourceTypes.Product => "sales_velocity + margin",
+            AnalyticsActionConstants.SourceTypes.Dashboard => "decision_signal",
+            _ => "decision_signal"
+        };
+
+        var primaryDrivers = sourceType switch
+        {
+            AnalyticsActionConstants.SourceTypes.Inventory => new[] { "stock_risk", "sales_velocity" },
+            AnalyticsActionConstants.SourceTypes.Supplier => new[] { "supplier_reliability", "margin" },
+            AnalyticsActionConstants.SourceTypes.Product => new[] { "sales_velocity", "margin" },
+            _ => new[] { "decision_signal" }
+        };
+
+        return new AnalyticsActionImpactLedgerSnapshotDto(
+            ExpectedImpactBasis: expectedImpactBasis,
+            PrimaryDrivers: primaryDrivers,
+            DecisionReason: BuildDecisionReason(item),
+            ImpactWindowDays: BuildImpactWindowDays(item),
+            RecommendedAction: BuildRecommendedAction(item),
+            InputFreshnessStatus: NormalizeDataQualityBucket(item.DataQualityStatus),
+            SourceModule: string.IsNullOrWhiteSpace(item.SourceType) ? null : item.SourceType,
+            SourcePeriodStartUtc: null,
+            SourcePeriodEndUtc: null);
+    }
+
+    private static AnalyticsActionImpactLedgerResolutionDto BuildImpactLedgerResolution(AnalyticsActionItem item)
+    {
+        var outcomeStatus = NormalizeOutcomeStatus(item.OutcomeStatus);
+        var evidenceSource = BuildEvidenceSource(item);
+
+        return new AnalyticsActionImpactLedgerResolutionDto(
+            OutcomeStatus: outcomeStatus,
+            MeasuredImpactRsd: item.MeasuredImpactRsd,
+            OutcomeMeasuredAtUtc: item.OutcomeMeasuredAtUtc,
+            ResolvedAtUtc: item.ResolvedAtUtc,
+            EvidenceSource: evidenceSource,
+            MeasuredWindowDays: BuildMeasuredWindowDays(item),
+            ResolutionNote: string.IsNullOrWhiteSpace(item.OutcomeNotes) ? null : item.OutcomeNotes,
+            MeasurementMethod: BuildMeasurementMethod(item, evidenceSource));
+    }
+
+    private static AnalyticsActionImpactLedgerDerivedDto BuildImpactLedgerDerived(AnalyticsActionItem item)
+    {
+        decimal? impactDeltaRsd = item.ExpectedImpactRsd.HasValue && item.MeasuredImpactRsd.HasValue
+            ? item.MeasuredImpactRsd.Value - item.ExpectedImpactRsd.Value
+            : null;
+
+        decimal? realizationRatio = item.ExpectedImpactRsd.HasValue && item.ExpectedImpactRsd.Value > 0m && item.MeasuredImpactRsd.HasValue
+            ? item.MeasuredImpactRsd.Value / item.ExpectedImpactRsd.Value
+            : null;
+
+        var calibrationBucket = !item.ExpectedImpactRsd.HasValue || !item.MeasuredImpactRsd.HasValue || item.ExpectedImpactRsd.Value <= 0m
+            ? "insufficient_data"
+            : realizationRatio switch
+            {
+                >= 0.9m and <= 1.1m => "well_calibrated",
+                > 1.1m => "under_confident",
+                _ => "over_confident"
+            };
+
+        var hasEvidence = !string.Equals(NormalizeOutcomeStatus(item.OutcomeStatus), AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.OrdinalIgnoreCase)
+            && (item.MeasuredImpactRsd.HasValue || item.OutcomeMeasuredAtUtc.HasValue || !string.IsNullOrWhiteSpace(item.OutcomeNotes));
+
+        return new AnalyticsActionImpactLedgerDerivedDto(
+            ImpactDeltaRsd: impactDeltaRsd,
+            RealizationRatio: realizationRatio,
+            CalibrationBucket: calibrationBucket,
+            HasEvidence: hasEvidence);
+    }
+
+    private static string BuildSourceRecommendationId(AnalyticsActionItem item)
+        => $"{item.SourceType}:{item.SourceKey}";
+
+    private static string BuildDecisionReason(AnalyticsActionItem item)
+        => !string.IsNullOrWhiteSpace(item.Description)
+            ? item.Description.Trim()
+            : !string.IsNullOrWhiteSpace(item.RecommendationStatus)
+                ? item.RecommendationStatus.Trim()
+                : item.Title.Trim();
+
+    private static string BuildRecommendedAction(AnalyticsActionItem item)
+        => !string.IsNullOrWhiteSpace(item.RecommendationStatus)
+            ? item.RecommendationStatus.Trim()
+            : item.Title.Trim();
+
+    private static int? BuildImpactWindowDays(AnalyticsActionItem item)
+    {
+        if (!item.DueAtUtc.HasValue || item.DueAtUtc.Value <= item.CreatedAtUtc)
+        {
+            return null;
+        }
+
+        return (int)Math.Ceiling((item.DueAtUtc.Value - item.CreatedAtUtc).TotalDays);
+    }
+
+    private static int? BuildMeasuredWindowDays(AnalyticsActionItem item)
+    {
+        if (!item.OutcomeMeasuredAtUtc.HasValue || item.OutcomeMeasuredAtUtc.Value <= item.CreatedAtUtc)
+        {
+            return null;
+        }
+
+        return (int)Math.Ceiling((item.OutcomeMeasuredAtUtc.Value - item.CreatedAtUtc).TotalDays);
+    }
+
+    private static string? BuildEvidenceSource(AnalyticsActionItem item)
+    {
+        if (string.Equals(NormalizeOutcomeStatus(item.OutcomeStatus), AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.OutcomeNotes))
+        {
+            return "manual_note";
+        }
+
+        if (item.MeasuredImpactRsd.HasValue || item.OutcomeMeasuredAtUtc.HasValue)
+        {
+            return "action_outcome_update";
+        }
+
+        return null;
+    }
+
+    private static string? BuildMeasurementMethod(AnalyticsActionItem item, string? evidenceSource)
+    {
+        if (string.Equals(NormalizeOutcomeStatus(item.OutcomeStatus), AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            return "pending";
+        }
+
+        if (!string.IsNullOrWhiteSpace(evidenceSource))
+        {
+            return evidenceSource;
+        }
+
+        return item.OutcomeMeasuredAtUtc.HasValue ? "action_outcome_update" : null;
+    }
+
+    private static string BuildCanonicalMetadataJson(AnalyticsActionItem item, string? existingMetadataJson)
+    {
+        var root = TryParseMetadataObject(existingMetadataJson) ?? new JsonObject();
+        root["impactLedger"] = JsonSerializer.SerializeToNode(BuildImpactLedgerFromItem(item), MetadataJsonSerializerOptions);
+        return root.ToJsonString(MetadataJsonSerializerOptions);
+    }
+
+    private static JsonObject? TryGetImpactLedgerMetadata(string? metadataJson)
+    {
+        var root = TryParseMetadataObject(metadataJson);
+        return root?["impactLedger"] as JsonObject;
+    }
+
+    private static JsonObject? TryParseMetadataObject(string? metadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(metadataJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonNode.Parse(metadataJson) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ReadString(JsonObject? obj, string propertyName)
+    {
+        if (obj is null || !obj.TryGetPropertyValue(propertyName, out var node) || node is null)
+        {
+            return null;
+        }
+
+        return node is JsonValue value && value.TryGetValue<string>(out var result)
+            ? result
+            : null;
+    }
+
+    private static int? ReadInt(JsonObject? obj, string propertyName)
+    {
+        if (obj is null || !obj.TryGetPropertyValue(propertyName, out var node) || node is null)
+        {
+            return null;
+        }
+
+        return node is JsonValue value && value.TryGetValue<int>(out var result)
+            ? result
+            : null;
+    }
+
+    private static decimal? ReadDecimal(JsonObject? obj, string propertyName)
+    {
+        if (obj is null || !obj.TryGetPropertyValue(propertyName, out var node) || node is null)
+        {
+            return null;
+        }
+
+        return node is JsonValue value && value.TryGetValue<decimal>(out var result)
+            ? result
+            : null;
+    }
+
+    private static DateTime? ReadDateTime(JsonObject? obj, string propertyName)
+    {
+        if (obj is null || !obj.TryGetPropertyValue(propertyName, out var node) || node is null)
+        {
+            return null;
+        }
+
+        return node is JsonValue value && value.TryGetValue<DateTime>(out var result)
+            ? result
+            : null;
+    }
+
+    private static IReadOnlyList<string>? ReadStringArray(JsonObject? obj, string propertyName)
+    {
+        if (obj is null || !obj.TryGetPropertyValue(propertyName, out var node) || node is not JsonArray array)
+        {
+            return null;
+        }
+
+        var values = array
+            .OfType<JsonValue>()
+            .Select(x => x.TryGetValue<string>(out var result) ? result : null)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!)
+            .ToArray();
+
+        return values.Length == 0 ? null : values;
+    }
+
+    private static JsonSerializerOptions MetadataJsonSerializerOptions { get; } = new(JsonSerializerDefaults.Web);
 
     private static bool IsUniqueOpenActionConflict(DbUpdateException exception)
         => GetSqlState(exception) == PostgresErrorCodes.UniqueViolation;

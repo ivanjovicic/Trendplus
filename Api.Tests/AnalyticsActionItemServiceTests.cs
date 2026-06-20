@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 using Xunit;
 
 namespace Trendplus2.Tests;
@@ -141,6 +142,41 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_CreatesCanonicalImpactLedgerMetadataAndProjection()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_CreatesCanonicalImpactLedgerMetadataAndProjection));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "ledger-create-1",
+                expectedImpactRsd: 250m,
+                dueAtUtc: new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+                dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good),
+            userId: "u1");
+
+        Assert.NotNull(created.MetadataJson);
+        using var json = JsonDocument.Parse(created.MetadataJson!);
+        var ledger = json.RootElement.GetProperty("impactLedger");
+
+        Assert.NotNull(created.ImpactLedger);
+        Assert.Equal("inventory:ledger-create-1", created.ImpactLedger!.SourceRecommendationId);
+        Assert.Equal("deterministic", created.ImpactLedger.SourceRecommendationIdDerivation);
+        Assert.Equal("stock_risk + sales_velocity", created.ImpactLedger.Snapshot.ExpectedImpactBasis);
+        Assert.Contains("stock_risk", created.ImpactLedger.Snapshot.PrimaryDrivers);
+        Assert.Equal("pending", created.ImpactLedger.Resolution.OutcomeStatus);
+        Assert.Null(created.ImpactLedger.Resolution.MeasuredImpactRsd);
+        Assert.Null(created.ImpactLedger.Derived.RealizationRatio);
+        Assert.Equal("insufficient_data", created.ImpactLedger.Derived.CalibrationBucket);
+        Assert.False(created.ImpactLedger.Derived.HasEvidence);
+
+        Assert.Equal("inventory:ledger-create-1", ledger.GetProperty("sourceRecommendationId").GetString());
+        Assert.Equal("stock_risk + sales_velocity", ledger.GetProperty("snapshot").GetProperty("expectedImpactBasis").GetString());
+        Assert.Equal("pending", ledger.GetProperty("resolution").GetProperty("outcomeStatus").GetString());
+    }
+
+    [Fact]
     public async Task UpdateOutcomeAsync_PersistsOutcomeFields()
     {
         await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PersistsOutcomeFields));
@@ -162,6 +198,36 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(777m, updated.MeasuredImpactRsd);
         Assert.Equal("Ishod potvrđen", updated.OutcomeNotes);
         Assert.Equal(new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc), updated.OutcomeMeasuredAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_PreservesNullMeasuredImpact_AndUpdatesImpactLedgerProjection()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PreservesNullMeasuredImpact_AndUpdatesImpactLedgerProjection));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "ledger-outcome-1", expectedImpactRsd: 300m), userId: "u1");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                AnalyticsActionConstants.OutcomeStatuses.Pending,
+                88m,
+                new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc),
+                "čekanje na potvrdu"),
+            userId: "u1",
+            userName: "tester");
+
+        Assert.NotNull(updated);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Pending, updated!.OutcomeStatus);
+        Assert.Null(updated.MeasuredImpactRsd);
+        Assert.Null(updated.OutcomeMeasuredAtUtc);
+        Assert.NotNull(updated.ImpactLedger);
+        Assert.Equal("pending", updated.ImpactLedger!.Resolution.OutcomeStatus);
+        Assert.Null(updated.ImpactLedger.Resolution.MeasuredImpactRsd);
+        Assert.Equal("pending", updated.ImpactLedger.Resolution.MeasurementMethod);
+        Assert.Null(updated.ImpactLedger.Derived.RealizationRatio);
+        Assert.Equal("insufficient_data", updated.ImpactLedger.Derived.CalibrationBucket);
+        Assert.False(updated.ImpactLedger.Derived.HasEvidence);
     }
 
     [Fact]

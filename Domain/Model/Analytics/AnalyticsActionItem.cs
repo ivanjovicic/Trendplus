@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Domain.Model.Analytics;
 
 /// <summary>
@@ -147,4 +149,10 @@ public class AnalyticsActionItem
     /// Audit trail entries for status changes and optional notes.
     /// </summary>
     public ICollection<AnalyticsActionNote> Notes { get; set; } = new List<AnalyticsActionNote>();
+
+    /// <summary>
+    /// Read-only Phase 1 impact ledger projection.
+    /// </summary>
+    [NotMapped]
+    public AnalyticsActionImpactLedgerDto? ImpactLedger { get; set; }
 }

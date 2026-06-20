@@ -2508,7 +2508,7 @@ Token budget: medium
 
 ## Q58 - Action Impact Ledger Phase 1 backend implementation
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(analytics): implement action impact ledger phase 1`
 Priority: P0
 Type: backend
@@ -2554,6 +2554,28 @@ Token budget: medium/high
 - Action Impact Ledger Phase 1 exists in the backend with focused tests.
 - Existing action flows still work.
 - Missing outcome data does not become fake zero.
+
+### Notes
+
+- Date: 2026-06-20
+- HEAD SHA: pending final commit
+- Changed files:
+  - `Domain/Model/Analytics/AnalyticsActionItem.cs`
+  - `Domain/Model/Analytics/AnalyticsActionImpactLedgerDto.cs`
+  - `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+  - `Api.Tests/AnalyticsActionItemServiceTests.cs`
+  - `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --configuration Release` pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release` pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --list-tests` pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "AnalyticsActions"` no matches in VSTest filter syntax
+  - `git diff --check` pass
+- Risk:
+  - The new `ImpactLedger` projection is intentionally derived from existing row fields plus reserved metadata JSON. If a future source needs richer snapshot semantics, we may need to extend the canonical JSON contract or add a storage migration.
+- Next step:
+  - Q59 - Action outcome UI detail panel
 
 ## Q59 - Action outcome UI detail panel
 
