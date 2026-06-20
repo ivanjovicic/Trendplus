@@ -59,6 +59,39 @@ describe("AnalyticsActionsPage", () => {
       status: "accepted",
       actionUrl: null,
       metadataJson: null,
+      impactLedger: {
+        version: 1,
+        sourceRecommendationId: "inventory:ledger-7",
+        sourceRecommendationIdDerivation: "deterministic",
+        capturedAtUtc: "2026-05-26T12:00:00Z",
+        snapshot: {
+          expectedImpactBasis: "stock_risk + sales_velocity",
+          primaryDrivers: ["stock_risk", "sales_velocity"],
+          decisionReason: "Brza prodaja i nizak stock cover.",
+          impactWindowDays: 14,
+          recommendedAction: "Dopuni artikal A",
+          inputFreshnessStatus: "fresh",
+          sourceModule: "inventory",
+          sourcePeriodStartUtc: "2026-05-01T00:00:00Z",
+          sourcePeriodEndUtc: "2026-05-26T00:00:00Z",
+        },
+        resolution: {
+          outcomeStatus: "success",
+          measuredImpactRsd: 3000,
+          outcomeMeasuredAtUtc: "2026-06-10T00:00:00Z",
+          resolvedAtUtc: "2026-06-11T00:00:00Z",
+          evidenceSource: "sales",
+          measuredWindowDays: 14,
+          resolutionNote: "Prodaja se ubrzala posle dopune.",
+          measurementMethod: "manual",
+        },
+        derived: {
+          impactDeltaRsd: -9000,
+          realizationRatio: 0.25,
+          calibrationBucket: "positive",
+          hasEvidence: true,
+        },
+      },
       createdAtUtc: "2026-05-26T12:00:00Z",
       updatedAtUtc: "2026-05-26T12:00:00Z",
       resolvedAtUtc: null,
@@ -279,6 +312,105 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Pad marže posle akcije\./)).toBeInTheDocument();
+  });
+
+  it("shows the impact ledger detail panel when a row is expanded", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText("Ledger uticaja")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Izvor preporuke: inventory:ledger-7")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Realizacija: 25%")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Razlika uticaja: -9.000 RSD")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Dokaz: Da")).toBeInTheDocument();
+  });
+
+  it("keeps missing impact values as N/A in the ledger panel", async () => {
+    const noImpactItem = {
+      id: 8,
+      sourceType: "inventory",
+      sourceKey: "inventory-8",
+      title: "Dopuni artikal B",
+      description: "Nedostaje merenje ishoda.",
+      recommendationStatus: "dopuna",
+      priority: "P2",
+      impactEstimateRsd: 9000,
+      dueAtUtc: "2026-06-15T00:00:00Z",
+      expectedImpactRsd: 9000,
+      measuredImpactRsd: null,
+      outcomeStatus: "pending",
+      outcomeMeasuredAtUtc: null,
+      outcomeNotes: null,
+      confidencePct: 61,
+      reliabilityPct: 58,
+      dataQualityStatus: "warning",
+      status: "new",
+      actionUrl: null,
+      metadataJson: null,
+      impactLedger: {
+        version: 1,
+        sourceRecommendationId: "inventory:ledger-8",
+        sourceRecommendationIdDerivation: "deterministic",
+        capturedAtUtc: "2026-06-01T12:00:00Z",
+        snapshot: {
+          expectedImpactBasis: "stock_risk",
+          primaryDrivers: ["stock_risk"],
+          decisionReason: "Lager je ispod praga.",
+          impactWindowDays: 14,
+          recommendedAction: "Dopuni artikal B",
+          inputFreshnessStatus: "fresh",
+          sourceModule: "inventory",
+          sourcePeriodStartUtc: "2026-05-18T00:00:00Z",
+          sourcePeriodEndUtc: "2026-06-01T00:00:00Z",
+        },
+        resolution: {
+          outcomeStatus: "pending",
+          measuredImpactRsd: null,
+          outcomeMeasuredAtUtc: null,
+          resolvedAtUtc: null,
+          evidenceSource: null,
+          measuredWindowDays: null,
+          resolutionNote: null,
+          measurementMethod: null,
+        },
+        derived: {
+          impactDeltaRsd: null,
+          realizationRatio: null,
+          calibrationBucket: "insufficient_data",
+          hasEvidence: false,
+        },
+      },
+      createdAtUtc: "2026-06-01T12:00:00Z",
+      updatedAtUtc: "2026-06-01T12:00:00Z",
+      resolvedAtUtc: null,
+      createdByUserId: null,
+      updatedByUserId: null,
+      updatedByUserName: null,
+      notes: [],
+    };
+
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [noImpactItem],
+      totalCount: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+    getAnalyticsActionByIdMock.mockResolvedValueOnce(noImpactItem);
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal B")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText("Ledger uticaja")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Izmeren uticaj: N/A")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Razlika uticaja: N/A")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "Realizacija: N/A")).toBeInTheDocument();
   });
 
   it("shows a permission warning and keeps the row unchanged when status update is forbidden", async () => {

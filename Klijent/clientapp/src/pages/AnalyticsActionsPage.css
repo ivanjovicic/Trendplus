@@ -504,6 +504,27 @@
   font-size: 0.82rem;
 }
 
+.aaq-ledger-panel {
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 0.375rem;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  margin-bottom: 0.75rem;
+}
+
+.aaq-panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+  color: var(--color-text-primary, #111);
+}
+
+.aaq-ledger-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary, #666);
+}
+
 .aaq-metadata-panel {
   border: 1px solid var(--color-border, #dee2e6);
   border-radius: 0.375rem;

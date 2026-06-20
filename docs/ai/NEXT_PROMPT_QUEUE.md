@@ -2579,7 +2579,7 @@ Token budget: medium/high
 
 ## Q59 - Action outcome UI detail panel
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(analytics): show action outcome detail panel`
 Priority: P1
 Type: frontend

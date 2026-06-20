@@ -1269,6 +1269,46 @@ export interface AnalyticsActionNote {
   createdByUserName?: string | null;
 }
 
+export interface AnalyticsActionImpactLedgerSnapshot {
+  expectedImpactBasis: string;
+  primaryDrivers: string[];
+  decisionReason: string;
+  impactWindowDays?: number | null;
+  recommendedAction: string;
+  inputFreshnessStatus: string;
+  sourceModule?: string | null;
+  sourcePeriodStartUtc?: string | null;
+  sourcePeriodEndUtc?: string | null;
+}
+
+export interface AnalyticsActionImpactLedgerResolution {
+  outcomeStatus: string;
+  measuredImpactRsd?: number | null;
+  outcomeMeasuredAtUtc?: string | null;
+  resolvedAtUtc?: string | null;
+  evidenceSource?: string | null;
+  measuredWindowDays?: number | null;
+  resolutionNote?: string | null;
+  measurementMethod?: string | null;
+}
+
+export interface AnalyticsActionImpactLedgerDerived {
+  impactDeltaRsd?: number | null;
+  realizationRatio?: number | null;
+  calibrationBucket: string;
+  hasEvidence: boolean;
+}
+
+export interface AnalyticsActionImpactLedger {
+  version: number;
+  sourceRecommendationId?: string | null;
+  sourceRecommendationIdDerivation: string;
+  capturedAtUtc: string;
+  snapshot: AnalyticsActionImpactLedgerSnapshot;
+  resolution: AnalyticsActionImpactLedgerResolution;
+  derived: AnalyticsActionImpactLedgerDerived;
+}
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;
@@ -1298,6 +1338,7 @@ export interface AnalyticsActionItem {
   updatedByUserId?: string | null;
   updatedByUserName?: string | null;
   notes?: AnalyticsActionNote[];
+  impactLedger?: AnalyticsActionImpactLedger | null;
 }
 
 export interface AnalyticsActionListResponse {
