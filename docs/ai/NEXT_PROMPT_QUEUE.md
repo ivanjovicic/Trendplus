@@ -2754,7 +2754,7 @@ Token budget: medium
 
 ## Q62 - Decision Board backend aggregate readiness gate
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): gate decision board aggregate readiness`
 Priority: P0
 Type: docs/review
@@ -2796,9 +2796,22 @@ Token budget: medium
 - The document clearly states whether backend aggregate work may start.
 - No endpoint is implemented in this task.
 
+### Notes
+
+- 2026-06-21: DONE. Added `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md` and concluded the aggregate endpoint is `NOT READY` because dedupe policy, ranking parity, freshness contract, and cross-module trust semantics are not stable enough to freeze server-side.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` (pass; CRLF/LF warning only)
+- Risk:
+  - Frontend composition remains the active architecture, so request fan-out and section-level composition logic still need to be monitored until a later gate re-evaluates backend aggregation.
+- Next:
+  - `Q63 - Decision Board backend aggregate endpoint MVP` remains blocked by this gate
+
 ## Q63 - Decision Board backend aggregate endpoint MVP
 
-Status: TODO
+Status: BLOCKED
 Commit suggestion: `feat(analytics): add decision board aggregate endpoint mvp`
 Priority: P1
 Type: backend/frontend-integration
