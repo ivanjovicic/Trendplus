@@ -2642,7 +2642,7 @@ Token budget: medium
 
 ## Q60 - Confidence calibration audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): audit confidence calibration`
 Priority: P1
 Type: docs/audit
@@ -2682,6 +2682,19 @@ Token budget: medium
 
 - Calibration audit shows what can be measured now and what still blocks trustworthy calibration.
 - No application code is required unless a tiny helper is clearly safe.
+
+### Notes
+
+- 2026-06-21: DONE. Added `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md` with a source-backed audit of what can already be calibrated from Analytics Actions outcome summary versus what still depends on broader Phase 1 ledger adoption.
+- Changed files:
+  - `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` (pass; CRLF/LF warning only)
+- Risk:
+  - Current calibration is still action-sample based and subject to selection bias because ignored recommendations and non-queued signals are outside the measured denominator.
+- Next:
+  - `Q61 - Pilot operator workflow runbook`
 
 ## Q61 - Pilot operator workflow runbook
 
