@@ -13,6 +13,7 @@ import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } 
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
+  AnalyticsActionImpactLedger,
   AnalyticsActionCounts,
   AnalyticsActionFilters,
   AnalyticsActionLedgerSnapshot,
@@ -185,6 +186,16 @@ function formatMetadataJson(value: string | null | undefined): string | null {
   }
 }
 
+function formatList(values: string[] | null | undefined): string {
+  if (!values || values.length === 0) return "-";
+  return values.join(", ");
+}
+
+function formatImpactLedgerPeriod(startUtc: string | null | undefined, endUtc: string | null | undefined): string {
+  if (!startUtc && !endUtc) return "-";
+  return `${formatTimestamp(startUtc)} - ${formatTimestamp(endUtc)}`;
+}
+
 function formatOutcomeNotesPreview(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -327,6 +338,10 @@ function getSummaryFilterLabel(key: SummaryFilterKey, value: string): string {
   }
 
   return value;
+}
+
+function getImpactLedger(item: AnalyticsActionItem): AnalyticsActionImpactLedger | null {
+  return item.impactLedger ?? null;
 }
 
 type StatusModalState = {
@@ -976,6 +991,7 @@ export default function AnalyticsActionsPage() {
                   const isExpanded = expandedIds.includes(item.id);
                   const detailsItem = detailsById[item.id] ?? item;
                   const prettyMetadata = formatMetadataJson(detailsItem.metadataJson);
+                  const impactLedger = getImpactLedger(detailsItem);
                   const detailError = detailsErrorById[item.id];
                   const isDetailLoading = detailsLoadingId === item.id;
                   const notes = detailsItem.notes ?? [];
@@ -1147,6 +1163,39 @@ export default function AnalyticsActionsPage() {
                               <div><strong>Status ishoda:</strong> {getOutcomeStatusLabel(detailsItem.outcomeStatus)}</div>
                               <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
                               <div><strong>Napomena ishoda:</strong> {detailsItem.outcomeNotes?.trim() ? detailsItem.outcomeNotes : "-"}</div>
+                            </div>
+                            <div className="aaq-ledger-panel">
+                              <div className="aaq-panel-title">Ledger uticaja</div>
+                              {impactLedger ? (
+                                <div className="aaq-details-grid">
+                                  <div><strong>Ledger verzija:</strong> {impactLedger.version}</div>
+                                  <div><strong>Izvor preporuke:</strong> {impactLedger.sourceRecommendationId ?? "-"}</div>
+                                  <div><strong>Derivacija izvora:</strong> {impactLedger.sourceRecommendationIdDerivation}</div>
+                                  <div><strong>Prikupljeno:</strong> {formatTimestamp(impactLedger.capturedAtUtc)}</div>
+                                  <div><strong>Osnova ocekivanja:</strong> {impactLedger.snapshot.expectedImpactBasis}</div>
+                                  <div><strong>Primarni signali:</strong> {formatList(impactLedger.snapshot.primaryDrivers)}</div>
+                                  <div><strong>Razlog odluke:</strong> {impactLedger.snapshot.decisionReason}</div>
+                                  <div><strong>Preporucena akcija:</strong> {impactLedger.snapshot.recommendedAction}</div>
+                                  <div><strong>Period izvora:</strong> {formatImpactLedgerPeriod(impactLedger.snapshot.sourcePeriodStartUtc, impactLedger.snapshot.sourcePeriodEndUtc)}</div>
+                                  <div><strong>Izvorni modul:</strong> {impactLedger.snapshot.sourceModule ?? "-"}</div>
+                                  <div><strong>Freshness ulaza:</strong> {impactLedger.snapshot.inputFreshnessStatus}</div>
+                                  <div><strong>Opseg signala:</strong> {impactLedger.snapshot.impactWindowDays != null ? `${impactLedger.snapshot.impactWindowDays} dana` : "-"}</div>
+                                  <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus)!] : impactLedger.resolution.outcomeStatus}</div>
+                                  <div><strong>Izmeren uticaj:</strong> {fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")}</div>
+                                  <div><strong>Razlika uticaja:</strong> {fmtRsd(impactLedger.derived.impactDeltaRsd, 0, "N/A")}</div>
+                                  <div><strong>Realizacija:</strong> {fmtPctFromRatio(impactLedger.derived.realizationRatio, 0, "N/A")}</div>
+                                  <div><strong>Korekcioni bucket:</strong> {impactLedger.derived.calibrationBucket}</div>
+                                  <div><strong>Dokaz:</strong> {impactLedger.derived.hasEvidence ? "Da" : "Ne"}</div>
+                                  <div><strong>Metod merenja:</strong> {impactLedger.resolution.measurementMethod ?? "-"}</div>
+                                  <div><strong>Izvor dokaza:</strong> {impactLedger.resolution.evidenceSource ?? "-"}</div>
+                                  <div><strong>Datum merenja:</strong> {formatTimestamp(impactLedger.resolution.outcomeMeasuredAtUtc)}</div>
+                                  <div><strong>Datum zatvaranja:</strong> {formatTimestamp(impactLedger.resolution.resolvedAtUtc)}</div>
+                                  <div><strong>Opseg merenja:</strong> {impactLedger.resolution.measuredWindowDays != null ? `${impactLedger.resolution.measuredWindowDays} dana` : "-"}</div>
+                                  <div><strong>Napomena:</strong> {impactLedger.resolution.resolutionNote ?? "-"}</div>
+                                </div>
+                              ) : (
+                                <p className="aaq-ledger-empty">Ledger uticaja nije dostupan za ovaj red.</p>
+                              )}
                             </div>
                             {isDetailLoading && (
                               <div className="aaq-detail-loading">Učitavanje istorije...</div>
