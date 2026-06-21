@@ -2698,7 +2698,7 @@ Token budget: medium
 
 ## Q61 - Pilot operator workflow runbook
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(pilot): add analytics pilot operator runbook`
 Priority: P1
 Type: docs/ops
@@ -2738,6 +2738,19 @@ Token budget: medium
 
 - Pilot operator workflow is repeatable and evidence-based.
 - Decision usage, data quality review, and escalation steps are explicit.
+
+### Notes
+
+- 2026-06-21: DONE. Added `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md` to turn current live-smoke/readiness evidence into a repeatable pilot operating workflow with daily opening checks, weekly review cadence, action/outcome hygiene, and escalation rules.
+- Changed files:
+  - `docs/pilot/ANALYTICS_PILOT_OPERATOR_RUNBOOK.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` (pass; CRLF/LF warning only)
+- Risk:
+  - The runbook is intentionally conservative and depends on operators preserving visible warnings instead of overriding them in customer summaries or ad hoc screenshots.
+- Next:
+  - `Q62 - Decision Board backend aggregate readiness gate`
 
 ## Q62 - Decision Board backend aggregate readiness gate
 
