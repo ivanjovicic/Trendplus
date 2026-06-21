@@ -6,12 +6,20 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Infrastructure.Services.Analytics;
 
 public sealed class AnalyticsActionItemService
 {
     private const int MaxOutcomeNotesLength = 4000;
+    private const int LedgerSchemaVersion = 1;
+    private static readonly JsonSerializerOptions LedgerJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     private readonly IAnalyticsDbContext _db;
     private readonly ILogger<AnalyticsActionItemService> _logger;
@@ -364,7 +372,11 @@ public sealed class AnalyticsActionItemService
             DataQualityStatus = normalizedDataQuality,
             Status = AnalyticsActionConstants.Statuses.New,
             ActionUrl = request.ActionUrl,
-            MetadataJson = request.MetadataJson,
+            MetadataJson = MergeLedgerMetadata(
+                request.MetadataJson,
+                BuildCreationSnapshot(request),
+                resolutionSnapshot: null,
+                preserveExistingResolutionSnapshot: true),
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
             CreatedByUserId = userId,
@@ -624,6 +636,14 @@ public sealed class AnalyticsActionItemService
             item.OutcomeMeasuredAtUtc = null;
         }
 
+        var preserveExistingResolutionSnapshot = HasExistingLedgerEnvelope(item.MetadataJson);
+        var resolutionSnapshot = BuildResolutionSnapshot(request, normalizedOutcomeNotes, preserveExistingResolutionSnapshot);
+        item.MetadataJson = MergeLedgerMetadata(
+            item.MetadataJson,
+            creationSnapshot: null,
+            resolutionSnapshot,
+            preserveExistingResolutionSnapshot);
+
         var outcomeChanged = !string.Equals(oldOutcomeStatus, item.OutcomeStatus, StringComparison.Ordinal)
             || oldMeasuredImpactRsd != item.MeasuredImpactRsd
             || oldOutcomeMeasuredAtUtc != item.OutcomeMeasuredAtUtc
@@ -652,6 +672,27 @@ public sealed class AnalyticsActionItemService
             userId);
 
         return item;
+    }
+
+    public static AnalyticsActionLedgerSnapshot? GetLedgerSnapshot(string? metadataJson)
+    {
+        if (!TryGetMetadataRoot(metadataJson, out var root))
+        {
+            return null;
+        }
+
+        if (root["ledger"] is not JsonObject ledger)
+        {
+            return null;
+        }
+
+        var schemaVersion = root["schemaVersion"]?.GetValue<int?>() ?? LedgerSchemaVersion;
+        var creationSnapshot = ParseCreationSnapshot(ledger["creationSnapshot"] as JsonObject);
+        var resolutionSnapshot = ParseResolutionSnapshot(ledger["resolutionSnapshot"] as JsonObject);
+
+        return creationSnapshot is null && resolutionSnapshot is null
+            ? null
+            : new AnalyticsActionLedgerSnapshot(schemaVersion, creationSnapshot, resolutionSnapshot);
     }
 
     private static string? NormalizeOutcomeNotes(string? outcomeNotes)
@@ -695,6 +736,230 @@ public sealed class AnalyticsActionItemService
         var note = string.Join(" | ", segments);
         return note.Length <= MaxOutcomeNotesLength ? note : note[..MaxOutcomeNotesLength];
     }
+
+    private static AnalyticsActionCreationSnapshot? BuildCreationSnapshot(AnalyticsActionUpsertRequest request)
+    {
+        var hasLedgerFields =
+            !string.IsNullOrWhiteSpace(request.SourceRecommendationId)
+            || !string.IsNullOrWhiteSpace(request.RecommendationType)
+            || !string.IsNullOrWhiteSpace(request.ExpectedImpactBasis)
+            || request.ImpactWindowDays.HasValue
+            || !string.IsNullOrWhiteSpace(request.ConfidenceLevel)
+            || HasNonEmptyValues(request.WarningCodes)
+            || HasNonEmptyValues(request.PrimaryDrivers)
+            || !string.IsNullOrWhiteSpace(request.DecisionReason)
+            || !string.IsNullOrWhiteSpace(request.RecommendedAction)
+            || request.GeneratedAtUtc.HasValue
+            || !string.IsNullOrWhiteSpace(request.InputFreshnessStatus);
+
+        if (!hasLedgerFields)
+        {
+            return null;
+        }
+
+        return new AnalyticsActionCreationSnapshot(
+            SourceRecommendationId: request.SourceRecommendationId?.Trim() ?? string.Empty,
+            RecommendationType: request.RecommendationType?.Trim() ?? string.Empty,
+            ExpectedImpactBasis: NormalizeOptionalText(request.ExpectedImpactBasis),
+            ImpactWindowDays: request.ImpactWindowDays,
+            ConfidenceLevel: request.ConfidenceLevel?.Trim() ?? string.Empty,
+            WarningCodes: NormalizeStringList(request.WarningCodes),
+            PrimaryDrivers: NormalizeStringList(request.PrimaryDrivers),
+            DecisionReason: request.DecisionReason?.Trim() ?? string.Empty,
+            RecommendedAction: request.RecommendedAction?.Trim() ?? string.Empty,
+            GeneratedAtUtc: request.GeneratedAtUtc,
+            InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? string.Empty);
+    }
+
+    private static AnalyticsActionResolutionSnapshot? BuildResolutionSnapshot(
+        AnalyticsActionOutcomeUpdateRequest request,
+        string? normalizedOutcomeNotes,
+        bool preserveExistingResolutionSnapshot)
+    {
+        var hasLedgerFields =
+            request.MeasuredWindowDays.HasValue
+            || !string.IsNullOrWhiteSpace(request.EvidenceSource)
+            || !string.IsNullOrWhiteSpace(request.EvidenceReference)
+            || !string.IsNullOrWhiteSpace(request.ResolutionNote);
+
+        if (!hasLedgerFields && !preserveExistingResolutionSnapshot)
+        {
+            return null;
+        }
+
+        return new AnalyticsActionResolutionSnapshot(
+            MeasuredWindowDays: request.MeasuredWindowDays,
+            EvidenceSource: NormalizeOptionalText(request.EvidenceSource),
+            EvidenceReference: NormalizeOptionalText(request.EvidenceReference),
+            ResolutionNote: NormalizeOptionalText(request.ResolutionNote) ?? normalizedOutcomeNotes);
+    }
+
+    private static string? MergeLedgerMetadata(
+        string? existingMetadataJson,
+        AnalyticsActionCreationSnapshot? creationSnapshot,
+        AnalyticsActionResolutionSnapshot? resolutionSnapshot,
+        bool preserveExistingResolutionSnapshot)
+    {
+        if (creationSnapshot is null && resolutionSnapshot is null && string.IsNullOrWhiteSpace(existingMetadataJson))
+        {
+            return existingMetadataJson;
+        }
+
+        JsonObject root;
+        if (string.IsNullOrWhiteSpace(existingMetadataJson))
+        {
+            root = new JsonObject();
+        }
+        else if (!TryParseMetadataRoot(existingMetadataJson, out root))
+        {
+            throw new ArgumentException("metadataJson must be a valid JSON object when ledger metadata is provided", nameof(existingMetadataJson));
+        }
+
+        var changed = false;
+        JsonObject? ledger = root["ledger"] as JsonObject;
+
+        if (creationSnapshot is not null || resolutionSnapshot is not null || preserveExistingResolutionSnapshot)
+        {
+            root["schemaVersion"] = LedgerSchemaVersion;
+            changed = true;
+
+            ledger ??= new JsonObject();
+            root["ledger"] = ledger;
+        }
+
+        if (creationSnapshot is not null)
+        {
+            ledger!["creationSnapshot"] = JsonSerializer.SerializeToNode(creationSnapshot, LedgerJsonOptions);
+            changed = true;
+        }
+
+        if (resolutionSnapshot is not null)
+        {
+            ledger!["resolutionSnapshot"] = JsonSerializer.SerializeToNode(resolutionSnapshot, LedgerJsonOptions);
+            changed = true;
+        }
+
+        if (!changed)
+        {
+            return existingMetadataJson;
+        }
+
+        return root.ToJsonString(LedgerJsonOptions);
+    }
+
+    private static bool TryParseMetadataRoot(string metadataJson, out JsonObject root)
+    {
+        root = null!;
+
+        try
+        {
+            var parsed = JsonNode.Parse(metadataJson);
+            if (parsed is JsonObject obj)
+            {
+                root = obj;
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return false;
+    }
+
+    private static bool TryGetMetadataRoot(string? metadataJson, out JsonObject root)
+    {
+        root = null!;
+        return !string.IsNullOrWhiteSpace(metadataJson) && TryParseMetadataRoot(metadataJson, out root);
+    }
+
+    private static bool HasExistingLedgerEnvelope(string? metadataJson)
+        => TryGetMetadataRoot(metadataJson, out var root) && root["ledger"] is JsonObject;
+
+    private static AnalyticsActionCreationSnapshot? ParseCreationSnapshot(JsonObject? creationNode)
+    {
+        if (creationNode is null)
+        {
+            return null;
+        }
+
+        var sourceRecommendationId = creationNode["sourceRecommendationId"]?.GetValue<string>()?.Trim();
+        var recommendationType = creationNode["recommendationType"]?.GetValue<string>()?.Trim();
+        var confidenceLevel = creationNode["confidenceLevel"]?.GetValue<string>()?.Trim();
+        var decisionReason = creationNode["decisionReason"]?.GetValue<string>()?.Trim();
+        var recommendedAction = creationNode["recommendedAction"]?.GetValue<string>()?.Trim();
+        var inputFreshnessStatus = creationNode["inputFreshnessStatus"]?.GetValue<string>()?.Trim();
+
+        if (string.IsNullOrWhiteSpace(sourceRecommendationId)
+            || string.IsNullOrWhiteSpace(recommendationType)
+            || string.IsNullOrWhiteSpace(confidenceLevel)
+            || string.IsNullOrWhiteSpace(decisionReason)
+            || string.IsNullOrWhiteSpace(recommendedAction)
+            || string.IsNullOrWhiteSpace(inputFreshnessStatus))
+        {
+            return null;
+        }
+
+        return new AnalyticsActionCreationSnapshot(
+            sourceRecommendationId,
+            recommendationType,
+            NormalizeOptionalText(creationNode["expectedImpactBasis"]?.GetValue<string>()),
+            creationNode["impactWindowDays"]?.GetValue<int?>(),
+            confidenceLevel,
+            ReadStringArray(creationNode["warningCodes"]),
+            ReadStringArray(creationNode["primaryDrivers"]),
+            decisionReason,
+            recommendedAction,
+            creationNode["generatedAtUtc"]?.GetValue<DateTime?>(),
+            inputFreshnessStatus);
+    }
+
+    private static AnalyticsActionResolutionSnapshot? ParseResolutionSnapshot(JsonObject? resolutionNode)
+    {
+        if (resolutionNode is null)
+        {
+            return null;
+        }
+
+        var snapshot = new AnalyticsActionResolutionSnapshot(
+            resolutionNode["measuredWindowDays"]?.GetValue<int?>(),
+            NormalizeOptionalText(resolutionNode["evidenceSource"]?.GetValue<string>()),
+            NormalizeOptionalText(resolutionNode["evidenceReference"]?.GetValue<string>()),
+            NormalizeOptionalText(resolutionNode["resolutionNote"]?.GetValue<string>()));
+
+        return snapshot.MeasuredWindowDays.HasValue
+            || snapshot.EvidenceSource is not null
+            || snapshot.EvidenceReference is not null
+            || snapshot.ResolutionNote is not null
+            ? snapshot
+            : null;
+    }
+
+    private static IReadOnlyList<string> ReadStringArray(JsonNode? node)
+        => node is JsonArray array
+            ? array
+                .Select(x => NormalizeOptionalText(x?.GetValue<string>()))
+                .Where(x => x is not null)
+                .Cast<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()
+            : Array.Empty<string>();
+
+    private static IReadOnlyList<string> NormalizeStringList(IReadOnlyList<string>? values)
+        => values is null
+            ? Array.Empty<string>()
+            : values
+                .Select(NormalizeOptionalText)
+                .Where(x => x is not null)
+                .Cast<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+    private static bool HasNonEmptyValues(IReadOnlyList<string>? values)
+        => values is not null && values.Any(x => !string.IsNullOrWhiteSpace(x));
+
+    private static string? NormalizeOptionalText(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string ResolvePeriodMode(AnalyticsActionOutcomeSummaryQuery query)
     {
@@ -936,6 +1201,17 @@ public sealed record AnalyticsActionUpsertRequest(
     int? ReliabilityPct,
     string? DataQualityStatus,
     string? ActionUrl,
+    string? SourceRecommendationId,
+    string? RecommendationType,
+    string? ExpectedImpactBasis,
+    int? ImpactWindowDays,
+    string? ConfidenceLevel,
+    IReadOnlyList<string>? WarningCodes,
+    IReadOnlyList<string>? PrimaryDrivers,
+    string? DecisionReason,
+    string? RecommendedAction,
+    DateTime? GeneratedAtUtc,
+    string? InputFreshnessStatus,
     string? MetadataJson
 );
 
@@ -966,7 +1242,11 @@ public sealed record AnalyticsActionOutcomeUpdateRequest(
     string OutcomeStatus,
     decimal? MeasuredImpactRsd,
     DateTime? OutcomeMeasuredAtUtc,
-    string? OutcomeNotes
+    string? OutcomeNotes,
+    int? MeasuredWindowDays,
+    string? EvidenceSource,
+    string? EvidenceReference,
+    string? ResolutionNote
 );
 
 public sealed record AnalyticsActionOutcomeSummaryQuery(

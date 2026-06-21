@@ -1,4 +1,5 @@
 using Application.Analytics;
+using Domain.Model.Analytics;
 using Infrastructure.Services.Analytics;
 using Microsoft.AspNetCore.Http;
 using Trendplus2.Endpoints;
@@ -128,7 +129,11 @@ public static class AnalyticsActionsEndpoints
             CancellationToken ct) =>
         {
             var item = await svc.GetByIdAsync(id, includeNotes: true, ct);
-            return item is null ? Results.NotFound() : Results.Ok(item);
+            if (item is null)
+                return Results.NotFound();
+
+            item.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
+            return Results.Ok(item);
         })
         .WithName("GetAnalyticsActionById");
 
@@ -184,10 +189,22 @@ public static class AnalyticsActionsEndpoints
                 ReliabilityPct: body.ReliabilityPct,
                 DataQualityStatus: normalizedDataQualityStatus,
                 ActionUrl: body.ActionUrl,
+                SourceRecommendationId: body.SourceRecommendationId,
+                RecommendationType: body.RecommendationType,
+                ExpectedImpactBasis: body.ExpectedImpactBasis,
+                ImpactWindowDays: body.ImpactWindowDays,
+                ConfidenceLevel: body.ConfidenceLevel,
+                WarningCodes: body.WarningCodes,
+                PrimaryDrivers: body.PrimaryDrivers,
+                DecisionReason: body.DecisionReason,
+                RecommendedAction: body.RecommendedAction,
+                GeneratedAtUtc: body.GeneratedAtUtc,
+                InputFreshnessStatus: body.InputFreshnessStatus,
                 MetadataJson: body.MetadataJson
             );
 
             var result = await svc.UpsertWithResultAsync(request, userId, ct);
+            result.Item.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(result.Item.MetadataJson);
             return Results.Ok(result);
         })
         .WithName("UpsertAnalyticsAction");
@@ -257,7 +274,11 @@ public static class AnalyticsActionsEndpoints
                 return Results.NotFound();
 
             var detailed = await svc.GetByIdAsync(id, includeNotes: true, ct);
-            return detailed is null ? Results.NotFound() : Results.Ok(detailed);
+            if (detailed is null)
+                return Results.NotFound();
+
+            detailed.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(detailed.MetadataJson);
+            return Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionStatus");
 
@@ -294,7 +315,11 @@ public static class AnalyticsActionsEndpoints
                     OutcomeStatus: body.OutcomeStatus,
                     MeasuredImpactRsd: body.MeasuredImpactRsd,
                     OutcomeMeasuredAtUtc: body.OutcomeMeasuredAtUtc,
-                    OutcomeNotes: body.OutcomeNotes),
+                    OutcomeNotes: body.OutcomeNotes,
+                    MeasuredWindowDays: body.MeasuredWindowDays,
+                    EvidenceSource: body.EvidenceSource,
+                    EvidenceReference: body.EvidenceReference,
+                    ResolutionNote: body.ResolutionNote),
                 userId,
                 userName,
                 ct);
@@ -303,7 +328,11 @@ public static class AnalyticsActionsEndpoints
                 return Results.NotFound();
 
             var detailed = await svc.GetByIdAsync(id, includeNotes: true, ct);
-            return detailed is null ? Results.NotFound() : Results.Ok(detailed);
+            if (detailed is null)
+                return Results.NotFound();
+
+            detailed.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(detailed.MetadataJson);
+            return Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionOutcome");
     }
@@ -326,6 +355,17 @@ public sealed record AnalyticsActionUpsertBody(
     int? ReliabilityPct,
     string? DataQualityStatus,
     string? ActionUrl,
+    string? SourceRecommendationId,
+    string? RecommendationType,
+    string? ExpectedImpactBasis,
+    int? ImpactWindowDays,
+    string? ConfidenceLevel,
+    IReadOnlyList<string>? WarningCodes,
+    IReadOnlyList<string>? PrimaryDrivers,
+    string? DecisionReason,
+    string? RecommendedAction,
+    DateTime? GeneratedAtUtc,
+    string? InputFreshnessStatus,
     string? MetadataJson
 );
 
@@ -338,7 +378,11 @@ public sealed record AnalyticsActionOutcomeUpdateBody(
     string OutcomeStatus,
     decimal? MeasuredImpactRsd,
     DateTime? OutcomeMeasuredAtUtc,
-    string? OutcomeNotes
+    string? OutcomeNotes,
+    int? MeasuredWindowDays,
+    string? EvidenceSource,
+    string? EvidenceReference,
+    string? ResolutionNote
 );
 
 public sealed record AnalyticsActionSourceStatusLookupBody(

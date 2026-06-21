@@ -2507,7 +2507,7 @@ Token budget: medium
 
 ## Q58 - Action Impact Ledger Phase 1 backend implementation
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(analytics): implement action impact ledger phase 1`
 Priority: P0
 Type: backend
@@ -2553,6 +2553,26 @@ Token budget: medium/high
 - Action Impact Ledger Phase 1 exists in the backend with focused tests.
 - Existing action flows still work.
 - Missing outcome data does not become fake zero.
+
+### Notes
+
+- Date: 2026-06-21
+- Changed files:
+  - `Domain/Model/Analytics/AnalyticsActionLedgerSnapshot.cs`
+  - `Domain/Model/Analytics/AnalyticsActionItem.cs`
+  - `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Api.Tests/AnalyticsActionItemServiceTests.cs`
+  - `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "AnalyticsActions"` pass
+  - `git diff --check` pass
+- Risk:
+  - Existing action create flows remain backward compatible by treating ledger request fields as optional, so Q59 will need to start consuming the new `ledgerSnapshot` payload deliberately instead of assuming every historical row already has it.
+- Next step:
+  - `Q59 - Action outcome UI detail panel`
 
 ## Q59 - Action outcome UI detail panel
 

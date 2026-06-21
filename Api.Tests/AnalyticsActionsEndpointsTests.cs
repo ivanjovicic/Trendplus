@@ -80,6 +80,42 @@ public sealed class AnalyticsActionsEndpointsTests
     }
 
     [Fact]
+    public async Task PostUpsert_WithLedgerFields_ReturnsLedgerSnapshot()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+
+        using var request = CreateJsonRequest(HttpMethod.Post, "/api/analytics/actions", new
+        {
+            sourceType = AnalyticsActionConstants.SourceTypes.Inventory,
+            sourceKey = "inventory:sku:ledger-1",
+            title = "Ledger akcija",
+            priority = AnalyticsActionConstants.Priorities.P1,
+            sourceRecommendationId = "inventory:sku:ledger-1:replenish",
+            recommendationType = "REPLENISH",
+            expectedImpactBasis = "sales_velocity + stock_risk",
+            confidenceLevel = "medium",
+            decisionReason = "Potreban brzi odgovor.",
+            recommendedAction = "Dopuni",
+            generatedAtUtc = "2026-06-21T09:00:00Z",
+            inputFreshnessStatus = "stale",
+            warningCodes = new[] { "STALE_REFRESH" },
+            primaryDrivers = new[] { "sales_velocity", "stock_risk" }
+        }, adminKey: AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var creation = payload.RootElement
+            .GetProperty("item")
+            .GetProperty("ledgerSnapshot")
+            .GetProperty("creationSnapshot");
+        Assert.Equal("inventory:sku:ledger-1:replenish", creation.GetProperty("sourceRecommendationId").GetString());
+        Assert.Equal("REPLENISH", creation.GetProperty("recommendationType").GetString());
+        Assert.Equal("Dopuni", creation.GetProperty("recommendedAction").GetString());
+    }
+
+    [Fact]
     public async Task PatchStatus_RejectsWithoutAdminKey_ReturnsUnauthorized()
     {
         await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
@@ -403,6 +439,53 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.DoesNotContain("MeasuredImpactRsd=42", auditNote.Note);
     }
 
+    [Fact]
+    public async Task GetById_WithLegacyMetadata_DoesNotFabricateLedgerSnapshot()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var actionId = await host.SeedActionAsync(metadataJson: """{"legacy":"plain"}""");
+
+        using var response = await host.Client.GetAsync($"/api/analytics/actions/{actionId}");
+
+        response.EnsureSuccessStatusCode();
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(
+            !payload.RootElement.TryGetProperty("ledgerSnapshot", out var ledgerNode)
+            || ledgerNode.ValueKind is JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task PatchOutcome_WithLedgerFields_ReturnsResolutionSnapshot()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync(metadataJson: """
+        {"schemaVersion":1,"ledger":{"creationSnapshot":{"sourceRecommendationId":"inventory:ledger:2","recommendationType":"REPLENISH","confidenceLevel":"medium","warningCodes":[],"primaryDrivers":["sales_velocity"],"decisionReason":"Potrebna dopuna","recommendedAction":"Dopuni","generatedAtUtc":"2026-06-21T09:00:00Z","inputFreshnessStatus":"fresh"}}}
+        """);
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
+        {
+            outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd = 42m,
+            outcomeMeasuredAtUtc = "2026-06-29T00:00:00Z",
+            outcomeNotes = "Rezultat potvrđen",
+            measuredWindowDays = 8,
+            evidenceSource = "action_outcome_summary",
+            evidenceReference = "summary:inventory:ledger:2:2026-06-29"
+        }, adminKey: AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var resolution = payload.RootElement
+            .GetProperty("ledgerSnapshot")
+            .GetProperty("resolutionSnapshot");
+        Assert.Equal(8, resolution.GetProperty("measuredWindowDays").GetInt32());
+        Assert.Equal("action_outcome_summary", resolution.GetProperty("evidenceSource").GetString());
+        Assert.Equal("summary:inventory:ledger:2:2026-06-29", resolution.GetProperty("evidenceReference").GetString());
+        Assert.Equal("Rezultat potvrđen", resolution.GetProperty("resolutionNote").GetString());
+    }
+
     private sealed class AnalyticsActionsTestHost : IAsyncDisposable
     {
         private AnalyticsActionsTestHost(WebApplication app)
@@ -450,7 +533,8 @@ public sealed class AnalyticsActionsEndpointsTests
             string? outcomeNotes = null,
             string? sourceType = null,
             string? sourceKey = null,
-            string? status = null)
+            string? status = null,
+            string? metadataJson = null)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
@@ -472,6 +556,7 @@ public sealed class AnalyticsActionsEndpointsTests
                 MeasuredImpactRsd = measuredImpactRsd,
                 OutcomeMeasuredAtUtc = outcomeMeasuredAtUtc,
                 OutcomeNotes = outcomeNotes,
+                MetadataJson = metadataJson,
             };
 
             db.AnalyticsActionItems.Add(item);

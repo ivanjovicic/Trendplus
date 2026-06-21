@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Domain.Model.Analytics;
 
 /// <summary>
@@ -147,4 +149,11 @@ public class AnalyticsActionItem
     /// Audit trail entries for status changes and optional notes.
     /// </summary>
     public ICollection<AnalyticsActionNote> Notes { get; set; } = new List<AnalyticsActionNote>();
+
+    /// <summary>
+    /// Optional read-only projection of the canonical ledger payload stored inside MetadataJson.
+    /// Not persisted separately in Phase 1.
+    /// </summary>
+    [NotMapped]
+    public AnalyticsActionLedgerSnapshot? LedgerSnapshot { get; set; }
 }

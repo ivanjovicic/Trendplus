@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 using Xunit;
 
 namespace Trendplus2.Tests;
@@ -141,6 +142,50 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_PersistsLedgerCreationSnapshotMetadata()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_PersistsLedgerCreationSnapshotMetadata));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "ledger-create-1",
+                expectedImpactRsd: 2500m,
+                sourceRecommendationId: "inventory:101:replenish:2026-06",
+                recommendationType: "REPLENISH",
+                expectedImpactBasis: "sales_velocity + stock_risk",
+                impactWindowDays: 14,
+                confidenceLevel: "medium",
+                warningCodes: new[] { "STALE_REFRESH", "STALE_REFRESH" },
+                primaryDrivers: new[] { "sales_velocity", "stock_risk" },
+                decisionReason: "Artikal ima ubrzanu prodaju.",
+                recommendedAction: "Dopuni",
+                generatedAtUtc: new DateTime(2026, 6, 21, 9, 0, 0, DateTimeKind.Utc),
+                inputFreshnessStatus: "stale"),
+            userId: "u1");
+
+        Assert.NotNull(created.MetadataJson);
+        using var doc = JsonDocument.Parse(created.MetadataJson!);
+        var root = doc.RootElement;
+        Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
+        var creation = root.GetProperty("ledger").GetProperty("creationSnapshot");
+        Assert.Equal("inventory:101:replenish:2026-06", creation.GetProperty("sourceRecommendationId").GetString());
+        Assert.Equal("REPLENISH", creation.GetProperty("recommendationType").GetString());
+        Assert.Equal("sales_velocity + stock_risk", creation.GetProperty("expectedImpactBasis").GetString());
+        Assert.Equal(14, creation.GetProperty("impactWindowDays").GetInt32());
+        Assert.Equal("medium", creation.GetProperty("confidenceLevel").GetString());
+        Assert.Equal("Dopuni", creation.GetProperty("recommendedAction").GetString());
+        Assert.Equal("stale", creation.GetProperty("inputFreshnessStatus").GetString());
+        Assert.Equal(2, creation.GetProperty("warningCodes").GetArrayLength());
+
+        var snapshot = AnalyticsActionItemService.GetLedgerSnapshot(created.MetadataJson);
+        Assert.NotNull(snapshot);
+        Assert.NotNull(snapshot!.CreationSnapshot);
+        Assert.Equal("REPLENISH", snapshot.CreationSnapshot!.RecommendationType);
+    }
+
+    [Fact]
     public async Task UpdateOutcomeAsync_PersistsOutcomeFields()
     {
         await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PersistsOutcomeFields));
@@ -162,6 +207,61 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(777m, updated.MeasuredImpactRsd);
         Assert.Equal("Ishod potvrđen", updated.OutcomeNotes);
         Assert.Equal(new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc), updated.OutcomeMeasuredAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_MergesResolutionSnapshot_WithoutOverwritingCreationSnapshot()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_MergesResolutionSnapshot_WithoutOverwritingCreationSnapshot));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Product,
+                "ledger-outcome-1",
+                expectedImpactRsd: 900m,
+                sourceRecommendationId: "product:1001:markdown:2026-06",
+                recommendationType: "MARKDOWN",
+                expectedImpactBasis: "margin + aging_stock",
+                confidenceLevel: "low",
+                decisionReason: "Zaliha sporo izlazi.",
+                recommendedAction: "Smanji cenu",
+                generatedAtUtc: new DateTime(2026, 6, 21, 10, 0, 0, DateTimeKind.Utc),
+                inputFreshnessStatus: "fresh"),
+            userId: "u1");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 777m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 28, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Potvrđen rezultat",
+                MeasuredWindowDays: 7,
+                EvidenceSource: "action_outcome_summary",
+                EvidenceReference: "summary:product:1001:2026-06-28",
+                ResolutionNote: null),
+            userId: "u1",
+            userName: "tester");
+
+        Assert.NotNull(updated);
+        Assert.NotNull(updated!.MetadataJson);
+
+        var snapshot = AnalyticsActionItemService.GetLedgerSnapshot(updated.MetadataJson);
+        Assert.NotNull(snapshot);
+        Assert.NotNull(snapshot!.CreationSnapshot);
+        Assert.NotNull(snapshot.ResolutionSnapshot);
+        Assert.Equal("product:1001:markdown:2026-06", snapshot.CreationSnapshot!.SourceRecommendationId);
+        Assert.Equal(7, snapshot.ResolutionSnapshot!.MeasuredWindowDays);
+        Assert.Equal("action_outcome_summary", snapshot.ResolutionSnapshot.EvidenceSource);
+        Assert.Equal("summary:product:1001:2026-06-28", snapshot.ResolutionSnapshot.EvidenceReference);
+        Assert.Equal("Potvrđen rezultat", snapshot.ResolutionSnapshot.ResolutionNote);
+    }
+
+    [Fact]
+    public void GetLedgerSnapshot_LegacyMetadataWithoutLedgerEnvelope_ReturnsNull()
+    {
+        var snapshot = AnalyticsActionItemService.GetLedgerSnapshot("""{"source":"legacy","note":"plain metadata only"}""");
+        Assert.Null(snapshot);
     }
 
     [Fact]
@@ -974,7 +1074,18 @@ public class AnalyticsActionItemServiceTests
         string priority = AnalyticsActionConstants.Priorities.P2,
         DateTime? dueAtUtc = null,
         decimal? expectedImpactRsd = null,
-        string dataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Warning)
+        string dataQualityStatus = AnalyticsActionConstants.DataQualityStatuses.Warning,
+        string? sourceRecommendationId = null,
+        string? recommendationType = null,
+        string? expectedImpactBasis = null,
+        int? impactWindowDays = null,
+        string? confidenceLevel = null,
+        IReadOnlyList<string>? warningCodes = null,
+        IReadOnlyList<string>? primaryDrivers = null,
+        string? decisionReason = null,
+        string? recommendedAction = null,
+        DateTime? generatedAtUtc = null,
+        string? inputFreshnessStatus = null)
         => new(
             SourceType: sourceType,
             SourceKey: sourceKey,
@@ -990,6 +1101,17 @@ public class AnalyticsActionItemServiceTests
             ReliabilityPct: 75,
             DataQualityStatus: dataQualityStatus,
             ActionUrl: "/analytics/inventory",
+            SourceRecommendationId: sourceRecommendationId,
+            RecommendationType: recommendationType,
+            ExpectedImpactBasis: expectedImpactBasis,
+            ImpactWindowDays: impactWindowDays,
+            ConfidenceLevel: confidenceLevel,
+            WarningCodes: warningCodes,
+            PrimaryDrivers: primaryDrivers,
+            DecisionReason: decisionReason,
+            RecommendedAction: recommendedAction,
+            GeneratedAtUtc: generatedAtUtc,
+            InputFreshnessStatus: inputFreshnessStatus,
             MetadataJson: null
         );
 
