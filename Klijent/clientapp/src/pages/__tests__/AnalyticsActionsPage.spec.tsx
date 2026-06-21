@@ -34,39 +34,45 @@ vi.mock("../../services/analyticsApi", () => ({
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 
+function createActionItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 7,
+    sourceType: "inventory",
+    sourceKey: "inventory-7",
+    title: "Dopuni artikal A",
+    description: "Brza prodaja i nizak stock cover.",
+    recommendationStatus: "dopuna",
+    priority: "P1",
+    impactEstimateRsd: 15000,
+    dueAtUtc: "2026-06-01T00:00:00Z",
+    expectedImpactRsd: 12000,
+    measuredImpactRsd: 3000,
+    outcomeStatus: "success",
+    outcomeMeasuredAtUtc: "2026-06-10T00:00:00Z",
+    outcomeNotes: "Prodaja se ubrzala posle dopune.",
+    confidencePct: 82,
+    reliabilityPct: 75,
+    dataQualityStatus: "good",
+    status: "accepted",
+    actionUrl: null,
+    metadataJson: null,
+    ledgerSnapshot: null,
+    createdAtUtc: "2026-05-26T12:00:00Z",
+    updatedAtUtc: "2026-05-26T12:00:00Z",
+    resolvedAtUtc: null,
+    createdByUserId: null,
+    updatedByUserId: null,
+    updatedByUserName: null,
+    notes: [],
+    ...overrides,
+  };
+}
+
 describe("AnalyticsActionsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    const item = {
-      id: 7,
-      sourceType: "inventory",
-      sourceKey: "inventory-7",
-      title: "Dopuni artikal A",
-      description: "Brza prodaja i nizak stock cover.",
-      recommendationStatus: "dopuna",
-      priority: "P1",
-      impactEstimateRsd: 15000,
-      dueAtUtc: "2026-06-01T00:00:00Z",
-      expectedImpactRsd: 12000,
-      measuredImpactRsd: 3000,
-      outcomeStatus: "success",
-      outcomeMeasuredAtUtc: "2026-06-10T00:00:00Z",
-      outcomeNotes: "Prodaja se ubrzala posle dopune.",
-      confidencePct: 82,
-      reliabilityPct: 75,
-      dataQualityStatus: "good",
-      status: "accepted",
-      actionUrl: null,
-      metadataJson: null,
-      createdAtUtc: "2026-05-26T12:00:00Z",
-      updatedAtUtc: "2026-05-26T12:00:00Z",
-      resolvedAtUtc: null,
-      createdByUserId: null,
-      updatedByUserId: null,
-      updatedByUserName: null,
-      notes: [],
-    };
+    const item = createActionItem();
 
     getAnalyticsActionsMock.mockResolvedValue({
       items: [item],
@@ -246,6 +252,36 @@ describe("AnalyticsActionsPage", () => {
       notes: [],
     });
 
+    updateAnalyticsActionOutcomeMock.mockResolvedValue(createActionItem({
+      measuredImpactRsd: -500,
+      outcomeStatus: "negative",
+      outcomeMeasuredAtUtc: "2026-06-12T00:00:00Z",
+      outcomeNotes: "Pad marÅ¾e posle akcije.",
+      updatedAtUtc: "2026-06-12T00:00:00Z",
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: {
+          sourceRecommendationId: "inventory:7:replenish",
+          recommendationType: "REPLENISH",
+          expectedImpactBasis: "sales_velocity + stock_risk",
+          impactWindowDays: 14,
+          confidenceLevel: "medium",
+          warningCodes: ["STALE_REFRESH"],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          decisionReason: "Artikal ima ubrzanu prodaju i nizak stock cover.",
+          recommendedAction: "Dopuni",
+          generatedAtUtc: "2026-06-01T00:00:00Z",
+          inputFreshnessStatus: "stale",
+        },
+        resolutionSnapshot: {
+          measuredWindowDays: 14,
+          evidenceSource: "action_outcome_summary",
+          evidenceReference: "summary:2026-06-12:inventory:7",
+          resolutionNote: "Margin je pao posle dopune.",
+        },
+      },
+    }));
+
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
@@ -278,7 +314,116 @@ describe("AnalyticsActionsPage", () => {
     });
 
     expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
-    expect(screen.getByText(/Napomena: Pad marže posle akcije\./)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(screen.getByText("action_outcome_summary")).toBeInTheDocument();
+    expect(screen.getAllByText("14 dana").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pad mar/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows a pending outcome state without fake measured impact", async () => {
+    const pendingItem = createActionItem({
+      expectedImpactRsd: 12000,
+      measuredImpactRsd: null,
+      outcomeStatus: "pending",
+      outcomeMeasuredAtUtc: null,
+      outcomeNotes: null,
+    });
+
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [pendingItem],
+      totalCount: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+    getAnalyticsActionByIdMock.mockResolvedValueOnce(createActionItem({
+      expectedImpactRsd: 12000,
+      measuredImpactRsd: null,
+      outcomeStatus: "pending",
+      outcomeMeasuredAtUtc: null,
+      outcomeNotes: null,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: {
+          sourceRecommendationId: "inventory:7:replenish",
+          recommendationType: "REPLENISH",
+          expectedImpactBasis: "sales_velocity + stock_risk",
+          impactWindowDays: 14,
+          confidenceLevel: "medium",
+          warningCodes: [],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          decisionReason: "Artikal ima ubrzanu prodaju i nizak stock cover.",
+          recommendedAction: "Dopuni",
+          generatedAtUtc: "2026-06-01T00:00:00Z",
+          inputFreshnessStatus: "fresh",
+        },
+        resolutionSnapshot: null,
+      },
+    }));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(screen.getByText("Ishod je još u toku. Merljivi uticaj ostaje nedostupan dok merenje ne bude završeno.")).toBeInTheDocument();
+    expect(screen.getAllByText("Još nije izmereno").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Kalibracija poverenja/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("0 RSD")).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable measured impact when an outcome status exists without proof", async () => {
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [createActionItem({
+        measuredImpactRsd: null,
+        outcomeStatus: "success",
+        outcomeMeasuredAtUtc: null,
+        outcomeNotes: null,
+      })],
+      totalCount: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+    getAnalyticsActionByIdMock.mockResolvedValueOnce(createActionItem({
+      measuredImpactRsd: null,
+      outcomeStatus: "success",
+      outcomeMeasuredAtUtc: null,
+      outcomeNotes: null,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: {
+          sourceRecommendationId: "inventory:7:replenish",
+          recommendationType: "REPLENISH",
+          expectedImpactBasis: "sales_velocity + stock_risk",
+          impactWindowDays: 14,
+          confidenceLevel: "medium",
+          warningCodes: ["STALE_REFRESH"],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          decisionReason: "Artikal ima ubrzanu prodaju i nizak stock cover.",
+          recommendedAction: "Dopuni",
+          generatedAtUtc: "2026-06-01T00:00:00Z",
+          inputFreshnessStatus: "stale",
+        },
+        resolutionSnapshot: {
+          measuredWindowDays: null,
+          evidenceSource: null,
+          evidenceReference: null,
+          resolutionNote: null,
+        },
+      },
+    }));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(await screen.findByText("Status ishoda je evidentiran, ali izmereni uticaj još nije dostupan.")).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0 RSD")).not.toBeInTheDocument();
   });
 
   it("shows a permission warning and keeps the row unchanged when status update is forbidden", async () => {

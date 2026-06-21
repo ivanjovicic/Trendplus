@@ -496,6 +496,31 @@
   background: #f8fafc;
 }
 
+.aaq-detail-sections {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.aaq-detail-card {
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 0.5rem;
+  background: var(--color-surface, #fff);
+  padding: 0.85rem 0.95rem;
+}
+
+.aaq-detail-card-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #111);
+}
+
+.aaq-detail-card-note {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #666);
+}
+
 .aaq-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

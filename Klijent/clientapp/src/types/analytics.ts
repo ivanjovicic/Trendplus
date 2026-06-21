@@ -1269,6 +1269,33 @@ export interface AnalyticsActionNote {
   createdByUserName?: string | null;
 }
 
+export interface AnalyticsActionCreationSnapshot {
+  sourceRecommendationId?: string | null;
+  recommendationType?: string | null;
+  expectedImpactBasis?: string | null;
+  impactWindowDays?: number | null;
+  confidenceLevel?: "high" | "medium" | "low" | "insufficient_data" | string | null;
+  warningCodes: string[];
+  primaryDrivers: string[];
+  decisionReason?: string | null;
+  recommendedAction?: string | null;
+  generatedAtUtc?: string | null;
+  inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
+}
+
+export interface AnalyticsActionResolutionSnapshot {
+  measuredWindowDays?: number | null;
+  evidenceSource?: string | null;
+  evidenceReference?: string | null;
+  resolutionNote?: string | null;
+}
+
+export interface AnalyticsActionLedgerSnapshot {
+  schemaVersion: number;
+  creationSnapshot?: AnalyticsActionCreationSnapshot | null;
+  resolutionSnapshot?: AnalyticsActionResolutionSnapshot | null;
+}
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;
@@ -1291,6 +1318,7 @@ export interface AnalyticsActionItem {
   status: AnalyticsActionStatus;
   actionUrl?: string | null;
   metadataJson?: string | null;
+  ledgerSnapshot?: AnalyticsActionLedgerSnapshot | null;
   createdAtUtc: string;
   updatedAtUtc: string;
   resolvedAtUtc?: string | null;

@@ -15,6 +15,7 @@ import type {
   AnalyticsActionItem,
   AnalyticsActionCounts,
   AnalyticsActionFilters,
+  AnalyticsActionLedgerSnapshot,
   AnalyticsActionStatus,
   AnalyticsActionSourceType,
   AnalyticsActionPriority,
@@ -108,6 +109,20 @@ const OUTCOME_SUMMARY_WARNING_LABELS: Record<string, string> = {
   mixed_period_filters: "Kombinovani period filteri mogu otežati poređenje trendova.",
 };
 
+const FRESHNESS_LABELS: Record<string, string> = {
+  fresh: "Sveže",
+  stale: "Zastarelo",
+  critical: "Kritično",
+  unknown: "Nepoznato",
+};
+
+const CONFIDENCE_LEVEL_LABELS: Record<string, string> = {
+  high: "Visoka",
+  medium: "Srednja",
+  low: "Niska",
+  insufficient_data: "Nedovoljno podataka",
+};
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -196,6 +211,77 @@ function getOutcomeSummaryWarningLabel(code: string): string {
 
 function renderBucketRateLabel(rate: number | null | undefined): string {
   return fmtPctFromRatio(rate, 0, "N/A");
+}
+
+function formatImpactValue(value: number | null | undefined, unavailableLabel: string): string {
+  return value == null ? unavailableLabel : fmtRsd(value, 0, "-");
+}
+
+function formatWindowDays(value: number | null | undefined, unavailableLabel: string): string {
+  if (value == null) return unavailableLabel;
+  return value === 1 ? "1 dan" : `${fmtNumber(value, 0, "0")} dana`;
+}
+
+function formatLedgerList(values: string[] | null | undefined, unavailableLabel: string): string {
+  return values && values.length > 0 ? values.join(", ") : unavailableLabel;
+}
+
+function formatFreshnessLabel(value: string | null | undefined): string {
+  if (!value) return "Nije evidentirano";
+  return FRESHNESS_LABELS[value] ?? value;
+}
+
+function formatConfidenceLevelLabel(value: string | null | undefined): string {
+  if (!value) return "Nije evidentirano";
+  return CONFIDENCE_LEVEL_LABELS[value] ?? value;
+}
+
+function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
+  const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
+  if (item.measuredImpactRsd != null) {
+    return fmtRsd(item.measuredImpactRsd, 0, "-");
+  }
+
+  if (outcomeStatus === "pending") {
+    return "Još nije izmereno";
+  }
+
+  if (outcomeStatus === "not_measured") {
+    return "Nije mereno";
+  }
+
+  return "Nije dostupno";
+}
+
+function getOutcomeStatusLabel(value: string | null | undefined): string {
+  const normalized = normalizeOutcomeStatus(value);
+  return normalized ? OUTCOME_LABELS[normalized] : "Ishod nije evidentiran";
+}
+
+function getOutcomeStateMessage(item: AnalyticsActionItem): string {
+  const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
+
+  if (outcomeStatus === "pending") {
+    return "Ishod je još u toku. Merljivi uticaj ostaje nedostupan dok merenje ne bude završeno.";
+  }
+
+  if (outcomeStatus === "not_measured") {
+    return "Akcija je zatvorena bez dovoljno dokaza za merljiv ishod.";
+  }
+
+  if (!outcomeStatus && item.measuredImpactRsd == null) {
+    return "Ishod još nije evidentiran za ovu akciju.";
+  }
+
+  if (item.measuredImpactRsd == null) {
+    return "Status ishoda je evidentiran, ali izmereni uticaj još nije dostupan.";
+  }
+
+  return "Izmereni ishod je evidentiran. Tumačite ga zajedno sa dokazom i periodom merenja.";
+}
+
+function getLedgerSchemaLabel(snapshot: AnalyticsActionLedgerSnapshot | null | undefined): string {
+  return snapshot ? `v${fmtNumber(snapshot.schemaVersion, 0, "0")}` : "Nije dostupno";
 }
 
 function getBucketHeading(bucket: AnalyticsActionOutcomeSummaryBucket): string {
@@ -896,6 +982,8 @@ export default function AnalyticsActionsPage() {
                   const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
                   const outcomeNotesPreview = formatOutcomeNotesPreview(item.outcomeNotes);
                   const hasOutcomeUpdate = outcomeStatus != null || item.measuredImpactRsd != null || outcomeNotesPreview != null;
+                  const creationSnapshot = detailsItem.ledgerSnapshot?.creationSnapshot ?? null;
+                  const resolutionSnapshot = detailsItem.ledgerSnapshot?.resolutionSnapshot ?? null;
 
                   return (
                     <Fragment key={item.id}>
@@ -932,13 +1020,13 @@ export default function AnalyticsActionsPage() {
                           {outcomeStatus ? (
                             <div>
                               <span className={OUTCOME_CSS[outcomeStatus]}>{OUTCOME_LABELS[outcomeStatus]}</span>
-                              <div className="td-desc">Izmereni uticaj: {fmtRsd(item.measuredImpactRsd, 0, "-")}</div>
+                              <div className="td-desc">Izmereni uticaj: {getMeasuredImpactLabel(item)}</div>
                               <div className="td-desc">Napomena: {outcomeNotesPreview ?? "-"}</div>
                             </div>
                           ) : (
                             <div>
-                              <span>-</span>
-                              <div className="td-desc">Izmereni uticaj: {fmtRsd(item.measuredImpactRsd, 0, "-")}</div>
+                              <span>Ishod nije evidentiran</span>
+                              <div className="td-desc">Izmereni uticaj: {getMeasuredImpactLabel(item)}</div>
                               <div className="td-desc">Napomena: {outcomeNotesPreview ?? "-"}</div>
                             </div>
                           )}
@@ -1012,6 +1100,41 @@ export default function AnalyticsActionsPage() {
                       {isExpanded && (
                         <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
                           <td colSpan={13}>
+                            <div className="aaq-detail-sections">
+                              <section className="aaq-detail-card" aria-label={`Outcome detalji za ${detailsItem.title}`}>
+                                <h3 className="aaq-detail-card-title">Outcome pregled</h3>
+                                <p className="aaq-detail-card-note">{getOutcomeStateMessage(detailsItem)}</p>
+                                <div className="aaq-details-grid">
+                                  <div><strong>Status ishoda:</strong> {getOutcomeStatusLabel(detailsItem.outcomeStatus)}</div>
+                                  <div><strong>Očekivani uticaj:</strong> {formatImpactValue(detailsItem.expectedImpactRsd, "Nije procenjeno")}</div>
+                                  <div><strong>Izmereni uticaj:</strong> {getMeasuredImpactLabel(detailsItem)}</div>
+                                  <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
+                                  <div><strong>Period merenja:</strong> {formatWindowDays(resolutionSnapshot?.measuredWindowDays, "Nije evidentirano")}</div>
+                                  <div><strong>Izvor dokaza:</strong> {resolutionSnapshot?.evidenceSource?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Referenca dokaza:</strong> {resolutionSnapshot?.evidenceReference?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Napomena ishoda:</strong> {detailsItem.outcomeNotes?.trim() ? detailsItem.outcomeNotes : "-"}</div>
+                                  <div><strong>Rezoluciona beleška:</strong> {resolutionSnapshot?.resolutionNote?.trim() || "Nije evidentirano"}</div>
+                                </div>
+                              </section>
+
+                              <section className="aaq-detail-card" aria-label={`Kontekst preporuke za ${detailsItem.title}`}>
+                                <h3 className="aaq-detail-card-title">Kontekst preporuke</h3>
+                                <div className="aaq-details-grid">
+                                  <div><strong>Ledger schema:</strong> {getLedgerSchemaLabel(detailsItem.ledgerSnapshot)}</div>
+                                  <div><strong>Recommendation type:</strong> {creationSnapshot?.recommendationType?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Confidence level:</strong> {formatConfidenceLevelLabel(creationSnapshot?.confidenceLevel)}</div>
+                                  <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(creationSnapshot?.inputFreshnessStatus)}</div>
+                                  <div><strong>Impact window:</strong> {formatWindowDays(creationSnapshot?.impactWindowDays, "Nije evidentirano")}</div>
+                                  <div><strong>Generated at:</strong> {formatTimestamp(creationSnapshot?.generatedAtUtc)}</div>
+                                  <div><strong>Expected impact basis:</strong> {creationSnapshot?.expectedImpactBasis?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Source recommendation id:</strong> {creationSnapshot?.sourceRecommendationId?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Recommended action:</strong> {creationSnapshot?.recommendedAction?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Decision reason:</strong> {creationSnapshot?.decisionReason?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Primary drivers:</strong> {formatLedgerList(creationSnapshot?.primaryDrivers, "Nije evidentirano")}</div>
+                                  <div><strong>Warning codes:</strong> {formatLedgerList(creationSnapshot?.warningCodes, "Nije evidentirano")}</div>
+                                </div>
+                              </section>
+                            </div>
                             <div className="aaq-details-grid">
                               <div>
                                 <strong>Izvorni ekran:</strong>{" "}
@@ -1019,9 +1142,9 @@ export default function AnalyticsActionsPage() {
                               </div>
                               <div><strong>Rok provere:</strong> {formatTimestamp(detailsItem.dueAtUtc)}</div>
                               <div><strong>Očekivani uticaj:</strong> {fmtRsd(detailsItem.expectedImpactRsd, 0, "-")}</div>
-                              <div><strong>Izmereni uticaj:</strong> {fmtRsd(detailsItem.measuredImpactRsd, 0, "-")}</div>
+                              <div><strong>Izmereni uticaj:</strong> {getMeasuredImpactLabel(detailsItem)}</div>
                               <div><strong>Status akcije:</strong> {STATUS_LABELS[detailsItem.status]}</div>
-                              <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(detailsItem.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(detailsItem.outcomeStatus)!] : "-"}</div>
+                              <div><strong>Status ishoda:</strong> {getOutcomeStatusLabel(detailsItem.outcomeStatus)}</div>
                               <div><strong>Datum merenja ishoda:</strong> {formatTimestamp(detailsItem.outcomeMeasuredAtUtc)}</div>
                               <div><strong>Napomena ishoda:</strong> {detailsItem.outcomeNotes?.trim() ? detailsItem.outcomeNotes : "-"}</div>
                             </div>

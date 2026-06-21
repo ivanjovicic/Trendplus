@@ -2576,7 +2576,7 @@ Token budget: medium/high
 
 ## Q59 - Action outcome UI detail panel
 
-Status: TODO
+Status: DONE
 Commit suggestion: `feat(analytics): show action outcome detail panel`
 Priority: P1
 Type: frontend
@@ -2621,6 +2621,24 @@ Token budget: medium
 - Operators can inspect expected vs measured outcome without fake zero or fake failure states.
 - Missing calibration or impact data stays visibly unavailable.
 - Frontend tests cover the key outcome states.
+
+### Notes
+
+- 2026-06-21: DONE. Added ledger-aware outcome detail cards to `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx` so expected impact, measured impact, evidence source/reference, and recommendation context render without implying `0 RSD` or failure when data is pending/missing.
+- Changed files:
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.css`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `git diff --check` (pass; CRLF/LF warnings only)
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` (pass)
+  - `cd Klijent/clientapp && npm run build` (pass)
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsActionsPage.spec.tsx` (pass)
+- Risk:
+  - Legacy list rows still depend on the detail fetch to expose `ledgerSnapshot`, so historical actions without the Phase 1 envelope continue to show safe unavailable labels rather than reconstructed context.
+- Next:
+  - `Q60 - Confidence calibration audit`
 
 ## Q60 - Confidence calibration audit
 
