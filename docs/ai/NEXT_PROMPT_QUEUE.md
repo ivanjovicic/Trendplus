@@ -2931,7 +2931,7 @@ Token budget: medium
 
 ## Q63B - Decision Board dedupe and source identity rules
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): define decision board dedupe rules`
 Priority: P0
 Type: docs/tests
@@ -2976,6 +2976,19 @@ Token budget: medium
 - Dedupe rules are explicit enough that a later backend aggregate would not need to invent them.
 - Source identity and collision handling are documented with examples.
 - Any test additions remain focused and non-behavioral outside the documented rules.
+
+### Notes
+
+- 2026-06-22: DONE. Added `docs/qa/DECISION_BOARD_DEDUPE_RULES.md` and documented canonical source identity, recommendation-level dedupe keys, same-section vs cross-section repetition rules, and collision examples across Product, Inventory, Supplier, OOS/Markdown, Action, and Outcome surfaces.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_DEDUPE_RULES.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The current board DTO still makes `sourceType`, `sourceKey`, and `recommendationType` too loose for deterministic dedupe, so later aggregate work must not assume this rule set is already encoded in the payload.
+- Next:
+  - `Q63C - Decision Board ranking parity test plan`
 
 ## Q63C - Decision Board ranking parity test plan
 
