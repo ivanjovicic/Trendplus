@@ -3360,7 +3360,7 @@ Token budget: medium
 
 ## Q66 - Analytics pilot release checklist v2
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): add analytics pilot release checklist v2`
 Priority: P1
 Type: docs/release
@@ -3398,6 +3398,19 @@ Token budget: medium
 
 - Release checklist v2 is evidence-based and ready to use after Q57-Q65 land.
 - Remaining risks and rollback expectations are explicit.
+
+### Notes
+
+- 2026-06-22: DONE. Added a new evidence-based release gate with PASS/WARN rows for deploy proof, live smoke, data quality, cache/freshness, action ledger, confidence calibration, operator readiness, and rollback notes.
+- Changed files:
+  - `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` (pass; LF/CRLF warning only)
+- Risk:
+  - The checklist is intentionally conservative: cache/freshness, action ledger completeness, and confidence calibration remain warnings rather than hidden success states.
+- Next:
+  - `Q67 - Add automated encoding/mojibake guardrail`
 
 ## Q67 - Add automated encoding/mojibake guardrail
 
