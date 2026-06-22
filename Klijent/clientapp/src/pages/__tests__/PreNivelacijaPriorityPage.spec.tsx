@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 
 vi.mock("recharts", () => ({
@@ -33,10 +33,10 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     supplierId: 11,
     seasonId: 7,
     footwearTypeId: 4,
-    supplierName: "Dobavljač A",
+    supplierName: "Dobavljac A",
     category: "Patike",
     footwearType: "Sneaker",
-    season: "Proleće/Leto",
+    season: "Prolece/Leto",
     stockUnits: 12,
     units180: 24,
     velocity180: 0.8,
@@ -85,14 +85,34 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeResponse() {
+function makeResponse(candidates = [makeCandidate(), makeCandidate({
+  artikalId: 102,
+  sku: "SKU-102",
+  supplierName: "Dobavljac B",
+  category: "Sandale",
+  footwearType: "Open Toe",
+  season: "Jesen/Zima",
+  priorityBand: "medium",
+  stockUnits: 20,
+  daysSinceLastSale: 12,
+  preNivelacijaScore: 63,
+  recommendation: {
+    status: "review",
+    label: "Pregled",
+    summary: "Signal trazi rucnu proveru.",
+    confidencePct: 64,
+    reliabilityPct: 61,
+    dataQualityStatus: "warning",
+    reasonCodes: ["sparse_sales"],
+  },
+})]) {
   return {
     generatedAtUtc: "2026-06-19T10:00:00Z",
     formulaVersion: "1.0",
     formulaDescription: "Rule-based markdown scenario support.",
     summary: {
       supplierCount: 1,
-      candidatesCount: 2,
+      candidatesCount: candidates.length,
       highPriorityCount: 1,
       totalStockAtRisk: 12,
       estimatedAvoidableMarkdownLoss: 12500,
@@ -102,9 +122,9 @@ function makeResponse() {
     supplierLeaderboard: [
       {
         supplierId: 11,
-        supplierName: "Dobavljač A",
+        supplierName: "Dobavljac A",
         highPrioritySkuCount: 1,
-        candidateSkuCount: 2,
+        candidateSkuCount: candidates.length,
         stockUnitsAtRisk: 12,
         estimatedAvoidableMarkdownLoss: 12500,
         expectedHighlightRevenueUplift: 18000,
@@ -112,36 +132,13 @@ function makeResponse() {
         weekOverWeekRiskDeltaPct: 4,
       },
     ],
-    candidates: [
-      makeCandidate(),
-      makeCandidate({
-        artikalId: 102,
-        sku: "SKU-102",
-        supplierName: "Dobavljač B",
-        category: "Sandale",
-        footwearType: "Open Toe",
-        season: "Jesen/Zima",
-        priorityBand: "medium",
-        stockUnits: 20,
-        daysSinceLastSale: 12,
-        preNivelacijaScore: 63,
-        recommendation: {
-          status: "review",
-          label: "Pregled",
-          summary: "Signal traži ručnu proveru.",
-          confidencePct: 64,
-          reliabilityPct: 61,
-          dataQualityStatus: "warning",
-          reasonCodes: ["sparse_sales"],
-        },
-      }),
-    ],
+    candidates,
     queues: {
       highlightNow: [
         {
           artikalId: 101,
           sku: "SKU-101",
-          supplierName: "Dobavljač A",
+          supplierName: "Dobavljac A",
           preNivelacijaScore: 86,
           priorityBand: "high",
           owner: "Ana",
@@ -155,7 +152,7 @@ function makeResponse() {
     alerts: [],
     page: 1,
     pageSize: 60,
-    totalCandidates: 2,
+    totalCandidates: candidates.length,
     meta: {
       success: true,
       dataQualityStatus: "good",
@@ -173,7 +170,7 @@ describe("PreNivelacijaPriorityPage", () => {
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(await screen.findByRole("tab", { name: /Visok prioritet \(0\)/i })).toBeInTheDocument();
@@ -182,5 +179,71 @@ describe("PreNivelacijaPriorityPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: /Visok prioritet \(0\)/i }));
 
     expect(await screen.findByText("Nema podataka za izabrane filtere.")).toBeInTheDocument();
+  });
+
+  it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
+      makeResponse([
+        makeCandidate({
+          artikalId: 301,
+          sku: "SKU-301",
+          recommendation: {
+            status: "review",
+            label: "Pregled",
+            summary: "Nedostaje trosak za sigurnu marznu procenu.",
+            confidencePct: 58,
+            reliabilityPct: 55,
+            dataQualityStatus: "warning",
+            reasonCodes: ["missing_cost"],
+          },
+        }),
+      ]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Procena povećanja prihoda")).toBeInTheDocument();
+    expect(screen.getByText(/Verovatni markdown signal/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+
+    expect(screen.getByText("Procenjena delta marže")).toBeInTheDocument();
+    expect(screen.getByText("Nije dostupno bez troška")).toBeInTheDocument();
+    expect(screen.getByText(/Maržni scenario nije dostupan bez pouzdanog troška/i)).toBeInTheDocument();
+  });
+
+  it("keeps sparse-sales candidates in additional-check mode even when other scores look strong", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
+      makeResponse([
+        makeCandidate({
+          artikalId: 401,
+          sku: "SKU-401",
+          recommendation: {
+            status: "increase_focus",
+            label: "Pojacaj",
+            summary: "Signal deluje obecavajuce, ali uz slab uzorak prodaje.",
+            confidencePct: 87,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: ["sparse_sales"],
+          },
+        }),
+      ]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Detalji" }));
+
+    expect(screen.getByText("Potrebna je dodatna provera")).toBeInTheDocument();
+    expect(screen.getByText(/Signal ima mali ili redak prodajni uzorak/i)).toBeInTheDocument();
   });
 });

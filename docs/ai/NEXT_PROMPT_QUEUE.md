@@ -3297,7 +3297,7 @@ Token budget: medium
 
 ## Q65 - Markdown optimizer safety guardrails
 
-Status: TODO
+Status: DONE
 Commit suggestion: `test(analytics): strengthen markdown optimizer guardrails`
 Priority: P0
 Type: frontend/tests
@@ -3340,6 +3340,23 @@ Token budget: medium
 
 - Markdown optimizer MVP cannot read like guaranteed optimization.
 - Missing cost and sparse data stay visible through confidence and impact guardrails.
+
+### Notes
+
+- 2026-06-22: DONE. Strengthened pre-nivelacija markdown wording so it stays scenario/signal-oriented, blocked margin-delta display when `missing_cost` is present, and kept sparse-sales candidates in additional-check mode even when other scores look strong.
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` (pass)
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` (fail: existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`)
+  - `cd Klijent/clientapp && npm run build` (fail for the same existing type error before Vite build)
+  - `git diff --check` (pass; LF/CRLF warnings only)
+- Risk:
+  - Markdown guardrails on the audited surfaces are stronger now, but repo-wide frontend type/build health is still blocked by the unrelated `AnalyticsActionsPage` ledger typings issue.
+- Next:
+  - `Q66 - Analytics pilot release checklist v2`
 
 ## Q66 - Analytics pilot release checklist v2
 

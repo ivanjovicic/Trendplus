@@ -181,6 +181,48 @@ function getRecommendedNextStep(status: DecisionStatus): string {
   return "Sačekaj jači signal ili proširi kontekst pre odluke.";
 }
 
+function hasReasonCode(reasonCodes: string[], targets: string[]): boolean {
+  const normalizedTargets = new Set(targets.map((value) => value.trim().toLowerCase()));
+  return reasonCodes.some((code) => normalizedTargets.has((code ?? "").trim().toLowerCase()));
+}
+
+function hasMissingCostSignal(reasonCodes: string[]): boolean {
+  return hasReasonCode(reasonCodes, ["missing_cost", "missing_cost_coverage"]);
+}
+
+function hasSparseSalesSignal(reasonCodes: string[]): boolean {
+  return hasReasonCode(reasonCodes, ["sparse_sales", "tiny_sample", "insufficient_history"]);
+}
+
+function canShowMarkdownMarginSignal(row: DecisionCandidate): boolean {
+  return !hasMissingCostSignal(row.reasonCodes)
+    && row.status !== "insufficient_data"
+    && row.dataQualityStatus !== "critical";
+}
+
+function hasLimitedMarkdownSignal(row: DecisionCandidate): boolean {
+  return !row.reliabilityAvailable
+    || !row.confidenceAvailable
+    || row.dataQualityStatus !== "good"
+    || row.status === "insufficient_data"
+    || hasMissingCostSignal(row.reasonCodes)
+    || hasSparseSalesSignal(row.reasonCodes);
+}
+
+function getMarkdownSignalLimitMessage(row: DecisionCandidate): string {
+  if (hasMissingCostSignal(row.reasonCodes)) {
+    return "Maržni scenario nije dostupan bez pouzdanog troška, pa signal treba čitati samo kao scenario prihoda.";
+  }
+  if (hasSparseSalesSignal(row.reasonCodes)) {
+    return "Signal ima mali ili redak prodajni uzorak, pa scenario treba potvrditi pre poslovne odluke.";
+  }
+  if (!row.reliabilityAvailable || !row.confidenceAvailable || row.dataQualityStatus !== "good" || row.status === "insufficient_data") {
+    return "Proveri pouzdanost, sigurnost preporuke i kvalitet podataka pre jače intervencije.";
+  }
+
+  return "Pouzdanost i kvalitet podataka ne pokazuju blokirajuće rizike za ovu preporuku.";
+}
+
 export default function PreNivelacijaPriorityPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -657,11 +699,11 @@ export default function PreNivelacijaPriorityPage() {
               <em>kom ukupno</em>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto snize.">
-              <span>Projekcija povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
+              <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
             <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji moze da se izbegne pre nivelacije.">
-              <span>Izbegljivi gubitak od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
+              <span>Procena izbegljivog gubitka od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
           </section>
@@ -761,7 +803,7 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje{sortMarker("revenueDelta", sortField, sortDir)}</button>
-                        <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = isplativije je istaknuti artikal pre nivelacije nego ga odmah sniziti. Negativno = sniženje verovatno donosi više." />
+                        <InfoTip text="Razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost = scenario više naginje isticanju pre nivelacije. Negativno = scenario više naginje sniženju. Ovo je signal, ne garantovani ishod." />
                       </th>
                       <th className="align-center">
                         {RECOMMENDATION_RELIABILITY_LABEL}
@@ -852,20 +894,22 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{selectedRow.priorityBand}</strong>
                 </article>
                 <article>
-                  <span>Scenario isticanje (30d prihod)</span>
+                  <span>Scenario isticanje (30d procena prihoda)</span>
                   <strong>{fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Scenario sniženje (30d prihod)</span>
+                  <span>Scenario sniženje (30d procena prihoda)</span>
                   <strong>{fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
                 </article>
                 <article>
-                  <span>Delta prihoda</span>
+                  <span>Procenjena delta prihoda</span>
                   <strong className={selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.revenueDelta)}</strong>
                 </article>
                 <article>
-                  <span>Delta marze</span>
-                  <strong className={selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.marginDelta)}</strong>
+                  <span>Procenjena delta marže</span>
+                  <strong className={canShowMarkdownMarginSignal(selectedRow) ? (selectedRow.marginDelta >= 0 ? "trend-up" : "trend-down") : ""}>
+                    {canShowMarkdownMarginSignal(selectedRow) ? fmtRsd(selectedRow.marginDelta) : "Nije dostupno bez troška"}
+                  </strong>
                 </article>
                 <article>
                   <span>Zaliha (kom.)</span>
@@ -901,27 +945,19 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article
                   className={`pnp-decision-callout ${
-                    !selectedRow.reliabilityAvailable
-                    || !selectedRow.confidenceAvailable
-                    || selectedRow.dataQualityStatus !== "good"
+                    hasLimitedMarkdownSignal(selectedRow)
                       ? "pnp-decision-callout--warning"
                       : "pnp-decision-callout--info"
                   }`}
                 >
                   <span>Ograničenja signala</span>
                   <strong>
-                    {!selectedRow.reliabilityAvailable
-                    || !selectedRow.confidenceAvailable
-                    || selectedRow.dataQualityStatus !== "good"
+                    {hasLimitedMarkdownSignal(selectedRow)
                       ? "Potrebna je dodatna provera"
                       : "Signal je upotrebljiv za odluku"}
                   </strong>
                   <p>
-                    {!selectedRow.reliabilityAvailable
-                    || !selectedRow.confidenceAvailable
-                    || selectedRow.dataQualityStatus !== "good"
-                      ? "Proveri pouzdanost, sigurnost preporuke i kvalitet podataka pre jače intervencije."
-                      : "Pouzdanost i kvalitet podataka ne pokazuju blokirajuće rizike za ovu preporuku."}
+                    {getMarkdownSignalLimitMessage(selectedRow)}
                   </p>
                 </article>
               </div>
@@ -955,7 +991,7 @@ export default function PreNivelacijaPriorityPage() {
                       { label: "Pritisak zalihe", value: selectedRow.scoreBreakdown.stockPressure },
                       { label: "Rizik brzine prodaje", value: selectedRow.scoreBreakdown.velocityRisk },
                       { label: "Rizik starosti prodaje", value: selectedRow.scoreBreakdown.recencyRisk },
-                      { label: "Markdown šansa", value: selectedRow.scoreBreakdown.markdownOpportunity },
+                      { label: "Markdown signal", value: selectedRow.scoreBreakdown.markdownOpportunity },
                       { label: "Margin potencijal", value: selectedRow.scoreBreakdown.marginPotential },
                       { label: "Sezonski boost", value: selectedRow.scoreBreakdown.seasonRecencyBoost },
                     ].map((c) => (
@@ -1017,7 +1053,7 @@ export default function PreNivelacijaPriorityPage() {
                   )}
                 </article>
                 <article className="pnp-queue-panel pnp-queue-panel--reduce">
-                  <h3>Verovatni markdown ({data.queues.likelyMarkdownSoon.length})</h3>
+                  <h3>Verovatni markdown signal ({data.queues.likelyMarkdownSoon.length})</h3>
                   {data.queues.likelyMarkdownSoon.length === 0 ? (
                     <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
                   ) : (
