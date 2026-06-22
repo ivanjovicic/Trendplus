@@ -3169,7 +3169,7 @@ Token budget: medium
 
 ## Q63F - Re-run backend aggregate readiness gate
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): rerun decision board aggregate gate`
 Priority: P0
 Type: docs/review
@@ -3212,6 +3212,19 @@ Token budget: medium
 - The readiness gate is re-evaluated against concrete blocker evidence.
 - Q63 is unblocked only if the updated verdict is READY.
 - The queue preserves the gate-first workflow and does not implement the endpoint in this task.
+
+### Notes
+
+- 2026-06-22: DONE. Re-ran the readiness gate against Q63A-Q63E evidence and kept the verdict at `NOT READY`, because candidate identity, dedupe enforcement, ranking parity fixtures, and freshness/warning contract fidelity are still not stable enough to freeze server-side.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The blocker set is now much clearer, but Q63 would still lock in ambiguous card identity and lossy trust semantics if we implemented it before parity fixtures and stronger contract fields exist.
+- Next:
+  - `Q64 - Forecast/Replenishment safety guardrails`
 
 ## Q64 - Forecast/Replenishment safety guardrails
 

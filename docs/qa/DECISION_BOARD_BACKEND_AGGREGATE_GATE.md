@@ -1,7 +1,7 @@
 # Decision Board Backend Aggregate Readiness Gate
 
-Date: 2026-06-21
-Local HEAD: `c9a18b6757f1cec2c03fb5c87a271675da928294`
+Date: 2026-06-22
+Local HEAD: `c42fea76ba936aee01fd7efc43a370a4e89ba3f9`
 
 ## Scope
 
@@ -11,18 +11,23 @@ Local HEAD: `c9a18b6757f1cec2c03fb5c87a271675da928294`
 - [docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md](./ANALYTICS_PRODUCTION_READINESS_STATUS.md)
 - [docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md](./ANALYTICS_LIVE_SMOKE_RESULT.md)
 - [docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md](./CONFIDENCE_CALIBRATION_AUDIT.md)
+- [docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md](./DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md)
+- [docs/qa/DECISION_BOARD_DEDUPE_RULES.md](./DECISION_BOARD_DEDUPE_RULES.md)
+- [docs/qa/DECISION_BOARD_RANKING_PARITY_PLAN.md](./DECISION_BOARD_RANKING_PARITY_PLAN.md)
+- [docs/qa/DECISION_BOARD_FRESHNESS_CONTRACT.md](./DECISION_BOARD_FRESHNESS_CONTRACT.md)
+- [docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md](./DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md)
 
 ## Gate Verdict
 
 NOT READY
 
-Q63 may not proceed yet.
+Q63 may not proceed.
 
-The current Executive Decision Board is good enough for pilot use as a frontend-composed read layer, but the evidence does not yet support freezing that composition into a backend aggregate contract.
+The rerun required by Q63F is complete. Q63A-Q63E clarified the blocking semantics, but they did not close them. The current Executive Decision Board remains strong enough for pilot use as a frontend-composed read layer, not yet strong enough to freeze into a backend aggregate contract.
 
 ## Why This Gate Exists
 
-The backend aggregate endpoint is desirable, but only if it improves:
+The backend aggregate endpoint is desirable only if it improves:
 
 - quality
 - trust semantics
@@ -33,6 +38,28 @@ The backend aggregate endpoint is desirable, but only if it improves:
 
 If it lands too early, it will centralize unstable behavior instead of stabilizing it.
 
+## Q63F Rerun Summary
+
+### What changed since the original Q62 gate
+
+Q63A-Q63E are now complete and they materially improved decision clarity:
+
+- Q63A documented the candidate/card contract split between transport DTO, render DTO, and shadow composition helpers.
+- Q63B documented canonical dedupe vocabulary and the intended recommendation identity key.
+- Q63C documented exact-parity ranking rules and lane-specific acceptance criteria.
+- Q63D documented snapshot, source, and candidate freshness/warning layers plus the missing fields.
+- Q63E documented the minimum cache, latency, invalidation, and partial-failure budget.
+
+### What did not change yet
+
+The underlying runtime architecture is still not ready to move server-side:
+
+- candidate identity is still not stable enough
+- dedupe policy is documented but not yet proven in shared contract/tests
+- ranking parity is documented but not yet enforced by parity fixtures
+- freshness/warning semantics are documented but still under-expressed in the active card contract
+- performance budget exists, but no evidence shows backend aggregation should replace the current composition model now
+
 ## Evidence Summary
 
 ### What is already good
@@ -42,10 +69,11 @@ If it lands too early, it will centralize unstable behavior instead of stabilizi
 - `insufficient_data` is capped and does not outrank strong recommendations.
 - Missing expected impact stays nullable instead of becoming fake `0 RSD`.
 - Partial/stale/error states remain visible.
+- Blocker categories are now explicit enough to evaluate instead of guess.
 
 ### What is still unstable
 
-- Duplicate source recommendations are still intentionally repeated across sections with context, not deduped globally.
+- Duplicate source recommendations are still intentionally repeated across sections with context, not yet enforced through a stable shared identity contract.
 - Cache/freshness evidence is still warning-like in production readiness.
 - Confidence calibration is still partial and action-sample based.
 - The canonical Phase 1 action ledger contract exists, but source modules are not yet uniformly writing the full creation snapshot.
@@ -55,111 +83,130 @@ If it lands too early, it will centralize unstable behavior instead of stabilizi
 
 | Gate area | Current state | Evidence | Verdict |
 | --- | --- | --- | --- |
-| Data quality semantics | Honest and visible, but still evolving | `EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`, `ANALYTICS_PRODUCTION_READINESS_STATUS.md` | WARN |
-| Ranking stability | Frontend quality guards exist, but no server-side parity contract yet | `EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`, `EXECUTIVE_DECISION_BOARD_PLAN.md` | NOT READY |
-| Dedupe strategy | Repetition is intentional by section; no canonical aggregate dedupe rule yet | `EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md` | NOT READY |
-| Cache / freshness | Honest warning behavior exists, but freshness is not clean enough to centralize snapshot composition | `ANALYTICS_PRODUCTION_READINESS_STATUS.md`, `ANALYTICS_LIVE_SMOKE_RESULT.md` | WARN |
-| Confidence / trust contract | Product is strongest, but cross-module calibration is incomplete | `CONFIDENCE_CALIBRATION_AUDIT.md`, `ANALYTICS_DECISION_OS_ROADMAP.md` | NOT READY |
-| Performance need | No evidence yet that frontend fan-out is the active pilot bottleneck | current docs set | WARN |
-| Aggregate contract clarity | Plan exists, but parity requirements are not yet locked | `EXECUTIVE_DECISION_BOARD_PLAN.md` | NOT READY |
+| Candidate contract clarity | Candidate shape is now documented, but the board still mixes aggregate DTOs, local render fields, and shadow helpers | `DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` | NOT READY |
+| Dedupe strategy | Canonical key and collision policy are documented, but `sourceType`, `sourceKey`, and `recommendationType` are not yet strong enough everywhere to enforce safely | `DECISION_BOARD_DEDUPE_RULES.md`, `DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` | NOT READY |
+| Ranking stability | Parity rules are now explicit, but they are not yet locked by fixtures proving backend parity against current board semantics | `DECISION_BOARD_RANKING_PARITY_PLAN.md` | NOT READY |
+| Freshness / warning contract | Snapshot, source, and candidate trust layers are documented, but section warnings, candidate freshness, and warning provenance are still thin in the active contract | `DECISION_BOARD_FRESHNESS_CONTRACT.md` | NOT READY |
+| Cache / performance budget | Budget is documented conservatively, but there is still no measured evidence that current board architecture must be replaced for performance or operability reasons | `DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`, `ANALYTICS_PRODUCTION_READINESS_STATUS.md` | WARN |
+| Confidence / trust contract | Product trust is strongest, but cross-module calibration and action/outcome lineage are still incomplete | `CONFIDENCE_CALIBRATION_AUDIT.md`, `ANALYTICS_DECISION_OS_ROADMAP.md` | NOT READY |
+| Data quality semantics | Honest and visible for pilot use, but still not fully encoded as a stable aggregate server contract | `EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md`, `ANALYTICS_PRODUCTION_READINESS_STATUS.md` | WARN |
 
 ## Detailed Assessment
 
-### 1. Data quality and trust are stable enough for pilot use, not yet for a frozen aggregate contract
+### 1. Candidate contract is clearer, not yet stable enough
 
-The board already protects against the most dangerous trust failures:
+Q63A proved that the board still depends on three overlapping layers:
 
-- `insufficient_data` does not rank as high-confidence urgent
-- stale and partial source states remain visible
-- missing impact stays unavailable
+- transport DTO
+- local render DTO
+- shadow composition helpers
 
-That is a strong pilot baseline.
+That means the repo still lacks one clean candidate contract that a backend endpoint can safely promise long term.
 
-It is not enough by itself to justify a backend aggregate endpoint because the endpoint would need to encode:
+Still missing or too thin:
 
-- how warning severity changes ranking
-- how partial source failure affects section membership
-- how missing module inputs affect snapshot-level trust
+- lane-independent recommendation identity
+- mandatory `sourceType`
+- mandatory `sourceKey`
+- mandatory `recommendationType`
+- candidate-level freshness provenance
+- candidate-owned source navigation
+- explicit warning severity/provenance
 
-Those rules are not yet documented as a stable server contract.
+### 2. Dedupe policy is documented, not yet enforceable
 
-### 2. Dedupe policy is not ready
+Q63B established the correct target rule:
 
-Current board behavior intentionally allows the same source recommendation to appear in multiple sections when the reason is different:
+- same section + same `sourceType + sourceKey + recommendationType` => dedupe
+- different sections + same identity => preserve only when lane meaning is intentionally different
+- recommendation vs action vs outcome => keep separate lifecycle cards
 
-- urgent
-- impact
-- stock risk
-- supplier risk
-- blockers
-- actions
+That is the right policy direction.
 
-That is acceptable in the current frontend composition because the section context explains the repetition.
+It is still not enough to unblock Q63 because the live candidate contract can still omit pieces needed to apply the rule deterministically.
 
-A backend aggregate cannot safely move forward until Trendplus decides one of these explicitly:
+### 3. Ranking parity is documented, not yet proven
 
-1. preserve repeated cards across sections as a first-class rule
-2. dedupe globally and attach multi-section reasons
-3. dedupe only within selected lanes
+Q63C made the most important backend parity rules explicit:
 
-Without that decision, a backend aggregate would hard-code behavior that product has not finalized.
+- insufficient-data caps must survive
+- missing impact must remain nullable and non-advantaged
+- stale/partial trust must downgrade rank or stay visibly warning-like
+- blockers can outrank raw impact
+- action lane remains workflow-first
 
-### 3. Ranking stability is not yet proven enough for backend centralization
+Those rules are now clear.
 
-The frontend board currently applies quality safeguards and ordering with localized knowledge.
+What is still missing:
 
-The roadmap explicitly says the backend aggregate should come only after the Phase 1 board model proves stable.
+- parity fixtures
+- exact tie-break evidence
+- proof that backend ordering would match the documented policy instead of only resembling it loosely
 
-Current evidence still points to moving parts:
+### 4. Freshness and warning semantics are still too lossy for server centralization
 
-- confidence calibration is incomplete
-- source modules do not yet share a fully persisted recommendation calibration contract
-- outcome feedback is only partially structured
+Q63D confirmed that the board trust model already has three layers:
 
-That means server-side ranking would likely be a premature freeze of logic that is still being learned.
+- snapshot
+- source/module
+- candidate/card
 
-### 4. Cache and freshness discipline are still warning-like
+The blocker is that the active aggregate card contract still compresses too much:
 
-Production readiness explicitly says:
+- section warnings are dropped in the local board model
+- candidate `inputFreshnessStatus` is missing
+- warning provenance is not explicit
+- unknown vs warning vs partial is not fully separated
 
-- cache is WARN
-- live freshness metadata can still be unknown / warning-like
+A backend aggregate should not centralize this until those layers are preserved more faithfully.
 
-A backend aggregate endpoint would amplify this risk because it would compose a single snapshot from multiple upstream sources.
+### 5. Performance budget exists, but urgency to centralize is not proven
 
-Before that happens, Trendplus needs a clearer answer for:
+Q63E is intentionally conservative and that is the right call.
 
-- what freshness threshold invalidates the whole board snapshot
-- whether one stale module downgrades one section or the whole board
-- how partial refresh failures are represented at aggregate level
+It documents:
 
-### 5. Performance has not yet justified the extra contract
+- safe latency targets
+- cache TTL expectations
+- invalidation triggers
+- partial-failure behavior
+- correlation/error behavior
 
-The current plan names one-call aggregation as a possible future benefit.
+It does **not** prove that the current board architecture is failing pilot use because of:
 
-But the current evidence set does not show that:
+- client-side fan-out
+- latency
+- cache churn
+- missing operability
 
-- frontend fan-out is currently breaking pilot usability
-- request count is the main production bottleneck
-- latency is forcing a contract redesign now
-
-Without a demonstrated performance need, the backend aggregate should not outrun the trust/contract work.
+Without that evidence, replacing the current architecture would still be premature.
 
 ## Prerequisites Before READY
 
 Q63 should remain blocked until these prerequisites are satisfied.
 
-### 1. Stable dedupe policy
+### 1. Candidate contract closes the current identity gaps
 
-Trendplus must explicitly choose and document:
+At minimum, board candidates must support a stable recommendation identity with:
 
-- repeated-card policy across sections
-- source-key dedupe behavior
-- section precedence when one source qualifies for multiple lanes
+- mandatory `sourceType`
+- mandatory `sourceKey`
+- mandatory `recommendationType`
+- clearer action state semantics
+- candidate-level freshness and warning provenance
 
-### 2. Aggregate parity fixtures
+### 2. Dedupe rules are enforceable and testable
 
-Trendplus should have test fixtures that compare:
+Trendplus needs deterministic coverage for:
+
+- same-lane collision collapse
+- cross-lane intentional repetition
+- recommendation vs action vs outcome separation
+- synthetic blocker identity handling
+
+### 3. Ranking parity fixtures exist
+
+Trendplus should have fixtures that compare:
 
 - current frontend-composed board semantics
 - proposed backend aggregate semantics
@@ -169,25 +216,25 @@ Required parity areas:
 - urgent section ordering
 - impact section ordering
 - insufficient-data caps
-- warning propagation
-- nullable impact rendering
-- repeated-card handling
+- stale/warning downgrades
+- blocker precedence
+- action workflow ordering
+- nullable impact handling
 
-### 3. Freshness and partial-failure contract
+### 4. Freshness and partial-failure contract is preserved end-to-end
 
-Before a backend aggregate exists, Trendplus needs a documented server rule for:
+Before a backend aggregate exists, Trendplus needs an active contract for:
 
 - stale source handling
 - partial source failure handling
 - aggregate-level warnings
 - section-level warnings
+- candidate-level freshness
 - snapshot invalidation rules
 
-### 4. Broader ledger adoption
+### 5. Recommendation/action lineage is broader and more consistent
 
-Recommendation/action lineage should be more consistent across source modules before aggregate centralization.
-
-At minimum, main action-producing modules should consistently populate:
+Main action-producing modules should consistently populate:
 
 - `sourceRecommendationId`
 - `recommendationType`
@@ -196,56 +243,48 @@ At minimum, main action-producing modules should consistently populate:
 - `primaryDrivers`
 - `inputFreshnessStatus`
 
-### 5. Confidence calibration follow-through
+### 6. Performance or operability need is proven
 
-Confidence calibration does not need to be perfect before Q63, but it should be less partial than it is today.
-
-At minimum, Trendplus should know whether:
-
-- high-confidence decisions actually outperform lower-confidence ones
-- source modules are using comparable trust semantics
-- action/outcome samples are large enough to support board-level confidence narratives
-
-### 6. Performance baseline
-
-Before changing architecture, collect a small baseline for:
+Before changing architecture, collect baseline evidence for:
 
 - current board load time
 - number of requests
 - slowest source dependency
 - whether the bottleneck is network fan-out, backend latency, or client rendering
+- whether debugging would actually improve with a tighter backend aggregate contract
 
-## Conditions That Would Change This Gate to READY
+## Conditions That Would Change This Gate To READY
 
 The gate can be revisited as READY only when all of these are true:
 
-1. Board dedupe policy is explicitly documented.
-2. Ranking rules are stable enough to be shared server-side.
-3. Freshness/partial-failure semantics are documented for an aggregate snapshot.
-4. Source modules write enough canonical recommendation context to preserve trust.
-5. Parity tests or fixtures exist for the current board semantics.
-6. There is a real performance or operability reason to replace frontend composition.
+1. Board candidate identity and source identity are explicit and stable.
+2. Board dedupe policy is both documented and enforceable in tests.
+3. Ranking rules are stable enough to be shared server-side.
+4. Freshness/partial-failure semantics are preserved for aggregate, source, and candidate layers.
+5. Source modules write enough canonical recommendation context to preserve trust.
+6. Parity tests or fixtures exist for the current board semantics.
+7. There is a real performance or operability reason to replace frontend composition.
 
 ## Q63 Decision
 
 Q63 may not proceed.
 
-Recommended Q63 status after this gate:
+Recommended Q63 status after this rerun:
 
 - BLOCKED
 
 Blocking reason:
 
-- backend aggregation would currently centralize unstable dedupe, ranking, freshness, and confidence semantics
+- backend aggregation would still centralize unstable candidate identity, dedupe enforcement, ranking parity, freshness semantics, and confidence lineage
 
 ## Recommended Next Work
 
-Before revisiting Q63, the safer next work is:
+The blocker-analysis sequence is complete. The safer next work is outside Q63 itself:
 
 1. continue decision learning / outcome/ledger adoption
 2. keep confidence calibration evidence growing
-3. formalize board dedupe and ranking rules in docs/tests
-4. gather actual performance evidence from the current board
+3. convert documented board rules into enforceable parity fixtures and contract tests
+4. gather actual performance evidence from the current board before changing architecture
 
 ## Conclusion
 
@@ -255,4 +294,5 @@ It is not yet strong enough to freeze into a backend aggregate endpoint.
 That is a healthy result, not a failure:
 
 - the current frontend composition remains the safer architecture for now
-- the gate prevents Trendplus from locking in semantics that are still being validated
+- Q63F did its job by replacing vague uncertainty with specific documented blockers
+- Q63 stays blocked until later evidence changes the verdict
