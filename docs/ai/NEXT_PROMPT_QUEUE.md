@@ -3111,7 +3111,7 @@ Token budget: medium
 
 ## Q63E - Decision Board aggregate performance and cache budget
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): define decision board aggregate performance budget`
 Priority: P1
 Type: docs/performance
@@ -3153,6 +3153,19 @@ Token budget: medium
 - The repo has a documented performance and cache budget for a future aggregate.
 - Partial failure and error behavior are explicit.
 - Q63 remains blocked until evidence justifies the architectural move.
+
+### Notes
+
+- 2026-06-22: DONE. Added `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md` and documented the current single-request board runtime, conservative latency and cache budgets, required cache-key fields, invalidation triggers, partial-failure rules, correlation/error expectations, and the evidence bar required before aggregate performance work is justified.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The current page already performs one aggregate request, so future work must not confuse “already one request” with “already a proven stable performance architecture,” especially while freshness/cache evidence remains warning-like.
+- Next:
+  - `Q63F - Re-run backend aggregate readiness gate`
 
 ## Q63F - Re-run backend aggregate readiness gate
 
