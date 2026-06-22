@@ -1296,6 +1296,46 @@ export interface AnalyticsActionLedgerSnapshot {
   resolutionSnapshot?: AnalyticsActionResolutionSnapshot | null;
 }
 
+export interface AnalyticsActionImpactLedgerSnapshot {
+  expectedImpactBasis?: string | null;
+  primaryDrivers?: string[] | null;
+  decisionReason?: string | null;
+  recommendedAction?: string | null;
+  sourcePeriodStartUtc?: string | null;
+  sourcePeriodEndUtc?: string | null;
+  sourceModule?: string | null;
+  inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
+  impactWindowDays?: number | null;
+}
+
+export interface AnalyticsActionImpactLedgerResolution {
+  outcomeStatus?: "pending" | "success" | "neutral" | "negative" | "not_measured" | string | null;
+  measuredImpactRsd?: number | null;
+  measurementMethod?: string | null;
+  evidenceSource?: string | null;
+  outcomeMeasuredAtUtc?: string | null;
+  resolvedAtUtc?: string | null;
+  measuredWindowDays?: number | null;
+  resolutionNote?: string | null;
+}
+
+export interface AnalyticsActionImpactLedgerDerived {
+  impactDeltaRsd?: number | null;
+  realizationRatio?: number | null;
+  calibrationBucket?: string | null;
+  hasEvidence?: boolean | null;
+}
+
+export interface AnalyticsActionImpactLedger {
+  version: number;
+  sourceRecommendationId?: string | null;
+  sourceRecommendationIdDerivation?: string | null;
+  capturedAtUtc?: string | null;
+  snapshot: AnalyticsActionImpactLedgerSnapshot;
+  resolution: AnalyticsActionImpactLedgerResolution;
+  derived: AnalyticsActionImpactLedgerDerived;
+}
+
 export interface AnalyticsActionItem {
   id: number;
   sourceType: AnalyticsActionSourceType;
@@ -1326,6 +1366,7 @@ export interface AnalyticsActionItem {
   updatedByUserId?: string | null;
   updatedByUserName?: string | null;
   notes?: AnalyticsActionNote[];
+  impactLedger?: AnalyticsActionImpactLedger | null;
 }
 
 export interface AnalyticsActionListResponse {

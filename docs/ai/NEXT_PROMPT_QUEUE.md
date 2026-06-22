@@ -3488,7 +3488,7 @@ Token budget: medium
 
 ## Q68 - Resolve AnalyticsActionsPage analytics impact ledger type mismatch
 
-Status: TODO
+Status: DONE
 Commit suggestion: `fix(analytics): align action ledger types`
 Priority: P1
 Type: bugfix
@@ -3527,3 +3527,17 @@ Token budget: medium
 
 - Build and analytics guardrails pass again.
 - No fake-zero or fake-success behavior is introduced.
+
+### Notes
+
+- 2026-06-22: DONE. Added `AnalyticsActionImpactLedger` as a compatible read-model type, exposed it on `AnalyticsActionItem`, and restored the current action page contract without changing write behavior.
+- Changed files:
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Risk:
+  - The page still supports both the legacy `ledgerSnapshot` history shape and the newer optional `impactLedger` read-model contract.
+- Next:
+  - queue continues with the next TODO item if one is added
