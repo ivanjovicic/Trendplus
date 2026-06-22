@@ -2870,7 +2870,7 @@ Token budget: high
 
 ## Q63A - Decision Board candidate contract audit
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): audit decision board candidate contract`
 Priority: P0
 Type: docs/contract-review
@@ -2915,6 +2915,19 @@ Token budget: medium
 - The current frontend-composed candidate shape is documented field-by-field.
 - Source module ownership and nullable behavior are explicit.
 - Blocking gaps for backend aggregate contract design are listed without implementing the endpoint.
+
+### Notes
+
+- 2026-06-22: DONE. Added `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` and documented the active transport DTO, local render-model fields, shadow composition helpers, nullable requirements, and contract gaps that still block a stable backend aggregate.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The page currently mixes an aggregate DTO with local render normalization and dormant composition helpers, so future Q63 work must not treat the current card `id`, section link, or confidence label logic as the final server contract.
+- Next:
+  - `Q63B - Decision Board dedupe and source identity rules`
 
 ## Q63B - Decision Board dedupe and source identity rules
 
