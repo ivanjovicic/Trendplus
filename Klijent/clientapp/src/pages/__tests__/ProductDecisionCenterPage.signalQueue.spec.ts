@@ -68,4 +68,17 @@ describe("Product decision signal queue mapping", () => {
     expect(insufficient.recommendationStatus).toBe("SIGNAL_REVIEW");
     expect(notAllowed.recommendationStatus).toBe("SIGNAL_REVIEW");
   });
+
+  it("keeps low-cover replenish signals in review mode when the baseline is not actionable", () => {
+    const spec = buildProductQueueSpec(
+      makeRow({
+        stockCoverStatus: "low_cover",
+        recommendationAllowed: false,
+      }),
+    );
+
+    expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+    expect(spec.actionKind).toBe("signal_check");
+    expect(spec.priority).toBe("P3");
+  });
 });

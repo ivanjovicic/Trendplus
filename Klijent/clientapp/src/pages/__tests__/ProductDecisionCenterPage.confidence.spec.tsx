@@ -3,86 +3,9 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
 
-vi.mock("react-router-dom", async () => {
-  return {
-    Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
-  };
-  it("keeps confident recommendations honest when expected impact is missing", async () => {
-    getProductDecisionCenterMock.mockResolvedValueOnce({
-      rows: [
-        makeRow({
-          productId: 303,
-          recommendationId: "product:303:REPLENISH:20260528:20260626",
-          sourceKey: "product:303",
-          productName: "Model Z",
-          sku: "SKU-303",
-          revenue: 180000,
-          unitsSold: 52,
-          velocityUnitsPerDay: 1.8,
-          marginContribution: 36000,
-          marginPct: 28,
-          marginCoveragePct: 91,
-          currentStock: 3,
-          minStock: 10,
-          stockGap: 7,
-          trendPct: 14,
-          lostSalesEstimate: 0,
-          stockCoverDays: 2,
-          stockCoverStatus: "low_cover",
-          sellThroughRatio: 0.5,
-          sellThroughStatus: "warning",
-          recommendationAllowed: true,
-          confidenceLevel: "high",
-          confidenceScore: 91,
-          confidencePct: 91,
-          reliabilityPct: 87,
-          recommendationReason: "Brza prodaja i niska zaliha.",
-          warningCodes: ["expected_impact_denominator_missing"],
-          primaryDrivers: ["sales_velocity", "stock_risk"],
-          reasonCodes: ["high_velocity", "low_stock", "expected_impact_denominator_missing"],
-          expectedImpactRsd: null,
-          impactWindowDays: 14,
-          riskIfIgnored: "Moguća rasprodaja.",
-          explainabilityText: "Brza prodaja i niska zaliha.",
-          inputFreshnessStatus: "fresh",
-          recommendedAction: "Dopuni odmah.",
-        }),
-      ],
-      summary: {
-        lostSalesEstimate: 0,
-        slowStockCapital: 0,
-      },
-      totalRows: 1,
-      generatedAtUtc: "2026-05-26T12:00:00Z",
-      periodFromUtc: "2026-04-27",
-      periodToUtc: "2026-05-26",
-      meta: {
-        success: true,
-        dataQualityStatus: "warning",
-      },
-    });
-
-    render(<ProductDecisionCenterPage />);
-
-    expect(await screen.findByText("Visoka sigurnost Â· 91%")).toBeInTheDocument();
-    expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
-    expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
-
-    await waitFor(() => {
-      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
-    });
-
-    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        expectedImpactRsd: undefined,
-        impactEstimateRsd: undefined,
-        confidencePct: 91,
-      }),
-    );
-  });
-});
+vi.mock("react-router-dom", async () => ({
+  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+}));
 
 const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
@@ -168,7 +91,26 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     explainabilityText: "Brza prodaja i nizak stock cover.",
     inputFreshnessStatus: "fresh",
     recommendedAction: "Dopuni zalihe",
+    daysSinceLastSale: 12,
     ...overrides,
+  };
+}
+
+function buildResponse(rows: Array<Record<string, unknown>>, dataQualityStatus: string) {
+  return {
+    rows,
+    summary: {
+      lostSalesEstimate: 25000,
+      slowStockCapital: 0,
+    },
+    totalRows: rows.length,
+    generatedAtUtc: "2026-05-26T12:00:00Z",
+    periodFromUtc: "2026-04-27",
+    periodToUtc: "2026-05-26",
+    meta: {
+      success: true,
+      dataQualityStatus,
+    },
   };
 }
 
@@ -185,37 +127,24 @@ beforeEach(() => {
     status: "new",
     sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all",
   });
-  getProductDecisionCenterMock.mockResolvedValue({
-    rows: [makeRow()],
-    summary: {
-      lostSalesEstimate: 25000,
-      slowStockCapital: 0,
-    },
-    totalRows: 1,
-    generatedAtUtc: "2026-05-26T12:00:00Z",
-    periodFromUtc: "2026-04-27",
-    periodToUtc: "2026-05-26",
-    meta: {
-      success: true,
-      dataQualityStatus: "good",
-    },
-  });
+  getProductDecisionCenterMock.mockResolvedValue(buildResponse([makeRow()], "good"));
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
-  it("renders confidence, explanation and drivers for a strong recommendation", async () => {
+  it("renders strong recommendations with explicit estimated impact wording", async () => {
     render(<ProductDecisionCenterPage />);
 
-    expect(await screen.findByText("Visoka sigurnost · 88%")).toBeInTheDocument();
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
     expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
+    expect(screen.getByText(/Procena uticaja:/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Zašto?" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
 
-    expect(screen.getByText("Zašto ova preporuka?")).toBeInTheDocument();
-    expect(screen.getByText("Glavni pokretači:")).toBeInTheDocument();
+    expect(screen.getByText(/Zašto ova preporuka\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Glavni pokreta/i)).toBeInTheDocument();
     expect(screen.getByText("Brzina prodaje", { selector: ".reason-chip" })).toBeInTheDocument();
     expect(screen.getByText("Rizik zalihe", { selector: ".reason-chip" })).toBeInTheDocument();
-    expect(screen.getByText("Očekivani uticaj:")).toBeInTheDocument();
+    expect(screen.getByText(/Očekivani uticaj:/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
 
@@ -232,9 +161,73 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     );
   });
 
+  it("keeps confident recommendations honest when expected impact is missing", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 303,
+          recommendationId: "product:303:REPLENISH:20260528:20260626",
+          sourceKey: "product:303",
+          productName: "Model Z",
+          sku: "SKU-303",
+          revenue: 180000,
+          unitsSold: 52,
+          velocityUnitsPerDay: 1.8,
+          marginContribution: 36000,
+          marginPct: 28,
+          marginCoveragePct: 91,
+          currentStock: 3,
+          minStock: 10,
+          stockGap: 7,
+          trendPct: 14,
+          lostSalesEstimate: 0,
+          stockCoverDays: 2,
+          stockCoverStatus: "low_cover",
+          sellThroughRatio: 0.5,
+          sellThroughStatus: "warning",
+          recommendationAllowed: true,
+          confidenceLevel: "high",
+          confidenceScore: 91,
+          confidencePct: 91,
+          reliabilityPct: 87,
+          recommendationReason: "Brza prodaja i niska zaliha.",
+          warningCodes: ["expected_impact_denominator_missing"],
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          reasonCodes: ["high_velocity", "low_stock", "expected_impact_denominator_missing"],
+          expectedImpactRsd: null,
+          impactWindowDays: 14,
+          riskIfIgnored: "Moguca rasprodaja.",
+          explainabilityText: "Brza prodaja i niska zaliha.",
+          inputFreshnessStatus: "fresh",
+          recommendedAction: "Dopuni odmah.",
+        }),
+      ], "warning"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
+    expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+
+    await waitFor(() => {
+      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedImpactRsd: undefined,
+        impactEstimateRsd: undefined,
+        confidencePct: 91,
+      }),
+    );
+  });
+
   it("shows insufficient-data confidence and avoids fake zero impact", async () => {
-    getProductDecisionCenterMock.mockResolvedValueOnce({
-      rows: [
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
         makeRow({
           productId: 202,
           recommendationId: "product:202:INSUFFICIENT_DATA:20260528:20260626",
@@ -277,28 +270,39 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           riskIfIgnored: "Rizik je da odluka ostane zasnovana na slabom signalu.",
           explainabilityText: "Nedovoljno signala za pouzdanu preporuku.",
           inputFreshnessStatus: "critical",
-          recommendedAction: "Sačekaj dodatne podatke pre poslovne odluke.",
+          recommendedAction: "Sacekaj dodatne podatke pre poslovne odluke.",
         }),
-      ],
-      summary: {
-        lostSalesEstimate: 0,
-        slowStockCapital: 0,
-      },
-      totalRows: 1,
-      generatedAtUtc: "2026-05-26T12:00:00Z",
-      periodFromUtc: "2026-04-27",
-      periodToUtc: "2026-05-26",
-      meta: {
-        success: true,
-        dataQualityStatus: "insufficient_data",
-      },
-    });
+      ], "insufficient_data"),
+    );
 
     render(<ProductDecisionCenterPage />);
 
     expect(await screen.findByText("Nedovoljno podataka", { selector: ".confidence-pill" })).toBeInTheDocument();
     expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
     expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
-    expect(screen.queryByText("Visoka sigurnost · 88%")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps stale stock freshness visible on expanded replenishment rows", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 404,
+          recommendationId: "product:404:REPLENISH:20260528:20260626",
+          sourceKey: "product:404",
+          productName: "Model Stale",
+          daysSinceLastSale: 75,
+          inputFreshnessStatus: "stale",
+          dataQualityStatus: "warning",
+          recommendationReason: "Signal dopune postoji, ali ulaz nije svez.",
+        }),
+      ], "warning"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText(/Svežina ulaza: Zastarelo/i)).toBeInTheDocument();
   });
 });

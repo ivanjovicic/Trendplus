@@ -875,7 +875,7 @@ export default function InventoryPage() {
         }, ...base.items],
       };
     });
-    setExportStatus("Forecast signal je dodat u workflow kao predlog dopune.");
+    setExportStatus("Forecast signal je dodat u workflow kao signalni predlog dopune.");
     scrollToSection(ACTION_WORKFLOW_SECTION_ID);
   }
 

@@ -468,6 +468,17 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
   const dueAtUtc = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
 
+  if (normalizedCover === "insufficient_data" || row.recommendationAllowed === false) {
+    return {
+      sourceType: "product",
+      actionKind: "signal_check",
+      title: `Proveri signal: ${row.productName}`,
+      recommendationStatus: "SIGNAL_REVIEW",
+      priority: "P3",
+      dueAtUtc,
+    };
+  }
+
   if (normalizedCover === "out_of_stock_risk" || normalizedCover === "low_cover" || normalizedCover === "low") {
     return {
       sourceType: "product",
@@ -486,17 +497,6 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
       title: `Proveri sporu zalihu: ${row.productName}`,
       recommendationStatus: "SLOW_STOCK_REVIEW",
       priority: normalizedCover === "no_velocity" ? "P3" : "P2",
-      dueAtUtc,
-    };
-  }
-
-  if (normalizedCover === "insufficient_data" || row.recommendationAllowed === false) {
-    return {
-      sourceType: "product",
-      actionKind: "signal_check",
-      title: `Proveri signal: ${row.productName}`,
-      recommendationStatus: "SIGNAL_REVIEW",
-      priority: "P3",
       dueAtUtc,
     };
   }
@@ -1296,7 +1296,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span>{row.recommendedAction}</span>
-                          <small>{expectedImpactRsd != null ? `${fmtRsd(expectedImpactRsd, 0, "N/A")} potencijalnog uticaja` : "Procena uticaja nije dostupna."}</small>
+                          <small>{expectedImpactRsd != null ? `Procena uticaja: ${fmtRsd(expectedImpactRsd, 0, "N/A")}` : "Procena uticaja nije dostupna."}</small>
                           {expectedImpactRsd == null ? (
                             <small className="recommendation-warning-summary">Upozorenje: nedostaje ulaz za procenu uticaja.</small>
                           ) : null}

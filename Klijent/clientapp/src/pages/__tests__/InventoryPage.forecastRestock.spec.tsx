@@ -59,7 +59,7 @@ vi.mock("../../components/inventory/DemandForecastPanel", () => ({
   DemandForecastPanel: ({ forecast, onSuggestRestock }: { forecast: { items: Array<{ skuId: number; storeId: number; sizeCode: string }> } | null; onSuggestRestock: (item: { skuId: number; storeId: number; sizeCode: string }) => void }) => (
     <div>
       <button type="button" onClick={() => forecast?.items[0] && onSuggestRestock(forecast.items[0])}>
-        Predloži prvu prognozu
+        Predlozi prvu prognozu
       </button>
     </div>
   ),
@@ -145,7 +145,7 @@ describe("InventoryPage forecast restock trust states", () => {
   it("does not create a forecast restock action without a loaded stock baseline", async () => {
     render(<InventoryPage />);
 
-    const button = await screen.findByRole("button", { name: /Predloži prvu prognozu/i });
+    const button = await screen.findByRole("button", { name: /Predlozi prvu prognozu/i });
     fireEvent.click(button);
 
     expect(await screen.findByText("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.")).toBeInTheDocument();

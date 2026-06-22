@@ -3228,7 +3228,7 @@ Token budget: medium
 
 ## Q64 - Forecast/Replenishment safety guardrails
 
-Status: TODO
+Status: DONE
 Commit suggestion: `test(analytics): add forecast replenishment guardrails`
 Priority: P0
 Type: frontend/tests
@@ -3271,6 +3271,29 @@ Token budget: medium
 
 - Forecast and replenishment signals cannot look like guaranteed instructions.
 - Missing baseline and stale data stay visible in UI and tests.
+
+### Notes
+
+- 2026-06-22: DONE. Labeled forecast replenishment as a signal/procena flow, kept Product Decision impact copy explicitly estimated, and fixed a real queue bug where `low_cover` could still become `REPLENISH` even when `recommendationAllowed=false`.
+- Changed files:
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.signalQueue.spec.ts`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx src/pages/__tests__/InventoryPage.signalActions.spec.ts src/pages/__tests__/ProductDecisionCenterPage.signalQueue.spec.ts src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` (pass)
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` (fail: `tsc -b` is currently blocked by existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`)
+  - `cd Klijent/clientapp && npm run build` (fail for the same existing type error before Vite build)
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage*.spec.ts* src/pages/__tests__/ProductDecisionCenterPage*.spec.ts*` (fail: Vitest did not expand those glob literals in this shell, so explicit file paths were used instead)
+  - `git diff --check` (pass; LF/CRLF warnings only)
+- Risk:
+  - Repo-wide frontend type/build health is still blocked by the unrelated `AnalyticsActionsPage` ledger typings issue, so Q64 guardrails are proven by targeted tests but not by a clean full type/build pass yet.
+- Next:
+  - `Q65 - Markdown optimizer safety guardrails`
 
 ## Q65 - Markdown optimizer safety guardrails
 

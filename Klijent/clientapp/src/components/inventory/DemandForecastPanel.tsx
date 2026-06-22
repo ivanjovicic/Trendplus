@@ -48,8 +48,8 @@ export function DemandForecastPanel({
             <TrendingDown size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Prognoza potražnje i rizik nestanka zaliha</h2>
-            <p className="text-sm text-muted">Prognoza potražnje po SKU i veličini. Rizik nestanka zaliha u 7 dana i rizik prevelike zalihe.</p>
+            <h2 className="text-lg font-semibold text-foreground">Procena potražnje i signal rizika nestanka zaliha</h2>
+            <p className="text-sm text-muted">Procena potražnje po SKU i veličini. OOS i višak zalihe su signalni indikatori, ne automatski nalozi za naručivanje.</p>
           </div>
         </div>
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
@@ -101,8 +101,8 @@ export function DemandForecastPanel({
                         <div className="h-full rounded-full bg-gradient-to-r from-success via-warning to-danger" style={{ width: `${Math.max(0, Math.min(100, item.probabilityOfOOSIn7d * 100))}%` }} />
                       </div>
                       <div className="mt-1 text-xs text-muted">7d: {item.forecast7d.toFixed(1)}</div>
-                      <button type="button" aria-label={`Predloži dopunu za SKU ${item.skuId} veličinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
-                        Predloži dopunu
+                      <button type="button" aria-label={`Predloži signal dopune za SKU ${item.skuId} veličinu ${item.sizeCode}`} onClick={() => onSuggestRestock(item)} className="mt-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold text-success transition">
+                        Predlog dopune (signal)
                       </button>
                     </div>
                   </div>
@@ -149,6 +149,7 @@ export function DemandForecastPanel({
           </div>
         </div>
       )}
+      <p className="mt-3 text-xs text-muted">Predlozi dopune su procene zasnovane na forecast signalu. Potvrdite stock baseline i operativni kontekst pre naručivanja.</p>
       {warningText ? <p className="mt-3 text-xs text-warning">Napomena: {warningText}</p> : null}
     </section>
   );
