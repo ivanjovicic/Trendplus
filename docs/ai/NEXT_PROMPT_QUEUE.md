@@ -3054,7 +3054,7 @@ Token budget: medium
 
 ## Q63D - Decision Board freshness and warning contract
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): map decision board freshness contract`
 Priority: P0
 Type: docs/contract-review
@@ -3095,6 +3095,19 @@ Token budget: medium
 - Every source module has a freshness/warning mapping.
 - Missing fields and trust-contract gaps are explicit.
 - A future backend aggregate would know what metadata it must preserve.
+
+### Notes
+
+- 2026-06-22: DONE. Added `docs/qa/DECISION_BOARD_FRESHNESS_CONTRACT.md` and documented snapshot-, source-, and candidate-level warning/freshness semantics, source-module mappings, current rendering gaps, and the minimum backend metadata required before aggregate work can preserve trust honestly.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_FRESHNESS_CONTRACT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The current page still compresses several trust layers into `isPartial`, `overallDataQualityStatus`, and a limited set of warning chips, so future aggregate work must not assume that current render behavior is already carrying full freshness provenance.
+- Next:
+  - `Q63E - Decision Board aggregate performance and cache budget`
 
 ## Q63E - Decision Board aggregate performance and cache budget
 
