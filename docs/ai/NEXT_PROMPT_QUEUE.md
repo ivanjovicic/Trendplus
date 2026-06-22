@@ -2992,7 +2992,7 @@ Token budget: medium
 
 ## Q63C - Decision Board ranking parity test plan
 
-Status: TODO
+Status: DONE
 Commit suggestion: `docs(qa): plan decision board ranking parity`
 Priority: P0
 Type: docs/test-plan
@@ -3038,6 +3038,19 @@ Token budget: medium
 - The repo has a concrete parity plan for ranking behavior.
 - High-risk ranking cases are captured in a reusable matrix.
 - Backend parity criteria are explicit without unblocking Q63.
+
+### Notes
+
+- 2026-06-22: DONE. Added `docs/qa/DECISION_BOARD_RANKING_PARITY_PLAN.md` and documented the current ranking inputs, shared score/cap logic, lane-specific ordering behavior, a parity matrix, and the backend acceptance bar needed before any aggregate endpoint can claim ranking parity.
+- Changed files:
+  - `docs/qa/DECISION_BOARD_RANKING_PARITY_PLAN.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - The live page currently trusts backend section order while the same file still carries shadow composition scoring logic, so future Q63 work must decide parity against the documented rules instead of assuming the current runtime payload already encodes them completely.
+- Next:
+  - `Q63D - Decision Board freshness and warning contract`
 
 ## Q63D - Decision Board freshness and warning contract
 
