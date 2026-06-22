@@ -18,7 +18,7 @@ export default function ConfirmModal({
     title,
     message,
     confirmText = "Potvrdi",
-    cancelText = "Otka�i",
+    cancelText = "Otkaži",
     confirmVariant = "primary",
     isBusy = false,
     onConfirm,

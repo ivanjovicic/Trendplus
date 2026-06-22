@@ -25,7 +25,7 @@ export default function PromptNumberModal({
     min = 1,
     max = 365,
     confirmText = "Potvrdi",
-    cancelText = "Otka�i",
+    cancelText = "Otkaži",
     isBusy = false,
     onConfirm,
     onCancel,

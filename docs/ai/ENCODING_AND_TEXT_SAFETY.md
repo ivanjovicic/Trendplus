@@ -10,16 +10,16 @@
 
 Search for these patterns when touching Serbian UI or docs:
 
-- `Ä`
-- `Å`
-- `â`
-- `�`
-- `DobavljaÄ`
-- `marÅ`
-- `osveÅ`
-- `uÄ`
-- `Å¡`
-- `Å¾`
+- `Ã„`
+- `Ã…`
+- `Ã¢`
+- `ï¿½`
+- `DobavljaÃ„`
+- `marÃ…`
+- `osveÃ…`
+- `uÃ„`
+- `Ã…Â¡`
+- `Ã…Â¾`
 
 ## Correct examples
 
@@ -32,9 +32,9 @@ Search for these patterns when touching Serbian UI or docs:
 
 ## Wrong examples
 
-- `DobavljaÄ`
-- `marÅ¾a`
-- `osveÅ¾avanje`
+- `DobavljaÃ„`
+- `marÃ…Â¾a`
+- `osveÃ…Â¾avanje`
 
 ## Safe fix protocol
 
@@ -46,21 +46,22 @@ Search for these patterns when touching Serbian UI or docs:
 ## Practical workflow
 
 - Prefer targeted search before editing:
-  - `rg -n "Ä|Å|â|�|DobavljaÄ|marÅ|osveÅ|uÄ|Å¡|Å¾" docs Klijent/clientapp/src`
+  - `rg -n "Ã„|Ã…|Ã¢|ï¿½|DobavljaÃ„|marÃ…|osveÃ…|uÃ„|Ã…Â¡|Ã…Â¾" docs Klijent/clientapp/src`
 - Re-open the changed file after patching if the text is important user copy.
 - If the cleanup is growing beyond text, split it into a dedicated follow-up commit.
 
 ## Optional tooling plan
 
-The current frontend guardrail script checks business-logic drift, not encoding drift.
+The frontend guardrail suite now includes `npm run check:encoding`.
 
-Future task:
+That script:
 
-`Add check:encoding script and wire it into check:analytics-guardrails or CI.`
+- scans maintained docs and frontend source
+- fails with `file:line`
+- avoids touching runtime logic
+- stays separate from business-logic checks so encoding regressions are obvious
 
-That future script should:
+Future follow-up, if needed:
 
-- scan docs and frontend source
-- fail with `file:line`
-- avoid touching runtime logic
-- be introduced in a small dedicated task
+- wire `check:encoding` into broader CI workflows that already run docs or frontend checks
+- add a repo-wide cleanup pass for intentionally excluded legacy surfaces if they become active again

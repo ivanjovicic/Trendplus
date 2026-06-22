@@ -121,7 +121,7 @@ Pass kriterijum:
 
 Pre merge-a proveriti UX i copy:
 - Srpski tekst koristi dijakritiku.
-- Nema mojibake (`Ä`, `Å`, `â`, `�`).
+- Nema skrivenih encoding problema u korisnički vidljivom copy-u.
 - Korisniku se ne prikazuje raw SQL, DTO, MV ili interni exception tekst.
 - CTA standard koristi sledeće formulacije gde su primenljive:
   - Proširi period

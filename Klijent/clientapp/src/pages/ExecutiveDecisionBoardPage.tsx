@@ -1150,7 +1150,7 @@ export default function ExecutiveDecisionBoardPage() {
     } catch (reason) {
       if (isCancelled?.()) return;
       setPayload(null);
-      setLoadError(buildLoadError("decisionBoard", reason, "Izvr�ni board nije dostupan."));
+      setLoadError(buildLoadError("decisionBoard", reason, "Izvršni board nije dostupan."));
     } finally {
       if (!isCancelled?.()) {
         setLoading(false);
@@ -1176,8 +1176,8 @@ export default function ExecutiveDecisionBoardPage() {
   return (
     <div className="decision-board-page">
       <AnalyticsTrustHeader
-        title="Izvr�ni board odluka"
-        description="Jedan pogled koji poredi najva�nije odluke, ocekivani uticaj, rizik i �ta je vec u akciji."
+        title="Izvršni board odluka"
+        description="Jedan pogled koji poredi najvažnije odluke, očekivani uticaj, rizik i šta je već u akciji."
         mode="recommendation"
         periodFrom={model.periodFrom}
         periodTo={model.periodTo}
@@ -1206,14 +1206,14 @@ export default function ExecutiveDecisionBoardPage() {
 
       {globalError ? (
         <AnalyticsErrorState
-          title="Izvr�ni board trenutno nije dostupan"
+          title="Izvršni board trenutno nije dostupan"
           message={globalError.message}
           errorCode={globalError.errorCode ?? undefined}
           correlationId={globalError.correlationId ?? undefined}
           suggestions={[
-            "Proveri status osve�avanja i worker panel.",
+            "Proveri status osvežavanja i worker panel.",
             "Otvori kvalitet podataka i pilot readiness.",
-            "Poku�aj ponovo kada se izvori vrate.",
+            "Pokušaj ponovo kada se izvori vrate.",
           ]}
           onRetry={() => setReloadTick((value) => value + 1)}
           helpHref="/admin/configuration?panel=workers"
@@ -1224,11 +1224,11 @@ export default function ExecutiveDecisionBoardPage() {
       {isEmpty ? (
         <AnalyticsEmptyState
           variant={isAnalyticsMetaInsufficient(responseMeta) ? "insufficient_data" : "no_data"}
-          title="Nema dovoljno signala za izvr�ni board"
-          message="Board je uspe�no ucitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane."
+          title="Nema dovoljno signala za izvršni board"
+          message="Board je uspešno učitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane."
           reasons={[
             "Proveri pilot readiness i kvalitet podataka.",
-            "Proveri da li su Product, Supplier i Inventory signali osve�eni.",
+            "Proveri da li su Product, Supplier i Inventory signali osveženi.",
             "Ponovo ucitaj board nakon sledeceg refresh ciklusa.",
           ]}
           actions={[
@@ -1251,7 +1251,7 @@ export default function ExecutiveDecisionBoardPage() {
         </section>
       ) : null}
 
-      <section className="decision-board-summary-grid" aria-label="Sa�etak board-a">
+      <section className="decision-board-summary-grid" aria-label="Sažetak board-a">
         {model.metrics.map((metric) => (
           <article key={metric.label} className={`decision-board-summary-card tone-${metric.tone}`}>
             <span className="decision-board-summary-label">{metric.label}</span>

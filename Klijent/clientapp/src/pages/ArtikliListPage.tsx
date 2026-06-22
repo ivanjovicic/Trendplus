@@ -197,7 +197,7 @@ export default function ArtikliListPage() {
       } catch (e: unknown) {
         if (aborted) return;
         console.error(e);
-        setError(e instanceof Error ? e.message : "Gre�ka pri ucitavanju podataka.");
+        setError(e instanceof Error ? e.message : "Greška pri učitavanju podataka.");
       } finally {
         if (!aborted) setLoading(false);
       }

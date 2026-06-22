@@ -1,22 +1,22 @@
 ﻿/**
- * TrendDashboard â€“ dark-mode leaderboard for the latest scoring run.
+ * TrendDashboard – dark-mode leaderboard for the latest scoring run.
  *
  * Features
- *  â€¢ PAL dark-mode design system (consistent with rest of app)
- *  â€¢ KPI stat cards at top (totals, momentum distribution, avg score)
- *  â€¢ Search by brand / name
- *  â€¢ Filter by source (multi-select pill) + market + momentum direction
- *  â€¢ Sortable columns (score, momentum, price, appearances)
- *  â€¢ Expanded row shows full score breakdown cards
- *  â€¢ Limit selector: 10 / 20 / 50
+ *  • PAL dark-mode design system (consistent with rest of app)
+ *  • KPI stat cards at top (totals, momentum distribution, avg score)
+ *  • Search by brand / name
+ *  • Filter by source (multi-select pill) + market + momentum direction
+ *  • Sortable columns (score, momentum, price, appearances)
+ *  • Expanded row shows full score breakdown cards
+ *  • Limit selector: 10 / 20 / 50
  *
- * Data source: GET /api/dashboard/latest  (Python FastAPI â†’ PostgreSQL)
+ * Data source: GET /api/dashboard/latest  (Python FastAPI → PostgreSQL)
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchDashboard, type DashboardItem, type DashboardRun } from "../services/scoringApi";
 
-// â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Design tokens ────────────────────────────────────────────────────────────
 
 const PAL = {
     blue:          "var(--c-4f8ef7, var(--theme-color-4f8ef7, #4F8EF7))",
@@ -40,7 +40,7 @@ const TOP1_BG = "var(--surface-darker, var(--theme-color-1a1800, #1A1800))";
 const TOP2_BG = "var(--surface-elevated, var(--theme-color-111822, #111822))";
 const TOP3_BG = "var(--surface-default, var(--theme-color-140f1f, #140F1F))";
 
-// â”€â”€ Component score colors (dark-mode palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Component score colors (dark-mode palette) ───────────────────────────────
 
 const COMPONENT_COLORS: Record<string, string> = {
     base_score:         PAL.blue,
@@ -51,7 +51,7 @@ const COMPONENT_COLORS: Record<string, string> = {
     reliability_factor: PAL.red,
 };
 
-// â”€â”€ Source colors (dark-mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Source colors (dark-mode) ────────────────────────────────────────────────
 
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
     zalando:   { bg: "var(--source-zalando-bg, var(--theme-color-2a1700, #2A1700))", text: "var(--source-zalando-text, var(--theme-color-f97316, #F97316))", border: "var(--source-zalando-border, var(--theme-color-7c3416, #7C3416))" },
@@ -75,7 +75,7 @@ const COMPONENT_LABELS: Record<string, string> = {
     reliability_factor: "Reliability",
 };
 
-// â”€â”€ Momentum helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Momentum helpers ─────────────────────────────────────────────────────────
 
 function momentumColor(mn: number | null): string {
     if (mn === null) return PAL.textMuted;
@@ -109,7 +109,7 @@ function scoreGrade(score: number): { label: string; color: string } {
     return { label: "D", color: PAL.textMuted };
 }
 
-// â”€â”€ KPI stat card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── KPI stat card ────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, color }: {
     label: string;
@@ -141,7 +141,7 @@ function StatCard({ label, value, sub, color }: {
     );
 }
 
-// â”€â”€ Score bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Score bar ────────────────────────────────────────────────────────────────
 
 function ScoreBar({ components }: { components: Record<string, number> | null }) {
     if (!components) return null;
@@ -166,7 +166,7 @@ function ScoreBar({ components }: { components: Record<string, number> | null })
     );
 }
 
-// â”€â”€ Item row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Item row ─────────────────────────────────────────────────────────────────
 
 function DashboardRow({
     item, rank, globalRank,
@@ -195,7 +195,7 @@ function DashboardRow({
                 onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = PAL.cardHover; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = rowBg; }}
             >
-                {/* â”€â”€ Rank â”€â”€ */}
+                {/* ── Rank ── */}
                 <td style={{ width: 48, textAlign: "center", padding: "10px 4px", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     {medal
                         ? <span style={{ fontSize: 20 }}>{medal}</span>
@@ -203,7 +203,7 @@ function DashboardRow({
                     }
                 </td>
 
-                {/* â”€â”€ Thumbnail â”€â”€ */}
+                {/* ── Thumbnail ── */}
                 <td style={{ width: 56, padding: "6px 4px", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{
                         width: 46, height: 46, borderRadius: 8,
@@ -220,18 +220,18 @@ function DashboardRow({
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                             />
                         ) : (
-                            <span style={{ fontSize: 22 }}>ðŸ‘Ÿ</span>
+                            <span style={{ fontSize: 22 }}>👟</span>
                         )}
                     </div>
                 </td>
 
-                {/* â”€â”€ Brand + Name â”€â”€ */}
+                {/* ── Brand + Name ── */}
                 <td style={{ padding: "8px 8px 8px 4px", minWidth: 200, background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{ fontSize: 10, color: PAL.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        {item.brand ?? "â€”"}
+                        {item.brand ?? "—"}
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 13, color: PAL.textPrimary, lineHeight: 1.3, marginTop: 1 }}>
-                        {item.name ?? "â€”"}
+                        {item.name ?? "—"}
                     </div>
                     {item.category && (
                         <div style={{ fontSize: 10, color: PAL.textSecondary, marginTop: 2 }}>{item.category}</div>
@@ -239,7 +239,7 @@ function DashboardRow({
                     <ScoreBar components={item.scoreComponents} />
                 </td>
 
-                {/* â”€â”€ Score + Grade â”€â”€ */}
+                {/* ── Score + Grade ── */}
                 <td style={{ padding: "8px 10px", textAlign: "center", whiteSpace: "nowrap", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -263,7 +263,7 @@ function DashboardRow({
                     </div>
                 </td>
 
-                {/* â”€â”€ Momentum â”€â”€ */}
+                {/* ── Momentum ── */}
                 <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                         <span style={{ fontSize: 18, color: momentumColor(mn), fontWeight: 900, lineHeight: 1 }}>
@@ -275,53 +275,53 @@ function DashboardRow({
                     </div>
                 </td>
 
-                {/* â”€â”€ Coverage pills â”€â”€ */}
+                {/* ── Coverage pills ── */}
                 <td style={{ padding: "8px 6px", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxWidth: 260 }}>
                         <span style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.textSecondary, borderRadius: 5, padding: "1px 6px", fontWeight: 600, border: `1px solid ${PAL.border}` }}>
-                            ðŸ”„ {item.appearanceCount}Ã—
+                            🔄 {item.appearanceCount}×
                         </span>
                         {item.totalRunAppearances > 1 && (
                             <span style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.green, borderRadius: 5, padding: "1px 6px", border: "1px solid var(--success)" }} title="Appeared in N runs">
-                                ðŸ“ˆ {item.totalRunAppearances} runs
+                                📈 {item.totalRunAppearances} runs
                             </span>
                         )}
                         {(item.sources ?? []).map((src) => {
                             const c = SOURCE_COLOR[src] ?? { bg: "var(--surface-darker, var(--theme-color-1a2235, #1A2235))", text: PAL.textSecondary, border: PAL.border };
                             return (
                                 <span key={src} style={{ fontSize: 10, background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 5, padding: "1px 6px", fontWeight: 600 }}>
-                                    {SOURCE_EMOJI[src] ?? "ðŸ›"} {src}
+                                    {SOURCE_EMOJI[src] ?? "🛍"} {src}
                                 </span>
                             );
                         })}
                         {(item.markets ?? []).map((m) => (
                             <span key={m} style={{ fontSize: 10, background: "var(--surface-default)", color: PAL.textSecondary, borderRadius: 5, padding: "1px 5px", border: `1px solid ${PAL.borderLight}` }}>
-                                {MARKET_FLAG[m] ?? "ðŸŒ"} {m}
+                                {MARKET_FLAG[m] ?? "🌍"} {m}
                             </span>
                         ))}
                     </div>
                 </td>
 
-                {/* â”€â”€ Price â”€â”€ */}
+                {/* ── Price ── */}
                 <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap", background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     {item.minPrice != null ? (
                         <span style={{ fontWeight: 700, color: PAL.green, fontSize: 13 }}>
                             {item.minPrice.toFixed(0)}
-                            {item.maxPrice != null && item.maxPrice !== item.minPrice ? `â€“${item.maxPrice.toFixed(0)}` : ""}
-                            <span style={{ fontSize: 10, color: PAL.textMuted, marginLeft: 2 }}>â‚¬</span>
+                            {item.maxPrice != null && item.maxPrice !== item.minPrice ? `–${item.maxPrice.toFixed(0)}` : ""}
+                            <span style={{ fontSize: 10, color: PAL.textMuted, marginLeft: 2 }}>€</span>
                         </span>
                     ) : (
-                        <span style={{ color: PAL.textMuted }}>â€”</span>
+                        <span style={{ color: PAL.textMuted }}>—</span>
                     )}
                 </td>
 
-                {/* â”€â”€ Expand toggle â”€â”€ */}
+                {/* ── Expand toggle ── */}
                 <td style={{ padding: "8px 10px", textAlign: "center", color: PAL.textMuted, fontSize: 12, background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
                     {expanded ? "â–²" : "â–¼"}
                 </td>
             </tr>
 
-            {/* â”€â”€ Expanded score breakdown â”€â”€ */}
+            {/* ── Expanded score breakdown ── */}
             {expanded && item.scoreComponents && (
                 <tr>
                     <td colSpan={8} style={{
@@ -366,7 +366,7 @@ function DashboardRow({
                         {item.prevFinalScore != null && (
                             <div style={{ marginTop: 10, fontSize: 12, color: PAL.textSecondary }}>
                                 Prethodni run: <strong style={{ color: PAL.textPrimary }}>{item.prevFinalScore.toFixed(4)}</strong>
-                                {" â†’ "}
+                                {" → "}
                                 <strong style={{ color: PAL.blue }}>{item.finalScore.toFixed(4)}</strong>
                                 {" "}
                                 <span style={{ color: momentumColor(mn) }}>
@@ -381,7 +381,7 @@ function DashboardRow({
     );
 }
 
-// â”€â”€ Filter types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Filter types ─────────────────────────────────────────────────────────────
 
 type MomentumFilter = "all" | "rising" | "dropping" | "new";
 type SortKey = "score" | "momentum" | "price" | "appearances";
@@ -390,7 +390,7 @@ type SortDir = "desc" | "asc";
 const ALL_SOURCES = ["zalando", "aboutyou", "deichmann", "humanic"];
 const ALL_MARKETS = ["DE", "AT", "CH", "HU", "RO"];
 
-// â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main component ───────────────────────────────────────────────────────────
 
 export function TrendDashboard() {
     const [data, setData] = useState<{ run: DashboardRun | null; items: DashboardItem[]; message?: string } | null>(null);
@@ -398,7 +398,7 @@ export function TrendDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-    // â”€â”€ Filters & sort â”€â”€
+    // ── Filters & sort ──
     const [search, setSearch] = useState("");
     const [activeSources, setActiveSources] = useState<Set<string>>(new Set());
     const [activeMarkets, setActiveMarkets] = useState<Set<string>>(new Set());
@@ -424,7 +424,7 @@ export function TrendDashboard() {
     const allItems = data?.items ?? [];
     const run = data?.run;
 
-    // â”€â”€ KPI stats (computed from unfiltered items) â”€â”€
+    // ── KPI stats (computed from unfiltered items) ──
     const kpi = useMemo(() => {
         const rising    = allItems.filter((i) => (i.momentumNormalized ?? 0) > 0).length;
         const dropping  = allItems.filter((i) => (i.momentumNormalized ?? 0) < 0).length;
@@ -436,7 +436,7 @@ export function TrendDashboard() {
         return { rising, dropping, isNew, avgScore, topScore };
     }, [allItems]);
 
-    // â”€â”€ Filtered + sorted items â”€â”€
+    // ── Filtered + sorted items ──
     const filteredItems = useMemo(() => {
         let items = [...allItems];
 
@@ -482,7 +482,7 @@ export function TrendDashboard() {
         return items.slice(0, limit);
     }, [allItems, search, activeSources, activeMarkets, momentumFilter, sortKey, sortDir, limit]);
 
-    // â”€â”€ Sort handler â”€â”€
+    // ── Sort handler ──
     function handleSort(key: SortKey) {
         if (key === sortKey) {
             setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -493,8 +493,8 @@ export function TrendDashboard() {
     }
 
     function sortIndicator(key: SortKey) {
-        if (sortKey !== key) return <span style={{ color: PAL.textMuted, fontSize: 10 }}> â‡…</span>;
-        return <span style={{ color: PAL.blue, fontSize: 10 }}> {sortDir === "desc" ? "â†“" : "â†‘"}</span>;
+        if (sortKey !== key) return <span style={{ color: PAL.textMuted, fontSize: 10 }}> ⇅</span>;
+        return <span style={{ color: PAL.blue, fontSize: 10 }}> {sortDir === "desc" ? "↓" : "↑"}</span>;
     }
 
     function toggleSource(src: string) {
@@ -515,11 +515,11 @@ export function TrendDashboard() {
 
     const hasActiveFilters = search || activeSources.size > 0 || activeMarkets.size > 0 || momentumFilter !== "all";
 
-    // â”€â”€ Render â”€â”€
+    // ── Render ──
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            {/* â•â• KPI cards â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ══ KPI cards ══════════════════════════════════════════════════ */}
             {allItems.length > 0 && (
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     <StatCard label="Total items" value={allItems.length} sub={run ? `Run #${run.runId}` : undefined} color={PAL.blue} />
@@ -530,7 +530,7 @@ export function TrendDashboard() {
                 </div>
             )}
 
-            {/* â•â• Main card â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ══ Main card ═══════════════════════════════════════════════════ */}
             <div style={{
                 background: PAL.card,
                 border: `1px solid ${PAL.border}`,
@@ -538,7 +538,7 @@ export function TrendDashboard() {
                 overflow: "hidden",
             }}>
 
-                {/* â”€â”€ Header â”€â”€ */}
+                {/* ── Header ── */}
                 <div style={{
                     padding: "16px 20px",
                     borderBottom: `1px solid ${PAL.border}`,
@@ -610,7 +610,7 @@ export function TrendDashboard() {
                     </div>
                 </div>
 
-                {/* â”€â”€ Filter toolbar â”€â”€ */}
+                {/* ── Filter toolbar ── */}
                 <div style={{
                     padding: "12px 20px",
                     borderBottom: `1px solid ${PAL.borderLight}`,
@@ -756,7 +756,7 @@ export function TrendDashboard() {
                     </span>
                 </div>
 
-                {/* â”€â”€ Error state â”€â”€ */}
+                {/* ── Error state ── */}
                 {error && (
                     <div style={{ padding: "14px 20px", background: "var(--surface-darker)", borderBottom: `1px solid ${PAL.red}44` }}>
                         <div style={{ fontWeight: 700, color: PAL.orange, fontSize: 13 }}>⚠️ Python servis nije dostupan</div>
@@ -767,7 +767,7 @@ export function TrendDashboard() {
                     </div>
                 )}
 
-                {/* â”€â”€ Empty state â”€â”€ */}
+                {/* ── Empty state ── */}
                 {!loading && filteredItems.length === 0 && (
                     <div style={{ padding: 48, textAlign: "center", color: PAL.textMuted }}>
                         <div style={{ fontSize: 40, marginBottom: 12 }}>
@@ -794,7 +794,7 @@ export function TrendDashboard() {
                     </div>
                 )}
 
-                {/* â”€â”€ Table â”€â”€ */}
+                {/* ── Table ── */}
                 {filteredItems.length > 0 && (
                     <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -842,7 +842,7 @@ export function TrendDashboard() {
                     </div>
                 )}
 
-                {/* â”€â”€ Legend â”€â”€ */}
+                {/* ── Legend ── */}
                 {filteredItems.length > 0 && (
                     <div style={{
                         padding: "10px 20px",

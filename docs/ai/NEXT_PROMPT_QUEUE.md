@@ -3414,7 +3414,7 @@ Token budget: medium
 
 ## Q67 - Add automated encoding/mojibake guardrail
 
-Status: TODO
+Status: PARTIAL
 Commit suggestion: `chore(ai): add encoding mojibake guardrail`
 Priority: P1
 Type: tooling/docs
@@ -3462,3 +3462,68 @@ Token budget: medium
 - Encoding/mojibake guardrail exists or is safely wired for a future merge path.
 - Output is actionable with `file:line`.
 - No application business logic changed.
+
+### Notes
+
+- 2026-06-22: PARTIAL. Added `check:encoding`, wired it into `check:analytics-guardrails`, and fixed the current maintained docs/frontend mojibake hotspots. `npm run check:encoding` passed. `npm run check:analytics-guardrails` and `npm run build` are still blocked by the existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`.
+- Changed files:
+  - `Klijent/clientapp/package.json`
+  - `Klijent/clientapp/scripts/check-encoding.mjs`
+  - `Klijent/clientapp/src/components/ConfirmModal.tsx`
+  - `Klijent/clientapp/src/components/PromptNumberModal.tsx`
+  - `Klijent/clientapp/src/components/TrendDashboard.tsx`
+  - `Klijent/clientapp/src/pages/ArtikliListPage.tsx`
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+  - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:encoding` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - fail: existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`
+  - `cd Klijent/clientapp && npm run build` - fail: same existing TypeScript mismatch
+- Risk:
+  - Two legacy surfaces remain allowlisted in the encoding guardrail (`TrendDashboard.tsx`, `DeichmannPage.tsx`) so the check stays low-noise while the current analytics pilot surfaces are covered.
+- Next:
+  - `Q68 - Resolve AnalyticsActionsPage analytics impact ledger type mismatch`
+
+## Q68 - Resolve AnalyticsActionsPage analytics impact ledger type mismatch
+
+Status: TODO
+Commit suggestion: `fix(analytics): align action ledger types`
+Priority: P1
+Type: bugfix
+Token budget: medium
+
+### Why
+
+- `npm run check:analytics-guardrails` and `npm run build` are currently blocked by an existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`.
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+- related analytics action tests
+
+### Read first
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+- current analytics action tests
+
+### Do
+
+1. Align the page with the current analytics action type contract.
+2. Keep nullable impact fields nullable.
+3. Avoid broad refactors or behavior changes.
+4. Add or update the smallest focused test if needed.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- Build and analytics guardrails pass again.
+- No fake-zero or fake-success behavior is introduced.
