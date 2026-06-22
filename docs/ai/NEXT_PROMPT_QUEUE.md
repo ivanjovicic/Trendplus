@@ -2856,6 +2856,298 @@ Token budget: high
 - Frontend fallback remains available.
 - Quality and ranking semantics stay explicit.
 
+### Notes
+
+- 2026-06-22: Blocker resolution was broken down into Q63A-Q63F so the aggregate endpoint stays blocked until candidate contract, dedupe, ranking parity, freshness contract, performance budget, and a re-run gate are all completed.
+- Changed files:
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check`
+- Risk:
+  - If Q63 is revisited without closing Q63A-Q63F, the backend would freeze unstable frontend composition semantics into a server contract.
+- Next:
+  - `Q63A - Decision Board candidate contract audit`
+
+## Q63A - Decision Board candidate contract audit
+
+Status: TODO
+Commit suggestion: `docs(qa): audit decision board candidate contract`
+Priority: P0
+Type: docs/contract-review
+Token budget: medium
+
+### Why
+
+- Q62 showed that the current board still depends on frontend composition and does not yet have a locked candidate contract that a backend aggregate could preserve.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+- optional links to existing board docs
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+- analytics API service/types used by the board
+
+### Do
+
+1. Define the exact candidate/card shape that frontend composition currently produces.
+2. Map every candidate field back to its source module or shared helper.
+3. Mark nullable fields explicitly, especially confidence, expected impact, freshness, and warning payloads.
+4. Document no-fake-zero and no-fake-confidence rules that the candidate contract must preserve.
+5. List missing fields or inconsistencies that currently block a backend aggregate contract.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- The current frontend-composed candidate shape is documented field-by-field.
+- Source module ownership and nullable behavior are explicit.
+- Blocking gaps for backend aggregate contract design are listed without implementing the endpoint.
+
+## Q63B - Decision Board dedupe and source identity rules
+
+Status: TODO
+Commit suggestion: `docs(qa): define decision board dedupe rules`
+Priority: P0
+Type: docs/tests
+Token budget: medium
+
+### Why
+
+- Q62 concluded that dedupe policy is not ready, and a backend aggregate cannot centralize repeated cards safely until source identity and collision handling are explicit.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_DEDUPE_RULES.md`
+- frontend tests only if a tiny safe coverage addition is needed
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+- analytics API service/types used by the board
+
+### Do
+
+1. Define canonical source identity rules using `sourceType + sourceKey + recommendationType`.
+2. Document when repeated cards across sections are intentional versus true duplicates.
+3. Capture collision examples across Product, Supplier, Inventory, OOS, Markdown, and Action sources.
+4. Define dedupe behavior for same-source, same-section, and cross-section candidates.
+5. Add or propose focused frontend tests only if that can be done without changing board behavior.
+
+### Checks
+
+- `git diff --check`
+- if tests are added: `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+
+### Acceptance
+
+- Dedupe rules are explicit enough that a later backend aggregate would not need to invent them.
+- Source identity and collision handling are documented with examples.
+- Any test additions remain focused and non-behavioral outside the documented rules.
+
+## Q63C - Decision Board ranking parity test plan
+
+Status: TODO
+Commit suggestion: `docs(qa): plan decision board ranking parity`
+Priority: P0
+Type: docs/test-plan
+Token budget: medium
+
+### Why
+
+- Q62 marked ranking stability as not ready, so the current frontend ordering behavior must be locked before any server-side parity work begins.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_RANKING_PARITY_PLAN.md`
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+
+### Do
+
+1. Document the current ranking inputs and ordering behavior used by frontend composition.
+2. Build a test matrix covering:
+   - high confidence vs insufficient data
+   - expected impact present vs missing
+   - stale data
+   - urgent action
+   - blocked recommendation
+3. Define which behaviors require exact backend parity and which may stay section-specific.
+4. Write backend parity acceptance criteria without implementing the backend endpoint.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- The repo has a concrete parity plan for ranking behavior.
+- High-risk ranking cases are captured in a reusable matrix.
+- Backend parity criteria are explicit without unblocking Q63.
+
+## Q63D - Decision Board freshness and warning contract
+
+Status: TODO
+Commit suggestion: `docs(qa): map decision board freshness contract`
+Priority: P0
+Type: docs/contract-review
+Token budget: medium
+
+### Why
+
+- Q62 showed that freshness, partial failure, and warning semantics are still too loose to centralize into a board aggregate snapshot.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_FRESHNESS_CONTRACT.md`
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- analytics API service/types used by the board
+
+### Do
+
+1. Map freshness, data-quality, and warning inputs for every board source module.
+2. Identify missing fields that prevent the board from carrying trust metadata consistently.
+3. Define UI behavior rules for stale, partial, warning, and unknown states.
+4. Document backend contract requirements for aggregate-level warnings, section-level warnings, and invalidation thresholds.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- Every source module has a freshness/warning mapping.
+- Missing fields and trust-contract gaps are explicit.
+- A future backend aggregate would know what metadata it must preserve.
+
+## Q63E - Decision Board aggregate performance and cache budget
+
+Status: TODO
+Commit suggestion: `docs(qa): define decision board aggregate performance budget`
+Priority: P1
+Type: docs/performance
+Token budget: medium
+
+### Why
+
+- Q62 found no proof yet that frontend fan-out is the pilot bottleneck, so backend aggregation needs a performance and cache budget before it becomes architectural work.
+
+### Scope only
+
+- `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+
+### Do
+
+1. Define target board latency and request budget for the current pilot use case.
+2. Define candidate cache TTL and invalidation triggers for a future aggregate snapshot.
+3. Document correlationId/error behavior expectations for aggregate failures.
+4. Define partial-failure behavior so the endpoint would not hide upstream degradation.
+5. State what evidence would justify replacing frontend composition for performance or operability reasons.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- The repo has a documented performance and cache budget for a future aggregate.
+- Partial failure and error behavior are explicit.
+- Q63 remains blocked until evidence justifies the architectural move.
+
+## Q63F - Re-run backend aggregate readiness gate
+
+Status: TODO
+Commit suggestion: `docs(qa): rerun decision board aggregate gate`
+Priority: P0
+Type: docs/review
+Token budget: medium
+
+### Why
+
+- Q63 must stay blocked until the blocker documents exist and the readiness gate is re-evaluated against them.
+
+### Scope only
+
+- update `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- no backend aggregate implementation
+
+### Read first
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+- `docs/qa/DECISION_BOARD_DEDUPE_RULES.md`
+- `docs/qa/DECISION_BOARD_RANKING_PARITY_PLAN.md`
+- `docs/qa/DECISION_BOARD_FRESHNESS_CONTRACT.md`
+- `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`
+
+### Do
+
+1. Re-run the Q62 gate after Q63A-Q63E are complete.
+2. Update the readiness matrix and verdict in `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_GATE.md`.
+3. Explicitly decide whether Q63 becomes READY to proceed or remains NOT READY.
+4. Keep Q63 blocked unless the updated gate says READY.
+
+### Checks
+
+- `git diff --check`
+
+### Acceptance
+
+- The readiness gate is re-evaluated against concrete blocker evidence.
+- Q63 is unblocked only if the updated verdict is READY.
+- The queue preserves the gate-first workflow and does not implement the endpoint in this task.
+
 ## Q64 - Forecast/Replenishment safety guardrails
 
 Status: TODO
