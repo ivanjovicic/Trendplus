@@ -6,227 +6,237 @@ Status: planning/review only; no runtime code changed
 
 ## Purpose
 
-This document consolidates the most important analytics reliability prompts across the existing queues and reviews whether the prompts are precise enough for Codex/Cursor/manual execution.
+This document is the compact execution index for analytics reliability prompts. Use it to avoid reading every queue addendum before each agent run.
 
-Reviewed queues:
+Primary goals:
 
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
-- `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`
+- reduce token usage
+- prevent duplicate work across queues
+- make the next task obvious
+- keep runtime changes small and testable
+- preserve analytics trust: no fake zero, no fake green, no fake measured, no fake recommendation, no hidden fallback
 
-This review does not change queue statuses. The main queue still exposes `RQ01` as the active reliability prompt, and the SQL queue still exposes `Q69` as the SQL audit prompt. If one global sequential execution path is desired, use the order below.
+## Reviewed queues
 
-## Scoring rules used for priority
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ12
+- `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` - Q69-Q82
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md` - RQ13-RQ24
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` - RQ25-RQ38
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md` - RQ39-RQ50
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` - RQ51-RQ63
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 
-Prompts were ranked by:
+## How an agent should use this document
 
-1. Business-decision risk: can it create a wrong action, wrong recommendation or wrong financial impact?
-2. Display/export risk: can it show a materially wrong number in tables, charts, detail or export?
-3. Fake confidence risk: can missing evidence look like true zero, good, maintain, fresh or measured?
-4. Blast radius: one endpoint vs many pages/reports/actions.
-5. Likelihood: based on code evidence already found, not theoretical possibility.
-6. Implementation dependency: can the prompt be done safely without needing a broader product decision?
-7. Testability: can it be locked with small fixtures and regression tests?
+For a normal implementation run, read only:
 
-## Global recommended execution order
+1. `docs/ai/AGENT_START_HERE.md`
+2. `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+3. this file
+4. the single target prompt section from its queue file
+5. the audit file named by that prompt
+6. source/test files in `Scope only`
 
-### Phase 0 - stop the most dangerous active Decision Board issue
+Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 1 | RQ01 | Prevents Decision Board from attaching lost-sales impact to product rows where PDC intentionally left expected impact null. This can directly create wrong action/impact ranking. | Strong. It has scope, tests, acceptance and explicit do-not-touch list. | Add exact before/after assertion names in implementation notes. Prefer no fallback at board level unless PDC supplies impact. Record tests run or explicitly mark not run. |
+## Global execution lanes
 
-### Phase 1 - high-impact UI/export errors that can show wrong numbers
+Run one prompt per feature family unless explicitly marked as a read-together family below.
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 2 | RQ39 | Derived category `revShare` ratio vs percent-unit mismatch can create a 100x display/export error. | Strong, but it still says “decide canonical contract”. | Make the prompt choose a default contract before coding: legacy `CategoryStat.revShare` is percent units unless a breaking migration is explicitly approved. Add table/chart/detail/export fixture for 25%. |
-| 3 | RQ40 | Supplier Decision percent display and export/detail can disagree between raw ratio and percent units. | Strong. Has good fixture value `0.35`. | Add explicit test target: UI display, detail snapshot payload, export request payload and generated document value must all agree. |
-| 4 | RQ51 | Color backend `insufficient_data` can appear as `Zadrzi`, turning lack of evidence into a valid recommendation. | Strong and small. | Add local enum/status changes to scope; verify counts, sort order, badge tone and export/detail. |
-| 5 | RQ57 | Inventory OOS/overstock risk sorting is page-local, not global. User can miss highest-risk SKUs. | Good but needs contract decision. | Prompt must require either true server-side global risk sort or an explicit visible label “sortira trenutnu stranu”. Do not silently keep current behavior. |
-| 6 | RQ58 | `CSV ekran` can export a different order than the risk-sorted table. | Good and small. | Make it dependent on RQ57’s final sort contract; use `displayedRows` for screen export if sort remains client-side. |
+### Lane A - actionable impact and recommendation trust
 
-### Phase 2 - date/period correctness before trend interpretation
+Do first because these can create wrong actions or wrong financial priority.
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 7 | RQ13 | Advanced/V2 date-only `toDate` can exclude the selected day. | Strong. Has half-open range rule. | Add shared date helper only if it does not expand scope; otherwise duplicate minimal normalization and create follow-up. |
-| 8 | RQ25 | Legacy Advanced has the same date boundary class as RQ13. | Strong but duplicates RQ13 concept. | Run after RQ13 or explicitly create a shared date-boundary helper task. Do not fix V2 and legacy in one prompt unless a new combined prompt is created. |
-| 9 | RQ26 | KPI current/previous period can overlap at the boundary. | Strong. Very testable. | Add exact fixture with sale at `from` and sale at previous end. Lock period length semantics. |
-| 10 | Q69 | SQL trust audit/tests before SQL runtime fixes. | Strong for SQL; it is docs/tests only and safe. | Keep as a separate SQL lane. If one agent is working globally, run after RQ01 or in parallel only with strict non-overlap. |
-| 11 | Q70 | Nivelacija zero-baseline percent semantics in SQL views. | Good but depends on Q69 evidence. | Do not start before Q69 notes define the zero-baseline contract. |
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| A1 | RQ01 | Fix backend Decision Board product expected-impact fallback. | Keep runtime scope backend/tests only. Read RQ72 for same failure class but do not mix frontend fallback unless task is explicitly expanded. |
+| A2 | RQ72 | Fix Executive fallback product lost-sales expected-impact fallback. | Run after RQ01 so frontend fallback follows the backend contract. |
+| A3 | RQ51/RQ52 | Color insufficient/missing recommendation authority. | Can be one small frontend authority task if enum/count/export surfaces are tested together. |
+| A4 | RQ59/RQ73 | Inventory signal-review expected impact in Inventory + Executive. | Prefer shared vocabulary from hardening addendum. If touching same helper, fix both surfaces in one scoped task; otherwise RQ59 first, RQ73 after. |
+| A5 | RQ74 | Supplier revenue ranking vs expected impact display. | Keep separate; requires ranking/display contract choice. |
 
-### Phase 3 - fake-zero/fake-profit and missing-cost trust
+### Lane B - 100x numeric/display/export risk
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 12 | RQ17 | Backend V2 smart reorder can inflate expected profit when cost is missing. | Strong. Clear tests and acceptance. | Add ranking assertion: missing-cost rows cannot sort/rank as high-profit solely due missing cost. |
-| 13 | RQ38 | Frontend derived smart reorder can reintroduce the same missing-cost profit bug. | Good but should depend on RQ17 contract. | After RQ17, reuse the same terms: `profitReliable=false`, nullable profit, or source warning. |
-| 14 | RQ59 | Inventory `SIGNAL_REVIEW` can still carry expected impact. | Good. Similar trust class to RQ01. | Rename/mark value as potential exposure, not expected impact, unless recommendation is actionable and evidence is sufficient. |
-| 15 | RQ60 | Inventory missing cost/value can become fake zero. | Strong. | Require row-level missing-value metadata and ensure supplier value charts/CSV do not sum unknown as zero without warning. |
-| 16 | RQ03 | Lost sales unavailable can look like true zero/good. | Strong. | Coordinate with Q80 to avoid duplicate fixes. Choose one canonical source-status contract. |
-| 17 | Q80 | SQL-side lost-sales source/confidence explicitness. | Likely overlaps RQ03. | Treat as SQL evidence/foundation for RQ03 or mark one follow-up obsolete after contract is chosen. |
-| 18 | RQ04 | Data Quality no-revenue can look green. | Strong and central. | Add Decision Board regression: no evidence must not show clean health. |
-| 19 | RQ27 | Hard-coded 35% margin fallback can create fake benchmark. | Strong. | Include supplier and category fixtures with zero cost coverage. |
-| 20 | RQ36 | Frontend derived margin defaults missing margin to 0%. | Good. | Align with backend margin contract from RQ27/RQ17. |
+Do immediately after Lane A because these can show materially wrong values.
 
-### Phase 4 - scope, lineage and consistency across pages
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| B1 | RQ39 | Derived category `revShare` ratio vs percent-unit mismatch. | Contract fixed by hardening addendum: `CategoryStat.revShare` is percent unit unless breaking migration is approved. |
+| B2 | RQ40 | Supplier Decision percent export/detail parity. | Do before RQ41/RQ42 XLSX/detail typing. |
+| B3 | RQ79 | Pilot intake durable report percent ratio rendered as raw number. | Same unit family as RQ40, but separate backend report file. Small after RQ40 or immediately if report is being used. |
+| B4 | RQ41/RQ42/RQ46 | Export/detail type/trust metadata preservation. | Read together, but implement only after percent units are normalized. |
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 21 | RQ05 | Canonical dataScope consistency audit across modules. | Good but audit-shaped. | Must produce a concrete matrix and create follow-up fixes; do not patch random endpoints in this task. |
-| 22 | Q81 | SQL-level dataScope/store/supplier filtering consistency. | Good but overlaps RQ05. | Treat Q81 as SQL-specific input to RQ05 or run after RQ05 defines global semantics. |
-| 23 | RQ53 | Color/ShoeType list/detail can disagree on dataScope. | Strong and concrete. | If RQ05 is not done, at least preserve current global dataScope consistently; document assumed contract. |
-| 24 | RQ54 | Vendor pre/post supports dataScope/store but page omits them. | Strong. | Add both current and previous request tests; previous and current must use identical filter lineage. |
-| 25 | RQ61 | Inventory freshness can use secondary panel timestamps. | Good. | Show panel-specific freshness if timestamps differ materially. |
-| 26 | RQ62 | Vendor previous-period request failure can look like genuine no-baseline. | Strong enough. | Add explicit `previousComparisonError` state and no “Nova baza” label on transport failure. |
+### Lane C - fake zero / fake green / fake measured
 
-### Phase 5 - report/export/data trust polish after numeric contracts are fixed
+This lane prevents missing evidence from looking safe.
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 27 | RQ41 | XLSX cells are strings, weakening Excel analysis. | Good. | Do after RQ40 so percent raw values are already normalized before typing cells. |
-| 28 | RQ42 | Detail snapshot stringifies raw values and can disagree with table. | Good. | Must reuse the same percent-unit contract from RQ39/RQ40. |
-| 29 | RQ45 | KPI margin card hides margin coverage. | Good. | Add a visible trust badge, not only hidden tooltip. |
-| 30 | RQ46 | Exports can drop trust metadata. | Good. | Add visible or export-only trust columns. Do not overload business columns. |
-| 31 | RQ43 | Browser report preview can look current when backend report fails. | Good. | Add watermark/savedAt and disable or confirm export/print in preview mode. |
-| 32 | RQ47 | Supplier action source key omits some filters. | Good. | Decide identity-defining vs display-only filters before adding all filters blindly. |
-| 33 | RQ48 | Duplicate guard checks only first 200 actions per status. | Good but lower risk if backend upsert is safe. | Verify backend idempotency before expanding UI pagination. |
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| C1 | RQ64 | Inventory snapshot null evidence must not become `0/info/false`. | Covers forecast, rebalance, alerts and size-curve. Fold RQ71 into this unless size-curve needs a separate DTO contract. |
+| C2 | RQ60/RQ67 | Inventory missing cost/value and forecast workflow value trust. | RQ60 establishes row value contract; RQ67 follows for workflow payload. |
+| C3 | RQ04/RQ75 | Data Quality no-data/no-sales must not show green. | Treat as one fake-green family. Backend/Decision Board first if RQ04 is active; DataQualityPage surface from RQ75 after or in same scoped PR if tests are small. |
+| C4 | RQ03/Q80 | Lost-sales unavailable vs true zero/source confidence. | Do not implement independently. Choose one source-status vocabulary and mark the other as SQL-specific follow-up or obsolete. |
+| C5 | RQ81 | `not_measured` must not get fake measured timestamp. | Smallest action/outcome P0. Can be done before broader outcome denominator work. |
+| C6 | RQ86 | Authoritative outcome status needs evidence or qualitative label. | Depends on RQ81; may require product contract decision. |
 
-### Phase 6 - lower-priority semantics and naming cleanup
+### Lane D - date, period and denominator contracts
 
-| Global rank | Prompt | Why now | Quality review | Required hardening |
-|---|---|---|---|---|
-| 34 | RQ14 | Heatmap transaction can mean lines, not receipts. | Good. | Must choose label vs formula; do not change both without a test. |
-| 35 | RQ15 | Basket affinity denominator can include baskets not eligible for pairs. | Good. | Add `pairEligibleTransactions` if keeping old denominator for compatibility. |
-| 36 | RQ16/RQ20/RQ44 | No-baseline and zero change display issues. | Good but distributed. | Consider one shared baseline-status display helper after backend contracts are fixed. |
-| 37 | RQ28/RQ31/RQ23 | No-data empty meta in ABC/daily/supplier-score V2. | Good. | Standardize with RQ24 meta contract. |
-| 38 | RQ29/RQ30/RQ32/RQ33/RQ37/RQ49 | Legacy Advanced aging/statistical/value-label issues. | Valid but less urgent than current operational Decision Board/export/sort bugs. | Fix only after date/percent/cost contracts are stable. |
-| 39 | RQ55/RQ56/RQ63 | Denominator/cost fallback/naming clarity. | Valid but lower risk. | Good candidates for small cleanup PRs once P0s are done. |
-| 40 | RQ50 | Top-N chart semantics. | Useful UX trust improvement. | Do after numeric correctness; cosmetic labels should not block formula fixes. |
+Do before interpreting trends and outcome rates.
+
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| D1 | RQ13 | Advanced/V2 date-only `toDate` whole-day/half-open fix. | Use shared date contract, but do not expand beyond allowed scope. |
+| D2 | RQ25 | Legacy Advanced same date boundary class. | Run after RQ13 or create one shared helper task if safe. |
+| D3 | RQ26 | Current/previous period boundary overlap. | Separate from D1/D2 because comparison semantics need exact fixture. |
+| D4 | RQ02/RQ12 | Product Decision Center returned/top/all-row denominators. | Can be one PDC denominator contract task if scope stays backend/tests/docs. |
+| D5 | RQ65/RQ77 | Returned count vs total matching count/truncation. | Same count vocabulary, different modules. Do not share DTOs unless natural. |
+| D6 | RQ82/RQ83/RQ84 | Action outcome lifecycle/rate/impact-sample denominators. | Read together. Prefer one contract/design note first, then one implementation task. |
+| D7 | RQ85 | Outcome summary default created/resolved/measured window. | Product decision required; do not guess silently. |
+
+### Lane E - dataScope, store and filter lineage
+
+Do after immediate wrong-impact and fake-green fixes unless the user is testing scoped data.
+
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| E1 | RQ05/Q81 | Canonical dataScope/store/supplier matrix. | RQ05 owns global matrix; Q81 is SQL-specific input. Do audit before random endpoint fixes. |
+| E2 | RQ53/RQ54 | Color/ShoeType and Vendor list/detail/current/previous scope parity. | Run after E1 if possible; otherwise document assumed contract. |
+| E3 | RQ68/RQ69 | Inventory signal search/store lineage. | Can be one frontend/API contract task if labels and requests are tested. |
+| E4 | RQ78/RQ06 | Data Quality top-offender revenue impact dataScope. | RQ78 is the more precise later prompt. Do not run both independently. |
+
+### Lane F - workflow completeness and lower-risk trust UX
+
+| Rank | Prompt | Action | Merge / split rule |
+|---|---|---|---|
+| F1 | RQ80/RQ07 | Missing-cost issue workflow. | RQ80 is the updated workflow prompt; RQ07 is older evidence. Use RQ80 as implementation prompt. |
+| F2 | RQ87 | Self-contained outcome resolution ledger. | After RQ86 settles evidence contract. |
+| F3 | RQ88 | Split/relabel done vs rejected KPI. | Small UX task. |
+| F4 | RQ76 | One-point trend should be neutral/no-trend. | Small UX trust task. |
+| F5 | RQ43/RQ50/RQ55/RQ56/RQ63 | Report preview, top-N labels, denominator/naming cleanup. | Later cleanup; do not block P0/P1 correctness. |
+
+### SQL lane
+
+SQL queue remains a separate lane:
+
+1. Q69 first: docs/tests audit only.
+2. Q70 after Q69: nivelacija zero-baseline.
+3. Q71/Q77/Q80/Q81 only after Q69 defines shared SQL trust vocabulary.
+
+SQL prompts should not be merged with frontend fixes unless a new prompt explicitly permits it.
+
+## Updated top-20 recommended sequence
+
+This is the safest single-agent sequence if only one agent is working:
+
+1. RQ01
+2. RQ72
+3. RQ39
+4. RQ40
+5. RQ51/RQ52
+6. RQ57/RQ58
+7. RQ64
+8. RQ81
+9. RQ86 contract decision/tests or block
+10. RQ13
+11. RQ25
+12. RQ26
+13. Q69
+14. RQ17
+15. RQ38
+16. RQ59/RQ73
+17. RQ60/RQ67
+18. RQ03/Q80
+19. RQ04/RQ75
+20. RQ05/Q81 matrix
+
+Parallel-safe options if separate agents are careful:
+
+- Q69 can run in a SQL-only branch while RQ01 runs in backend Decision Board.
+- RQ39 can run frontend-only after RQ01 if it does not touch Decision Board files.
+- RQ76/RQ88 are safe small UX tasks, but should not displace P0/P1 tasks.
 
 ## Prompt quality assessment
 
-### Strong prompts
+### Ready-quality prompts
 
-These are ready-quality prompts: RQ01, RQ03, RQ04, RQ13, RQ17, RQ25, RQ26, RQ39, RQ40, RQ51, RQ57, RQ58, RQ60, Q69, Q70.
+These are clear enough for direct execution with minimal extra research:
 
-Common strengths:
+- RQ01
+- RQ39
+- RQ40
+- RQ51/RQ52
+- RQ57/RQ58
+- RQ64
+- RQ72
+- RQ75
+- RQ79
+- RQ81
+- Q69
 
-- They name the exact failure mode.
-- They have narrow scope and do-not-touch lists.
-- They include fixtures/tests.
-- They define acceptance in observable terms.
+They name concrete files/behavior, have a bounded scope and include a meaningful test matrix.
 
-### Prompts that need contract tightening before execution
+### Prompts that need a contract decision before runtime coding
 
-- RQ39: choose canonical percent units before coding.
-- RQ57: choose global server sort vs explicit page-local sort before coding.
-- RQ05/Q81/RQ53/RQ54: avoid fragmented dataScope fixes; create/obey one canonical dataScope matrix.
-- RQ03/Q80: avoid duplicate lost-sales source-status contracts.
-- RQ13/RQ25: avoid two incompatible date helper implementations.
-- RQ17/RQ38/RQ59/RQ60: use one shared vocabulary for `expectedImpact`, `potentialExposure`, `profitReliable`, `costMissing`.
+- RQ05/Q81: canonical dataScope/store semantics.
+- RQ57: global server sort vs page-local label.
+- RQ74: whether supplier revenue is context or impact.
+- RQ82/RQ83/RQ84: whether outcome summary is closed-only or lifecycle-aware.
+- RQ85: default outcome period based on created/resolved/measured date.
+- RQ86: evidence-required vs qualitative outcomes.
 
-### Prompts that are valuable but should stay later
+Agents should produce a short contract note or mark `BLOCKED/PARTIAL` instead of guessing.
 
-- RQ41/RQ42 are important for exports, but only after percent/value contracts are fixed.
-- RQ43/RQ50 improve interpretation and trust, but do not fix the underlying numbers.
-- RQ55/RQ63 are mostly semantic clarity, not first-order wrong values.
+### Prompts that should be treated as replacements/refinements
 
-## Recommended next READY sequence
+- RQ78 refines older RQ06. Use RQ78 for implementation and cite RQ06 as older evidence if needed.
+- RQ80 refines older RQ07. Use RQ80 for implementation.
+- RQ71 is mostly covered by RQ64. Run separately only if RQ64 cannot safely change size-curve booleans.
+- RQ72 is the Executive frontend companion to RQ01, not a separate business contract.
+- RQ75 is the DataQualityPage surface companion to RQ04.
 
-If a single global queue is desired, the safest sequence is:
+### Prompts that are too broad unless split during execution
 
-1. RQ01
-2. RQ39
-3. RQ40
-4. RQ51
-5. RQ57
-6. RQ58
-7. Q69
-8. RQ13
-9. RQ25
-10. RQ26
-11. RQ17
-12. RQ38
-13. RQ59
-14. RQ60
-15. RQ03 or Q80, but not both independently
-16. RQ04
-17. RQ27
-18. RQ05/Q81 audit before concrete dataScope fixes
-19. RQ53
-20. RQ54
+- RQ64 touches four handlers. If the patch gets large, split by DTO contract first, then handler-by-handler.
+- RQ05 can become too broad. It should produce a matrix first, not runtime fixes.
+- RQ82/RQ83/RQ84 should be one denominator contract note first, then implementation.
 
-Reason: this sequence first removes wrong impact/recommendation displays, then fixes obvious UI/export mismatches, then date/period correctness, then fake cost/zero semantics, then cross-surface lineage.
+## Token-saving instructions for agents
 
-## Prompt writing improvement checklist
+1. Do not read all queue files.
+2. Start from this file and the target prompt only.
+3. Read sibling prompts only when `Merge / split rule` says so.
+4. Prefer `git grep`/search for the exact function names from `Evidence already found`.
+5. Do not open broad pages end-to-end unless the prompt touches that page.
+6. Do not inspect SQL migrations for frontend-only tasks.
+7. Do not inspect frontend pages for SQL-only Q69/Q70 unless the prompt says surface parity is in scope.
+8. Do not re-audit old findings before coding unless evidence contradicts the prompt.
+9. If evidence appears stale, verify the exact file/function and update the prompt note instead of expanding scope.
+10. Final answer must list checks run; if none, say so.
 
-Every future analytics reliability prompt should include these extra sections, in addition to the existing protocol template:
+## Execution checklist for every prompt
 
-### Evidence already found
+Before coding, fill the safety gate from `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`.
 
-- Files and functions already inspected.
-- Exact observed behavior.
-- Whether the issue is confirmed, likely, suspicious or only a contract gap.
+After coding, record:
 
-### Contract decision required
-
-State whether the prompt is allowed to decide the product contract. If yes, list the default contract. If no, the task should add tests/docs and stop as `BLOCKED` or `PARTIAL`.
-
-### Unit and denominator contract
-
-For any percent/share/rate/average:
-
-- ratio or percent units?
-- numerator?
-- denominator?
-- visible rows, all analyzed rows, filtered rows, or pair-eligible rows?
-- true zero vs missing baseline?
-
-### Evidence status and fake-confidence guard
-
-For any zero/good/maintain/healthy/fresh/measured output:
-
-- Can this state occur because evidence is missing?
-- If evidence is missing, what explicit status/metadata is returned?
-- Does UI/export preserve that metadata?
-
-### Surface parity
-
-The prompt must say which surfaces must agree:
-
-- API response
-- frontend table
-- chart/tooltip
-- detail drawer
-- CSV/XLSX/PDF/export payload
-- action queue payload
-
-### Test matrix
-
-At minimum, include:
-
-- normal positive case
-- true zero case
-- missing evidence case
-- no-baseline case
-- low-coverage/fallback case
-- export/detail case when the issue affects UI
-
-### Stop conditions
-
-The agent must stop and mark `BLOCKED`/`PARTIAL` if:
-
-- a required contract is ambiguous
-- tests require a real DB and no fixture path exists
-- the fix touches files outside scope
-- two prompt families need to be merged
-- the task would change business semantics without before/after documentation
+```md
+Prompt:
+Files changed:
+Runtime behavior changed: yes/no
+Contract changed: yes/no
+True-zero test:
+Missing/unknown test:
+UI/detail/export/action parity test:
+Checks run:
+Checks not run:
+Remaining risk:
+Next prompt:
+```
 
 ## Final recommendation
 
-Do not start randomly from each addendum's local P0. Treat P0 across all queues as candidates, then apply dependency and blast-radius ordering. The best next move remains RQ01. After RQ01, fix the high-risk UI/export correctness prompts RQ39/RQ40/RQ51/RQ57/RQ58 before lower-priority chart polish.
+The queues are now strong enough for agent execution, but the agent should not start from local addendum P0. Use the global lane order above. The biggest token saver is to treat this document as the routing layer and avoid reading every addendum before each fix.
