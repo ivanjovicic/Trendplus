@@ -29,6 +29,7 @@ Primary goals:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+- `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`
 
 ## How an agent should use this document
 
@@ -39,7 +40,8 @@ For a normal implementation run, read only:
 3. this file
 4. the single target prompt section from its queue file
 5. the audit file named by that prompt
-6. source/test files in `Scope only`
+6. `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md` only when this index says the prompt was contract-gated or has a prepared default
+7. source/test files in `Scope only`
 
 Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
 
@@ -57,7 +59,7 @@ Do first because these can create wrong actions or wrong financial priority.
 | A2 | RQ72 | Fix Executive fallback product lost-sales expected-impact fallback. | Run after RQ01 so frontend fallback follows the backend contract. |
 | A3 | RQ51/RQ52 | Color insufficient/missing recommendation authority. | Can be one small frontend authority task if enum/count/export surfaces are tested together. |
 | A4 | RQ59/RQ73 | Inventory signal-review expected impact in Inventory + Executive. | Prefer shared vocabulary from hardening addendum. If touching same helper, fix both surfaces in one scoped task; otherwise RQ59 first, RQ73 after. |
-| A5 | RQ74 | Supplier revenue ranking vs expected impact display. | Keep separate; requires ranking/display contract choice. |
+| A5 | RQ74 | Supplier revenue ranking vs expected impact display. | Prepared default exists: treat revenue as context, not expected impact. Read `ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`. |
 
 ### Lane B - 100x numeric/display/export risk
 
@@ -80,8 +82,8 @@ This lane prevents missing evidence from looking safe.
 | C2 | RQ60/RQ67 | Inventory missing cost/value and forecast workflow value trust. | RQ60 establishes row value contract; RQ67 follows for workflow payload. |
 | C3 | RQ04/RQ75 | Data Quality no-data/no-sales must not show green. | Treat as one fake-green family. Backend/Decision Board first if RQ04 is active; DataQualityPage surface from RQ75 after or in same scoped PR if tests are small. |
 | C4 | RQ03/Q80 | Lost-sales unavailable vs true zero/source confidence. | Do not implement independently. Choose one source-status vocabulary and mark the other as SQL-specific follow-up or obsolete. |
-| C5 | RQ81 | `not_measured` must not get fake measured timestamp. | Smallest action/outcome P0. Can be done before broader outcome denominator work. |
-| C6 | RQ86 | Authoritative outcome status needs evidence or qualitative label. | Depends on RQ81; may require product contract decision. |
+| C5 | RQ81 | `not_measured` must not get fake measured timestamp. | Ready. Can be done before broader outcome denominator work. |
+| C6 | RQ86 | Authoritative outcome status needs evidence or qualitative label. | Prepared staged default exists, but hard validation remains contract-gated. Read prep doc; run after RQ81. |
 
 ### Lane D - date, period and denominator contracts
 
@@ -93,9 +95,9 @@ Do before interpreting trends and outcome rates.
 | D2 | RQ25 | Legacy Advanced same date boundary class. | Run after RQ13 or create one shared helper task if safe. |
 | D3 | RQ26 | Current/previous period boundary overlap. | Separate from D1/D2 because comparison semantics need exact fixture. |
 | D4 | RQ02/RQ12 | Product Decision Center returned/top/all-row denominators. | Can be one PDC denominator contract task if scope stays backend/tests/docs. |
-| D5 | RQ65/RQ77 | Returned count vs total matching count/truncation. | Same count vocabulary, different modules. Do not share DTOs unless natural. |
-| D6 | RQ82/RQ83/RQ84 | Action outcome lifecycle/rate/impact-sample denominators. | Read together. Prefer one contract/design note first, then one implementation task. |
-| D7 | RQ85 | Outcome summary default created/resolved/measured window. | Product decision required; do not guess silently. |
+| D5 | RQ65/RQ77 | Returned count vs total matching count/truncation. | Same count vocabulary prepared in prep doc; different modules. Do not share DTOs unless natural. |
+| D6 | RQ82/RQ83/RQ84 | Action outcome lifecycle/rate/impact-sample denominators. | Prepared additive contract exists. Read prep doc. Prefer docs/tests first, then additive runtime fields. |
+| D7 | RQ85 | Outcome summary default created/resolved/measured window. | Prepared default exists: keep current created cohort but label it clearly. Changing default remains contract-gated. |
 
 ### Lane E - dataScope, store and filter lineage
 
@@ -103,7 +105,7 @@ Do after immediate wrong-impact and fake-green fixes unless the user is testing 
 
 | Rank | Prompt | Action | Merge / split rule |
 |---|---|---|---|
-| E1 | RQ05/Q81 | Canonical dataScope/store/supplier matrix. | RQ05 owns global matrix; Q81 is SQL-specific input. Do audit before random endpoint fixes. |
+| E1 | RQ05/Q81 | Canonical dataScope/store/supplier matrix. | Prepared first task: matrix/audit only, no runtime fixes. Read prep doc. |
 | E2 | RQ53/RQ54 | Color/ShoeType and Vendor list/detail/current/previous scope parity. | Run after E1 if possible; otherwise document assumed contract. |
 | E3 | RQ68/RQ69 | Inventory signal search/store lineage. | Can be one frontend/API contract task if labels and requests are tested. |
 | E4 | RQ78/RQ06 | Data Quality top-offender revenue impact dataScope. | RQ78 is the more precise later prompt. Do not run both independently. |
@@ -140,7 +142,7 @@ This is the safest single-agent sequence if only one agent is working:
 6. RQ57/RQ58
 7. RQ64
 8. RQ81
-9. RQ86 contract decision/tests or block
+9. RQ86 staged qualitative-outcome labelling after RQ81; hard validation can block
 10. RQ13
 11. RQ25
 12. RQ26
@@ -169,24 +171,23 @@ These are clear enough for direct execution with minimal extra research:
 - RQ39
 - RQ40
 - RQ51/RQ52
-- RQ57/RQ58
+- RQ57/RQ58 with prep doc phase-1 contract
 - RQ64
 - RQ72
+- RQ74 with prep doc context-revenue contract
 - RQ75
 - RQ79
 - RQ81
+- RQ85 copy/label phase only
 - Q69
 
-They name concrete files/behavior, have a bounded scope and include a meaningful test matrix.
+They name concrete files/behavior, have a bounded scope and include a meaningful test matrix or a prepared default in `ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`.
 
-### Prompts that need a contract decision before runtime coding
+### Prompts that still need a contract decision before full runtime behavior change
 
-- RQ05/Q81: canonical dataScope/store semantics.
-- RQ57: global server sort vs page-local label.
-- RQ74: whether supplier revenue is context or impact.
-- RQ82/RQ83/RQ84: whether outcome summary is closed-only or lifecycle-aware.
-- RQ85: default outcome period based on created/resolved/measured date.
-- RQ86: evidence-required vs qualitative outcomes.
+- RQ05/Q81: runtime dataScope/store fixes wait for matrix output.
+- RQ82/RQ83/RQ84: additive denominator metadata is prepared; breaking/renaming fields still needs compatibility decision.
+- RQ86: qualitative labelling is prepared; hard validation still needs product decision.
 
 Agents should produce a short contract note or mark `BLOCKED/PARTIAL` instead of guessing.
 
@@ -202,20 +203,21 @@ Agents should produce a short contract note or mark `BLOCKED/PARTIAL` instead of
 
 - RQ64 touches four handlers. If the patch gets large, split by DTO contract first, then handler-by-handler.
 - RQ05 can become too broad. It should produce a matrix first, not runtime fixes.
-- RQ82/RQ83/RQ84 should be one denominator contract note first, then implementation.
+- RQ82/RQ83/RQ84 should be one denominator contract note first, then additive implementation.
 
 ## Token-saving instructions for agents
 
 1. Do not read all queue files.
 2. Start from this file and the target prompt only.
 3. Read sibling prompts only when `Merge / split rule` says so.
-4. Prefer `git grep`/search for the exact function names from `Evidence already found`.
-5. Do not open broad pages end-to-end unless the prompt touches that page.
-6. Do not inspect SQL migrations for frontend-only tasks.
-7. Do not inspect frontend pages for SQL-only Q69/Q70 unless the prompt says surface parity is in scope.
-8. Do not re-audit old findings before coding unless evidence contradicts the prompt.
-9. If evidence appears stale, verify the exact file/function and update the prompt note instead of expanding scope.
-10. Final answer must list checks run; if none, say so.
+4. Read `ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md` only for prompts listed as prepared/gated here.
+5. Prefer `git grep`/search for the exact function names from `Evidence already found`.
+6. Do not open broad pages end-to-end unless the prompt touches that page.
+7. Do not inspect SQL migrations for frontend-only tasks.
+8. Do not inspect frontend pages for SQL-only Q69/Q70 unless the prompt says surface parity is in scope.
+9. Do not re-audit old findings before coding unless evidence contradicts the prompt.
+10. If evidence appears stale, verify the exact file/function and update the prompt note instead of expanding scope.
+11. Final answer must list checks run; if none, say so.
 
 ## Execution checklist for every prompt
 
@@ -239,4 +241,4 @@ Next prompt:
 
 ## Final recommendation
 
-The queues are now strong enough for agent execution, but the agent should not start from local addendum P0. Use the global lane order above. The biggest token saver is to treat this document as the routing layer and avoid reading every addendum before each fix.
+The queues are now strong enough for agent execution, but the agent should not start from local addendum P0. Use the global lane order above. The biggest token saver is to treat this document as the routing layer and read the waiting-prompt prep document only when a prompt is explicitly listed as prepared/gated.
