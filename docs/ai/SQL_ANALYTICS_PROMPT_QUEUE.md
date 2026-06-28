@@ -29,6 +29,14 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q72 | WAITING | supplier-sales-stats-performance | Review endpoint query plan and safe service split |
 | Q73 | WAITING | supplier-sales-stats-verification | Harden manual verification SQL script/runbook |
 | Q74 | WAITING | analytics-refresh-window-contracts | Lock refresh and windowed MV contracts in tests |
+| Q75 | WAITING | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
+| Q76 | WAITING | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
+| Q77 | WAITING | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
+| Q78 | WAITING | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
+| Q79 | WAITING | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
+| Q80 | WAITING | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
+| Q81 | WAITING | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
+| Q82 | WAITING | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
 
 ---
 
@@ -68,6 +76,7 @@ The analytics SQL layer has several places where missing evidence, zero baseline
 - `AGENTS.md`
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+- `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md`
 - `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
 - `Database/Migrations/018_AddSupplierDecisionHubViews.sql`
 - `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
@@ -81,9 +90,10 @@ The analytics SQL layer has several places where missing evidence, zero baseline
    - `COALESCE(..., 0)` cost/post-signal behavior in supplier-decision views
    - 90d/180d duplicated formula fragments and output column expectations
    - refresh-list presence for `mv_supplier_decision_score_cache_90d` and `mv_supplier_decision_score_cache_180d`
-2. Update `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` with exact findings from the tests.
-3. Mark which findings are safe to fix next and which need DB/EXPLAIN evidence.
-4. Do not change runtime SQL yet.
+2. Include second-pass findings from `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md` in the final notes.
+3. Update `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` with exact findings from the tests.
+4. Mark which findings are safe to fix next and which need DB/EXPLAIN evidence.
+5. Do not change runtime SQL yet.
 
 ### Checks
 
@@ -95,7 +105,7 @@ The analytics SQL layer has several places where missing evidence, zero baseline
 
 - SQL trust risks are documented with test-backed evidence.
 - No production SQL behavior changes.
-- Q70-Q74 can be refined from Q69 evidence.
+- Q70-Q82 can be refined from Q69 evidence.
 - Queue entry is updated with changed files, checks, risk and next prompt.
 
 ---
@@ -366,3 +376,421 @@ The 90d and 180d materialized views are present and included in refresh options,
 - Windowed MV refresh and fallback assumptions are covered by tests.
 - No formula or endpoint behavior changes.
 - Queue notes identify the next safe SQL task.
+
+---
+
+## Q75 - Supplier decision windowed MV startup readiness audit
+
+Status: WAITING
+Ready after: Q69 DONE; Q74 DONE
+Priority: P1
+Type: backend/tests/docs
+Feature family: supplier-decision-windowed-readiness
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q75-<agent>.lock.md`
+Commit suggestion: `test(analytics): audit supplier decision windowed mv readiness`
+
+### Why
+
+Startup readiness and cache-count helpers currently focus on the all-time supplier decision cache objects, while the nightly refresh list also includes 90d and 180d decision-score MVs. Missing windowed MVs can therefore be invisible in startup readiness evidence.
+
+### Scope only
+
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs`
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+- `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md`
+
+### Do not touch
+
+- materialized-view formulas
+- worker schedule/catch-up behavior
+- frontend pages
+- production deploy docs
+
+### Do
+
+1. Add tests that document which supplier-decision MVs startup readiness checks prove today.
+2. Decide whether 90d/180d should be:
+   - logged only,
+   - checked as readiness warnings,
+   - or included in build readiness.
+3. Do not make startup perform heavy refresh by default.
+4. If code changes are needed, keep them readiness/logging-only.
+
+### Checks
+
+- `git diff --check`
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecisionSchemaSqlTests|DatabaseInitializer"`
+
+### Acceptance
+
+- Windowed MV startup readiness is explicit.
+- Missing 90d/180d objects cannot be silently treated as fully healthy without a documented decision.
+- No SQL formula change is mixed in.
+
+---
+
+## Q76 - Supplier decision precomputed/live SQL parity matrix
+
+Status: WAITING
+Ready after: Q69 DONE; Q71 DONE or explicitly not required
+Priority: P0
+Type: backend/tests/docs
+Feature family: supplier-decision-query-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q76-<agent>.lock.md`
+Commit suggestion: `test(analytics): map supplier decision sql parity`
+
+### Why
+
+Supplier decision uses two query contracts: precomputed MV SQL and live CTE SQL. They must not drift on recommendation, confidence, period, filter, nullability or ranking semantics.
+
+### Scope only
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+- optional new `docs/qa/SUPPLIER_DECISION_SQL_PARITY.md`
+
+### Do not touch
+
+- SQL migration files
+- frontend pages
+- decision board aggregate implementation
+- ML training code
+
+### Do
+
+1. Create a parity matrix for precomputed vs live paths.
+2. Cover:
+   - requested/effective dataset
+   - 30d -> 90d helper behavior
+   - dataScope eligibility
+   - store/category/gender/season filters
+   - confidence and recommendation code behavior
+   - null/zero field handling
+3. Add string-level or unit tests where feasible.
+4. Do not change formulas unless a tiny discrepancy is proven safe and isolated.
+
+### Checks
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecision"`
+
+### Acceptance
+
+- Query path differences are intentional and documented.
+- Any real parity gap becomes a new smaller prompt.
+- No broad SQL rewrite.
+
+---
+
+## Q77 - Supplier decision nullable reader and detail-query trust audit
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P0
+Type: backend/tests/docs
+Feature family: supplier-decision-null-reader
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q77-<agent>.lock.md`
+Commit suggestion: `docs(analytics): audit supplier decision nullable reads`
+
+### Why
+
+Supplier decision reader helpers currently convert `DBNull` to `0`, `0m` or empty string. That is safe for some display fields but risky for fields where null means unknown, not zero.
+
+### Scope only
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- supplier decision endpoint tests
+- optional `docs/qa/SUPPLIER_DECISION_NULLABILITY_AUDIT.md`
+
+### Do not touch
+
+- migration SQL
+- scoring formulas
+- frontend display code
+
+### Do
+
+1. List every field read through `GetInt32`, `GetDecimal`, `GetString` in supplier decision paths.
+2. Classify each field as:
+   - observed zero is OK
+   - null should remain nullable
+   - empty string is acceptable
+   - needs explicit unavailable flag
+3. Add focused tests for the highest-risk fields if feasible.
+4. Do not globally change helper behavior.
+
+### Checks
+
+- `git diff --check`
+- targeted supplier decision tests if code changes
+
+### Acceptance
+
+- Nullability risks are documented field-by-field.
+- Any required DTO change is split into a follow-up prompt.
+- No fake-zero behavior is introduced.
+
+---
+
+## Q78 - Backend encoding guardrail for analytics decision strings
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P1
+Type: tooling/backend-copy/tests
+Feature family: analytics-backend-encoding
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q78-<agent>.lock.md`
+Commit suggestion: `chore(analytics): extend backend encoding guardrail`
+
+### Why
+
+Supplier decision endpoint contains user-facing Serbian strings with mojibake in recommendation titles/reasons. The existing encoding work should cover backend analytics decision strings too.
+
+### Scope only
+
+- backend analytics endpoint/source files containing user-facing strings
+- existing encoding script/tests if present
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- focused tests or script allowlist changes
+
+### Do not touch
+
+- recommendation codes
+- SQL formulas
+- frontend layouts
+- unrelated legacy screens unless required by the encoding check
+
+### Do
+
+1. Extend the encoding/mojibake guardrail to backend analytics user-facing strings.
+2. Fix visible mojibake in supplier decision recommendation titles/reasons.
+3. Keep enum/code values unchanged.
+4. Keep any allowlist explicit and small.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run check:encoding` if the script is frontend-owned
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- targeted tests if a backend test exists
+
+### Acceptance
+
+- Analytics backend copy no longer contains obvious mojibake in maintained surfaces.
+- Guardrail catches future backend decision-string encoding regressions or documents why it cannot yet.
+- No business logic changes.
+
+---
+
+## Q79 - Dashboard filter/list fallback meta contract
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P1
+Type: backend/frontend-contract
+Feature family: analytics-filter-fallback-meta
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q79-<agent>.lock.md`
+Commit suggestion: `docs(analytics): define filter fallback meta contract`
+
+### Why
+
+Some dashboard endpoints return explicit `Meta` errors on database issues, while filter/list endpoints can return empty arrays on timeout/database failure. Empty filters can look like valid no-data instead of degraded analytics.
+
+### Scope only
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- frontend filter consumers only if a tiny backward-compatible handling change is required
+- optional `docs/qa/ANALYTICS_FILTER_FALLBACK_CONTRACT.md`
+
+### Do not touch
+
+- supplier-decision SQL formulas
+- inventory/replenishment algorithms
+- deployment docs
+
+### Do
+
+1. Audit filter/list endpoints that return empty collections on failure.
+2. Decide backward-compatible contract:
+   - preserve array and add header/meta elsewhere, or
+   - wrap with meta only for new endpoint variants.
+3. Document UI behavior for ancillary filter/list failures.
+4. Add tests for no silent empty failure if code changes.
+
+### Checks
+
+- `git diff --check`
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- frontend tests only if UI handling changes
+
+### Acceptance
+
+- Ancillary filter query failure cannot be silently confused with a valid empty list.
+- Existing consumers are not broken.
+
+---
+
+## Q80 - Lost-sales validation source/confidence contract
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P0
+Type: backend/tests/docs
+Feature family: lost-sales-source-confidence
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q80-<agent>.lock.md`
+Commit suggestion: `docs(analytics): define lost sales source confidence`
+
+### Why
+
+Lost-sales validation can return `(0, 0)` when the view/connection is unavailable or when fallback evidence is sparse. For OOS/replenishment decisions, unavailable evidence must not look like clean zero lost sales.
+
+### Scope only
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- validation/lost-sales DTOs/tests if needed
+- optional `docs/qa/LOST_SALES_VALIDATION_CONTRACT.md`
+
+### Do not touch
+
+- replenishment algorithm
+- decision board ranking
+- supplier decision SQL
+
+### Do
+
+1. Document the source hierarchy:
+   - `vw_analytics_oos_lost_sales`
+   - recent-sales/current-stock fallback
+   - unavailable
+2. Add source/confidence/status metadata if a small compatible DTO change exists.
+3. Ensure unavailable is not presented as green zero.
+4. Add tests for view unavailable, fallback used and true zero cases.
+
+### Checks
+
+- `git diff --check`
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- targeted validation/lost-sales tests if code changes
+
+### Acceptance
+
+- Lost-sales zero is distinguishable from unavailable/unknown.
+- OOS/replenishment trust semantics stay conservative.
+
+---
+
+## Q81 - Analytics dataScope/store/supplier SQL consistency audit
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P1
+Type: docs/tests
+Feature family: analytics-datascope-sql-consistency
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q81-<agent>.lock.md`
+Commit suggestion: `docs(analytics): audit sql filter consistency`
+
+### Why
+
+Analytics endpoints apply `dataScope`, store and supplier filters through different SQL paths. The same dashboard request can combine product, inventory, supplier, action and validation data with different filter semantics.
+
+### Scope only
+
+- analytics endpoint SQL builders/helpers
+- `docs/qa/ANALYTICS_SQL_FILTER_CONSISTENCY_AUDIT.md`
+- focused tests only if a tiny invariant is easy to lock
+
+### Do not touch
+
+- SQL formulas
+- frontend routing
+- action write security
+
+### Do
+
+1. Map how each raw SQL helper interprets:
+   - `dataScope=all`
+   - `dataScope=existing`
+   - `dataScope=imported`
+   - `storeId`
+   - `supplierId`
+2. Identify mismatches between supplier decision, dashboard cached endpoints, lost-sales and supplier-sales-stats.
+3. Propose one follow-up prompt per mismatch.
+4. Do not change behavior in this audit unless a typo-level bug is obvious and isolated.
+
+### Checks
+
+- `git diff --check`
+- targeted tests only if code changes
+
+### Acceptance
+
+- Filter semantics are documented across raw SQL helpers.
+- Mismatches are visible before any SQL rewrite.
+
+---
+
+## Q82 - SQL timeout, cancellation and observability consistency audit
+
+Status: WAITING
+Ready after: Q69 DONE
+Priority: P2
+Type: docs/backend-observability
+Feature family: analytics-sql-observability
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/Q82-<agent>.lock.md`
+Commit suggestion: `docs(analytics): audit sql observability timeouts`
+
+### Why
+
+Analytics SQL paths use different timeout/cancellation/error-reporting approaches: 25s hard query timeout in supplier decision, endpoint-specific timeout CTS for filters, long worker MV refresh timeouts and different meta/fallback behavior.
+
+### Scope only
+
+- analytics endpoint timeout/cancellation paths
+- `Workers/NightlyAnalyticsRefreshWorker.cs`
+- optional `docs/qa/ANALYTICS_SQL_OBSERVABILITY_TIMEOUTS.md`
+- tests only if existing helpers make this cheap
+
+### Do not touch
+
+- SQL formulas
+- cache TTLs unless documented as a follow-up
+- deployment workflows
+
+### Do
+
+1. Inventory command timeouts and cancellation behavior across analytics SQL paths.
+2. Map user-visible response behavior:
+   - explicit meta error
+   - empty fallback
+   - 503/problem
+   - partial warning
+3. Document logging/correlationId expectations.
+4. Recommend small consistency fixes as separate prompts.
+
+### Checks
+
+- `git diff --check`
+- docs-only unless code changes are explicitly tiny
+
+### Acceptance
+
+- Timeout and observability behavior is documented across SQL analytics paths.
+- Future fixes can be prioritized without mixing with SQL formula changes.
