@@ -1,0 +1,388 @@
+# Analytics Reliability Prompt Queue - Inventory Signals Addendum
+
+Date: 2026-06-28
+Repo: `ivanjovicic/Trendplus`
+Current READY prompt: none in this addendum
+Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+Use with:
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- `docs/qa/ANALYTICS_INVENTORY_SIGNAL_RELIABILITY_AUDIT.md`
+
+Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curve signal trust after the inventory signal audit.
+
+## Status summary
+
+| Task | Status | Feature family | Purpose |
+|---|---|---|---|
+| RQ64 | WAITING | inventory-snapshot-null-evidence | Prevent snapshot nulls from becoming fake zero/info/false |
+| RQ65 | WAITING | inventory-signal-total-count | Distinguish returned rows from total matching rows/truncation |
+| RQ66 | WAITING | inventory-placeholder-zero | Stop synthetic detail placeholders from creating fake zero baseline |
+| RQ67 | WAITING | forecast-workflow-value-trust | Avoid zero-value forecast workflow suggestions when cost missing |
+| RQ68 | WAITING | inventory-signal-search-lineage | Align/search-label inventory signal panels with active filters |
+| RQ69 | WAITING | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
+| RQ70 | WAITING | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
+| RQ71 | WAITING | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
+
+---
+
+## RQ64 - Inventory snapshot null evidence must not become fake zero/info/false
+
+Status: WAITING
+Ready after: RQ60 or explicit reprioritization
+Priority: P0
+Type: backend-contract/tests
+Feature family: inventory-snapshot-null-evidence
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ64-<agent>.lock.md`
+Commit suggestion: `fix(inventory): preserve missing snapshot evidence`
+
+### Why
+
+Forecast, rebalance, alert and size-curve snapshot handlers coalesce many nullable metrics to `0`, `'info'` or `false`. Missing evidence must not look like true zero risk, normal alert severity, or healthy size curve.
+
+### Evidence already found
+
+- `GetInventoryForecastHandler.cs`: `coalesce(forecast_7d, 0)`, `coalesce(probability_of_oos_in_7d, 0)`, `coalesce(overstock_risk, 0)`, `coalesce(confidence_score, 0)`.
+- `GetRebalanceSuggestionsHandler.cs`: `coalesce(recommended_qty, 0)`, `coalesce(confidence, 0)`, `coalesce(expected_saved_sales, 0)`, `coalesce(expected_capital_release, 0)`.
+- `GetInventoryAlertsHandler.cs`: `coalesce(severity, 'info')`, `coalesce(confidence_score, 0)`.
+- `GetInventorySizeCurveHandler.cs`: numeric nulls to 0, boolean nulls to false, confidence to 0.
+
+Risk class: likely fake-confidence bug.
+
+### Contract
+
+- Missing numeric evidence must be nullable or carry `sourceStatus/evidenceStatus`.
+- Missing severity must not become normal `info` without a warning/reason.
+- Missing boolean evidence must not become healthy `false` without `evidenceStatus=missing`.
+
+### Scope only
+
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`
+- `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`
+- `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+- DTOs/types only if needed
+- targeted tests
+
+### Do not touch
+
+- snapshot materialization SQL
+- Inventory page visual redesign
+- action queue write behavior
+
+### Test matrix
+
+- trusted positive numeric values remain unchanged.
+- true zero values remain zero with evidence loaded.
+- null risk/confidence/value returns null or missing-evidence status.
+- null alert severity is not silently `info`.
+- null size-curve booleans are distinguishable from false.
+
+### Acceptance
+
+- No missing inventory signal evidence is silently converted into trusted zero/info/false.
+
+---
+
+## RQ65 - Inventory signal total count and truncation semantics
+
+Status: WAITING
+Ready after: RQ64 or explicit unblocking
+Priority: P1
+Type: backend-contract/frontend-tests
+Feature family: inventory-signal-total-count
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ65-<agent>.lock.md`
+Commit suggestion: `fix(inventory): expose signal result truncation`
+
+### Why
+
+Forecast/rebalance/alerts/size-curve handlers return `TotalCount = items.Count` after `limit @top`. UI can present this as the total number of matching signals.
+
+### Evidence already found
+
+- Forecast handler selects with `limit @top` and returns `TotalCount: items.Count`.
+- Rebalance, alerts and size-curve follow the same pattern.
+- Panels display labels such as `N SKU u prognozi` or `N predloga`.
+
+Risk class: likely count/truncation semantics bug.
+
+### Contract
+
+- `returnedCount`: number of rows returned to the client.
+- `totalMatchingCount`: total matching rows before limit, if cheaply available.
+- `isTruncated`: true when returned rows are capped.
+- If total matching count is expensive, label UI as “prikazano N” and include top limit.
+
+### Scope only
+
+- inventory signal query handlers
+- inventory signal DTOs/types
+- inventory panels count labels/tests
+
+### Do not touch
+
+- snapshot generation logic
+- unrelated inventory balance/list pagination
+
+### Test matrix
+
+- fewer rows than top: `isTruncated=false`.
+- exactly top rows but unknown total: UI says “prikazano do N”, not total certainty.
+- more rows than top: `isTruncated=true` or total matching count is higher than returned count.
+
+### Acceptance
+
+- UI no longer implies limited result count is the total matching signal count.
+
+---
+
+## RQ66 - Synthetic inventory detail placeholder fake-zero baseline
+
+Status: WAITING
+Ready after: RQ60 or explicit unblocking
+Priority: P1
+Type: frontend-tests
+Feature family: inventory-placeholder-zero
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ66-<agent>.lock.md`
+Commit suggestion: `fix(inventory): avoid zero placeholder detail rows`
+
+### Why
+
+`openDetailBySku` creates a placeholder `InventoryRow` with zero quantity, minimum, cost and estimated value when the SKU is not in current rows. This can make missing context look like true zero inventory while detail loads or if detail fails.
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `SKUDetailModal` only if needed
+- frontend tests
+
+### Do not touch
+
+- backend item detail endpoint
+- inventory valuation formula
+
+### Contract
+
+- Placeholder rows must be labelled `contextMissing` / `loadingContext`, not zero baseline.
+- Unknown quantity/cost/value must render as unknown/not available, not zero.
+- Detail fetch failure must not leave a fabricated zero stock card.
+
+### Test matrix
+
+- SKU exists in current rows: normal detail opens.
+- SKU missing from current rows: placeholder shows loading/unknown state.
+- detail fetch fails: no fake zero quantity/value remains.
+
+### Acceptance
+
+- Synthetic detail placeholders cannot be mistaken for true zero inventory.
+
+---
+
+## RQ67 - Forecast workflow value trust
+
+Status: WAITING
+Ready after: RQ60/RQ64 or explicit unblocking
+Priority: P1
+Type: frontend/action-contract/tests
+Feature family: forecast-workflow-value-trust
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ67-<agent>.lock.md`
+Commit suggestion: `fix(inventory): mark forecast workflow value reliability`
+
+### Why
+
+`queueForecastRestock` calculates `estimatedValue = row.unitCost * suggestedQty`. `row.unitCost` can be zero when cost is missing, creating a zero-value workflow suggestion.
+
+### Scope only
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- action workflow DTO/types only if needed
+- frontend tests
+
+### Contract
+
+- Forecast workflow value should be `estimatedValueRsd` only when cost is known or explicitly estimated.
+- Missing cost should set `costMissing=true` or omit value.
+- UI/action queue must distinguish zero value from unknown value.
+
+### Test matrix
+
+- known unit cost -> estimated value shown.
+- missing unit cost -> no zero-value suggestion; warning/status preserved.
+- action payload metadata includes value reliability.
+
+### Acceptance
+
+- Forecast workflow suggestions do not show missing cost as zero value.
+
+---
+
+## RQ68 - Inventory signal search/filter lineage
+
+Status: WAITING
+Ready after: RQ65 or explicit unblocking
+Priority: P1
+Type: frontend/API-contract/tests
+Feature family: inventory-signal-search-lineage
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ68-<agent>.lock.md`
+Commit suggestion: `fix(inventory): clarify signal search filter lineage`
+
+### Why
+
+Inventory list and action workflow use search, but forecast/alerts/rebalance signal panels are loaded by store/supplier only. UI copy can imply they follow all current filters.
+
+### Scope only
+
+- `InventoryPage.tsx`
+- signal query APIs only if adding search support
+- inventory signal panels/tests
+
+### Contract
+
+Choose one:
+
+- Add search support to signal APIs and pass `trimmedSearch`, or
+- Clearly label signal panels as scoped only by store/supplier, not text search.
+
+### Test matrix
+
+- active search filter changes list.
+- signal panels either refetch with search or show visible “search not applied” note.
+- export/report metadata states signal panel filter scope.
+
+### Acceptance
+
+- User cannot believe signal panels are filtered by search when they are not.
+
+---
+
+## RQ69 - Rebalance selected-store filter lineage
+
+Status: WAITING
+Ready after: RQ68 or explicit unblocking
+Priority: P1
+Type: frontend/API-contract/tests
+Feature family: rebalance-store-filter-lineage
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ69-<agent>.lock.md`
+Commit suggestion: `fix(inventory): align rebalance store scope`
+
+### Why
+
+Inventory page calls rebalance suggestions with supplier/top only, while selected store filter can be active. The backend query supports `fromStoreId` and `toStoreId`.
+
+### Contract
+
+When selected store filter is active, choose and document one behavior:
+
+- show suggestions where selected store is source or destination, or
+- show global rebalance suggestions with explicit “all stores” label, or
+- provide a separate rebalance store filter.
+
+### Scope only
+
+- `InventoryPage.tsx`
+- rebalance query contract if needed
+- `RebalancingTable.tsx` labels/tests
+
+### Test matrix
+
+- no selected store: global suggestions labelled global.
+- selected store active: rebalance scope is constrained or clearly labelled.
+- compare-store action still works.
+
+### Acceptance
+
+- Rebalance panel does not silently ignore selected inventory store filter.
+
+---
+
+## RQ70 - Forecast restock suggested quantity semantics
+
+Status: WAITING
+Ready after: RQ67 or explicit unblocking
+Priority: P2
+Type: frontend-contract/tests
+Feature family: forecast-suggested-qty-semantics
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ70-<agent>.lock.md`
+Commit suggestion: `docs(inventory): clarify forecast suggested quantity semantics`
+
+### Why
+
+Forecast panel creates workflow suggestion with `suggestedQty = ceil(forecast7d)`. This may be a demand signal, not an operational reorder quantity, because it does not consider stock baseline/gap explicitly.
+
+### Contract
+
+- If keeping `ceil(forecast7d)`, label it as `forecastDemandQty`, not final reorder quantity.
+- If producing reorder qty, incorporate current stock/gap/minimum and evidence status.
+
+### Scope only
+
+- `InventoryPage.tsx`
+- `DemandForecastPanel.tsx`
+- tests/docs
+
+### Test matrix
+
+- current stock sufficient but forecast high: not final reorder qty unless contract says so.
+- low stock and forecast high: signal quantity visible with caveat.
+- UI/action metadata labels quantity source.
+
+### Acceptance
+
+- Forecast suggested quantity cannot be mistaken for a confirmed purchase/replenishment order.
+
+---
+
+## RQ71 - Size-curve boolean evidence status
+
+Status: WAITING
+Ready after: RQ64 or explicit unblocking
+Priority: P1
+Type: backend-contract/tests
+Feature family: size-curve-boolean-evidence
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ71-<agent>.lock.md`
+Commit suggestion: `fix(inventory): preserve size curve boolean evidence`
+
+### Why
+
+Size-curve handler coalesces boolean nulls to false. Missing evidence can look like healthy false for core-size-missing, dead-size and broken-run flags.
+
+### Scope only
+
+- `GetInventorySizeCurveHandler.cs`
+- size-curve DTO/types/tests
+- UI warning only if field shape changes
+
+### Contract
+
+- Boolean signal value and evidence status must be separate.
+- Missing boolean evidence should be nullable or accompanied by `evidenceStatus=missing`.
+
+### Test matrix
+
+- true boolean flags remain true.
+- false boolean flags remain false when evidence exists.
+- null boolean flags are distinguishable from false.
+
+### Acceptance
+
+- Size-curve missing evidence cannot be rendered as healthy run structure.
