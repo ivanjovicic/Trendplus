@@ -51,6 +51,10 @@ function mapActionHref(action: string): string {
   return "/analytics/data-quality";
 }
 
+function formatOptionalCount(value: number | null | undefined): string {
+  return value == null ? "-" : String(value);
+}
+
 function buildCsv(report: PilotDataQualityIntakeReport): string {
   const rows = [
     ["Sekcija", "Stavka", "Vrednost"],
@@ -67,11 +71,11 @@ function buildCsv(report: PilotDataQualityIntakeReport): string {
     ["Problemi", "Bez dobavljača", String(report.issues.missingSupplierCount)],
     ["Problemi", "Bez nabavne cene", String(report.issues.missingCostCount)],
     ["Problemi", "Bez kategorije", String(report.issues.missingCategoryCount)],
-    ["Problemi", "Bez boje", String(report.issues.missingColorCount ?? 0)],
-    ["Problemi", "Bez veličine", String(report.issues.missingSizeCount ?? 0)],
+    ["Problemi", "Bez boje", formatOptionalCount(report.issues.missingColorCount)],
+    ["Problemi", "Bez veličine", formatOptionalCount(report.issues.missingSizeCount)],
     ["Problemi", "Prodaja bez artikla", String(report.issues.saleWithoutArticleCount)],
     ["Problemi", "Nulta/negativna cena", String(report.issues.zeroOrNegativePriceCount)],
-    ["Problemi", "Dupliran SKU", String(report.issues.duplicateSkuCount ?? 0)],
+    ["Problemi", "Dupliran SKU", formatOptionalCount(report.issues.duplicateSkuCount)],
     ["Problemi", "Dobavljač bez naziva", String(report.issues.missingSupplierNameCount)],
     ["Uticaj", "Prihod bez cene", fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")],
     ["Uticaj", "Artikli bez dobavljača", fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")],
@@ -118,11 +122,11 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     { section: "Problemi", item: "Bez dobavljača", value: String(report.issues.missingSupplierCount) },
     { section: "Problemi", item: "Bez nabavne cene", value: String(report.issues.missingCostCount) },
     { section: "Problemi", item: "Bez kategorije", value: String(report.issues.missingCategoryCount) },
-    { section: "Problemi", item: "Bez boje", value: String(report.issues.missingColorCount ?? 0) },
-    { section: "Problemi", item: "Bez veličine", value: String(report.issues.missingSizeCount ?? 0) },
+    { section: "Problemi", item: "Bez boje", value: formatOptionalCount(report.issues.missingColorCount) },
+    { section: "Problemi", item: "Bez veličine", value: formatOptionalCount(report.issues.missingSizeCount) },
     { section: "Problemi", item: "Prodaja bez artikla", value: String(report.issues.saleWithoutArticleCount) },
     { section: "Problemi", item: "Nulta/negativna cena", value: String(report.issues.zeroOrNegativePriceCount) },
-    { section: "Problemi", item: "Dupliran SKU", value: String(report.issues.duplicateSkuCount ?? 0) },
+    { section: "Problemi", item: "Dupliran SKU", value: formatOptionalCount(report.issues.duplicateSkuCount) },
     { section: "Problemi", item: "Dobavljač bez naziva", value: String(report.issues.missingSupplierNameCount) },
     { section: "Uticaj", item: "Prihod bez cene", value: fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-") },
     { section: "Uticaj", item: "Artikli bez dobavljača", value: fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-") },
@@ -243,584 +247,193 @@ function impactSignalState(report: PilotDataQualityIntakeReport): TrustSignalSta
   );
 }
 
-function parseNumberFromValue(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return null;
-  const normalized = value.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "");
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+function signalStateLabel(state: TrustSignalState): string {
+  if (state === "issues") return "Potrebna korekcija";
+  if (state === "partial") return "Nedovoljno potvrđeno";
+  return "Bez otvorenih signala";
 }
 
-function buildDurableCsv(report: PilotIntakeDurableReport): string {
-  const rows = [
-    ["Sekcija", "Stavka", "Vrednost"],
-    ["Izveštaj", "Naslov", report.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka"],
-    ["Izveštaj", "Tip", report.reportType ?? "pilot-intake"],
-    ["Izveštaj", "Generisano", report.generatedAtUtc],
-    ["Izveštaj", "Period od", report.periodFrom ?? report.period?.fromUtc ?? "-"],
-    ["Izveštaj", "Period do", report.periodTo ?? report.period?.toUtc ?? "-"],
-    ["Izveštaj", "Poslednji refresh", report.lastRefreshAtUtc ?? "-"],
-    ["Izveštaj", "Status kvaliteta podataka", report.dataQualityStatus],
-    ["Izveštaj", "Preporuke dozvoljene", report.recommendationAllowed == null ? "-" : report.recommendationAllowed ? "Da" : "Ne"],
-    ["Izveštaj", "Korišćen fallback", report.usedFallback == null ? "-" : report.usedFallback ? "Da" : "Ne"],
-  ];
-
-  for (const warning of report.warnings ?? []) {
-    rows.push(["Upozorenja", "Upozorenje", warning]);
-  }
-
-  for (const section of report.sections) {
-    rows.push(["Sekcije", section.title || section.key, String(durableSectionRowCount(section))]);
-  }
-
-  for (const row of report.rows) {
-    rows.push([
-      row.section || "Podaci",
-      row.item,
-      formatDurableValue(row.value),
-    ]);
-  }
-
-  return rows
-    .map((row) => row.map((value) => {
-      if (/[",\n;]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-      return value;
-    }).join(","))
-    .join("\n");
+function signalStateTone(state: TrustSignalState): string {
+  if (state === "issues") return "warning";
+  if (state === "partial") return "partial";
+  return "clear";
 }
 
-function buildDurableSummary(report: PilotIntakeDurableReport): string {
-  const warnings = report.warnings && report.warnings.length > 0
-    ? report.warnings.join("; ")
-    : "nema";
+export default function PilotDataQualityIntakeReportPanel({ report, loading, error, filters, durableReport, refreshStatus, onRetry }: Props) {
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [methodologyKey, setMethodologyKey] = useState<AnalyticsMetricKey | null>(null);
 
-  return [
-    report.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka",
-    `Tip: ${report.reportType ?? "pilot-intake"}`,
-    `Period: ${report.periodFrom ?? report.period?.fromUtc ?? "-"} - ${report.periodTo ?? report.period?.toUtc ?? "-"}`,
-    `Poslednji refresh: ${report.lastRefreshAtUtc ?? "-"}`,
-    `Status kvaliteta podataka: ${report.dataQualityStatus}`,
-    `Preporuke dozvoljene: ${report.recommendationAllowed == null ? "-" : report.recommendationAllowed ? "Da" : "Ne"}`,
-    `Korišćen fallback: ${report.usedFallback == null ? "-" : report.usedFallback ? "Da" : "Ne"}`,
-    `Upozorenja: ${warnings}`,
-    `Metodologija: ${durableMethodologySummary(report)}`,
-  ].join("\n");
-}
+  const durableSections = durableReport?.sections ?? [];
+  const durableSummary = durableReport ? durableMethodologySummary(durableReport) : null;
+  const durableWarnings = durableReport?.warnings ?? [];
+  const durableGeneratedAt = durableReport?.generatedAtUtc ?? report?.generatedAtUtc ?? null;
+  const generatedAtLabel = durableGeneratedAt ? formatDateTime(durableGeneratedAt, "Nije dostupno") : "Nije dostupno";
+  const metaWarning = isAnalyticsMetaWarning(report?.meta) || isAnalyticsMetaWarning(durableReport?.meta);
 
-export default function PilotDataQualityIntakeReport({
-  report,
-  loading,
-  error,
-  filters,
-  durableReport,
-  refreshStatus,
-  onRetry,
-}: Props) {
-  const [exportState, setExportState] = useState<string | null>(null);
-  const methodologyKeys = useMemo<Array<AnalyticsMetricKey | string>>(() => {
-    const fallbackKeys: AnalyticsMetricKey[] = [
-      "dataReadinessScore",
-      "missingCostCount",
-      "missingSupplierCount",
-      "revenueWithoutCost",
-      "unknownSupplierRevenueShare",
-      "blockedRecommendationsCount",
-      "ignoredRowsCount",
-    ];
+  const reportText = useMemo(() => (report ? buildSummary(report) : ""), [report]);
+  const exportPayload = useMemo(() => (report ? buildExportPayload(report, filters) : null), [filters, report]);
 
-    const durableMethodologyKeys =
-      durableReport && typeof durableReport.methodology === "object" && Array.isArray(durableReport.methodology.metricKeys)
-        ? durableReport.methodology.metricKeys
-        : [];
-
-    const payloadMethodologyKeys =
-      (durableReport?.payload as { methodologyMetricKeys?: string[] } | undefined)?.methodologyMetricKeys ?? [];
-
-    return Array.from(new Set([...durableMethodologyKeys, ...payloadMethodologyKeys, ...fallbackKeys]));
-  }, [durableReport]);
-
-  const readiness = useMemo(() => readinessTone(report?.readinessStatus ?? "critical"), [report?.readinessStatus]);
-  const durableRows = durableReport?.rows ?? [];
-  const durableActions = durableReport?.recommendedActions ?? [];
-  const reportPeriodFrom = report?.periodFromUtc ?? durableReport?.periodFrom ?? durableReport?.period?.fromUtc ?? null;
-  const reportPeriodTo = report?.periodToUtc ?? durableReport?.periodTo ?? durableReport?.period?.toUtc ?? null;
-  const reportGeneratedAt = report?.generatedAtUtc ?? durableReport?.generatedAtUtc ?? null;
-  const reportLastRefreshAt = report?.lastRefreshAtUtc ?? durableReport?.lastRefreshAtUtc ?? null;
-  const reportDataQualityStatus = report?.meta?.dataQualityStatus ?? durableReport?.dataQualityStatus ?? null;
-  const reportIssueSignalState = report ? issueSignalState(report) : "issues";
-  const reportImpactSignalState = report ? impactSignalState(report) : "issues";
-
-  const groupedDurableRows = useMemo(() => {
-    const groups = {
-      loaded: [] as typeof durableRows,
-      issues: [] as typeof durableRows,
-      impact: [] as typeof durableRows,
-      readiness: [] as typeof durableRows,
-      recommended: [] as typeof durableRows,
-    };
-
-    for (const row of durableRows) {
-      const section = normalizeText(row.section);
-      if (section.includes("ucit") || section.includes("loaded")) groups.loaded.push(row);
-      if (section.includes("problem") || section.includes("issue")) groups.issues.push(row);
-      if (section.includes("uticaj") || section.includes("impact")) groups.impact.push(row);
-      if (section.includes("spremnost") || section.includes("readiness") || section.includes("skor")) groups.readiness.push(row);
-      if (section.includes("preporuc") || section.includes("action")) groups.recommended.push(row);
-    }
-
-    return groups;
-  }, [durableRows]);
-
-  const durableReadinessScore = useMemo(() => {
-    if (!durableReport) return null;
-    const kpiScore = durableReport.kpis?.find((kpi) => normalizeText(kpi.key).includes("readiness") || normalizeText(kpi.label).includes("spremnost"));
-    const fromKpi = parseNumberFromValue(kpiScore?.value);
-    if (fromKpi != null) return fromKpi;
-
-    const fromRows = groupedDurableRows.readiness.find((row) => normalizeText(row.item).includes("skor"));
-    return parseNumberFromValue(fromRows?.value);
-  }, [durableReport, groupedDurableRows.readiness]);
-
-  const durableReadinessLabel = useMemo(() => {
-    if (!durableReport) return null;
-    const kpiLabel = durableReport.kpis?.find((kpi) => normalizeText(kpi.key).includes("readiness") || normalizeText(kpi.label).includes("spremnost"))?.note;
-    if (kpiLabel) return kpiLabel;
-    const rowLabel = groupedDurableRows.readiness.find((row) => normalizeText(row.item).includes("oznaka") || normalizeText(row.item).includes("label"));
-    if (rowLabel?.value) return String(rowLabel.value);
-    if (durableReadinessScore == null) return null;
-    if (durableReadinessScore >= 90) return "Spremno za pouzdanu analitiku";
-    if (durableReadinessScore >= 70) return "Upotrebljivo uz upozorenja";
-    if (durableReadinessScore >= 40) return "Pilot može, preporuke ograničene";
-    return "Prvo srediti podatke";
-  }, [durableReport, groupedDurableRows.readiness, durableReadinessScore]);
-
-  const durableReadinessTone = useMemo(() => {
-    if (durableReadinessScore == null) return "warning";
-    if (durableReadinessScore >= 90) return "excellent";
-    if (durableReadinessScore >= 70) return "good";
-    if (durableReadinessScore >= 40) return "warning";
-    return "critical";
-  }, [durableReadinessScore]);
-
-  const intakeKpiCards = useMemo(() => {
-    if (!report) return [];
-    return [
-      {
-        label: "Spremnost podataka",
-        value: `${fmtNumber(report.readinessScore, 0, "-")}/100`,
-        metricKey: "dataReadinessScore" as const,
-      },
-      {
-        label: "Artikli bez dobavljača",
-        value: fmtNumber(report.issues.missingSupplierCount, 0, "-"),
-        metricKey: "missingSupplierCount" as const,
-      },
-      {
-        label: "Redovi bez nabavne cene",
-        value: fmtNumber(report.issues.missingCostCount, 0, "-"),
-        metricKey: "missingCostCount" as const,
-      },
-      {
-        label: "Prihod bez nabavne cene",
-        value: fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-"),
-        metricKey: "revenueWithoutCost" as const,
-      },
-      {
-        label: "Blokirane preporuke",
-        value: fmtNumber(report.impact.recommendationsBlockedCount, 0, "-"),
-        metricKey: "blockedRecommendationsCount" as const,
-      },
-      {
-        label: "Ignorisani redovi",
-        value: fmtNumber(report.impact.ignoredRowsCount, 0, "-"),
-        metricKey: "ignoredRowsCount" as const,
-      },
-    ];
-  }, [report]);
-
-  const durableKpiCards = useMemo(() => {
-    if (!durableReport?.kpis || durableReport.kpis.length === 0) return [];
-    return durableReport.kpis.map((kpi) => {
-      const resolvedMetricKey =
-        findAnalyticsMetricKeyByLabel(kpi.label)
-        ?? findAnalyticsMetricKeyByLabel(kpi.key)
-        ?? kpi.key
-        ?? kpi.label;
-
-      return {
-        label: kpi.label,
-        value: formatDurableValue(kpi.value),
-        metricKey: resolvedMetricKey,
-      };
-    });
-  }, [durableReport]);
-
-  const renderDurableSection = (title: string, rows: typeof durableRows, emptyMessage: string) => (
-    <section className="pilot-card">
-      <h3>{title}</h3>
-      {rows.length === 0 ? (
-        <p className="pilot-card-note">{emptyMessage}</p>
-      ) : (
-        <ul>
-          {rows.map((row, index) => (
-            <li key={`${title}-${row.item}-${index}`}>
-              {row.item}: {formatDurableValue(row.value)}
-              {row.secondary ? <span className="pilot-list-secondary"> ({row.secondary})</span> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-
-  if (error && !durableReport && !report) {
-    return (
-      <AnalyticsErrorState
-        title="Pilot intake report trenutno nije dostupan"
-        message={error}
-        suggestions={[
-          "Proverite da li je import završen.",
-          "Pokrenite osvežavanje analytics podataka.",
-          "Pokušajte ponovo za nekoliko trenutaka.",
-        ]}
-        onRetry={onRetry}
-        helpHref="/analytics/data-quality"
-      />
-    );
+  async function runTextExport() {
+    if (!report) return;
+    const blob = new Blob([buildCsv(report)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pilot-intake-${formatDate(report.generatedAtUtc)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
-  if (loading && !report && !durableReport) {
-    return <div className="data-quality-loading">Učitavam pilot intake izveštaj...</div>;
-  }
-
-  if (!report && !durableReport) {
-    return (
-      <AnalyticsEmptyState
-        variant="no_data"
-        message="Pilot intake izveštaj nije moguće generisati za trenutni opseg."
-        reasons={[
-          "Import nije završen ili nema podataka u periodu.",
-          "Filter opseg je previše uzak.",
-        ]}
-        actions={[
-          { label: "Proširite period." },
-          { label: "Proverite kvalitet podataka", href: "/analytics/data-quality" },
-          { label: "Proverite status osvežavanja", href: "/admin/configuration?panel=workers" },
-        ]}
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-      />
-    );
-  }
-
-  const handlePrint = () => {
-    window.print();
-    setExportState("Otvoren je browser pregled za štampu.");
-  };
-
-  const handleCsv = () => {
+  async function runServerExport(format: "pdf" | "xlsx" | "csv") {
+    if (!exportPayload || exportBusy) return;
     try {
-      const csv = durableReport ? buildDurableCsv(durableReport) : buildCsv(report!);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      const generatedAt = durableReport?.generatedAtUtc ?? report?.generatedAtUtc ?? new Date().toISOString();
-      anchor.download = `pilot-data-quality-intake-${generatedAt.slice(0, 10)}.csv`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-      setExportState("CSV izvoz je preuzet.");
-    } catch (reason) {
-      setExportState(reason instanceof Error ? reason.message : "CSV izvoz nije uspeo.");
-    }
-  };
-
-  const handleExcel = async () => {
-    try {
-      setExportState("Pripremam Excel izvoz...");
-      const payload = durableReport
-        ? resolveAnalyticsTablePayload({
-            tableKey: durableReport.payload.tableKey,
-            tableTitle: durableReport.payload.tableTitle,
-            documentType: durableReport.payload.documentType,
-            templateName: durableReport.payload.templateName,
-            locale: durableReport.payload.locale,
-            columns: durableReport.payload.columns.map((column) => ({
-              ...column,
-              dataType: normalizeColumnType(column.dataType),
-            })),
-            rows: durableReport.payload.rows,
-            filters: durableReport.payload.filters,
-            metadata: durableReport.payload.metadata,
-          })
-        : buildExportPayload(report!, filters);
-      const result = await generateExport(payload, {
-        format: "xlsx",
-        orientation: "landscape",
-        includeFiltersAndMetadata: true,
-      });
-
+      setExportBusy(true);
+      setExportStatus("Server priprema dokument...");
+      const result = await generateExport(exportPayload, format, { orientation: "portrait" });
       if (result.isAsync) {
+        setExportStatus("Dokument je u redu čekanja...");
         const completed = await waitForExport(result.documentId);
-        if (completed.downloadUrl) {
-          downloadExport(completed.downloadUrl, completed.fileName);
-        }
+        if (completed.downloadUrl) downloadExport(completed.downloadUrl, completed.fileName);
       } else if (result.downloadUrl) {
         downloadExport(result.downloadUrl, result.fileName);
       }
-
-      setExportState("Excel izvoz je preuzet.");
+      setExportStatus("Eksport je spreman.");
     } catch (reason) {
-      setExportState(reason instanceof Error ? reason.message : "Excel izvoz nije uspeo.");
+      setExportStatus(reason instanceof Error ? reason.message : "Eksport nije uspeo.");
+    } finally {
+      setExportBusy(false);
     }
-  };
+  }
 
-  const handleCopySummary = async () => {
-    try {
-      const summary = durableReport ? buildDurableSummary(durableReport) : buildSummary(report!);
-      await navigator.clipboard.writeText(summary);
-      setExportState("Sažetak je kopiran.");
-    } catch {
-      setExportState("Kopiranje nije uspelo.");
-    }
-  };
+  if (loading) {
+    return <div className="pilot-intake-loading">Učitavam pilot intake izveštaj...</div>;
+  }
 
-  const handleCopyLink = async () => {
-    try {
-      const targetUrl = durableReport?.stableQueryUrl
-        ? new URL(durableReport.stableQueryUrl, window.location.origin).toString()
-        : window.location.href;
-      await navigator.clipboard.writeText(targetUrl);
-      setExportState("Link ka izveštaju je kopiran.");
-    } catch {
-      setExportState("Kopiranje linka nije uspelo.");
-    }
-  };
+  if (error) {
+    return (
+      <AnalyticsErrorState
+        title="Pilot intake izveštaj nije dostupan"
+        message={error}
+        onRetry={onRetry}
+        helpHref="/admin/configuration?panel=workers"
+      />
+    );
+  }
+
+  if (!report) {
+    return (
+      <AnalyticsEmptyState
+        variant="insufficient_data"
+        title="Pilot intake izveštaj nema podatke"
+        message="Nema dovoljno učitanih podataka da bi se izračunao readiness score."
+        reasons={["Nema import batch-a ili prodajnih redova u izabranom periodu."]}
+      />
+    );
+  }
+
+  const tone = readinessTone(report.readinessStatus);
+  const issueState = issueSignalState(report);
+  const impactState = impactSignalState(report);
 
   return (
-    <section className="pilot-intake-report">
+    <section className={`pilot-intake-card tone-${tone}`}>
       <div className="pilot-intake-head">
         <div>
-          <h2>{durableReport?.reportTitle ?? "Trendplus pilot izveštaj kvaliteta podataka"}</h2>
-          <p>Prodajni/onboarding pregled spremnosti podataka pre prezentacije dashboard-a.</p>
+          <h2>Pilot intake izveštaj</h2>
+          <p>Spremnost podataka za pouzdan demo, analitiku i preporuke.</p>
         </div>
-        <div className="pilot-intake-actions no-print">
-          {durableReport?.stableQueryUrl ? (
-            <Link to={durableReport.stableQueryUrl} className="pilot-intake-action-link">Otvori trajni report</Link>
-          ) : null}
-          <button type="button" onClick={handlePrint}>Štampaj izveštaj</button>
-          <button type="button" onClick={handleCsv}>Izvezi CSV</button>
-          <button type="button" onClick={() => void handleExcel()}>Izvezi Excel</button>
-          <button type="button" onClick={() => void handleCopySummary()}>Kopiraj sažetak</button>
-          <button type="button" onClick={() => void handleCopyLink()}>Kopiraj link</button>
-          <span className="pilot-intake-muted">PDF izvoz trenutno nije dostupan. Koristite štampu ili Excel.</span>
+        <div className="pilot-intake-score">
+          <span>{report.readinessLabel}</span>
+          <strong>{report.readinessScore}/100</strong>
         </div>
       </div>
 
-      {exportState ? <div className="pilot-intake-state no-print">{exportState}</div> : null}
+      <PilotImportReadinessCard report={report} refreshStatus={refreshStatus} compact />
 
-      <PilotImportReadinessCard report={report} refreshStatus={refreshStatus} />
-
-      <section className="pilot-card">
-        <h3>Trendplus pilot izveštaj kvaliteta podataka</h3>
-        <ul>
-          <li>Period od: {formatDate(reportPeriodFrom, "-")}</li>
-          <li>Period do: {formatDate(reportPeriodTo, "-")}</li>
-          <li>Generisano: {formatDateTime(reportGeneratedAt, "-")}</li>
-          <li>Poslednje osveženje: {formatDateTime(reportLastRefreshAt, "-")}</li>
-          <li>Skor spremnosti podataka: {report ? `${fmtNumber(report.readinessScore, 0, "-")}/100` : durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</li>
-          <li>Status kvaliteta podataka: {reportDataQualityStatus ?? "-"}</li>
-        </ul>
-      </section>
-
-      {report ? (
-        <>
-          <section className="pilot-card">
-            <h3>Ključni KPI signali</h3>
-            <div className="pilot-kpi-grid">
-              {intakeKpiCards.map((kpi) => (
-                <article key={kpi.label} className="pilot-kpi-card">
-                  <span>{kpi.label}</span>
-                  <strong>{kpi.value}</strong>
-                  <KpiExplainButton
-                    metricKey={kpi.metricKey}
-                    ariaLabel={`Kako je izračunato: ${kpi.label}`}
-                  />
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <article className={`pilot-intake-score ${readiness}`}>
-            <div>
-              <span>Skor spremnosti</span>
-              <strong>{fmtNumber(report.readinessScore, 0, "-")}/100</strong>
-              <p>{report.readinessLabel}</p>
-            </div>
-            <div className="pilot-intake-thresholds">
-              <span>90-100: Spremno za pouzdanu analitiku</span>
-              <span>70-89: Upotrebljivo uz upozorenja</span>
-              <span>40-69: Pilot može, ali preporuke ograničene</span>
-              <span>&lt;40: Prvo srediti podatke</span>
-            </div>
-          </article>
-
-          <div className="pilot-intake-grid">
-            <section className="pilot-card">
-              <h3>Učitano</h3>
-              <ul>
-                <li>Artikli: {fmtNumber(report.loadedData.articlesCount, 0, "-")}</li>
-                <li>Stavke prodaje: {fmtNumber(report.loadedData.saleItemsCount, 0, "-")}</li>
-                <li>Računi: {fmtNumber(report.loadedData.receiptsCount, 0, "-")}</li>
-                <li>Dobavljači: {fmtNumber(report.loadedData.suppliersCount, 0, "-")}</li>
-                <li>Objekti: {fmtNumber(report.loadedData.storesCount, 0, "-")}</li>
-                <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate)}</li>
-                <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate)}</li>
-                <li>Poslednji import: {formatDateTime(report.lastImportAtUtc, "-")}</li>
-                <li>Poslednje osveženje analitike: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
-              </ul>
-            </section>
-
-            <section className="pilot-card">
-              <h3>Problemi</h3>
-              {reportIssueSignalState === "clear" ? (
-                <p className="pilot-card-note">Nema otvorenih problema u ovom payload-u. Ovo je validno prazno stanje, ne greška.</p>
-              ) : reportIssueSignalState === "partial" ? (
-                <p className="pilot-card-note">Nije moguće potvrditi da nema problema jer deo signala nije dostupan.</p>
-              ) : (
-                <ul>
-                  <li className="critical">Bez dobavljača: {fmtNumber(report.issues.missingSupplierCount, 0, "-")}</li>
-                  <li className="critical">Bez nabavne cene: {fmtNumber(report.issues.missingCostCount, 0, "-")}</li>
-                  <li className="warning">Bez kategorije: {fmtNumber(report.issues.missingCategoryCount, 0, "-")}</li>
-                  <li className="warning">Bez boje: {fmtNumber(report.issues.missingColorCount ?? 0, 0, "-")}</li>
-                  <li className="warning">Bez veličine: {fmtNumber(report.issues.missingSizeCount ?? 0, 0, "-")}</li>
-                  <li className="critical">Prodaja bez artikla: {fmtNumber(report.issues.saleWithoutArticleCount, 0, "-")}</li>
-                  <li className="critical">Nulta/negativna cena: {fmtNumber(report.issues.zeroOrNegativePriceCount, 0, "-")}</li>
-                  <li className="warning">Dupliran SKU: {fmtNumber(report.issues.duplicateSkuCount ?? 0, 0, "-")}</li>
-                  <li className="warning">Dobavljač bez naziva: {fmtNumber(report.issues.missingSupplierNameCount, 0, "-")}</li>
-                </ul>
-              )}
-            </section>
-
-            <section className="pilot-card">
-              <h3>Uticaj</h3>
-              {reportImpactSignalState === "clear" ? (
-                <p className="pilot-card-note">Nema dodatnog negativnog uticaja u ovom opsegu. Ovo znači da trenutno nema blokiranih preporuka ni izdvojenih impact signala.</p>
-              ) : reportImpactSignalState === "partial" ? (
-                <p className="pilot-card-note">Nije moguće potvrditi da nema problema jer deo signala nije dostupan.</p>
-              ) : (
-                <>
-                  <ul>
-                    <li>Prihod bez nabavne cene: {fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")}</li>
-                    <li>Artikli bez dobavljača: {fmtPctFromRatio(report.impact.articlesWithoutSupplierPercent, 1, "-")}</li>
-                    <li>Blokirane preporuke: {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")}</li>
-                    <li>Ignorisani redovi: {fmtNumber(report.impact.ignoredRowsCount, 0, "-")}</li>
-                    <li>Nedovoljni signali: {fmtNumber(report.impact.insufficientSignalCount, 0, "-")}</li>
-                  </ul>
-                  <p className="pilot-card-note">Visok procenat prihoda bez cene ili veliki broj blokiranih preporuka direktno smanjuje pouzdanost maržnih odluka.</p>
-                </>
-              )}
-            </section>
-          </div>
-
-          <section className="pilot-card">
-            <h3>Preporučene akcije</h3>
-            {report.recommendedActions.length === 0 ? (
-              <p className="pilot-card-note">Nema preporučenih akcija za trenutni opseg. Proverite detalje kvaliteta podataka i osvežavanje.</p>
-            ) : (
-              <div className="pilot-actions-list">
-                {report.recommendedActions.map((action) => (
-                  <Link key={action} to={mapActionHref(action)} className="pilot-action-item">
-                    <strong>{action}</strong>
-                    <span>Otvori povezani ekran</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+      {metaWarning ? (
+        <div className="pilot-intake-warning" role="status">
+          {report.meta?.message ?? durableReport?.meta?.message ?? "Izveštaj ima upozorenja kvaliteta podataka."}
+        </div>
       ) : null}
-
-      {!report && durableReport ? (
-        <>
-          {durableKpiCards.length > 0 ? (
-            <section className="pilot-card">
-              <h3>Ključni KPI signali</h3>
-              <div className="pilot-kpi-grid">
-                {durableKpiCards.map((kpi, index) => (
-                  <article key={`${kpi.label}-${index}`} className="pilot-kpi-card">
-                    <span>{kpi.label}</span>
-                    <strong>{kpi.value}</strong>
-                    <KpiExplainButton
-                      metricKey={kpi.metricKey}
-                      ariaLabel={`Kako je izračunato: ${kpi.label}`}
-                    />
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <article className={`pilot-intake-score ${durableReadinessTone}`}>
-            <div>
-              <span>Skor spremnosti</span>
-              <strong>{durableReadinessScore == null ? "-" : `${fmtNumber(durableReadinessScore, 0, "-")}/100`}</strong>
-              <p>{durableReadinessLabel ?? "Nije dostupno"}</p>
-            </div>
-            <div className="pilot-intake-thresholds">
-              <span>90-100: Spremno za pouzdanu analitiku</span>
-              <span>70-89: Upotrebljivo uz upozorenja</span>
-              <span>40-69: Pilot može, preporuke ograničene</span>
-              <span>&lt;40: Prvo srediti podatke</span>
-            </div>
-          </article>
-
-          <div className="pilot-intake-grid">
-            {renderDurableSection("Učitano", groupedDurableRows.loaded, "Detalji o učitanim podacima nisu dostupni u ovom payload-u.")}
-            {renderDurableSection("Problemi", groupedDurableRows.issues, "Nema eksplicitnih problema u trajnom payload-u za ovaj period.")}
-            {renderDurableSection("Uticaj", groupedDurableRows.impact, "Uticaj nije eksplicitno opisan u trajnom payload-u.")}
-          </div>
-
-          <section className="pilot-card">
-            <h3>Preporučene akcije</h3>
-            {durableActions.length === 0 ? (
-              <p className="pilot-card-note">Nema preporučenih akcija za trenutni opseg. Proverite detalje kvaliteta podataka i osvežavanje.</p>
-            ) : (
-              <div className="pilot-actions-list">
-                {durableActions.map((action, index) => (
-                  <Link key={`${action.title}-${index}`} to={action.href || mapActionHref(action.title)} className="pilot-action-item">
-                    <strong>{action.title}</strong>
-                    <span>{action.description || "Otvori povezani ekran"}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </>
-      ) : null}
-
-      {durableReport?.warnings && durableReport.warnings.length > 0 ? (
-        <section className="pilot-card">
-          <h3>Upozorenja iz trajnog reporta</h3>
-          <p className="pilot-card-note">{durableReport.warnings.join(" | ")}</p>
-        </section>
-      ) : null}
-
-      <details className="pilot-methodology no-print">
-        <summary>Metodologija</summary>
-        <MetricMethodologyPanel metricKeys={methodologyKeys} dataQualityHref="/analytics/data-quality" />
-      </details>
 
       {durableReport ? (
-        <p className="pilot-card-note no-print">
-          <strong>Metodologija backend payload-a:</strong> {durableMethodologySummary(durableReport)}
-        </p>
+        <div className="pilot-intake-durable-note">
+          <strong>Durable report:</strong> {durableReport.reportTitle ?? durableReport.title ?? "Pilot intake"} · {generatedAtLabel}
+          {durableWarnings.length > 0 ? <span> · {durableWarnings.length} upozorenja</span> : null}
+          <p>{durableSummary}</p>
+        </div>
+      ) : null}
+
+      <div className="pilot-intake-grid">
+        <article>
+          <span>Učitano</span>
+          <strong>{fmtNumber(report.loadedData.articlesCount, 0, "-")} artikala</strong>
+          <p>{fmtNumber(report.loadedData.saleItemsCount, 0, "-")} stavki prodaje · {fmtNumber(report.loadedData.receiptsCount, 0, "-")} računa</p>
+        </article>
+        <article className={`state-${signalStateTone(issueState)}`}>
+          <span>Problemi podataka</span>
+          <strong>{signalStateLabel(issueState)}</strong>
+          <p>Dobavljač {fmtNumber(report.issues.missingSupplierCount, 0, "-")} · cena {fmtNumber(report.issues.missingCostCount, 0, "-")} · kategorija {fmtNumber(report.issues.missingCategoryCount, 0, "-")}</p>
+        </article>
+        <article className={`state-${signalStateTone(impactState)}`}>
+          <span>Uticaj na preporuke</span>
+          <strong>{signalStateLabel(impactState)}</strong>
+          <p>{fmtPctFromRatio(report.impact.revenueWithoutCostPercent, 1, "-")} prihoda bez cene · {fmtNumber(report.impact.recommendationsBlockedCount, 0, "-")} blokiranih preporuka</p>
+        </article>
+      </div>
+
+      <div className="pilot-intake-meta">
+        <span>Period: {formatDate(report.periodFromUtc)} - {formatDate(report.periodToUtc)}</span>
+        <span>Scope: {report.dataScope}</span>
+        <span>Import: {formatDateTime(report.lastImportAtUtc, "Nije dostupan")}</span>
+        <span>Refresh: {formatDateTime(report.lastRefreshAtUtc, "Nije dostupan")}</span>
+      </div>
+
+      {durableSections.length > 0 ? (
+        <div className="pilot-intake-durable-sections">
+          {durableSections.map((section) => (
+            <article key={section.key}>
+              <span>{section.title ?? section.key}</span>
+              <strong>{fmtNumber(durableSectionRowCount(section), 0, "-")} redova</strong>
+              {section.description ? <p>{section.description}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="pilot-intake-actions">
+        {report.recommendedActions.map((action) => {
+          const metricKey = findAnalyticsMetricKeyByLabel(action);
+          return (
+            <div key={action} className="pilot-intake-action-row">
+              <Link to={mapActionHref(action)}>{action}</Link>
+              {metricKey ? (
+                <button type="button" onClick={() => setMethodologyKey(metricKey)}>
+                  Kako se meri?
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pilot-intake-export">
+        <button type="button" onClick={runTextExport}>Preuzmi CSV</button>
+        <button type="button" disabled={exportBusy || !exportPayload} onClick={() => void runServerExport("pdf")}>PDF</button>
+        <button type="button" disabled={exportBusy || !exportPayload} onClick={() => void runServerExport("xlsx")}>XLSX</button>
+        <button type="button" disabled={exportBusy || !exportPayload} onClick={() => void navigator.clipboard?.writeText(reportText)}>Kopiraj sažetak</button>
+        {exportStatus ? <span>{exportStatus}</span> : null}
+      </div>
+
+      {methodologyKey ? (
+        <MetricMethodologyPanel
+          metricKey={methodologyKey}
+          onClose={() => setMethodologyKey(null)}
+        />
       ) : null}
     </section>
   );
 }
-
-export { impactSignalState, issueSignalState, resolveTrustSignalState };
-
-
