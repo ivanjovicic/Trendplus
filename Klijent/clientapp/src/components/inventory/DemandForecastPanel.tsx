@@ -16,6 +16,12 @@ type DemandForecastPanelProps = {
   onSuggestRestock: (item: ForecastRowDto) => void;
 };
 
+function findForecastRow(rows: InventoryRow[], item: ForecastRowDto): InventoryRow | undefined {
+  return rows.find((row) => row.id === item.skuId && row.idObjekat === item.storeId)
+    ?? rows.find((row) => row.id === item.skuId && row.idObjekat == null)
+    ?? rows.find((row) => row.id === item.skuId);
+}
+
 export function DemandForecastPanel({
   forecast,
   forecastLoading,
@@ -79,8 +85,9 @@ export function DemandForecastPanel({
             </h3>
             <div className="mt-3 space-y-2">
               {highOosItems.map((item) => {
-                const name = rows.find((row) => row.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
-                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? `Objekat #${item.storeId}`;
+                const matchingRow = findForecastRow(rows, item);
+                const name = matchingRow?.naziv ?? `SKU #${item.skuId}`;
+                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
                 const tone = item.probabilityOfOOSIn7d > 0.7 ? TONE.severity.critical : item.probabilityOfOOSIn7d > 0.4 ? TONE.severity.warning : TONE.severity.info;
 
                 return (
@@ -121,8 +128,9 @@ export function DemandForecastPanel({
             </h3>
             <div className="mt-3 space-y-2">
               {overstockItems.map((item) => {
-                const name = rows.find((row) => row.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
-                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? `Objekat #${item.storeId}`;
+                const matchingRow = findForecastRow(rows, item);
+                const name = matchingRow?.naziv ?? `SKU #${item.skuId}`;
+                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
 
                 return (
                   <div key={`${item.skuId}-${item.storeId}-${item.sizeCode}`} className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2">
@@ -154,4 +162,3 @@ export function DemandForecastPanel({
     </section>
   );
 }
-
