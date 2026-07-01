@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AnalyticsTrustHeader from "../AnalyticsTrustHeader";
 
-function renderHeader(overrides: Partial<React.ComponentProps<typeof AnalyticsTrustHeader>> = {}) {
+function renderHeader(overrides: Partial<ComponentProps<typeof AnalyticsTrustHeader>> = {}) {
   return render(
     <MemoryRouter>
       <AnalyticsTrustHeader
