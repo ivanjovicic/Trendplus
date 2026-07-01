@@ -7,6 +7,7 @@ import {
   saveAnalyticsDetailSnapshot,
   savePrintPayload,
 } from "../analyticsTableState";
+import type { AnalyticsTableColumn } from "../../types/analyticsTable";
 
 type Row = {
   supplier: string;
@@ -15,11 +16,11 @@ type Row = {
   optional?: string | null;
 };
 
-const columns = [
-  { key: "supplier", header: "Dobavljač", dataType: "text" as const },
-  { key: "revenue", header: "Prihod", dataType: "currency" as const, getValue: (row: Row) => row.revenue },
-  { key: "active", header: "Aktivan", dataType: "text" as const },
-  { key: "optional", header: "Napomena", dataType: "text" as const },
+const columns: AnalyticsTableColumn<Row>[] = [
+  { key: "supplier", header: "Dobavljač", dataType: "text" },
+  { key: "revenue", header: "Prihod", dataType: "currency", getValue: (row) => row.revenue },
+  { key: "active", header: "Aktivan", dataType: "text" },
+  { key: "optional", header: "Napomena", dataType: "text" },
 ];
 
 const row: Row = {
