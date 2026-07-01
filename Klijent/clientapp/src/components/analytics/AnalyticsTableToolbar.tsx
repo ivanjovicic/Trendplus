@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, Download, Printer } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, FileSpreadsheet, FileText, Printer, ShieldCheck } from "lucide-react";
 import Modal from "../Modal";
 import InfoTip from "../ui/InfoTip";
 import {
@@ -19,6 +19,18 @@ function formatLabel(format: ExportFormat): string {
   if (format === "pdf") return "PDF";
   if (format === "xlsx") return "Excel";
   return "CSV";
+}
+
+function formatDescription(format: ExportFormat): string {
+  if (format === "pdf") return "Izveštaj za menadžment i štampu";
+  if (format === "xlsx") return "Tabela za dalju analizu";
+  return "Brz flat-file izvoz";
+}
+
+function formatIcon(format: ExportFormat) {
+  if (format === "xlsx") return FileSpreadsheet;
+  if (format === "csv") return FileText;
+  return Printer;
 }
 
 export default function AnalyticsTableToolbar<Row>(props: {
@@ -102,12 +114,12 @@ export default function AnalyticsTableToolbar<Row>(props: {
       });
 
       if (result.isAsync) {
-        setStatusText("Veliki eksport je stavljen u red. Cekam da dokument bude spreman...");
+        setStatusText("Veliki eksport je stavljen u red. Čekam da dokument bude spreman...");
         const completed = await waitForExport(result.documentId);
         if (completed.downloadUrl) {
           downloadExport(completed.downloadUrl, completed.fileName);
         }
-        setStatusText("Eksport je zavrsen i preuzet.");
+        setStatusText("Eksport je završen i preuzet.");
       } else if (result.downloadUrl) {
         downloadExport(result.downloadUrl, result.fileName);
         setStatusText("Eksport je preuzet.");
@@ -125,34 +137,40 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)]/90 px-3 py-2 shadow-[0_16px_36px_-30px_rgba(0,0,0,0.9)]">
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
+            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)] shadow-[0_12px_24px_-18px_var(--info)] transition hover:translate-y-[-1px]"
           >
             <Download size={14} />
             Izvoz
-            <InfoTip text="Izvezi tabelu u PDF, Excel ili CSV format." />
+            <InfoTip text="Izvezi tabelu u PDF, Excel ili CSV format sa filterima i metapodacima." />
             <ChevronDown size={14} />
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 z-20 mt-2 min-w-[180px] rounded-xl border border-border bg-surface p-1 shadow-[0_12px_30px_-12px_var(--theme-color-rgba-0-0-0-0p9, rgba(0,0,0,0.9))]">
-              {(["pdf", "xlsx", "csv"] as ExportFormat[]).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => openExportModal(option)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-surface-elevated"
-                >
-                  <span>{formatLabel(option)}</span>
-                  <span className="text-xs text-muted">
-                    {option === "pdf" ? "Print layout" : option === "xlsx" ? "Spreadsheet" : "Flat file"}
-                  </span>
-                </button>
-              ))}
+            <div className="absolute right-0 z-20 mt-2 min-w-[260px] rounded-2xl border border-border bg-surface p-2 shadow-[0_24px_54px_-20px_rgba(0,0,0,0.9)]">
+              {(["pdf", "xlsx", "csv"] as ExportFormat[]).map((option) => {
+                const OptionIcon = formatIcon(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => openExportModal(option)}
+                    className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-muted transition hover:bg-surface-elevated hover:text-contrast"
+                  >
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-[var(--surface-light)]">
+                      <OptionIcon size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-contrast">{formatLabel(option)}</span>
+                      <span className="block text-xs text-muted">{formatDescription(option)}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
         </div>
@@ -160,7 +178,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
         <button
           type="button"
           onClick={handlePrint}
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted transition hover:border-[var(--info)] hover:text-contrast"
           title="Otvori prozor za štampu/printer"
         >
           <Printer size={14} />
@@ -169,8 +187,16 @@ export default function AnalyticsTableToolbar<Row>(props: {
         </button>
 
         {props.extraActions ?? null}
-        <span className="text-xs text-muted">Redova: {payload.rows.length}</span>
-        {statusText ? <span className="text-xs text-[var(--accent-success)]">{statusText}</span> : null}
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-light)] px-2.5 py-1 text-xs font-semibold text-muted">
+          <ShieldCheck size={13} />
+          Redova: {payload.rows.length.toLocaleString("sr-RS")}
+        </span>
+        {statusText ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--success)]/40 bg-success-soft px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
+            <CheckCircle2 size={13} />
+            {statusText}
+          </span>
+        ) : null}
       </div>
 
       <Modal
@@ -180,13 +206,27 @@ export default function AnalyticsTableToolbar<Row>(props: {
         size="md"
       >
         <div className="space-y-4 text-sm text-muted">
+          <div className="rounded-2xl border border-border bg-[var(--surface-light)] p-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--info)]/50 bg-[var(--info)]/10 text-[var(--info)]">
+                <ShieldCheck size={17} />
+              </span>
+              <div>
+                <p className="m-0 text-sm font-semibold text-contrast">Premium analytics export</p>
+                <p className="m-0 mt-1 text-xs leading-relaxed text-muted">
+                  Dokument koristi iste kolone, redove, filtere i metadata kao tabela na ekranu. Za velike setove eksport prelazi u async queue.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1">
               <span className="block text-xs uppercase tracking-wide text-muted">Format</span>
               <select
                 value={format}
                 onChange={(e) => setFormat(e.target.value as ExportFormat)}
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2"
               >
                 <option value="pdf">PDF</option>
                 <option value="xlsx">Excel</option>
@@ -199,7 +239,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               <select
                 value={orientation}
                 onChange={(e) => setOrientation(e.target.value as ExportOrientation)}
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2"
               >
                 <option value="landscape">Landscape</option>
                 <option value="portrait">Portrait</option>
@@ -207,12 +247,12 @@ export default function AnalyticsTableToolbar<Row>(props: {
             </label>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 rounded-xl border border-border bg-[var(--surface-light)] px-3 py-2 text-sm">
             <input type="checkbox" checked={includeFilters} onChange={(e) => setIncludeFilters(e.target.checked)} />
-            Ukljuci filtere i metadata
+            Uključi filtere i metadata
           </label>
 
-          <label className={`flex items-center gap-2 text-sm ${format !== "pdf" ? "opacity-50" : ""}`}>
+          <label className={`flex items-center gap-2 rounded-xl border border-border bg-[var(--surface-light)] px-3 py-2 text-sm ${format !== "pdf" ? "opacity-50" : ""}`}>
             <input
               type="checkbox"
               checked={preview}
@@ -223,25 +263,25 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </label>
 
           <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">
-            Manji setovi se generisu odmah. Vece tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
+            Manji setovi se generišu odmah. Veće tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
           </div>
 
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+              className="rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted transition hover:text-contrast"
               disabled={submitting}
             >
-              Otkazi
+              Otkaži
             </button>
             <button
               type="button"
               onClick={() => void handleExport()}
-              className="rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)]"
+              className="rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)] shadow-[0_12px_24px_-18px_var(--info)]"
               disabled={submitting}
             >
-              {submitting ? "Generisem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
+              {submitting ? "Generišem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
             </button>
           </div>
         </div>
