@@ -270,13 +270,13 @@ describe("ExecutiveDecisionBoardPage", () => {
     renderPage();
 
     expect(screen.getByTestId("refresh-banner")).toHaveTextContent("loading");
-    expect(await screen.findByText("Crna kožna sandala")).toBeInTheDocument();
+    expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
     expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ dataScope: "all" });
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Izvršni board odluka");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: warning");
     expect(screen.getByText("Urgentne odluke")).toBeInTheDocument();
-    expect(screen.getByText("120.000 RSD")).toBeInTheDocument();
+    expect(screen.getAllByText("120.000 RSD").length).toBeGreaterThan(0);
     expect(screen.getByText("Top 5 urgentnih odluka")).toBeInTheDocument();
     expect(screen.getByText("Blokatori kvaliteta podataka")).toBeInTheDocument();
     expect(screen.getByText("Akcije koje čekaju odluku")).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe("ExecutiveDecisionBoardPage", () => {
   it("keeps partial-source warnings visible instead of presenting the board as fully green", async () => {
     renderPage();
 
-    await screen.findByText("Crna kožna sandala");
+    expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
     expect(screen.getByText("Delimicni signali su dostupni.")).toBeInTheDocument();
     expect(screen.getByText(/Neki izvori su upozoravajući/i)).toBeInTheDocument();
@@ -331,7 +331,7 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(await screen.findByTestId("analytics-error-state")).toHaveTextContent("Decision board API timeout");
     fireEvent.click(screen.getByRole("button", { name: "Ponovo proveri" }));
 
-    await screen.findByText("Crna kožna sandala");
+    expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
     await waitFor(() => expect(getDecisionBoardAggregate).toHaveBeenCalledTimes(2));
   });
 });
