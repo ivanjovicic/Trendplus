@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Status: test harness hardening + component-level and page-level analytics coverage
+Status: test harness hardening + component-level, page-level and MSW API-contract analytics coverage
 
 ## Goal
 
@@ -16,6 +16,8 @@ Improve analytics-screen test quality and coverage around the highest-risk user 
 - Color Sales Stats must preserve filter/sort/detail snapshot semantics;
 - Analytics Actions must preserve status/outcome evidence semantics;
 - Data Quality must preserve no-fake-green health and context semantics;
+- Executive Decision Board must preserve source-state, partial, expected-impact and retry semantics;
+- analytics service functions must preserve API route/query/body contracts;
 - persisted print/detail snapshots must be TTL-safe and resilient to malformed storage.
 
 ## Test infrastructure reviewed
@@ -50,7 +52,7 @@ Added/updated scripts:
 - `npm run test:run`
 - `npm run test:analytics`
 
-`test:analytics` now includes `src/pages`, so page-level specs such as `ColorSalesStatsPage.spec.tsx`, `AnalyticsActionsPage.spec.tsx` and `DataQualityPage.spec.tsx` are included in the targeted analytics run.
+`test:analytics` now includes `src/pages`, so page-level specs such as `ColorSalesStatsPage.spec.tsx`, `AnalyticsActionsPage.spec.tsx`, `DataQualityPage.spec.tsx` and `ExecutiveDecisionBoardPage.spec.tsx` are included in the targeted analytics run.
 
 ## Coverage added or improved
 
@@ -266,6 +268,54 @@ Why it matters:
 
 - Data Quality is the guardrail screen that tells the rest of analytics when recommendations are unsafe. These tests protect the page from silently dropping warnings or context.
 
+### ExecutiveDecisionBoardPage
+
+Files:
+
+- `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`
+
+Commits:
+
+- existing model tests already present in `src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+- `3f4f3a82a04244d28071279f87722b08a4ea8928`
+- `3e6ad5bc245d866a396c1aa904976db6680f1c4a`
+
+Coverage:
+
+- model-level tests cover aggregate-to-board mapping, missing expected impact, partial source states and null payload behavior;
+- page-level tests render metrics, sections, product/blocker/action/outcome cards and action links;
+- page-level tests keep partial source warnings visible;
+- missing expected impact renders as `Nije dostupno`, not fake `0 RSD`;
+- empty aggregate shows explicit empty state and keeps empty reason in the trust header;
+- failed aggregate load shows error state and retry re-loads the board.
+
+Why it matters:
+
+- Executive Decision Board is the combined decision surface. These tests protect the page from turning partial, warning or unavailable impact data into overconfident executive decisions.
+
+### analytics API contract requests
+
+File:
+
+- `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`
+
+Commit:
+
+- `415fe176d140bd29c45e9925cd1188cf5238e7f6`
+
+Coverage:
+
+- Decision Board aggregate route and query parameters, including default `dataScope=all`;
+- Color Sales Stats route and query parameters, including explicit `dataScope=imported`;
+- Analytics Actions list filters and outcome summary filters;
+- Analytics Action outcome PATCH body, especially pending/null measured evidence;
+- Data Quality issue list and top-offender routes with explicit scope.
+
+Why it matters:
+
+- Page-level tests mock services directly. These MSW tests protect the service contracts underneath, so route/query/body drift is caught before UI tests become misleading.
+
 ## Commands
 
 From `Klijent/clientapp`:
@@ -279,16 +329,6 @@ npm run build
 
 ## Remaining recommended coverage
 
-### T-FE-04 - Decision Board aggregate page tests
-
-Add page-level tests for:
-
-- source states;
-- product/supplier/blocker/action sections;
-- expected impact display;
-- action links;
-- no fallback impact when expected impact is unavailable.
-
 ### T-FE-05 - Visual regression protocol
 
 Implement or document screenshot tests for:
@@ -298,17 +338,28 @@ Implement or document screenshot tests for:
 - product decision table;
 - inventory table;
 - supplier ranking table;
+- decision board cards;
 - color sales screen;
 - data quality table;
 - actions/outcome table and modal.
 
-### T-FE-06 - Full MSW API-contract integration tests
+### T-FE-07 - Accessibility-focused analytics pass
 
-The current page-level tests mock service functions directly. A next hardening pass should add MSW-backed contract tests for at least:
+Add targeted accessibility tests for:
 
-- Color Sales Stats API request URLs;
-- Analytics Actions list/status/outcome routes;
-- Data Quality issue/top-offender/health/trend routes.
+- keyboard navigation through analytics tables and card grids;
+- focus trapping/return behavior in export and outcome modals;
+- accessible names for card CTAs and chart summaries;
+- empty/error/partial states announced with `role="status"` or appropriate landmarks.
+
+### T-FE-08 - True end-to-end smoke
+
+Add browser-level smoke tests after route/data seeds are stable:
+
+- open `/analytics/decision-board`;
+- drill into source/action links;
+- verify no uncaught console errors;
+- verify screenshot snapshots for light/dark themes.
 
 ## Validation status
 
