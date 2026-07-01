@@ -75,52 +75,71 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
   };
 
   const sidebarContent = (
-    <aside className="h-full w-80 border-r border-muted surface">
-      <div className="flex items-center justify-between border-b border-muted px-5 py-4">
-        <div>
-          <div className="text-sm font-medium text-muted">Trendplus</div>
-          <h1 className="text-lg font-semibold text-contrast">Backoffice</h1>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            className="hidden rounded-md border border-muted p-1 text-secondary lg:block"
-            onClick={onToggleCollapse}
-            aria-label="Skupi meni"
-            title="Skupi meni"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-muted p-1 text-secondary lg:hidden"
-            onClick={onCloseMobile}
-            aria-label="Close navigation"
-          >
-            <X size={16} />
-          </button>
+    <aside className="h-full w-80 border-r border-muted bg-[linear-gradient(180deg,var(--surface-darker)_0%,var(--surface-default)_42%,var(--surface-elevated)_100%)] text-contrast shadow-[18px_0_60px_-42px_rgba(0,0,0,0.75)]">
+      <div className="border-b border-muted px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--surface-light)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+              Trendplus
+            </div>
+            <h1 className="mt-3 text-xl font-semibold leading-tight text-contrast">Backoffice</h1>
+            <p className="mt-1 text-xs leading-relaxed text-secondary">Prodaja, lager, odluke i kontrola podataka.</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="hidden rounded-xl border border-muted bg-[var(--surface-light)] p-1.5 text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:block"
+              onClick={onToggleCollapse}
+              aria-label="Skupi meni"
+              title="Skupi meni"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-muted bg-[var(--surface-light)] p-1.5 text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:hidden"
+              onClick={onCloseMobile}
+              aria-label="Zatvori navigaciju"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
-      <nav className="h-[calc(100%-73px)] overflow-y-auto px-3 py-4">
-        <div className="space-y-2">
+      <nav className="h-[calc(100%-96px)] overflow-y-auto px-3 py-4">
+        <div className="space-y-2.5">
           {NAV_GROUPS.map((group) => {
             const GroupIcon = group.icon;
             const isOpen = openGroups.has(group.id);
             const activeItemTo = findBestMatchForGroup(location.pathname, group);
+            const isGroupActive = activeItemTo != null;
             return (
-              <div key={group.id} className="rounded-xl border border-muted surface-elevated">
+              <div
+                key={group.id}
+                className={`rounded-2xl border bg-[var(--surface-elevated)]/90 transition ${
+                  isGroupActive
+                    ? "border-[var(--info)] shadow-[0_18px_42px_-32px_var(--info)]"
+                    : "border-muted hover:border-[var(--border-hover)]"
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                  aria-expanded={isOpen}
                 >
-                  <span className="flex items-center gap-2 text-sm font-semibold text-contrast">
-                    <GroupIcon size={15} className="text-[var(--info)]" />
-                    <span>{group.label}</span>
+                  <span className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-contrast">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${isGroupActive ? "border-[var(--info)] bg-[var(--info)]/10" : "border-muted bg-[var(--surface-light)]"}`}>
+                      <GroupIcon size={16} className={isGroupActive ? "text-[var(--info)]" : "text-secondary"} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate">{group.label}</span>
+                      <span className="block text-[11px] font-medium text-muted">{group.items.length} ekrana</span>
+                    </span>
                     {group.badge && (
                       <span
-                        className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        className={`ml-1 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           group.badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
                         }`}
                         title={group.badge.title}
@@ -132,40 +151,40 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                   </span>
                   <ChevronDown
                     size={15}
-                    className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
                   />
                 </button>
 
                 {isOpen ? (
-                  <ul className="space-y-1 px-2 pb-2">
+                  <ul className="space-y-1.5 px-2 pb-2.5">
                     {group.items.map((item) => {
                       const ItemIcon = item.icon;
                       const isTestItem = Boolean(group.badge || item.badge);
                       const badge = item.badge ?? group.badge;
+                      const isActive = item.to === activeItemTo;
                       return (
                         <li key={item.to}>
                           <NavLink to={item.to} onClick={onCloseMobile} className={
-                            `group flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
-                              item.to === activeItemTo
-                                ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]"
+                            `group relative flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm transition ${
+                              isActive
+                                ? "bg-[var(--surface-light)] text-contrast ring-1 ring-[var(--info)]/80"
                                 : "text-secondary hover:bg-[var(--surface-default)] hover:text-contrast"
                             }`
                           }>
-                            <ItemIcon size={15} className="shrink-0 text-[var(--info)] group-hover:opacity-80" />
-                            <span className="truncate flex items-center gap-2">
-                              <span>{item.label}</span>
-                              {isTestItem && badge && (
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                    badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
-                                  }`}
-                                  title={badge.title}
-                                  aria-label={badge.title}
-                                >
-                                  {badge.label}
-                                </span>
-                              )}
-                            </span>
+                            {isActive ? <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--info)]" /> : null}
+                            <ItemIcon size={15} className={`ml-1 shrink-0 ${isActive ? "text-[var(--info)]" : "text-muted group-hover:text-[var(--info)]"}`} />
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            {isTestItem && badge && (
+                              <span
+                                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                  badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
+                                }`}
+                                title={badge.title}
+                                aria-label={badge.title}
+                              >
+                                {badge.label}
+                              </span>
+                            )}
                           </NavLink>
                         </li>
                       );
@@ -183,27 +202,26 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
   return (
     <>
       {collapsed ? (
-        <div className="hidden lg:flex lg:h-screen lg:w-12 lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-muted lg:pt-3 surface">
+        <div className="hidden lg:flex lg:h-screen lg:w-14 lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-muted lg:bg-[var(--surface-darker)] lg:pt-3">
           <button
             type="button"
-            className="rounded-md border border-muted p-1.5 text-secondary"
+            className="rounded-xl border border-muted bg-[var(--surface-light)] p-2 text-secondary transition hover:border-[var(--info)] hover:text-contrast"
             onClick={onToggleCollapse}
-            aria-label="Raspiri meni"
-            title="Raspiri meni"
+            aria-label="Raširi meni"
+            title="Raširi meni"
           >
             <ChevronRight size={16} />
           </button>
         </div>
       ) : (
-        <div className="hidden lg:block">{sidebarContent}</div>
+        <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:shrink-0">{sidebarContent}</div>
       )}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCloseMobile} />
           <div className="absolute left-0 top-0 h-full">{sidebarContent}</div>
         </div>
       ) : null}
     </>
   );
 }
-
