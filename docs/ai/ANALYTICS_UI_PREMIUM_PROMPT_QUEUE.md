@@ -20,6 +20,8 @@ Use with:
 | P-UI-01 | WAITING | analytics-menu-ia | Redesign analytics menu information architecture |
 | P-UI-02 | WAITING | analytics-control-bar | Create shared premium analytics control bar |
 | P-UI-03 | WAITING | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
+| P-UI-07 | WAITING | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
+| P-UI-08 | WAITING | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
 | P-UI-04 | WAITING | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 
 ---
@@ -37,7 +39,7 @@ Commit suggestion: `docs(ui): add analytics visual regression protocol`
 
 ### Why
 
-Premium UI changes need rendered verification. GitHub connector code edits cannot prove that sidebar, global header, dashboard, export modal and tables look correct in dark/light themes.
+Premium UI changes need rendered verification. GitHub connector code edits cannot prove that sidebar, global header, trust header, dashboard, export modal and tables look correct in dark/light themes.
 
 ### Scope only
 
@@ -49,10 +51,12 @@ Premium UI changes need rendered verification. GitHub connector code edits canno
 1. Add a visual review checklist or screenshot protocol for:
    - sidebar expanded/collapsed/mobile
    - global header desktop/tablet/mobile
+   - analytics trust header in recommendation/signal/report modes
    - analytics dashboard overview
    - export toolbar menu/modal
+   - product decision table
    - inventory table
-   - supplier/product table
+   - supplier table
    - data quality table
 2. Include dark and light theme expectations.
 3. Include viewport matrix: mobile, tablet, desktop.
@@ -223,6 +227,88 @@ Analytics tables vary by page. Premium analytics needs consistent sticky headers
 ### Acceptance
 
 - One migrated analytics table looks premium and preserves data/export parity.
+
+---
+
+## P-UI-07 - Supplier analytics table migration
+
+Status: WAITING
+Ready after: P-UI-03
+Priority: P1
+Type: frontend/component/tests
+Feature family: supplier-analytics-table
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-07-<agent>.lock.md`
+Commit suggestion: `feat(ui): migrate supplier analytics table`
+
+### Why
+
+Supplier decision/sales tables still use page-specific styles. Premium analytics should use one table contract for ranking, detail and export surfaces.
+
+### Scope only
+
+- one supplier analytics table first, preferably `SupplierDecisionTable`
+- shared table component/style from P-UI-03
+- tests or visual protocol output
+
+### Do not touch
+
+- backend pagination/sort semantics
+- recommendation formulas
+- export values
+
+### Do
+
+1. Migrate one supplier table to the shared premium table system.
+2. Preserve row click/detail behavior.
+3. Preserve `AnalyticsTableToolbar` payload.
+4. Verify numeric alignment and sticky header.
+
+### Acceptance
+
+- One supplier analytics table matches the premium table system without changing data semantics.
+
+---
+
+## P-UI-08 - Inventory page control surface consolidation
+
+Status: WAITING
+Ready after: P-UI-02 and RQ57/RQ58 if risk sort labels are touched
+Priority: P1
+Type: frontend/component/tests
+Feature family: inventory-control-surface
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-08-<agent>.lock.md`
+Commit suggestion: `feat(ui): consolidate inventory controls`
+
+### Why
+
+The inventory table panel is now more premium, but the page still has many separate filter, sort, export, print, scheduler and operations controls.
+
+### Scope only
+
+- `InventoryPage.tsx`
+- existing inventory subcomponents only if necessary
+- shared `AnalyticsControlBar` from P-UI-02
+
+### Do not touch
+
+- inventory API contracts
+- risk calculation semantics
+- forecast/rebalance/null-evidence logic
+
+### Do
+
+1. Group search, store, supplier, page size and sort controls into a premium control surface.
+2. Keep export/print/scheduler controls visible but secondary.
+3. Preserve all existing API calls and state.
+4. Clearly label page-local risk sort if RQ57/RQ58 has not been completed.
+
+### Acceptance
+
+- Inventory controls are easier to scan and still behave identically.
 
 ---
 
