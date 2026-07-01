@@ -16,6 +16,7 @@ Use with:
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | P-UI-05 | READY | analytics-ui-visual-regression | Add screenshot/manual visual review protocol before broad visual refactors |
+| P-UI-06 | WAITING | global-command-header | Add full command/search/breadcrumb/notification header system |
 | P-UI-01 | WAITING | analytics-menu-ia | Redesign analytics menu information architecture |
 | P-UI-02 | WAITING | analytics-control-bar | Create shared premium analytics control bar |
 | P-UI-03 | WAITING | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
@@ -36,7 +37,7 @@ Commit suggestion: `docs(ui): add analytics visual regression protocol`
 
 ### Why
 
-Premium UI changes need rendered verification. GitHub connector code edits cannot prove that sidebar, dashboard, export modal and tables look correct in dark/light themes.
+Premium UI changes need rendered verification. GitHub connector code edits cannot prove that sidebar, global header, dashboard, export modal and tables look correct in dark/light themes.
 
 ### Scope only
 
@@ -47,6 +48,7 @@ Premium UI changes need rendered verification. GitHub connector code edits canno
 
 1. Add a visual review checklist or screenshot protocol for:
    - sidebar expanded/collapsed/mobile
+   - global header desktop/tablet/mobile
    - analytics dashboard overview
    - export toolbar menu/modal
    - inventory table
@@ -59,6 +61,51 @@ Premium UI changes need rendered verification. GitHub connector code edits canno
 ### Acceptance
 
 - Future UI tasks have a repeatable way to verify visual regressions.
+
+---
+
+## P-UI-06 - Global command header system
+
+Status: WAITING
+Ready after: P-UI-05
+Priority: P1
+Type: frontend/design/tests
+Feature family: global-command-header
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-06-<agent>.lock.md`
+Commit suggestion: `feat(ui): add global command header system`
+
+### Why
+
+The global header now has premium styling and consistent status flags, but it still lacks a full premium application command model.
+
+### Scope only
+
+- `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
+- optional new shared components under `Klijent/clientapp/src/layout/components/`
+- optional route/nav helper extracted from `navConfig.ts`
+- tests or visual protocol output
+
+### Do not touch
+
+- backend status polling semantics
+- worker/Redis toggle API behavior
+- analytics formulas
+- route paths/aliases
+
+### Do
+
+1. Add or design a global command/search launcher for quickly opening pages/actions.
+2. Add robust route-aware breadcrumbs for dynamic/detail routes beyond simple `NAV_GROUPS` matches.
+3. Add a notification/action inbox concept for backend, worker, Redis and analytics warnings.
+4. Add user/account/store context only if source data exists; otherwise leave a prepared slot, not fake data.
+5. Verify desktop/tablet/mobile header behavior.
+
+### Acceptance
+
+- Header feels like a premium command center, not only a status strip.
+- Existing status/toggle behaviors remain unchanged.
 
 ---
 
