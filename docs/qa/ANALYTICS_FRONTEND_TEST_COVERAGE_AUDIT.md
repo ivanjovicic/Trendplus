@@ -53,9 +53,10 @@ File:
 
 - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`
 
-Commit:
+Commits:
 
 - `87bdee1fdb7e3f06b383c2f77d71a94d72c059ed`
+- `b0d29f802181f733a18f398633b6f479a853bb57`
 
 Coverage:
 
@@ -132,9 +133,10 @@ File:
 
 - `Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx`
 
-Commit:
+Commits:
 
 - `77fffd165737e3d3fe113173591f46794fe22e22`
+- `ce930c9df955e0f15fab4c3485022dc01bd71063`
 
 Coverage:
 
@@ -165,6 +167,7 @@ Commits:
 
 - `dbbf9f5592ec3b314d0942586862fd0c3e3e73a3`
 - `3db4d609715c0a3e8a80de0dc0f48249fe771286`
+- `e7353c45bbfce42d11a4d53c5b3b7f0a3389eee9`
 
 Coverage:
 
