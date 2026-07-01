@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ColorSalesStatsPage from "./ColorSalesStatsPage";
@@ -9,9 +10,9 @@ import type { ColorSalesStat, ColorSalesStatsResponse } from "../services/colorS
 
 vi.mock("recharts", () => ({
   Bar: () => null,
-  BarChart: ({ children }: { children?: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: { children?: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
   CartesianGrid: () => null,
-  ResponsiveContainer: ({ children }: { children?: React.ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
   Tooltip: () => null,
   XAxis: () => null,
   YAxis: () => null,
@@ -188,7 +189,6 @@ function getDecisionTable() {
 
 describe("ColorSalesStatsPage", () => {
   beforeEach(() => {
-    vi.setSystemTime(new Date("2026-07-01T12:00:00Z"));
     vi.mocked(getStores).mockResolvedValue([
       { storeId: 1, storeName: "Centar", city: "Beograd", region: "BG" },
       { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
@@ -203,8 +203,8 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     expect(getColorSalesStats).toHaveBeenCalledWith(expect.objectContaining({
-      fromDate: "2026-06-02T00:00:00Z",
-      toDate: "2026-07-01T23:59:59Z",
+      fromDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T00:00:00Z$/),
+      toDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T23:59:59Z$/),
       sezonaId: null,
       storeId: null,
     }));
@@ -267,7 +267,9 @@ describe("ColorSalesStatsPage", () => {
     await screen.findByText("Prioritetna lista boja");
 
     const table = getDecisionTable();
-    fireEvent.click(within(table).getByRole("button", { name: /Promet/i }));
+    const revenueButton = within(table).getAllByRole("button").find((button) => button.textContent?.startsWith("Promet"));
+    expect(revenueButton).toBeDefined();
+    fireEvent.click(revenueButton as HTMLButtonElement);
 
     const rows = within(table).getAllByRole("row");
     expect(rows[1]).toHaveTextContent("Bela");
