@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Status: test harness hardening + targeted frontend analytics coverage
+Status: test harness hardening + component-level and page-level analytics coverage
 
 ## Goal
 
@@ -13,6 +13,9 @@ Improve analytics-screen test quality and coverage around the highest-risk user 
 - export/print must use the same rows, columns, filters and metadata visible on screen;
 - inventory table actions must not accidentally open details or enqueue duplicate actions;
 - supplier ranking table must preserve backend-sort/pagination contracts;
+- Color Sales Stats must preserve filter/sort/detail snapshot semantics;
+- Analytics Actions must preserve status/outcome evidence semantics;
+- Data Quality must preserve no-fake-green health and context semantics;
 - persisted print/detail snapshots must be TTL-safe and resilient to malformed storage.
 
 ## Test infrastructure reviewed
@@ -38,12 +41,16 @@ What changed:
 Script improvement applied:
 
 - `Klijent/clientapp/package.json`
-- Commit: `32dc7b4d5989c292e8ad16f46691e295e36bd4bb`
+- Commits:
+  - `32dc7b4d5989c292e8ad16f46691e295e36bd4bb`
+  - `dad85625bb75de3d7b035fe15af71726282067ab`
 
-Added scripts:
+Added/updated scripts:
 
 - `npm run test:run`
 - `npm run test:analytics`
+
+`test:analytics` now includes `src/pages`, so page-level specs such as `ColorSalesStatsPage.spec.tsx`, `AnalyticsActionsPage.spec.tsx` and `DataQualityPage.spec.tsx` are included in the targeted analytics run.
 
 ## Coverage added or improved
 
@@ -184,6 +191,81 @@ Why it matters:
 
 - Supplier ranking is backend-sorted/paginated. These tests prevent future UI refactors from accidentally turning it into misleading local behavior.
 
+### ColorSalesStatsPage
+
+File:
+
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.spec.tsx`
+
+Commits:
+
+- `40f07df84d182114591ae5938525a5111357ef42`
+- `ed95c5145d7cab6e7ce95e710452e4979e9e7b23`
+
+Coverage:
+
+- initial load renders the premium page shell, filters, KPI cards, chart/table sections and export context;
+- API load uses a real date-range query shape without hard-coding unstable current-day values;
+- data-quality notes stay visible when split/margin/unknown-color coverage is partial;
+- invalid date ranges block a second analytics request;
+- season and store filters are passed to the backend with exact query semantics;
+- visible table sorting changes row order without changing export row count;
+- expanding a color row shows decision detail metrics;
+- opening full detail persists an analytics detail snapshot and navigates to the detail route.
+
+Why it matters:
+
+- Color Sales Stats is a full analytics screen with filters, KPI signals, sortable rows and detail snapshots. These tests protect the most important user-facing workflow after the premium UI pass.
+
+### AnalyticsActionsPage
+
+File:
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.spec.tsx`
+
+Commits:
+
+- `a3f91cd7f917579408f3928f39998f319c3d0c04`
+- `aba6ad96a77e87f42ca30cb60bb3e352dd89bc20`
+
+Coverage:
+
+- renders trust header, action KPIs, outcome summary warnings and action rows;
+- query-string source filter initializes the list and keeps the Inventory shortcut visible;
+- outcome-summary source bucket applies list filters;
+- expanding details loads row evidence, notes and impact ledger;
+- direct accept status sends the correct status update payload;
+- pending outcome keeps measured-impact/date fields disabled and submits null measurement evidence;
+- measured successful outcome parses decimal-comma impact values and submits measured date/note.
+
+Why it matters:
+
+- Action Queue is the operational bridge between analytics recommendations and real outcomes. These tests protect the evidence-first workflow and prevent accidental fake measured-impact states.
+
+### DataQualityPage
+
+File:
+
+- `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`
+
+Commits:
+
+- `9dcc0805d6fd9ae6d3e3e3e92fa23db2a3f21562`
+- `7deb028a74bba30499d1949bfddf8f9453976069`
+
+Coverage:
+
+- renders warning health, issue table, top offenders, trend and export context;
+- keeps warning/no-fake-green status visible through the mocked trust header;
+- preserves context query parameters from originating analytics tables;
+- passes `dataScope` through issue, health and top-offender API calls;
+- issue tabs and search form update URL-driven filters;
+- intake view keeps read-only report context and calls both legacy and durable intake report loaders.
+
+Why it matters:
+
+- Data Quality is the guardrail screen that tells the rest of analytics when recommendations are unsafe. These tests protect the page from silently dropping warnings or context.
+
 ## Commands
 
 From `Klijent/clientapp`:
@@ -196,34 +278,6 @@ npm run build
 ```
 
 ## Remaining recommended coverage
-
-### T-FE-01 - Page-level MSW tests for Color Sales Stats
-
-Add page-level tests with mocked `getColorSalesStats` / `getStores` or MSW handlers:
-
-- initial load shows filters, KPI cards, chart/table section and export toolbar;
-- invalid date range shows explicit error;
-- apply/reset filters preserve period/store/season semantics;
-- table sort changes row order without changing source data;
-- detail navigation saves analytics detail snapshot.
-
-### T-FE-02 - Page-level tests for Analytics Actions outcome workflow
-
-Add tests after RQ81/RQ86 semantics are stable:
-
-- pending/not-measured states do not imply measured evidence;
-- modal copy and disabled fields are evidence-first;
-- status action buttons call correct API payloads;
-- expanded details show ledger/notes without fake values.
-
-### T-FE-03 - Data Quality table tests
-
-Add tests after shared table migration or as page-local tests:
-
-- health score states;
-- top offender rows;
-- returned-count vs total-count copy;
-- no fake green when unknown/failed states are present.
 
 ### T-FE-04 - Decision Board aggregate page tests
 
@@ -247,6 +301,14 @@ Implement or document screenshot tests for:
 - color sales screen;
 - data quality table;
 - actions/outcome table and modal.
+
+### T-FE-06 - Full MSW API-contract integration tests
+
+The current page-level tests mock service functions directly. A next hardening pass should add MSW-backed contract tests for at least:
+
+- Color Sales Stats API request URLs;
+- Analytics Actions list/status/outcome routes;
+- Data Quality issue/top-offender/health/trend routes.
 
 ## Validation status
 
