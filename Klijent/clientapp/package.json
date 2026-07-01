@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:analytics": "vitest run src/components/analytics src/components/inventory src/components/supplierDecisionHub src/services/__tests__ src/pages/__tests__",
+    "test:analytics": "vitest run src/components/analytics src/components/inventory src/components/supplierDecisionHub src/services/__tests__ src/pages",
     "test:watch": "vitest --watch"
   },
   "dependencies": {
