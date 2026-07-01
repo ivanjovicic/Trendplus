@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AnalyticsTableToolbar from "../AnalyticsTableToolbar";
 import { getPrintPayload } from "../../../services/analyticsTableState";
 import { downloadExport, generateExport, requestPrintPreview, waitForExport } from "../../../services/exportApi";
+import type { DocumentOperationResponse, DocumentStatusResponse } from "../../../services/exportApi";
+import type { AnalyticsTableColumn } from "../../../types/analyticsTable";
 
 vi.mock("../../../services/exportApi", async () => {
   const actual = await vi.importActual<typeof import("../../../services/exportApi")>("../../../services/exportApi");
@@ -27,10 +29,30 @@ const rows: TestRow[] = [
   { supplier: "Dobavljač B", revenue: 80000, hiddenInternal: "ignore-b" },
 ];
 
-const columns = [
-  { key: "supplier", header: "Dobavljač", dataType: "text" as const },
-  { key: "revenue", header: "Prihod", dataType: "currency" as const, getValue: (row: TestRow) => row.revenue },
+const columns: AnalyticsTableColumn<TestRow>[] = [
+  { key: "supplier", header: "Dobavljač", dataType: "text" },
+  { key: "revenue", header: "Prihod", dataType: "currency", getValue: (row) => row.revenue },
 ];
+
+function operation(overrides: Partial<DocumentOperationResponse>): DocumentOperationResponse {
+  return {
+    documentId: "doc-sync",
+    status: "completed",
+    isAsync: false,
+    createdAtUtc: "2026-07-01T10:00:00Z",
+    ...overrides,
+  };
+}
+
+function status(overrides: Partial<DocumentStatusResponse>): DocumentStatusResponse {
+  return {
+    documentId: "doc-status",
+    status: "completed",
+    isAsync: false,
+    createdAtUtc: "2026-07-01T10:00:00Z",
+    ...overrides,
+  };
+}
 
 function renderToolbar() {
   return render(
@@ -78,11 +100,10 @@ describe("AnalyticsTableToolbar", () => {
   });
 
   it("opens the export menu and sends sync Excel export with table rows, filters and metadata", async () => {
-    vi.mocked(generateExport).mockResolvedValue({
-      isAsync: false,
+    vi.mocked(generateExport).mockResolvedValue(operation({
       downloadUrl: "/exports/supplier-test.xlsx",
       fileName: "supplier-test.xlsx",
-    });
+    }));
 
     renderToolbar();
 
@@ -120,7 +141,7 @@ describe("AnalyticsTableToolbar", () => {
   });
 
   it("routes PDF preview through print preview instead of direct export", async () => {
-    vi.mocked(requestPrintPreview).mockResolvedValue({ printUrl: "/print-preview/123" });
+    vi.mocked(requestPrintPreview).mockResolvedValue(operation({ printUrl: "/print-preview/123" }));
 
     renderToolbar();
 
@@ -134,8 +155,8 @@ describe("AnalyticsTableToolbar", () => {
   });
 
   it("waits for async exports before downloading the completed document", async () => {
-    vi.mocked(generateExport).mockResolvedValue({ isAsync: true, documentId: "doc-1" });
-    vi.mocked(waitForExport).mockResolvedValue({ downloadUrl: "/exports/ready.csv", fileName: "ready.csv" });
+    vi.mocked(generateExport).mockResolvedValue(operation({ isAsync: true, documentId: "doc-1", status: "queued" }));
+    vi.mocked(waitForExport).mockResolvedValue(status({ downloadUrl: "/exports/ready.csv", fileName: "ready.csv" }));
 
     renderToolbar();
 
