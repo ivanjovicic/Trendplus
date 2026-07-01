@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { InventoryItemsTable } from "./InventoryItemsTable";
 import { buildSignalText, sellThroughStatusLabel, stockCoverStatusLabel } from "./inventoryUtils";
@@ -40,8 +41,8 @@ function makeRow(overrides: Partial<InventoryRow> = {}): InventoryRow {
   };
 }
 
-function renderTable(overrides: Partial<React.ComponentProps<typeof InventoryItemsTable>> = {}) {
-  const props: React.ComponentProps<typeof InventoryItemsTable> = {
+function renderTable(overrides: Partial<ComponentProps<typeof InventoryItemsTable>> = {}) {
+  const props: ComponentProps<typeof InventoryItemsTable> = {
     rows: [makeRow()],
     loading: false,
     totalCount: 1,
