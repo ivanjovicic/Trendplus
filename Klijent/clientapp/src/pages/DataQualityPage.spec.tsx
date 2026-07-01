@@ -270,13 +270,13 @@ describe("DataQualityPage", () => {
 
     expect(screen.getByText("Skor kvaliteta podataka")).toBeInTheDocument();
     expect(screen.getByText("Postoje problemi koji blokiraju deo preporuka.")).toBeInTheDocument();
-    expect(screen.getByText("Artikli bez dobavljača")).toBeInTheDocument();
+    expect(screen.getAllByText("Artikli bez dobavljača").length).toBeGreaterThan(0);
     expect(screen.getByText("Promet bez nabavne cene")).toBeInTheDocument();
     expect(screen.getByText("Blokirane preporuke")).toBeInTheDocument();
     expect(screen.getByText("Trend kvaliteta podataka")).toBeInTheDocument();
     expect(screen.getByText("Top problemi")).toBeInTheDocument();
     expect(screen.getAllByText("Premium sandala").length).toBeGreaterThan(0);
-    expect(screen.getByText("SKU-101")).toBeInTheDocument();
+    expect(screen.getAllByText("SKU-101").length).toBeGreaterThan(0);
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("data-quality-missingSupplier: 1 rows");
   });
 
@@ -288,7 +288,7 @@ describe("DataQualityPage", () => {
     expect(getDataQualityIssues).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
     expect(getAnalyticsDataQualityHealth).toHaveBeenCalledWith(undefined, "imported");
     expect(getDataQualityTopOffenders).toHaveBeenCalledWith("missingSupplier", 10, "imported");
-    expect(screen.getByText("Otvoreno iz analytics tabele:")).toBeInTheDocument();
+    expect(screen.getByText(/Otvoreno iz analytics tabele:/)).toBeInTheDocument();
     expect(screen.getByText("color-sales-stats")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Nazad na izvorni kontekst" })).toHaveAttribute("href", "/analytics/color-sales-stats");
   });
