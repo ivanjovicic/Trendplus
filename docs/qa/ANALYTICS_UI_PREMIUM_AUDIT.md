@@ -9,6 +9,7 @@ Status: UI audit + scoped runtime improvements
 Reviewed primary analytics UX surfaces:
 
 - global app shell and sidebar navigation
+- global header/status bar visible on all pages
 - analytics route definitions
 - analytics dashboard cockpit
 - shared analytics table toolbar/export modal
@@ -17,9 +18,13 @@ Reviewed primary analytics UX surfaces:
 Reviewed files:
 
 - `Klijent/clientapp/src/layout/components/Sidebar.tsx`
+- `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
 - `Klijent/clientapp/src/layout/navConfig.ts`
 - `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`
 - `Klijent/clientapp/src/App.tsx`
+- `Klijent/clientapp/src/components/ApiPingFlag.tsx`
+- `Klijent/clientapp/src/components/WorkerControlFlag.tsx`
+- `Klijent/clientapp/src/components/RedisToggleFlag.tsx`
 - `Klijent/clientapp/src/components/analytics/AnalyticsTableToolbar.tsx`
 - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
 - `Klijent/clientapp/src/pages/AnalyticsDashboard.css`
@@ -80,7 +85,58 @@ Commit:
 
 - `a0d4a6328d5abea246a63ceadec015b47c9ef99a`
 
+### UI-F03 - Premium global header/status bar
+
+Files changed:
+
+- `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
+- `Klijent/clientapp/src/components/ApiPingFlag.tsx`
+- `Klijent/clientapp/src/components/WorkerControlFlag.tsx`
+- `Klijent/clientapp/src/components/RedisToggleFlag.tsx`
+
+Before:
+
+- Header was functional but looked like a developer control strip.
+- Current page context was not visible in the header.
+- Backend, API ping, workers and Redis controls used mixed visual styles.
+- Several Serbian labels lacked diacritics.
+- On smaller widths, controls could compete with page title and actions.
+
+Now:
+
+- Header is a premium sticky command/status bar.
+- It derives current group and current page from `NAV_GROUPS` and `location.pathname`.
+- Page context appears as breadcrumb-like group → page text.
+- Backend state is a compact status pill with tone, icon and last-check tooltip.
+- API ping, workers and Redis controls have consistent premium pill/button styling.
+- System controls collapse into a secondary horizontal strip below the header on smaller screens.
+- Data scope selector is framed as a data view control.
+- Theme and refresh buttons have consistent rounded premium styling.
+- Serbian copy is corrected: `Postojeći`, `Osveži`, `učitavanje`, `isključeni`, `uključen`, `greška`.
+
+Commits:
+
+- `a49a966f73d851245772807fff751b6c767f2dfc`
+- `7dd6d89190d11600dcd714bfd5b4d111e725d092`
+- `cf743b39457e1c6978ea42dd0b7fc59540d5b585`
+- `5da4ab031389afbda1ea0ac7371d9d1be8c37a7b`
+
 ## Main controls and tables identified
+
+### Global top bar
+
+- Source: `HeaderStatus.tsx` through `AppLayout`.
+- Visible on all non-print pages.
+- Main controls:
+  - mobile menu button
+  - backend status
+  - API ping toggle
+  - worker status/toggle/refresh
+  - Redis status/toggle
+  - data scope selector
+  - theme settings link
+  - global refresh
+- Current remaining risk: header still lacks full command-search, notification center, breadcrumbs for routes outside nav config and user/account area.
 
 ### Navigation / menu
 
@@ -187,15 +243,29 @@ Problem:
 
 Recommendation:
 
-- Add Playwright or story/screenshot checklist for sidebar, analytics dashboard, toolbar modal and key table pages in dark/light themes.
+- Add Playwright or story/screenshot checklist for sidebar, global header, analytics dashboard, toolbar modal and key table pages in dark/light themes.
+
+### P-UI-06 - Global command header system
+
+Problem:
+
+- Header now has premium styling, but the application still lacks full top-level command UX.
+
+Recommendation:
+
+- Add global command/search launcher.
+- Add route-aware breadcrumbs for dynamic/detail routes.
+- Add notification/action inbox for worker/backend/analytics warnings.
+- Add user/account/store context if authentication/account context is added.
 
 ## Recommended execution order
 
 1. P-UI-05 screenshot/regression harness or manual screenshot protocol.
-2. P-UI-01 menu IA, because it affects analytics navigation first impression.
-3. P-UI-02 shared control bar.
-4. P-UI-03 shared analytics table system.
-5. P-UI-04 command center redesign.
+2. P-UI-06 global command header system design.
+3. P-UI-01 menu IA, because it affects analytics navigation first impression.
+4. P-UI-02 shared control bar.
+5. P-UI-03 shared analytics table system.
+6. P-UI-04 command center redesign.
 
 ## Validation status
 
