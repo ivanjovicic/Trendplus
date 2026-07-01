@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import SupplierDecisionTable from "./SupplierDecisionTable";
 import type { RankingItem } from "../../services/supplierDecisionHubApi";
@@ -46,8 +47,8 @@ function makeItem(overrides: Partial<RankingItem> = {}): RankingItem {
   };
 }
 
-function renderTable(overrides: Partial<React.ComponentProps<typeof SupplierDecisionTable>> = {}) {
-  const props: React.ComponentProps<typeof SupplierDecisionTable> = {
+function renderTable(overrides: Partial<ComponentProps<typeof SupplierDecisionTable>> = {}) {
+  const props: ComponentProps<typeof SupplierDecisionTable> = {
     items: [makeItem()],
     columns,
     analyticsFilters: filters,
