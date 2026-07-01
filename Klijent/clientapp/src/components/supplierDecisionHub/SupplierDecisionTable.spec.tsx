@@ -65,8 +65,8 @@ function renderTable(overrides: Partial<React.ComponentProps<typeof SupplierDeci
     ...overrides,
   };
 
-  render(<SupplierDecisionTable {...props} />);
-  return props;
+  const utils = render(<SupplierDecisionTable {...props} />);
+  return { props, ...utils };
 }
 
 describe("SupplierDecisionTable", () => {
@@ -80,8 +80,8 @@ describe("SupplierDecisionTable", () => {
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("supplier-decision-hub");
     expect(screen.getByText("Dobavljač Premium")).toBeInTheDocument();
     expect(screen.getByText(/1.250.000/)).toBeInTheDocument();
-    expect(screen.getByText("0,91")).toBeInTheDocument();
-    expect(screen.getByText(/Širi saradnju|EXPAND/i)).toBeInTheDocument();
+    expect(screen.getByText("Visoka")).toBeInTheDocument();
+    expect(screen.getByText("Povecati saradnju")).toBeInTheDocument();
   });
 
   it("delegates backend sort requests without sorting locally", () => {
@@ -110,9 +110,9 @@ describe("SupplierDecisionTable", () => {
 
   it("renders loading skeleton and disables pagination actions while loading", () => {
     const onPageChange = vi.fn();
-    renderTable({ items: [], loading: true, page: 2, totalCount: 75, onPageChange });
+    const { container } = renderTable({ items: [], loading: true, page: 2, totalCount: 75, onPageChange });
 
-    expect(screen.getAllByText((_, element) => element?.className.includes("supplier-decision-skeleton-row") ?? false).length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".supplier-decision-skeleton-row").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Prethodna" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Sledeća" })).toBeDisabled();
   });
