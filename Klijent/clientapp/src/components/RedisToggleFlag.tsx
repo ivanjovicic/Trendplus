@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DatabaseZap } from "lucide-react";
 import { usePingControl } from "../context/PingControlContext";
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
@@ -35,7 +36,7 @@ export default function RedisToggleFlag() {
       setError(null);
       setEndpointMissing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Greska");
+      setError(e instanceof Error ? e.message : "Greška");
     } finally {
       setLoading(false);
     }
@@ -66,73 +67,55 @@ export default function RedisToggleFlag() {
       setStatus(data);
       setEndpointMissing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Greska pri toglovanju Redis-a.");
+      setError(e instanceof Error ? e.message : "Greška pri togglovanju Redis-a.");
     } finally {
       setBusy(false);
     }
   }, [busy]);
 
-  const tone = error
-    ? { bg: "var(--error, var(--theme-color-7f1d1d, #7f1d1d))", border: "var(--error, var(--theme-color-f87171, #f87171))", text: "var(--text-on-error, var(--theme-color-fee2e2, #fee2e2))" }
+  const toneClass = error
+    ? "border-[var(--error)]/50 bg-error-soft text-[var(--error)]"
     : !status
-    ? { bg: "var(--surface-elevated, var(--theme-color-1f2937, #1f2937))", border: "var(--border-default, var(--theme-color-6b7280, #6b7280))", text: "var(--text-muted, var(--theme-color-e5e7eb, #e5e7eb))" }
+    ? "border-muted bg-[var(--surface-darker)] text-muted"
     : status.enabled && status.available
-    ? { bg: "var(--success, var(--theme-color-064e3b, #064e3b))", border: "var(--success, var(--theme-color-34d399, #34d399))", text: "var(--text-on-success, var(--theme-color-d1fae5, #d1fae5))" }
+    ? "border-[var(--success)]/50 bg-success-soft text-[var(--success)]"
     : status.enabled && !status.available
-    ? { bg: "var(--warning, var(--theme-color-78350f, #78350f))", border: "var(--warning, var(--theme-color-fbbf24, #fbbf24))", text: "var(--text-muted, var(--theme-color-fef3c7, #fef3c7))" }
-    : { bg: "var(--surface-elevated, var(--theme-color-1f2937, #1f2937))", border: "var(--border-hover, var(--theme-color-9ca3af, #9ca3af))", text: "var(--text-muted, var(--theme-color-e5e7eb, #e5e7eb))" };
+    ? "border-[var(--warning)]/50 bg-warning-soft text-[var(--warning)]"
+    : "border-muted bg-[var(--surface-darker)] text-muted";
 
   const label = error
-    ? "Redis: greska"
+    ? "Redis: greška"
     : endpointMissing
-    ? "Redis: endpoint nije aktivan"
+    ? "Redis: nema endpoint"
     : loading && !status
-    ? "Redis: ucitavanje..."
+    ? "Redis: učitavanje"
     : !status
-    ? "Redis: status nedostupan"
+    ? "Redis: nedostupno"
     : status.enabled
     ? status.available
-      ? "Redis: ukljucen"
-      : "Redis: ukljucen (nedostupan)"
-    : "Redis: iskljucen";
+      ? "Redis: uključen"
+      : "Redis: nedostupan"
+    : "Redis: isključen";
 
-  const buttonLabel = status?.enabled ? "Stop Redis" : "Start Redis";
+  const buttonLabel = status?.enabled ? "Stop" : "Start";
   const title = status
     ? `Enabled: ${status.enabled} | Available: ${status.available}`
     : "Redis cache status";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="inline-flex shrink-0 items-center gap-1 rounded-2xl border border-muted bg-[var(--surface-light)] px-1.5 py-1">
       <span
-        style={{
-          padding: "4px 8px",
-          borderRadius: 999,
-          border: `1px solid ${tone.border}`,
-          background: tone.bg,
-          color: tone.text,
-          fontSize: 12,
-          fontWeight: 700,
-          whiteSpace: "nowrap",
-        }}
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-bold tracking-wide ${toneClass}`}
         title={title}
       >
+        <DatabaseZap size={12} />
         {label}
       </span>
       <button
         type="button"
         onClick={() => void onToggle()}
         disabled={busy || !status || endpointMissing}
-        style={{
-          padding: "5px 10px",
-          borderRadius: 8,
-          border: `1px solid var(--border-default, var(--theme-color-4b5563, #4b5563))`,
-          background: busy ? "var(--surface-elevated, var(--theme-color-374151, #374151))" : "var(--surface-default, var(--theme-color-1f2937, #1f2937))",
-          color: "var(--text-primary, var(--theme-color-ffffff, #ffffff))",
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: busy || !status || endpointMissing ? "not-allowed" : "pointer",
-          opacity: busy || !status || endpointMissing ? 0.6 : 1,
-        }}
+        className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition hover:border-[var(--info)] hover:bg-[var(--surface-darker)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? "..." : buttonLabel}
       </button>
