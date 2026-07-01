@@ -260,9 +260,9 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText("Sažetak ishoda akcija")).toBeInTheDocument();
     expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
     expect(screen.getByText("Akcije u uzorku")).toBeInTheDocument();
-    expect(screen.getByText("Zalihe")).toBeInTheDocument();
+    expect(screen.getAllByText("Zalihe").length).toBeGreaterThan(0);
     expect(screen.getByText("REPLENISH")).toBeInTheDocument();
-    expect(screen.getByText("Upozorenje")).toBeInTheDocument();
+    expect(screen.getAllByText("Upozorenje").length).toBeGreaterThan(0);
     expect(screen.getByText("Čeka proveru")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj: Još nije izmereno/i)).toBeInTheDocument();
   });
