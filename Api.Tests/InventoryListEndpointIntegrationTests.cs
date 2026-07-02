@@ -240,7 +240,7 @@ public sealed class InventoryListEndpointIntegrationTests
                 Id = 401,
                 ArtikalId = 101,
                 Datum = DateTime.UtcNow.AddDays(-5),
-                TipPromene = "Prodaja",
+                TipPromene = TipPromeneConstants.Prodaja,
                 Kolicina = -12,
                 IDObjekat = 1,
                 DataOrigin = "existing"
@@ -250,7 +250,7 @@ public sealed class InventoryListEndpointIntegrationTests
                 Id = 402,
                 ArtikalId = 102,
                 Datum = DateTime.UtcNow.AddDays(-10),
-                TipPromene = TipPromeneConstants.Ulaz,
+                TipPromene = TipPromeneConstants.UlazRobe,
                 Kolicina = 5,
                 IDObjekat = 1,
                 DataOrigin = "existing"
