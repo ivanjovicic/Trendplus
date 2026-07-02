@@ -4,21 +4,29 @@ on:
   push:
     branches: [ main, master ]
     paths:
+      - '.github/workflows/analytics-tests.yml'
       - 'Api/**'
       - 'Api.Tests/**'
+      - 'Application/**'
       - 'Domain/**'
       - 'Infrastructure/**'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: analytics-backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Run Unit & Integration Tests
+    name: Complete backend analytics suite
     runs-on: ubuntu-latest
 
     services:
-      # We spin up a real Postgres instance for integration tests
       postgres:
         image: postgres:15
         env:
@@ -33,31 +41,74 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
+      ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
+      ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
+
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore Trendplus2.sln
+      - name: Restore dependencies
+        run: dotnet restore Trendplus2.sln
 
-    - name: Build
-      run: dotnet build Trendplus2.sln --no-restore --configuration Release
+      - name: Build solution
+        run: dotnet build Trendplus2.sln --no-restore --configuration Release
 
-    - name: Run Unit Tests
-      run: dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit" --verbosity minimal
+      - name: Run all backend tests with coverage
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --settings Api.Tests/coverage.runsettings
+          --results-directory TestResults
+          --logger "trx;LogFileName=analytics-tests.trx"
 
-    - name: Run Integration Tests
-      env:
-        # Override connection string for GitHub Actions runner
-        ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
-      run: dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Integration" --verbosity normal
+      - name: Publish coverage summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
 
-    - name: Test Summary
-      if: always()
-      run: |
-        echo "### Test Execution Summary" >> $GITHUB_STEP_SUMMARY
-        echo "Tests completed on $(date)" >> $GITHUB_STEP_SUMMARY
+          reports = glob.glob("TestResults/**/coverage.cobertura.xml", recursive=True)
+          summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+
+          with open(summary_path, "a", encoding="utf-8") as summary:
+              summary.write("## Backend analytics test coverage\n\n")
+              if not reports:
+                  summary.write("Coverage report was not produced. Check the test and collector logs.\n")
+                  sys.exit(1)
+
+              root = ET.parse(reports[0]).getroot()
+              line_rate = float(root.attrib.get("line-rate", "0")) * 100
+              branch_rate = float(root.attrib.get("branch-rate", "0")) * 100
+              lines_covered = root.attrib.get("lines-covered", "0")
+              lines_valid = root.attrib.get("lines-valid", "0")
+              branches_covered = root.attrib.get("branches-covered", "0")
+              branches_valid = root.attrib.get("branches-valid", "0")
+
+              summary.write(f"- Line coverage: **{line_rate:.2f}%** ({lines_covered}/{lines_valid})\n")
+              summary.write(f"- Branch coverage: **{branch_rate:.2f}%** ({branches_covered}/{branches_valid})\n")
+              summary.write(f"- Cobertura reports: **{len(reports)}**\n")
+          PY
+
+      - name: Upload test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-backend-test-results
+          path: TestResults
+          if-no-files-found: error
+          retention-days: 14
