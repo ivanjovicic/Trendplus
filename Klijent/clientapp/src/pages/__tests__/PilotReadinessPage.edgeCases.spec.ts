@@ -206,7 +206,7 @@ describe("Pilot readiness edge-state mapping", () => {
     }), "refresh");
 
     expect(card.status).toBe("warning");
-    expect(card.reason).toContain("Workers disabled");
+    expect(card.meta).toContain("Workers disabled");
   });
 
   it("blocks an empty product decision response instead of treating zero rows as healthy", () => {
@@ -231,7 +231,7 @@ describe("Pilot readiness edge-state mapping", () => {
 
     expect(unavailable.status).toBe("unknown");
     expect(confirmedEmpty.status).toBe("warning");
-    expect(confirmedEmpty.reason).toContain("red akcija je prazan");
+    expect(confirmedEmpty.reason).toContain("Red akcija je prazan");
   });
 
   it("warns on report fallback and blocks critical report quality", () => {
