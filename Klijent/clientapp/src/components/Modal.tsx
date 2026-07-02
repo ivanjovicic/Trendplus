@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from "react";
+﻿import React, { useEffect, useId, useRef } from "react";
 
 export interface ModalProps {
     isOpen: boolean;
@@ -13,6 +13,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+    const titleId = useId();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -27,7 +28,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
             if (e.key !== "Tab" || !modalRef.current) return;
 
             const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
             );
 
             if (focusable.length === 0) {
@@ -72,29 +73,32 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
 
     return (
         <div className="modal-root">
-            {/* Backdrop */}
-            <div className="modal-backdrop" onClick={onClose} />
+            <div className="modal-backdrop" aria-hidden="true" onClick={onClose} />
 
-            {/* Modal Content */}
             <div
                 ref={modalRef}
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="modal-title"
+                aria-labelledby={titleId}
                 tabIndex={-1}
                 className="modal-content"
                 style={{ ...sizeStyles[size], maxHeight: "90vh" }}
             >
-                {/* Header */}
                 <div className="modal-header">
-                    <h3 id="modal-title" style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>{title}</h3>
-                    <button ref={closeButtonRef} onClick={onClose} className="modal-close-button" aria-label="Zatvori">x</button>
+                    <h3 id={titleId} style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>{title}</h3>
+                    <button
+                        ref={closeButtonRef}
+                        type="button"
+                        onClick={onClose}
+                        className="modal-close-button"
+                        aria-label="Zatvori"
+                    >
+                        x
+                    </button>
                 </div>
 
-                {/* Body */}
                 <div className="modal-body">{children}</div>
 
-                {/* Footer */}
                 {footer && <div className="modal-footer">{footer}</div>}
             </div>
         </div>
