@@ -143,7 +143,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("warning", response.TrustMetadata.DataCoverageStatus);
         Assert.Contains("30d", response.DataNote ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.True(response.Meta!.IsPartial);
-        Assert.False(string.IsNullOrWhiteSpace(response.Meta.WarningCode));
+        Assert.Equal("FALLBACK_DATASET_USED", response.Meta.WarningCode);
     }
 
     [Fact]
@@ -160,6 +160,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("warning", response.TrustMetadata.DataCoverageStatus);
         Assert.False(response.TrustMetadata.RecommendationAllowed);
         Assert.Equal(2, response.TrustMetadata.RowCount);
+        Assert.Equal("RECOMMENDATION_GATED", response.Meta!.WarningCode);
     }
 
     [Fact]
@@ -177,13 +178,18 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal(1, response.TrustMetadata.MissingSupplierNameCount);
         Assert.False(response.TrustMetadata.RecommendationAllowed);
         Assert.Equal("critical", response.Meta!.DataQualityStatus);
+        Assert.Equal("RECOMMENDATION_GATED", response.Meta.WarningCode);
     }
 
     [Fact]
     public void BuildSummaryResponse_EmptyDatasetReturnsExplicitInsufficientDataContract()
     {
         var response = SupplierDecisionHubEndpoints.BuildSummaryResponse(
-            new SupplierDecisionHubEndpoints.SupplierRowsDataset([], 0, 0, GeneratedAtUtc),
+            new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+                Rows: [],
+                ZeroRevenueRowsExcludedCount: 0,
+                IgnoredRowCount: 0,
+                GeneratedAtUtc: GeneratedAtUtc),
             Filters90Days());
 
         Assert.Equal(0, response.SupplierCount);
@@ -194,7 +200,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("insufficient_data", response.TrustMetadata.DataCoverageStatus);
         Assert.True(response.Meta!.Success);
         Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
-        Assert.False(string.IsNullOrWhiteSpace(response.Meta.EmptyReason));
+        Assert.Equal("no_data_in_period", response.Meta.EmptyReason);
     }
 
     [Fact]
@@ -267,9 +273,9 @@ public sealed class SupplierDecisionHubContractTests
         Filters(
             from: new DateTime(2026, 4, 3, 0, 0, 0, DateTimeKind.Utc),
             to: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
-            supplierId,
-            storeId,
-            dataScope);
+            supplierId: supplierId,
+            storeId: storeId,
+            dataScope: dataScope);
 
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters Filters(
         DateTime from,
@@ -293,7 +299,11 @@ public sealed class SupplierDecisionHubContractTests
 
     private static SupplierDecisionHubEndpoints.SupplierRowsDataset Dataset(
         params SupplierDecisionHubEndpoints.SupplierScoreRow[] rows) =>
-        new(rows, ZeroRevenueRowsExcludedCount: 0, IgnoredRowCount: 0, GeneratedAtUtc);
+        new(
+            Rows: rows,
+            ZeroRevenueRowsExcludedCount: 0,
+            IgnoredRowCount: 0,
+            GeneratedAtUtc: GeneratedAtUtc);
 
     private static SupplierDecisionHubEndpoints.SupplierScoreRow Row(
         int supplierId,
