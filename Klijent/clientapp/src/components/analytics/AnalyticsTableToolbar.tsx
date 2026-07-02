@@ -55,6 +55,9 @@ export default function AnalyticsTableToolbar<Row>(props: {
   const [preview, setPreview] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [statusText, setStatusText] = React.useState<string | null>(null);
+  const exportButtonRef = React.useRef<HTMLButtonElement>(null);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const exportMenuId = React.useId();
 
   const payload = React.useMemo(
     () =>
@@ -72,6 +75,64 @@ export default function AnalyticsTableToolbar<Row>(props: {
       }),
     [props.columns, props.documentType, props.filters, props.locale, props.metadata, props.rows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
   );
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+
+    const getMenuItems = () => Array.from(
+      exportMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    );
+
+    const focusTimer = window.setTimeout(() => getMenuItems()[0]?.focus(), 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const items = getMenuItems();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false);
+        exportButtonRef.current?.focus();
+        return;
+      }
+
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || items.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.key === "Home") {
+        items[0].focus();
+        return;
+      }
+      if (event.key === "End") {
+        items[items.length - 1].focus();
+        return;
+      }
+
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = currentIndex < 0
+        ? 0
+        : (currentIndex + direction + items.length) % items.length;
+      items[nextIndex].focus();
+    };
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (exportMenuRef.current?.contains(target) || exportButtonRef.current?.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [menuOpen]);
 
   const openExportModal = (selectedFormat: ExportFormat) => {
     setFormat(selectedFormat);
@@ -140,8 +201,12 @@ export default function AnalyticsTableToolbar<Row>(props: {
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)]/90 px-3 py-2 shadow-[0_16px_36px_-30px_rgba(0,0,0,0.9)]">
         <div className="relative">
           <button
+            ref={exportButtonRef}
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? exportMenuId : undefined}
             className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)] shadow-[0_12px_24px_-18px_var(--info)] transition hover:translate-y-[-1px]"
           >
             <Download size={14} />
@@ -151,13 +216,21 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </button>
 
           {menuOpen ? (
-            <div className="absolute right-0 z-20 mt-2 min-w-[260px] rounded-2xl border border-border bg-surface p-2 shadow-[0_24px_54px_-20px_rgba(0,0,0,0.9)]">
+            <div
+              ref={exportMenuRef}
+              id={exportMenuId}
+              role="menu"
+              aria-label="Formati izvoza"
+              className="absolute right-0 z-20 mt-2 min-w-[260px] rounded-2xl border border-border bg-surface p-2 shadow-[0_24px_54px_-20px_rgba(0,0,0,0.9)]"
+            >
               {(["pdf", "xlsx", "csv"] as ExportFormat[]).map((option) => {
                 const OptionIcon = formatIcon(option);
                 return (
                   <button
                     key={option}
                     type="button"
+                    role="menuitem"
+                    aria-label={`Izvezi kao ${formatLabel(option)}`}
                     onClick={() => openExportModal(option)}
                     className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-muted transition hover:bg-surface-elevated hover:text-contrast"
                   >
@@ -192,7 +265,11 @@ export default function AnalyticsTableToolbar<Row>(props: {
           Redova: {payload.rows.length.toLocaleString("sr-RS")}
         </span>
         {statusText ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--success)]/40 bg-success-soft px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
+          <span
+            role="status"
+            aria-live="polite"
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--success)]/40 bg-success-soft px-2.5 py-1 text-xs font-semibold text-[var(--success)]"
+          >
             <CheckCircle2 size={13} />
             {statusText}
           </span>
