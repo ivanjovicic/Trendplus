@@ -169,10 +169,10 @@ public sealed class AnalyticsScreenCacheKeyContractTests
             supplierId: null,
             storeId: null,
             dataScope: "all",
-            page,
-            pageSize,
-            sortBy,
-            sortDir);
+            page: page,
+            pageSize: pageSize,
+            sortBy: sortBy,
+            sortDir: sortDir);
 
     private static string SupplierReportKey(int reportCacheVersion) =>
         AnalyticsCacheKeys.SupplierDecisionReport(
@@ -187,5 +187,5 @@ public sealed class AnalyticsScreenCacheKeyContractTests
             supplierId: 2,
             storeId: 1,
             dataScope: "existing",
-            reportCacheVersion);
+            reportCacheVersion: reportCacheVersion);
 }
