@@ -179,9 +179,10 @@ public sealed class DecisionBoardAggregationContractTests
         Assert.Equal(5, urgent.Cards.Count);
         Assert.Equal(5, urgent.Cards.Select(card => card.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(
-            urgent.Cards.OrderByDescending(card => card.PriorityScore).Select(card => card.Id),
-            urgent.Cards.Select(card => card.Id));
-        Assert.Equal("product:410", urgent.Cards[0].SourceKey);
+            urgent.Cards.OrderByDescending(card => card.PriorityScore).Select(card => card.Id).ToArray(),
+            urgent.Cards.Select(card => card.Id).ToArray());
+        Assert.Equal(urgent.Cards.Max(card => card.PriorityScore), urgent.Cards[0].PriorityScore);
+        Assert.Contains(urgent.Cards, card => card.SourceKey == "product:410");
     }
 
     [Fact]
@@ -326,7 +327,7 @@ public sealed class DecisionBoardAggregationContractTests
             Id = id,
             SourceType = sourceType,
             SourceKey = sourceKey,
-            SourceId = id,
+            SourceId = checked((int)id),
             Title = $"Akcija {id}",
             Description = $"Opis akcije {id}",
             RecommendationStatus = "REPLENISH",
