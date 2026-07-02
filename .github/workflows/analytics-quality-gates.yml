@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend guardrails and build
+    name: Frontend analytics tests, guardrails and build
     runs-on: ubuntu-latest
 
     steps:
@@ -35,6 +35,10 @@ jobs:
       - name: Install dependencies
         working-directory: Klijent/clientapp
         run: npm ci
+
+      - name: Run analytics tests
+        working-directory: Klijent/clientapp
+        run: npm run test:analytics
 
       - name: Check analytics guardrails
         working-directory: Klijent/clientapp
