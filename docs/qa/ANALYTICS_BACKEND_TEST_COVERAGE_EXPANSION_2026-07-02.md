@@ -153,6 +153,9 @@ Commits:
 
 - `3161679459cc754b3206cd253dd4c5bf1eb6225b`
 - `6e875f8524e7a9a2c0090ef747201d2600c6bc6f`
+- `9b94b32caeed579337b3cf5098f7f5bc56c4b9b4`
+
+`coverlet.collector` is configured with a current `Microsoft.NET.Test.Sdk` so the VSTest coverage collector and the .NET 8 CI environment use compatible tooling.
 
 Coverage configuration excludes generated migrations, designer files and build output so the report measures maintainable application code instead of generated noise.
 
