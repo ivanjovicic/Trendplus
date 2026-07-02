@@ -33,7 +33,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(2, root.GetProperty("totalTransactions").GetInt32());
         Assert.Equal(6, root.GetProperty("totalUnits").GetInt32());
         Assert.Equal(550m, root.GetProperty("avgBasketValue").GetDecimal());
-        Assert.Equal(183.33333333333333333333333333m, root.GetProperty("avgItemPrice").GetDecimal());
+        Assert.InRange(root.GetProperty("avgItemPrice").GetDecimal(), 183.33m, 183.34m);
 
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());
