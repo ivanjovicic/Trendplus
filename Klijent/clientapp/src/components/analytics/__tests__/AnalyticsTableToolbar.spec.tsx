@@ -109,11 +109,12 @@ describe("AnalyticsTableToolbar", () => {
 
     expect(screen.getByText("Redova: 2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
+    expect(screen.getByRole("menu", { name: "Formati izvoza" })).toBeInTheDocument();
     expect(screen.getByText("Izveštaj za menadžment i štampu")).toBeInTheDocument();
     expect(screen.getByText("Tabela za dalju analizu")).toBeInTheDocument();
     expect(screen.getByText("Brz flat-file izvoz")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Excel/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao Excel" }));
     expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
     expect(screen.getByText("Premium analytics export")).toBeInTheDocument();
 
@@ -137,7 +138,7 @@ describe("AnalyticsTableToolbar", () => {
       }),
     );
     expect(downloadExport).toHaveBeenCalledWith("/exports/supplier-test.xlsx", "supplier-test.xlsx");
-    expect(screen.getByText("Eksport je preuzet.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Eksport je preuzet.");
   });
 
   it("routes PDF preview through print preview instead of direct export", async () => {
@@ -146,7 +147,7 @@ describe("AnalyticsTableToolbar", () => {
     renderToolbar();
 
     fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^PDF/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao PDF" }));
     fireEvent.click(screen.getByRole("button", { name: /Otvori preview/i }));
 
     await waitFor(() => expect(requestPrintPreview).toHaveBeenCalledTimes(1));
@@ -161,11 +162,11 @@ describe("AnalyticsTableToolbar", () => {
     renderToolbar();
 
     fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
-    fireEvent.click(screen.getByRole("button", { name: /CSV/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao CSV" }));
     fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
 
     await waitFor(() => expect(waitForExport).toHaveBeenCalledWith("doc-1"));
     expect(downloadExport).toHaveBeenCalledWith("/exports/ready.csv", "ready.csv");
-    expect(screen.getByText("Eksport je završen i preuzet.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Eksport je završen i preuzet.");
   });
 });
