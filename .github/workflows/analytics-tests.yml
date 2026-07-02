@@ -42,6 +42,7 @@ jobs:
           --health-retries 5
 
     env:
+      CI: "true"
       ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
