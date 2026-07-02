@@ -189,9 +189,19 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
             await _container.StartAsync();
             IsAvailable = true;
         }
-        catch
+        catch (Exception ex)
         {
             IsAvailable = false;
+
+            if (string.Equals(
+                    Environment.GetEnvironmentVariable("CI"),
+                    "true",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "PostgreSQL integration tests are mandatory in CI, but the Testcontainers fixture could not start.",
+                    ex);
+            }
         }
     }
 
