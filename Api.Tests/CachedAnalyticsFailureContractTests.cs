@@ -38,7 +38,7 @@ public sealed class CachedAnalyticsFailureContractTests
             "/api/analytics/cached/inventory/list?page=0&pageSize=5000&search=model",
             "failure-list");
 
-        Assert.Equal(1, root.GetProperty("page").GetInt32());
+        Assert.Equal(1, root.GetProperty("pageNumber").GetInt32());
         Assert.Equal(1000, root.GetProperty("pageSize").GetInt32());
         Assert.Equal(0, root.GetProperty("totalCount").GetInt32());
         Assert.Empty(root.GetProperty("items").EnumerateArray());
@@ -51,12 +51,12 @@ public sealed class CachedAnalyticsFailureContractTests
         await using var factory = new FailureFactory(new InvalidOperationException("inventory insights failed"));
         var root = await GetJsonAsync(factory, "/api/analytics/cached/inventory/insights", "failure-insights");
 
-        Assert.Equal(0, root.GetProperty("totalSku").GetInt32());
-        Assert.Equal(0m, root.GetProperty("totalValue").GetDecimal());
-        Assert.Empty(root.GetProperty("supplierBreakdown").EnumerateArray());
-        Assert.Empty(root.GetProperty("lowStockItems").EnumerateArray());
-        Assert.Empty(root.GetProperty("outOfStockItems").EnumerateArray());
-        Assert.Empty(root.GetProperty("recommendations").EnumerateArray());
+        Assert.Equal(0, root.GetProperty("totalItems").GetInt32());
+        Assert.Equal(0m, root.GetProperty("totalEstimatedValue").GetDecimal());
+        Assert.Empty(root.GetProperty("aging").EnumerateArray());
+        Assert.Empty(root.GetProperty("abc").EnumerateArray());
+        Assert.Empty(root.GetProperty("topAgedItems").EnumerateArray());
+        Assert.Empty(root.GetProperty("topCapitalLockedItems").EnumerateArray());
         AssertErrorMeta(root.GetProperty("meta"), "inventory_cached_insights_error", "failure-insights");
     }
 
