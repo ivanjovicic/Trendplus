@@ -1,0 +1,320 @@
+using Application.Analytics;
+using Domain.Model;
+using Domain.Model.Prodaja;
+using Infrastructure.DbContexts;
+using Microsoft.EntityFrameworkCore;
+using Trendplus2.Endpoints;
+using Xunit;
+
+namespace Api.Tests;
+
+[Trait("Category", "Integration")]
+public sealed class ProductDecisionCenterBuilderIntegrationTests
+{
+    [Fact]
+    public async Task BuildProductDecisionCenter_ComputesDecisionFinancialAndConfidenceContracts()
+    {
+        var databaseName = $"product-decision-builder-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var toDate = DateTime.UtcNow.Date;
+        var fromDate = toDate.AddDays(-29);
+        await SeedDecisionDataAsync(db, fromDate, toDate);
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "all",
+            CancellationToken.None);
+
+        Assert.Equal(2, response.AnalyzedRows);
+        Assert.Equal(2, response.TotalRows);
+        Assert.Equal(2, response.Rows.Count);
+        Assert.Equal(0, response.IgnoredRowsCount);
+
+        var replenish = Assert.Single(response.Rows.Where(row => row.ProductId == 101));
+        Assert.Equal("REPLENISH", replenish.RecommendationStatus);
+        Assert.Equal(3_000m, replenish.Revenue);
+        Assert.Equal(30, replenish.UnitsSold);
+        Assert.Equal(1m, replenish.VelocityUnitsPerDay);
+        Assert.Equal(1_500m, replenish.MarginContribution);
+        Assert.Equal(50m, replenish.MarginPct);
+        Assert.Equal(100m, replenish.MarginCoveragePct);
+        Assert.Equal(0, replenish.CurrentStock);
+        Assert.Equal(5, replenish.StockGap);
+        Assert.Equal(500m, replenish.LostSalesEstimate);
+        Assert.Equal(0m, replenish.TrendPct);
+        Assert.Equal("good", replenish.DataQualityStatus);
+        Assert.Equal("product", replenish.SourceType);
+        Assert.Equal("product:101", replenish.SourceKey);
+        Assert.Equal("REPLENISH", replenish.RecommendationType);
+        Assert.NotNull(replenish.RecommendationId);
+        Assert.NotNull(replenish.ConfidenceScore);
+        Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
+        Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.ReplenishNeeded, replenish.ReasonCodes);
+        Assert.Equal(500m, replenish.ExpectedImpactRsd);
+        Assert.Equal(14, replenish.ImpactWindowDays);
+        Assert.False(string.IsNullOrWhiteSpace(replenish.ExplainabilityText));
+
+        var fixData = Assert.Single(response.Rows.Where(row => row.ProductId == 102));
+        Assert.Equal("FIX_DATA", fixData.RecommendationStatus);
+        Assert.Equal("critical", fixData.DataQualityStatus);
+        Assert.InRange(fixData.ConfidencePct, 5, 35);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MissingSupplier, fixData.ReasonCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MissingCost, fixData.ReasonCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, fixData.ReasonCodes);
+        Assert.Contains("missing_cost", fixData.WarningCodes);
+        Assert.Null(fixData.ExpectedImpactRsd);
+
+        Assert.Equal(1, response.Summary.ReplenishCount);
+        Assert.Equal(1, response.Summary.BadDataCount);
+        Assert.Equal(500m, response.Summary.LostSalesEstimate);
+        Assert.Equal(0m, response.Summary.SlowStockCapital);
+        Assert.NotNull(response.Meta);
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("critical", response.Meta.DataQualityStatus);
+        Assert.Null(response.Meta.ErrorCode);
+    }
+
+    [Fact]
+    public async Task BuildProductDecisionCenter_TopLimitReportsAnalyzedAndIgnoredRowsHonestly()
+    {
+        var databaseName = $"product-decision-top-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var toDate = DateTime.UtcNow.Date;
+        var fromDate = toDate.AddDays(-29);
+        await SeedDecisionDataAsync(db, fromDate, toDate);
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 1,
+            dataScope: "all",
+            CancellationToken.None);
+
+        Assert.Equal(2, response.AnalyzedRows);
+        Assert.Equal(1, response.TotalRows);
+        Assert.Single(response.Rows);
+        Assert.Equal(1, response.IgnoredRowsCount);
+        Assert.Equal(
+            response.Rows.Count(row => row.RecommendationStatus == "REPLENISH"),
+            response.Summary.ReplenishCount);
+        Assert.Equal(
+            response.Rows.Count(row => row.RecommendationStatus == "FIX_DATA"),
+            response.Summary.BadDataCount);
+    }
+
+    [Fact]
+    public async Task BuildProductDecisionCenter_UnknownStoreReturnsExplicitEmptySuccessMeta()
+    {
+        var databaseName = $"product-decision-empty-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var toDate = DateTime.UtcNow.Date;
+        var fromDate = toDate.AddDays(-29);
+        await SeedDecisionDataAsync(db, fromDate, toDate);
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 9999,
+            supplierId: null,
+            top: 50,
+            dataScope: "all",
+            CancellationToken.None);
+
+        Assert.Empty(response.Rows);
+        Assert.Equal(0, response.TotalRows);
+        Assert.Equal(0, response.AnalyzedRows);
+        Assert.Equal(0, response.IgnoredRowsCount);
+        Assert.NotNull(response.Meta);
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+        Assert.Equal("no_rows_for_period", response.Meta.EmptyReason);
+        Assert.Null(response.Meta.ErrorCode);
+    }
+
+    [Fact]
+    public async Task BuildProductDecisionCenter_DataScopeSeparatesImportedAndExistingProducts()
+    {
+        var databaseName = $"product-decision-scope-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var toDate = DateTime.UtcNow.Date;
+        var fromDate = toDate.AddDays(-29);
+        await SeedDecisionDataAsync(db, fromDate, toDate);
+
+        db.Artikli.Add(new Artikli
+        {
+            Id = 103,
+            PLU = "IMP-103",
+            Naziv = "Imported Model",
+            IDDobavljac = 1,
+            IDObjekat = 1,
+            Kolicina = 3,
+            MinimalnaKolicina = 1,
+            NabavnaCena = 70m,
+            Kategorija = "Patike",
+            Boja = "Plava",
+            Velicina = "41",
+            DataOrigin = "access",
+            UpdatedAt = toDate
+        });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 30,
+            DatumProdaje = toDate.AddHours(12),
+            IDObjekat = 1,
+            DataOrigin = "access"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 31,
+            IdProdaja = 30,
+            IdArtikal = 103,
+            Kolicina = 5,
+            Cena = 140m,
+            NabavnaCena = 70m
+        });
+        await db.SaveChangesAsync();
+
+        var imported = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "imported",
+            CancellationToken.None);
+        var existing = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "existing",
+            CancellationToken.None);
+
+        var importedRow = Assert.Single(imported.Rows);
+        Assert.Equal(103, importedRow.ProductId);
+        Assert.DoesNotContain(existing.Rows, row => row.ProductId == 103);
+        Assert.Equal(2, existing.Rows.Count);
+    }
+
+    private static TrendplusDbContext CreateDbContext(string databaseName)
+    {
+        var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+        return new TrendplusDbContext(options);
+    }
+
+    private static async Task SeedDecisionDataAsync(
+        TrendplusDbContext db,
+        DateTime fromDate,
+        DateTime toDate)
+    {
+        db.Dobavljaci.Add(new Dobavljac
+        {
+            Id = 1,
+            Naziv = "Pouzdan dobavljač",
+            DataOrigin = "existing"
+        });
+
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 101,
+                PLU = "SKU-101",
+                Naziv = "Model za dopunu",
+                IDDobavljac = 1,
+                IDObjekat = 1,
+                Kolicina = 0,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 50m,
+                Kategorija = "Patike",
+                Boja = "Crna",
+                Velicina = "42",
+                DataOrigin = "existing",
+                UpdatedAt = toDate
+            },
+            new Artikli
+            {
+                Id = 102,
+                PLU = "SKU-102",
+                Naziv = "Model sa lošim podacima",
+                IDDobavljac = null,
+                IDObjekat = 1,
+                Kolicina = 1,
+                MinimalnaKolicina = 3,
+                NabavnaCena = null,
+                Kategorija = null,
+                Boja = null,
+                Velicina = null,
+                DataOrigin = "existing",
+                UpdatedAt = toDate
+            });
+
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 1,
+                DatumProdaje = toDate.AddHours(10),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 2,
+                DatumProdaje = fromDate.AddDays(-5).AddHours(10),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 3,
+                DatumProdaje = toDate.AddHours(11),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka
+            {
+                Id = 11,
+                IdProdaja = 1,
+                IdArtikal = 101,
+                Kolicina = 30,
+                Cena = 100m,
+                NabavnaCena = 50m
+            },
+            new ProdajaStavka
+            {
+                Id = 12,
+                IdProdaja = 2,
+                IdArtikal = 101,
+                Kolicina = 30,
+                Cena = 100m,
+                NabavnaCena = 50m
+            },
+            new ProdajaStavka
+            {
+                Id = 13,
+                IdProdaja = 3,
+                IdArtikal = 102,
+                Kolicina = 2,
+                Cena = 200m,
+                NabavnaCena = null
+            });
+
+        await db.SaveChangesAsync();
+    }
+}
