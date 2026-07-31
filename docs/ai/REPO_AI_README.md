@@ -56,6 +56,25 @@ Use `docs/ai/COMMON_FAILURES_AND_FIXES.md` when you see recurring failures such 
 - protected write fake success
 - frontend recomputing backend business decisions
 
+## GenAI / Retail Analytics Copilot
+
+GenAI work is a separate, gated track. It must not bypass the existing analytics, security or source-of-truth standards.
+
+Read in this order:
+
+1. `docs/ai/GENAI_COPILOT_ROADMAP.md`
+2. `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
+3. `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+4. `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
+
+Important:
+
+- Plans and provider-free evaluation work are safe to start now.
+- Real business data, public AI routes, MCP, tool calling and customer pilots remain gated.
+- The first implementation is read-only.
+- Existing image embeddings and future text RAG must remain separate until an audit proves the runtime and schema boundaries.
+- Core Trendplus analytics must work when every GenAI component is disabled.
+
 ## When to update docs
 
 Update docs when:
@@ -75,5 +94,7 @@ Update docs when:
 ## Production and queue references
 
 - Queue workflow: `docs/ai/NEXT_PROMPT_QUEUE.md`
+- GenAI gated queue: `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
 - Analytics roadmap: `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- GenAI roadmap: `docs/ai/GENAI_COPILOT_ROADMAP.md`
 - Production readiness: `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
