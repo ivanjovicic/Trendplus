@@ -54,8 +54,14 @@ Useful next documents:
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- `docs/ai/GENAI_COPILOT_ROADMAP.md`
+- `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
 
 For analytics reliability tasks, treat `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` as the routing/index document. Do not read every queue addendum unless the index says the prompt has a read-together dependency.
+
+For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the canonical analytics queue has no earlier TODO, PARTIAL or BLOCKED item. Do not skip GAI01 or another P0 gate to start provider integration, tool calling or UI work.
 
 ## The ten non-negotiables
 
