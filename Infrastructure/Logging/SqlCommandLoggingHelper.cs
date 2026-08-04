@@ -78,8 +78,8 @@ public static class SqlCommandLoggingHelper
     {
         try
         {
-            // Skip successful SQL logs only when request context explicitly disabled capture.
             var req = RequestLogContext.Current;
+            // Skip successful SQL logs only when request context explicitly disabled capture.
             if (!req.ShouldCaptureSql
                 && succeeded
                 && (!string.IsNullOrWhiteSpace(req.RequestId) || !string.IsNullOrWhiteSpace(req.TraceId)))
@@ -118,6 +118,17 @@ public static class SqlCommandLoggingHelper
                    .ForContext("Params", paramsSummary, true)
                    .Error(exception, "SqlFailed: {CommandHash} {CommandKind} on {DbSource} ({DurationMs}ms) - {Message}", hash, commandKind, dbSource, durationMs, exception?.Message);
             }
+
+            req.CaptureSqlExecution(new CapturedSqlExecution(
+                DbSource: dbSource,
+                CommandKind: commandKind,
+                CommandHash: hash,
+                CommandText: truncated,
+                Parameters: new Dictionary<string, string>(paramsSummary, StringComparer.OrdinalIgnoreCase),
+                DurationMs: durationMs,
+                Succeeded: succeeded,
+                RowsAffected: rowsAffected,
+                ExceptionMessage: exception?.Message));
         }
         catch (Exception ex)
         {

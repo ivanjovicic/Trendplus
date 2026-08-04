@@ -91,7 +91,8 @@ public sealed class RequestPerformanceLoggingMiddleware
             userName = context.User?.Identity?.Name ?? "anonymous",
             userAgent = Truncate(context.Request.Headers.UserAgent.ToString(), 500),
             contentLength = context.Request.ContentLength,
-            remoteIp = context.Connection.RemoteIpAddress?.ToString()
+            remoteIp = context.Connection.RemoteIpAddress?.ToString(),
+            sqlExecutions = Application.Logging.RequestLogContext.Current.CapturedSqlExecutions
         };
 
         var record = new PerformanceLog

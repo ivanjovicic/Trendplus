@@ -1282,6 +1282,7 @@ public static class AllEndpoints
                     sezonaId);
 
                 var dbStopwatch = Stopwatch.StartNew();
+                var snapshotCostRowCount = 0;
 
                 // Load per-article snapshot costs when active batch exists
                 Dictionary<int, decimal> snapshotCostByArtikalId = [];
@@ -1292,6 +1293,7 @@ public static class AllEndpoints
                         .GroupBy(s => s.ArtikalId)
                         .Select(g => new { ArtikalId = g.Key, Cost = g.Min(s => s.ResolvedUnitCost) })
                         .ToDictionaryAsync(x => x.ArtikalId, x => x.Cost, ct);
+                    snapshotCostRowCount = snapshotCostByArtikalId.Count;
                 }
 
                 var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
@@ -1315,6 +1317,7 @@ public static class AllEndpoints
                 var (previousFromUtc, previousToUtc) = BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousSupplierMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
                 var previousSupplierFootwearMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
+                var previousFootwearRowCount = 0;
                 decimal? previousPeriodRevenue = null;
                 int? previousPeriodUnits = null;
 
@@ -1338,6 +1341,7 @@ public static class AllEndpoints
                             Units = g.Sum(x => x.Kolicina)
                         })
                         .ToListAsync(ct);
+                    previousFootwearRowCount = previousFootwearRows.Count;
 
                     previousPeriodRevenue = previousFootwearRows.Sum(x => x.Revenue);
                     previousPeriodUnits = previousFootwearRows.Sum(x => x.Units);
@@ -1409,6 +1413,7 @@ public static class AllEndpoints
                         ProductCostLegacy = g.Key.ProductCostLegacy
                     })
                     .ToListAsync(ct);
+                var salesRowCount = stavke.Count;
 
                 var sezone = (await db.Sezone.AsNoTracking()
                     .OrderByDescending(s => s.DatumOd)
@@ -1428,6 +1433,7 @@ public static class AllEndpoints
                         datumDo = DateTime.SpecifyKind(s.DatumDo.Date, DateTimeKind.Utc)
                     })
                     .ToList();
+                var seasonCount = sezone.Count;
 
                 dbStopwatch.Stop();
                 var processingStopwatch = Stopwatch.StartNew();
@@ -1941,7 +1947,7 @@ public static class AllEndpoints
                 await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
                 requestStopwatch.Stop();
                 logger.LogInformation(
-                    "Supplier-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} SupplierCount={SupplierCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
+                    "Supplier-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} SnapshotCostRows={SnapshotCostRows} PreviousComparableRows={PreviousComparableRows} SalesRows={SalesRows} SeasonCount={SeasonCount} SupplierCount={SupplierCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
                     requestStopwatch.ElapsedMilliseconds,
                     dbStopwatch.ElapsedMilliseconds,
                     processingStopwatch.ElapsedMilliseconds,
@@ -1955,6 +1961,10 @@ public static class AllEndpoints
                     normalizedDataScope,
                     storeId,
                     sezonaId,
+                    snapshotCostRowCount,
+                    previousFromUtc.HasValue && previousToUtc.HasValue ? previousFootwearRowCount : 0,
+                    salesRowCount,
+                    seasonCount,
                     suppliersWithRecommendation.Count,
                     totalSnapshotPct,
                     totalEstPct,

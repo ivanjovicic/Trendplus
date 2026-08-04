@@ -28,17 +28,23 @@ File: `Api/Endpoints/DecisionBoardEndpoints.cs`
 
 Observed:
 
-- Product cards compute expected impact as `row.ExpectedImpactRsd ?? (row.LostSalesEstimate > 0m ? row.LostSalesEstimate : null)`.
+- Product cards previously computed expected impact as `row.ExpectedImpactRsd ?? (row.LostSalesEstimate > 0m ? row.LostSalesEstimate : null)`.
 - Product Decision Center itself calculates expected impact by recommendation type: lost sales for `REPLENISH`/`BOOST`; slow-stock capital for `MARKDOWN`/`DO_NOT_ORDER`; otherwise null.
 
 Risk:
 
-- A `FIX_DATA`, `INSUFFICIENT_DATA`, `MARKDOWN` or `DO_NOT_ORDER` row can receive `LostSalesEstimate` as expected impact in the board even when Product Decision Center intentionally left `ExpectedImpactRsd` null.
-- This can pollute `impact` and `urgent` sections.
+- A `FIX_DATA`, `INSUFFICIENT_DATA`, `MARKDOWN` or `DO_NOT_ORDER` row could receive `LostSalesEstimate` as expected impact in the board even when Product Decision Center intentionally left `ExpectedImpactRsd` null.
+- This could pollute `impact` and `urgent` sections.
 
-Classification: likely bug.
+Classification: fixed in RQ01 (2026-08-04).
 
-Recommended prompt: RQ01.
+Fix:
+
+- Board product cards now use only `row.ExpectedImpactRsd`.
+- Lost-sales / slow-stock values are not reattached at board composition time.
+- Regression coverage lives in `Api.Tests/DecisionBoardEndpointsTests.cs`.
+
+Recommended prompt: RQ01 (DONE).
 
 ### R02 - Product Decision Center summary mixes top-limited counts with all-row money totals
 
@@ -55,9 +61,19 @@ Risk:
 - The summary can show counts for visible/top rows but money totals for the entire analyzed set.
 - If this is intended, the API contract must say “all analyzed rows”. If not, the numbers are inconsistent.
 
-Classification: suspicious; needs contract decision.
+Classification: contract decided in RQ02 (2026-08-04).
 
-Recommended prompt: RQ02.
+Contract decision (before/after):
+
+- BEFORE: same numeric split, undocumented.
+- AFTER: numeric behavior unchanged; denominators are explicit.
+  - Count KPIs (`ReplenishCount`, `MarkdownCount`, `HighPotentialCount`, `BadDataCount`) → `countDenominatorScope = returned_rows`.
+  - Money totals (`LostSalesEstimate`, `SlowStockCapital`) → `moneyDenominatorScope = analyzed_rows`.
+  - `IgnoredRowsCount` → `ignoredRowsMeaning = hidden_by_top_limit` (not bad data).
+- Helpers: `BuildProductDecisionCenterSummary`, `BuildProductDecisionCenterRowWindow`.
+- Tests: `ProductDecisionCenterSummaryDenominatorTests`, top-limit case in `ProductDecisionCenterBuilderIntegrationTests`.
+
+Recommended prompt: RQ02 (DONE). RQ12 remains for richer ignored-row UX labeling if needed.
 
 ### R03 - Lost-sales validation can mark unavailable/unknown evidence as `good`
 
@@ -73,9 +89,19 @@ Risk:
 - “Cannot compute lost sales” can be displayed as “no significant lost sales”.
 - This is high-risk for replenishment/OOS decisions.
 
-Classification: likely bug / trust-contract bug.
+Classification: fixed in RQ03 (2026-08-04).
 
-Recommended prompt: RQ03.
+Fix:
+
+- Snapshot now returns `SourceStatus`: `view` | `fallback` | `unavailable` | `true_zero`.
+- `unavailable` → `insufficient_data`, `LostSalesEstimate = null`.
+- Trusted view zero → `true_zero` / `good`.
+- Fallback zero → `warning` (not green).
+- Contract doc: `docs/qa/LOST_SALES_VALIDATION_CONTRACT.md`.
+- Tests: `Api.Tests/LostSalesValidationSourceStatusTests.cs`.
+- Q80 should reuse this vocabulary (not invent a second model).
+
+Recommended prompt: RQ03 (DONE).
 
 ### R04 - Data Quality health can look excellent/good when there is no revenue evidence
 
@@ -90,9 +116,16 @@ Risk:
 
 - A no-sales/no-revenue window can be interpreted as clean data quality rather than `insufficient_data`.
 
-Classification: suspicious; needs test.
+Classification: fixed in RQ04 (2026-08-04).
 
-Recommended prompt: RQ04.
+Fix:
+
+- Snapshot adds `HasRevenueEvidence` (`TotalRevenue > 0`).
+- `EvaluateDataQualityHealth` returns `insufficient_data` (score 0) when there is no revenue evidence — never `excellent`/`good`.
+- Decision Board shows a data-quality blocker and `no_revenue_evidence` warning code.
+- Tests: `AnalyticsDataQualityHealthServiceTests`, `DecisionBoardDataQualityHealthEvaluationTests`.
+
+Recommended prompt: RQ04 (DONE). RQ75 remains the DataQualityPage surface companion.
 
 ### R05 - `dataScope` semantics differ between analytics modules
 
@@ -101,21 +134,29 @@ Files:
 - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
 - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
 - `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Api/Endpoints/DecisionBoardEndpoints.cs`
 
 Observed:
 
 - Some sales helpers filter `dataScope` by sale header `p.DataOrigin` / `pz.DataOrigin`.
 - Product Decision Center first filters articles by `a.DataOrigin`, then sales by sale header `pz.DataOrigin`.
 - Data Quality health filters the sales window using article `a.DataOrigin`.
+- Top-offender `sales_30d` CTE is unscoped while article membership is scoped.
+- Inventory/Decision Board accept or show scope but often force `all`.
 
 Risk:
 
 - The same dashboard request can mean different datasets depending on the section.
 - Imported/existing comparisons can be inconsistent.
 
-Classification: suspicious; high value to audit before any data trust claim.
+Classification: audited in RQ05 (2026-08-04); runtime fixes deferred.
 
-Recommended prompt: RQ05.
+Evidence:
+
+- Matrix + canonical rules: `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
+- Contract test locking offender SQL split: `Api.Tests/DataScopeConsistencyContractTests.cs`
+
+Recommended prompts: RQ06 (offenders), RQ05-F1 (PDC dual-origin), RQ05-F2 (inventory/board), RQ53/RQ54 (FE lineage), Q81 (SQL helpers).
 
 ### R06 - Data Quality top offenders 30d sales impact ignores sale-level dataScope
 
@@ -123,16 +164,23 @@ File: `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
 
 Observed:
 
-- `sales_30d` CTE groups all sales by article without `dataScope` predicate.
+- `sales_30d` CTE grouped all sales by article without `dataScope` predicate.
 - `quality_source` later filters articles by `a.DataOrigin`.
 
 Risk:
 
 - For `imported` or `existing` scopes, revenue impact can include sales rows outside the requested scope if sale header source and article source disagree.
 
-Classification: likely bug or contract gap.
+Classification: fixed in RQ06 (2026-08-04) for top offenders.
 
-Recommended prompt: RQ06.
+Fix:
+
+- `sales_30d` now filters by sale-header `DataOrigin` (RQ05 sales-revenue rule).
+- Article membership remains article-origin scoped.
+- `dataScope=all` unchanged (includes all headers).
+- Residual: `GetDataQualityIssuesHandler` still uses unscoped `sales_30d` (RQ06-F1).
+
+Recommended prompt: RQ06 (DONE for offenders).
 
 ### R07 - Top offenders do not support missing-cost issue type even though health tracks missing-cost revenue
 
@@ -148,9 +196,14 @@ Risk:
 - UI/operator can see missing-cost risk but may not be able to drill down into the exact products causing it.
 - If a caller passes `missingCost`, it silently returns missing supplier offenders.
 
-Classification: likely product/data-quality bug.
+Classification: fixed in RQ07 (2026-08-04) for top offenders.
 
-Recommended prompt: RQ07.
+Fix notes:
+
+- `missingCost` top-offender filter uses article `NabavnaCena` null/≤0.
+- Unknown issue types rejected (400 / throw); issues-list `Normalize` still silently defaults (R80 residual for list/UI tabs).
+
+Recommended prompt: RQ07 (DONE for offenders).
 
 ### R08 - Decision Board supplier cards can still rank blocked supplier recommendations highly
 
@@ -166,9 +219,14 @@ Risk:
 
 - A blocked supplier signal can still appear as a high-ranking supplier card, which can look actionable if the UI emphasis is not strict enough.
 
-Classification: suspicious; should be locked with tests.
+Classification: fixed in RQ08 (2026-08-04).
 
-Recommended prompt: RQ08.
+Fix notes:
+
+- Blocked cards: `insufficient_data` confidence/DQ, priority ≤40, ImpactScore 0, `signal_check` source key / summary.
+- Excluded from `urgent` and `impact`; retained in `supplierRisk` + `blocker-supplier-trust`.
+
+Recommended prompt: RQ08 (DONE).
 
 ### R09 - Analytics actions source state treats zero actions as `insufficient_data`
 
@@ -241,14 +299,15 @@ Recommended prompt: RQ12.
 
 ## Priority order
 
-1. RQ01 - Decision Board expected-impact correctness.
-2. RQ03 - Lost-sales unavailable vs true zero.
-3. RQ04 - Data Quality no-revenue/no-data status.
-4. RQ05/RQ06 - dataScope consistency and top-offender scope correctness.
-5. RQ07 - missing-cost offender drilldown.
-6. RQ08 - blocked supplier signal ranking.
-7. RQ02/RQ12 - product summary denominator contract.
-8. RQ09/RQ10/RQ11 - board/source-state and semantic polish.
+1. RQ01 - Decision Board expected-impact correctness. (DONE 2026-08-04)
+2. RQ03 - Lost-sales unavailable vs true zero. (DONE 2026-08-04)
+3. RQ04 - Data Quality no-revenue/no-data status. (DONE 2026-08-04)
+4. RQ05/RQ06 - dataScope consistency and top-offender scope correctness. (RQ05 DONE; RQ06 DONE 2026-08-04; issues-handler residual RQ06-F1)
+5. RQ07 - missing-cost offender drilldown. (DONE 2026-08-04; issues-list/UI residual R80)
+6. RQ08 - blocked supplier signal ranking. (DONE 2026-08-04)
+7. RQ09 - analytics actions empty-state contract. (READY)
+8. RQ02/RQ12 - product summary denominator contract. (RQ02 DONE 2026-08-04; RQ12 still WAITING)
+9. RQ10/RQ11 - inventory confidence and transaction semantics.
 
 ## Checks to add across prompts
 

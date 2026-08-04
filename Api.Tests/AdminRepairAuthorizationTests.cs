@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Api.Endpoints;
 using Api.Models;
 using Api.Services;
+using Trendplus2.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -152,8 +153,14 @@ public sealed class AdminRepairAuthorizationTests
         public Task<NivelacijaRepairPreflightDto> RunPreflightAsync(string? explicitSourceFilePath = null, CancellationToken ct = default)
             => throw new NotSupportedException();
 
+        public Task<IReadOnlyList<NivelacijaRepairIssueDto>> ScanIssuesAsync(string? explicitSourceFilePath = null, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
         public Task<NivelacijaRepairPlanDto> GenerateRepairPlanAsync(string? explicitSourceFilePath = null, int maxRowsToModify = 10_000, CancellationToken ct = default)
             => throw new NotSupportedException();
+
+        public Task<long> WriteDryRunAuditAsync(string requestedBy, NivelacijaRepairPlanDto plan, CancellationToken ct = default)
+            => Task.FromResult(0L);
 
         public Task<NivelacijaRepairExecutionResultDto> ExecuteRepairAsync(string? explicitSourceFilePath, string requestedBy, int maxRowsToModify = 10_000, CancellationToken ct = default)
         {

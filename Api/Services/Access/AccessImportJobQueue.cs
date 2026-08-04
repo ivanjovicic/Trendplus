@@ -1,4 +1,5 @@
 using Infrastructure.DbContexts;
+using Infrastructure.Logging;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Diagnostics;
@@ -77,11 +78,28 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
               AND "Status" IN ('pending', 'failed', 'interrupted');
             """;
 
+        var enqueueSw = Stopwatch.StartNew();
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, new object[] { batchId }, ct);
+        enqueueSw.Stop();
         if (affected <= 0)
             throw new InvalidOperationException($"Access import batch {batchId} is not enqueueable.");
 
         stopwatch.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-queue",
+                "ExecuteSqlRaw",
+                sql,
+                null,
+                enqueueSw.ElapsedMilliseconds,
+                true,
+                affected,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
         _logger.LogInformation("Access import enqueue completed. BatchId: {BatchId}. ElapsedMs: {ElapsedMs}.", batchId, stopwatch.ElapsedMilliseconds);
     }
 
@@ -214,10 +232,27 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
                       );
                     """;
 
+                var recoverSw = Stopwatch.StartNew();
                 var affected = await _db.Database.ExecuteSqlRawAsync(recoverSql, new object[] { candidate.Id }, ct);
+                recoverSw.Stop();
                 if (affected > 0)
                 {
                     recovered++;
+                    try
+                    {
+                        SqlCommandLoggingHelper.LogSqlExecution(
+                            "access-import-queue",
+                            "ExecuteSqlRaw",
+                            recoverSql,
+                            null,
+                            recoverSw.ElapsedMilliseconds,
+                            true,
+                            affected,
+                            null,
+                            Application.Logging.RequestLogContext.Current.RequestId,
+                            Application.Logging.RequestLogContext.Current.TraceId);
+                    }
+                    catch { }
                 }
             }
 
@@ -517,7 +552,24 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = commandText;
 
+        var sw = Stopwatch.StartNew();
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, ct);
+        sw.Stop();
+        try
+        {
+            SqlCommandLoggingHelper.LogSqlExecution(
+                "access-import-queue",
+                "ExecuteReader",
+                commandText,
+                null,
+                sw.ElapsedMilliseconds,
+                true,
+                null,
+                null,
+                Application.Logging.RequestLogContext.Current.RequestId,
+                Application.Logging.RequestLogContext.Current.TraceId);
+        }
+        catch { }
         if (!await reader.ReadAsync(ct))
         {
             return null;

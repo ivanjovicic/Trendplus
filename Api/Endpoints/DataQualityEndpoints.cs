@@ -155,7 +155,17 @@ public static class DataQualityEndpoints
             var correlationId = ResolveCorrelationId(httpContext);
             try
             {
-                var normalizedIssueType = DataQualityIssueTypes.Normalize(issueType);
+                if (!DataQualityIssueTypes.TryNormalizeTopOffender(issueType, out var normalizedIssueType))
+                {
+                    return Results.BadRequest(new
+                    {
+                        error = "invalid_issue_type",
+                        message = "Nepodržan tip problema za top offenders. Dozvoljeno: missingSupplier, missingShoeType, invalidName, missingCost.",
+                        issueType,
+                        correlationId
+                    });
+                }
+
                 var resolvedLimit = Math.Clamp(limit ?? options.Value.TopOffenderLimit, 1, 100);
 
                 var items = await healthService.GetTopOffendersAsync(
@@ -183,7 +193,9 @@ public static class DataQualityEndpoints
             catch (Exception)
             {
                 return Results.Ok(new DataQualityTopOffendersResponse(
-                    DataQualityIssueTypes.Normalize(issueType),
+                    DataQualityIssueTypes.TryNormalizeTopOffender(issueType, out var safeType)
+                        ? safeType
+                        : DataQualityIssueTypes.MissingSupplier,
                     Math.Clamp(limit ?? 10, 1, 100),
                     0, [],
                     AnalyticsResponseMetaFactory.Error(

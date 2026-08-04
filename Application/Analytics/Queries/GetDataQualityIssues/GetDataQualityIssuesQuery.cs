@@ -7,7 +7,12 @@ public static class DataQualityIssueTypes
     public const string MissingSupplier = "missingSupplier";
     public const string MissingShoeType = "missingShoeType";
     public const string InvalidName = "invalidName";
+    public const string MissingCost = "missingCost";
 
+    /// <summary>
+    /// Issue-list types. Unknown values still default to missingSupplier for backward compatibility
+    /// of the issues list endpoint (RQ07 does not rewrite that handler).
+    /// </summary>
     public static string Normalize(string? value)
     {
         return value switch
@@ -16,6 +21,22 @@ public static class DataQualityIssueTypes
             MissingShoeType => MissingShoeType,
             InvalidName => InvalidName,
             _ => MissingSupplier
+        };
+    }
+
+    /// <summary>
+    /// Top-offender types including missingCost. Returns false for unknown values (no silent fallback).
+    /// </summary>
+    public static bool TryNormalizeTopOffender(string? value, out string normalized)
+    {
+        normalized = (value ?? string.Empty).Trim();
+        return normalized switch
+        {
+            MissingSupplier => true,
+            MissingShoeType => true,
+            InvalidName => true,
+            MissingCost => true,
+            _ => false
         };
     }
 }

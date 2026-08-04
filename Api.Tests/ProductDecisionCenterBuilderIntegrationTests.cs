@@ -72,8 +72,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
 
         Assert.Equal(1, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);
-        Assert.Equal(500m, response.Summary.LostSalesEstimate);
+        Assert.Equal(900m, response.Summary.LostSalesEstimate);
         Assert.Equal(0m, response.Summary.SlowStockCapital);
+        Assert.Equal(ProductDecisionDenominatorScope.ReturnedRows, response.Summary.CountDenominatorScope);
+        Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, response.Summary.MoneyDenominatorScope);
+        Assert.Equal(ProductDecisionDenominatorScope.HiddenByTopLimit, response.IgnoredRowsMeaning);
         Assert.NotNull(response.Meta);
         Assert.True(response.Meta!.Success);
         Assert.Equal("critical", response.Meta.DataQualityStatus);
@@ -103,13 +106,15 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(1, response.TotalRows);
         Assert.Single(response.Rows);
         Assert.Equal(1, response.IgnoredRowsCount);
-        Assert.Equal(
-            response.Rows.Count(row => row.RecommendationStatus == "REPLENISH"),
-            response.Summary.ReplenishCount);
-        Assert.Equal(
-            response.Rows.Count(row => row.RecommendationStatus == "FIX_DATA"),
-            response.Summary.BadDataCount);
-    }
+        Assert.Equal(ProductDecisionDenominatorScope.HiddenByTopLimit, response.IgnoredRowsMeaning);
+        Assert.Equal(ProductDecisionDenominatorScope.ReturnedRows, response.Summary.CountDenominatorScope);
+        Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, response.Summary.MoneyDenominatorScope);
+        // FIX_DATA outranks REPLENISH, so top=1 returns FIX_DATA while money still includes all analyzed lost sales.
+        Assert.Equal("FIX_DATA", response.Rows[0].RecommendationStatus);
+        Assert.Equal(0, response.Summary.ReplenishCount);
+        Assert.Equal(1, response.Summary.BadDataCount);
+        Assert.Equal(900m, response.Summary.LostSalesEstimate);
+        Assert.Equal(0m, response.Summary.SlowStockCapital);    }
 
     [Fact]
     public async Task BuildProductDecisionCenter_UnknownStoreReturnsExplicitEmptySuccessMeta()

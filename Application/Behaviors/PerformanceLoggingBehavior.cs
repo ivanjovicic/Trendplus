@@ -92,6 +92,8 @@ namespace Application.Behaviors
             }
             finally
             {
+                var capturedSqlExecutions = RequestLogContext.Current.CapturedSqlExecutions;
+
                 if (createdLocalContext)
                 {
                     RequestLogContext.Current = new RequestLogContext();
@@ -128,7 +130,11 @@ namespace Application.Behaviors
                             RequestType = typeof(TRequest).FullName ?? requestName,
                             RequestName = requestName,
                             DurationMs = durationMs,
-                            RequestData = SerializeObject(request),
+                            RequestData = SerializeObject(new
+                            {
+                                request,
+                                sqlExecutions = capturedSqlExecutions
+                            }),
                             ResponseData = response != null ? SerializeObject(response) : null,
                             ExceptionMessage = exception?.Message,
                             IsSuccess = isSuccess

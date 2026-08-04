@@ -297,6 +297,7 @@ export interface DashboardValidationEndpoint {
   lastImport?: string | null;
   freshnessHours?: number | null;
   lostSalesEstimate?: number | null;
+  sourceStatus?: "view" | "fallback" | "unavailable" | "true_zero" | string | null;
   negativeQtyCount?: number | null;
   totalRows?: number | null;
 }

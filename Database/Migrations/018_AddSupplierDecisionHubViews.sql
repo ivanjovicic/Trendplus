@@ -394,6 +394,13 @@ WITH signal_base AS (
             END,
             0
         )::numeric(18,2) AS current_cost
+        , (vn.price_event_id IS NOT NULL) AS has_post_signal
+        , (nd.price_event_id IS NOT NULL) AS has_did_signal
+        , CASE
+            WHEN a."NabavnaCenaDin" > 0 THEN TRUE
+            WHEN a."NabavnaCena" > 0 THEN TRUE
+            ELSE FALSE
+          END AS has_cost_signal
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
         SELECT
@@ -420,6 +427,9 @@ aggregated AS (
         COUNT(*) FILTER (
             WHERE COALESCE(pre_qty_30d, 0) + COALESCE(post_qty_30d, 0) > 0
         )::int AS active_articles_count,
+        AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage,
+        AVG(CASE WHEN has_did_signal THEN 1::numeric ELSE 0::numeric END) AS did_signal_coverage,
+        AVG(CASE WHEN has_cost_signal THEN 1::numeric ELSE 0::numeric END) AS cost_signal_coverage,
         SUM(COALESCE(pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
         SUM(COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue_post_markdown,
         SUM(COALESCE(pre_qty_30d, 0))::numeric AS qty_pre_markdown,
@@ -464,6 +474,9 @@ SELECT
     category,
     articles_count,
     active_articles_count,
+    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
+    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
+    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
     revenue_pre_markdown,
     revenue_post_markdown,
     qty_pre_markdown,
@@ -508,6 +521,9 @@ WITH supplier_totals AS (
         avg_did_qty,
         dead_stock_rate,
         unsold_stock_value,
+        post_signal_coverage,
+        did_signal_coverage,
+        cost_signal_coverage,
         CASE
             WHEN COALESCE(revenue_pre_markdown, 0) + COALESCE(revenue_post_markdown, 0) = 0
             THEN 0::numeric
@@ -648,8 +664,18 @@ decision_inputs AS (
         COALESCE(st.markdown_revenue_share, 0) AS markdown_revenue_share,
         COALESCE(st.dead_stock_rate, 0) AS dead_stock_rate,
         COALESCE(st.unsold_stock_value, 0)::numeric(18,2) AS unsold_stock_value,
-        COALESCE(ri.returned_units_in_period, 0)
-            / NULLIF(COALESCE(si.sold_units_in_period, 0), 0) AS return_rate,
+        COALESCE(st.post_signal_coverage, 0) AS post_signal_coverage,
+        COALESCE(st.did_signal_coverage, 0) AS did_signal_coverage,
+        COALESCE(st.cost_signal_coverage, 0) AS cost_signal_coverage,
+        CASE
+            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN NULL
+            ELSE COALESCE(ri.returned_units_in_period, 0)
+                 / NULLIF(si.sold_units_in_period, 0)
+        END AS return_rate,
+        CASE
+            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
+            ELSE NULL
+        END AS return_rate_missing_evidence_reason,
         COALESCE(cf.category_focus_score, 0) AS category_focus_score,
         COALESCE(sr.repeat_winner_rate, 0) AS repeat_winner_rate,
         sr.article_count,
@@ -694,7 +720,11 @@ normalized_signals AS (
         di.markdown_revenue_share,
         di.dead_stock_rate,
         di.unsold_stock_value,
-        COALESCE(di.return_rate, 0) AS return_rate,
+        di.post_signal_coverage,
+        di.did_signal_coverage,
+        di.cost_signal_coverage,
+        di.return_rate,
+        di.return_rate_missing_evidence_reason,
         di.category_focus_score,
         di.repeat_winner_rate,
         di.article_count,
@@ -706,6 +736,14 @@ normalized_signals AS (
         di.stockout_article_share,
         di.stockout_before_markdown_flag,
         di.seasonal_category_share,
+        CASE
+            WHEN COALESCE(di.post_signal_coverage, 0) < 1
+              OR COALESCE(di.did_signal_coverage, 0) < 1
+              OR COALESCE(di.cost_signal_coverage, 0) < 1
+              OR di.return_rate_missing_evidence_reason IS NOT NULL
+            THEN 'partial'
+            ELSE 'complete'
+        END AS evidence_quality_status,
         CASE
             WHEN COUNT(*) OVER () = 1 THEN 1::numeric
             ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.fullprice_sellthrough, 0)), 0)::numeric
@@ -808,6 +846,10 @@ score_components AS (
                         0.50 * ns.article_count_rank
                         + 0.50 * ns.sales_volume_rank
                     )
+                    + 0.10 * COALESCE(ns.post_signal_coverage, 0)
+                    + 0.10 * COALESCE(ns.did_signal_coverage, 0)
+                    + 0.10 * COALESCE(ns.cost_signal_coverage, 0)
+                    - CASE WHEN ns.return_rate IS NULL THEN 0.15 ELSE 0 END
                 )
             ),
             4
@@ -837,6 +879,7 @@ recommendation_logic AS (
     SELECT
         fs.*,
         CASE
+            WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'
             WHEN COALESCE(fs.return_rate, 0) > 0.12 THEN 'REVIEW_QUALITY'
             WHEN COALESCE(fs.stockout_before_markdown_flag, FALSE) THEN 'OOS_FALSE_NEGATIVE'
             WHEN fs.supplier_decision_score > 80 THEN 'EXPAND'
@@ -859,9 +902,14 @@ SELECT
     ROUND(COALESCE(pre_markdown_margin_pct, 0), 4) AS pre_markdown_margin_pct,
     ROUND(COALESCE(markdown_penalty, 0), 2) AS markdown_dependency_score,
     ROUND(COALESCE(inventory_penalty, 0), 2) AS stock_risk_score,
-    ROUND(COALESCE(return_rate, 0), 4) AS return_rate,
+    ROUND(return_rate, 4) AS return_rate,
     ROUND(COALESCE(category_focus_score, 0), 2) AS category_focus_score,
     ROUND(COALESCE(repeat_winner_rate, 0), 4) AS repeat_winner_rate,
+    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
+    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
+    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
+    evidence_quality_status,
+    return_rate_missing_evidence_reason,
     supplier_decision_score AS supplier_quality_index,
     recommendation_code,
     confidence_score

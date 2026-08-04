@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Domain.Model.Analytics;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
@@ -299,7 +300,7 @@ public sealed class DecisionBoardAggregationContractTests
             ConfidenceLevel = confidenceLevel,
             ConfidenceScore = confidenceScore,
             ConfidencePct = confidenceScore ?? 0,
-            ReliabilityPct = confidenceScore,
+            ReliabilityPct = confidenceScore ?? 0,
             RecommendationStatus = recommendationStatus,
             RecommendationLabel = recommendationStatus,
             RecommendationReason = $"Razlog za {productId}",

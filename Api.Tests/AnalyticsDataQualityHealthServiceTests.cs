@@ -136,12 +136,26 @@ public sealed class AnalyticsDataQualityHealthServiceTests
         var snapshot = await service.CaptureAsync(30, "all", CancellationToken.None);
 
         Assert.Equal(0m, snapshot.TotalRevenue);
+        Assert.False(snapshot.HasRevenueEvidence);
         Assert.Equal(0m, snapshot.MissingCostRevenue);
         Assert.Equal(0m, snapshot.UnknownSupplierRevenue);
         Assert.Equal(0d, snapshot.MissingCostRevenueSharePct);
         Assert.Equal(0d, snapshot.UnknownSupplierRevenueSharePct);
         Assert.False(double.IsNaN(snapshot.MissingCostRevenueSharePct));
         Assert.False(double.IsInfinity(snapshot.UnknownSupplierRevenueSharePct));
+    }
+
+    [Fact]
+    public async Task CaptureAsync_WithRevenue_SetsHasRevenueEvidence()
+    {
+        await using var db = CreateContext();
+        await SeedMixedQualityDataAsync(db);
+        var service = new AnalyticsDataQualityHealthService(db);
+
+        var snapshot = await service.CaptureAsync(30, "all", CancellationToken.None);
+
+        Assert.True(snapshot.TotalRevenue > 0m);
+        Assert.True(snapshot.HasRevenueEvidence);
     }
 
     private static TrendplusDbContext CreateContext()

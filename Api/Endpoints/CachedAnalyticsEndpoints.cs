@@ -2043,21 +2043,8 @@ public static class CachedAnalyticsEndpoints
                 AnalyticsCacheKeys.ValidationLostSales,
                 async () =>
                 {
-                    var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
-                    var status = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
-                    var message = status switch
-                    {
-                        "good" => "Nema znacajnog gubitka prodaje zbog OOS.",
-                        "warning" => "Postoji procenjen gubitak prodaje zbog OOS.",
-                        _ => "Kritican OOS gubitak: replenishment je prioritet."
-                    };
-                    return new DashboardValidationEndpointDto
-                    {
-                        Status = status,
-                        Message = message,
-                        AffectedSku = oosSkuCount,
-                        LostSalesEstimate = lostSalesEstimate
-                    };
+                    var snapshot = await GetLostSalesSnapshotAsync(db, ct);
+                    return BuildLostSalesValidationFromSnapshot(snapshot);
                 },
                 AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
@@ -2698,7 +2685,7 @@ public static class CachedAnalyticsEndpoints
         return (0m, 0, 0, null, 999m);
     }
 
-    private static async Task<(int oosSkuCount, decimal lostSalesEstimate)> GetLostSalesSnapshotAsync(
+    private static async Task<LostSalesSnapshot> GetLostSalesSnapshotAsync(
         ITrendplusDbContext db,
         CancellationToken ct,
         int? storeId = null,
@@ -2709,7 +2696,10 @@ public static class CachedAnalyticsEndpoints
         var hasSupplierFilter = supplierId.HasValue;
 
         await using var conn = await OpenTrendplusConnectionAsync(db, ct);
-        if (conn is null) return (0, 0m);
+        if (conn is null)
+        {
+            return LostSalesSnapshot.Unavailable();
+        }
 
         if (normalizedDataScope == "all" && !storeId.HasValue && !supplierId.HasValue)
         {
@@ -2726,8 +2716,10 @@ public static class CachedAnalyticsEndpoints
                 if (await reader.ReadAsync(ct))
                 {
                     var oosCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
-                    var lostSales = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
-                    return (oosCount, Math.Round(lostSales, 2));
+                    var lostSales = reader.IsDBNull(1) ? 0m : Math.Round(reader.GetDecimal(1), 2);
+                    return lostSales <= 0m
+                        ? LostSalesSnapshot.TrueZero(oosCount)
+                        : LostSalesSnapshot.FromView(oosCount, lostSales);
                 }
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
@@ -2774,19 +2766,26 @@ public static class CachedAnalyticsEndpoints
               AND (@scope <> 'imported' OR a."DataOrigin" = 'access')
               AND (@scope <> 'existing' OR a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = '');
             """;
-        await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
-        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
-        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
-        fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("scope", NpgsqlTypes.NpgsqlDbType.Text) { Value = normalizedDataScope });
-        await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
-        if (await fallbackReader.ReadAsync(ct))
+        try
         {
-            var oosCount = fallbackReader.IsDBNull(0) ? 0 : fallbackReader.GetInt32(0);
-            var lostSales = fallbackReader.IsDBNull(1) ? 0m : fallbackReader.GetDecimal(1);
-            return (oosCount, Math.Round(lostSales, 2));
+            await using var fallbackCmd = new NpgsqlCommand(fallbackSql, conn);
+            fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("storeId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)storeId ?? DBNull.Value });
+            fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("supplierId", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (object?)supplierId ?? DBNull.Value });
+            fallbackCmd.Parameters.Add(new Npgsql.NpgsqlParameter("scope", NpgsqlTypes.NpgsqlDbType.Text) { Value = normalizedDataScope });
+            await using var fallbackReader = await fallbackCmd.ExecuteReaderAsync(ct);
+            if (await fallbackReader.ReadAsync(ct))
+            {
+                var oosCount = fallbackReader.IsDBNull(0) ? 0 : fallbackReader.GetInt32(0);
+                var lostSales = fallbackReader.IsDBNull(1) ? 0m : Math.Round(fallbackReader.GetDecimal(1), 2);
+                return LostSalesSnapshot.FromFallback(oosCount, lostSales);
+            }
+        }
+        catch (PostgresException)
+        {
+            return LostSalesSnapshot.Unavailable();
         }
 
-        return (0, 0m);
+        return LostSalesSnapshot.Unavailable();
     }
 
     private static async Task<(int negativeQtyCount, int totalRows)> GetNegativeQuantityValidationAsync(
@@ -3242,13 +3241,16 @@ public static class CachedAnalyticsEndpoints
     {
         var (score, totalSku, missingSku, lastImport, freshnessHours) = await GetCompletenessAndFreshnessAsync(db, ct);
         var normalizedDataScope = NormalizeDataScope(dataScope);
-        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct, storeId, supplierId, normalizedDataScope);
+        var lostSalesSnapshot = await GetLostSalesSnapshotAsync(db, ct, storeId, supplierId, normalizedDataScope);
         var (avgVelocity, topVelocity, topSku, velocityTrend) = await GetVelocitySnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope);
         var (top20Share, top50Share) = await GetParetoSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope);
 
         var completenessStatus = score >= 0.98m ? "good" : score >= 0.90m ? "warning" : "critical";
         var freshnessStatus = freshnessHours <= 6m ? "good" : freshnessHours <= 24m ? "warning" : "critical";
-        var oosStatus = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
+        var oosValidation = BuildLostSalesValidationFromSnapshot(lostSalesSnapshot);
+        var oosStatus = oosValidation.Status;
+        var oosSkuCount = lostSalesSnapshot.OosSkuCount;
+        var lostSalesEstimateDisplay = lostSalesSnapshot.LostSalesEstimate?.ToString("0.##", CultureInfo.InvariantCulture) ?? "n/a";
         var velocityStatus = avgVelocity > 0m ? "good" : "warning";
         var paretoStatus = top20Share > 0.80m ? "warning" : "good";
 
@@ -3275,7 +3277,7 @@ public static class CachedAnalyticsEndpoints
                     Unit = "SKU",
                     TrendPct = null,
                     Status = oosStatus,
-                    Subtitle = $"Lost sales estimate: {lostSalesEstimate.ToString("0.##", CultureInfo.InvariantCulture)} RSD"
+                    Subtitle = $"Lost sales estimate: {lostSalesEstimateDisplay} RSD"
                 },
                 new DashboardMetricCardDto
                 {
@@ -3317,7 +3319,7 @@ public static class CachedAnalyticsEndpoints
             snapshot.Insights.Add(new DashboardInsightDto
             {
                 Badge = "OOS",
-                Description = $"OOS signal: {oosSkuCount} SKU, estimated lost sales {lostSalesEstimate.ToString("0.##", CultureInfo.InvariantCulture)} RSD.",
+                Description = $"OOS signal: {oosSkuCount} SKU, estimated lost sales {lostSalesEstimateDisplay} RSD.",
                 Color = oosStatus == "critical" ? "red" : "yellow"
             });
             snapshot.Actions.Add(new DashboardActionDto
@@ -4882,21 +4884,60 @@ public static class CachedAnalyticsEndpoints
         ITrendplusDbContext db,
         CancellationToken ct)
     {
-        var (oosSkuCount, lostSalesEstimate) = await GetLostSalesSnapshotAsync(db, ct);
-        var status = lostSalesEstimate <= 0m ? "good" : lostSalesEstimate < 50000m ? "warning" : "critical";
-        var message = status switch
+        var snapshot = await GetLostSalesSnapshotAsync(db, ct);
+        return BuildLostSalesValidationFromSnapshot(snapshot);
+    }
+
+    /// <summary>
+    /// Maps lost-sales evidence source to validation status.
+    /// Unavailable must never look like a clean green zero.
+    /// </summary>
+    internal static DashboardValidationEndpointDto BuildLostSalesValidationFromSnapshot(LostSalesSnapshot snapshot)
+    {
+        var estimate = snapshot.LostSalesEstimate;
+        string status;
+        string message;
+
+        switch (snapshot.SourceStatus)
         {
-            "good" => "Nema znacajnog gubitka prodaje zbog OOS.",
-            "warning" => "Postoji procenjen gubitak prodaje zbog OOS.",
-            _ => "Kritican OOS gubitak: replenishment je prioritet."
-        };
+            case LostSalesSourceStatus.Unavailable:
+                status = "insufficient_data";
+                message = "Procena izgubljene prodaje nije dostupna; OOS signal se ne sme tretirati kao nula.";
+                estimate = null;
+                break;
+            case LostSalesSourceStatus.TrueZero:
+                status = "good";
+                message = "Nema znacajnog gubitka prodaje zbog OOS.";
+                estimate = 0m;
+                break;
+            case LostSalesSourceStatus.Fallback when (estimate ?? 0m) <= 0m:
+                status = "warning";
+                message = "Fallback procena ne pokazuje gubitak, ali pouzdanost je smanjena jer view nije korišćen.";
+                estimate = 0m;
+                break;
+            default:
+            {
+                var value = estimate ?? 0m;
+                status = value < 50_000m ? "warning" : "critical";
+                message = status == "warning"
+                    ? (snapshot.SourceStatus == LostSalesSourceStatus.Fallback
+                        ? "Postoji procenjen gubitak prodaje zbog OOS (fallback izvor)."
+                        : "Postoji procenjen gubitak prodaje zbog OOS.")
+                    : (snapshot.SourceStatus == LostSalesSourceStatus.Fallback
+                        ? "Kritican OOS gubitak (fallback izvor): replenishment je prioritet."
+                        : "Kritican OOS gubitak: replenishment je prioritet.");
+                estimate = value;
+                break;
+            }
+        }
 
         return new DashboardValidationEndpointDto
         {
             Status = status,
             Message = message,
-            AffectedSku = oosSkuCount,
-            LostSalesEstimate = lostSalesEstimate
+            AffectedSku = snapshot.SourceStatus == LostSalesSourceStatus.Unavailable ? null : snapshot.OosSkuCount,
+            LostSalesEstimate = estimate,
+            SourceStatus = snapshot.SourceStatus
         };
     }
 
@@ -4987,10 +5028,11 @@ public static class CachedAnalyticsEndpoints
                 GeneratedAtUtc = nowUtc,
                 PeriodFromUtc = periodFromUtc,
                 PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
-                Summary = new ProductDecisionCenterSummaryDto(),
+                Summary = BuildProductDecisionCenterSummary([], analyzedLostSalesEstimate: 0m, analyzedSlowStockCapital: 0m),
                 TotalRows = 0,
                 AnalyzedRows = 0,
                 IgnoredRowsCount = 0,
+                IgnoredRowsMeaning = ProductDecisionDenominatorScope.HiddenByTopLimit,
                 Rows = [],
                 Meta = new AnalyticsResponseMetaDto
                 {
@@ -5289,23 +5331,20 @@ public static class CachedAnalyticsEndpoints
             .Take(top)
             .ToList();
 
+        var rowWindow = BuildProductDecisionCenterRowWindow(rows.Count, sortedRows.Count);
         return new ProductDecisionCenterResponseDto
         {
             GeneratedAtUtc = nowUtc,
             PeriodFromUtc = periodFromUtc,
             PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
-            TotalRows = sortedRows.Count,
-            AnalyzedRows = rows.Count,
-            IgnoredRowsCount = Math.Max(0, rows.Count - sortedRows.Count),
-            Summary = new ProductDecisionCenterSummaryDto
-            {
-                ReplenishCount = sortedRows.Count(x => x.RecommendationStatus == "REPLENISH"),
-                MarkdownCount = sortedRows.Count(x => x.RecommendationStatus == "MARKDOWN"),
-                HighPotentialCount = sortedRows.Count(x => x.RecommendationStatus == "BOOST"),
-                BadDataCount = sortedRows.Count(x => x.RecommendationStatus == "FIX_DATA"),
-                LostSalesEstimate = Math.Round(totalLostSalesEstimate, 2),
-                SlowStockCapital = Math.Round(totalSlowStockCapital, 2)
-            },
+            TotalRows = rowWindow.TotalRows,
+            AnalyzedRows = rowWindow.AnalyzedRows,
+            IgnoredRowsCount = rowWindow.IgnoredRowsCount,
+            IgnoredRowsMeaning = rowWindow.IgnoredRowsMeaning,
+            Summary = BuildProductDecisionCenterSummary(
+                sortedRows,
+                analyzedLostSalesEstimate: totalLostSalesEstimate,
+                analyzedSlowStockCapital: totalSlowStockCapital),
             Rows = sortedRows,
             Meta = sortedRows.Count == 0
                 ? BuildSuccessMeta(
@@ -5318,6 +5357,39 @@ public static class CachedAnalyticsEndpoints
                     lastRefreshAtUtc: nowUtc)
         };
     }
+
+    /// <summary>
+    /// PDC summary contract:
+    /// count KPIs use returned/top rows; money totals use all analyzed rows.
+    /// Numeric behavior is unchanged; scopes make the denominator explicit.
+    /// </summary>
+    internal static ProductDecisionCenterSummaryDto BuildProductDecisionCenterSummary(
+        IReadOnlyList<ProductDecisionCenterRowDto> returnedRows,
+        decimal analyzedLostSalesEstimate,
+        decimal analyzedSlowStockCapital) =>
+        new()
+        {
+            ReplenishCount = returnedRows.Count(x => x.RecommendationStatus == "REPLENISH"),
+            MarkdownCount = returnedRows.Count(x => x.RecommendationStatus == "MARKDOWN"),
+            HighPotentialCount = returnedRows.Count(x => x.RecommendationStatus == "BOOST"),
+            BadDataCount = returnedRows.Count(x => x.RecommendationStatus == "FIX_DATA"),
+            LostSalesEstimate = Math.Round(analyzedLostSalesEstimate, 2),
+            SlowStockCapital = Math.Round(analyzedSlowStockCapital, 2),
+            CountDenominatorScope = ProductDecisionDenominatorScope.ReturnedRows,
+            MoneyDenominatorScope = ProductDecisionDenominatorScope.AnalyzedRows
+        };
+
+    /// <summary>
+    /// <c>IgnoredRowsCount</c> means rows hidden by the top limit, not invalid/bad-data rows.
+    /// </summary>
+    internal static ProductDecisionCenterRowWindow BuildProductDecisionCenterRowWindow(
+        int analyzedRowCount,
+        int returnedRowCount) =>
+        new(
+            TotalRows: returnedRowCount,
+            AnalyzedRows: analyzedRowCount,
+            IgnoredRowsCount: Math.Max(0, analyzedRowCount - returnedRowCount),
+            IgnoredRowsMeaning: ProductDecisionDenominatorScope.HiddenByTopLimit);
 
     private static AnalyticsResponseMetaDto BuildSuccessMeta(
         string? dataQualityStatus = null,
@@ -6009,6 +6081,19 @@ public class TopProductsAdvancedResultDto
     public string? MarginMessage { get; set; }
 }
 
+public static class ProductDecisionDenominatorScope
+{
+    public const string ReturnedRows = "returned_rows";
+    public const string AnalyzedRows = "analyzed_rows";
+    public const string HiddenByTopLimit = "hidden_by_top_limit";
+}
+
+public sealed record ProductDecisionCenterRowWindow(
+    int TotalRows,
+    int AnalyzedRows,
+    int IgnoredRowsCount,
+    string IgnoredRowsMeaning);
+
 public class ProductDecisionCenterSummaryDto
 {
     public int ReplenishCount { get; set; }
@@ -6017,6 +6102,10 @@ public class ProductDecisionCenterSummaryDto
     public int BadDataCount { get; set; }
     public decimal LostSalesEstimate { get; set; }
     public decimal SlowStockCapital { get; set; }
+    /// <summary>Denominator for count KPIs. Current contract: <see cref="ProductDecisionDenominatorScope.ReturnedRows"/>.</summary>
+    public string CountDenominatorScope { get; set; } = ProductDecisionDenominatorScope.ReturnedRows;
+    /// <summary>Denominator for money totals. Current contract: <see cref="ProductDecisionDenominatorScope.AnalyzedRows"/>.</summary>
+    public string MoneyDenominatorScope { get; set; } = ProductDecisionDenominatorScope.AnalyzedRows;
 }
 
 public class ProductDecisionCenterRowDto
@@ -6080,9 +6169,14 @@ public class ProductDecisionCenterResponseDto
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime PeriodFromUtc { get; set; }
     public DateTime PeriodToUtc { get; set; }
+    /// <summary>Returned/top row count (same as <see cref="Rows"/>.Count).</summary>
     public int TotalRows { get; set; }
+    /// <summary>All analyzed product rows before top limiting.</summary>
     public int AnalyzedRows { get; set; }
+    /// <summary>Rows hidden by top limit. Not a bad-data count.</summary>
     public int IgnoredRowsCount { get; set; }
+    /// <summary>Semantic meaning of <see cref="IgnoredRowsCount"/>. Current contract: <see cref="ProductDecisionDenominatorScope.HiddenByTopLimit"/>.</summary>
+    public string IgnoredRowsMeaning { get; set; } = ProductDecisionDenominatorScope.HiddenByTopLimit;
     public ProductDecisionCenterSummaryDto Summary { get; set; } = new();
     public List<ProductDecisionCenterRowDto> Rows { get; set; } = [];
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
@@ -6209,6 +6303,32 @@ public class DashboardValidationDto
     public string Message { get; set; } = "";
 }
 
+public static class LostSalesSourceStatus
+{
+    public const string View = "view";
+    public const string Fallback = "fallback";
+    public const string Unavailable = "unavailable";
+    public const string TrueZero = "true_zero";
+}
+
+public sealed record LostSalesSnapshot(
+    int OosSkuCount,
+    decimal? LostSalesEstimate,
+    string SourceStatus)
+{
+    public static LostSalesSnapshot Unavailable() =>
+        new(0, null, LostSalesSourceStatus.Unavailable);
+
+    public static LostSalesSnapshot TrueZero(int oosSkuCount) =>
+        new(oosSkuCount, 0m, LostSalesSourceStatus.TrueZero);
+
+    public static LostSalesSnapshot FromView(int oosSkuCount, decimal lostSalesEstimate) =>
+        new(oosSkuCount, lostSalesEstimate, LostSalesSourceStatus.View);
+
+    public static LostSalesSnapshot FromFallback(int oosSkuCount, decimal lostSalesEstimate) =>
+        new(oosSkuCount, lostSalesEstimate, LostSalesSourceStatus.Fallback);
+}
+
 public class DashboardValidationEndpointDto
 {
     public string Status { get; set; } = "info";
@@ -6219,6 +6339,8 @@ public class DashboardValidationEndpointDto
     public DateTime? LastImport { get; set; }
     public decimal? FreshnessHours { get; set; }
     public decimal? LostSalesEstimate { get; set; }
+    /// <summary>Lost-sales evidence source: view | fallback | unavailable | true_zero.</summary>
+    public string? SourceStatus { get; set; }
     public int? NegativeQtyCount { get; set; }
     public int? TotalRows { get; set; }
 }

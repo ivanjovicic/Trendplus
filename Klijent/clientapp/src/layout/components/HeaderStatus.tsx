@@ -115,7 +115,7 @@ export default function HeaderStatus({ onOpenMobileNav }: HeaderStatusProps) {
         </div>
 
         <div className="flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)]/80 px-2 py-1.5 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)]">
-          <div className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${backendTone}`} title={lastCheckedAt ? `Poslednja provera: ${lastCheckedAt.toLocaleTimeString("sr-RS")}` : "Backend status"}>
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${backendTone}`} title={lastCheckedAt ? `Poslednja provera: ${new Date(lastCheckedAt).toLocaleTimeString("sr-RS")}` : "Backend status"}>
             <span className={`h-2 w-2 rounded-full ${backendDot}`} />
             <Server size={14} />
             <span className="hidden uppercase tracking-wide text-muted sm:inline">Backend</span>

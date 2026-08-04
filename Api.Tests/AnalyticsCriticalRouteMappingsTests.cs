@@ -35,6 +35,9 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         HttpStatusCode.ServiceUnavailable,
     ];
 
+    private static string BuildConnectionString(string databaseName)
+        => $"Host=localhost;Database={databaseName};Username=test;Password=test";
+
     [Fact]
     public async Task CriticalAnalyticsRoutes_AreRegisteredInEndpointTable()
     {
@@ -299,8 +302,6 @@ public sealed class AnalyticsCriticalRouteMappingsTests
             await Task.CompletedTask;
         }
 
-        private static string BuildConnectionString(string databaseName)
-            => $"Host=localhost;Database={databaseName};Username=test;Password=test";
     }
 
     private sealed class NoopMediator : IMediator

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Api.Endpoints;
 using Application.Artikli.Common.Interfaces;
+using Application.Analytics;
 using Domain.Model.Analytics;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Analytics;

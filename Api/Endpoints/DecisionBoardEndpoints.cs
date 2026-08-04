@@ -265,7 +265,7 @@ public static class DecisionBoardEndpoints
             blockerCards,
             productCards,
             inventoryCards,
-            supplierCards,
+            supplierCards.Where(IsActionableSupplierDecisionCard),
             actionCards,
             outcomeCards);
 
@@ -274,7 +274,7 @@ public static class DecisionBoardEndpoints
             5,
             productCards.Where(card => (card.ExpectedImpactRsd ?? 0m) > 0m),
             inventoryCards.Where(card => (card.ExpectedImpactRsd ?? 0m) > 0m),
-            supplierCards,
+            supplierCards.Where(IsActionableSupplierDecisionCard),
             actionCards.Where(card => (card.ExpectedImpactRsd ?? 0m) > 0m));
 
         var stockRiskCards = CombineSectionCards(
@@ -395,7 +395,8 @@ public static class DecisionBoardEndpoints
             .Select((row, index) =>
             {
                 var confidence = ResolveProductConfidence(row);
-                var expectedImpact = row.ExpectedImpactRsd ?? (row.LostSalesEstimate > 0m ? row.LostSalesEstimate : null);
+                // Trust PDC: do not reattach LostSalesEstimate when ExpectedImpactRsd is intentionally null.
+                var expectedImpact = row.ExpectedImpactRsd;
                 var warnings = NormalizeWarningCodes(row.WarningCodes, row.ReasonCodes);
                 var actionState = ResolveActionState(row.SourceType ?? "product", row.SourceKey ?? $"product:{row.ProductId}", actionStates);
 
@@ -521,6 +522,19 @@ public static class DecisionBoardEndpoints
                 var actionKey = BuildSupplierActionSourceKey(item, filters.FromDate, filters.ToDate, filters.StoreId, filters.DataScope, recommendationAllowed);
                 var actionState = ResolveActionState("supplier", actionKey, actionStates);
                 var confidenceScore = item.ConfidenceScore;
+                // Blocked recommendations are verification signals, not actionable decisions.
+                var confidenceLevel = recommendationAllowed
+                    ? ResolveConfidenceLevel(confidenceScore)
+                    : "insufficient_data";
+                var dataQualityStatus = recommendationAllowed
+                    ? (trust?.DataCoverageStatus ?? "unknown")
+                    : "insufficient_data";
+                var summary = recommendationAllowed
+                    ? $"{item.RecommendationCode}. {item.StatusReason}"
+                    : $"Signal check: {item.RecommendationCode}. Preporuka nije dozvoljena. {item.StatusReason}";
+                var nextAction = recommendationAllowed
+                    ? item.RecommendationCode
+                    : "Proveri pouzdanost dobavljačkog dataset-a pre odluke.";
 
                 cards.Add(new DecisionBoardCardDto(
                     Id: $"supplier:{sourceTag}:{item.SupplierId}:{index}",
@@ -530,23 +544,26 @@ public static class DecisionBoardEndpoints
                     SourceType: "supplier",
                     SourceKey: actionKey,
                     Title: item.SupplierName,
-                    Summary: $"{item.RecommendationCode}. {item.StatusReason}",
-                    ConfidenceLevel: ResolveConfidenceLevel(confidenceScore),
+                    Summary: summary,
+                    ConfidenceLevel: confidenceLevel,
                     ConfidenceScore: confidenceScore,
                     ReliabilityPct: item.ReliabilityPct,
                     ExpectedImpactRsd: null,
                     MeasuredImpactRsd: null,
                     RealizationRatio: null,
                     RiskIfIgnored: item.StatusReason,
-                    RecommendedNextAction: item.RecommendationCode,
+                    RecommendedNextAction: nextAction,
                     ActionHref: "/analytics/supplier?tab=overview",
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: BuildSupplierWarningCodes(trust),
-                    DataQualityStatus: trust?.DataCoverageStatus ?? "unknown",
+                    DataQualityStatus: dataQualityStatus,
                     GeneratedAtUtc: trust?.LastRefreshAtUtc ?? supplierSummary.From,
-                    PriorityScore: ComputeSupplierPriority(item, trust, recommendationAllowed),
-                    ImpactScore: item.Revenue));
+                    PriorityScore: CapInsufficientDataPriority(
+                        ComputeSupplierPriority(item, trust, recommendationAllowed),
+                        confidenceLevel,
+                        dataQualityStatus),
+                    ImpactScore: recommendationAllowed ? item.Revenue : 0m));
             }
         }
 
@@ -927,9 +944,21 @@ public static class DecisionBoardEndpoints
         return warnings.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    private static (int Score, string Status, string Summary) EvaluateDataQualityHealth(AnalyticsDataQualityHealthSnapshot health)
+    internal static (int Score, string Status, string Summary) EvaluateDataQualityHealth(AnalyticsDataQualityHealthSnapshot health)
     {
         static double Clamp01(double value) => Math.Max(0d, Math.Min(1d, value));
+
+        // No revenue evidence: zero share percentages are not "clean" — they are unknown.
+        if (!health.HasRevenueEvidence || health.TotalRevenue <= 0m)
+        {
+            var orphanNote = health.OrphanArticleCount > 0
+                ? $" Orphan artikli i dalje postoje ({health.OrphanArticleCount}), ali bez prometa udele nisu merljive."
+                : string.Empty;
+            return (
+                Score: 0,
+                Status: "insufficient_data",
+                Summary: $"Nema prometnog dokaza u izabranom periodu; data quality se ne sme tretirati kao dobar.{orphanNote}");
+        }
 
         const double warningOrphanArticleCount = 10d;
         const double warningUnknownSupplierRevenueSharePct = 3d;
@@ -1020,6 +1049,11 @@ public static class DecisionBoardEndpoints
         if (dataQualityState.Status is not "good" and not "excellent")
         {
             warnings.Add(dataQualityState.Status);
+        }
+
+        if (!health.HasRevenueEvidence || health.TotalRevenue <= 0m)
+        {
+            warnings.Add("no_revenue_evidence");
         }
 
         if (health.MissingCostRevenueSharePct > 0)
@@ -1257,6 +1291,21 @@ public static class DecisionBoardEndpoints
         }
 
         return priorityScore;
+    }
+
+    private static bool IsActionableSupplierDecisionCard(DecisionBoardCardDto card)
+    {
+        if (!string.Equals(card.Kind, "supplier", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (card.WarningCodes.Contains("supplier_recommendation_blocked", StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        return !string.Equals(card.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase);
     }
 
     private static decimal ComputeSupplierPriority(SummarySupplierItem item, ScorecardTrustMetadata? trustMetadata, bool recommendationAllowed)

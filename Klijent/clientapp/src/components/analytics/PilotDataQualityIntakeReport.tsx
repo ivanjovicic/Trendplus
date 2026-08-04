@@ -292,7 +292,11 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
     try {
       setExportBusy(true);
       setExportStatus("Server priprema dokument...");
-      const result = await generateExport(exportPayload, format, { orientation: "portrait" });
+      const result = await generateExport(exportPayload, {
+        format,
+        orientation: "portrait",
+        includeFiltersAndMetadata: true,
+      });
       if (result.isAsync) {
         setExportStatus("Dokument je u redu čekanja...");
         const completed = await waitForExport(result.documentId);
@@ -351,7 +355,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
         </div>
       </div>
 
-      <PilotImportReadinessCard report={report} refreshStatus={refreshStatus} compact />
+      <PilotImportReadinessCard report={report} refreshStatus={refreshStatus} />
 
       {metaWarning ? (
         <div className="pilot-intake-warning" role="status">

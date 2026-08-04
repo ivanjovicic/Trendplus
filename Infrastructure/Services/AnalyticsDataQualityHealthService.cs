@@ -7,6 +7,87 @@ namespace Infrastructure.Services;
 
 public sealed class AnalyticsDataQualityHealthService
 {
+    /// <summary>
+    /// Top-offender SQL contract (RQ06/RQ07).
+    /// Article membership is scoped by <c>Artikli.DataOrigin</c>;
+    /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>DataOrigin</c> (RQ05 sales-revenue rule).
+    /// <c>missingCost</c> uses article nabavna cena (null/&lt;=0), independent of supplier/name CASE priority.
+    /// </summary>
+    public const string TopOffendersSql = """
+            WITH sales_30d AS (
+                SELECT
+                    ps.id_artikal AS artikal_id,
+                    COALESCE(SUM(ps.kolicina * ps.cena), 0) AS sales_30d
+                FROM prodaja_stavke ps
+                JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
+                WHERE p.datum_prodaje >= @salesFromUtc
+                  AND (
+                        @dataScope = 'all'
+                     OR (@dataScope = 'imported' AND p."DataOrigin" = 'access')
+                     OR (@dataScope = 'existing' AND (p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = ''))
+                  )
+                GROUP BY ps.id_artikal
+            ),
+            quality_source AS (
+                SELECT
+                    a."PLU" AS sku,
+                    a."Id" AS product_id,
+                    NULLIF(BTRIM(a."Naziv"), '') AS product_name,
+                    NULLIF(BTRIM(d."Naziv"), '') AS supplier_name,
+                    NULLIF(BTRIM(t."Naziv"), '') AS shoe_type_name,
+                    CASE
+                        WHEN a."IDDobavljac" IS NULL OR d."Id" IS NULL THEN 'missingSupplier'
+                        WHEN a."IDTipObuce" IS NULL OR t."Id" IS NULL THEN 'missingShoeType'
+                        WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL THEN 'invalidName'
+                        ELSE 'ok'
+                    END AS issue_type,
+                    (a."NabavnaCena" IS NULL OR a."NabavnaCena" <= 0) AS is_missing_cost,
+                    COALESCE(s.sales_30d, 0) AS sales_30d
+                FROM "Artikli" a
+                LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
+                LEFT JOIN "TipoviObuce" t ON a."IDTipObuce" = t."Id"
+                LEFT JOIN sales_30d s ON s.artikal_id = a."Id"
+                WHERE @dataScope = 'all'
+                   OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
+                   OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
+            ),
+            affected AS (
+                SELECT
+                    sku,
+                    product_id,
+                    product_name,
+                    supplier_name,
+                    shoe_type_name,
+                    sales_30d AS revenue_impact_rsd
+                FROM quality_source
+                WHERE (
+                        (@issueType = 'missingCost' AND is_missing_cost)
+                     OR (@issueType <> 'missingCost' AND issue_type = @issueType)
+                  )
+                  AND sales_30d > @minSalesRsd
+            ),
+            totals AS (
+                SELECT COALESCE(SUM(revenue_impact_rsd), 0) AS total_impact_rsd FROM affected
+            )
+            SELECT
+                a.sku,
+                a.product_id,
+                a.product_name,
+                a.supplier_name,
+                a.shoe_type_name,
+                a.revenue_impact_rsd AS sales_30d,
+                a.revenue_impact_rsd,
+                CASE
+                    WHEN t.total_impact_rsd > 0 THEN ROUND((a.revenue_impact_rsd / t.total_impact_rsd * 100), 2)
+                    ELSE 0
+                END AS revenue_impact_pct,
+                '/artikli/' || a.product_id || '/edit' AS action_url
+            FROM affected a
+            CROSS JOIN totals t
+            ORDER BY a.revenue_impact_rsd DESC, a.product_id ASC
+            LIMIT @limit;
+            """;
+
     private readonly TrendplusDbContext _db;
 
     public AnalyticsDataQualityHealthService(TrendplusDbContext db)
@@ -63,6 +144,7 @@ public sealed class AnalyticsDataQualityHealthService
             WindowToUtc = windowToUtc,
             OrphanArticleCount = orphanArticleCount,
             TotalRevenue = Math.Round(totalRevenue, 2),
+            HasRevenueEvidence = totalRevenue > 0m,
             MissingCostRevenue = Math.Round(missingCostRevenue, 2),
             MissingCostRevenueSharePct = totalRevenue > 0m
                 ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
@@ -81,74 +163,8 @@ public sealed class AnalyticsDataQualityHealthService
         string? dataScope,
         CancellationToken ct)
     {
-        var normalizedIssueType = NormalizeIssueType(issueType);
+        var normalizedIssueType = NormalizeTopOffenderIssueType(issueType);
         var normalizedDataScope = NormalizeDataScope(dataScope);
-
-        const string sql = """
-            WITH sales_30d AS (
-                SELECT
-                    ps.id_artikal AS artikal_id,
-                    COALESCE(SUM(ps.kolicina * ps.cena), 0) AS sales_30d
-                FROM prodaja_stavke ps
-                JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
-                WHERE p.datum_prodaje >= @salesFromUtc
-                GROUP BY ps.id_artikal
-            ),
-            quality_source AS (
-                SELECT
-                    a."PLU" AS sku,
-                    a."Id" AS product_id,
-                    NULLIF(BTRIM(a."Naziv"), '') AS product_name,
-                    NULLIF(BTRIM(d."Naziv"), '') AS supplier_name,
-                    NULLIF(BTRIM(t."Naziv"), '') AS shoe_type_name,
-                    CASE
-                        WHEN a."IDDobavljac" IS NULL OR d."Id" IS NULL THEN 'missingSupplier'
-                        WHEN a."IDTipObuce" IS NULL OR t."Id" IS NULL THEN 'missingShoeType'
-                        WHEN NULLIF(BTRIM(a."Naziv"), '') IS NULL THEN 'invalidName'
-                        ELSE 'ok'
-                    END AS issue_type,
-                    COALESCE(s.sales_30d, 0) AS sales_30d
-                FROM "Artikli" a
-                LEFT JOIN "Dobavljaci" d ON a."IDDobavljac" = d."Id"
-                LEFT JOIN "TipoviObuce" t ON a."IDTipObuce" = t."Id"
-                LEFT JOIN sales_30d s ON s.artikal_id = a."Id"
-                WHERE @dataScope = 'all'
-                   OR (@dataScope = 'imported' AND a."DataOrigin" = 'access')
-                   OR (@dataScope = 'existing' AND (a."DataOrigin" = 'existing' OR a."DataOrigin" IS NULL OR a."DataOrigin" = ''))
-            ),
-            affected AS (
-                SELECT
-                    sku,
-                    product_id,
-                    product_name,
-                    supplier_name,
-                    shoe_type_name,
-                    sales_30d AS revenue_impact_rsd
-                FROM quality_source
-                WHERE issue_type = @issueType
-                  AND sales_30d > @minSalesRsd
-            ),
-            totals AS (
-                SELECT COALESCE(SUM(revenue_impact_rsd), 0) AS total_impact_rsd FROM affected
-            )
-            SELECT
-                a.sku,
-                a.product_id,
-                a.product_name,
-                a.supplier_name,
-                a.shoe_type_name,
-                a.revenue_impact_rsd AS sales_30d,
-                a.revenue_impact_rsd,
-                CASE
-                    WHEN t.total_impact_rsd > 0 THEN ROUND((a.revenue_impact_rsd / t.total_impact_rsd * 100), 2)
-                    ELSE 0
-                END AS revenue_impact_pct,
-                '/artikli/' || a.product_id || '/edit' AS action_url
-            FROM affected a
-            CROSS JOIN totals t
-            ORDER BY a.revenue_impact_rsd DESC, a.product_id ASC
-            LIMIT @limit;
-            """;
 
         var connection = _db.Database.GetDbConnection() as NpgsqlConnection
             ?? throw new InvalidOperationException("Top offenders query requires an Npgsql connection.");
@@ -161,7 +177,7 @@ public sealed class AnalyticsDataQualityHealthService
 
         try
         {
-            await using var command = new NpgsqlCommand(sql, connection);
+            await using var command = new NpgsqlCommand(TopOffendersSql, connection);
             command.CommandTimeout = 60;
             command.Parameters.AddWithValue("salesFromUtc", DateTime.UtcNow.AddDays(-30));
             command.Parameters.AddWithValue("issueType", normalizedIssueType);
@@ -196,20 +212,29 @@ public sealed class AnalyticsDataQualityHealthService
         }
     }
 
+    /// <summary>
+    /// Normalizes top-offender issue types. Unknown values throw instead of silently becoming missingSupplier.
+    /// </summary>
+    public static string NormalizeTopOffenderIssueType(string? issueType)
+    {
+        var normalized = (issueType ?? string.Empty).Trim();
+        return normalized switch
+        {
+            "missingSupplier" => "missingSupplier",
+            "missingShoeType" => "missingShoeType",
+            "invalidName" => "invalidName",
+            "missingCost" => "missingCost",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(issueType),
+                issueType,
+                "Unsupported data-quality top-offender issue type.")
+        };
+    }
+
     private static string NormalizeDataScope(string? dataScope)
     {
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
         return normalized is "existing" or "imported" ? normalized : "all";
-    }
-
-    private static string NormalizeIssueType(string? issueType)
-    {
-        return issueType switch
-        {
-            "missingShoeType" => "missingShoeType",
-            "invalidName" => "invalidName",
-            _ => "missingSupplier"
-        };
     }
 }
 
@@ -221,6 +246,8 @@ public sealed class AnalyticsDataQualityHealthSnapshot
     public DateTime WindowToUtc { get; set; }
     public int OrphanArticleCount { get; set; }
     public decimal TotalRevenue { get; set; }
+    /// <summary>False when the lookback window has no sales revenue. Share-based health must not look green.</summary>
+    public bool HasRevenueEvidence { get; set; }
     public decimal MissingCostRevenue { get; set; }
     public double MissingCostRevenueSharePct { get; set; }
     public decimal UnknownSupplierRevenue { get; set; }

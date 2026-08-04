@@ -185,6 +185,163 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(100d, item.RevenueImpactPct);
     }
 
+    [Fact]
+    public async Task TopOffenders_ExistingScopeExcludesImportedHeaderSalesOnExistingArticle()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        db.TipoviObuce.Add(new TipObuce { Id = 1, Naziv = "Patike", DataOrigin = "existing" });
+        db.Artikli.Add(Article(
+            id: 201,
+            sku: "DQ-MIXED-ORIGIN",
+            name: "Existing article with mixed sales",
+            supplierId: null,
+            shoeTypeId: 1,
+            stock: 2,
+            origin: "existing"));
+        db.ProdajaZaglavlja.AddRange(
+            Sale(401, now.AddDays(-1), "existing"),
+            Sale(402, now.AddDays(-1), "access"));
+        db.ProdajaStavke.AddRange(
+            Line(501, 401, 201, 1, 1_000m),
+            Line(502, 402, 201, 1, 9_000m));
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var items = await service.GetTopOffendersAsync(
+            DataQualityIssueTypes.MissingSupplier,
+            limit: 10,
+            minSalesRsd: 0m,
+            dataScope: "existing",
+            CancellationToken.None);
+
+        var item = Assert.Single(items, row => row.Sku == "DQ-MIXED-ORIGIN");
+        Assert.Equal(1_000m, item.RevenueImpactRsd);
+        Assert.Equal(1_000m, item.Sales30d);
+    }
+
+    [Fact]
+    public async Task TopOffenders_AllScopeStillIncludesCrossOriginSalesTotals()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        db.TipoviObuce.Add(new TipObuce { Id = 1, Naziv = "Patike", DataOrigin = "existing" });
+        db.Artikli.Add(Article(
+            id: 201,
+            sku: "DQ-MIXED-ORIGIN",
+            name: "Existing article with mixed sales",
+            supplierId: null,
+            shoeTypeId: 1,
+            stock: 2,
+            origin: "existing"));
+        db.ProdajaZaglavlja.AddRange(
+            Sale(401, now.AddDays(-1), "existing"),
+            Sale(402, now.AddDays(-1), "access"));
+        db.ProdajaStavke.AddRange(
+            Line(501, 401, 201, 1, 1_000m),
+            Line(502, 402, 201, 1, 9_000m));
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var items = await service.GetTopOffendersAsync(
+            DataQualityIssueTypes.MissingSupplier,
+            limit: 10,
+            minSalesRsd: 0m,
+            dataScope: "all",
+            CancellationToken.None);
+
+        var item = Assert.Single(items, row => row.Sku == "DQ-MIXED-ORIGIN");
+        Assert.Equal(10_000m, item.RevenueImpactRsd);
+    }
+
+    [Fact]
+    public async Task TopOffenders_MissingCost_ReturnsProductsWithoutPurchaseCost_EvenWithSupplier()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        db.Dobavljaci.Add(new Dobavljac { Id = 1, Naziv = "Valid Supplier", DataOrigin = "existing" });
+        db.TipoviObuce.Add(new TipObuce { Id = 1, Naziv = "Patike", DataOrigin = "existing" });
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 301,
+                PLU = "DQ-NO-COST",
+                Naziv = "Missing cost with supplier",
+                IDDobavljac = 1,
+                IDTipObuce = 1,
+                Kolicina = 3,
+                NabavnaCena = null,
+                DataOrigin = "existing",
+                UpdatedAt = now
+            },
+            new Artikli
+            {
+                Id = 302,
+                PLU = "DQ-HAS-COST",
+                Naziv = "Has cost",
+                IDDobavljac = 1,
+                IDTipObuce = 1,
+                Kolicina = 3,
+                NabavnaCena = 50m,
+                DataOrigin = "existing",
+                UpdatedAt = now
+            });
+        db.ProdajaZaglavlja.AddRange(
+            Sale(601, now.AddDays(-1), "existing"),
+            Sale(602, now.AddDays(-1), "existing"));
+        db.ProdajaStavke.AddRange(
+            Line(701, 601, 301, 2, 2_000m),
+            Line(702, 602, 302, 2, 8_000m));
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var items = await service.GetTopOffendersAsync(
+            DataQualityIssueTypes.MissingCost,
+            limit: 10,
+            minSalesRsd: 0m,
+            dataScope: "existing",
+            CancellationToken.None);
+
+        var item = Assert.Single(items);
+        Assert.Equal("DQ-NO-COST", item.Sku);
+        Assert.Equal(4_000m, item.RevenueImpactRsd);
+        Assert.DoesNotContain(items, row => row.Sku == "DQ-HAS-COST");
+    }
+
+    [Fact]
+    public async Task TopOffenders_UnknownIssueType_ThrowsInsteadOfSilentSupplierFallback()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+        {
+            return;
+        }
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.GetTopOffendersAsync(
+                "notARealIssue",
+                limit: 5,
+                minSalesRsd: 0m,
+                dataScope: "all",
+                CancellationToken.None));
+    }
+
     private async Task<TrendplusDbContext?> CreateDatabaseAsync()
     {
         if (!_fixture.IsAvailable)

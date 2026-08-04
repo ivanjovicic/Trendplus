@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ01
+Current READY prompt: RQ09
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -22,15 +22,15 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ01 | READY | decision-board-impact-trust | Prevent wrong expected-impact fallback in board product cards |
-| RQ02 | WAITING | product-decision-denominators | Define PDC summary top/all-row denominator contract |
-| RQ03 | WAITING | lost-sales-zero-vs-unknown | Separate unavailable lost-sales evidence from true zero |
-| RQ04 | WAITING | data-quality-no-data | Prevent no-revenue data-quality windows from looking green |
-| RQ05 | WAITING | analytics-datascope-consistency | Audit dataScope semantics across analytics modules |
-| RQ06 | WAITING | data-quality-offender-scope | Fix top-offender revenue impact scope drift |
-| RQ07 | WAITING | missing-cost-offenders | Add missing-cost offender drilldown contract |
-| RQ08 | WAITING | supplier-blocked-signal-ranking | Cap/label blocked supplier signals in Decision Board |
-| RQ09 | WAITING | action-source-empty-state | Decide whether zero analytics actions is healthy empty or insufficient data |
+| RQ01 | DONE | decision-board-impact-trust | Prevent wrong expected-impact fallback in board product cards |
+| RQ02 | DONE | product-decision-denominators | Define PDC summary top/all-row denominator contract |
+| RQ03 | DONE | lost-sales-zero-vs-unknown | Separate unavailable lost-sales evidence from true zero |
+| RQ04 | DONE | data-quality-no-data | Prevent no-revenue data-quality windows from looking green |
+| RQ05 | DONE | analytics-datascope-consistency | Audit dataScope semantics across analytics modules |
+| RQ06 | DONE | data-quality-offender-scope | Fix top-offender revenue impact scope drift |
+| RQ07 | DONE | missing-cost-offenders | Add missing-cost offender drilldown contract |
+| RQ08 | DONE | supplier-blocked-signal-ranking | Cap/label blocked supplier signals in Decision Board |
+| RQ09 | READY | action-source-empty-state | Decide whether zero analytics actions is healthy empty or insufficient data |
 | RQ10 | WAITING | inventory-evidence-confidence | Add evidence-based confidence contract for inventory cards |
 | RQ11 | WAITING | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
 | RQ12 | WAITING | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
@@ -39,13 +39,13 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 
 ## RQ01 - Decision Board product expected-impact correctness
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/tests
 Feature family: decision-board-impact-trust
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ01-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ01-cursor.lock.md`
 Commit suggestion: `fix(analytics): preserve product impact trust in decision board`
 
 ### Why
@@ -86,18 +86,37 @@ Decision Board currently uses `row.ExpectedImpactRsd ?? row.LostSalesEstimate` f
 - Existing insufficient-data priority cap still passes.
 - No Product Decision Center formula change.
 
+### Notes
+
+- 2026-08-04: DONE. Removed board-level `LostSalesEstimate` fallback so product cards trust only `ExpectedImpactRsd` from PDC. Expanded endpoint tests for REPLENISH/BOOST, FIX_DATA/INSUFFICIENT_DATA, and MARKDOWN/DO_NOT_ORDER impact alignment.
+- Changed files:
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api/Api.csproj --configuration Release` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DecisionBoardEndpointsTests"` - pass (11 tests)
+  - `git diff --check` (scoped files) - pass
+- Risk:
+  - Pre-existing dirty working tree outside RQ01 scope was left untouched.
+  - Executive frontend companion fallback remains tracked by RQ72.
+- Next:
+  - `RQ02 - Product Decision Center summary denominator contract`
+
 ---
 
 ## RQ02 - Product Decision Center summary denominator contract
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P1
 Type: backend/tests/docs
 Feature family: product-decision-denominators
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ02-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ02-cursor.lock.md`
 Commit suggestion: `test(analytics): define pdc summary denominators`
 
 ### Why
@@ -134,18 +153,40 @@ Product Decision Center count KPIs are based on top-limited returned rows, while
 - Counts and money totals have explicit denominators.
 - `IgnoredRowsCount` meaning is not confused with bad data.
 
+### Notes
+
+- 2026-08-04: DONE. Kept existing numeric split; made denominators explicit with additive fields. Counts stay on returned/top rows; money totals stay on all analyzed rows. `IgnoredRowsCount` is labeled `hidden_by_top_limit`.
+- Before/after:
+  - BEFORE: same numeric behavior, undocumented mixed denominators.
+  - AFTER: unchanged totals/counts; `countDenominatorScope`, `moneyDenominatorScope`, `ignoredRowsMeaning` expose the contract.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/ProductDecisionCenterSummaryDenominatorTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "ProductDecisionCenterSummaryDenominatorTests|ProductDecisionCenterBuilderIntegrationTests"` - pass (8 tests)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Frontend types do not yet surface the new optional denominator fields; UI can keep showing raw totals until a follow-up labels them.
+  - RQ12 can still refine ignored-row UX copy.
+- Next:
+  - `RQ03 - Lost-sales unavailable vs true zero`
+
 ---
 
 ## RQ03 - Lost-sales unavailable vs true zero
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P0
 Type: backend/tests
 Feature family: lost-sales-zero-vs-unknown
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ03-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ03-cursor.lock.md`
 Commit suggestion: `fix(analytics): separate lost sales unknown from zero`
 
 ### Why
@@ -185,18 +226,38 @@ Lost-sales validation currently treats `lostSalesEstimate <= 0` as good. Lower-l
 - True zero is distinguishable from unknown/unavailable.
 - OOS/replenishment trust remains conservative.
 
+### Notes
+
+- 2026-08-04: DONE. Introduced shared `LostSalesSourceStatus` / `LostSalesSnapshot` and `BuildLostSalesValidationFromSnapshot`. Unavailable → `insufficient_data` with null estimate; view zero → `true_zero`/`good`; fallback zero → `warning`.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/LostSalesValidationSourceStatusTests.cs`
+  - `docs/qa/LOST_SALES_VALIDATION_CONTRACT.md`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `Klijent/clientapp/src/types/analytics.ts` (optional `sourceStatus`)
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "LostSalesValidationSourceStatusTests"` - pass (7 tests)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - UI does not yet surface `sourceStatus` labels; optional TS field is additive only.
+  - SQL queue Q80 should reuse this vocabulary (not invent a second model).
+- Next:
+  - `RQ04 - Data Quality no-revenue/no-data status`
+
 ---
 
 ## RQ04 - Data Quality no-revenue/no-data status
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P0
 Type: backend/tests
 Feature family: data-quality-no-data
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ04-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ04-cursor.lock.md`
 Commit suggestion: `fix(analytics): mark no revenue data quality as insufficient`
 
 ### Why
@@ -232,18 +293,37 @@ Data Quality health can produce zero percentages when total revenue is zero. Tha
 - No-revenue windows do not create green health signals.
 - Data Quality card distinguishes clean data from no evidence.
 
+### Notes
+
+- 2026-08-04: DONE. Added `HasRevenueEvidence` on the health snapshot. Decision Board evaluation returns `insufficient_data` when there is no revenue evidence, surfaces a blocker card, and emits `no_revenue_evidence`.
+- Changed files:
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/AnalyticsDataQualityHealthServiceTests.cs`
+  - `Api.Tests/DecisionBoardDataQualityHealthEvaluationTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "AnalyticsDataQualityHealthServiceTests|DecisionBoardDataQualityHealthEvaluationTests"` - pass (11 tests)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - RQ75 still owns DataQualityPage UI labeling for the same fake-green family.
+- Next:
+  - `RQ05 - Analytics dataScope consistency audit`
+
 ---
 
 ## RQ05 - Analytics dataScope consistency audit
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P0
 Type: docs/tests
 Feature family: analytics-datascope-consistency
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ05-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ05-cursor.lock.md`
 Commit suggestion: `docs(analytics): audit data scope consistency`
 
 ### Why
@@ -282,18 +362,36 @@ Different analytics modules apply `dataScope` through article origin, sale heade
 - `imported`, `existing`, `all` semantics are visible and testable.
 - No hidden filter drift remains undocumented.
 
+### Notes
+
+- 2026-08-04: DONE. Docs/tests matrix only; no runtime filter rewrite. Canonical rules proposed (sales→header, quality/inventory→article). Highest P0 mismatch remains DQ top-offender unscoped `sales_30d`.
+- Changed files:
+  - `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs` (extract `TopOffendersSql` const, no SQL change)
+  - `Api.Tests/DataScopeConsistencyContractTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DataScopeConsistencyContractTests"` - pass (2 tests)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Dual-origin PDC and inventory forced-all remain documented follow-ups (RQ05-F1/F2), not fixed here.
+- Next:
+  - `RQ06 - Data Quality top-offender revenue scope correctness`
+
 ---
 
 ## RQ06 - Data Quality top-offender revenue scope correctness
 
-Status: WAITING
+Status: DONE
 Ready after: RQ05 DONE or explicitly unblocked
 Priority: P1
 Type: backend/tests
 Feature family: data-quality-offender-scope
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ06-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ06-cursor.lock.md`
 Commit suggestion: `fix(analytics): align top offender revenue scope`
 
 ### Why
@@ -328,18 +426,37 @@ Top offender `sales_30d` currently aggregates sales before applying dataScope at
 - Top offender revenue impact matches requested scope.
 - No silent cross-scope revenue leakage.
 
+### Notes
+
+- 2026-08-04: DONE. `sales_30d` now filters by sale-header `DataOrigin`; article membership stays article-scoped. `all` still includes all headers.
+- Changed files:
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+  - `Api.Tests/DataScopeConsistencyContractTests.cs`
+  - `Api.Tests/DataQualityPostgresIntegrationTests.cs`
+  - `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DataScopeConsistencyContractTests|DataQualityPostgresIntegrationTests"` - pass (9; Postgres cases may no-op when fixture unavailable)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - `GetDataQualityIssuesHandler` still has unscoped `sales_30d` (out of RQ06 file scope) → follow-up RQ06-F1.
+- Next:
+  - `RQ07 - Missing-cost offender drilldown`
+
 ---
 
 ## RQ07 - Missing-cost offender drilldown
 
-Status: WAITING
+Status: DONE
 Ready after: RQ04 DONE
 Priority: P1
 Type: backend/API-contract/tests
 Feature family: missing-cost-offenders
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ07-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ07-cursor.lock.md`
 Commit suggestion: `feat(analytics): add missing cost offender contract`
 
 ### Why
@@ -374,19 +491,39 @@ Health snapshot tracks missing-cost revenue, but top offenders do not support `m
 - Missing-cost health signal has drilldown.
 - Invalid issue type does not silently return wrong offender category.
 
+### Notes
+
+- 2026-08-04: DONE. Top offenders support `missingCost` via article `NabavnaCena` null/≤0 (`is_missing_cost`), independent of supplier CASE. Unknown issue types → API 400 / service `ArgumentOutOfRangeException` (no silent supplier fallback). Issues-list `Normalize` still defaults unknown→missingSupplier (handler not rewritten).
+- Changed files:
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+  - `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesQuery.cs`
+  - `Api/Endpoints/DataQualityEndpoints.cs`
+  - `Api.Tests/DataQualityMissingCostOffenderContractTests.cs`
+  - `Api.Tests/DataQualityPostgresIntegrationTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DataQualityMissingCostOffenderContractTests|DataScopeConsistencyContractTests|DataQualityPostgresIntegrationTests"` - pass (21)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Issues list / frontend tabs still lack missingCost workflow (audit R80 residual); cost evidence is article-level nabavna, not line-level ps.NabavnaCena.
+- Next:
+  - `RQ08 - Blocked supplier signal ranking in Decision Board`
+
 ---
 
 ## RQ08 - Blocked supplier signal ranking in Decision Board
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE; SQL queue Q69 evidence available if needed
 Priority: P1
 Type: backend/tests
 Feature family: supplier-blocked-signal-ranking
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ08-<agent>.lock.md`
-Commit suggestion: `test(analytics): cap blocked supplier board cards`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ08-cursor.lock.md`
+Commit suggestion: `fix(analytics): cap blocked supplier board cards`
 
 ### Why
 
@@ -422,11 +559,28 @@ Decision Board adds a blocker when supplier recommendation is not allowed, but s
 - Blocked supplier signals cannot appear as ordinary high-confidence decisions.
 - UI can still guide operator to verify supplier dataset.
 
+### Notes
+
+- 2026-08-04: DONE. When `RecommendationAllowed=false`, supplier cards are labeled `signal_check` / `insufficient_data`, priority capped ≤40, ImpactScore=0, excluded from `urgent` and `impact`; remain in `supplierRisk` for verification. Trust blocker card kept.
+- Changed files:
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DecisionBoardEndpointsTests"` - pass (13)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Blocked supplier cards still visible in `supplierRisk` (intentional verification path); frontend must respect `insufficient_data` / warning codes.
+- Next:
+  - `RQ09 - Analytics actions empty-state contract`
+
 ---
 
 ## RQ09 - Analytics actions empty-state contract
 
-Status: WAITING
+Status: READY
 Ready after: RQ01 DONE
 Priority: P2
 Type: backend-contract/tests

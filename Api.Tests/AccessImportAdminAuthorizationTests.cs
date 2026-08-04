@@ -4,6 +4,7 @@ using Api.Endpoints;
 using Api.Models;
 using Api.Services;
 using Api.Services.Access;
+using Trendplus2.Endpoints;
 using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

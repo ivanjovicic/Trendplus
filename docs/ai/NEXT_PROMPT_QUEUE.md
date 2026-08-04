@@ -3414,7 +3414,7 @@ Token budget: medium
 
 ## Q67 - Add automated encoding/mojibake guardrail
 
-Status: PARTIAL
+Status: DONE
 Commit suggestion: `chore(ai): add encoding mojibake guardrail`
 Priority: P1
 Type: tooling/docs
@@ -3466,6 +3466,19 @@ Token budget: medium
 ### Notes
 
 - 2026-06-22: PARTIAL. Added `check:encoding`, wired it into `check:analytics-guardrails`, and fixed the current maintained docs/frontend mojibake hotspots. `npm run check:encoding` passed. `npm run check:analytics-guardrails` and `npm run build` are still blocked by the existing `AnalyticsActionsPage.tsx` / `types/analytics` mismatch around `AnalyticsActionImpactLedger`.
+- 2026-08-04: DONE. Re-ran the guardrail after aligning the remaining frontend type mismatches that were blocking the checks. `npm run check:encoding`, `npm run check:analytics-guardrails`, and `npm run build` now pass.
+- Changed files:
+  - `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`
+  - `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `npm run check:encoding` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+- Risk:
+  - Vite still reports a large `recharts` chunk warning, but it does not block the build.
+- Next:
+  - No next queue task; `Q68` is already `DONE`.
 - Changed files:
   - `Klijent/clientapp/package.json`
   - `Klijent/clientapp/scripts/check-encoding.mjs`

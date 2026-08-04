@@ -1243,10 +1243,10 @@ public sealed record AnalyticsActionOutcomeUpdateRequest(
     decimal? MeasuredImpactRsd,
     DateTime? OutcomeMeasuredAtUtc,
     string? OutcomeNotes,
-    int? MeasuredWindowDays,
-    string? EvidenceSource,
-    string? EvidenceReference,
-    string? ResolutionNote
+    int? MeasuredWindowDays = null,
+    string? EvidenceSource = null,
+    string? EvidenceReference = null,
+    string? ResolutionNote = null
 );
 
 public sealed record AnalyticsActionOutcomeSummaryQuery(

@@ -35,6 +35,68 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaZeroBaselinePercentContractKeepsExplicitSentinelValues()
+    {
+        var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 100", sql);
+        Assert.Contains("WHEN pre.pre_qty = 0 THEN 0", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 100", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 THEN 0", sql);
+        Assert.Contains("ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)", sql);
+        Assert.Contains("ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)", sql);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaSemanticColumnsExposeZeroBaselineAsExplicitNullContract()
+    {
+        var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("has_qty_baseline", sql);
+        Assert.Contains("qty_baseline_reason", sql);
+        Assert.Contains("change_percent_qty_semantic", sql);
+        Assert.Contains("has_revenue_baseline", sql);
+        Assert.Contains("revenue_baseline_reason", sql);
+        Assert.Contains("change_percent_revenue_semantic", sql);
+        Assert.Contains("WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 'no_pre_qty_baseline_uplift'", sql);
+        Assert.Contains("WHEN pre.pre_qty = 0 AND post.post_qty = 0 THEN 'no_pre_qty_baseline_flat'", sql);
+        Assert.Contains("WHEN pre.pre_qty = 0 THEN NULL", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 'no_pre_revenue_baseline_uplift'", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 AND post.post_revenue = 0 THEN 'no_pre_revenue_baseline_flat'", sql);
+        Assert.Contains("WHEN pre.pre_revenue = 0 THEN NULL", sql);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaLowSignalPropagationRemainsIntact()
+    {
+        var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("(pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal", sql);
+    }
+
+    [Fact]
+    public void SupplierDecisionViewsExposeMissingEvidenceFlagsAndConservativeGuardrails()
+    {
+        var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");
+
+        Assert.Contains("COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d", sql);
+        Assert.Contains("COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d", sql);
+        Assert.Contains("COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue", sql);
+        Assert.Contains("COALESCE(nd.did_qty, 0)::numeric AS did_qty", sql);
+        Assert.Contains("has_post_signal", sql);
+        Assert.Contains("has_did_signal", sql);
+        Assert.Contains("has_cost_signal", sql);
+        Assert.Contains("post_signal_coverage", sql);
+        Assert.Contains("did_signal_coverage", sql);
+        Assert.Contains("cost_signal_coverage", sql);
+        Assert.Contains("return_rate_missing_evidence_reason", sql);
+        Assert.Contains("evidence_quality_status", sql);
+        Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", sql);
+        Assert.Contains("stock_proxy_clamped_to_zero", sql);
+        Assert.Contains("SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value", sql);
+    }
+
+    [Fact]
     public void AnalyticsCompatibilityRepairHasNabavnaCenaPrerequisite()
     {
         var prerequisiteSql = ReadRepoFile("Database/Analytics/012_AddNabavnaCenaToSalesLineFacts.sql");
@@ -93,7 +155,13 @@ public sealed class SupplierDecisionSchemaSqlTests
     {
         var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+        var options = ReadRepoFile("Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs");
 
+        Assert.Contains("-- scorecard so that 30d / 90d / 180d date ranges return metrics", sql);
+        Assert.Contains("COMMENT ON VIEW vw_supplier_fullprice_signals_90d IS", sql);
+        Assert.Contains("Supplier fullprice signals limited to the rolling 90-day window ending today.", sql);
+        Assert.Contains("COMMENT ON VIEW vw_supplier_fullprice_signals_180d IS", sql);
+        Assert.Contains("Supplier fullprice signals limited to the rolling 180-day window ending today.", sql);
         Assert.Contains("mv_supplier_decision_score_cache_90d", sql);
         Assert.Contains("mv_supplier_decision_score_cache_180d", sql);
         Assert.DoesNotContain("mv_supplier_decision_score_cache_30d", sql);
@@ -103,6 +171,41 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("return \"180d\"", endpoint);
         Assert.Contains("return \"all_time\"", endpoint);
         Assert.Contains("no_mv_30d", endpoint);
+
+        Assert.Contains("\"mv_supplier_decision_score_cache_90d\"", options);
+        Assert.Contains("\"mv_supplier_decision_score_cache_180d\"", options);
+        Assert.DoesNotContain("\"mv_supplier_decision_score_cache_30d\"", options);
+    }
+
+    [Fact]
+    public void SupplierDecisionWindowedScoreCachesRepeatTheSameColumnContract()
+    {
+        var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+
+        Assert.Contains("CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_90d AS", sql);
+        Assert.Contains("ROUND(COALESCE(fullprice_revenue_share, 0), 4) AS fullprice_revenue_share", sql);
+        Assert.Contains("ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage", sql);
+        Assert.Contains("ROUND(return_rate, 4) AS return_rate", sql);
+        Assert.Contains("ROUND(COALESCE(markdown_penalty, 0), 2) AS markdown_dependency_score", sql);
+        Assert.Contains("ROUND(COALESCE(inventory_penalty, 0), 2) AS stock_risk_score", sql);
+        Assert.Contains("CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_180d AS", sql);
+        Assert.Contains("ROUND(COALESCE(fullprice_revenue_share, 0), 4) AS fullprice_revenue_share", sql);
+        Assert.Contains("ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage", sql);
+        Assert.Contains("ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage", sql);
+        Assert.Contains("ROUND(return_rate, 4) AS return_rate", sql);
+        Assert.Contains("ROUND(COALESCE(markdown_penalty, 0), 2) AS markdown_dependency_score", sql);
+        Assert.Contains("ROUND(COALESCE(inventory_penalty, 0), 2) AS stock_risk_score", sql);
+    }
+
+    [Fact]
+    public void SupplierDecisionWindowedScoreCachesKeepOneSupplierRankGuardAndEvidenceReviewFallback()
+    {
+        var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+
+        Assert.Contains("CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric", sql);
+        Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", sql);
+        Assert.Contains("return_rate_missing_evidence_reason", sql);
     }
 
     [Fact]

@@ -184,7 +184,8 @@ DECLARE
         'pre_qty','post_qty','pre_revenue','post_revenue',
         'coverage_pre30','coverage_post30',
         'change_qty','change_revenue','change_percent_qty','change_percent_revenue',
-        'is_low_signal'
+        'is_low_signal','has_qty_baseline','qty_baseline_reason','change_percent_qty_semantic',
+        'has_revenue_baseline','revenue_baseline_reason','change_percent_revenue_semantic'
     ];
 BEGIN
     SELECT array_agg(c.column_name::text ORDER BY c.ordinal_position)
@@ -229,7 +230,27 @@ SELECT
         WHEN pre.pre_revenue = 0 THEN 0
         ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
     END AS change_percent_revenue,
-    (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal
+    (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal,
+    (pre.pre_qty > 0) AS has_qty_baseline,
+    CASE
+        WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 'no_pre_qty_baseline_uplift'
+        WHEN pre.pre_qty = 0 AND post.post_qty = 0 THEN 'no_pre_qty_baseline_flat'
+        ELSE NULL
+    END AS qty_baseline_reason,
+    CASE
+        WHEN pre.pre_qty = 0 THEN NULL
+        ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
+    END AS change_percent_qty_semantic,
+    (pre.pre_revenue > 0) AS has_revenue_baseline,
+    CASE
+        WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 'no_pre_revenue_baseline_uplift'
+        WHEN pre.pre_revenue = 0 AND post.post_revenue = 0 THEN 'no_pre_revenue_baseline_flat'
+        ELSE NULL
+    END AS revenue_baseline_reason,
+    CASE
+        WHEN pre.pre_revenue = 0 THEN NULL
+        ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
+    END AS change_percent_revenue_semantic
 FROM vw_sales_pre_nivelacija pre
 LEFT JOIN vw_sales_post_nivelacija post
   ON pre.price_event_id = post.price_event_id;

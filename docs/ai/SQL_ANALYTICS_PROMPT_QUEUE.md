@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: Q69
+Current READY prompt: Q75
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -23,13 +23,13 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| Q69 | READY | analytics-sql-trust | Audit current SQL semantics and add tests/spec before fixes |
-| Q70 | WAITING | nivelacija-sql-impact | Fix zero-baseline percent semantics after Q69 |
-| Q71 | WAITING | supplier-decision-sql-nullability | Guard supplier-decision SQL against fake zero/confidence |
-| Q72 | WAITING | supplier-sales-stats-performance | Review endpoint query plan and safe service split |
-| Q73 | WAITING | supplier-sales-stats-verification | Harden manual verification SQL script/runbook |
-| Q74 | WAITING | analytics-refresh-window-contracts | Lock refresh and windowed MV contracts in tests |
-| Q75 | WAITING | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
+| Q69 | DONE | analytics-sql-trust | Audit current SQL semantics and add tests/spec before fixes |
+| Q70 | DONE | nivelacija-sql-impact | Fix zero-baseline percent semantics after Q69 |
+| Q71 | DONE | supplier-decision-sql-nullability | Guard supplier-decision SQL against fake zero/confidence |
+| Q72 | DONE | supplier-sales-stats-performance | Review endpoint query plan and safe service split |
+| Q73 | DONE | supplier-sales-stats-verification | Harden manual verification SQL script/runbook |
+| Q74 | DONE | analytics-refresh-window-contracts | Lock refresh and windowed MV contracts in tests |
+| Q75 | READY | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
 | Q76 | WAITING | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
 | Q77 | WAITING | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
 | Q78 | WAITING | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
@@ -42,7 +42,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 
 ## Q69 - Analytics SQL trust semantic audit and tests
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: docs/tests
 Feature family: analytics-sql-trust
@@ -108,11 +108,27 @@ The analytics SQL layer has several places where missing evidence, zero baseline
 - Q70-Q82 can be refined from Q69 evidence.
 - Queue entry is updated with changed files, checks, risk and next prompt.
 
+### Notes
+
+- 2026-08-04: DONE. Added contract tests for zero-baseline nivelacija percent semantics, explicit supplier-decision zero fallbacks, and duplicated 90d/180d score-cache columns. Updated the SQL audit with test-backed findings and a safe-next vs DB/EXPLAIN evidence split.
+- Changed files:
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "SupplierDecisionSchemaSqlTests|SqlTrust"` - pass
+  - `git diff --check` - pass
+- Risk:
+  - Runtime SQL semantics are unchanged; this prompt only locked current contracts with tests/docs.
+- Next:
+  - `Q70 - Nivelacija zero-baseline percent semantics`
+
 ---
 
 ## Q70 - Nivelacija zero-baseline percent semantics
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P0
 Type: SQL/tests
@@ -170,11 +186,27 @@ Commit suggestion: `fix(analytics): clarify nivelacija zero-baseline impact`
 - Downstream compatibility is documented.
 - No supplier-decision formula change is mixed into this task.
 
+### Notes
+
+- 2026-08-04: DONE. Added additive semantic baseline fields to `vw_vendor_sales_nivelacija`, extended SQL contract coverage for zero-baseline semantics and low-signal propagation, and documented the compatibility note in the SQL audit.
+- Changed files:
+  - `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release /p:UseSharedCompilation=false` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~SupplierDecisionSchemaSqlTests" /p:UseSharedCompilation=false` - pass
+- Risk:
+  - Legacy consumers still read the original percent columns, so the semantic fix is additive until downstream callers migrate.
+- Next:
+  - `Q71 - Supplier-decision SQL no-fake-zero/nullability guardrails`
+
 ---
 
 ## Q71 - Supplier-decision SQL no-fake-zero/nullability guardrails
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE; Q70 DONE or explicitly not required
 Priority: P0
 Type: SQL/tests
@@ -222,12 +254,30 @@ Supplier-decision views use `COALESCE(..., 0)` in many scoring inputs. Some are 
 - Missing values are not silently converted into trusted zeros.
 - 90d/180d/all-time SQL contracts stay aligned.
 
+### Notes
+
+- 2026-08-04: DONE. Added explicit post/did/cost coverage signals, nullable return-rate handling, evidence-quality status, and conservative `REVIEW_QUALITY` fallback across all supplier-decision SQL views, plus focused contract tests and audit notes.
+- Changed files:
+  - `Database/Migrations/018_AddSupplierDecisionHubViews.sql`
+  - `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release /p:UseSharedCompilation=false` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~SupplierDecisionSchemaSqlTests" /p:UseSharedCompilation=false` - pass
+  - `git diff --check` - pass
+- Risk:
+  - The new conservative review path may surface more `REVIEW_QUALITY` outcomes until downstream users adapt to the explicit evidence flags.
+- Next:
+  - `Q72 - Supplier-sales-stats query plan and service split review`
+
 ---
 
 ## Q72 - Supplier-sales-stats query plan and service split review
 
-Status: WAITING
-Ready after: Q69 DONE
+Status: DONE
+Ready after: Q71 DONE
 Priority: P1
 Type: backend/performance-review
 Feature family: supplier-sales-stats-performance
@@ -275,12 +325,29 @@ Commit suggestion: `docs(analytics): review supplier sales stats query plan`
 - Any proposed rewrite is split into a later prompt.
 - No response contract drift.
 
+### Notes
+
+- 2026-08-04: DONE. Added row-count telemetry to the supplier-sales-stats endpoint, documented the explicit DB materialization and in-memory aggregation points, and kept cache/response semantics unchanged.
+- Changed files:
+  - `Api/Endpoints/AllEndpoints.cs`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+  - `.ai/task-locks/Q72-codex.lock.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release /p:UseSharedCompilation=false` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsSupplierSalesIntegrationTests" /p:UseSharedCompilation=false` - pass
+  - `git diff --check` - pass
+- Risk:
+  - The new telemetry only measures broad-range pressure; it does not yet split the orchestration into a smaller service.
+- Next:
+  - `Q73 - Supplier-sales-stats manual SQL verification runbook`
+
 ---
 
 ## Q73 - Supplier-sales-stats manual SQL verification runbook
 
-Status: WAITING
-Ready after: Q69 DONE
+Status: DONE
+Ready after: Q72 DONE
 Priority: P1
 Type: docs/sql-script
 Feature family: supplier-sales-stats-verification
@@ -327,12 +394,28 @@ Commit suggestion: `docs(analytics): harden supplier sales stats verification sq
 - Known gaps are explicit.
 - No runtime code changed.
 
+### Notes
+
+- 2026-08-04: DONE. Added diagnostic-only guidance, `data_scope` parameterization, fake-zero reason columns, and a companion verification doc for manual SQL inspection.
+- Changed files:
+  - `scripts/check_supplier_sales_stats.sql`
+  - `docs/qa/SUPPLIER_SALES_STATS_SQL_VERIFICATION.md`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `psql -h 127.0.0.1 -w -d postgres -c "SELECT 1;"` - not run successfully; local server required authentication and no password was available
+- Risk:
+  - The script now surfaces more diagnostics, but it still does not prove the API endpoint's snapshot-cost or cache behavior.
+- Next:
+  - `Q74 - Analytics refresh and windowed MV contract tests`
+
 ---
 
 ## Q74 - Analytics refresh and windowed MV contract tests
 
-Status: WAITING
-Ready after: Q69 DONE
+Status: DONE
+Ready after: Q73 DONE
 Priority: P1
 Type: tests
 Feature family: analytics-refresh-window-contracts
@@ -377,11 +460,28 @@ The 90d and 180d materialized views are present and included in refresh options,
 - No formula or endpoint behavior changes.
 - Queue notes identify the next safe SQL task.
 
+### Notes
+
+- 2026-08-04: DONE. Extended the supplier-decision schema SQL tests to lock the 90d/180d refresh list, the explicit no-30d MV behavior, and the window-comment plus endpoint fallback language alignment.
+- Changed files:
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+  - `.ai/task-locks/Q74-codex.lock.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release /p:UseSharedCompilation=false` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~SupplierDecisionSchemaSqlTests" /p:UseSharedCompilation=false` - pass
+  - `git diff --check` - pass
+- Risk:
+  - The test coverage only locks the contract; it does not validate a live refresh job or runtime scheduler behavior.
+- Next:
+  - `Q75 - Supplier decision windowed MV startup readiness audit`
+
 ---
 
 ## Q75 - Supplier decision windowed MV startup readiness audit
 
-Status: WAITING
+Status: READY
 Ready after: Q69 DONE; Q74 DONE
 Priority: P1
 Type: backend/tests/docs
@@ -645,7 +745,7 @@ Some dashboard endpoints return explicit `Meta` errors on database issues, while
 ## Q80 - Lost-sales validation source/confidence contract
 
 Status: WAITING
-Ready after: Q69 DONE
+Ready after: Q69 DONE; RQ03 DONE (reuse API vocabulary)
 Priority: P0
 Type: backend/tests/docs
 Feature family: lost-sales-source-confidence
@@ -690,6 +790,10 @@ Lost-sales validation can return `(0, 0)` when the view/connection is unavailabl
 
 - Lost-sales zero is distinguishable from unavailable/unknown.
 - OOS/replenishment trust semantics stay conservative.
+
+### Notes
+
+- 2026-08-04: RQ03 landed the shared API vocabulary (`view`/`fallback`/`unavailable`/`true_zero`) and contract doc. Q80 should not invent a second model; remaining work is SQL-evidence/docs follow-up only if DB proof of the view path is still needed.
 
 ---
 
