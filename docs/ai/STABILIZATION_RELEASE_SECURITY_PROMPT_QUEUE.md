@@ -1,0 +1,876 @@
+# Trendplus Pilot Stabilization, Release and Security Prompt Queue
+
+Created: 2026-08-04
+Repo: `ivanjovicic/Trendplus`
+Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
+Current READY prompt: `STAB01`
+
+## Goal
+
+Close the cross-cutting gaps that can make a technically correct analytics change unsafe to release or misleading to operate:
+
+- current-`main` deploy truth and live smoke evidence;
+- queue/router truth and stale status cleanup;
+- authentication and authorization runtime boundaries;
+- public admin/diagnostic exposure;
+- production HTTP and reverse-proxy hardening;
+- pilot import-status provenance;
+- backup/restore evidence;
+- a fresh release gate before GenAI implementation.
+
+This queue intentionally does not duplicate analytics correctness prompts such as `RQ01`, `RQ72`, `RQ39`, `RQ40`, `RQ51/RQ52`, `RQ64`, `RQ81` or the SQL queue. Those remain owned by `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` and their source queue files.
+
+## Global routing
+
+1. If the current `main` deploy is red, unknown or not tied to the current SHA, run `STAB01` before making a production-readiness claim.
+2. For wrong recommendations, expected impact, fake zero/green, units, denominators, dates or data-scope semantics, continue from the analytics reliability priority review. The current analytics code task remains `RQ01` until its queue is updated with evidence.
+3. For queue governance, authorization, public operational exposure, import provenance, backup/restore or release evidence, use this queue.
+4. GenAI/RAG/LLM/tool-calling work may start only when:
+   - the analytics reliability router has no earlier unresolved P0 task;
+   - this queue has no unresolved P0 `READY`, `PARTIAL` or `BLOCKED` task;
+   - the current-main release evidence is fresh.
+5. One task per session and commit. Do not combine this queue with an analytics formula fix.
+
+## Queue rules
+
+- Follow `docs/ai/PROMPT_QUEUE_PROTOCOL.md` exactly.
+- Use only: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
+- Create a local uncommitted lock under `.ai/task-locks/` before work.
+- Never mark live smoke, backup/restore or authorization readiness `DONE` from docs-only assumptions.
+- Do not add secrets, real customer data or production credentials to source, tests or evidence documents.
+- If provider dashboards, deployment logs or a safe restore target are unavailable, record the missing evidence and mark the task `BLOCKED` rather than guessing.
+
+---
+
+## STAB01 - Current main deploy, CI and live-smoke truth gate
+
+Status: READY
+Priority: P0
+Type: deploy/ops/docs, code only if evidence proves a minimal root cause
+Feature family: current-main-release-truth
+Parallel-safe: yes, with `RQ01` only because scopes must not overlap
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB01-<agent>.lock.md`
+Commit suggestion: `docs(qa): refresh current main deploy evidence`
+
+### Why
+
+The repository has strong historical live-smoke evidence, but the latest checked `main` commit is not currently proven deployable. A red or stale deployment state invalidates production-readiness claims even when local tests are green.
+
+### Evidence already found
+
+- Current inspected `main` SHA: `66084a78e10dba9a77c11907074c0cb7834ebce4`.
+- GitHub combined status for that SHA reports `Vercel: failure`.
+- GitHub Actions returns no workflow runs associated with that docs-only SHA.
+- `.github/workflows/analytics-quality-gates.yml` is path-filtered to frontend/workflow files.
+- `.github/workflows/analytics-tests.yml` is path-filtered to backend/workflow files.
+- `vercel.json` installs and builds `Klijent/clientapp`, serves `Klijent/clientapp/dist`, and rewrites non-asset routes to `index.html`.
+- The latest committed live-smoke and production-readiness evidence is from June 2026 and predates the current `main` SHA.
+- Risk class: confirmed release-evidence gap; the Vercel root cause itself is not yet proven.
+
+### Contract
+
+- Production readiness must be tied to the exact current `main` SHA or an explicitly documented deployment SHA.
+- A local build is necessary but not sufficient for live deploy proof.
+- A Vercel failure must be diagnosed from real provider/build evidence, not inferred from old incidents.
+- Unknown deploy metadata stays `WARN` or `BLOCKED`; it must not become `PASS`.
+
+### Scope only
+
+- `vercel.json`
+- `Klijent/clientapp/package.json`
+- `.github/workflows/analytics-quality-gates.yml`
+- `.github/workflows/analytics-tests.yml`
+- existing deploy/smoke docs under `docs/qa/`
+- one new dated evidence document if updating an old historical document would erase history
+
+### Do not touch
+
+- analytics formulas, DTO semantics or recommendation logic
+- database migrations
+- GenAI runtime/provider code
+- deployment configuration without direct failure evidence
+
+### Read first
+
+- `.github/copilot-instructions.md`
+- `AGENTS.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/VERCEL_DEPLOY_TRIAGE.md`
+- `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+- `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`
+- `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md`
+
+### Do
+
+1. Record the latest `main` SHA, GitHub status checks, workflow evidence and current deployment identifiers before changing anything.
+2. Inspect the exact Vercel failure evidence. Classify the root cause as one of:
+   - source/build/type error;
+   - install/Node/package-lock mismatch;
+   - root/output/SPA configuration;
+   - commit identity/account authorization;
+   - provider/environment configuration;
+   - unknown because provider evidence is unavailable.
+3. Run or verify:
+   - `cd Klijent/clientapp && npm ci`
+   - `cd Klijent/clientapp && npm run check:analytics-guardrails`
+   - `cd Klijent/clientapp && npm run test:analytics`
+   - `cd Klijent/clientapp && npm run build`
+4. Apply only the smallest evidence-backed repository fix. If the cause is provider-side, do not create unrelated source changes.
+5. After a successful deploy, run the current live-smoke path against the exact deployed frontend/backend:
+   - `/health`
+   - `/ready`
+   - `/api/runtime/version`
+   - `/api/analytics/refresh-status?dataScope=all`
+   - `/analytics`
+   - `/analytics/products`
+   - `/analytics/inventory`
+   - `/analytics/actions`
+   - `/analytics/decision-board`
+   - one durable report route
+6. Record response status, visible trust state, deployed SHA/bundle identifier, timestamp and any warning. Do not store credentials.
+7. Update queue notes and release evidence. If the current SHA cannot be proven live, finish `BLOCKED` with the exact missing provider evidence.
+
+### Test matrix
+
+- local frontend checks pass;
+- Vercel build succeeds for the current source;
+- SPA direct-route refresh works;
+- backend liveness and readiness are distinct;
+- runtime version is present or explicitly unknown;
+- stale/unknown freshness remains visibly non-green;
+- unauthorized admin smoke remains `401`/`403`;
+- current bundle renders real page content rather than only a generic SPA shell.
+
+### Checks
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm ci`
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run test:analytics`
+- `cd Klijent/clientapp && npm run build`
+- live HTTP smoke only after deploy
+
+### Acceptance
+
+- Current `main` has a truthful PASS/WARN/BLOCKED deploy result tied to exact evidence.
+- A red status has a proven root cause or an explicit provider-access blocker.
+- No old June smoke document is presented as proof for an unverified August deployment.
+- No analytics business logic changed unless it was the proven build blocker and was split into its own task.
+
+---
+
+## STAB02 - Canonical queue and status truth reconciliation
+
+Status: WAITING
+Ready after: `STAB01` is `DONE`, `PARTIAL` with a non-repository provider blocker, or explicitly deferred by the owner
+Priority: P0
+Type: docs/tooling
+Feature family: prompt-queue-governance
+Parallel-safe: yes, with runtime analytics work if no queue file overlap
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB02-<agent>.lock.md`
+Commit suggestion: `chore(ai): reconcile prompt queue truth`
+
+### Why
+
+The repository has several queue generations and incompatible status conventions. Agents can choose the wrong task, skip an unresolved blocker, or start GenAI while a stale `OPEN`, `PARTIAL` or `READY` entry still exists.
+
+### Evidence already found
+
+- `docs/ai/NEXT_PROMPT_QUEUE.md` starts with a `TODO`-based workflow.
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` requires `READY/WAITING/...` and does not allow `TODO` or `OPEN`.
+- `NEXT_PROMPT_QUEUE.md` contains at least `Q20` and `Q22` with unsupported `Status: OPEN`.
+- `Q22` says analytics action writes still need protection, while current `AnalyticsActionsEndpoints` already gates create/status/outcome writes through `AdminAccessControl`.
+- `Q67` stayed `PARTIAL` because of a TypeScript mismatch that `Q68` later fixed and verified with passing guardrails/build.
+- `AGENTS.md`, `CODEX_QUEUE_RUNNER.md`, the reliability priority review and the GenAI queue do not use one identical selection rule.
+- Risk class: confirmed queue-governance drift.
+
+### Contract
+
+- One global router must say which queue owns each feature family.
+- Queue statuses must use the exact protocol vocabulary.
+- Historical tasks may be `DONE` or `OBSOLETE` only with current code/test evidence.
+- One task family must not have two independent `READY` prompts.
+- GenAI must not become active because an unsupported status was silently ignored.
+
+### Scope only
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md` only for targeted status corrections
+- one small queue validation script under `scripts/` or `Klijent/clientapp/scripts/`
+- focused script tests/fixtures if practical
+
+### Do not touch
+
+- application runtime code
+- analytics formulas or SQL
+- broad reformatting of every historical queue
+- task status without evidence from current code/tests/commits
+
+### Read first
+
+- `.github/copilot-instructions.md`
+- `AGENTS.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
+
+### Do
+
+1. Inventory every active queue file and every `READY`, `WAITING`, `PARTIAL`, `BLOCKED`, `TODO` and `OPEN` entry.
+2. Produce a compact ownership matrix:
+   - feature family;
+   - canonical queue;
+   - current runnable task;
+   - duplicate/replacement entries;
+   - blocking dependency.
+3. Add the smallest deterministic validator that reports actionable `file:line` failures for:
+   - unsupported statuses;
+   - more than one non-parallel `READY` task in the same feature family;
+   - a declared current READY task whose entry is missing/not READY;
+   - duplicate task IDs inside one queue family;
+   - GenAI marked active while an earlier P0 gate remains unresolved.
+4. Re-evaluate only the proven stale entries, including `Q20`, `Q22` and `Q67`. Use `DONE`, `OBSOLETE`, `PARTIAL` or `BLOCKED` based on current evidence.
+5. Keep the analytics reliability priority review as the router for analytics correctness.
+6. Keep this queue as the router for deploy/security/governance gaps.
+7. Update the final notes with the exact next READY analytics prompt and next READY cross-cutting prompt.
+
+### Test matrix
+
+- valid queue sample passes;
+- unsupported `OPEN` fails with `file:line`;
+- duplicate READY in one exclusive family fails;
+- parallel-safe READY pair passes only when explicitly marked;
+- missing current-ready entry fails;
+- stale task is not automatically marked DONE by the script;
+- GenAI gate conflict is reported.
+
+### Checks
+
+- `git diff --check`
+- validator command documented and executed
+- focused validator tests or fixture run
+
+### Acceptance
+
+- Agents have one unambiguous routing path.
+- Unsupported live statuses are removed or explicitly historical.
+- Stale queue claims are reconciled against current code.
+- A machine check prevents the same drift from returning.
+
+---
+
+## STAB03 - Authentication and authorization runtime boundary audit
+
+Status: WAITING
+Ready after: `STAB02` is `DONE`
+Priority: P0
+Type: security audit/docs/tests
+Feature family: auth-runtime-boundary
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB03-<agent>.lock.md`
+Commit suggestion: `docs(security): audit runtime authorization boundary`
+
+### Why
+
+The repo has an admin-key helper and several authorization tests, but it does not yet prove a complete runtime authentication/role pipeline for an external pilot. Broad implementation before confirming the actual identity source would risk either locking out valid operators or leaving sensitive routes open.
+
+### Evidence already found
+
+- `Api/Program.cs` calls `app.UseAuthorization()`.
+- No `AddAuthentication`, `UseAuthentication` or explicit policy registration was found in the inspected `Program.cs` path.
+- `AdminAccessControl.GetDecision` authorizes either an authenticated `Admin` role or `X-Admin-Key`.
+- `AdminAccessControl` currently supports only the `Admin` role and compares the API key with normal string equality.
+- Analytics action create, status and outcome writes are currently admin-gated, although the documented target model distinguishes `Analyst` and `Manager`.
+- Several endpoint groups still implement authorization handler-by-handler rather than through one proven policy boundary.
+- Risk class: confirmed runtime-boundary gap; the intended external identity provider is a product/deployment decision.
+
+### Contract
+
+- Backend authorization is authoritative; frontend visibility is never sufficient.
+- Missing credentials return `401`; valid identity with insufficient role returns `403`.
+- The API-key compatibility path may represent `Admin` only, must fail closed, and must never be logged or returned.
+- Do not invent an identity provider in this audit.
+- The audit must select a minimal Phase 1 pattern before broad endpoint changes.
+
+### Scope only
+
+- `Api/Program.cs`
+- `Api/Endpoints/AdminAccessControl.cs`
+- endpoint registration files for admin, actions, import, workers, cache, reports and documents
+- existing authorization tests
+- `docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md`
+- `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
+- one new dated runtime-boundary audit
+
+### Do not touch
+
+- full tenant architecture
+- external IdP SDK/provider integration
+- frontend route redesign
+- business analytics logic
+- broad endpoint protection in the audit commit
+
+### Read first
+
+- `.github/copilot-instructions.md`
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md`
+- `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
+- `docs/security/TENANT_SAFETY_CHECKLIST.md`
+- relevant authorization tests under `Api.Tests/`
+
+### Do
+
+1. Map the real runtime identity sources for local, test, current production and future external pilot environments.
+2. Prove whether an authenticated principal can be created in the current production runtime. Do not assume test principals represent production.
+3. Build an endpoint matrix for:
+   - public health/version;
+   - read-only analytics;
+   - action reads/writes;
+   - report/export/document access;
+   - import/cleanup;
+   - workers/admin/config/logs;
+   - cache clear/manual refresh.
+4. For each group, record current enforcement, target role, 401/403 behavior, API-key compatibility and test coverage.
+5. Review API-key comparison, configuration validation, secret redaction and rotation expectations.
+6. Choose the smallest Phase 1 implementation boundary:
+   - existing principal + policies;
+   - explicit internal API-key admin mode while external auth remains disabled;
+   - or `BLOCKED` pending an owner decision.
+7. Split code follow-ups by endpoint family. Do not implement all groups in this audit.
+
+### Test matrix
+
+- no credential;
+- wrong admin key;
+- correct admin key;
+- authenticated non-admin principal;
+- authenticated admin principal;
+- missing configured key;
+- secret never appears in logs/problem responses;
+- local development compatibility is explicit rather than accidental.
+
+### Checks
+
+- `git diff --check`
+- targeted existing authorization tests
+- docs link/path validation
+
+### Acceptance
+
+- Current production authentication capability is proven, not assumed.
+- Every sensitive endpoint family has an explicit current and target boundary.
+- The next code task is small enough for one endpoint family.
+- No external provider or broad RBAC implementation was invented.
+
+---
+
+## STAB04 - Protect admin operational read surfaces
+
+Status: WAITING
+Ready after: `STAB03` fixes the Phase 1 boundary or declares the existing admin-key boundary acceptable for this task
+Priority: P0
+Type: backend security/tests
+Feature family: admin-read-authorization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB04-<agent>.lock.md`
+Commit suggestion: `fix(security): protect admin operational reads`
+
+### Why
+
+Some state-changing admin routes are protected, while operational read routes expose import, worker and audit details without the same server-side gate. These reads can reveal customer file names, batch failures, internal worker configuration and operational messages.
+
+### Evidence already found
+
+In `Api/Endpoints/AdminConfigEndpoints.cs`, the inspected handlers for these routes do not call `AdminAccessControl`:
+
+- `GET /api/admin/pending-batches`
+- `GET /api/admin/health-check`
+- `GET /api/admin/audit-log`
+- `GET /api/admin/workers/list`
+- `GET /api/admin/workers/{workerName}`
+
+The same file protects requeue, stale recovery, demo verification and worker write operations through `AdminAccessControl`.
+
+Risk class: confirmed authorization inconsistency and information exposure.
+
+### Contract
+
+- All `/api/admin/*` operational internals are Admin-only in Phase 1 unless a route is explicitly documented public.
+- Public health stays under `/health`, `/ready` and `/api/runtime/version` with a minimal redacted contract.
+- No credential -> `401`.
+- Wrong/insufficient credential -> `403`.
+- Authorized requests preserve existing successful response contracts.
+
+### Scope only
+
+- `Api/Endpoints/AdminConfigEndpoints.cs`
+- `Api/Endpoints/AdminAccessControl.cs` only if the STAB03-approved helper needs a tiny compatible extension
+- focused admin authorization tests
+- optional API contract documentation update
+
+### Do not touch
+
+- worker business logic
+- import processing logic
+- frontend route/capability UI
+- external identity provider integration
+- public health endpoint redesign
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
+- STAB03 audit output
+- `Api/Endpoints/AdminConfigEndpoints.cs`
+- existing admin/import/worker authorization tests
+
+### Do
+
+1. Apply the approved admin decision helper consistently to every operational read handler listed above.
+2. Keep authorization checks before any DB/service query.
+3. Ensure unauthorized responses do not reveal whether a batch, worker or audit entry exists.
+4. Add focused route tests for each route family, not only direct helper tests.
+5. Preserve authorized payloads and pagination/filter behavior.
+6. Document any intentionally public admin-named route; otherwise protect it.
+
+### Test matrix
+
+- no credential -> `401`;
+- wrong key/non-admin -> `403`;
+- correct admin -> existing `200` payload;
+- unauthorized request does not query sensitive services when test infrastructure can prove it;
+- route remains mapped and does not become `404`;
+- no secret or raw connection string in responses.
+
+### Checks
+
+- `git diff --check`
+- targeted admin endpoint authorization tests
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+
+### Acceptance
+
+- No sensitive admin operational read remains anonymously reachable in the scoped file.
+- 401/403 behavior is consistent.
+- Authorized behavior remains unchanged.
+
+---
+
+## STAB05 - Production edge, diagnostics and reverse-proxy hardening
+
+Status: WAITING
+Ready after: `STAB03` is `DONE`; may run before STAB04 only if no auth helper files overlap
+Priority: P0
+Type: backend security/config/tests
+Feature family: production-edge-exposure
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB05-<agent>.lock.md`
+Commit suggestion: `fix(security): harden production edge diagnostics`
+
+### Why
+
+Public health and documentation surfaces must help the platform without exposing internal failure details. Reverse-proxy security behavior also needs an explicit production contract rather than an environment condition that appears inverted.
+
+### Evidence already found
+
+- `Api/Program.cs` calls `app.UseHsts()` only when `app.Environment.IsDevelopment()`.
+- `GET /health/dependencies` is public and includes `ex.GetBaseException().Message` in dependency-check payloads.
+- Swagger and Swagger UI are mapped unconditionally.
+- CORS frontend origins are hard-coded in two places and do not use one validated configuration source.
+- `UseForwardedHeaders` is enabled and known proxy/network lists are cleared, so HTTPS/HSTS behavior must be tested behind the actual proxy contract.
+- Risk class: confirmed configuration/exposure gap; the exact provider HTTPS behavior requires deployment evidence.
+
+### Contract
+
+- Public `/health` is minimal liveness.
+- Public `/ready` is minimal readiness and may expose only safe status/retry metadata.
+- Detailed dependency errors belong in logs or an Admin-only diagnostic surface, not anonymous JSON.
+- HSTS/HTTPS behavior must be correct for production behind Render/reverse proxy and must not break local HTTP development.
+- Swagger production exposure must be an explicit configuration decision, disabled or protected by default for external pilot.
+- CORS allowed origins must come from one validated configuration source with safe local defaults.
+
+### Scope only
+
+- `Api/Program.cs`
+- one focused configuration/options type if needed
+- appsettings examples without secrets
+- focused startup/health/CORS tests
+- one short production-edge contract doc
+
+### Do not touch
+
+- analytics endpoint semantics
+- auth provider integration beyond the STAB03-approved boundary
+- deployment provider infrastructure outside repository configuration
+- worker or DB query logic
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/ANALYTICS_DEPLOY_RECOVERY.md`
+- STAB03 audit output
+- `Api/Program.cs`
+- current health/readiness tests
+
+### Do
+
+1. Add tests that lock the intended environment behavior before changing middleware order.
+2. Redact public dependency failure details to stable safe codes/statuses while retaining full exception detail in server logs with correlation ID.
+3. Correct or explicitly replace the HSTS condition for production proxy operation.
+4. Decide and implement Swagger production policy through configuration with a secure default.
+5. Centralize CORS origins and validate empty/invalid production configuration.
+6. Preserve `/health`, `/ready` and `/api/runtime/version` live-smoke compatibility.
+7. Verify forwarded-proto behavior so HTTPS redirects/HSTS do not loop behind the proxy.
+
+### Test matrix
+
+- Development HTTP starts without forced production HSTS behavior;
+- Production forwarded `https` returns the intended HSTS header;
+- Production forwarded `http` behavior is explicit and does not loop;
+- dependency failure returns safe code, not raw exception text;
+- full error remains logged with correlation ID;
+- Swagger disabled/protected by default in production and available in development;
+- allowed origin receives CORS headers;
+- unapproved origin does not;
+- health and readiness remain anonymous and minimal.
+
+### Checks
+
+- `git diff --check`
+- `dotnet build Trendplus2.sln --no-restore --configuration Release`
+- focused startup/health/CORS tests
+- live smoke after deploy if middleware/config changed
+
+### Acceptance
+
+- Public diagnostics no longer expose raw dependency errors.
+- Production HSTS/forwarded-proxy behavior is tested and intentional.
+- Swagger and CORS have explicit secure production configuration.
+- Existing health/readiness consumers keep a stable safe contract.
+
+---
+
+## STAB06 - Wire authoritative last-import status into pilot readiness
+
+Status: WAITING
+Ready after: `STAB02` is `DONE`; may run in parallel with STAB03-STAB05 if files do not overlap
+Priority: P1
+Type: backend/frontend contract/tests
+Feature family: pilot-import-provenance
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB06-<agent>.lock.md`
+Commit suggestion: `fix(data-quality): include last import status in readiness`
+
+### Why
+
+Pilot readiness currently uses the last import timestamp but not the authoritative last import outcome. A recent failed or cancelled import can therefore be absent from the visible readiness decision.
+
+### Evidence already found
+
+- `computePilotImportReadiness` accepts an optional third parameter `lastImportStatus` and treats failed/error/blocked/cancelled as hard blockers.
+- `PilotImportReadinessCard` calls `computePilotImportReadiness(report, refreshStatus)` without the third parameter.
+- `PilotImportReadinessCard` has no `lastImportStatus` prop and displays only `report.lastImportAtUtc`.
+- The frontend `PilotDataQualityIntakeReport` contract contains `lastImportAtUtc` but no `lastImportStatus`.
+- The inspected backend intake-report DTO/build path has no `lastImportStatus` field.
+- Risk class: confirmed provenance gap and potential false readiness.
+
+### Contract
+
+- The intake report must expose an additive authoritative last-import status with timestamp.
+- Failed/error/blocked/cancelled import -> `not_ready`.
+- Running/queued/in-progress/partial -> `ready_with_warnings` unless another blocker makes it `not_ready`.
+- Succeeded/completed -> no import-status degradation.
+- Missing/unknown status must remain visible as unknown/warning; it must not imply success.
+- Scope lineage must be honest. If import batches cannot be reliably mapped to selected store/supplier/dataScope, label the status as global rather than pretending it is scoped.
+
+### Scope only
+
+- `Api/Endpoints/DataQualityEndpoints.cs`
+- the owning import-batch read query/service if one already exists
+- `Klijent/clientapp/src/types/analytics.ts`
+- `Klijent/clientapp/src/components/analytics/PilotImportReadinessCard.tsx`
+- `Klijent/clientapp/src/utils/pilotImportReadiness.ts`
+- focused backend/frontend tests
+
+### Do not touch
+
+- Access import execution or retry behavior
+- recommendation formulas outside pilot readiness
+- unrelated Data Quality panels
+- database migration unless current batch status cannot be read additively; stop before inventing schema
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/Analytics/PILOT_DATA_REQUIREMENTS.md`
+- `docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+- `Api/Endpoints/DataQualityEndpoints.cs`
+- `Klijent/clientapp/src/utils/pilotImportReadiness.ts`
+- current pilot readiness tests
+
+### Do
+
+1. Identify the authoritative latest relevant `DataImportBatch` selection rule.
+2. Add additive report fields such as `lastImportStatus` and, only if needed for honesty, `lastImportScope`/`lastImportBatchId`.
+3. Normalize backend status vocabulary once; do not maintain separate backend and frontend aliases without tests.
+4. Pass the status into `PilotImportReadinessCard` and display it in input signals.
+5. Keep timestamp-without-status and status-without-timestamp cases explicit.
+6. Add contract tests for API/report serialization and UI readiness behavior.
+
+### Test matrix
+
+- latest import succeeded/completed;
+- latest import failed;
+- latest import cancelled;
+- running/queued/in-progress;
+- partial/warning;
+- no import row;
+- older success followed by newer failure selects the failure;
+- selected store/supplier cannot be proven to match import -> global/unknown scope warning;
+- error/loading payload does not become ready.
+
+### Checks
+
+- `git diff --check`
+- targeted backend intake-report tests
+- `cd Klijent/clientapp && npm run test -- --run src/utils/__tests__/pilotImportReadiness.spec.ts`
+- targeted card/page test
+- `cd Klijent/clientapp && npm run check:analytics-guardrails`
+- `cd Klijent/clientapp && npm run build`
+
+### Acceptance
+
+- A failed latest import cannot be presented as ready merely because an import timestamp exists.
+- Import status and scope are visible and additive.
+- Unknown remains non-green.
+
+---
+
+## STAB07 - Backup and restore evidence rehearsal gate
+
+Status: WAITING
+Ready after: `STAB01` is at least `PARTIAL` with a usable environment and STAB03 identifies the safe admin/ops boundary
+Priority: P1
+Type: ops/docs/scripts, optional manual workflow
+Feature family: backup-restore-evidence
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB07-<agent>.lock.md`
+Commit suggestion: `docs(ops): add backup restore rehearsal evidence`
+
+### Why
+
+The repo documents what should be backed up and how restore should work, but it does not contain proof that both operational and analytics data can be restored into a safe non-production target and validated end to end.
+
+### Evidence already found
+
+- `docs/ops/PILOT_DATA_SAFETY_CHECKLIST.md` and `docs/ops/BACKUP_RESTORE_RUNBOOK.md` are docs-only.
+- The queue notes explicitly say there is no confirmed automated backup scheduler or one-click restore flow.
+- No repository `pg_dump`/`pg_restore` rehearsal script or recorded restore result was found in the inspected search.
+- Cache is correctly documented as non-durable, but post-restore refresh verification is not proven by an executable rehearsal.
+- Risk class: confirmed operational evidence gap.
+
+### Contract
+
+- Never rehearse destructive restore against production.
+- Test restore into a disposable database/project with explicit environment guards.
+- Cover operational DB and analytics DB separately if they are separate connections.
+- Secrets enter through environment/secret store only and must not be printed.
+- A backup is not accepted until restore and validation succeed.
+- Provider-managed backups may be used, but provider retention and restore procedure must be recorded as evidence rather than assumed.
+
+### Scope only
+
+- `docs/ops/PILOT_DATA_SAFETY_CHECKLIST.md`
+- `docs/ops/BACKUP_RESTORE_RUNBOOK.md`
+- new safe scripts under `scripts/ops/`
+- optional manually dispatched CI workflow only if it can run without production secrets and cannot target production
+- one dated rehearsal evidence template/result
+
+### Do not touch
+
+- production databases
+- application business logic
+- migrations unrelated to restore validation
+- hard-coded credentials or connection strings
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ops/PILOT_DATA_SAFETY_CHECKLIST.md`
+- `docs/ops/BACKUP_RESTORE_RUNBOOK.md`
+- deployment/provider database documentation already committed in the repo
+- current migration commands and health/readiness contract
+
+### Do
+
+1. Map backup ownership for operational DB, analytics DB, import files, generated documents/reports and logs.
+2. Add safe backup/restore wrappers or exact provider procedure with:
+   - explicit source and destination environment labels;
+   - production-target refusal;
+   - no secret echo;
+   - checksum/size/timestamp evidence;
+   - separate operational/analytics handling.
+3. Restore into a disposable target.
+4. Validate:
+   - migrations/history readable;
+   - representative row counts/non-zero domain checks;
+   - critical foreign keys/joins;
+   - analytics refresh can run or is explicitly required after restore;
+   - health/readiness against restored connections;
+   - no customer data appears in committed artifacts.
+5. Record duration, tool/provider version, evidence and cleanup.
+6. If no safe target/provider access exists, finish `BLOCKED` with the exact missing prerequisite and keep the scripts/docs non-destructive.
+
+### Test matrix
+
+- operational backup and restore;
+- analytics backup and restore;
+- empty/missing backup file fails closed;
+- destination marked production is rejected;
+- wrong credentials fail without secret leakage;
+- restore validation detects missing tables or inconsistent row counts;
+- post-restore analytics refresh/invalidation requirement is explicit;
+- cleanup removes disposable target/artifacts where applicable.
+
+### Checks
+
+- `git diff --check`
+- script dry run/help validation
+- shell/PowerShell/Python syntax checks as applicable
+- disposable restore rehearsal only
+
+### Acceptance
+
+- The repo has executable or provider-specific restore evidence, not only a conceptual runbook.
+- Production cannot be targeted accidentally by the new path.
+- Both DB responsibilities and post-restore analytics steps are explicit.
+
+---
+
+## STAB08 - Refresh pilot release evidence and decide GenAI entry gate
+
+Status: WAITING
+Ready after:
+- `STAB01`, `STAB02`, `STAB03`, `STAB04`, `STAB05`, `STAB06` and `STAB07` are `DONE` or carry explicitly accepted non-P0 warnings;
+- the analytics reliability priority review confirms the required P0 correctness tasks are complete, including at minimum the current `RQ01` family and any linked frontend companion;
+Priority: P1
+Type: release/docs/evidence
+Feature family: pilot-release-gate
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB08-<agent>.lock.md`
+Commit suggestion: `docs(qa): refresh pilot release and genai gate`
+
+### Why
+
+Existing production-readiness and pilot-release documents are historical snapshots. GenAI planning was added later, but the repository needs one fresh evidence gate that confirms whether the core product is stable enough to accept a new runtime surface.
+
+### Evidence already found
+
+- `ANALYTICS_PRODUCTION_READINESS_STATUS.md` is dated 2026-06-19.
+- `ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md` is dated 2026-06-22.
+- Current inspected `main` is from 2026-07-31 and has a failing Vercel status.
+- GenAI queue rules already prohibit skipping P0 gates, but they do not contain current cross-cutting deploy/auth/restore evidence.
+- Risk class: confirmed stale release-evidence gap.
+
+### Contract
+
+- Release status is `PASS`, `WARN`, `FAIL` or `BLOCKED` per row, never inferred from old docs.
+- Every PASS links to current code/test/deploy evidence.
+- Core Trendplus must remain fully usable with GenAI disabled.
+- GenAI entry is `READY` only when current deployment, correctness, authorization, privacy boundaries, restore evidence and rollback expectations are acceptable.
+- Remaining warnings stay visible and become linked prompts; they are not hidden to obtain a green verdict.
+
+### Scope only
+
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md` or a new dated replacement
+- `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md` or a new versioned replacement
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md` only for the entry status/link
+- queue/router notes only
+
+### Do not touch
+
+- runtime code
+- provider integration
+- LLM/RAG/tool implementation
+- historical evidence documents in a way that erases old timestamps/results
+
+### Read first
+
+- all STAB task outputs
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- current analytics queue notes and checks
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
+- `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V2.md`
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
+
+### Do
+
+1. Record current source SHA, deployment SHA/bundle, backend version and evidence timestamps.
+2. Build an evidence matrix for:
+   - frontend/backend CI;
+   - live deploy and route smoke;
+   - analytics correctness P0 tasks;
+   - no-fake-zero/green/impact rules;
+   - cache/freshness;
+   - authorization and admin exposure;
+   - import readiness provenance;
+   - backup/restore rehearsal;
+   - action ledger/confidence warnings;
+   - rollback/recovery;
+   - GenAI off-by-default independence.
+3. Assign PASS/WARN/FAIL/BLOCKED with links to exact tests/docs/commits.
+4. Decide one of:
+   - `Core pilot READY; GenAI audit GAI01 READY`;
+   - `Core pilot READY WITH WARNINGS; GenAI blocked by named P0`;
+   - `Core pilot NOT READY`.
+5. Update queue routing so agents cannot infer a different result from stale documents.
+
+### Test matrix
+
+- every PASS has current evidence;
+- every WARN/FAIL has an owner prompt;
+- current deploy SHA matches evidence;
+- auth tests include 401 and 403;
+- restore evidence is non-production;
+- GenAI-disabled core smoke passes;
+- no old smoke date is used as current proof.
+
+### Checks
+
+- `git diff --check`
+- docs link/path validation
+- queue validator from STAB02
+- no runtime checks may be claimed unless their artifacts/results are linked
+
+### Acceptance
+
+- One current release verdict is authoritative.
+- GenAI entry is explicitly ready or blocked with named evidence.
+- Historical readiness docs no longer create conflicting current claims.
+
+---
+
+## Expected next-task transitions
+
+- After `STAB01`: set `STAB02` to `READY` unless STAB01 identifies a repository deploy fix that must be split first.
+- After `STAB02`: set `STAB03` to `READY`.
+- After `STAB03`: choose the smallest safe order between `STAB04` and `STAB05`; only one should be READY unless explicitly parallel-safe.
+- `STAB06` may run in parallel after queue reconciliation because it owns a separate data-quality contract family.
+- `STAB07` requires a safe environment and may remain BLOCKED without provider/DB access.
+- `STAB08` is the final cross-cutting gate before declaring `GAI01` runnable.
