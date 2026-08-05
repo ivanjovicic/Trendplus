@@ -54,6 +54,7 @@ Useful next documents:
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
 - `docs/ai/GENAI_COPILOT_ROADMAP.md`
 - `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
@@ -62,9 +63,11 @@ Useful next documents:
 
 For analytics reliability tasks, treat `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` as the routing/index document. Do not read every queue addendum unless the index says the prompt has a read-together dependency.
 
-For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability router; it does not replace `RQ01` or another active analytics correctness task.
+For a red `Analytics Tests & Data Integrity` workflow, use `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`. When restore or build fails before tests start, `BCI01` takes precedence over claims that backend tests or backend stabilization are passing. Do not patch analytics business code until the workflow reaches the test step and exposes a real failing test.
 
-For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router and the stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL` or `BLOCKED` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
+For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability and backend-CI routers; it does not replace `RQ01`, `BCI01` or another active task owned by those queues.
+
+For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend CI repair queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL` or `BLOCKED` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
 
 ## The ten non-negotiables
 
