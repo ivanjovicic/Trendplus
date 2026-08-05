@@ -194,7 +194,10 @@ export interface QuickInsights {
 }
 
 export interface TransactionStats {
+  /** Average sale lines (prodajne stavke) per receipt — not sold units. */
   avgItemsPerTransaction: number;
+  /** Average sold units (sum of line quantities) per receipt. */
+  avgUnitsPerTransaction: number;
   avgTransactionValue: number;
   totalTransactions: number;
 }
@@ -387,6 +390,11 @@ export interface ProductDecisionCenterItem {
   recommendedAction: string;
 }
 
+export type ProductDecisionDenominatorScope =
+  | "returned_rows"
+  | "analyzed_rows"
+  | "hidden_by_top_limit";
+
 export interface ProductDecisionCenterSummary {
   replenishCount: number;
   markdownCount: number;
@@ -394,15 +402,24 @@ export interface ProductDecisionCenterSummary {
   badDataCount: number;
   lostSalesEstimate: number;
   slowStockCapital: number;
+  /** Denominator for count KPIs. Current contract: returned_rows. */
+  countDenominatorScope?: ProductDecisionDenominatorScope;
+  /** Denominator for money totals. Current contract: analyzed_rows. */
+  moneyDenominatorScope?: ProductDecisionDenominatorScope;
 }
 
 export interface ProductDecisionCenterResponse {
   generatedAtUtc: string;
   periodFromUtc: string;
   periodToUtc: string;
+  /** Returned/top row count (same as rows.length). */
   totalRows: number;
+  /** All analyzed product rows before top limiting. */
   analyzedRows?: number;
+  /** Rows hidden by top limit — not bad-data count. */
   ignoredRowsCount?: number;
+  /** Semantic meaning of ignoredRowsCount. Current contract: hidden_by_top_limit. */
+  ignoredRowsMeaning?: ProductDecisionDenominatorScope;
   summary: ProductDecisionCenterSummary;
   rows: ProductDecisionCenterItem[];
   meta?: AnalyticsResponseMeta | null;

@@ -149,7 +149,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
-    public async Task TransactionStats_ComputesReceiptLevelAveragesInsteadOfLineLevelAverages()
+    public async Task TransactionStats_DistinguishesAverageLinesFromAverageUnits()
     {
         await using var factory = CreateFactory();
         var root = await GetJsonAsync(
@@ -157,7 +157,10 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             "/api/analytics/cached/sales/transaction-stats?fromDate=2026-01-05&toDate=2026-01-07&storeId=1");
 
         Assert.Equal(2, root.GetProperty("totalTransactions").GetInt32());
+        // Receipt A: 2 lines (qty 2 + 1); receipt B: 1 line (qty 3) => avg lines = 1.5
         Assert.Equal(1.5m, root.GetProperty("avgItemsPerTransaction").GetDecimal());
+        // Same receipts => avg units = (3 + 3) / 2 = 3.0
+        Assert.Equal(3.0m, root.GetProperty("avgUnitsPerTransaction").GetDecimal());
         Assert.Equal(550m, root.GetProperty("avgTransactionValue").GetDecimal());
     }
 

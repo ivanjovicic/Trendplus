@@ -2153,6 +2153,7 @@ export default function AnalyticsDashboard() {
                         : "Nije dostupno"
                     }
                     tone="neutral"
+                    infoTip="Prosečan broj prodajnih stavki (linija) po računu, ne broj komada."
                   />
                   <MetricCard
                     label="Vrednost transakcije"

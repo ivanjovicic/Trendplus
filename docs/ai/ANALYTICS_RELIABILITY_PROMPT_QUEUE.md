@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ09
+Current READY prompt: RQ13
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -30,10 +30,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ06 | DONE | data-quality-offender-scope | Fix top-offender revenue impact scope drift |
 | RQ07 | DONE | missing-cost-offenders | Add missing-cost offender drilldown contract |
 | RQ08 | DONE | supplier-blocked-signal-ranking | Cap/label blocked supplier signals in Decision Board |
-| RQ09 | READY | action-source-empty-state | Decide whether zero analytics actions is healthy empty or insufficient data |
-| RQ10 | WAITING | inventory-evidence-confidence | Add evidence-based confidence contract for inventory cards |
-| RQ11 | WAITING | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
-| RQ12 | WAITING | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
+| RQ09 | DONE | action-source-empty-state | Decide whether zero analytics actions is healthy empty or insufficient data |
+| RQ10 | DONE | inventory-evidence-confidence | Add evidence-based confidence contract for inventory cards |
+| RQ11 | DONE | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
+| RQ12 | DONE | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
+| RQ13 | READY | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
 
 ---
 
@@ -580,15 +581,15 @@ Decision Board adds a blocker when supplier recommendation is not allowed, but s
 
 ## RQ09 - Analytics actions empty-state contract
 
-Status: READY
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P2
 Type: backend-contract/tests
 Feature family: action-source-empty-state
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ09-<agent>.lock.md`
-Commit suggestion: `test(analytics): define actions empty source state`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ09-cursor.lock.md`
+Commit suggestion: `fix(analytics): treat empty actions as healthy source state`
 
 ### Why
 
@@ -621,18 +622,35 @@ Decision Board marks `analytics-actions` as `insufficient_data` when there are n
 
 - No-actions is not automatically treated as bad data unless contract says so.
 
+### Notes
+
+- 2026-08-04: DONE. Contract: empty successful load → `good` (no `no_actions` warning); `analytics_actions_unavailable` → `insufficient_data`. "Expected actions missing" not auto-warned (would need cross-source expectation; left as future).
+- Changed files:
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DecisionBoardEndpointsTests|DecisionBoardAggregationContractTests"` - pass (23)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - UI that treated `no_actions` / empty as red DQ may need to switch to source Message; cross-signal "expected actions" still not detected.
+- Next:
+  - `RQ10 - Inventory evidence confidence contract`
+
 ---
 
 ## RQ10 - Inventory evidence confidence contract
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P2
 Type: docs/backend-contract
 Feature family: inventory-evidence-confidence
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ10-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ10-cursor.lock.md`
 Commit suggestion: `docs(analytics): define inventory evidence confidence`
 
 ### Why
@@ -665,19 +683,37 @@ Inventory cards derive confidence mostly from workflow status. Evidence quality 
 
 - Inventory confidence is not presented as stronger than its evidence source.
 
+### Notes
+
+- 2026-08-04: DONE. Documented contract; capped board confidence so workflow status never maps to medium/high; warning `confidence_workflow_status_only`; ConfidenceScore stays null. Follow-up RQ13 for DTO evidence wiring.
+- Changed files:
+  - `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DecisionBoardEndpointsTests"` - pass
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Approved inventory cards now show `low` instead of `medium` (intentional honesty); evidence-grade confidence still unavailable until RQ13.
+- Next:
+  - `RQ11 - Transaction item/line/unit semantics`
+
 ---
 
 ## RQ11 - Transaction item/line/unit semantics
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 DONE
 Priority: P2
 Type: backend-contract/tests
 Feature family: transaction-stat-semantics
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ11-<agent>.lock.md`
-Commit suggestion: `test(analytics): clarify transaction stats item semantics`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ11-cursor.lock.md`
+Commit suggestion: `fix(analytics): clarify transaction stats line vs unit semantics`
 
 ### Why
 
@@ -708,19 +744,39 @@ Commit suggestion: `test(analytics): clarify transaction stats item semantics`
 
 - Transaction statistic label matches actual calculation.
 
+### Notes
+
+- 2026-08-05: DONE. Contract: `avgItemsPerTransaction` = sale **lines** per receipt (matches UI *Stavki po transakciji*); added `avgUnitsPerTransaction` for sold units. Fixture test proves divergence when qty > 1.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`
+  - `docs/qa/TRANSACTION_STATS_SEMANTICS_CONTRACT.md`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` (infoTip only)
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "TransactionStats_DistinguishesAverageLinesFromAverageUnits"` - pass
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - Legacy `Program.cs` transaction-stats endpoint still line-count only (documented out of scope).
+- Next:
+  - `RQ12 - Product Decision Center ignored/top rows contract`
+
 ---
 
 ## RQ12 - Product Decision Center ignored/top rows contract
 
-Status: WAITING
+Status: DONE
 Ready after: RQ02 DONE
 Priority: P2
 Type: backend-contract/tests
 Feature family: pdc-ignored-rows-contract
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ12-<agent>.lock.md`
-Commit suggestion: `test(analytics): define pdc ignored rows contract`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ12-cursor.lock.md`
+Commit suggestion: `docs(analytics): lock pdc ignored rows contract`
 
 ### Why
 
@@ -750,3 +806,65 @@ Commit suggestion: `test(analytics): define pdc ignored rows contract`
 ### Acceptance
 
 - Hidden top-limit rows are not confused with unreliable/invalid data.
+
+### Notes
+
+- 2026-08-05: DONE. Backend contract from RQ02 confirmed and documented; added `PDC_IGNORED_ROWS_CONTRACT.md`, focused contract tests (3-product top=2 fixture), TS denominator types. No numeric behavior change.
+- Changed files:
+  - `docs/qa/PDC_IGNORED_ROWS_CONTRACT.md`
+  - `Api.Tests/ProductDecisionCenterIgnoredRowsContractTests.cs`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "ProductDecisionCenterIgnoredRows|ProductDecisionCenterSummaryDenominator|ProductDecisionCenterBuilderIntegration"` - pass (11)
+  - `git diff --check` (scoped) - pass
+- Risk:
+  - PDC UI still labels `totalRows` without surfacing `ignoredRowsMeaning`; operators should read contract before comparing to DQ intake “ignorisani redovi”.
+- Next:
+  - `RQ13 - Wire inventory signal evidence onto Decision Board cards`
+
+---
+
+## RQ13 - Wire inventory signal evidence onto Decision Board cards
+
+Status: READY
+Ready after: RQ10 DONE
+Priority: P2
+Type: backend/DTO
+Feature family: inventory-evidence-wiring
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ13-<agent>.lock.md`
+Commit suggestion: `feat(analytics): wire inventory signal confidence to decision board`
+
+### Why
+
+RQ10 capped board confidence because `InventoryActionSuggestionDto` lacks evidence fields. Operators still need evidence-grade confidence when inventory signals exist.
+
+### Scope only
+
+- `Api/Dtos/InventoryExperienceDtos.cs` / workflow builder
+- `Api/Endpoints/DecisionBoardEndpoints.cs`
+- tests for mapping from signal evidence when present
+
+### Do not touch
+
+- inventory SQL formulas rewrite
+- frontend redesign
+
+### Do
+
+1. Add optional signal confidence / recommendationAllowed / reasonCodes (or join insights by SKU/store).
+2. Map board cards from evidence when present; keep `confidence_workflow_status_only` fallback when absent.
+3. Tests for evidence-present vs evidence-absent paths.
+
+### Checks
+
+- `git diff --check`
+- targeted Decision Board / inventory tests
+
+### Acceptance
+
+- Board inventory confidence can exceed `low` only when signal evidence is present on the card/DTO.

@@ -1214,7 +1214,8 @@ public static class CachedAnalyticsEndpoints
                         group ps by p.Id into g
                         select new
                         {
-                            ItemCount = g.Count(),
+                            LineCount = g.Count(),
+                            UnitCount = g.Sum(x => x.Kolicina),
                             TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                         }).ToListAsync(ct);
 
@@ -1225,7 +1226,8 @@ public static class CachedAnalyticsEndpoints
 
                     return new TransactionStatsDto
                     {
-                        AvgItemsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.ItemCount), 2),
+                        AvgItemsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.LineCount), 2),
+                        AvgUnitsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.UnitCount), 2),
                         AvgTransactionValue = Math.Round(perTransaction.Average(x => x.TotalValue), 2),
                         TotalTransactions = perTransaction.Count
                     };
@@ -4608,7 +4610,8 @@ public static class CachedAnalyticsEndpoints
                 group ps by p.Id into g
                 select new
                 {
-                    ItemCount = g.Count(),
+                    LineCount = g.Count(),
+                    UnitCount = g.Sum(x => x.Kolicina),
                     TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                 })
             : (
@@ -4622,7 +4625,8 @@ public static class CachedAnalyticsEndpoints
                 group ps by p.Id into g
                 select new
                 {
-                    ItemCount = g.Count(),
+                    LineCount = g.Count(),
+                    UnitCount = g.Sum(x => x.Kolicina),
                     TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                 });
 
@@ -4630,7 +4634,8 @@ public static class CachedAnalyticsEndpoints
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                AvgItemsPerTransaction = g.Average(x => (decimal)x.ItemCount),
+                AvgItemsPerTransaction = g.Average(x => (decimal)x.LineCount),
+                AvgUnitsPerTransaction = g.Average(x => (decimal)x.UnitCount),
                 AvgTransactionValue = g.Average(x => x.TotalValue),
                 TotalTransactions = g.Count()
             })
@@ -4642,6 +4647,7 @@ public static class CachedAnalyticsEndpoints
         return new TransactionStatsDto
         {
             AvgItemsPerTransaction = Math.Round(stats.AvgItemsPerTransaction, 2),
+            AvgUnitsPerTransaction = Math.Round(stats.AvgUnitsPerTransaction, 2),
             AvgTransactionValue = Math.Round(stats.AvgTransactionValue, 2),
             TotalTransactions = stats.TotalTransactions
         };
@@ -6037,7 +6043,12 @@ public class QuickInsightsDto
 
 public class TransactionStatsDto
 {
+    /// <summary>Average sale lines (prodajne stavke) per receipt. Not sold units.</summary>
     public decimal AvgItemsPerTransaction { get; set; }
+
+    /// <summary>Average sold units (sum of line quantities) per receipt.</summary>
+    public decimal AvgUnitsPerTransaction { get; set; }
+
     public decimal AvgTransactionValue { get; set; }
     public int TotalTransactions { get; set; }
 }

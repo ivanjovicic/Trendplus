@@ -479,6 +479,7 @@ public static class DatabaseInitializer
             }
 
             await LogSupplierDecisionHubCacheCountsAsync(lockConnection, logger, databaseLabel, mode);
+            await LogSupplierDecisionHubWindowedCacheStatusAsync(lockConnection, logger, databaseLabel, mode);
         }
         catch (Exception ex)
         {
@@ -632,6 +633,32 @@ public static class DatabaseInitializer
             reader.GetInt64(reader.GetOrdinal("markdown_dependency_rows")),
             reader.GetInt64(reader.GetOrdinal("decision_score_rows")),
             reader.GetInt64(reader.GetOrdinal("recommendations_rows")));
+    }
+
+    private static async Task LogSupplierDecisionHubWindowedCacheStatusAsync(
+        NpgsqlConnection connection,
+        ILogger logger,
+        string databaseLabel,
+        string mode)
+    {
+        var windowed90Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_90d");
+        var windowed180Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_180d");
+
+        if (windowed90Ready && windowed180Ready)
+        {
+            logger.LogInformation(
+                "[{Mode}] Supplier decision windowed caches are present in {DatabaseLabel}: 90d and 180d materialized views exist, but startup readiness still gates only the all-time cache stack.",
+                mode,
+                databaseLabel);
+            return;
+        }
+
+        logger.LogWarning(
+            "[{Mode}] Supplier decision windowed caches are not fully ready in {DatabaseLabel}: 90dReady={Windowed90Ready} 180dReady={Windowed180Ready}. Startup readiness still gates only the all-time cache stack.",
+            mode,
+            databaseLabel,
+            windowed90Ready,
+            windowed180Ready);
     }
 
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)

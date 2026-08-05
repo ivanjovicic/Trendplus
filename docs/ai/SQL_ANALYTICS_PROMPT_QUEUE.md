@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: Q75
+Current READY prompt: Q76
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -29,8 +29,8 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q72 | DONE | supplier-sales-stats-performance | Review endpoint query plan and safe service split |
 | Q73 | DONE | supplier-sales-stats-verification | Harden manual verification SQL script/runbook |
 | Q74 | DONE | analytics-refresh-window-contracts | Lock refresh and windowed MV contracts in tests |
-| Q75 | READY | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
-| Q76 | WAITING | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
+| Q75 | DONE | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
+| Q76 | READY | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
 | Q77 | WAITING | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
 | Q78 | WAITING | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
 | Q79 | WAITING | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
@@ -481,7 +481,7 @@ The 90d and 180d materialized views are present and included in refresh options,
 
 ## Q75 - Supplier decision windowed MV startup readiness audit
 
-Status: READY
+Status: DONE
 Ready after: Q69 DONE; Q74 DONE
 Priority: P1
 Type: backend/tests/docs
@@ -531,11 +531,28 @@ Startup readiness and cache-count helpers currently focus on the all-time suppli
 - Missing 90d/180d objects cannot be silently treated as fully healthy without a documented decision.
 - No SQL formula change is mixed in.
 
+### Notes
+
+- 2026-08-05: DONE. Startup readiness now logs windowed 90d/180d supplier-decision MVs separately while keeping all-time caches as the hard readiness gate; the contract test suite documents the explicit decision.
+- Changed files:
+  - `Infrastructure/Seed/DatabaseInitializer.cs`
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release /p:UseSharedCompilation=false` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~SupplierDecisionSchemaSqlTests" /p:UseSharedCompilation=false` - pass
+  - `git diff --check` - pass
+- Risk:
+  - Windowed MVs are still not part of startup gating, so missing 90d/180d objects now warn instead of blocking startup.
+- Next:
+  - `Q76 - Supplier decision precomputed/live SQL parity matrix`
+
 ---
 
 ## Q76 - Supplier decision precomputed/live SQL parity matrix
 
-Status: WAITING
+Status: READY
 Ready after: Q69 DONE; Q71 DONE or explicitly not required
 Priority: P0
 Type: backend/tests/docs

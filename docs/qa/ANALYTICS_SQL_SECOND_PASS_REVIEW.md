@@ -48,6 +48,12 @@ Recommended prompt:
 - Do not make startup do heavy refresh by default.
 - Decide whether startup should only log missing windowed MVs, build them if missing, or leave them fully worker-owned.
 
+Decision after Q75:
+
+- Startup readiness remains gated by the all-time cache stack only.
+- `mv_supplier_decision_score_cache_90d` and `mv_supplier_decision_score_cache_180d` are logged separately as readiness context, not as hard startup gates.
+- Missing windowed MVs now surface as an explicit startup warning instead of a silent healthy state.
+
 ### F08 - Supplier decision has two query contracts that can drift
 
 File: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`

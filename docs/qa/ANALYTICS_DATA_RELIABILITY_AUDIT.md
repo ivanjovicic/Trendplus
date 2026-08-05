@@ -241,9 +241,15 @@ Risk:
 - A genuinely empty action list can be interpreted as a data-quality problem.
 - This can produce unnecessary warnings and lower board trust.
 
-Classification: suspicious; contract decision needed.
+Classification: fixed in RQ09 (2026-08-04).
 
-Recommended prompt: RQ09.
+Fix notes / contract:
+
+- Successful empty load → status `good`, no `no_actions` warning; message explains healthy empty.
+- `analytics_actions_unavailable` load warning → status `insufficient_data`.
+- Cross-source "expected actions missing" not auto-warned (future).
+
+Recommended prompt: RQ09 (DONE).
 
 ### R10 - Inventory card confidence is derived from workflow status, not evidence coverage
 
@@ -259,9 +265,15 @@ Risk:
 - Workflow status may not reflect evidence quality, source freshness or calculation confidence.
 - Inventory cards can be treated as equally reliable even when underlying velocity/stock evidence differs.
 
-Classification: suspicious; needs evidence contract.
+Classification: mitigated in RQ10 (2026-08-04); full evidence wiring deferred to RQ13.
 
-Recommended prompt: RQ10.
+Fix notes:
+
+- Contract: `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- Board never maps workflow status to `medium`/`high`; `ConfidenceScore` stays null; warning `confidence_workflow_status_only`.
+- `approved`/`deferred` → `low` + DQ `warning`; else → `insufficient_data`.
+
+Recommended prompt: RQ10 (DONE); follow-up RQ13.
 
 ### R11 - Transaction stats may use line count where UI label implies item/unit count
 
@@ -276,9 +288,15 @@ Risk:
 - If UI/product meaning is “items/units per receipt”, current value may count distinct sale lines instead of units.
 - If the intended meaning is “lines per transaction”, label should be changed.
 
-Classification: suspicious semantic bug.
+Classification: fixed in RQ11 (2026-08-05).
 
-Recommended prompt: RQ11.
+Fix notes:
+
+- Contract: `docs/qa/TRANSACTION_STATS_SEMANTICS_CONTRACT.md`
+- `avgItemsPerTransaction` = sale lines (matches dashboard *Stavki po transakciji*); behavior unchanged.
+- Added `avgUnitsPerTransaction` = average sold units per receipt.
+
+Recommended prompt: RQ11 (DONE).
 
 ### R12 - Product Decision Center confidence/impact summary should be tested against top limit and ignored rows
 
@@ -293,9 +311,14 @@ Risk:
 - Operators may compare counts and totals incorrectly.
 - “Ignored rows” can be interpreted as bad data even when rows are only hidden by `top`.
 
-Classification: contract gap.
+Classification: fixed in RQ12 (2026-08-05); implementation landed in RQ02, contract locked here.
 
-Recommended prompt: RQ12.
+Fix notes:
+
+- Contract: `docs/qa/PDC_IGNORED_ROWS_CONTRACT.md`
+- `ignoredRowsMeaning = hidden_by_top_limit`; `badDataCount` uses returned rows only; money totals use analyzed rows.
+
+Recommended prompt: RQ12 (DONE).
 
 ## Priority order
 
@@ -305,9 +328,11 @@ Recommended prompt: RQ12.
 4. RQ05/RQ06 - dataScope consistency and top-offender scope correctness. (RQ05 DONE; RQ06 DONE 2026-08-04; issues-handler residual RQ06-F1)
 5. RQ07 - missing-cost offender drilldown. (DONE 2026-08-04; issues-list/UI residual R80)
 6. RQ08 - blocked supplier signal ranking. (DONE 2026-08-04)
-7. RQ09 - analytics actions empty-state contract. (READY)
-8. RQ02/RQ12 - product summary denominator contract. (RQ02 DONE 2026-08-04; RQ12 still WAITING)
-9. RQ10/RQ11 - inventory confidence and transaction semantics.
+7. RQ09 - analytics actions empty-state contract. (DONE 2026-08-04)
+8. RQ10 - inventory evidence confidence contract. (DONE 2026-08-04; wiring follow-up RQ13)
+9. RQ11 - transaction item/line/unit semantics. (DONE 2026-08-05)
+10. RQ12 - PDC ignored/top rows contract. (DONE 2026-08-05)
+11. RQ13 - wire inventory signal evidence onto board cards. (READY)
 
 ## Checks to add across prompts
 

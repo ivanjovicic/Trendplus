@@ -232,6 +232,24 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionWindowedMvStartupReadinessIsLoggedButNotGated()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        var options = ReadRepoFile("Infrastructure/Configuration/NightlyAnalyticsRefreshOptions.cs");
+
+        Assert.Contains("AreSupplierDecisionHubCachesReadyAsync", initializer);
+        Assert.Contains("mv_supplier_markdown_dependency_cache", initializer);
+        Assert.Contains("mv_supplier_decision_score_cache", initializer);
+        Assert.Contains("mv_supplier_recommendations_cache", initializer);
+        Assert.Contains("LogSupplierDecisionHubWindowedCacheStatusAsync", initializer);
+        Assert.Contains("Supplier decision windowed caches are present", initializer);
+        Assert.Contains("Supplier decision windowed caches are not fully ready", initializer);
+        Assert.Contains("Startup readiness still gates only the all-time cache stack", initializer);
+        Assert.Contains("\"mv_supplier_decision_score_cache_90d\"", options);
+        Assert.Contains("\"mv_supplier_decision_score_cache_180d\"", options);
+    }
+
+    [Fact]
     public void SupplierDecisionResponsesExposeAndPopulateTrustMetadata()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");

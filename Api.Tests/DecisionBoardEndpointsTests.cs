@@ -257,10 +257,167 @@ public sealed class DecisionBoardEndpointsTests
         Assert.DoesNotContain(blockers.Cards, card => card.Id == "blocker-supplier-trust");
     }
 
+    [Fact]
+    public void BuildDecisionBoardResponse_TreatsEmptyActionsAsHealthySourceState()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 601,
+                recommendationStatus: "REPLENISH",
+                dataQualityStatus: "good",
+                confidenceLevel: "high",
+                confidenceScore: 80,
+                expectedImpactRsd: 12_000m));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter, loadWarnings: []);
+
+        var actionsSource = Assert.Single(response.SourceStates, state => state.SourceKey == "analytics-actions");
+        Assert.Equal("good", actionsSource.Status);
+        Assert.Empty(actionsSource.WarningCodes);
+        Assert.Contains("validan", actionsSource.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("no_actions", response.Warnings);
+        Assert.DoesNotContain("analytics_actions_unavailable", response.Warnings);
+        Assert.DoesNotContain("insufficient_data", response.Warnings);
+
+        var actionsMetric = Assert.Single(response.Metrics, metric => metric.Label == "Otvorene akcije");
+        Assert.Equal("good", actionsMetric.Tone);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_MarksActionsInsufficient_WhenActionsServiceUnavailable()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 602,
+                recommendationStatus: "REPLENISH",
+                dataQualityStatus: "good",
+                confidenceLevel: "high",
+                confidenceScore: 80,
+                expectedImpactRsd: 12_000m));
+
+        var response = BuildBoard(
+            generatedAtUtc,
+            productDecisionCenter,
+            loadWarnings: ["analytics_actions_unavailable"]);
+
+        var actionsSource = Assert.Single(response.SourceStates, state => state.SourceKey == "analytics-actions");
+        Assert.Equal("insufficient_data", actionsSource.Status);
+        Assert.Contains("analytics_actions_unavailable", actionsSource.WarningCodes);
+        Assert.Contains("nije dostupna", actionsSource.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("analytics_actions_unavailable", response.Warnings);
+        Assert.DoesNotContain("no_actions", response.Warnings);
+    }
+
+    [Theory]
+    [InlineData(false, "good")]
+    [InlineData(true, "insufficient_data")]
+    public void ResolveAnalyticsActionsSourceState_DistinguishesEmptyFromUnavailable(
+        bool unavailable,
+        string expectedStatus)
+    {
+        var resolved = DecisionBoardEndpoints.ResolveAnalyticsActionsSourceState([], unavailable);
+        Assert.Equal(expectedStatus, resolved.Status);
+        if (unavailable)
+        {
+            Assert.Contains("analytics_actions_unavailable", resolved.WarningCodes);
+        }
+        else
+        {
+            Assert.Empty(resolved.WarningCodes);
+        }
+    }
+
+    [Theory]
+    [InlineData("approved", "low", "warning")]
+    [InlineData("deferred", "low", "warning")]
+    [InlineData("pending", "insufficient_data", "insufficient_data")]
+    [InlineData("closed", "insufficient_data", "insufficient_data")]
+    [InlineData(null, "insufficient_data", "insufficient_data")]
+    public void ResolveInventoryBoardConfidence_DoesNotOverstateWorkflowStatus(
+        string? status,
+        string expectedLevel,
+        string expectedDq)
+    {
+        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(status);
+        Assert.Equal(expectedLevel, resolved.Level);
+        Assert.Equal(expectedDq, resolved.DataQualityStatus);
+        Assert.Contains("confidence_workflow_status_only", resolved.WarningCodes);
+        Assert.NotEqual("medium", resolved.Level);
+        Assert.NotEqual("high", resolved.Level);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_InventoryApprovedCard_StaysLowConfidenceWithoutEvidenceScore()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(generatedAtUtc);
+        var workflow = new InventoryActionWorkflowDto(
+            GeneratedAtUtc: generatedAtUtc,
+            PendingCount: 0,
+            ApprovedCount: 1,
+            DeferredCount: 0,
+            ClosedCount: 0,
+            Items:
+            [
+                new InventoryActionSuggestionDto(
+                    SuggestionKey: "dopuna:sku-1",
+                    ActionType: "dopuna",
+                    Priority: "critical",
+                    Label: "Dopuna test",
+                    Reason: "Ispod minimuma.",
+                    Status: "approved",
+                    ArtikalId: 11,
+                    PLU: "SKU-1",
+                    Naziv: "Test artikal",
+                    FromStoreName: "Store A",
+                    ToStoreName: null,
+                    SuggestedQty: 3,
+                    EstimatedValue: 50_000m,
+                    DaysSinceMovement: 5,
+                    Note: null,
+                    UpdatedAtUtc: generatedAtUtc)
+            ]);
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            productDecisionCenter.PeriodFromUtc,
+            productDecisionCenter.PeriodToUtc,
+            lastRefreshAtUtc: generatedAtUtc,
+            productDecisionCenter,
+            inventoryInsights: null,
+            inventoryWorkflow: workflow,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var inventoryCard = Assert.Single(
+            response.Sections
+                .SelectMany(section => section.Cards)
+                .Where(card => card.Kind == "inventory")
+                .DistinctBy(card => card.Id));
+
+        Assert.Equal("low", inventoryCard.ConfidenceLevel);
+        Assert.Null(inventoryCard.ConfidenceScore);
+        Assert.Equal("warning", inventoryCard.DataQualityStatus);
+        Assert.Contains("confidence_workflow_status_only", inventoryCard.WarningCodes);
+        Assert.NotEqual("medium", inventoryCard.ConfidenceLevel);
+    }
+
     private static DecisionBoardAggregateResponseDto BuildBoard(
         DateTime generatedAtUtc,
         ProductDecisionCenterResponseDto productDecisionCenter,
-        SummaryResponse? supplierSummary = null) =>
+        SummaryResponse? supplierSummary = null,
+        IReadOnlyList<string>? loadWarnings = null) =>
         DecisionBoardEndpoints.BuildDecisionBoardResponse(
             generatedAtUtc,
             productDecisionCenter.PeriodFromUtc,
@@ -274,7 +431,7 @@ public sealed class DecisionBoardEndpointsTests
             outcomeSummary: null,
             refreshStatus: null,
             dataQualityHealth: null,
-            loadWarnings: [],
+            loadWarnings: loadWarnings ?? [],
             dataScope: "all",
             storeId: null,
             supplierId: null);

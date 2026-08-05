@@ -330,7 +330,8 @@ public static class DecisionBoardEndpoints
             actions,
             outcomeSummary,
             refreshStatus,
-            dataQualityHealth);
+            dataQualityHealth,
+            loadWarnings);
 
         var warnings = BuildWarnings(
             loadWarnings,
@@ -448,7 +449,7 @@ public static class DecisionBoardEndpoints
             {
                 var sourceKey = $"inventory:{item.SuggestionKey}";
                 var actionState = ResolveActionState("inventory", sourceKey, actionStates);
-                var confidenceLevel = item.Status == "approved" ? "medium" : item.Status == "deferred" ? "low" : "insufficient_data";
+                var confidence = ResolveInventoryBoardConfidence(item.Status);
                 var priorityScore = item.Priority switch
                 {
                     "critical" => 250m,
@@ -466,7 +467,7 @@ public static class DecisionBoardEndpoints
                     SourceKey: sourceKey,
                     Title: item.Label,
                     Summary: item.Reason,
-                    ConfidenceLevel: confidenceLevel,
+                    ConfidenceLevel: confidence.Level,
                     ConfidenceScore: null,
                     ReliabilityPct: null,
                     ExpectedImpactRsd: item.EstimatedValue > 0 ? item.EstimatedValue : null,
@@ -477,15 +478,39 @@ public static class DecisionBoardEndpoints
                     ActionHref: "/analytics/inventory",
                     AlreadyInAction: actionState is ActionState.Open,
                     AlreadyClosed: actionState is ActionState.Closed,
-                    WarningCodes: [item.ActionType, item.Status],
-                    DataQualityStatus: item.Status == "pending" ? "insufficient_data" : "warning",
+                    WarningCodes: confidence.WarningCodes
+                        .Concat([item.ActionType, item.Status])
+                        .Distinct(StringComparer.Ordinal)
+                        .ToList(),
+                    DataQualityStatus: confidence.DataQualityStatus,
                     GeneratedAtUtc: inventoryWorkflow.GeneratedAtUtc,
-                    PriorityScore: priorityScore,
+                    PriorityScore: CapInsufficientDataPriority(
+                        priorityScore,
+                        confidence.Level,
+                        confidence.DataQualityStatus),
                     ImpactScore: item.EstimatedValue);
             })
             .OrderByDescending(card => card.PriorityScore)
             .Take(10)
             .ToList();
+    }
+
+    /// <summary>
+    /// Workflow status is not evidence quality. Until suggestion DTOs carry signal confidence,
+    /// board confidence stays capped at low / insufficient_data.
+    /// See docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md.
+    /// </summary>
+    internal static (string Level, string DataQualityStatus, IReadOnlyList<string> WarningCodes)
+        ResolveInventoryBoardConfidence(string? workflowStatus)
+    {
+        var status = (workflowStatus ?? string.Empty).Trim().ToLowerInvariant();
+        var warningCodes = (IReadOnlyList<string>)["confidence_workflow_status_only"];
+
+        return status switch
+        {
+            "approved" or "deferred" => ("low", "warning", warningCodes),
+            _ => ("insufficient_data", "insufficient_data", warningCodes)
+        };
     }
 
     private static List<DecisionBoardCardDto> BuildSupplierCards(
@@ -869,18 +894,54 @@ public static class DecisionBoardEndpoints
         IReadOnlyList<AnalyticsActionItem> actions,
         AnalyticsActionOutcomeSummaryDto? outcomeSummary,
         AnalyticsRefreshStatusDto? refreshStatus,
-        AnalyticsDataQualityHealthSnapshot? dataQualityHealth)
+        AnalyticsDataQualityHealthSnapshot? dataQualityHealth,
+        IReadOnlyList<string> loadWarnings)
     {
+        var actionsUnavailable = loadWarnings.Contains("analytics_actions_unavailable", StringComparer.Ordinal);
+        var actionsSource = ResolveAnalyticsActionsSourceState(actions, actionsUnavailable);
+
         return
         [
             new("product-decision-center", "Product Decision Center", ResolveMetaStatus(productDecisionCenter?.Meta?.DataQualityStatus), productDecisionCenter?.GeneratedAtUtc, BuildMetaWarnings(productDecisionCenter?.Meta), productDecisionCenter?.Meta?.Message, "/analytics/products"),
             new("inventory-workflow", "Inventory action workflow", inventoryWorkflow is null ? "unknown" : inventoryWorkflow.PendingCount > 0 ? "warning" : "good", inventoryWorkflow?.GeneratedAtUtc, inventoryWorkflow is null ? ["inventory_workflow_unavailable"] : [], inventoryWorkflow is null ? "Inventory workflow nije dostupan." : null, "/analytics/inventory"),
             new("supplier-decision-hub", "Supplier decision hub", supplierSummary?.TrustMetadata?.DataCoverageStatus ?? "unknown", supplierSummary?.TrustMetadata?.LastRefreshAtUtc, BuildSupplierWarningCodes(supplierSummary?.TrustMetadata), supplierSummary?.DataNote, "/analytics/supplier?tab=overview"),
-            new("analytics-actions", "Analytics actions", actions.Count == 0 ? "insufficient_data" : "good", actions.Count == 0 ? null : actions.Max(item => item.UpdatedAtUtc), actions.Count == 0 ? ["no_actions"] : [], null, "/analytics/actions"),
+            new("analytics-actions", "Analytics actions", actionsSource.Status, actionsSource.GeneratedAtUtc, actionsSource.WarningCodes, actionsSource.Message, "/analytics/actions"),
             new("action-outcome-summary", "Action outcome summary", outcomeSummary is null ? "unknown" : outcomeSummary.Meta.MeasuredSampleSize < 10 ? "warning" : "good", outcomeSummary?.Meta.GeneratedAtUtc, outcomeSummary?.Meta.Warnings ?? [], outcomeSummary?.Meta.EmptyReason, "/analytics/actions"),
             new("refresh-status", "Refresh status", refreshStatus?.DataFreshnessStatus ?? "unknown", refreshStatus?.GeneratedAtUtc, BuildRefreshWarnings(refreshStatus), refreshStatus?.LastErrorMessage, "/analytics/pilot-readiness"),
             new("data-quality-health", "Data quality health", dataQualityHealth is null ? "unknown" : EvaluateDataQualityHealth(dataQualityHealth).Status, dataQualityHealth?.GeneratedAtUtc, BuildHealthWarningCodes(dataQualityHealth), dataQualityHealth is null ? null : EvaluateDataQualityHealth(dataQualityHealth).Summary, "/analytics/data-quality")
         ];
+    }
+
+    /// <summary>
+    /// Empty action list after a successful load is a healthy empty state.
+    /// Insufficient data applies only when the actions service failed to load.
+    /// </summary>
+    internal static (string Status, DateTime? GeneratedAtUtc, IReadOnlyList<string> WarningCodes, string? Message)
+        ResolveAnalyticsActionsSourceState(IReadOnlyList<AnalyticsActionItem> actions, bool actionsUnavailable)
+    {
+        if (actionsUnavailable)
+        {
+            return (
+                "insufficient_data",
+                null,
+                ["analytics_actions_unavailable"],
+                "Lista akcija nije dostupna.");
+        }
+
+        if (actions.Count == 0)
+        {
+            return (
+                "good",
+                null,
+                [],
+                "Nema akcija u izabranom kontekstu — prazan rezultat je validan.");
+        }
+
+        return (
+            "good",
+            actions.Max(item => item.UpdatedAtUtc),
+            [],
+            null);
     }
 
     private static IReadOnlyList<string> BuildWarnings(
