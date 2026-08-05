@@ -22,9 +22,9 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
+import { buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
-import { fmtNumber } from "../utils/analyticsFormatters";
+import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 
@@ -77,6 +77,16 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function resolveLatestTimestamp(values: Array<string | null | undefined>): string | null {
+  const latest = values
+    .filter((value): value is string => Boolean(value))
+    .map((value) => ({ value, time: new Date(value).getTime() }))
+    .filter((entry) => !Number.isNaN(entry.time))
+    .sort((left, right) => right.time - left.time)[0];
+
+  return latest?.value ?? null;
+}
+
 function resolveInventoryExpectedImpactRsd(row: InventoryRow): number | null {
   if (row.estimatedValue != null) {
     return row.estimatedValue;
@@ -110,7 +120,8 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
       priority: "P2",
       description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
       dueAtUtc,
-      expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
+      // Exposure may exist on the row, but a review action must not claim confirmed expected impact.
+      expectedImpactRsd: null,
     };
   }
 
@@ -146,7 +157,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
     priority: "P2",
     description: `Signal nije dovoljan za finalnu akciju. Stock cover: ${row.stockCoverStatusLabel}. Sell-through: ${row.sellThroughStatusLabel}.`,
     dueAtUtc,
-    expectedImpactRsd: resolveInventoryExpectedImpactRsd(row),
+    expectedImpactRsd: null,
   };
 }
 
@@ -501,7 +512,7 @@ export default function InventoryPage() {
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const totalValue = balance?.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + row.estimatedValueAmount, 0);
+  const totalValue = balance?.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + (row.estimatedValueAmount ?? 0), 0);
   const activeSkuShare = useMemo(() => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : 0), [balance]);
   const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : 0), [balance]);
   const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0), [balance]);
@@ -525,22 +536,7 @@ export default function InventoryPage() {
   }, [healthTrendPoints]);
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
   const topRiskRows = useMemo(() => rows.slice().sort((left, right) => (left.stockState === right.stockState ? right.reorderGap - left.reorderGap : { critical: 0, warning: 1, healthy: 2 }[left.stockState] - { critical: 0, warning: 1, healthy: 2 }[right.stockState])).slice(0, TOP_RISK_ITEMS), [rows]);
-  const highestValueRows = useMemo(() => rows.slice().sort((left, right) => right.estimatedValueAmount - left.estimatedValueAmount).slice(0, TOP_VALUE_ITEMS), [rows]);
-  const inventoryLastRefreshAt = useMemo(() => {
-    const timestamps = [
-      actionWorkflow?.generatedAtUtc,
-      forecast?.generatedAtUtc,
-      alerts?.generatedAtUtc,
-      rebalance?.generatedAtUtc,
-      storeComparison?.generatedAtUtc,
-    ].filter((value): value is string => Boolean(value));
-
-    if (timestamps.length === 0) return null;
-    return timestamps
-      .map((value) => ({ value, time: new Date(value).getTime() }))
-      .filter((entry) => !Number.isNaN(entry.time))
-      .sort((a, b) => b.time - a.time)[0]?.value ?? null;
-  }, [actionWorkflow?.generatedAtUtc, alerts?.generatedAtUtc, forecast?.generatedAtUtc, rebalance?.generatedAtUtc, storeComparison?.generatedAtUtc]);
+  const highestValueRows = useMemo(() => rows.slice().sort((left, right) => (right.estimatedValueAmount ?? Number.NEGATIVE_INFINITY) - (left.estimatedValueAmount ?? Number.NEGATIVE_INFINITY)).slice(0, TOP_VALUE_ITEMS), [rows]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
     const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
     return [`${row.id}:${row.idObjekat ?? 0}`, {
@@ -632,11 +628,29 @@ export default function InventoryPage() {
       goodSellThroughSkus,
     };
   }, [rows]);
-  const inventoryMetas = useMemo(
-    () => ([pageData?.meta, balance?.meta, insights?.meta, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
-    [actionWorkflow?.meta, balance?.meta, insights?.meta, pageData?.meta, storeComparison?.meta]
+  const primaryInventoryMetas = useMemo(
+    () => ([pageData?.meta, balance?.meta, insights?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+    [balance?.meta, insights?.meta, pageData?.meta],
   );
-  const primaryMeta = inventoryMetas[0] ?? null;
+  const secondaryPanelTimestamps = useMemo(
+    () => resolveLatestTimestamp([
+      actionWorkflow?.generatedAtUtc,
+      forecast?.generatedAtUtc,
+      alerts?.generatedAtUtc,
+      rebalance?.generatedAtUtc,
+      storeComparison?.generatedAtUtc,
+    ]),
+    [actionWorkflow?.generatedAtUtc, alerts?.generatedAtUtc, forecast?.generatedAtUtc, rebalance?.generatedAtUtc, storeComparison?.generatedAtUtc],
+  );
+  const primaryRefreshAt = useMemo(
+    () => resolveLatestTimestamp(primaryInventoryMetas.map((meta) => meta.lastRefreshAtUtc ?? meta.generatedAtUtc ?? null)),
+    [primaryInventoryMetas],
+  );
+  const primaryMeta = primaryInventoryMetas[0] ?? null;
+  const inventoryMetas = useMemo(
+    () => ([...primaryInventoryMetas, storeComparison?.meta, actionWorkflow?.meta].filter((meta): meta is AnalyticsResponseMeta => Boolean(meta))),
+    [actionWorkflow?.meta, primaryInventoryMetas, storeComparison?.meta],
+  );
   const warningMeta = inventoryMetas.find((meta) => isAnalyticsMetaWarning(meta)) ?? null;
   const inventoryMetaMessage = getAnalyticsMetaMessage(warningMeta ?? primaryMeta);
   const showMetaWarning = !loading && !error && warningMeta != null;
@@ -659,6 +673,25 @@ export default function InventoryPage() {
   const showFilteredEmptyState = !showInsufficientEmptyState
     && (hasActivePrimaryFilters || emptyReasonCode.includes("filter"));
   const showEmptyState = !loading && !error && pageData != null && (showInsufficientEmptyState || totalCount === 0);
+  const freshnessLineageNote = useMemo(() => {
+    if (!secondaryPanelTimestamps) {
+      return null;
+    }
+
+    if (!primaryRefreshAt) {
+      return `Sekundarni paneli imaju zasebnu svežinu: ${formatDateTime(secondaryPanelTimestamps)}. Primarni bilans nema potvrđen refresh.`;
+    }
+
+    const primaryTime = new Date(primaryRefreshAt).getTime();
+    const secondaryTime = new Date(secondaryPanelTimestamps).getTime();
+    const deltaMinutes = Math.abs(secondaryTime - primaryTime) / 60000;
+
+    if (deltaMinutes < 30) {
+      return null;
+    }
+
+    return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni paneli ${formatDateTime(secondaryPanelTimestamps)}.`;
+  }, [primaryRefreshAt, secondaryPanelTimestamps]);
 
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
@@ -713,20 +746,21 @@ export default function InventoryPage() {
   }
 
   function exportVisibleCsv() {
-    const lines = [
-      ["PLU", "Naziv", "Dobavljač", "Prodavnica", "Status", "Kolicina", "Minimum", "Gap", "NabavnaCena", "Vrednost"].join(";"),
-      ...rows.map((row) => [csvEscape(row.plu ?? ""), csvEscape(row.naziv), csvEscape(row.supplierName), csvEscape(row.storeName), csvEscape(row.stockStateLabel), row.quantity, row.minimum, row.reorderGap, row.unitCost.toFixed(2), row.estimatedValueAmount.toFixed(2)].join(";")),
-    ];
+    // Screen CSV must follow the visible table order (displayedRows), including page-local risk sorts.
+    const lines = buildInventoryScreenCsvLines(displayedRows);
     const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `bilans-stanja-strana-${pageNumber}.csv`;
+    link.download = buildInventoryScreenCsvFilename(pageNumber, sortBy);
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setExportStatus("CSV za trenutnu stranu je preuzet.");
+    const sortNote = isInventoryPageLocalRiskSort(sortBy)
+      ? ` (redosled: ${sortBy === "oosRisk" ? "OOS rizik" : "Overstock rizik"}, trenutna strana)`
+      : "";
+    setExportStatus(`CSV za trenutnu stranu${sortNote} je preuzet.`);
   }
 
   async function updateWorkflowStatus(item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") {
@@ -882,7 +916,7 @@ export default function InventoryPage() {
           fromStoreName: null,
           toStoreName: stores.find((store) => store.storeId === item.storeId)?.storeName ?? row.storeName,
           suggestedQty: Math.max(1, Math.ceil(item.forecast7d)),
-          estimatedValue: row.unitCost * Math.max(1, Math.ceil(item.forecast7d)),
+          estimatedValue: row.unitCost == null ? null : row.unitCost * Math.max(1, Math.ceil(item.forecast7d)),
           daysSinceMovement: detailData?.daysSinceMovement ?? 0,
           note: `Automatski dodat iz forecast sekcije za velicinu ${item.sizeCode}.`,
           updatedAtUtc: new Date().toISOString(),
@@ -993,7 +1027,7 @@ export default function InventoryPage() {
         description="Decision cockpit za zalihe: dopuna, OOS rizik, višak zalihe, transferi i workflow odluka."
         periodFrom={null}
         periodTo={null}
-        lastRefreshAt={primaryMeta?.lastRefreshAtUtc ?? primaryMeta?.generatedAtUtc ?? inventoryLastRefreshAt}
+        lastRefreshAt={primaryRefreshAt}
         dataSource="Inventory analytics snapshot"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
         mode="recommendation"
@@ -1005,6 +1039,11 @@ export default function InventoryPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      {freshnessLineageNote ? (
+        <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="note">
+          {freshnessLineageNote}
+        </div>
+      ) : null}
       {showMetaWarning ? (
         <div className="rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
           Prikazani podaci su delimični ili fallback. {inventoryMetaMessage ?? "Proverite status osvežavanja i data quality signal."}

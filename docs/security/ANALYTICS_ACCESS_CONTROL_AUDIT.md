@@ -1,7 +1,21 @@
 # Analytics Access Control Audit
 
-Datum: 2026-06-14  
+Datum: 2026-06-14
+Updated: 2026-08-05 (STAB03 pointer)
 Scope: `Api/Endpoints/*`, `Api/Program.cs`, `Klijent/clientapp/src/App.tsx`, `Klijent/clientapp/src/layout/navConfig.ts`, `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`
+
+## 2026-08-05 runtime boundary update (STAB03)
+
+Canonical Phase 1 decision and endpoint-family matrix:
+
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
+
+Summary:
+
+- Production still has **no** `AddAuthentication` / `UseAuthentication` pipeline.
+- Effective admin control is **`X-Admin-Key` via `AdminAccessControl`** (authenticated `Admin` role branch is unreachable in production).
+- Phase 1 pattern: **explicit internal API-key admin mode** while external auth remains disabled.
+- Next code task: **STAB04** — protect admin operational read surfaces.
 
 ## Sažetak
 

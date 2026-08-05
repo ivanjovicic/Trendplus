@@ -3,7 +3,7 @@
 Koristi ovaj šablon unutar svakog taska u `NEXT_PROMPT_QUEUE.md`.
 
 ```text
-Status: TODO | IN_PROGRESS | DONE | PARTIAL | BLOCKED
+Status: READY | WAITING | IN_PROGRESS | DONE | PARTIAL | BLOCKED | OBSOLETE
 Started:
 Finished:
 Commit:
@@ -18,3 +18,5 @@ Notes:
 Remaining:
 - ...
 ```
+
+Do not use `TODO` or `OPEN` for live queue entries.

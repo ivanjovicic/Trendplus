@@ -1,8 +1,10 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
 using Application.Artikli.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -16,20 +18,28 @@ public class MockEmbeddingService : IEmbeddingService
 {
     private readonly ITrendplusDbContext _db;
     private readonly ILogger<MockEmbeddingService> _logger;
+    private readonly IHostEnvironment _environment;
     private readonly Random _random = new();
 
     public MockEmbeddingService(
-        ITrendplusDbContext db, 
-        ILogger<MockEmbeddingService> logger)
+        ITrendplusDbContext db,
+        ILogger<MockEmbeddingService> logger,
+        IHostEnvironment environment)
     {
         _db = db;
         _logger = logger;
+        _environment = environment;
     }
 
     public Task<float[]> GetEmbeddingAsync(string imagePath, CancellationToken ct = default)
     {
+        if (_environment.IsProduction())
+        {
+            throw new InvalidOperationException("Mock embedding service is not allowed in production.");
+        }
+
         _logger.LogWarning("Using MOCK embedding service. Replace with actual implementation!");
-        
+
         // Generate a random 512-dimensional vector
         // In production, this should call a Python service running CLIP or similar model
         var embedding = new float[512];
@@ -37,18 +47,18 @@ public class MockEmbeddingService : IEmbeddingService
         {
             embedding[i] = (float)(_random.NextDouble() * 2 - 1); // Random values between -1 and 1
         }
-        
+
         return Task.FromResult(embedding);
     }
 
     public async Task<List<SimilarProduct>> FindSimilarProductsAsync(
-        float[] embedding, 
-        float threshold = 0.8f, 
-        int limit = 10, 
+        float[] embedding,
+        float threshold = 0.8f,
+        int limit = 10,
         CancellationToken ct = default)
     {
         _logger.LogInformation("Searching for similar products with threshold {Threshold}", threshold);
-        
+
         // Use raw SQL with pgvector operators
         var sql = @"
             SELECT 
@@ -71,18 +81,18 @@ public class MockEmbeddingService : IEmbeddingService
 
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
-        
+
         // Convert float[] to pgvector format
         var embeddingStr = "[" + string.Join(",", embedding) + "]";
-        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown) 
-        { 
-            Value = embeddingStr 
+        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown)
+        {
+            Value = embeddingStr
         });
         command.Parameters.Add(new NpgsqlParameter("threshold", threshold));
         command.Parameters.Add(new NpgsqlParameter("limit", limit));
 
         var results = new List<SimilarProduct>();
-        
+
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
@@ -95,7 +105,7 @@ public class MockEmbeddingService : IEmbeddingService
         }
 
         _logger.LogInformation("Found {Count} similar products", results.Count);
-        
+
         return results;
     }
 }
@@ -128,24 +138,36 @@ public class PythonEmbeddingService : IEmbeddingService
 
             // Read image file
             var imageBytes = await File.ReadAllBytesAsync(imagePath, ct);
-            
+
             // Send to Python service
             using var content = new MultipartFormDataContent();
-            content.Add(new ByteArrayContent(imageBytes), "file", Path.GetFileName(imagePath));
+            var fileContent = new ByteArrayContent(imageBytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetImageContentType(imagePath));
+            content.Add(fileContent, "file", Path.GetFileName(imagePath));
 
             var response = await _httpClient.PostAsync("/embed", content, ct);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: ct);
-            
+
             if (result?.Embedding == null || result.Embedding.Length == 0)
             {
                 throw new InvalidOperationException("Invalid embedding response from Python service");
             }
 
             _logger.LogInformation("Successfully received embedding with {Dimensions} dimensions", result.Embedding.Length);
-            
+
             return result.Embedding;
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Timeout calling Python embedding service");
+            throw new TimeoutException("Embedding service request timed out.", ex);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Embedding request was canceled by the caller");
+            throw;
         }
         catch (HttpRequestException ex)
         {
@@ -159,14 +181,27 @@ public class PythonEmbeddingService : IEmbeddingService
         }
     }
 
+    private static string GetImageContentType(string imagePath)
+    {
+        return Path.GetExtension(imagePath).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            _ => "application/octet-stream"
+        };
+    }
+
     public async Task<List<SimilarProduct>> FindSimilarProductsAsync(
-        float[] embedding, 
-        float threshold = 0.8f, 
-        int limit = 10, 
+        float[] embedding,
+        float threshold = 0.8f,
+        int limit = 10,
         CancellationToken ct = default)
     {
         _logger.LogInformation("Searching for similar products with threshold {Threshold}", threshold);
-        
+
         // Use raw SQL with pgvector operators
         var sql = @"
             SELECT 
@@ -189,18 +224,18 @@ public class PythonEmbeddingService : IEmbeddingService
 
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
-        
+
         // Convert float[] to pgvector format
         var embeddingStr = "[" + string.Join(",", embedding) + "]";
-        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown) 
-        { 
-            Value = embeddingStr 
+        command.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Unknown)
+        {
+            Value = embeddingStr
         });
         command.Parameters.Add(new NpgsqlParameter("threshold", threshold));
         command.Parameters.Add(new NpgsqlParameter("limit", limit));
 
         var results = new List<SimilarProduct>();
-        
+
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
@@ -213,7 +248,7 @@ public class PythonEmbeddingService : IEmbeddingService
         }
 
         _logger.LogInformation("Found {Count} similar products", results.Count);
-        
+
         return results;
     }
 

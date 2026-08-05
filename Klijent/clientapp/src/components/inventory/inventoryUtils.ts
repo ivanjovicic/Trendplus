@@ -29,7 +29,8 @@ export function formatNumber(value: number, digits = 0) {
   return value.toLocaleString("sr-RS", { maximumFractionDigits: digits });
 }
 
-export function formatCurrency(value: number) {
+export function formatCurrency(value: number | null | undefined, fallback = "Nije dostupno") {
+  if (value == null || Number.isNaN(value)) return fallback;
   return value.toLocaleString("sr-RS", { style: "currency", currency: "RSD", maximumFractionDigits: 0 });
 }
 
@@ -47,6 +48,50 @@ export function formatDateTime(value?: string | null) {
 export function csvEscape(value: string | number | null | undefined) {
   const raw = value == null ? "" : String(value);
   return /[",\n;]/.test(raw) ? `"${raw.replace(/"/g, "\"\"")}"` : raw;
+}
+
+/** Minimal row shape for screen CSV export (order must match the visible table). */
+export type InventoryScreenCsvRow = {
+  plu?: string | null;
+  naziv: string;
+  supplierName: string;
+  storeName: string;
+  stockStateLabel: string;
+  quantity: number;
+  minimum: number;
+  reorderGap: number;
+  unitCost: number | null;
+  estimatedValueAmount: number | null;
+};
+
+export function buildInventoryScreenCsvLines(rows: InventoryScreenCsvRow[]): string[] {
+  return [
+    ["PLU", "Naziv", "Dobavljač", "Prodavnica", "Status", "Kolicina", "Minimum", "Gap", "NabavnaCena", "Vrednost"].join(";"),
+    ...rows.map((row) =>
+      [
+        csvEscape(row.plu ?? ""),
+        csvEscape(row.naziv),
+        csvEscape(row.supplierName),
+        csvEscape(row.storeName),
+        csvEscape(row.stockStateLabel),
+        row.quantity,
+        row.minimum,
+        row.reorderGap,
+        row.unitCost == null ? "" : row.unitCost.toFixed(2),
+        row.estimatedValueAmount == null ? "" : row.estimatedValueAmount.toFixed(2),
+      ].join(";"),
+    ),
+  ];
+}
+
+export function buildInventoryScreenCsvFilename(pageNumber: number, sortBy: string): string {
+  const sortToken = isInventoryPageLocalRiskSort(sortBy)
+    ? sortBy
+    : sortBy && sortBy !== "kolicina"
+      ? sortBy.replace(/[^a-zA-Z0-9_-]/g, "")
+      : "";
+  const sortSuffix = sortToken ? `-${sortToken}` : "";
+  return `bilans-stanja-strana-${pageNumber}${sortSuffix}.csv`;
 }
 
 export function getStockState(quantity: number, minimum: number) {
@@ -149,9 +194,18 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
   const minimum = item.minimalnaKolicina ?? 0;
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
   const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
-  const unitCost = item.nabavnaCena ?? 0;
+  const unitCost = item.nabavnaCena ?? null;
   const positiveQuantity = Math.max(quantity, 0);
-  const estimatedValueAmount = item.estimatedValue ?? unitCost * positiveQuantity;
+  // Missing cost + missing backend estimate must stay unknown (not fake zero capital),
+  // except when on-hand quantity is already zero (true zero capital).
+  const estimatedValueAmount =
+    item.estimatedValue != null
+      ? item.estimatedValue
+      : unitCost != null
+        ? unitCost * positiveQuantity
+        : positiveQuantity === 0
+          ? 0
+          : null;
   const coverageRatio = minimum > 0 ? quantity / minimum : null;
   const stock = getStockState(quantity, minimum);
   const stockCoverStatus = item.stockCoverStatus ?? "insufficient_data";
@@ -239,7 +293,10 @@ export function getHistoryDirection(quantity?: number | null) {
 
 export function buildSupplierChart(rows: InventoryRow[]) {
   const totals = new Map<string, number>();
-  for (const row of rows) totals.set(row.supplierName, (totals.get(row.supplierName) ?? 0) + row.estimatedValueAmount);
+  for (const row of rows) {
+    if (row.estimatedValueAmount == null) continue;
+    totals.set(row.supplierName, (totals.get(row.supplierName) ?? 0) + row.estimatedValueAmount);
+  }
   return Array.from(totals.entries()).map(([supplierName, totalValue]) => ({ supplierName, totalValue }));
 }
 

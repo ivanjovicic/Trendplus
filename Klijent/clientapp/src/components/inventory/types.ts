@@ -8,8 +8,8 @@ export type InventoryRow = InventoryListItem & {
   reorderGap: number;
   stockState: "critical" | "warning" | "healthy";
   stockStateLabel: string;
-  estimatedValueAmount: number;
-  unitCost: number;
+  estimatedValueAmount: number | null;
+  unitCost: number | null;
   coverageRatio: number | null;
   stockCoverDays: number | null;
   stockCoverStatus: string;

@@ -242,3 +242,11 @@ Next prompt:
 ## Final recommendation
 
 The queues are now strong enough for agent execution, but the agent should not start from local addendum P0. Use the global lane order above. The biggest token saver is to treat this document as the routing layer and read the waiting-prompt prep document only when a prompt is explicitly listed as prepared/gated.
+
+### Current next runnable pointers (2026-08-05, STAB02)
+
+- Cross-cutting / governance: `STAB03` in `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- Analytics correctness: no global READY in reliability/cross-surface queues; promote the next WAITING family from the lanes above only with explicit unblocking
+- Premium UI (parallel-safe): `P-UI-05`
+- GenAI: dormant until STAB P0 gates are clear
+- Validator: `node scripts/check-prompt-queues.mjs`

@@ -445,21 +445,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     
     // Embedding service for AI-powered image search
-    var pythonServiceUrl = builder.Configuration["EmbeddingService:BaseUrl"] ?? "http://localhost:8000";
-    var useMockEmbedding = builder.Configuration.GetValue<bool>("EmbeddingService:UseMock", true);
-    
-    if (useMockEmbedding)
+    var embeddingServiceSettings = EmbeddingServiceRuntimePolicy.Resolve(
+        builder.Configuration,
+        builder.Environment.EnvironmentName);
+
+    if (embeddingServiceSettings.UseMock)
     {
         Console.WriteLine("⚠️ Using MOCK embedding service (no AI)");
         builder.Services.AddScoped<IEmbeddingService, MockEmbeddingService>();
     }
     else
     {
-        Console.WriteLine($"✅ Using Python embedding service at: {pythonServiceUrl}");
+        Console.WriteLine($"✅ Using Python embedding service at: {embeddingServiceSettings.BaseAddress}");
         builder.Services.AddHttpClient<IEmbeddingService, PythonEmbeddingService>(client =>
         {
-            client.BaseAddress = new Uri(pythonServiceUrl);
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.BaseAddress = embeddingServiceSettings.BaseAddress!;
+            client.Timeout = embeddingServiceSettings.Timeout;
         });
     }
 

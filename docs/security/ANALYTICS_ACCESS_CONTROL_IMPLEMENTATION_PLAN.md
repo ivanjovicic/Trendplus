@@ -23,11 +23,12 @@ It does:
 
 ## Source Inputs
 
-- [ANALYTICS_ACCESS_CONTROL_AUDIT.md](c:/Users/Ivan/source/repos/Trendplus2/docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md)
-- [TENANT_SAFETY_CHECKLIST.md](c:/Users/Ivan/source/repos/Trendplus2/docs/security/TENANT_SAFETY_CHECKLIST.md)
+- [ANALYTICS_ACCESS_CONTROL_AUDIT.md](./ANALYTICS_ACCESS_CONTROL_AUDIT.md)
+- [RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md](./RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md) (STAB03 Phase 1 decision: API-key admin mode)
+- [TENANT_SAFETY_CHECKLIST.md](./TENANT_SAFETY_CHECKLIST.md)
 - current endpoint registration under `Api/Endpoints/*`
 - current routing/navigation under:
-  - [App.tsx](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/App.tsx)
+  - `Klijent/clientapp/src/App.tsx`
   - [navConfig.ts](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/layout/navConfig.ts)
   - [ConfigurationPage.tsx](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/pages/ConfigurationPage.tsx)
 

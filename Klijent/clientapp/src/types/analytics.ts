@@ -1175,7 +1175,7 @@ export interface InventoryActionSuggestion {
   fromStoreName?: string | null;
   toStoreName?: string | null;
   suggestedQty: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
   daysSinceMovement: number;
   note?: string | null;
   updatedAtUtc?: string | null;

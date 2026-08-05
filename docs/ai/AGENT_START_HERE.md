@@ -63,11 +63,29 @@ Useful next documents:
 
 For analytics reliability tasks, treat `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` as the routing/index document. Do not read every queue addendum unless the index says the prompt has a read-together dependency.
 
-For a red `Analytics Tests & Data Integrity` workflow, use `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`. When restore or build fails before tests start, `BCI01` takes precedence over claims that backend tests or backend stabilization are passing. Do not patch analytics business code until the workflow reaches the test step and exposes a real failing test.
+## Canonical queue routing (STAB02)
 
-For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability and backend-CI routers; it does not replace `RQ01`, `BCI01` or another active task owned by those queues.
+Use this order. Do not invent a parallel `TODO`/`OPEN` workflow.
 
-For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend CI repair queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL` or `BLOCKED` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
+1. **Deploy / security / governance P0** → `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+   Current READY is declared at the top of that file.
+2. **Analytics correctness** → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, then only the named source-queue prompt section.
+   Cross-surface/addenda WAITING items stay WAITING until the router or owner unblocks them.
+3. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
+4. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) has no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
+
+Legacy `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger. Prefer evidence notes there; do not start new work from its old `TODO` instructions.
+
+Validate queue governance with:
+
+```powershell
+node scripts/check-prompt-queues.mjs
+node scripts/check-prompt-queues.mjs --self-test
+```
+
+For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability router; it does not replace an active analytics correctness task from the priority review.
+
+For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router and the stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
 
 ## The ten non-negotiables
 

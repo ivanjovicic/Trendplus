@@ -1,8 +1,8 @@
-# Trendplus GenAI Product Prompt Queue
+﻿# Trendplus GenAI Product Prompt Queue
 
 Created: 2026-07-31
 Repo: `ivanjovicic/Trendplus`
-Status: active only after the canonical analytics queue has no earlier TODO/PARTIAL/BLOCKED item
+Status: dormant until the analytics reliability router and the stabilization/release/security queue have no unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item
 
 ## Goal
 
@@ -20,14 +20,16 @@ Target outcome:
 ## Queue rules
 
 1. Read `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/GENAI_COPILOT_ROADMAP.md`, `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md` and `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`.
-2. Take only the first task with `Status: TODO` whose dependencies are DONE.
-3. Change it to `IN_PROGRESS` before implementation.
-4. Use one task and one focused commit per session.
-5. Finish as `DONE`, `PARTIAL` or `BLOCKED` with files, checks, risks and next step.
-6. Never skip a P0 security/evaluation gate to start an LLM UI or agent.
-7. Do not add a paid provider dependency unless the task explicitly allows it.
-8. Do not use real customer data in development fixtures.
-9. Stop if auth, scope, provider policy or source-of-truth ownership is unclear.
+2. Confirm the stabilization queue and analytics reliability router have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` items.
+3. Take only the first task with `Status: READY` (or the first unblocked `WAITING` task after promoting it to `READY`) whose dependencies are DONE.
+4. Change it to `IN_PROGRESS` before implementation.
+5. Use one task and one focused commit per session.
+6. Finish as `DONE`, `PARTIAL` or `BLOCKED` with files, checks, risks and next step.
+7. Never skip a P0 security/evaluation gate to start an LLM UI or agent.
+8. Do not add a paid provider dependency unless the task explicitly allows it.
+9. Do not use real customer data in development fixtures.
+10. Stop if auth, scope, provider policy or source-of-truth ownership is unclear.
+11. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`. Never use `TODO` or `OPEN`.
 
 ## Global stop conditions
 
@@ -39,14 +41,14 @@ Stop and report instead of guessing when:
 - store/tenant/user scope cannot be enforced before retrieval/tool execution;
 - an AI response would hide stale, partial, unknown or error states;
 - a write tool is proposed before a separate approval and audit design;
-- more than 6–8 files must change without an explicit split plan;
+- more than 6-8 files must change without an explicit split plan;
 - the AI feature becomes a dependency of core analytics startup or routes.
 
 ---
 
-## GAI01 — GenAI runtime and data-boundary readiness audit
+## GAI01  -  GenAI runtime and data-boundary readiness audit
 
-Status: TODO
+Status: DONE
 Priority: P0
 Type: docs/audit
 Token budget: medium
@@ -103,15 +105,27 @@ Acceptance:
 - Image and future text embedding boundaries are explicit.
 - The next hardening task is small and evidence-based.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `docs/qa/GENAI_RUNTIME_READINESS_AUDIT.md`, this queue
+- Findings: mock embedding service is the default active path; Python/FastAPI image service is dormant unless config flips; production deploy files do not wire the Python service; image upload/search paths are exposed without service auth; pgvector contains image and text feature-vector tables but no approved text-RAG runtime
+- Checks: `git diff --check` pass
+- Risk: enabling `EmbeddingService:UseMock=false` without additional hardening would expose unauthenticated Python service calls and raw exception text
+- Next: `GAI02`
+
 Checks:
 - git diff --check
 ```
 
 ---
 
-## GAI02 — Quarantine or harden the existing image embedding path
+## GAI02  -  Quarantine or harden the existing image embedding path
 
-Status: TODO
+Status: DONE
+> Completed: 2026-08-05. Hardened the image embedding boundary with explicit startup policy validation, mock-production fail-closed guards, bounded uploads, safe validation/errors, and timeout handling. Changed files: `Api/Config/EmbeddingServiceRuntimePolicy.cs`, `Api/Program.cs`, `Api.Tests/EmbeddingServiceRuntimePolicyTests.cs`, `Infrastructure/Services/EmbeddingService.cs`, `EmbeddingService/app.py`, `EmbeddingService/README.md`. Checks: `dotnet build Trendplus2.sln --configuration Release` pass; `dotnet test Api.Tests --configuration Release --filter FullyQualifiedName~EmbeddingServiceRuntimePolicyTests` pass; `python -m py_compile EmbeddingService/app.py` pass; targeted `git diff --check` clean, with only CRLF warnings.
+
 Priority: P0
 Type: backend/python security
 Depends on: GAI01
@@ -166,9 +180,9 @@ Checks:
 
 ---
 
-## GAI03 — Retail Analytics Copilot PRD and product metrics
+## GAI03  -  Retail Analytics Copilot PRD and product metrics
 
-Status: TODO
+Status: WAITING
 Priority: P0
 Type: product/docs
 Depends on: GAI01
@@ -213,9 +227,9 @@ Checks:
 
 ---
 
-## GAI04 — Golden evaluation dataset and provider-free harness
+## GAI04  -  Golden evaluation dataset and provider-free harness
 
-Status: TODO
+Status: WAITING
 Priority: P0
 Type: tests/evaluation
 Depends on: GAI03
@@ -266,9 +280,9 @@ Checks:
 
 ---
 
-## GAI05 — Typed read-only analytics tool contracts
+## GAI05  -  Typed read-only analytics tool contracts
 
-Status: TODO
+Status: WAITING
 Priority: P0
 Type: backend/contracts/tests
 Depends on: GAI03, GAI04
@@ -318,9 +332,9 @@ Checks:
 
 ---
 
-## GAI06 — Off-by-default Python AI orchestration service skeleton
+## GAI06  -  Off-by-default Python AI orchestration service skeleton
 
-Status: TODO
+Status: WAITING
 Priority: P1
 Type: python/platform
 Depends on: GAI04, GAI05
@@ -370,9 +384,9 @@ Checks:
 
 ---
 
-## GAI07 — Approved-document RAG prototype with citations
+## GAI07  -  Approved-document RAG prototype with citations
 
-Status: TODO
+Status: WAITING
 Priority: P1
 Type: python/retrieval/tests
 Depends on: GAI04, GAI06
@@ -423,9 +437,9 @@ Checks:
 
 ---
 
-## GAI08 — Read-only tool orchestration with grounded answer contract
+## GAI08  -  Read-only tool orchestration with grounded answer contract
 
-Status: TODO
+Status: WAITING
 Priority: P1
 Type: integration/tests
 Depends on: GAI05, GAI06, GAI07
@@ -476,9 +490,9 @@ Checks:
 
 ---
 
-## GAI09 — LLM observability, privacy and cost budget
+## GAI09  -  LLM observability, privacy and cost budget
 
-Status: TODO
+Status: WAITING
 Priority: P1
 Type: observability/ops/tests
 Depends on: GAI08
@@ -527,9 +541,9 @@ Checks:
 
 ---
 
-## GAI10 — Feature-flagged internal Copilot UI
+## GAI10  -  Feature-flagged internal Copilot UI
 
-Status: TODO
+Status: WAITING
 Priority: P2
 Type: frontend/integration/tests
 Depends on: GAI08, GAI09
@@ -581,9 +595,9 @@ Checks:
 
 ---
 
-## GAI11 — Internal evaluation and release evidence
+## GAI11  -  Internal evaluation and release evidence
 
-Status: TODO
+Status: WAITING
 Priority: P1
 Type: QA/product evidence
 Depends on: GAI10
@@ -630,9 +644,9 @@ Checks:
 
 ---
 
-## GAI12 — MCP and controlled customer-pilot readiness review
+## GAI12  -  MCP and controlled customer-pilot readiness review
 
-Status: TODO
+Status: WAITING
 Priority: P2
 Type: architecture/security review
 Depends on: GAI11 with no zero-tolerance blocker

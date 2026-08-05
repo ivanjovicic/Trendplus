@@ -57,18 +57,19 @@ describe("Inventory signal action mapping", () => {
     expect(noVelocity.recommendationStatus).toBe("SLOW_STOCK_REVIEW");
   });
 
-  it("maps insufficient_data to SIGNAL_REVIEW", () => {
+  it("maps insufficient_data to SIGNAL_REVIEW without confirmed expected impact", () => {
     const spec = buildInventorySignalActionSpec(
       makeRow({
         stockCoverStatus: "insufficient_data",
         stockCoverDays: null,
         sellThroughRatio: null,
+        estimatedValue: 10000,
       })
     );
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
     expect(spec.priority).toBe("P2");
-    expect(spec.expectedImpactRsd).toBe(10000);
+    expect(spec.expectedImpactRsd).toBeNull();
     expect(spec.description).toContain("Signal nije dovoljan za finalnu akciju.");
   });
 
@@ -88,20 +89,24 @@ describe("Inventory signal action mapping", () => {
     expect(spec.description).toContain("Signal nije dovoljan za finalnu akciju.");
   });
 
-  it("maps recommendationAllowed=false to SIGNAL_REVIEW even if cover is low", () => {
+  it("maps recommendationAllowed=false to SIGNAL_REVIEW without expected impact even when value exists", () => {
     const spec = buildInventorySignalActionSpec(
       makeRow({
         stockCoverStatus: "low_cover",
         recommendationAllowed: false,
         sellThroughStatus: "insufficient_data",
         sellThroughRatio: null,
+        estimatedValue: 25000,
+        estimatedValueAmount: 25000,
       })
     );
 
     expect(spec.recommendationStatus).toBe("SIGNAL_REVIEW");
+    expect(spec.sourceKey).toContain("signal_check");
+    expect(spec.expectedImpactRsd).toBeNull();
   });
 
-  it("keeps expected impact nullable when evidence is missing", () => {
+  it("keeps expected impact nullable when evidence is missing on actionable replenish", () => {
     const spec = buildInventorySignalActionSpec(
       makeRow({
         estimatedValue: null,
@@ -111,6 +116,19 @@ describe("Inventory signal action mapping", () => {
       })
     );
 
+    expect(spec.recommendationStatus).toBe("REPLENISH");
     expect(spec.expectedImpactRsd).toBeNull();
+  });
+
+  it("preserves expected impact on actionable REPLENISH when value exists", () => {
+    const spec = buildInventorySignalActionSpec(
+      makeRow({
+        stockCoverStatus: "out_of_stock_risk",
+        estimatedValue: 18000,
+      })
+    );
+
+    expect(spec.recommendationStatus).toBe("REPLENISH");
+    expect(spec.expectedImpactRsd).toBe(18000);
   });
 });

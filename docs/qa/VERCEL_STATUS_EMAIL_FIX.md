@@ -1,6 +1,6 @@
 # Vercel Status Email Fix
 
-Updated: 2026-06-19
+Updated: 2026-08-05
 
 ## Problem
 
@@ -20,6 +20,20 @@ That is only safe if `ivanjovicic1986@gmail.com` is verified on the GitHub accou
 - `git config user.name` -> `Ivan Jovicic`
 - `git config user.email` -> `ivanjovicic1986@gmail.com`
 - recent commits in this repo use `Ivan Jovicic <ivanjovicic1986@gmail.com>`
+
+## 2026-08-05 Repo Check
+
+- `git config user.name` -> `Ivan Jovicic`
+- `git config user.email` -> `ivanjovicic1986@gmail.com`
+- recent commits in this repo:
+  - `a1b9231 Ivan Jovicic <ivanjovicic1986@gmail.com>`
+  - `2ab36cb Ivan Jovicic <ivanjovicic1986@gmail.com>`
+  - `c5e6ce6 Ivan Jovicic <ivanjovicic1986@gmail.com>`
+- older history includes at least one desktop-authored commit:
+  - `8fb6141 Ivan <Ivan@DESKTOP-V877DAD>`
+- conclusion:
+  - the current branch already uses a consistent repo-local identity that matches the documented fix path
+  - if GitHub does not verify `ivanjovicic1986@gmail.com`, switch to a GitHub no-reply email before the next commit
 
 ## What GitHub accepts
 
@@ -93,4 +107,3 @@ After the next push, confirm:
 1. The new commit author email matches the verified GitHub email or GitHub no-reply format.
 2. Vercel shows a successful status/deployment for that commit.
 3. The same blocker does not recur on the next analytics commit.
-

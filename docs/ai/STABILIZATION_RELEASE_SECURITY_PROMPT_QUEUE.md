@@ -3,7 +3,7 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB01`
+Current READY prompt: `STAB04`
 
 ## Goal
 
@@ -44,13 +44,13 @@ This queue intentionally does not duplicate analytics correctness prompts such a
 
 ## STAB01 - Current main deploy, CI and live-smoke truth gate
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: deploy/ops/docs, code only if evidence proves a minimal root cause
 Feature family: current-main-release-truth
 Parallel-safe: yes, with `RQ01` only because scopes must not overlap
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB01-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB01-cursor.lock.md` (removed after DONE)
 Commit suggestion: `docs(qa): refresh current main deploy evidence`
 
 ### Why
@@ -159,18 +159,33 @@ The repository has strong historical live-smoke evidence, but the latest checked
 - No old June smoke document is presented as proof for an unverified August deployment.
 - No analytics business logic changed unless it was the proven build blocker and was split into its own task.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Result: **WARN** (truth gate complete; not production PASS)
+- Inspected SHA: `a1b9231a6910ab2209b5e7d79db0f2bd42cf8a04`
+- Evidence: `docs/qa/ANALYTICS_CURRENT_MAIN_DEPLOY_EVIDENCE_2026-08-05.md`
+- Vercel for `a1b9231`: success (previous June/`66084a7` failure evidence is stale for this SHA)
+- Actions analytics suite for `a1b9231`: failure at NuGet `Restore dependencies` (build/tests skipped)
+- Live backend: health/ready PASS; runtime SHA `e9f3238…` ≠ main tip (WARN); refresh-status `unknown` (honest); admin `401`
+- Live frontend: SPA shell + current assets served; authenticated page-body smoke not completed
+- Local checks (dirty tree): guardrails PASS, build PASS, test:analytics 22 failed / 204 passed
+- Repo code changes: none (docs/queue only)
+- Next: `STAB02` READY
+
 ---
 
 ## STAB02 - Canonical queue and status truth reconciliation
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB01` is `DONE`, `PARTIAL` with a non-repository provider blocker, or explicitly deferred by the owner
 Priority: P0
 Type: docs/tooling
 Feature family: prompt-queue-governance
 Parallel-safe: yes, with runtime analytics work if no queue file overlap
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB02-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB02-cursor.lock.md` (removed after DONE)
 Commit suggestion: `chore(ai): reconcile prompt queue truth`
 
 ### Why
@@ -264,18 +279,31 @@ The repository has several queue generations and incompatible status conventions
 - Stale queue claims are reconciled against current code.
 - A machine check prevents the same drift from returning.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `scripts/check-prompt-queues.mjs`, `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`, `docs/ai/AGENT_START_HERE.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `docs/ai/NEXT_PROMPT_QUEUE.md`, `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`, `docs/ai/QUEUE_STATUS_TEMPLATE.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, this queue
+- Fix: ownership matrix + canonical routing; GenAI `TODO`→`WAITING`; GAI02 demoted from `IN_PROGRESS` under STAB P0; Q20/Q22/Q67 confirmed DONE with current evidence; validator with `--self-test`
+- Checks: `node scripts/check-prompt-queues.mjs --self-test` pass; `node scripts/check-prompt-queues.mjs` pass (209 tasks); `git diff --check` pass
+- Next READY analytics: none globally (WAITING families remain owner-gated)
+- Next READY cross-cutting: `STAB03`
+- Also READY parallel-safe UI: `P-UI-05`
+- Risk: historical addenda still mention stale “next global: RQ51” prose; validator allows `Current READY prompt: none ...`
+- Next: `STAB03` READY
+
 ---
 
 ## STAB03 - Authentication and authorization runtime boundary audit
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB02` is `DONE`
 Priority: P0
 Type: security audit/docs/tests
 Feature family: auth-runtime-boundary
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB03-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB03-cursor.lock.md` (removed after DONE)
 Commit suggestion: `docs(security): audit runtime authorization boundary`
 
 ### Why
@@ -372,11 +400,23 @@ The repo has an admin-key helper and several authorization tests, but it does no
 - The next code task is small enough for one endpoint family.
 - No external provider or broad RBAC implementation was invented.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Evidence: `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
+- Also updated: `ANALYTICS_ACCESS_CONTROL_AUDIT.md`, `ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`, this queue
+- Phase 1 decision: **(b) explicit internal API-key admin mode** — production has no auth pipeline, so Admin-role principal path is unreachable; `X-Admin-Key`/`Admin:ApiKey`/`ADMIN_API_KEY` is the live boundary
+- Next code task: `STAB04` admin operational reads
+- Checks: code inspection pass; targeted auth filter tests fail 17/63 on current branch (recorded, not used as IdP proof); no runtime code changed; `git diff --check` pass
+- Risk: document header roles remain spoofable; import/logs sensitive reads still open until follow-ups
+- Next: `STAB04` READY
+
 ---
 
 ## STAB04 - Protect admin operational read surfaces
 
-Status: WAITING
+Status: READY
 Ready after: `STAB03` fixes the Phase 1 boundary or declares the existing admin-key boundary acceptable for this task
 Priority: P0
 Type: backend security/tests

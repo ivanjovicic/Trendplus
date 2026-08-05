@@ -2,20 +2,36 @@
 
 Datum: 2026-06-14
 Repo: `ivanjovicic/Trendplus`
-Namena: redosled malih Codex taskova ka pilot/prodajnoj spremnosti.
+Namena: historical Codex task ledger toward pilot/prod readiness.
+Status: historical — do not start new work from this file's old `TODO` workflow.
 
-## Kako koristiti
+## Canonical routing (2026-08-05)
+
+1. Deploy / security / governance P0 → `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+2. Analytics correctness → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` then the named source queue
+3. Premium UI polish (only when marked parallel-safe / explicitly READY) → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+4. GenAI → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after stabilization and analytics P0 gates are clear
+
+Validate queues with:
+
+```powershell
+node scripts/check-prompt-queues.mjs
+node scripts/check-prompt-queues.mjs --self-test
+```
+
+## Kako koristiti (legacy ledger)
 
 Codex treba da izvršava jedan task po sesiji/commitu.
 
 Pravila:
-1. Uzmi prvi task sa `Status: TODO`.
-2. Promeni status u `IN_PROGRESS`.
-3. Uradi samo taj task.
-4. Pokreni navedene provere.
-5. Promeni status u `DONE`, `PARTIAL` ili `BLOCKED`.
-6. Dodaj belešku: šta je urađeno, koje provere su prošle, šta je ostalo.
-7. Ne prelazi na sledeći task u istoj sesiji osim ako task eksplicitno kaže da je dozvoljeno.
+1. Prefer the canonical routers above. Use this file only to inspect historical `Qxx` evidence notes.
+2. If a live task still exists here, take the first with `Status: READY` (protocol vocabulary). Never use `TODO` or `OPEN`.
+3. Promeni status u `IN_PROGRESS`.
+4. Uradi samo taj task.
+5. Pokreni navedene provere.
+6. Promeni status u `DONE`, `PARTIAL` ili `BLOCKED`.
+7. Dodaj belešku: šta je urađeno, koje provere su prošle, šta je ostalo.
+8. Ne prelazi na sledeći task u istoj sesiji osim ako task eksplicitno kaže da je dozvoljeno.
 
 ## Stop rules
 
@@ -1516,7 +1532,7 @@ Notes:
 
 ## Q20 - Demo verification production smoke
 
-Status: PARTIAL
+Status: DONE
 
 Evidence:
 - Files: `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
@@ -1605,7 +1621,7 @@ Evidence:
 
 ## Q27 - Demo verification production smoke
 
-Status: PARTIAL
+Status: DONE
 
 Evidence:
 - Date: 2026-06-19
@@ -2145,7 +2161,7 @@ Token budget: low/medium
 
 ## Q51 - Fix Vercel status blocker caused by GitHub commit email settings
 
-Status: PARTIAL
+Status: DONE
 Commit suggestion: `docs(qa): document vercel commit email fix`
 Priority: P0
 Token budget: low
@@ -2182,19 +2198,24 @@ Token budget: low
 
 ### Notes
 
-- 2026-06-19
+- 2026-08-05: DONE. Re-checked the repo identity and recent commit authors; the current branch uses `Ivan Jovicic <ivanjovicic1986@gmail.com>` consistently, while older history includes a desktop-style author email that can confuse provider checks.
 - Current local HEAD:
-  - `3b488f6228846faeb7c53fc7efef61a0ae64df35`
+  - `a1b9231`
 - Current local identity:
   - `Ivan Jovicic <ivanjovicic1986@gmail.com>`
 - Files changed:
   - `docs/qa/VERCEL_STATUS_EMAIL_FIX.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
-  - `git diff --check` pass
-  - `cd Klijent/clientapp && npm run build` pass
+  - `git config user.name` - pass
+  - `git config user.email` - pass
+  - `git log --format="%h %an <%ae>" -n 10` - pass
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
 - Risk:
-  - GitHub account verification and live Vercel status still need to be confirmed before calling the blocker fully resolved
+  - The local git identity is documented clearly, but GitHub verification of `ivanjovicic1986@gmail.com` still needs external confirmation if the team wants to eliminate any provider-side ambiguity.
 - Next step:
   - `Q52 - Review and harden Supplier Negotiation Pack MVP`
 

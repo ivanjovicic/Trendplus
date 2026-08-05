@@ -190,6 +190,8 @@ Classification: likely export/UI mismatch.
 
 Recommended prompt: RQ58.
 
+**Resolution (2026-08-05, RQ58 DONE):** `exportVisibleCsv` now exports `displayedRows` (same order as the table). Filename includes risk sort token (`-oosRisk` / `-overstockRisk`); status message notes page-local risk order.
+
 ### R59 - Inventory signal-check actions can still receive an expected impact value
 
 File: `Klijent/clientapp/src/pages/InventoryPage.tsx`
@@ -207,6 +209,8 @@ Risk:
 Classification: suspicious action-impact trust bug.
 
 Recommended prompt: RQ59.
+
+**Resolution (2026-08-05, RQ59 DONE):** `buildInventorySignalActionSpec` now sets `expectedImpactRsd: null` for all `SIGNAL_REVIEW` paths (including `recommendationAllowed=false` with positive inventory value). Actionable REPLENISH/SLOW_STOCK_REVIEW still attach impact when evidence exists.
 
 ### R60 - Inventory row value can become fake zero when cost and estimated value are missing
 
@@ -226,6 +230,8 @@ Classification: likely fake-zero valuation gap.
 
 Recommended prompt: RQ60.
 
+**Resolution (2026-08-05, RQ60 DONE):** `buildInventoryRow` keeps `unitCost`/`estimatedValueAmount` as null when cost and estimate are missing and quantity > 0 (zero quantity remains true 0). CSV exports blank cost/value; supplier chart skips unknown rows; `formatCurrency(null)` shows "Nije dostupno".
+
 ### R61 - Inventory trust header freshness can use secondary-surface timestamps instead of primary table/balance freshness
 
 File: `Klijent/clientapp/src/pages/InventoryPage.tsx`
@@ -244,6 +250,8 @@ Risk:
 Classification: suspicious freshness/lineage bug.
 
 Recommended prompt: RQ61.
+
+**Resolution (2026-08-05, RQ61 DONE):** `InventoryPage` now resolves the header timestamp only from primary list/balance/insights meta timestamps and renders a separate freshness note when secondary panels are fresher or when primary freshness is missing. Added `InventoryPage.freshnessLineage.spec.tsx` to lock the no-fallback behavior.
 
 ### R62 - Vendor pre/post previous-period failure silently degrades comparison metrics to N/A
 

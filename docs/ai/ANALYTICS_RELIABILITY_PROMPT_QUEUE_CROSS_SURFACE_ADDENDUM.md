@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ58
+Current READY prompt: none (RQ51-RQ62 DONE; RQ55/RQ56/RQ63 WAITING)
 Main queue READY prompt: none (RQ01–RQ13 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -20,10 +20,10 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ55 | WAITING | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
 | RQ56 | WAITING | total-cost-fallback-guardrail | Do not clamp inconsistent implied cost to fake zero |
 | RQ57 | DONE | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
-| RQ58 | READY | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
-| RQ59 | WAITING | inventory-signal-review-impact | Do not attach confirmed impact to weak signal-check actions |
-| RQ60 | WAITING | inventory-fake-zero-value | Preserve unknown inventory value when cost is missing |
-| RQ61 | WAITING | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
+| RQ58 | DONE | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
+| RQ59 | DONE | inventory-signal-review-impact | Do not attach confirmed impact to weak signal-check actions |
+| RQ60 | DONE | inventory-fake-zero-value | Preserve unknown inventory value when cost is missing |
+| RQ61 | DONE | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
 
@@ -391,14 +391,14 @@ Inventory OOS/overstock risk sorting is applied client-side only to the loaded p
 
 ## RQ58 - Inventory screen CSV order parity
 
-Status: READY
+Status: DONE
 Ready after: RQ57 or explicit unblocking
 Priority: P1
 Type: frontend-export/tests
 Feature family: inventory-screen-csv-order
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ58-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ58-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(inventory): export displayed row order for screen csv`
 
 ### Why
@@ -430,18 +430,28 @@ Commit suggestion: `fix(inventory): export displayed row order for screen csv`
 
 - Screen CSV matches the order currently shown on screen.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `InventoryPage.tsx`, `inventoryUtils.ts` (`buildInventoryScreenCsvLines` / `buildInventoryScreenCsvFilename`), `InventoryPage.screenCsvOrder.spec.ts`, this queue, audit R58
+- Fix: `exportVisibleCsv` uses `displayedRows`; filename includes risk sort token; status note for page-local risk sorts
+- Checks: `npm run test -- --run src/pages/__tests__/InventoryPage.screenCsvOrder.spec.ts` pass (2); `git diff --check` pass
+- Risk: filtered server CSV still uses server sort (intentional; out of scope)
+- Next: RQ59 READY
+
 ---
 
 ## RQ59 - Inventory signal-review impact trust
 
-Status: WAITING
+Status: DONE
 Ready after: RQ57 or explicit reprioritization
 Priority: P1
 Type: frontend/action-contract/tests
 Feature family: inventory-signal-review-impact
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ59-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ59-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(inventory): avoid confirmed impact on signal review actions`
 
 ### Why
@@ -473,18 +483,28 @@ Weak/insufficient inventory signals create `SIGNAL_REVIEW` actions but can still
 
 - Signal review actions do not present untrusted exposure as confirmed expected impact.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `InventoryPage.tsx` (`buildInventorySignalActionSpec`), `InventoryPage.signalActions.spec.ts`, this queue, audit R59
+- Fix: `SIGNAL_REVIEW` paths set `expectedImpactRsd: null` even when row has estimated value; REPLENISH/SLOW_STOCK_REVIEW keep impact when evidence exists
+- Checks: `npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts` pass (7); `git diff --check` pass
+- Risk: ExecutiveDecisionBoard inventory cards still fall back to `estimatedValueAmount` when `expectedImpactRsd` is null (out of InventoryPage scope)
+- Next: RQ60 READY
+
 ---
 
 ## RQ60 - Inventory fake-zero value guardrail
 
-Status: WAITING
+Status: DONE
 Ready after: RQ59 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: inventory-fake-zero-value
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ60-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ60-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(inventory): keep missing inventory value unknown`
 
 ### Why
@@ -516,18 +536,28 @@ Inventory row value uses `nabavnaCena ?? 0`, then `estimatedValue ?? unitCost * 
 
 - Missing inventory valuation is visible as unknown, not fake zero.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `inventoryUtils.ts`, `types.ts`, `analytics.ts` (workflow estimatedValue null), `InventoryPage.tsx` (null-safe total/sort/forecast), `InventoryPage.fakeZeroValue.spec.ts`, this queue, audit R60
+- Fix: `unitCost`/`estimatedValueAmount` stay null when cost+estimate missing and qty>0; zero qty stays true 0; CSV blanks unknown; supplier chart skips unknown; `formatCurrency(null)` → "Nije dostupno"
+- Checks: `npm run test -- --run InventoryPage.fakeZeroValue.spec.ts` pass (5); `npx tsc -b` pass; `git diff --check` pass
+- Risk: page-local KPI fallback still sums known values only (`?? 0`), so totals understate when some rows are unknown until balance meta is present
+- Next: RQ63 WAITING
+
 ---
 
 ## RQ61 - Inventory freshness lineage
 
-Status: WAITING
+Status: DONE
 Ready after: RQ57/RQ60 or explicit unblocking
 Priority: P1
 Type: frontend-trust/tests
 Feature family: inventory-freshness-lineage
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ61-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ61-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(inventory): separate freshness timestamps by panel`
 
 ### Why
@@ -558,6 +588,16 @@ Inventory header can use a fallback timestamp from forecast/alerts/rebalance/sto
 ### Acceptance
 
 - Fresh secondary panel cannot make primary inventory table appear fresh.
+
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx`, this queue, audit R61
+- Fix: header timestamp now comes only from primary list/balance/insights metas; secondary panels render a separate freshness note when primary freshness is missing or materially older
+- Checks: `npm run test -- --run src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx` pass; `npm run check:analytics-guardrails` pass; `npm run build` pass; `git diff --check` pass
+- Risk: the trust header still shows a single `lastRefreshAt`; the separate note carries panel-specific freshness lineage
+- Next: `RQ63` remains WAITING
 
 ---
 

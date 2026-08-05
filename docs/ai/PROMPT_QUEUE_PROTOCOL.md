@@ -5,11 +5,24 @@ Repo: `ivanjovicic/Trendplus`
 
 This protocol applies to:
 
-- `docs/ai/NEXT_PROMPT_QUEUE.md`
+- `docs/ai/NEXT_PROMPT_QUEUE.md` (historical ledger)
 - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md`
+- `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 - any future focused prompt queue under `docs/ai/`
 
-Goal: keep Codex, Cursor and manual edits from implementing the same or similar feature at the same time while preserving analytics trust: no fake zero, no fake green, no fake freshness, no fake recommendation and no hidden fallback.
+Statuses `TODO` and `OPEN` are not valid live statuses. Convert them to protocol vocabulary or mark the entry historical.
+
+Run the governance validator before claiming queue cleanup complete:
+
+```powershell
+node scripts/check-prompt-queues.mjs
+node scripts/check-prompt-queues.mjs --self-test
+```
+
+Canonical agent routing lives in `docs/ai/AGENT_START_HERE.md` (STAB02 section) and the analytics priority review.
 
 ## Status model
 
