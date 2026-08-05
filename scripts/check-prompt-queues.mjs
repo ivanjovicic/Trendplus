@@ -42,13 +42,14 @@ const ACTIVE_QUEUE_FILES = [
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md",
   "docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md",
   "docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md",
+  "docs/ai/MULTITENANCY_PROMPT_QUEUE.md",
   "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
   "docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md",
   "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md",
   "docs/ai/NEXT_PROMPT_QUEUE.md",
 ];
 
-const TASK_HEADER_RE = /^##\s+((?:STAB|RQ|Q|GAI|P-UI)[\w.-]+)\b[^\n]*$/m;
+const TASK_HEADER_RE = /^##\s+((?:STAB|MT|RQ|Q|GAI|P-UI)[\w.-]+)\b[^\n]*$/m;
 const STATUS_RE = /^Status:\s*`?([A-Za-z0-9 _-]+)`?\s*$/gm;
 const CURRENT_READY_RE = /^Current READY prompt:\s*(.+)$/im;
 const FEATURE_FAMILY_RE = /^Feature family:\s*(.+)$/im;
@@ -67,7 +68,7 @@ function normalizeReadyToken(raw) {
   const text = String(raw ?? "").trim();
   if (!text || /^none\b/i.test(text)) return null;
   const cleaned = text.replace(/^[`"'[]+|[`"'\]]+$/g, "").trim();
-  const match = cleaned.match(/\b((?:STAB|RQ|Q|GAI|P-UI)[\w.-]+)\b/i);
+  const match = cleaned.match(/\b((?:STAB|MT|RQ|Q|GAI|P-UI)[\w.-]+)\b/i);
   return match ? match[1] : null;
 }
 
@@ -85,7 +86,7 @@ function parseTasks(content, filePath) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    const header = line.match(/^##\s+((?:STAB|RQ|Q|GAI|P-UI)[\w.-]+)\b/);
+    const header = line.match(/^##\s+((?:STAB|MT|RQ|Q|GAI|P-UI)[\w.-]+)\b/);
     if (header) {
       if (current) tasks.push(current);
       current = {
@@ -274,7 +275,9 @@ function runSelfTest() {
             ? `# GenAI\n\n## GAI01 - Gate\n\nStatus: WAITING\nPriority: P0\nFeature family: genai-gate\nParallel-safe: no\n`
             : relative.endsWith("ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md")
               ? `# UI\nCurrent READY prompt: P-UI-05\n\n## P-UI-05 - Visual\n\nStatus: READY\nPriority: P0\nFeature family: analytics-ui-visual-regression\nParallel-safe: yes\n`
-              : `# Queue\nCurrent READY prompt: none\n`,
+              : relative.endsWith("MULTITENANCY_PROMPT_QUEUE.md")
+                ? `# Tenancy\nCurrent READY prompt: MT01\n\n## MT01 - Contract\n\nStatus: READY\nPriority: P1\nFeature family: tenant-context-contract\nParallel-safe: yes\n`
+                : `# Queue\nCurrent READY prompt: none\n`,
       );
     }
 
