@@ -56,6 +56,8 @@ Useful next documents:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
 - `docs/ai/GENAI_COPILOT_ROADMAP.md`
 - `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
 - `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
@@ -69,10 +71,14 @@ Use this order. Do not invent a parallel `TODO`/`OPEN` workflow.
 
 1. **Deploy / security / governance P0** → `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
    Current READY is declared at the top of that file.
-2. **Analytics correctness** → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, then only the named source-queue prompt section.
+2. **Backend CI bootstrap and execution failures** → `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` when the backend workflow is red before or during restore/build/test execution.
+   A workflow that never reaches tests cannot be used as proof that backend tests pass or fail.
+3. **Analytics correctness** → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, then only the named source-queue prompt section.
    Cross-surface/addenda WAITING items stay WAITING until the router or owner unblocks them.
-3. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
-4. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) has no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
+4. **Data-source connector portability** → `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` for Access-to-generic connector contracts, SQL Server/PostgreSQL/MySQL source readers, mapping and checkpoint work.
+   This is a P1/P2 queue. Its `QDB01` docs/tests task may run in parallel only when it has no path collision; it never outranks an unresolved P0 gate.
+5. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
+6. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) and (2) have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
 
 Legacy `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger. Prefer evidence notes there; do not start new work from its old `TODO` instructions.
 
@@ -83,9 +89,11 @@ node scripts/check-prompt-queues.mjs
 node scripts/check-prompt-queues.mjs --self-test
 ```
 
-For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability router; it does not replace an active analytics correctness task from the priority review.
+The data-source connector roadmap keeps the Trendplus internal database on PostgreSQL and treats Access, SQL Server, PostgreSQL, MySQL and later APIs/files as read-only import sources. Do not use that queue to create multi-provider EF Core migrations, arbitrary SQL, write-back, CDC infrastructure or bidirectional synchronization. `QDB01` is the only initial READY item and owns contract documentation plus characterization tests, not production import behavior.
 
-For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router and the stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
+For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability and backend-CI routers; it does not replace an active analytics correctness task from the priority review.
+
+For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend-CI queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
 
 ## The ten non-negotiables
 
@@ -154,6 +162,7 @@ Stop and report status if:
 - a missing value would become zero/good/fresh/normal/measured
 - a frontend helper would have to invent backend business semantics
 - a change fixes table display but leaves detail/export/action payload inconsistent
+- source-connector work would expose credentials, execute arbitrary SQL or advance checkpoints before durable destination commit
 
 ## Final report format
 
