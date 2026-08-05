@@ -25,6 +25,18 @@ What is still **not publicly provable** from the current repo + public productio
 
 There is no public version endpoint exposing commit SHA, and Render dashboard/log access was not available in this task context.
 
+## 2026-08-05 Live Version Verification
+
+- `GET /api/runtime/version` now returns `200 OK` on production.
+- The live payload reports:
+  - `service = trendplus-api`
+  - `environment = Production`
+  - `commitSha = e9f3238a172fe61ade3844777d8576dade270dae`
+  - `buildTimeUtc = 2026-08-05T08:44:09.2807027Z`
+  - `processType = web`
+  - `provider = render`
+- This removes the remaining public observability gap for the deployed backend commit.
+
 ## Expected Commit
 
 - Local `HEAD`: `b69637c323aaab726cfeb976f796c95476c1dfae`
@@ -121,6 +133,9 @@ What we could not verify:
 Reason:
 - no public version endpoint in API
 - no Render dashboard session/log export was available in this task context
+
+Update:
+- the public version endpoint is now live and exposes the deployed commit SHA
 
 ## Is Render Stale?
 

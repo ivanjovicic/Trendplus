@@ -30,8 +30,8 @@ Files:
 
 Observed:
 
-- `mapRecommendationStatus` maps backend `insufficient_data` to local status `Zadrzi`.
-- The UI status enum only has `Pojacaj`, `Zadrzi`, `Smanji`.
+- `mapRecommendationStatus` mapped backend `insufficient_data` to local status `Zadrzi`.
+- The UI status enum only had `Pojacaj`, `Zadrzi`, `Smanji`.
 
 Risk:
 
@@ -42,6 +42,8 @@ Classification: likely high-impact recommendation-semantics bug.
 
 Recommended prompt: RQ51.
 
+**Resolution (2026-08-05, RQ51 DONE):** `insufficient_data` maps to distinct `NedovoljnoPodataka` / “Nedovoljno podataka” (neutral `status-na` tone). Counts, export `getValue`, detail tooltip, and tests preserve the status; never shown as Zadrži.
+
 ### R52 - Color analytics can fall back to a local recommendation formula when backend recommendation is missing
 
 File: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
@@ -49,7 +51,7 @@ File: `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
 Observed:
 
 - If a backend recommendation exists, the page uses it.
-- If it does not, the page computes `reliabilityScore`, `shareScore`, `marginNorm`, `popNorm`, `decisionScoreValue` and maps that to `Pojacaj`/`Zadrzi`/`Smanji`.
+- If it does not, the page computed `reliabilityScore`, `shareScore`, `marginNorm`, `popNorm`, `decisionScoreValue` and mapped that to `Pojacaj`/`Zadrzi`/`Smanji`.
 
 Risk:
 
@@ -59,6 +61,8 @@ Risk:
 Classification: likely frontend trust bug.
 
 Recommended prompt: RQ52.
+
+**Resolution (2026-08-05, RQ52 DONE):** Local heuristic removed. Missing/unmapped backend recommendation maps to `NedovoljnoPodataka` with explicit non-decision reason; not counted as Pojačaj/Zadrži/Smanji.
 
 ### R53 - ShoeType and Color pages do not pass `dataScope` to list APIs, but detail URLs include a dataScope
 
@@ -72,7 +76,7 @@ Files:
 Observed:
 
 - The services support `dataScope` and append it to the API query.
-- The list pages call the APIs without `dataScope`.
+- The list pages called the APIs without `dataScope`.
 - Detail navigation adds `dataScope = getDataScope()` to the URL.
 
 Risk:
@@ -84,6 +88,8 @@ Classification: likely cross-surface filter contract bug.
 
 Recommended prompt: RQ53.
 
+**Resolution (2026-08-05, RQ53 DONE):** List calls pass the same `dataScope` state used for detail/export/trust; pages reload on `trendplus:data-scope-changed`.
+
 ### R54 - Vendor pre/post nivelacija page does not expose/pass `dataScope` or `storeId` even though the API contract supports them
 
 Files:
@@ -94,7 +100,7 @@ Files:
 Observed:
 
 - The service contract supports `storeId` and `dataScope`.
-- The page filters only by date, vendor and category, and calls current/previous API requests without `storeId` or `dataScope`.
+- The page filtered only by date, vendor and category, and called current/previous API requests without `storeId` or `dataScope`.
 
 Risk:
 
@@ -104,6 +110,8 @@ Risk:
 Classification: likely filter/data lineage gap.
 
 Recommended prompt: RQ54.
+
+**Resolution (2026-08-05, RQ54 DONE):** Page inherits global `dataScope` (reloads on change), exposes Objekat store filter, and passes both to current + previous requests; export/trust metadata declare scope/store.
 
 ### R55 - Supplier page can hide unknown suppliers while still using all-revenue denominators
 
@@ -161,6 +169,8 @@ Risk:
 Classification: likely table semantics bug.
 
 Recommended prompt: RQ57.
+
+**Resolution (2026-08-05, RQ57 DONE):** Explicit page-local labeling in sort options + warning when risk sort is active (multipage notes that higher-risk SKUs may be elsewhere). Server-side global risk sort deferred.
 
 ### R58 - Inventory “CSV ekran” can export `rows`, not the risk-sorted `displayedRows`
 
@@ -242,8 +252,8 @@ File: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
 Observed:
 
 - Current and previous period requests are loaded with `Promise.allSettled`.
-- If current succeeds and previous fails, the page keeps current data but sets previous data/revenue to null.
-- Growth and volatility then show N/A/new-baseline style results without a prominent “previous comparison unavailable due to request failure” warning.
+- If current succeeds and previous fails, the page kept current data but set previous data/revenue to null.
+- Growth and volatility then showed N/A/new-baseline style results without a prominent “previous comparison unavailable due to request failure” warning.
 
 Risk:
 
@@ -253,6 +263,8 @@ Risk:
 Classification: medium-priority comparison-lineage bug.
 
 Recommended prompt: RQ62.
+
+**Resolution (2026-08-05, RQ62 DONE):** `previousComparisonError` + warning banner; PoP/volatility show `Nedostupno` (never `Nova baza` on request failure).
 
 ### R63 - Vendor pre/post `top5SharePct` is share of absolute change, not share of revenue
 

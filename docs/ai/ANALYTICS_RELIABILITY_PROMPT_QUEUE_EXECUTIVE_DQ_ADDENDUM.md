@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Current READY prompt: none in this addendum (RQ72 DONE; next global per priority review: RQ39)
+Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
 
@@ -18,7 +18,7 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ72 | WAITING | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
+| RQ72 | DONE | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
 | RQ73 | WAITING | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
 | RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
 | RQ75 | WAITING | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
@@ -32,14 +32,14 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 
 ## RQ72 - Executive fallback product lost-sales impact fallback
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
 Feature family: executive-product-impact-fallback
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ72-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ72-cursor.lock.md`
 Commit suggestion: `fix(analytics): preserve executive product impact contract`
 
 ### Why
@@ -70,6 +70,23 @@ Executive fallback product card builder repeats the old bug where missing `expec
 ### Acceptance
 
 - Executive fallback cannot reintroduce RQ01's lost-sales expected-impact bug.
+
+### Notes
+
+- 2026-08-05: DONE. Removed lost-sales fallback from Executive product card builder/sort; exported `buildExecutiveFallbackProductCards` for tests; RQ01 parity.
+- Changed files:
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts`
+  - `docs/qa/ANALYTICS_EXECUTIVE_DQ_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md` (next READY)
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` - pass (7)
+  - `git diff --check` - pass (scoped; CRLF warnings only)
+- Risk:
+  - Live page path uses backend aggregate; fallback builder is legacy but now contract-aligned if re-enabled.
+- Next:
+  - `RQ39 - Derived category ratio vs percent units` (priority review after RQ72)
 
 ---
 

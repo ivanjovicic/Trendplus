@@ -449,7 +449,7 @@ public static class DecisionBoardEndpoints
             {
                 var sourceKey = $"inventory:{item.SuggestionKey}";
                 var actionState = ResolveActionState("inventory", sourceKey, actionStates);
-                var confidence = ResolveInventoryBoardConfidence(item.Status);
+                var confidence = ResolveInventoryBoardConfidence(item);
                 var priorityScore = item.Priority switch
                 {
                     "critical" => 250m,
@@ -468,8 +468,10 @@ public static class DecisionBoardEndpoints
                     Title: item.Label,
                     Summary: item.Reason,
                     ConfidenceLevel: confidence.Level,
-                    ConfidenceScore: null,
-                    ReliabilityPct: null,
+                    ConfidenceScore: confidence.ConfidenceScore,
+                    ReliabilityPct: confidence.ConfidenceScore.HasValue
+                        ? (int?)Math.Clamp((int)Math.Round(confidence.ConfidenceScore.Value, MidpointRounding.AwayFromZero), 0, 100)
+                        : null,
                     ExpectedImpactRsd: item.EstimatedValue > 0 ? item.EstimatedValue : null,
                     MeasuredImpactRsd: null,
                     RealizationRatio: null,
@@ -496,20 +498,57 @@ public static class DecisionBoardEndpoints
     }
 
     /// <summary>
-    /// Workflow status is not evidence quality. Until suggestion DTOs carry signal confidence,
-    /// board confidence stays capped at low / insufficient_data.
+    /// Uses signal evidence from workflow DTO when present; otherwise workflow-status fallback (RQ10).
     /// See docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md.
     /// </summary>
-    internal static (string Level, string DataQualityStatus, IReadOnlyList<string> WarningCodes)
-        ResolveInventoryBoardConfidence(string? workflowStatus)
+    internal static (string Level, string DataQualityStatus, IReadOnlyList<string> WarningCodes, decimal? ConfidenceScore)
+        ResolveInventoryBoardConfidence(InventoryActionSuggestionDto item)
+    {
+        if (item.SignalConfidencePct.HasValue)
+        {
+            var score = item.SignalConfidencePct.Value;
+            var warnings = new List<string>();
+            if (item.SignalReasonCodes is { Count: > 0 })
+            {
+                warnings.AddRange(item.SignalReasonCodes.Where(code => !string.IsNullOrWhiteSpace(code)));
+            }
+
+            if (item.RecommendationAllowed == false)
+            {
+                warnings.Add("inventory_recommendation_blocked");
+                var blockedDq = NormalizeDataQualityStatus(item.SignalDataQualityStatus);
+                return (
+                    "insufficient_data",
+                    blockedDq == "good" ? "warning" : blockedDq,
+                    warnings.Distinct(StringComparer.Ordinal).ToList(),
+                    score);
+            }
+
+            var level = ResolveConfidenceLevel(score);
+            var dataQuality = NormalizeDataQualityStatus(item.SignalDataQualityStatus);
+            if (string.Equals(dataQuality, "unknown", StringComparison.OrdinalIgnoreCase))
+            {
+                dataQuality = string.Equals(level, "insufficient_data", StringComparison.OrdinalIgnoreCase)
+                    ? "insufficient_data"
+                    : "warning";
+            }
+
+            return (level, dataQuality, warnings.Distinct(StringComparer.Ordinal).ToList(), score);
+        }
+
+        return ResolveInventoryBoardConfidenceFromWorkflow(item.Status);
+    }
+
+    internal static (string Level, string DataQualityStatus, IReadOnlyList<string> WarningCodes, decimal? ConfidenceScore)
+        ResolveInventoryBoardConfidenceFromWorkflow(string? workflowStatus)
     {
         var status = (workflowStatus ?? string.Empty).Trim().ToLowerInvariant();
         var warningCodes = (IReadOnlyList<string>)["confidence_workflow_status_only"];
 
         return status switch
         {
-            "approved" or "deferred" => ("low", "warning", warningCodes),
-            _ => ("insufficient_data", "insufficient_data", warningCodes)
+            "approved" or "deferred" => ("low", "warning", warningCodes, null),
+            _ => ("insufficient_data", "insufficient_data", warningCodes, null)
         };
     }
 

@@ -139,6 +139,38 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionPrecomputedAndLiveSqlParityMatrixLocksIntentionalDifferences()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("CanUsePrecomputedSupplierRows(filters)", endpoint);
+        Assert.Contains("string.IsNullOrWhiteSpace(filters.Category)", endpoint);
+        Assert.Contains("string.IsNullOrWhiteSpace(filters.Gender)", endpoint);
+        Assert.Contains("!filters.SeasonId.HasValue", endpoint);
+        Assert.Contains("!filters.StoreId.HasValue", endpoint);
+        Assert.Contains("string.Equals(filters.DataScope, \"all\", StringComparison.OrdinalIgnoreCase)", endpoint);
+        Assert.Contains("string.Equals(filters.DataScope, \"imported\", StringComparison.OrdinalIgnoreCase)", endpoint);
+        Assert.Contains("string.Equals(filters.DataScope, \"existing\", StringComparison.OrdinalIgnoreCase)", endpoint);
+
+        Assert.Contains("ds.period_to >= @fromDate AND ds.period_from <= @toDate", endpoint);
+        Assert.Contains("fs.first_markdown_date >= @fromDate", endpoint);
+        Assert.Contains("fs.first_markdown_date <= @toDate", endpoint);
+        Assert.Contains("a.\\\"IDObjekat\\\" = @storeId", endpoint);
+        Assert.Contains("a.\\\"DataOrigin\\\" = 'access'", endpoint);
+        Assert.Contains("a.\\\"DataOrigin\\\" IS NULL OR a.\\\"DataOrigin\\\" = ''", endpoint);
+        Assert.Contains("COALESCE(fs.category, 'Uncategorized') ILIKE @category", endpoint);
+        Assert.Contains("COALESCE(a.\\\"Pol\\\", '') ILIKE @gender", endpoint);
+        Assert.Contains("a.\\\"IDSezona\\\" = @seasonId", endpoint);
+
+        Assert.Contains("ROUND(ds.confidence_score * 100, 2) AS confidence_score", endpoint);
+        Assert.Contains("ROUND(COALESCE(ml.ml_supplier_score, fs.supplier_quality_index), 2) AS ml_supplier_score", endpoint);
+        Assert.Contains("GetString(reader, \"recommendation_code\")", endpoint);
+        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore)", endpoint);
+        Assert.Contains("GetDecimal(reader, \"fullprice_revenue_share\")", endpoint);
+        Assert.Contains("GetString(reader, \"ai_explanation\")", endpoint);
+    }
+
+    [Fact]
     public void SupplierDecisionBroadDateRangesUsePrecomputedCaches()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
@@ -294,6 +326,42 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("IReadOnlyList<string> ReasonCodes", endpoint);
         Assert.Contains("recommendationSignal.ReliabilityPct", endpoint);
         Assert.Contains("recommendationSignal.StatusReason", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionReaderNullabilityContractKeepsHighRiskFieldsExplicit()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("GetInt32(reader, \"supplier_id\")", endpoint);
+        Assert.Contains("GetString(reader, \"supplier_name\")", endpoint);
+        Assert.Contains("NormalizeSupplierName(supplierId, sourceSupplierName)", endpoint);
+        Assert.Contains("GetString(reader, \"recommendation_code\")", endpoint);
+        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore)", endpoint);
+        Assert.Contains("GetInt32(reader, \"article_id\")", endpoint);
+        Assert.Contains("GetString(reader, \"signal_quality_flag\")", endpoint);
+        Assert.Contains("GetString(reader, \"signal_quality_reason\")", endpoint);
+        Assert.Contains("GetDecimal(reader, \"confidence_score\")", endpoint);
+        Assert.Contains("GetString(reader, \"ai_explanation\")", endpoint);
+        Assert.Contains("GetString(reader, \"top_feature_1\")", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionBackendCopyUsesReadableSerbianInDecisionStrings()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.DoesNotContain("PoveÄ‡ati", endpoint);
+        Assert.DoesNotContain("DobavljaÄ", endpoint);
+        Assert.DoesNotContain("sniÅ¾enja", endpoint);
+        Assert.DoesNotContain("uÄinak", endpoint);
+        Assert.DoesNotContain("Å¡irenje", endpoint);
+        Assert.DoesNotContain("meÅ¡ovit", endpoint);
+        Assert.Contains("Povećati saradnju", endpoint);
+        Assert.Contains("Dobavljač #", endpoint);
+        Assert.Contains("Zavisnost od sniženja", endpoint);
+        Assert.Contains("Zadržati trenutni nivo", endpoint);
+        Assert.Contains("Povraćaji ili kvalitet su dovoljno loši da blokiraju bezbedno širenje saradnje.", endpoint);
     }
 
     [Fact]

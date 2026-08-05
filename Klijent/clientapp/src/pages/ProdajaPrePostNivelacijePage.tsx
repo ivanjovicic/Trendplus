@@ -16,6 +16,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
+import { getStores } from "../services/analyticsApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
   getVendorSalesNivelacija,
@@ -24,6 +25,7 @@ import {
   type VendorSalesNivelacijaVendorStat,
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
+import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
@@ -49,6 +51,7 @@ import {
   recommendationStatusTooltipBrief,
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
+import { getDataScope, type DataScope } from "../utils/dataScope";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -64,6 +67,7 @@ type ActiveFilters = {
   toDate: string;
   vendorId: number | null;
   category: string;
+  storeId: number | null;
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
@@ -416,6 +420,11 @@ function vendorKey(vendor: { vendorId: number | null; vendorName: string }): str
   return `name:${normalizeName(vendor.vendorName)}`;
 }
 
+function buildStoreLabel(store: StoreOption): string {
+  const extras = [store.city, store.region].filter(Boolean).join(", ");
+  return extras ? `${store.storeName} (${extras})` : store.storeName;
+}
+
 export default function ProdajaPrePostNivelacijePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -427,19 +436,24 @@ export default function ProdajaPrePostNivelacijePage() {
   const [toDate, setToDate] = useState(initialRange.toDate);
   const [vendorId, setVendorId] = useState<number | null>(null);
   const [category, setCategory] = useState("");
+  const [storeId, setStoreId] = useState<number | null>(null);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     fromDate: initialRange.fromDate,
     toDate: initialRange.toDate,
     vendorId: null,
     category: "",
+    storeId: null,
   });
 
   const [vendors, setVendors] = useState<Dobavljac[]>([]);
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [data, setData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousData, setPreviousData] = useState<VendorSalesNivelacijaResponse | null>(null);
   const [previousRevenue, setPreviousRevenue] = useState<number | null>(null);
+  const [previousComparisonError, setPreviousComparisonError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
@@ -452,6 +466,17 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [fromDate, toDate]);
 
   useEffect(() => {
+    const handleScopeChange = () => {
+      setDataScopeValue(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, []);
+
+  useEffect(() => {
     const loadVendors = async () => {
       try {
         setVendors(await getDobavljaci());
@@ -462,10 +487,22 @@ export default function ProdajaPrePostNivelacijePage() {
     void loadVendors();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters) => {
+  useEffect(() => {
+    const loadStores = async () => {
+      try {
+        setStores(await getStores(true));
+      } catch {
+        setStores([]);
+      }
+    };
+    void loadStores();
+  }, []);
+
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setPreviousComparisonError(null);
 
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
@@ -478,6 +515,8 @@ export default function ProdajaPrePostNivelacijePage() {
           category: filters.category || null,
           includeInactive: false,
           maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
+          storeId: filters.storeId,
+          dataScope: scope,
         }),
         getVendorSalesNivelacija({
           ...previousRange,
@@ -485,6 +524,8 @@ export default function ProdajaPrePostNivelacijePage() {
           category: filters.category || null,
           includeInactive: false,
           maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
+          storeId: filters.storeId,
+          dataScope: scope,
         }),
       ]);
 
@@ -501,15 +542,23 @@ export default function ProdajaPrePostNivelacijePage() {
       if (previousResult.status === "fulfilled") {
         setPreviousData(previousResult.value);
         setPreviousRevenue(previousResult.value.totals.postRevenue);
+        setPreviousComparisonError(null);
       } else {
         setPreviousData(null);
         setPreviousRevenue(null);
+        const reason = previousResult.reason;
+        setPreviousComparisonError(
+          reason instanceof Error
+            ? reason.message
+            : "Zahtev za prethodni uporedivi period nije uspeo."
+        );
       }
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
       setPreviousData(null);
       setPreviousRevenue(null);
+      setPreviousComparisonError(null);
       setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju pre/post analitike.");
     } finally {
       if (requestId === requestIdRef.current) {
@@ -519,8 +568,8 @@ export default function ProdajaPrePostNivelacijePage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters);
-  }, [activeFilters, load]);
+    void load(activeFilters, dataScope);
+  }, [activeFilters, dataScope, load]);
 
   const previousRevenueByVendorKey = useMemo(() => {
     const map = new Map<string, number>();
@@ -559,7 +608,9 @@ export default function ProdajaPrePostNivelacijePage() {
       const normalizedReliabilityPct = recommendationReliabilityPct ?? 0;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(normalizedReliabilityPct);
-      const volatility = buildVolatilityMeta(item.postRevenue, previousPostRevenue);
+      const volatility = previousComparisonError
+        ? { pct: null, label: "Nedostupno", tone: "neutral" as const }
+        : buildVolatilityMeta(item.postRevenue, previousPostRevenue);
 
       return {
         ...item,
@@ -583,7 +634,7 @@ export default function ProdajaPrePostNivelacijePage() {
         volatilityTone: volatility.tone,
       };
     });
-  }, [data?.totals.absoluteChangeRevenue, data?.vendorStats, previousRevenueByVendorKey]);
+  }, [data?.totals.absoluteChangeRevenue, data?.vendorStats, previousComparisonError, previousRevenueByVendorKey]);
 
   const sortedRows = useMemo(() => {
     const rows = [...decisionRows];
@@ -641,10 +692,11 @@ export default function ProdajaPrePostNivelacijePage() {
   }, [previousRevenue, totalRevenue]);
 
   const periodGrowthDisplay = useMemo(() => {
+    if (previousComparisonError) return "Nedostupno";
     if (previousRevenue == null) return "N/A";
     if (previousRevenue <= 0) return totalRevenue > 0 ? "Nova baza" : "0,0%";
     return fmtSignedPct(periodGrowthPct);
-  }, [periodGrowthPct, previousRevenue, totalRevenue]);
+  }, [periodGrowthPct, previousComparisonError, previousRevenue, totalRevenue]);
 
   const vendorCounts = useMemo(() => {
     const increaseFocus = sortedRows.filter((row) => row.status === "increase_focus").length;
@@ -889,14 +941,29 @@ const advancedSignals = useMemo(
           : "Svi",
       },
       { key: "category", label: "Kategorija", value: activeFilters.category },
+      {
+        key: "storeId",
+        label: "Objekat",
+        value: activeFilters.storeId != null
+          ? stores.find((store) => store.storeId === activeFilters.storeId)?.storeName ?? activeFilters.storeId
+          : "Svi objekti",
+      },
+      { key: "dataScope", label: "Opseg podataka", value: dataScope },
       { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
     ],
-    [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, focusFilter, periodPreset, vendors]
+    [activeFilters.category, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, dataScope, focusFilter, periodPreset, stores, vendors]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+      { key: "dataScope", label: "Opseg podataka", value: dataScope },
+      { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      {
+        key: "previousComparison",
+        label: "Uporedni period",
+        value: previousComparisonError ? `Greška: ${previousComparisonError}` : "Učitan",
+      },
       { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
       { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
       { key: "windowDays", label: "Prozor analize", value: data?.windowDays ?? 0 },
@@ -908,6 +975,7 @@ const advancedSignals = useMemo(
       { key: "metricsStatus", label: "Status metrika", value: data?.metricsStatus ?? "OK" },
     ],
     [
+      activeFilters.storeId,
       data?.dataQuality.analyzedSharePercent,
       data?.dataQuality.duplicateRowsRemoved,
       data?.dataQuality.inactiveRows,
@@ -916,8 +984,10 @@ const advancedSignals = useMemo(
       data?.totals.articlesCount,
       data?.totals.vendorsCount,
       data?.windowDays,
+      dataScope,
       dataTrustSummary.label,
       focusedRows.length,
+      previousComparisonError,
     ]
   );
 
@@ -946,6 +1016,7 @@ const advancedSignals = useMemo(
       toDate,
       vendorId,
       category,
+      storeId,
     });
   };
 
@@ -956,12 +1027,14 @@ const advancedSignals = useMemo(
     setToDate(range.toDate);
     setVendorId(null);
     setCategory("");
+    setStoreId(null);
     setFocusFilter("all");
     setActiveFilters({
       fromDate: range.fromDate,
       toDate: range.toDate,
       vendorId: null,
       category: "",
+      storeId: null,
     });
   };
 
@@ -1002,7 +1075,7 @@ const advancedSignals = useMemo(
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={data?.generatedAt ?? null}
-        dataSource="Nivelacija analytics"
+        dataSource={`Nivelacija analytics (scope: ${dataScope}${activeFilters.storeId != null ? `, store: ${activeFilters.storeId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
         isPartial={showMetaWarning}
@@ -1070,6 +1143,19 @@ const advancedSignals = useMemo(
           </select>
         </label>
 
+        <label className="ppn-decision-field">
+          <span>Objekat</span>
+          <select
+            value={storeId ?? ""}
+            onChange={(e) => setStoreId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Svi objekti</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store)}</option>
+            ))}
+          </select>
+        </label>
+
         <div className="ppn-decision-actions">
           <button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button>
           <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button>
@@ -1081,13 +1167,19 @@ const advancedSignals = useMemo(
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
           message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
-          onRetry={() => void load(activeFilters)}
+          onRetry={() => void load(activeFilters, dataScope)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
       {showMetaWarning ? (
         <div className="ppn-decision-message warning" role="status">
           Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite analytics refresh status."}
+        </div>
+      ) : null}
+      {previousComparisonError ? (
+        <div className="ppn-decision-message warning" role="status" data-testid="previous-comparison-warning">
+          Uporedni prethodni period nije učitan ({previousComparisonError}). PoP rast i volatilnost nisu dostupni zbog
+          greške zahteva, ne zbog stvarnog nedostatka baze — ovo nije „Nova baza“.
         </div>
       ) : null}
       {showEmptyState ? (
@@ -1108,7 +1200,7 @@ const advancedSignals = useMemo(
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={dataMeta?.emptyReason ?? dataMetaMessage ?? null}
-          onRetry={() => void load(activeFilters)}
+          onRetry={() => void load(activeFilters, dataScope)}
         />
       ) : null}
       {loading ? <div className="ppn-decision-message loading">Učitavam pre/post signal po dobavljačima...</div> : null}

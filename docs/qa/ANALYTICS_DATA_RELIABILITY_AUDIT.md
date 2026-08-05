@@ -265,15 +265,15 @@ Risk:
 - Workflow status may not reflect evidence quality, source freshness or calculation confidence.
 - Inventory cards can be treated as equally reliable even when underlying velocity/stock evidence differs.
 
-Classification: mitigated in RQ10 (2026-08-04); full evidence wiring deferred to RQ13.
+Classification: resolved in RQ10 + RQ13 (2026-08-05).
 
 Fix notes:
 
 - Contract: `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
-- Board never maps workflow status to `medium`/`high`; `ConfidenceScore` stays null; warning `confidence_workflow_status_only`.
-- `approved`/`deferred` → `low` + DQ `warning`; else → `insufficient_data`.
+- RQ10: workflow-only fallback; no `medium`/`high` without evidence; warning `confidence_workflow_status_only`.
+- RQ13: optional signal fields on `InventoryActionSuggestionDto`; board maps `ConfidenceLevel`/`ConfidenceScore`/`ReliabilityPct` from evidence when present; `RecommendationAllowed == false` caps at `insufficient_data`.
 
-Recommended prompt: RQ10 (DONE); follow-up RQ13.
+Recommended prompt: RQ13 (DONE); queue complete.
 
 ### R11 - Transaction stats may use line count where UI label implies item/unit count
 
@@ -329,7 +329,7 @@ Recommended prompt: RQ12 (DONE).
 5. RQ07 - missing-cost offender drilldown. (DONE 2026-08-04; issues-list/UI residual R80)
 6. RQ08 - blocked supplier signal ranking. (DONE 2026-08-04)
 7. RQ09 - analytics actions empty-state contract. (DONE 2026-08-04)
-8. RQ10 - inventory evidence confidence contract. (DONE 2026-08-04; wiring follow-up RQ13)
+8. RQ10 - inventory evidence confidence contract. (DONE 2026-08-04; wiring RQ13 DONE 2026-08-05)
 9. RQ11 - transaction item/line/unit semantics. (DONE 2026-08-05)
 10. RQ12 - PDC ignored/top rows contract. (DONE 2026-08-05)
 11. RQ13 - wire inventory signal evidence onto board cards. (READY)

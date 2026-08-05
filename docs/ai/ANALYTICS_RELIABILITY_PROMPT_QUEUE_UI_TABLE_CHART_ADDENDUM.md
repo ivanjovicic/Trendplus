@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Current READY prompt: none in this addendum (next global: RQ51)
+Main queue READY prompt: none (RQ01–RQ13 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -13,11 +13,11 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ39 | WAITING | category-percent-units | Fix derived category ratio vs percent unit mismatch |
-| RQ40 | WAITING | supplier-decision-percent-export | Fix Supplier Decision percent display/export mismatch |
-| RQ41 | WAITING | xlsx-typed-cells | Write XLSX numeric/currency/percent/date cells as typed cells |
-| RQ42 | WAITING | detail-snapshot-formatting | Format detail snapshot values consistently with table values |
-| RQ43 | WAITING | stale-report-preview | Harden stale browser report preview fallback |
+| RQ39 | DONE | category-percent-units | Fix derived category ratio vs percent unit mismatch |
+| RQ40 | DONE | supplier-decision-percent-export | Fix Supplier Decision percent display/export mismatch |
+| RQ41 | DONE | xlsx-typed-cells | Write XLSX numeric/currency/percent/date cells as typed cells |
+| RQ42 | DONE | detail-snapshot-formatting | Format detail snapshot values consistently with table values |
+| RQ43 | DONE | stale-report-preview | Harden stale browser report preview fallback |
 | RQ44 | WAITING | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
 | RQ45 | WAITING | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
 | RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
@@ -30,14 +30,14 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 
 ## RQ39 - Derived category ratio vs percent units
 
-Status: WAITING
+Status: DONE
 Ready after: RQ35/RQ36 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
 Feature family: category-percent-units
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ39-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ39-cursor.lock.md`
 Commit suggestion: `fix(analytics): normalize category share percent units`
 
 ### Why
@@ -75,18 +75,35 @@ Derived category intelligence returns `revShare` as a ratio, while legacy catego
 - Same data displays the same share regardless of legacy or derived source.
 - No 100x percent mismatch remains.
 
+### Notes
+
+- 2026-08-05: DONE. Contract = percent units (`25` = `25%`) per hardening addendum. Derived path now multiplies ratio by 100 before assigning `CategoryStat.revShare`.
+- Changed files:
+  - `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`
+  - `Klijent/clientapp/src/services/insightStudioApi.ts` (JSDoc on revShare)
+  - `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/services/__tests__/analyticsIntelligenceDerived.spec.ts` - pass (4)
+  - `git diff --check` - pass (scoped)
+- Risk:
+  - InsightStudioPage still formats with `fmtPct`; no page change needed once DTO units match.
+- Next:
+  - `RQ40 - Supplier Decision percent export/detail mismatch`
+
 ---
 
 ## RQ40 - Supplier Decision percent export/detail mismatch
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend/report/tests
 Feature family: supplier-decision-percent-export
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ40-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ40-cursor.lock.md`
 Commit suggestion: `fix(analytics): align supplier decision percent export values`
 
 ### Why
@@ -121,18 +138,36 @@ Supplier Decision UI multiplies some raw ratio fields for display, but export/de
 
 - Visual UI and exported/report values do not disagree on percent units.
 
+### Notes
+
+- 2026-08-05: DONE. API `preMarkdownMarginPct` stays 0–1 ratio; export/detail/table percent columns use percent units via `getValue` / `toSupplierDecisionMarginPercentUnits`. Detail snapshot formats percent with `fmtPct`.
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `Klijent/clientapp/src/services/analyticsTableState.ts`
+  - `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.percentExport.spec.ts`
+  - `Klijent/clientapp/src/services/__tests__/analyticsTableState.spec.ts`
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run ...percentExport.spec.ts ...analyticsTableState.spec.ts` - pass (9)
+  - `git diff --check` - pass (scoped)
+- Risk:
+  - XLSX still stores values as strings; numeric typing is RQ41. Export number is `35` not `0.35`.
+- Next:
+  - `RQ41 - Typed XLSX cells for analytics exports`
+
 ---
 
 ## RQ41 - Typed XLSX cells for analytics exports
 
-Status: WAITING
+Status: DONE
 Ready after: RQ40 or explicit reprioritization
 Priority: P1
 Type: backend-export/tests
 Feature family: xlsx-typed-cells
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ41-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ41-cursor.lock.md`
 Commit suggestion: `fix(exports): write typed analytics xlsx cells`
 
 ### Why
@@ -167,18 +202,34 @@ The XLSX renderer currently writes every cell as an inline string. Exported spre
 
 - Excel recognizes exported numeric columns as numbers.
 
+### Notes
+
+- 2026-08-05: DONE. Typed XLSX cells for number/currency/percent/date via `DocumentColumnDefinition.DataType`; percent format is percent-units (`0.00"%"`). Text/unparseable stay `inlineStr`. CSV unchanged.
+- Changed files:
+  - `Infrastructure/Services/Documents/DocumentRenderer.cs`
+  - `Api.Tests/DocumentRendererTests.cs`
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+- Checks:
+  - `dotnet test ... --filter DocumentRendererTests` - pass (12)
+  - `git diff --check` - pass (scoped)
+- Risk:
+  - Callers that still export percent as ratio (0.35) will get typed 0.35 with literal-% format (shows 0.35%); RQ40 paths send percent units.
+- Next:
+  - `RQ42 - Detail snapshot formatting parity`
+
 ---
 
 ## RQ42 - Detail snapshot formatting parity
 
-Status: WAITING
+Status: DONE
 Ready after: RQ39/RQ40 or explicit unblocking
 Priority: P1
 Type: frontend/tests
 Feature family: detail-snapshot-formatting
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ42-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ42-cursor.lock.md`
 Commit suggestion: `fix(analytics): format detail snapshot values consistently`
 
 ### Why
@@ -211,18 +262,36 @@ Detail snapshot currently stringifies raw values. It can show different units/fo
 
 - Detail view matches table display for the same row/column.
 
+### Notes
+
+- 2026-08-05: DONE. Shared `formatDetailFieldValue` uses `fmtRsd`/`fmtPct`/`fmtNumber`/`formatDate`/`formatDateTime`; percent stays percent-units (no silent `*100`).
+- Changed files:
+  - `Klijent/clientapp/src/services/analyticsTableState.ts`
+  - `Klijent/clientapp/src/services/__tests__/analyticsTableState.spec.ts`
+  - `Klijent/clientapp/src/pages/ColorSalesStatsPage.spec.tsx` (expect formatted RSD)
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/services/__tests__/analyticsTableState.spec.ts` - pass (7)
+  - `npm run test -- --run ...ColorSalesStatsPage.spec.tsx -t "expands a color row"` - pass
+  - `git diff --check` - pass (scoped)
+- Risk:
+  - Pages that previously asserted raw numeric strings in detail snapshots need updated expectations.
+- Next:
+  - `RQ43 - Stale browser report preview hardening`
+
 ---
 
 ## RQ43 - Stale browser report preview hardening
 
-Status: WAITING
+Status: DONE
 Ready after: RQ40/RQ42 or explicit unblocking
 Priority: P1
 Type: frontend/report/tests
 Feature family: stale-report-preview
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ43-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ43-cursor.lock.md`
 Commit suggestion: `fix(analytics): watermark stale report previews`
 
 ### Why
@@ -255,6 +324,26 @@ Supplier Decision report can fall back to a local browser preview when durable b
 ### Acceptance
 
 - Stale/local report cannot be mistaken for backend-verified current data.
+
+### Notes
+
+- 2026-08-05: DONE. Local preview watermark + savedAt/TTL meta; export/print disabled for browser snapshot. Decision: disable (not confirm) unsafe export from stale preview.
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierDecisionReportPage.css`
+  - `Klijent/clientapp/src/services/analyticsTableState.ts` (`getPrintPayloadSnapshot`, `ANALYTICS_PRINT_TTL_MS`)
+  - `Klijent/clientapp/src/pages/__tests__/SupplierDecisionReportPage.spec.tsx`
+  - `Klijent/clientapp/src/services/__tests__/analyticsTableState.spec.ts`
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` (next READY RQ51)
+- Checks:
+  - `npm run test -- --run SupplierDecisionReportPage.spec.tsx analyticsTableState.spec.ts` - pass (12)
+  - `git diff --check` - pass (scoped)
+- Risk:
+  - Users must open durable report for export; local preview is view-only by design.
+- Next:
+  - `RQ51 - Color insufficient_data status mapping` (priority review after RQ40/RQ43 lane)
 
 ---
 

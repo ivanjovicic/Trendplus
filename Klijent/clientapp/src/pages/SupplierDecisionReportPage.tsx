@@ -4,9 +4,15 @@ import SupplierDecisionReport from "../components/analytics/SupplierDecisionRepo
 import SupplierDecisionReportActions from "../components/analytics/SupplierDecisionReportActions";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import { getPrintPayload, resolveAnalyticsTablePayload } from "../services/analyticsTableState";
+import {
+  ANALYTICS_PRINT_TTL_MS,
+  getPrintPayloadSnapshot,
+  resolveAnalyticsTablePayload,
+  type PrintPayloadSnapshot,
+} from "../services/analyticsTableState";
 import { AnalyticsMetaError, getSupplierDecisionDurableReport } from "../services/analyticsApi";
 import type { ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
+import { formatDateTime } from "../utils/analyticsFormatters";
 import "./SupplierDecisionReportPage.css";
 
 function normalizeColumnType(value: string | undefined) {
@@ -38,6 +44,11 @@ function parseOptionalBoolean(value: string | null): boolean | null {
   if (normalized === "true") return true;
   if (normalized === "false") return false;
   return null;
+}
+
+function formatTtlMinutes(ttlMs: number): string {
+  const minutes = Math.max(1, Math.round(ttlMs / 60_000));
+  return `${minutes} min`;
 }
 
 const SUPPLIER_REPORT_METHODOLOGY_KEYS = [
@@ -196,8 +207,10 @@ export default function SupplierDecisionReportPage() {
     toDate,
   ]);
 
-  const legacyPayload = useMemo(() => getPrintPayload(stateKey), [stateKey]);
+  const legacySnapshot = useMemo((): PrintPayloadSnapshot | null => getPrintPayloadSnapshot(stateKey), [stateKey]);
+  const legacyPayload = legacySnapshot?.payload ?? null;
   const hasLegacyFallback = Boolean(legacyPayload);
+  const isLocalBrowserPreview = Boolean(!backendPayload && legacyPayload);
   const showLegacyBackendFallbackWarning = Boolean(backendError && hasDurableParams && hasLegacyFallback);
   const showStatePreviewWarning = Boolean(!hasDurableParams && hasLegacyFallback);
   const payload = backendPayload ?? legacyPayload;
@@ -284,8 +297,16 @@ export default function SupplierDecisionReportPage() {
     );
   }
 
+  const previewSavedAtLabel = legacySnapshot
+    ? formatDateTime(legacySnapshot.savedAtUtc)
+    : null;
+  const previewExpiresAtLabel = legacySnapshot
+    ? formatDateTime(legacySnapshot.expiresAtUtc)
+    : null;
+  const previewTtlLabel = formatTtlMinutes(legacySnapshot?.ttlMs ?? ANALYTICS_PRINT_TTL_MS);
+
   return (
-    <div className="supplier-decision-report-page">
+    <div className={`supplier-decision-report-page${isLocalBrowserPreview ? " sdrp-local-preview" : ""}`}>
       {exportError ? (
         <AnalyticsErrorState
           title="Izvoz izveštaja nije uspeo"
@@ -299,12 +320,25 @@ export default function SupplierDecisionReportPage() {
         />
       ) : null}
 
-      {showLegacyBackendFallbackWarning ? (
+      {isLocalBrowserPreview ? (
+        <div className="sdrp-local-preview-banner" role="status" data-testid="local-preview-banner">
+          <strong className="sdrp-local-preview-badge">LOKALNI BROWSER PREVIEW</strong>
+          <p>
+            Ovo nije trajni backend izveštaj. Snapshot je sačuvan u browseru
+            {previewSavedAtLabel ? <> u <time dateTime={legacySnapshot!.savedAtUtc}>{previewSavedAtLabel}</time></> : null}
+            {" "}(TTL {previewTtlLabel}
+            {previewExpiresAtLabel ? <>, ističe {previewExpiresAtLabel}</> : null}).
+            Izvoz i štampa su onemogućeni dok ne otvorite trajni report.
+          </p>
+        </div>
+      ) : null}
+
+      {showLegacyBackendFallbackWarning && !isLocalBrowserPreview ? (
         <div className="sdrp-warning-banner no-print" role="status">
           Backend report trenutno nije dostupan. Prikazujemo privremeni browser preview.
         </div>
       ) : null}
-      {showStatePreviewWarning ? (
+      {showStatePreviewWarning && !isLocalBrowserPreview ? (
         <div className="sdrp-warning-banner no-print" role="status">
           Prikazujemo privremeni browser preview. Za trajan dokument otvorite report kroz query parametre.
         </div>
@@ -313,14 +347,32 @@ export default function SupplierDecisionReportPage() {
       <header className="sdrp-head no-print">
         <div>
           <h1>Trendplus izveštaj dobavljača</h1>
-          <p>Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Ako je otvoren sa query parametrima, koristi trajni backend report payload.</p>
+          <p>
+            {isLocalBrowserPreview
+              ? "Privremeni browser snapshot — nije potvrđen kao trenutni backend izveštaj."
+              : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Ako je otvoren sa query parametrima, koristi trajni backend report payload."}
+          </p>
+          {isLocalBrowserPreview && previewSavedAtLabel ? (
+            <p className="sdrp-preview-meta" data-testid="local-preview-meta">
+              Sačuvano: {previewSavedAtLabel} · TTL: {previewTtlLabel}
+              {previewExpiresAtLabel ? ` · Ističe: ${previewExpiresAtLabel}` : ""}
+            </p>
+          ) : null}
         </div>
         <div className="sdrp-actions">
           <Link to="/analytics/supplier" className="sdrp-back">Vrati se na dobavljače</Link>
           <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši report</Link>
           <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori Scorecard</Link>
-          <SupplierDecisionReportActions payload={payload} durableReportHref={durableReportHref} onError={setExportError} />
-          <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj iz pregleda</button>
+          {isLocalBrowserPreview ? (
+            <p className="sdrp-export-disabled" data-testid="local-preview-export-disabled">
+              Izvoz/štampa onemogućeni za lokalni preview. Otvorite trajni report preko Scorecard akcija.
+            </p>
+          ) : (
+            <>
+              <SupplierDecisionReportActions payload={payload} durableReportHref={durableReportHref} onError={setExportError} />
+              <button type="button" className="sdrp-print" onClick={() => window.print()}>Štampaj iz pregleda</button>
+            </>
+          )}
         </div>
       </header>
 

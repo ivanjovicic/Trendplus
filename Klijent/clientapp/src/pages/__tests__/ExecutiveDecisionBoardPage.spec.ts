@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildExecutiveDecisionBoardModel } from "../ExecutiveDecisionBoardPage";
+import {
+  buildExecutiveDecisionBoardModel,
+  buildExecutiveFallbackProductCards,
+} from "../ExecutiveDecisionBoardPage";
 import type {
   DecisionBoardAggregateResponse,
   DecisionBoardCard,
   DecisionBoardMetric,
   DecisionBoardSection,
   DecisionBoardSourceState,
+  ProductDecisionCenterItem,
+  ProductDecisionCenterResponse,
+  ProductDecisionRecommendationStatus,
 } from "../../types/analytics";
 
 function baseCard(overrides: Partial<DecisionBoardCard> & Pick<DecisionBoardCard, "id" | "kind" | "sectionKey" | "sourceModule" | "title" | "riskIfIgnored" | "recommendedNextAction" | "actionHref" | "dataQualityStatus" | "priorityScore" | "impactScore">): DecisionBoardCard {
@@ -270,5 +276,139 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(model.hasData).toBe(false);
     expect(model.sections).toHaveLength(0);
     expect(model.metrics).toHaveLength(0);
+  });
+});
+
+function productRow(
+  overrides: Partial<ProductDecisionCenterItem> & {
+    productId: number;
+    productName: string;
+    recommendationStatus: ProductDecisionRecommendationStatus;
+    expectedImpactRsd?: number | null;
+    lostSalesEstimate?: number;
+  },
+): ProductDecisionCenterItem {
+  return {
+    sku: `SKU-${overrides.productId}`,
+    revenue: 10_000,
+    unitsSold: 5,
+    velocityUnitsPerDay: 0.5,
+    marginContribution: 2_000,
+    marginQualityLabel: "ok",
+    marginCoveragePct: 100,
+    currentStock: 2,
+    minStock: 5,
+    stockGap: 3,
+    lostSalesEstimate: overrides.lostSalesEstimate ?? 0,
+    dataQualityStatus: "good",
+    confidencePct: 80,
+    reliabilityPct: 80,
+    recommendationLabel: overrides.recommendationStatus,
+    recommendationReason: "Test razlog.",
+    reasonCodes: [],
+    recommendedAction: "Proveri.",
+    ...overrides,
+  };
+}
+
+function productCenter(rows: ProductDecisionCenterItem[]): ProductDecisionCenterResponse {
+  return {
+    generatedAtUtc: "2026-08-05T08:00:00Z",
+    periodFromUtc: "2026-07-01T00:00:00Z",
+    periodToUtc: "2026-08-05T00:00:00Z",
+    totalRows: rows.length,
+    summary: {
+      replenishCount: 0,
+      markdownCount: 0,
+      highPotentialCount: 0,
+      badDataCount: 0,
+      lostSalesEstimate: rows.reduce((sum, row) => sum + row.lostSalesEstimate, 0),
+      slowStockCapital: 0,
+    },
+    rows,
+  };
+}
+
+describe("buildExecutiveFallbackProductCards (RQ72)", () => {
+  it("does not map lostSalesEstimate into expectedImpact when PDC left it null", () => {
+    const cards = buildExecutiveFallbackProductCards(
+      productCenter([
+        productRow({
+          productId: 1,
+          productName: "FIX_DATA bez impact",
+          recommendationStatus: "FIX_DATA",
+          expectedImpactRsd: null,
+          lostSalesEstimate: 250_000,
+          dataQualityStatus: "warning",
+          confidenceLevel: "low",
+          confidencePct: 40,
+        }),
+        productRow({
+          productId: 2,
+          productName: "INSUFFICIENT_DATA bez impact",
+          recommendationStatus: "INSUFFICIENT_DATA",
+          expectedImpactRsd: null,
+          lostSalesEstimate: 180_000,
+          dataQualityStatus: "insufficient_data",
+          confidenceLevel: "insufficient_data",
+          confidencePct: 20,
+          confidenceScore: null,
+        }),
+      ]),
+    );
+
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(card.expectedImpactRsd).toBeNull();
+      expect(card.impactScore).toBe(0);
+    }
+  });
+
+  it("preserves PDC expectedImpactRsd when present", () => {
+    const cards = buildExecutiveFallbackProductCards(
+      productCenter([
+        productRow({
+          productId: 3,
+          productName: "REPLENISH sa impact",
+          recommendationStatus: "REPLENISH",
+          expectedImpactRsd: 90_000,
+          lostSalesEstimate: 90_000,
+        }),
+      ]),
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].expectedImpactRsd).toBe(90_000);
+    expect(cards[0].impactScore).toBe(90_000);
+  });
+
+  it("does not promote missing-impact rows by lost-sales when sorting", () => {
+    const cards = buildExecutiveFallbackProductCards(
+      productCenter([
+        productRow({
+          productId: 10,
+          productName: "Veliki lost sales bez impact",
+          recommendationStatus: "FIX_DATA",
+          expectedImpactRsd: null,
+          lostSalesEstimate: 500_000,
+          confidencePct: 90,
+          confidenceScore: 90,
+        }),
+        productRow({
+          productId: 11,
+          productName: "Mali expected impact",
+          recommendationStatus: "REPLENISH",
+          expectedImpactRsd: 40_000,
+          lostSalesEstimate: 1_000,
+          confidencePct: 70,
+          confidenceScore: 70,
+        }),
+      ]),
+    );
+
+    expect(cards[0].title).toBe("Mali expected impact");
+    expect(cards[0].expectedImpactRsd).toBe(40_000);
+    expect(cards[1].title).toBe("Veliki lost sales bez impact");
+    expect(cards[1].expectedImpactRsd).toBeNull();
   });
 });

@@ -10,16 +10,16 @@
 
 Search for these patterns when touching Serbian UI or docs:
 
-- `Ã„`
-- `Ã…`
-- `Ã¢`
-- `ï¿½`
-- `DobavljaÃ„`
-- `marÃ…`
-- `osveÃ…`
-- `uÃ„`
-- `Ã…Â¡`
-- `Ã…Â¾`
+- `Ãƒâ€ž`
+- `Ãƒâ€¦`
+- `ÃƒÂ¢`
+- `Ã¯Â¿Â½`
+- `DobavljaÃƒâ€ž`
+- `marÃƒâ€¦`
+- `osveÃƒâ€¦`
+- `uÃƒâ€ž`
+- `Ãƒâ€¦Ã‚Â¡`
+- `Ãƒâ€¦Ã‚Â¾`
 
 ## Correct examples
 
@@ -32,9 +32,9 @@ Search for these patterns when touching Serbian UI or docs:
 
 ## Wrong examples
 
-- `DobavljaÃ„`
-- `marÃ…Â¾a`
-- `osveÃ…Â¾avanje`
+- `DobavljaÃƒâ€ž`
+- `marÃƒâ€¦Ã‚Â¾a`
+- `osveÃƒâ€¦Ã‚Â¾avanje`
 
 ## Safe fix protocol
 
@@ -46,9 +46,14 @@ Search for these patterns when touching Serbian UI or docs:
 ## Practical workflow
 
 - Prefer targeted search before editing:
-  - `rg -n "Ã„|Ã…|Ã¢|ï¿½|DobavljaÃ„|marÃ…|osveÃ…|uÃ„|Ã…Â¡|Ã…Â¾" docs Klijent/clientapp/src`
+  - `rg -n "Ãƒâ€ž|Ãƒâ€¦|ÃƒÂ¢|Ã¯Â¿Â½|DobavljaÃƒâ€ž|marÃƒâ€¦|osveÃƒâ€¦|uÃƒâ€ž|Ãƒâ€¦Ã‚Â¡|Ãƒâ€¦Ã‚Â¾" docs Klijent/clientapp/src Api/Endpoints/SupplierDecisionHubEndpoints.cs`
 - Re-open the changed file after patching if the text is important user copy.
 - If the cleanup is growing beyond text, split it into a dedicated follow-up commit.
+
+## Backend analytics decision strings
+
+- When touching `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, run the same encoding search on the endpoint and keep recommendation titles/reasons readable Serbian.
+- Keep the `check:encoding` guardrail pointed at the supplier-decision endpoint so future mojibake in backend analytics decision copy is caught early.
 
 ## Optional tooling plan
 
@@ -56,7 +61,7 @@ The frontend guardrail suite now includes `npm run check:encoding`.
 
 That script:
 
-- scans maintained docs and frontend source
+- scans maintained docs, frontend source, and the supplier-decision backend endpoint
 - fails with `file:line`
 - avoids touching runtime logic
 - stays separate from business-logic checks so encoding regressions are obvious

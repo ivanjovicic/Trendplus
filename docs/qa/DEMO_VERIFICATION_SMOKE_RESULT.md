@@ -54,3 +54,10 @@ Endpoint tested: `GET /api/admin/demo-verification`
 
 - No destructive operation was added or performed.
 - This document intentionally treats auth gating as a blocker for a full live verdict rather than a success signal.
+
+## 2026-08-05 Recheck
+
+- `GET https://trendplus-api.onrender.com/api/admin/demo-verification` returned `401 Unauthorized` on the current live recheck.
+- Targeted demo-verification contract tests passed:
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~DemoEnvironmentVerificationEndpointTests.DemoVerification_"`
+- The public production surface is still auth-gated, so this remains a partial smoke result and does not prove `demoSafe=true` without a legitimate admin credential in a dedicated demo environment.

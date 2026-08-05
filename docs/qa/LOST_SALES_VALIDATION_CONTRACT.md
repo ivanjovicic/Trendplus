@@ -33,3 +33,8 @@ Positive estimates (`view` or `fallback`):
 ## Tests
 
 - `Api.Tests/LostSalesValidationSourceStatusTests.cs`
+
+## Verification
+
+- 2026-08-05: Q80 verified against the current endpoint behavior in `Api/Endpoints/CachedAnalyticsEndpoints.cs`.
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~LostSalesValidationSourceStatusTests"` - pass

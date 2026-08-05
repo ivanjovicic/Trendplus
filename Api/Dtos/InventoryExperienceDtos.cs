@@ -143,7 +143,11 @@ public sealed record InventoryActionSuggestionDto(
     decimal EstimatedValue,
     int DaysSinceMovement,
     string? Note,
-    DateTime? UpdatedAtUtc
+    DateTime? UpdatedAtUtc,
+    decimal? SignalConfidencePct = null,
+    bool? RecommendationAllowed = null,
+    string? SignalDataQualityStatus = null,
+    IReadOnlyList<string>? SignalReasonCodes = null
 );
 
 public sealed record InventoryActionWorkflowDto(

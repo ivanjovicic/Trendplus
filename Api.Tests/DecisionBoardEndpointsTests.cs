@@ -337,17 +337,113 @@ public sealed class DecisionBoardEndpointsTests
     [InlineData("pending", "insufficient_data", "insufficient_data")]
     [InlineData("closed", "insufficient_data", "insufficient_data")]
     [InlineData(null, "insufficient_data", "insufficient_data")]
-    public void ResolveInventoryBoardConfidence_DoesNotOverstateWorkflowStatus(
+    public void ResolveInventoryBoardConfidenceFromWorkflow_DoesNotOverstateWorkflowStatus(
         string? status,
         string expectedLevel,
         string expectedDq)
     {
-        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(status);
+        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidenceFromWorkflow(status);
         Assert.Equal(expectedLevel, resolved.Level);
         Assert.Equal(expectedDq, resolved.DataQualityStatus);
         Assert.Contains("confidence_workflow_status_only", resolved.WarningCodes);
+        Assert.Null(resolved.ConfidenceScore);
         Assert.NotEqual("medium", resolved.Level);
         Assert.NotEqual("high", resolved.Level);
+    }
+
+    [Fact]
+    public void ResolveInventoryBoardConfidence_UsesSignalEvidenceWhenPresent()
+    {
+        var item = new InventoryActionSuggestionDto(
+            SuggestionKey: "dopuna:sku-1",
+            ActionType: "dopuna",
+            Priority: "critical",
+            Label: "Dopuna test",
+            Reason: "Ispod minimuma.",
+            Status: "approved",
+            ArtikalId: 11,
+            PLU: "SKU-1",
+            Naziv: "Test artikal",
+            FromStoreName: "Store A",
+            ToStoreName: null,
+            SuggestedQty: 3,
+            EstimatedValue: 50_000m,
+            DaysSinceMovement: 5,
+            Note: null,
+            UpdatedAtUtc: null,
+            SignalConfidencePct: 85m,
+            RecommendationAllowed: true,
+            SignalDataQualityStatus: "good",
+            SignalReasonCodes: ["stock_below_minimum"]);
+
+        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(item);
+        Assert.Equal("high", resolved.Level);
+        Assert.Equal("good", resolved.DataQualityStatus);
+        Assert.Equal(85m, resolved.ConfidenceScore);
+        Assert.DoesNotContain("confidence_workflow_status_only", resolved.WarningCodes);
+        Assert.Contains("stock_below_minimum", resolved.WarningCodes);
+    }
+
+    [Fact]
+    public void ResolveInventoryBoardConfidence_BlocksRecommendationWhenSignalDisallows()
+    {
+        var item = new InventoryActionSuggestionDto(
+            SuggestionKey: "dopuna:sku-2",
+            ActionType: "dopuna",
+            Priority: "high",
+            Label: "Dopuna blocked",
+            Reason: "Nedovoljno podataka.",
+            Status: "approved",
+            ArtikalId: 12,
+            PLU: "SKU-2",
+            Naziv: "Test artikal 2",
+            FromStoreName: "Store B",
+            ToStoreName: null,
+            SuggestedQty: 2,
+            EstimatedValue: 20_000m,
+            DaysSinceMovement: 30,
+            Note: null,
+            UpdatedAtUtc: null,
+            SignalConfidencePct: 72m,
+            RecommendationAllowed: false,
+            SignalDataQualityStatus: "insufficient_data",
+            SignalReasonCodes: ["insufficient_sales_history"]);
+
+        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(item);
+        Assert.Equal("insufficient_data", resolved.Level);
+        Assert.Equal("insufficient_data", resolved.DataQualityStatus);
+        Assert.Equal(72m, resolved.ConfidenceScore);
+        Assert.Contains("inventory_recommendation_blocked", resolved.WarningCodes);
+        Assert.Contains("insufficient_sales_history", resolved.WarningCodes);
+        Assert.DoesNotContain("confidence_workflow_status_only", resolved.WarningCodes);
+    }
+
+    [Fact]
+    public void ResolveInventoryBoardConfidence_FallsBackToWorkflowWhenEvidenceMissing()
+    {
+        var item = new InventoryActionSuggestionDto(
+            SuggestionKey: "dopuna:sku-3",
+            ActionType: "dopuna",
+            Priority: "critical",
+            Label: "Dopuna bez evidence",
+            Reason: "Ispod minimuma.",
+            Status: "approved",
+            ArtikalId: 13,
+            PLU: "SKU-3",
+            Naziv: "Test artikal 3",
+            FromStoreName: "Store C",
+            ToStoreName: null,
+            SuggestedQty: 1,
+            EstimatedValue: 10_000m,
+            DaysSinceMovement: 2,
+            Note: null,
+            UpdatedAtUtc: null);
+
+        var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(item);
+        Assert.Equal("low", resolved.Level);
+        Assert.Equal("warning", resolved.DataQualityStatus);
+        Assert.Null(resolved.ConfidenceScore);
+        Assert.Contains("confidence_workflow_status_only", resolved.WarningCodes);
     }
 
     [Fact]
@@ -411,6 +507,74 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal("warning", inventoryCard.DataQualityStatus);
         Assert.Contains("confidence_workflow_status_only", inventoryCard.WarningCodes);
         Assert.NotEqual("medium", inventoryCard.ConfidenceLevel);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_InventoryApprovedCard_UsesSignalEvidenceWhenPresent()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(generatedAtUtc);
+        var workflow = new InventoryActionWorkflowDto(
+            GeneratedAtUtc: generatedAtUtc,
+            PendingCount: 0,
+            ApprovedCount: 1,
+            DeferredCount: 0,
+            ClosedCount: 0,
+            Items:
+            [
+                new InventoryActionSuggestionDto(
+                    SuggestionKey: "dopuna:sku-evidence",
+                    ActionType: "dopuna",
+                    Priority: "critical",
+                    Label: "Dopuna sa evidence",
+                    Reason: "Ispod minimuma.",
+                    Status: "approved",
+                    ArtikalId: 21,
+                    PLU: "SKU-EV",
+                    Naziv: "Evidence artikal",
+                    FromStoreName: "Store A",
+                    ToStoreName: null,
+                    SuggestedQty: 3,
+                    EstimatedValue: 50_000m,
+                    DaysSinceMovement: 5,
+                    Note: null,
+                    UpdatedAtUtc: generatedAtUtc,
+                    SignalConfidencePct: 85m,
+                    RecommendationAllowed: true,
+                    SignalDataQualityStatus: "good",
+                    SignalReasonCodes: ["stock_below_minimum"])
+            ]);
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            productDecisionCenter.PeriodFromUtc,
+            productDecisionCenter.PeriodToUtc,
+            lastRefreshAtUtc: generatedAtUtc,
+            productDecisionCenter,
+            inventoryInsights: null,
+            inventoryWorkflow: workflow,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var inventoryCard = Assert.Single(
+            response.Sections
+                .SelectMany(section => section.Cards)
+                .Where(card => card.Kind == "inventory")
+                .DistinctBy(card => card.Id));
+
+        Assert.Equal("high", inventoryCard.ConfidenceLevel);
+        Assert.Equal(85m, inventoryCard.ConfidenceScore);
+        Assert.Equal(85, inventoryCard.ReliabilityPct);
+        Assert.Equal("good", inventoryCard.DataQualityStatus);
+        Assert.DoesNotContain("confidence_workflow_status_only", inventoryCard.WarningCodes);
+        Assert.Contains("stock_below_minimum", inventoryCard.WarningCodes);
     }
 
     private static DecisionBoardAggregateResponseDto BuildBoard(

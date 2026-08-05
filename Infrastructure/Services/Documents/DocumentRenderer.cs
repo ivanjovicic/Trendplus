@@ -60,6 +60,14 @@ public sealed class CsvDocumentRenderer : IDocumentRenderer
 
 public sealed class XlsxDocumentRenderer : IDocumentRenderer
 {
+    // cellXfs indices in StylesXml
+    private const string StyleGeneral = "0";
+    private const string StyleHeader = "1";
+    private const string StyleNumber = "2";
+    private const string StyleCurrency = "3";
+    private const string StylePercentUnits = "4";
+    private const string StyleDate = "5";
+
     public string Format => "xlsx";
     public string MimeType => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -86,11 +94,12 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
         await writer.WriteStartElementAsync(null, "worksheet", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
         await writer.WriteStartElementAsync(null, "sheetData", null);
 
-        await WriteRowAsync(writer, 1, request.Table.Columns.Select(column => column.Header).ToList(), true);
+        var columns = request.Table.Columns;
+        await WriteHeaderRowAsync(writer, 1, columns);
         for (var rowIndex = 0; rowIndex < request.Table.Rows.Count; rowIndex++)
         {
             ct.ThrowIfCancellationRequested();
-            await WriteRowAsync(writer, rowIndex + 2, request.Table.Rows[rowIndex], false);
+            await WriteDataRowAsync(writer, rowIndex + 2, columns, request.Table.Rows[rowIndex]);
         }
 
         await writer.WriteEndElementAsync();
@@ -99,21 +108,146 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
         await writer.FlushAsync();
     }
 
-    private static async Task WriteRowAsync(XmlWriter writer, int rowIndex, IReadOnlyList<string?> values, bool header)
+    private static async Task WriteHeaderRowAsync(XmlWriter writer, int rowIndex, IReadOnlyList<DocumentColumnDefinition> columns)
     {
         await writer.WriteStartElementAsync(null, "row", null);
         await writer.WriteAttributeStringAsync(null, "r", null, rowIndex.ToString(CultureInfo.InvariantCulture));
-        for (var columnIndex = 0; columnIndex < values.Count; columnIndex++)
+        for (var columnIndex = 0; columnIndex < columns.Count; columnIndex++)
         {
-            await writer.WriteStartElementAsync(null, "c", null);
-            await writer.WriteAttributeStringAsync(null, "r", null, $"{GetColumnName(columnIndex + 1)}{rowIndex}");
-            await writer.WriteAttributeStringAsync(null, "t", null, "inlineStr");
-            await writer.WriteAttributeStringAsync(null, "s", null, header ? "1" : "0");
-            await writer.WriteStartElementAsync(null, "is", null);
-            await writer.WriteElementStringAsync(null, "t", null, values[columnIndex] ?? string.Empty);
-            await writer.WriteEndElementAsync();
-            await writer.WriteEndElementAsync();
+            await WriteInlineStringCellAsync(
+                writer,
+                $"{GetColumnName(columnIndex + 1)}{rowIndex}",
+                columns[columnIndex].Header,
+                StyleHeader);
         }
+
+        await writer.WriteEndElementAsync();
+    }
+
+    private static async Task WriteDataRowAsync(
+        XmlWriter writer,
+        int rowIndex,
+        IReadOnlyList<DocumentColumnDefinition> columns,
+        IReadOnlyList<string?> values)
+    {
+        await writer.WriteStartElementAsync(null, "row", null);
+        await writer.WriteAttributeStringAsync(null, "r", null, rowIndex.ToString(CultureInfo.InvariantCulture));
+
+        var cellCount = Math.Max(columns.Count, values.Count);
+        for (var columnIndex = 0; columnIndex < cellCount; columnIndex++)
+        {
+            var cellRef = $"{GetColumnName(columnIndex + 1)}{rowIndex}";
+            var rawValue = columnIndex < values.Count ? values[columnIndex] : null;
+            var dataType = columnIndex < columns.Count ? columns[columnIndex].DataType : null;
+
+            if (TryCreateTypedCell(rawValue, dataType, out var typedValue, out var styleIndex))
+            {
+                await WriteNumericCellAsync(writer, cellRef, typedValue, styleIndex);
+            }
+            else
+            {
+                await WriteInlineStringCellAsync(writer, cellRef, rawValue, StyleGeneral);
+            }
+        }
+
+        await writer.WriteEndElementAsync();
+    }
+
+    /// <summary>
+    /// Parses export cell text into an Excel numeric value when DataType is number/currency/percent/date.
+    /// Percent columns expect percent units (35 = 35%), matching frontend RQ40 contract — not Excel ratio.
+    /// </summary>
+    public static bool TryCreateTypedCell(
+        string? rawValue,
+        string? dataType,
+        out string invariantNumericValue,
+        out string styleIndex)
+    {
+        invariantNumericValue = string.Empty;
+        styleIndex = StyleGeneral;
+
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return false;
+        }
+
+        var normalizedType = (dataType ?? string.Empty).Trim().ToLowerInvariant();
+        return normalizedType switch
+        {
+            "number" => TryParseNumber(rawValue, StyleNumber, out invariantNumericValue, out styleIndex),
+            "currency" => TryParseNumber(rawValue, StyleCurrency, out invariantNumericValue, out styleIndex),
+            "percent" => TryParseNumber(rawValue, StylePercentUnits, out invariantNumericValue, out styleIndex),
+            "date" or "datetime" => TryParseDate(rawValue, out invariantNumericValue, out styleIndex),
+            _ => false
+        };
+    }
+
+    private static bool TryParseNumber(
+        string rawValue,
+        string style,
+        out string invariantNumericValue,
+        out string styleIndex)
+    {
+        invariantNumericValue = string.Empty;
+        styleIndex = style;
+
+        if (decimal.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var invariant))
+        {
+            invariantNumericValue = invariant.ToString(CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        if (decimal.TryParse(rawValue, NumberStyles.Float, CultureInfo.GetCultureInfo("sr-RS"), out var localized))
+        {
+            invariantNumericValue = localized.ToString(CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseDate(string rawValue, out string invariantNumericValue, out string styleIndex)
+    {
+        invariantNumericValue = string.Empty;
+        styleIndex = StyleDate;
+
+        if (!DateTime.TryParse(
+                rawValue,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed)
+            && !DateTime.TryParse(
+                rawValue,
+                CultureInfo.GetCultureInfo("sr-RS"),
+                DateTimeStyles.AllowWhiteSpaces,
+                out parsed))
+        {
+            return false;
+        }
+
+        // Excel stores dates as OLE Automation dates (days since 1899-12-30).
+        invariantNumericValue = parsed.ToOADate().ToString("G17", CultureInfo.InvariantCulture);
+        return true;
+    }
+
+    private static async Task WriteNumericCellAsync(XmlWriter writer, string cellRef, string invariantValue, string styleIndex)
+    {
+        await writer.WriteStartElementAsync(null, "c", null);
+        await writer.WriteAttributeStringAsync(null, "r", null, cellRef);
+        await writer.WriteAttributeStringAsync(null, "s", null, styleIndex);
+        await writer.WriteElementStringAsync(null, "v", null, invariantValue);
+        await writer.WriteEndElementAsync();
+    }
+
+    private static async Task WriteInlineStringCellAsync(XmlWriter writer, string cellRef, string? value, string styleIndex)
+    {
+        await writer.WriteStartElementAsync(null, "c", null);
+        await writer.WriteAttributeStringAsync(null, "r", null, cellRef);
+        await writer.WriteAttributeStringAsync(null, "t", null, "inlineStr");
+        await writer.WriteAttributeStringAsync(null, "s", null, styleIndex);
+        await writer.WriteStartElementAsync(null, "is", null);
+        await writer.WriteElementStringAsync(null, "t", null, value ?? string.Empty);
+        await writer.WriteEndElementAsync();
         await writer.WriteEndElementAsync();
     }
 
@@ -165,14 +299,26 @@ public sealed class XlsxDocumentRenderer : IDocumentRenderer
         "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
         "</Relationships>";
 
+    // Styles: 0 general, 1 header, 2 number 0.00, 3 currency, 4 percent-units (literal %), 5 date
     private const string StylesXml =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
         "<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+        "<numFmts count=\"2\">" +
+        "<numFmt numFmtId=\"164\" formatCode=\"#,##0.00\"/>" +
+        "<numFmt numFmtId=\"165\" formatCode=\"0.00&quot;%&quot;\"/>" +
+        "</numFmts>" +
         "<fonts count=\"2\"><font><sz val=\"11\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"11\"/><name val=\"Calibri\"/></font></fonts>" +
         "<fills count=\"2\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill></fills>" +
         "<borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders>" +
         "<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>" +
-        "<cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/></cellXfs>" +
+        "<cellXfs count=\"6\">" +
+        "<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/>" +
+        "<xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/>" +
+        "<xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
+        "<xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
+        "<xf numFmtId=\"165\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
+        "<xf numFmtId=\"14\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
+        "</cellXfs>" +
         "</styleSheet>";
 }
 

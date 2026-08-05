@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildAnalyticsDetailSnapshot,
+  formatDetailFieldValue,
   getAnalyticsDetailSnapshot,
   getPrintPayload,
-  resolveAnalyticsTablePayload,
+  getPrintPayloadSnapshot,
   saveAnalyticsDetailSnapshot,
   savePrintPayload,
+  resolveAnalyticsTablePayload,
+  ANALYTICS_PRINT_TTL_MS,
 } from "../analyticsTableState";
 import type { AnalyticsTableColumn } from "../../types/analyticsTable";
+import { fmtNumber, fmtPct, fmtRsd, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 
 type Row = {
   supplier: string;
@@ -78,7 +82,7 @@ describe("analyticsTableState", () => {
 
     expect(snapshot.fields).toEqual([
       expect.objectContaining({ key: "supplier", label: "Dobavljač", value: "Dobavljač A", highlight: false }),
-      expect.objectContaining({ key: "revenue", label: "Prihod", value: "120000", highlight: true }),
+      expect.objectContaining({ key: "revenue", label: "Prihod", value: "120.000 RSD", highlight: true }),
       expect.objectContaining({ key: "active", label: "Aktivan", value: "Da", highlight: false }),
       expect.objectContaining({ key: "optional", label: "Napomena", value: "", highlight: false }),
     ]);
@@ -98,11 +102,16 @@ describe("analyticsTableState", () => {
       rows: [row],
     });
     const key = savePrintPayload(payload);
+    const snapshot = getPrintPayloadSnapshot(key);
 
     expect(getPrintPayload(key)).toEqual(payload);
+    expect(snapshot?.savedAtUtc).toBe("2026-07-01T10:00:00.000Z");
+    expect(snapshot?.ttlMs).toBe(ANALYTICS_PRINT_TTL_MS);
+    expect(snapshot?.expiresAtUtc).toBe("2026-07-01T10:10:00.000Z");
 
     vi.setSystemTime(new Date("2026-07-01T10:11:00Z"));
     expect(getPrintPayload(key)).toBeNull();
+    expect(getPrintPayloadSnapshot(key)).toBeNull();
     expect(localStorage.getItem(key)).toBeNull();
 
     vi.useRealTimers();
@@ -127,5 +136,76 @@ describe("analyticsTableState", () => {
     sessionStorage.setItem("analytics-detail:supplier-sales:bad", "not-json");
 
     expect(getAnalyticsDetailSnapshot("supplier-sales", "bad")).toBeNull();
+  });
+
+  it("formats percent detail fields with percent units via fmtPct", () => {
+    type PctRow = { name: string; sharePct: number };
+    const pctColumns: AnalyticsTableColumn<PctRow>[] = [
+      { key: "name", header: "Naziv", dataType: "text" },
+      { key: "sharePct", header: "Udeo %", dataType: "percent" },
+    ];
+
+    const snapshot = buildAnalyticsDetailSnapshot({
+      table: "pct-fixture",
+      recordId: "1",
+      title: "A",
+      columns: pctColumns,
+      row: { name: "A", sharePct: 35 },
+    });
+
+    expect(snapshot.fields.find((field) => field.key === "sharePct")).toEqual(
+      expect.objectContaining({
+        key: "sharePct",
+        value: "35,00%",
+        dataType: "percent",
+        highlight: true,
+      }),
+    );
+  });
+
+  it("formats currency, number, date, datetime and boolean like table display", () => {
+    type MixedRow = {
+      revenue: number;
+      units: number;
+      sharePct: number;
+      asOf: string;
+      refreshedAt: string;
+      active: boolean;
+    };
+
+    const mixedColumns: AnalyticsTableColumn<MixedRow>[] = [
+      { key: "revenue", header: "Prihod", dataType: "currency" },
+      { key: "units", header: "Kom", dataType: "number" },
+      { key: "sharePct", header: "Udeo %", dataType: "percent" },
+      { key: "asOf", header: "Datum", dataType: "date" },
+      { key: "refreshedAt", header: "Osveženo", dataType: "datetime" },
+      { key: "active", header: "Aktivan", dataType: "text" },
+    ];
+
+    const snapshot = buildAnalyticsDetailSnapshot({
+      table: "mixed-fixture",
+      recordId: "1",
+      title: "Mixed",
+      columns: mixedColumns,
+      row: {
+        revenue: 1250.5,
+        units: 12,
+        sharePct: 35,
+        asOf: "2026-03-18",
+        refreshedAt: "2026-03-18T10:15:00Z",
+        active: false,
+      },
+    });
+
+    expect(formatDetailFieldValue(1250.5, "currency")).toBe(fmtRsd(1250.5, 0));
+    expect(snapshot.fields.find((f) => f.key === "revenue")?.value).toBe(fmtRsd(1250.5, 0));
+    expect(snapshot.fields.find((f) => f.key === "units")?.value).toBe(fmtNumber(12, 0));
+    expect(snapshot.fields.find((f) => f.key === "sharePct")?.value).toBe(fmtPct(35, 2));
+    expect(snapshot.fields.find((f) => f.key === "asOf")?.value).toBe(formatDate("2026-03-18"));
+    expect(snapshot.fields.find((f) => f.key === "refreshedAt")?.value).toBe(formatDateTime("2026-03-18T10:15:00Z"));
+    expect(snapshot.fields.find((f) => f.key === "active")?.value).toBe("Ne");
+    // Must not silently treat ratio 0.35 as percent units for a raw percent column value of 0.35
+    expect(formatDetailFieldValue(0.35, "percent")).toBe(fmtPct(0.35, 2));
+    expect(formatDetailFieldValue(0.35, "percent")).not.toBe(fmtPct(35, 2));
   });
 });

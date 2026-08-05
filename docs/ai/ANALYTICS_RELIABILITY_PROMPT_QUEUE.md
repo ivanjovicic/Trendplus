@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ13
+Current READY prompt: none (queue complete)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -34,7 +34,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ10 | DONE | inventory-evidence-confidence | Add evidence-based confidence contract for inventory cards |
 | RQ11 | DONE | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
 | RQ12 | DONE | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
-| RQ13 | READY | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
+| RQ13 | DONE | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
 
 ---
 
@@ -829,14 +829,14 @@ Commit suggestion: `docs(analytics): lock pdc ignored rows contract`
 
 ## RQ13 - Wire inventory signal evidence onto Decision Board cards
 
-Status: READY
+Status: DONE
 Ready after: RQ10 DONE
 Priority: P2
 Type: backend/DTO
 Feature family: inventory-evidence-wiring
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ13-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ13-cursor.lock.md`
 Commit suggestion: `feat(analytics): wire inventory signal confidence to decision board`
 
 ### Why
@@ -868,3 +868,22 @@ RQ10 capped board confidence because `InventoryActionSuggestionDto` lacks eviden
 ### Acceptance
 
 - Board inventory confidence can exceed `low` only when signal evidence is present on the card/DTO.
+
+### Notes
+
+- 2026-08-05: DONE. Extended `InventoryActionSuggestionDto` with optional signal fields; workflow builder computes evidence via `ComputeSuggestionSignalEvidence`; board resolver uses evidence path when `SignalConfidencePct` present, workflow fallback otherwise; blocked recommendations cap at `insufficient_data`.
+- Changed files:
+  - `Api/Dtos/InventoryExperienceDtos.cs`
+  - `Api/Endpoints/InventoryEndpoints.cs`
+  - `Api/Endpoints/DecisionBoardEndpoints.cs`
+  - `Api.Tests/DecisionBoardEndpointsTests.cs`
+  - `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `dotnet test ... --filter "DecisionBoardEndpointsTests"` - pass (27)
+- Risk:
+  - Approved inventory cards with signal evidence may now show `medium`/`high` (intentional when evidence supports it).
+- Next:
+  - Queue complete; new reliability work requires a new queue entry.

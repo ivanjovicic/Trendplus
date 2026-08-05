@@ -295,3 +295,29 @@ export function getAgingTone(bucket: string) {
 export function getAbcTone(bucket: string) {
   return resolveTone(TONE.abc, bucket, TONE.abc.C);
 }
+
+/** OOS/overstock risk sort is applied only to the currently loaded inventory page. */
+export function isInventoryPageLocalRiskSort(sortBy: string): boolean {
+  return sortBy === "oosRisk" || sortBy === "overstockRisk";
+}
+
+export function inventoryRiskSortScopeWarning(
+  sortBy: string,
+  options: { pageSize: number; totalPages: number; totalCount: number },
+): string | null {
+  if (!isInventoryPageLocalRiskSort(sortBy)) return null;
+
+  const sortLabel = sortBy === "oosRisk" ? "OOS rizik" : "Overstock rizik";
+  const base =
+    `Sortiranje po ${sortLabel} važi samo za artikle na trenutnoj strani (${options.pageSize} redova). ` +
+    "Server i dalje sortira po količini; UI zatim preraspoređuje samo učitanu stranicu.";
+
+  if (options.totalPages > 1) {
+    return (
+      `${base} Postoji ${options.totalPages} strana (${options.totalCount} artikala) - ` +
+      "artikli sa višim rizikom mogu biti na drugim stranama. Za globalni prioritet koristite forecast / risk panele."
+    );
+  }
+
+  return `${base} Trenutno je učitana cela filtrirana lista na jednoj strani.`;
+}

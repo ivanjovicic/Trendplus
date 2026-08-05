@@ -767,7 +767,7 @@ public static class SupplierDecisionHubEndpoints
                     : $"Vodeći kandidat ima indeks kvaliteta {bestGrow.SupplierQualityIndex.ToString("0.##", CultureInfo.InvariantCulture)} i udeo prihoda bez sniženja {FormatPercent(rows.First(x => x.SupplierId == bestGrow.SupplierId).FullPriceRevenueShare)}.",
                 bestGrow is null ? "neutral" : "positive"),
             new(
-                "Zavisnost od sniÅ¾enja",
+                "Zavisnost od sniženja",
                 totalRevenue <= 0
                     ? "0%"
                     : FormatPercent(rows.Sum(x => x.MarkdownRevenueShare * x.Revenue) / totalRevenue),
@@ -1963,8 +1963,8 @@ public static class SupplierDecisionHubEndpoints
         }
 
         return supplierId > 0
-            ? $"DobavljaÄ #{supplierId.ToString(CultureInfo.InvariantCulture)}"
-            : "Nepoznat dobavljaÄ";
+            ? $"Dobavljač #{supplierId.ToString(CultureInfo.InvariantCulture)}"
+            : "Nepoznat dobavljač";
     }
 
     private static async Task<SupplierRowsDataset> QuerySupplierRowsAsync(
@@ -2214,11 +2214,11 @@ public static class SupplierDecisionHubEndpoints
         var statusReason = normalizedCode switch
         {
             "EXPAND" => "Jak signal rasta uz stabilan kvalitet i marginu.",
-            "EXPAND_SELECTIVELY" => "Pozitivan signal uz preporuku za selektivno Å¡irenje.",
-            "HOLD" => "Stabilan uÄinak; zadrÅ¾ati trenutni nivo fokusa.",
+            "EXPAND_SELECTIVELY" => "Pozitivan signal uz preporuku za selektivno širenje.",
+            "HOLD" => "Stabilan učinak; zadržati trenutni nivo fokusa.",
             "PRICE_NEGOTIATE" => "Signal ukazuje na pritisak margine; potreban pregovor o ceni.",
-            "ASSORTMENT_REDUCE" => "PoviÅ¡en stock-risk i niÅ¾a isplativost; razmotriti suÅ¾avanje asortimana.",
-            "OOS_FALSE_NEGATIVE" => "Signal je meÅ¡ovit zbog OOS efekata; potrebno ruÄno tumaÄenje.",
+            "ASSORTMENT_REDUCE" => "Povišen stock-risk i niža isplativost; razmotriti sužavanje asortimana.",
+            "OOS_FALSE_NEGATIVE" => "Signal je mešovit zbog OOS efekata; potrebno ručno tumačenje.",
             "REVIEW_QUALITY" => "Kvalitet signala zahteva dodatnu proveru pre odluke.",
             _ => "Nedovoljno podataka za pouzdanu preporuku."
         };
@@ -3519,25 +3519,25 @@ LIMIT 6;
     private static string RecommendationTitle(string recommendationCode) =>
         recommendationCode switch
         {
-            "EXPAND" => "PoveÄ‡ati saradnju",
-            "EXPAND_SELECTIVELY" => "PoveÄ‡ati selektivno",
+            "EXPAND" => "Povećati saradnju",
+            "EXPAND_SELECTIVELY" => "Povećati selektivno",
             "PRICE_NEGOTIATE" => "Pregovarati o ceni",
             "ASSORTMENT_REDUCE" => "Smanjiti nabavku",
             "OOS_FALSE_NEGATIVE" => "Prvo proveriti zalihe",
-            "REVIEW_QUALITY" => "Proveriti kvalitet i povraÄ‡aje",
-            _ => "ZadrÅ¾ati trenutni nivo"
+            "REVIEW_QUALITY" => "Proveriti kvalitet i povraćaje",
+            _ => "Zadržati trenutni nivo"
         };
 
     private static string RecommendationReason(string recommendationCode) =>
         recommendationCode switch
         {
-            "EXPAND" => "Jak sell-through bez sniÅ¾enja i zdrava marÅ¾a ukazuju na kvalitetnu saradnju sa dobavljaÄem.",
-            "EXPAND_SELECTIVELY" => "DobavljaÄ ima najbolje rezultate u uÅ¾em skupu kategorija, a ne kroz ceo asortiman.",
-            "PRICE_NEGOTIATE" => "TraÅ¾nja se otvara tek posle sniÅ¾enja, Å¡to sugeriÅ¡e previsoku ulaznu cenu.",
-            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniÅ¾enja i stock risk nepotrebno vezuju kapital.",
-            "OOS_FALSE_NEGATIVE" => "Slabiji rezultat moÅ¾e biti posledica nedostatka zaliha pre prvog sniÅ¾enja.",
-            "REVIEW_QUALITY" => "PovraÄ‡aji ili kvalitet su dovoljno loÅ¡i da blokiraju bezbedno Å¡irenje saradnje.",
-            _ => "Signali su meÅ¡oviti, pa je najbezbednije zadrÅ¾ati trenutni nivo saradnje."
+            "EXPAND" => "Jak sell-through bez sniženja i zdrava marža ukazuju na kvalitetnu saradnju sa dobavljačem.",
+            "EXPAND_SELECTIVELY" => "Dobavljač ima najbolje rezultate u užem skupu kategorija, a ne kroz ceo asortiman.",
+            "PRICE_NEGOTIATE" => "Tražnja se otvara tek posle sniženja, što sugeriše previsoku ulaznu cenu.",
+            "ASSORTMENT_REDUCE" => "Visoka zavisnost od sniženja i stock risk nepotrebno vezuju kapital.",
+            "OOS_FALSE_NEGATIVE" => "Slabiji rezultat može biti posledica nedostatka zaliha pre prvog sniženja.",
+            "REVIEW_QUALITY" => "Povraćaji ili kvalitet su dovoljno loši da blokiraju bezbedno širenje saradnje.",
+            _ => "Signali su mešoviti, pa je najbezbednije zadržati trenutni nivo saradnje."
         };
 
     private static string GetAnalyticsConnectionString(IConfiguration configuration) =>

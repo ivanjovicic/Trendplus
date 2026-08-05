@@ -554,6 +554,7 @@ export default function ProductDecisionCenterPage() {
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
+  const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [payload, setPayload] = useState<ProductDecisionCenterResponse | null>(null);
   const payloadRef = useRef<ProductDecisionCenterResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -587,7 +588,18 @@ export default function ProductDecisionCenterPage() {
     (async () => {
       try {
         const items = await getSupplierFilters(fromDate, toDate, true, storeId);
-        if (!cancelled) setSuppliers(items);
+        if (!cancelled) {
+          const fallbackWarning = items.meta
+            ? getAnalyticsMetaMessage(items.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
+            : null;
+          if (fallbackWarning) {
+            setSupplierFiltersWarning(fallbackWarning);
+            return;
+          }
+
+          setSuppliers(items);
+          setSupplierFiltersWarning(null);
+        }
       } catch {
         if (!cancelled) {
           // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
@@ -1059,6 +1071,7 @@ export default function ProductDecisionCenterPage() {
                 </option>
               ))}
             </select>
+            {supplierFiltersWarning ? <p className="product-decision-message product-decision-message-info" style={{ marginTop: "0.5rem" }}>{supplierFiltersWarning}</p> : null}
           </label>
           <label>
             Preporuka

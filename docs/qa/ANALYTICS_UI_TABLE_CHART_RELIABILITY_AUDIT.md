@@ -43,9 +43,15 @@ Risk:
 - The same UI column can display `12.3%` for legacy data and `0.1%` for derived data for the same true 12.3% share.
 - Charts, table detail, export and decisions can be off by 100x depending on which data path is active.
 
-Classification: likely high-impact UI/data contract bug.
+Classification: fixed in RQ39 (2026-08-05).
 
-Recommended prompt: RQ39.
+Fix notes:
+
+- Derived `revShare` converted to percent units: `(approxRevenue / totalRevenue) * 100`.
+- Matches legacy `InsightStudioEndpoints` and `fmtPct` / `dataType: "percent"` contract (`25` = `25%`).
+- Tests cover 25/75 split, legacy parity, zero revenue, and merge-as-primary path.
+
+Recommended prompt: RQ39 (DONE).
 
 ### R40 - Supplier Decision export/detail can output raw ratio for percent fields shown as percent in the UI
 
@@ -66,9 +72,16 @@ Risk:
 - Visual table can show `35.00%`, while exported Excel/CSV/PDF row can contain `0.35` or `0.3500`.
 - Analysts may sort/filter/export and read the wrong unit.
 
-Classification: likely high-impact export contract bug.
+Classification: fixed in RQ40 (2026-08-05).
 
-Recommended prompt: RQ40.
+Fix notes:
+
+- `decisionColumns.preMarkdownMarginPct.getValue` converts API ratio (`0.35`) to percent units (`35`).
+- `sharePct` / `qualityTrendPct` already percent units on `DecisionRow`.
+- Detail snapshots format percent numbers with `fmtPct` (`35,00%`).
+- Export payload numeric value is `35` with `dataType: "percent"` (not raw `0.35`). Typed XLSX cells: RQ41 DONE.
+
+Recommended prompt: RQ40 (DONE); RQ41 (DONE).
 
 ### R41 - XLSX renderer writes all cells as inline strings, not typed numbers/currency/percent/date cells
 
@@ -84,9 +97,15 @@ Risk:
 - Excel exports are visually readable but not analytically reliable for pivoting, summing, sorting, filtering or formulas.
 - Numeric-looking values can behave as text.
 
-Classification: likely spreadsheet reliability gap.
+Classification: fixed in RQ41 (2026-08-05).
 
-Recommended prompt: RQ41.
+Fix notes:
+
+- `XlsxDocumentRenderer` types `number`/`currency`/`percent`/`date` cells as Excel numeric values.
+- Percent uses percent-units format `0.00"%"` (35 displays as 35.00%), matching RQ40.
+- Unparseable or text cells remain `inlineStr`. CSV unchanged.
+
+Recommended prompt: RQ41 (DONE).
 
 ### R42 - Detail snapshot stringifies raw values without data-type formatting
 
@@ -102,9 +121,15 @@ Risk:
 - Detail drawers can show raw values like `0.35` for a percent field or unlocalized currency values.
 - Detail view can disagree with the row/table view.
 
-Classification: likely UI trust bug.
+Classification: fixed in RQ42 (2026-08-05).
 
-Recommended prompt: RQ42.
+Fix notes:
+
+- `formatDetailFieldValue` formats currency (`fmtRsd`), percent units (`fmtPct`), number (`fmtNumber`), date/datetime (`formatDate`/`formatDateTime`), boolean (`Da`/`Ne`).
+- Percent does not silently convert ratios; `0.35` stays `0,35%` unless caller already sent percent units.
+- Detail display now matches table formatters for the same typed columns.
+
+Recommended prompt: RQ42 (DONE).
 
 ### R43 - Browser-stored report preview can be shown when durable backend report fails
 
@@ -124,9 +149,15 @@ Risk:
 - A stale browser snapshot can be mistaken for current backend-verified data.
 - This is especially risky if filters or backend data changed after the local snapshot was saved.
 
-Classification: suspicious; warning exists, but stronger watermark/disable rules may be needed.
+Classification: fixed in RQ43 (2026-08-05).
 
-Recommended prompt: RQ43.
+Fix notes:
+
+- Local browser preview shows persistent `LOKALNI BROWSER PREVIEW` watermark (also in print CSS).
+- Header includes savedAt + TTL via `getPrintPayloadSnapshot`.
+- Export/print actions disabled in local preview; durable backend path unchanged.
+
+Recommended prompt: RQ43 (DONE).
 
 ### R44 - `changeBadge` displays zero/no-baseline changes as positive/up signal
 
@@ -268,9 +299,9 @@ Recommended prompt: RQ50.
 
 ## Priority order
 
-1. RQ39 - category share ratio/percent mismatch.
-2. RQ40 - Supplier Decision percent export/detail mismatch.
-3. RQ41/RQ42 - export/detail typed formatting reliability.
+1. RQ39 - category share ratio/percent mismatch. (DONE 2026-08-05)
+2. RQ40 - Supplier Decision percent export/detail mismatch. (DONE 2026-08-05)
+3. RQ41/RQ42 - export/detail typed formatting reliability. (RQ41 DONE 2026-08-05; RQ42 DONE 2026-08-05)
 4. RQ45/RQ46 - trust metadata visible in cards/tables/exports.
 5. RQ47/RQ48 - action lineage/duplicate guard reliability.
 6. RQ43 - stale browser report preview hardening.

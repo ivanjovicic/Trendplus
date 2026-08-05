@@ -63,9 +63,15 @@ Risk:
 - This repeats the same trust-class bug as RQ01 in a legacy/fallback Executive Board builder.
 - Even if the current page primarily uses backend aggregate, keeping fallback code with a different contract is a regression risk.
 
-Classification: confirmed fallback-contract bug / dead-code-risk.
+Classification: fixed in RQ72 (2026-08-05).
 
-Recommended prompt: RQ72.
+Fix notes:
+
+- `buildExecutiveFallbackProductCards` uses only `expectedImpactRsd` for display, ranking and `impactScore`.
+- `lostSalesEstimate` is no longer promoted into expected impact (RQ01 parity).
+- Unit tests cover FIX_DATA/INSUFFICIENT_DATA null impact, preserved PDC impact, and sort without lost-sales promotion.
+
+Recommended prompt: RQ72 (DONE).
 
 ### R73 - Executive inventory cards inherit signal-review expected impact from InventoryPage helper
 
@@ -234,7 +240,7 @@ Recommended prompt: RQ80.
 
 ## Recommended order
 
-1. RQ72 - remove Executive fallback lost-sales impact fallback.
+1. RQ72 - remove Executive fallback lost-sales impact fallback. (DONE 2026-08-05)
 2. RQ75 - no-sales/insufficient health must not show green.
 3. RQ79 - durable pilot intake percent unit mismatch.
 4. RQ73/RQ74 - Executive inventory/supplier impact ranking/display mismatch.

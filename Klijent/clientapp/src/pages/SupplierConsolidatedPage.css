@@ -166,6 +166,15 @@
   color: var(--danger, #ef4444);
 }
 
+.supplier-consolidated-filter-note {
+  margin-top: 0.45rem;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--warning, #f59e0b);
+}
+
 /* Tab Navigation */
 .supplier-consolidated-tabs {
   display: flex;

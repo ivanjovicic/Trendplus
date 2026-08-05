@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Current READY prompt: RQ58
+Main queue READY prompt: none (RQ01–RQ13 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -13,32 +13,32 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ51 | WAITING | color-insufficient-data-status | Stop mapping color insufficient_data to Zadrzi |
-| RQ52 | WAITING | color-local-recommendation-fallback | Remove or label Color frontend recommendation fallback |
-| RQ53 | WAITING | color-shoetype-datascope-lineage | Pass/verify dataScope in Color and ShoeType pages |
-| RQ54 | WAITING | vendor-nivelacija-scope-lineage | Add/verify dataScope/store lineage on Vendor pre/post page |
+| RQ51 | DONE | color-insufficient-data-status | Stop mapping color insufficient_data to Zadrzi |
+| RQ52 | DONE | color-local-recommendation-fallback | Remove or label Color frontend recommendation fallback |
+| RQ53 | DONE | color-shoetype-datascope-lineage | Pass/verify dataScope in Color and ShoeType pages |
+| RQ54 | DONE | vendor-nivelacija-scope-lineage | Add/verify dataScope/store lineage on Vendor pre/post page |
 | RQ55 | WAITING | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
 | RQ56 | WAITING | total-cost-fallback-guardrail | Do not clamp inconsistent implied cost to fake zero |
-| RQ57 | WAITING | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
-| RQ58 | WAITING | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
+| RQ57 | DONE | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
+| RQ58 | READY | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
 | RQ59 | WAITING | inventory-signal-review-impact | Do not attach confirmed impact to weak signal-check actions |
 | RQ60 | WAITING | inventory-fake-zero-value | Preserve unknown inventory value when cost is missing |
 | RQ61 | WAITING | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
-| RQ62 | WAITING | vendor-previous-comparison-failure | Warn when previous-period request fails |
+| RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
 
 ---
 
 ## RQ51 - Color insufficient_data must not become Zadrzi
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
 Feature family: color-insufficient-data-status
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ51-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ51-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): preserve color insufficient data status`
 
 ### Why
@@ -72,18 +72,28 @@ Color analytics maps backend `insufficient_data` to local `Zadrzi`. A lack of ev
 
 - Backend `insufficient_data` is never displayed as `Zadrzi`.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `ColorSalesStatsPage.tsx`, `ColorSalesStatsPage.spec.tsx`, this queue, cross-surface audit R51
+- Fix: `mapRecommendationStatus("insufficient_data")` → `NedovoljnoPodataka` / label `Nedovoljno podataka` (tone `status-na`); counts/export/detail/InfoTip updated
+- Checks: `npm run test -- --run src/pages/ColorSalesStatsPage.spec.tsx` pass (7); `git diff --check` pass
+- Risk: local heuristic fallback when backend recommendation is missing remains (RQ52)
+- Next: RQ52 READY
+
 ---
 
 ## RQ52 - Color frontend recommendation fallback
 
-Status: WAITING
+Status: DONE
 Ready after: RQ51 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: color-local-recommendation-fallback
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ52-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ52-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): block color local recommendation fallback`
 
 ### Why
@@ -115,18 +125,28 @@ When backend recommendation is missing, Color page computes a local decision sco
 
 - Missing backend recommendation cannot silently become a frontend business recommendation.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `ColorSalesStatsPage.tsx`, `ColorSalesStatsPage.spec.tsx`, this queue, cross-surface audit R52
+- Fix: removed local decisionScore→Pojacaj/Zadrzi/Smanji heuristic; missing/unmapped backend recommendation → `NedovoljnoPodataka` with explicit reason; dead clamp/UNKNOWN_COLORS/buildStatusReason removed
+- Checks: `npm run test -- --run src/pages/ColorSalesStatsPage.spec.tsx` pass (8); `git diff --check` pass
+- Risk: rows without backend recommendation no longer appear in Pojačaj/Zadrži/Smanji counts (by design)
+- Next: RQ53 READY
+
 ---
 
 ## RQ53 - Color/ShoeType dataScope lineage
 
-Status: WAITING
+Status: DONE
 Ready after: RQ39/RQ51 or explicit reprioritization
 Priority: P1
 Type: frontend-contract/tests
 Feature family: color-shoetype-datascope-lineage
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ53-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ53-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): pass data scope to color and shoe type pages`
 
 ### Why
@@ -159,18 +179,28 @@ Color/ShoeType services support `dataScope`, and detail links include it, but th
 
 - Color/ShoeType list and detail always refer to the same data scope.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `ColorSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, specs, this queue, audit R53
+- Fix: list APIs receive `dataScope`; same value in toolbar filters/metadata, detail URL/snapshot, ShoeType trust header; reload on `trendplus:data-scope-changed`
+- Checks: Color (9) + ShoeType dataScope (1) tests pass; `git diff --check` pass
+- Risk: backend must honor `dataScope` query (already supported by services)
+- Next: RQ54 READY
+
 ---
 
 ## RQ54 - Vendor pre/post scope lineage
 
-Status: WAITING
+Status: DONE
 Ready after: RQ53 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: vendor-nivelacija-scope-lineage
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ54-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ54-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): add vendor nivelacija scope lineage`
 
 ### Why
@@ -201,6 +231,17 @@ Vendor pre/post API supports `storeId` and `dataScope`, but the page does not ex
 ### Acceptance
 
 - Vendor pre/post page declares and preserves its data scope.
+
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `ProdajaPrePostNivelacijePage.tsx`, `ProdajaPrePostNivelacijePage.spec.tsx`, this queue, audit R54
+- Decision: inherit global `dataScope` (reload on change); expose Objekat store filter
+- Fix: current+previous API calls pass `storeId`/`dataScope`; toolbar + trust header declare scope/store
+- Checks: `npm run test -- --run src/pages/ProdajaPrePostNivelacijePage.spec.tsx` pass (2); `git diff --check` pass
+- Risk: previous-period failure still silent (RQ62)
+- Next: RQ62 READY (unblocked by RQ54); RQ55 remains WAITING (RQ34/RQ46)
 
 ---
 
@@ -295,14 +336,14 @@ When backend `totalCost` is missing, UI uses `Math.max(0, revenueWithCost - marg
 
 ## RQ57 - Inventory risk global sorting
 
-Status: WAITING
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend/backend-contract/tests
 Feature family: inventory-risk-global-sort
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ57-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ57-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(inventory): make risk sort global or explicit`
 
 ### Why
@@ -335,11 +376,22 @@ Inventory OOS/overstock risk sorting is applied client-side only to the loaded p
 
 - Selecting OOS/overstock risk sort cannot hide higher-risk SKUs on later pages without warning.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Decision: explicit page-local labeling (no server-side forecast risk sort; avoids forecast algorithm / backend rewrite)
+- Changed: `InventoryPage.tsx`, `inventoryUtils.ts`, `InventoryPage.riskSortScope.spec.ts`, this queue, audit R57
+- Fix: option labels “(samo trenutna strana)” + warning under sort control when multipage risk exists
+- Checks: riskSortScope specs pass (4); `git diff --check` pass
+- Risk: CSV ekran may still export unsorted `rows` (RQ58)
+- Next: RQ58 READY
+
 ---
 
 ## RQ58 - Inventory screen CSV order parity
 
-Status: WAITING
+Status: READY
 Ready after: RQ57 or explicit unblocking
 Priority: P1
 Type: frontend-export/tests
@@ -511,14 +563,14 @@ Inventory header can use a fallback timestamp from forecast/alerts/rebalance/sto
 
 ## RQ62 - Vendor previous-period failure warning
 
-Status: WAITING
+Status: DONE
 Ready after: RQ54 or explicit unblocking
 Priority: P1
 Type: frontend-comparison/tests
 Feature family: vendor-previous-comparison-failure
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ62-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/RQ62-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): warn on vendor previous comparison failure`
 
 ### Why
@@ -549,6 +601,15 @@ Vendor pre/post page can show current data when previous-period request fails, b
 ### Acceptance
 
 - Previous-period transport/API failure is distinguishable from genuine no-baseline.
+
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `ProdajaPrePostNivelacijePage.tsx`, spec, this queue, audit R62
+- Fix: `previousComparisonError` + warning banner; growth/volatility show `Nedostupno` (never `Nova baza` on request failure); export metadata notes comparison status
+- Checks: page specs pass (3); `git diff --check` pass
+- Next: RQ57 READY (Ready after RQ01 DONE); RQ55/RQ56/RQ63 remain WAITING on their blockers
 
 ---
 

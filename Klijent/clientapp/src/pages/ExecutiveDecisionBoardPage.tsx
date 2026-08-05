@@ -301,13 +301,17 @@ function sourceScreenLink(kind: BoardCardKind, extra?: string | null): string {
   return "/analytics/actions";
 }
 
-function buildProductCards(product: ProductDecisionCenterResponse | null, states: Map<string, ActionState>): BoardCard[] {
+/** Legacy/fallback product cards — trusts PDC expectedImpactRsd only (RQ72 / RQ01 parity). */
+export function buildExecutiveFallbackProductCards(
+  product: ProductDecisionCenterResponse | null,
+  states: Map<string, "open" | "closed" | "none"> = new Map(),
+) {
   if (!product) return [];
 
   return [...product.rows]
     .sort((a, b) => {
-      const aImpact = a.expectedImpactRsd ?? a.lostSalesEstimate ?? 0;
-      const bImpact = b.expectedImpactRsd ?? b.lostSalesEstimate ?? 0;
+      const aImpact = a.expectedImpactRsd ?? 0;
+      const bImpact = b.expectedImpactRsd ?? 0;
       const aConfidence = normalizeRecommendationPct(a.confidenceScore ?? a.confidencePct) ?? 0;
       const bConfidence = normalizeRecommendationPct(b.confidenceScore ?? b.confidencePct) ?? 0;
       return (bImpact + bConfidence) - (aImpact + aConfidence);
@@ -316,7 +320,8 @@ function buildProductCards(product: ProductDecisionCenterResponse | null, states
     .map((row, index) => {
       const confidence = confidenceLabelFromProduct(row);
       const actionState = resolveActionState(row.sourceType ?? "product", row.sourceKey ?? `product:${row.productId}`, states);
-      const expectedImpact = row.expectedImpactRsd ?? row.lostSalesEstimate ?? null;
+      // Do not promote lostSalesEstimate into expected impact — PDC is source of truth.
+      const expectedImpact = row.expectedImpactRsd ?? null;
       const warnings = recommendationWarningCodes(row);
 
       return {
@@ -353,6 +358,10 @@ function buildProductCards(product: ProductDecisionCenterResponse | null, states
         impactScore: expectedImpact ?? 0,
       };
     });
+}
+
+function buildProductCards(product: ProductDecisionCenterResponse | null, states: Map<string, ActionState>): BoardCard[] {
+  return buildExecutiveFallbackProductCards(product, states);
 }
 
 function computePriorityScore(

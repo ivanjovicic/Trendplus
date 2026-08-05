@@ -22,7 +22,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent } from "../components/inventory/inventoryUtils";
+import { buildInventoryRow, buildSupplierChart, createScheduleDraft, csvEscape, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -159,6 +159,7 @@ export default function InventoryPage() {
   const [schedules, setSchedules] = useState<InventoryReportSchedule[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
+  const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [filtersLoading, setFiltersLoading] = useState(true);
@@ -204,7 +205,7 @@ export default function InventoryPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
-  const serverSortBy = sortBy === "oosRisk" || sortBy === "overstockRisk" ? "kolicina" : sortBy;
+  const serverSortBy = isInventoryPageLocalRiskSort(sortBy) ? "kolicina" : sortBy;
   const previousLoadRef = useRef<PreviousLoadState | null>(null);
 
   useEffect(() => {
@@ -239,7 +240,15 @@ export default function InventoryPage() {
     void getSupplierFilters(undefined, undefined, true, selectedStoreId ?? undefined)
       .then((nextSuppliers) => {
         if (cancelled) return;
+        const fallbackWarning = nextSuppliers.meta
+          ? getAnalyticsMetaMessage(nextSuppliers.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
+          : null;
+        if (fallbackWarning) {
+          setSupplierFiltersWarning(fallbackWarning);
+          return;
+        }
         setSuppliers(nextSuppliers);
+        setSupplierFiltersWarning(null);
         if (selectedSupplierId != null && !nextSuppliers.some((entry) => entry.supplierId === selectedSupplierId)) {
           setSelectedSupplierId(null);
         }
@@ -540,7 +549,7 @@ export default function InventoryPage() {
     }];
   })), [forecast, rows]);
   const displayedRows = useMemo(() => {
-    if (sortBy !== "oosRisk" && sortBy !== "overstockRisk") return rows;
+    if (!isInventoryPageLocalRiskSort(sortBy)) return rows;
     return rows.slice().sort((left, right) => {
       const leftMetrics = forecastMetricsByRowKey.get(`${left.id}:${left.idObjekat ?? 0}`);
       const rightMetrics = forecastMetricsByRowKey.get(`${right.id}:${right.idObjekat ?? 0}`);
@@ -549,6 +558,11 @@ export default function InventoryPage() {
         : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
     });
   }, [forecastMetricsByRowKey, rows, sortBy]);
+
+  const riskSortScopeWarning = useMemo(
+    () => inventoryRiskSortScopeWarning(sortBy, { pageSize, totalPages, totalCount }),
+    [pageSize, sortBy, totalCount, totalPages],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1111,6 +1125,11 @@ export default function InventoryPage() {
                 <option value="">Svi dobavljači</option>
                 {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
               </select>
+              {supplierFiltersWarning ? (
+                <p className="mt-2 text-[11px] font-semibold tracking-wide text-[var(--warning)]">
+                  {supplierFiltersWarning}
+                </p>
+              ) : null}
             </label>
             <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Sortiranje</span>
@@ -1119,9 +1138,14 @@ export default function InventoryPage() {
                 <option value="naziv">Naziv A-Z</option>
                 <option value="vrednost">Vrednost opadajuce</option>
                 <option value="azuriranje">Poslednje ažuriranje</option>
-                <option value="oosRisk">OOS rizik opadajuce</option>
-                <option value="overstockRisk">Overstock rizik opadajuce</option>
+                <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
+                <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
               </select>
+              {riskSortScopeWarning ? (
+                <p className="mt-2 text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status" data-testid="inventory-risk-sort-scope-warning">
+                  {riskSortScopeWarning}
+                </p>
+              ) : null}
             </label>
             <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Veličina strane</span>

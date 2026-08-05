@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type { StoreOption, SupplierFilterOption } from "../types/analytics";
+import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
 import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
 import SupplierFootwearAnalyticsPage from "./SupplierFootwearAnalyticsPage";
@@ -66,6 +67,7 @@ function buildStoreLabel(store: StoreOption): string {
 export default function SupplierConsolidatedPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
+  const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [trustPayload, setTrustPayload] = useState<SupplierTrustHeaderPayload | null>(null);
   const didInitTrustResetRef = useRef(false);
   const {
@@ -138,7 +140,20 @@ export default function SupplierConsolidatedPage() {
   useEffect(() => {
     let cancelled = false;
     getSupplierFilters(canonicalFilters.fromDate, canonicalFilters.toDate, true, canonicalFilters.storeId)
-      .then((items) => { if (!cancelled) setSuppliers(items); })
+      .then((items) => {
+        if (cancelled) return;
+
+        const fallbackWarning = items.meta
+          ? getAnalyticsMetaMessage(items.meta) ?? "Filteri dobavljača trenutno koriste pomoćni signal."
+          : null;
+        if (fallbackWarning) {
+          setSupplierFiltersWarning(fallbackWarning);
+          return;
+        }
+
+        setSuppliers(items);
+        setSupplierFiltersWarning(null);
+      })
       .catch(() => {
         if (!cancelled) {
           // Preserve the last known supplier list on transient failures instead of faking an empty filter set.
@@ -257,6 +272,7 @@ export default function SupplierConsolidatedPage() {
               <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>
             ))}
           </select>
+          {supplierFiltersWarning ? <span className="supplier-consolidated-filter-note">{supplierFiltersWarning}</span> : null}
         </label>
 
         <div className="supplier-consolidated-actions">

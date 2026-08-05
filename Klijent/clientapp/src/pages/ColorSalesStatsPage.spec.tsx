@@ -189,6 +189,8 @@ function getDecisionTable() {
 
 describe("ColorSalesStatsPage", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem("trendplus:dataScope", "all");
     vi.mocked(getStores).mockResolvedValue([
       { storeId: 1, storeName: "Centar", city: "Beograd", region: "BG" },
       { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
@@ -207,6 +209,7 @@ describe("ColorSalesStatsPage", () => {
       toDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T23:59:59Z$/),
       sezonaId: null,
       storeId: null,
+      dataScope: "all",
     }));
     expect(screen.getByText("Ukupan promet")).toBeInTheDocument();
     expect(screen.getByText("Udeo top 5 boja")).toBeInTheDocument();
@@ -218,6 +221,28 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.getByText("Pojačaj")).toBeInTheDocument();
     expect(screen.getByText("Smanji")).toBeInTheDocument();
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("color-sales-stats: 2 rows");
+  });
+
+  it("includes dataScope in list calls, reloads on scope change, and keeps detail navigation aligned", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(getColorSalesStats).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing" }));
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
   });
 
   it("blocks invalid date ranges before issuing a new analytics request", async () => {
@@ -277,6 +302,109 @@ describe("ColorSalesStatsPage", () => {
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("color-sales-stats: 2 rows");
   });
 
+  it("preserves backend insufficient_data as Nedovoljno podataka instead of Zadrži", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Siva",
+          ukupanPromet: 8000,
+          marginContribution: 500,
+          recommendation: {
+            status: "insufficient_data",
+            label: "Insufficient data",
+            summary: "Nedovoljno signala.",
+            confidencePct: 20,
+            reliabilityPct: 35,
+            dataQualityStatus: "insufficient_data",
+            reasonCodes: ["insufficient_data"],
+          },
+        }),
+        color({
+          boja: "Crna",
+          ukupanPromet: 120000,
+          marginContribution: 46000,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: 88,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
+
+    const table = getDecisionTable();
+    const sivaRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Siva"));
+    expect(sivaRow).toBeDefined();
+    expect(sivaRow).toHaveTextContent("Nedovoljno podataka");
+    expect(sivaRow).not.toHaveTextContent("Zadrži");
+  });
+
+  it("maps recommendation status codes without promoting insufficient_data to Zadrži", async () => {
+    const { mapRecommendationStatus, displayStatusLabel } = await import("./ColorSalesStatsPage");
+    expect(mapRecommendationStatus("insufficient_data")).toBe("NedovoljnoPodataka");
+    expect(displayStatusLabel("NedovoljnoPodataka")).toBe("Nedovoljno podataka");
+    expect(mapRecommendationStatus("maintain")).toBe("Zadrzi");
+    expect(mapRecommendationStatus("increase_focus")).toBe("Pojacaj");
+  });
+
+  it("does not invent a business recommendation when backend recommendation is missing", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Teget",
+          ukupanPromet: 250000,
+          marginContribution: 90000,
+          sharePct: 70,
+          popRevenueChangePct: 80,
+          recommendation: undefined,
+        }),
+        color({
+          boja: "Crna",
+          ukupanPromet: 120000,
+          marginContribution: 46000,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: 88,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Pojačaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Smanji: 0/)).toBeInTheDocument();
+
+    const table = getDecisionTable();
+    const tegetRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Teget"));
+    expect(tegetRow).toBeDefined();
+    expect(tegetRow).toHaveTextContent("Nedovoljno podataka");
+    expect(tegetRow).not.toHaveTextContent("Pojačaj");
+    expect(tegetRow).not.toHaveTextContent("Zadrži");
+    expect(tegetRow).not.toHaveTextContent("Smanji");
+
+    fireEvent.click(within(tegetRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
+  });
+
   it("expands a color row and saves a detail snapshot before navigating to the detail route", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");
@@ -294,6 +422,6 @@ describe("ColorSalesStatsPage", () => {
       recordId: "Crna",
       title: "Crna",
     }));
-    expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120000")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120.000 RSD")).toBe(true);
   });
 });

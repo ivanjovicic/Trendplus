@@ -82,6 +82,12 @@ type FailoverAwareWindow = Window & {
 
 export { AnalyticsMetaError };
 
+type AnalyticsArrayWithMeta<T> = T[] & {
+  meta?: AnalyticsResponseMeta | null;
+};
+
+type FetchJsonResponseHandler<T> = (response: Response, payload: T) => T;
+
 export function makeUrl(path: string, params?: URLSearchParams) {
   const baseUrl = apiUrl(path);
   const finalParams = params ? new URLSearchParams(params.toString()) : new URLSearchParams();
@@ -132,14 +138,20 @@ async function fetchAnalyticsResponse(
  * Fetch with retry on timeout (for cold-start backends).
  * Tries with shorter timeout first, then retries with longer timeout if first attempt times out.
  */
-async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessage?: string): Promise<T> {
+async function fetchJsonWithRetry<T>(
+  url: string,
+  timeoutMs: number,
+  errorMessage?: string,
+  onResponse?: FetchJsonResponseHandler<T>
+): Promise<T> {
   if (isApiFailoverLayerActive()) {
     const res = await fetchAnalyticsResponse(url, undefined, timeoutMs);
     if (!res.ok) {
       throw new Error(await parseApiError(res, errorMessage));
     }
     const payload = (await res.json()) as T;
-    return assertAnalyticsMetaSuccess(payload, errorMessage);
+    const processedPayload = onResponse?.(res, payload) ?? payload;
+    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
   }
 
   const { firstAttemptTimeoutMs, totalTimeoutMs } = getRetryTimeouts(timeoutMs);
@@ -150,7 +162,8 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
       throw new Error(await parseApiError(res, errorMessage));
     }
     const payload = (await res.json()) as T;
-    return assertAnalyticsMetaSuccess(payload, errorMessage);
+    const processedPayload = onResponse?.(res, payload) ?? payload;
+    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
   } catch (error) {
     // Don't retry on non-timeout errors
     if (!(error instanceof FetchTimeoutError)) {
@@ -163,11 +176,17 @@ async function fetchJsonWithRetry<T>(url: string, timeoutMs: number, errorMessag
       throw new Error(await parseApiError(res, errorMessage));
     }
     const payload = (await res.json()) as T;
-    return assertAnalyticsMetaSuccess(payload, errorMessage);
+    const processedPayload = onResponse?.(res, payload) ?? payload;
+    return assertAnalyticsMetaSuccess(processedPayload, errorMessage);
   }
 }
 
-async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage?: string): Promise<T> {
+async function fetchJson<T>(
+  path: string,
+  params?: URLSearchParams,
+  errorMessage?: string,
+  onResponse?: FetchJsonResponseHandler<T>
+): Promise<T> {
   const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
   const url = makeUrl(path, finalParams);
   const cacheTtlMs = resolveClientCacheTtl(path);
@@ -185,7 +204,7 @@ async function fetchJson<T>(path: string, params?: URLSearchParams, errorMessage
   }
 
   const request = (async () => {
-    const data = await fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage);
+    const data = await fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage, onResponse);
     if (cacheTtlMs > 0) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
     }
@@ -754,6 +773,48 @@ export async function getProductDecisionCenter(options?: {
   );
 }
 
+function readFilterFallbackMeta(response: Response): AnalyticsResponseMeta | null {
+  const fallbackFlag = response.headers.get("X-Analytics-Fallback") ?? response.headers.get("x-analytics-fallback");
+  if (fallbackFlag?.toLowerCase() !== "true") {
+    return null;
+  }
+
+  const warningCode = response.headers.get("X-Analytics-Fallback-Code")
+    ?? response.headers.get("x-analytics-fallback-code")
+    ?? "filter_fallback";
+  const warningMessage = response.headers.get("X-Analytics-Fallback-Reason")
+    ?? response.headers.get("x-analytics-fallback-reason")
+    ?? "Filteri trenutno koriste pomoćni signal.";
+
+  return {
+    success: true,
+    warningCode,
+    warningMessage,
+    dataQualityStatus: "warning",
+    isPartial: true,
+  };
+}
+
+function attachFilterFallbackMeta<T>(response: Response, payload: T): T {
+  if (!Array.isArray(payload)) {
+    return payload;
+  }
+
+  const meta = readFilterFallbackMeta(response);
+  if (!meta) {
+    return payload;
+  }
+
+  Object.defineProperty(payload, "meta", {
+    value: meta,
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
+
+  return payload;
+}
+
 export async function getDecisionBoardAggregate(options?: {
   fromDate?: string;
   toDate?: string;
@@ -789,11 +850,12 @@ export async function getDecisionBoardAggregate(options?: {
   );
 }
 
-export async function getStores(useCached = true): Promise<StoreOption[]> {
-  return fetchJson(
+export async function getStores(useCached = true): Promise<AnalyticsArrayWithMeta<StoreOption>> {
+  return fetchJson<AnalyticsArrayWithMeta<StoreOption>>(
     useCached ? "/api/analytics/cached/filters/stores" : "/api/analytics/filters/stores",
     undefined,
-    "Greska pri ucitavanju prodavnica"
+    "Greska pri ucitavanju prodavnica",
+    attachFilterFallbackMeta
   );
 }
 
@@ -802,16 +864,17 @@ export async function getSupplierFilters(
   toDate?: string,
   _useCached = true,
   storeId?: number | null
-): Promise<SupplierFilterOption[]> {
+): Promise<AnalyticsArrayWithMeta<SupplierFilterOption>> {
   const params = new URLSearchParams();
   if (fromDate) params.append("fromDate", fromDate);
   if (toDate) params.append("toDate", toDate);
   if (storeId != null) params.append("storeId", String(storeId));
 
-  return fetchJson(
+  return fetchJson<AnalyticsArrayWithMeta<SupplierFilterOption>>(
     "/api/analytics/cached/filters/suppliers",
     params,
-    "Greska pri ucitavanju filtera dobavljaca"
+    "Greska pri ucitavanju filtera dobavljaca",
+    attachFilterFallbackMeta
   );
 }
 

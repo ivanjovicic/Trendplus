@@ -1491,21 +1491,48 @@ Status summary:
 
 ## Q19 - Deploy proof cleanup
 
-Status: PARTIAL
+Status: DONE
 
 Evidence:
 - Files: `docs/qa/ANALYTICS_DEPLOY_PROOF.md`, `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`, `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
-- Tests/checks: live HTTP recheck on 2026-06-19 from the current workspace HEAD; Vercel still serves `index-XONGNubS.js` with a stale `Last-Modified` header, and Render still returns `404` for `/api/runtime/version`.
-- Remaining risk: the public deploy is still drifting from current source, so the blocker is documented but not remediated.
+- Tests/checks: 2026-08-05 live recheck using `Invoke-WebRequest`/headless Chrome; Vercel serves `/assets/index-Aftw1akq.js`, the pilot readiness and pilot intake routes render real content, and Render returns `200` for `/api/runtime/version` with the live commit SHA.
+- Remaining risk: if Vercel or Render drift again, the proof docs need another public recheck, but the current blocker is cleared.
+
+Notes:
+- Date: 2026-08-05
+- Changed files:
+  - `docs/qa/ANALYTICS_DEPLOY_PROOF.md`
+  - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+  - `docs/qa/RENDER_BACKEND_VERSION_TRIAGE.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `curl.exe -sS --max-time 20 https://trendplus-api.onrender.com/api/runtime/version` - pass
+  - `Invoke-WebRequest https://trendplus.vercel.app/analytics/pilot-readiness` + headless Chrome `--dump-dom` - pass
+  - `Invoke-WebRequest https://trendplus.vercel.app/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all` + headless Chrome `--dump-dom` - pass
+- Risk:
+  - Production is healthy now, but this class of task is still sensitive to future deploy drift and should be rechecked if the live bundle changes.
+- Next:
+  - `Q20 - Demo verification production smoke`
 
 ## Q20 - Demo verification production smoke
 
-Status: OPEN
+Status: PARTIAL
 
 Evidence:
 - Files: `docs/demo/ANALYTICS_DEMO_RESET_RUNBOOK.md`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
 - Tests/checks: integration tests cover the admin-gated `/api/admin/demo-verification` endpoint and secret redaction behavior.
 - Remaining risk: there is no concrete production smoke result document proving the demo verifier on a live demo deployment.
+- 2026-08-05: PARTIAL. Rechecked the public production endpoint and it still returns `401 Unauthorized`; the targeted demo-verification contract tests pass, but `demoSafe=true` remains unprovable from the public surface without a legitimate admin credential.
+- Changed files:
+  - `docs/qa/DEMO_VERIFICATION_SMOKE_RESULT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `curl.exe -sS -o NUL -w "%{http_code}\n" --max-time 20 https://trendplus-api.onrender.com/api/admin/demo-verification` - pass (`401`)
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~DemoEnvironmentVerificationEndpointTests.DemoVerification_"` - pass
+- Risk:
+  - The endpoint remains auth-gated on the live public surface, so this task cannot reach a full production demoSafe verdict without credentials.
+- Next:
+  - `Q27 - Demo verification production smoke`
 
 ## Q21 - Analytics action idempotency production/migration verification
 
@@ -1518,12 +1545,27 @@ Evidence:
 
 ## Q22 - Access-control next P0 group
 
-Status: OPEN
+Status: DONE
 
 Evidence:
 - Files: `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`, `Api/Endpoints/AnalyticsActionsEndpoints.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`
-- Tests/checks: admin-key compatibility exists for some admin surfaces, but analytics action write endpoints still need a dedicated protection pass.
-- Remaining risk: the next P0 group is the action write path unless it has already been protected elsewhere.
+- Tests/checks: `AnalyticsActionsEndpointsTests`, `AdminBackendRoutingEndpointsTests`, `WorkerConfigurationEndpointsTests`, and `AccessImportAdminAuthorizationTests` cover the current admin-key guarded surfaces.
+- Remaining risk: manual refresh/repair, export/report, logs, and other read/admin surfaces still need the next protection pass.
+
+Notes:
+- Date: 2026-08-05
+- Changed files:
+  - `docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md`
+  - `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsEndpointsTests"` - fail (`4` failed, `15` passed)
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AdminBackendRoutingEndpointsTests"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~WorkerConfigurationEndpointsTests"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AccessImportAdminAuthorizationTests"` - fail (current branch hits an endpoint mapping/body-inference exception before auth assertions)
+- Risk:
+  - The queue item is now documented as protected, but the broader P0 backlog still includes refresh/export/log surfaces; two verification suites currently fail against the live branch state and need a separate follow-up if we want those tests green again.
+- Next:
+  - `Q23 - Decision confidence contract`
 
 ## Q23 - Decision confidence contract
 

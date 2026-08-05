@@ -18,6 +18,16 @@ Backend base: `https://trendplus-api.onrender.com`
 - A later 2026-06-19 redeploy proof is documented in `docs/qa/VERCEL_FRONTEND_REDEPLOY_PROOF.md`; it shows the required analytics routes rendering real content on `/assets/index-BxfHyN7W.js`.
 - The full live smoke pass after the redeploy is documented in `docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md`.
 
+## 2026-08-05 Live Recheck
+
+- Local `HEAD` is `2ab36cb376d236cdde98fbb4d31e5316bf9cdd4d`.
+- `origin/main` is `2ab36cb376d236cdde98fbb4d31e5316bf9cdd4d`.
+- Vercel serves `/assets/index-Aftw1akq.js`.
+- Headless Chrome renders the real pilot readiness checklist at `/analytics/pilot-readiness`.
+- Headless Chrome renders the real pilot intake report at `/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all`.
+- Render returns `200 OK` for `GET /api/runtime/version` and reports `commitSha=e9f3238a172fe61ade3844777d8576dade270dae`.
+- This recheck confirms the production pilot routes and runtime proof are live again.
+
 ## 2026-06-19 Current Live Recheck
 
 - Local `HEAD` is `afb575ac02a9e43f6ab0a3ce2520997fd0ade69f`.

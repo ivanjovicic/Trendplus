@@ -76,7 +76,7 @@ type ActiveFilters = {
   dataScope: string | null;
 };
 
-type DecisionRow = RankingItem & {
+export type DecisionRow = RankingItem & {
   sharePct: number;
   marginContribution: number;
   qualityTrendPct: number;
@@ -92,11 +92,26 @@ type DecisionRow = RankingItem & {
 
 const OPEN_ACTION_STATUSES: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
 
-const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
+/**
+ * Scorecard `preMarkdownMarginPct` is a 0–1 ratio from the API.
+ * Compact table / export / detail percent columns use percent units (35 = 35%).
+ * `sharePct` and `qualityTrendPct` on DecisionRow are already percent units.
+ */
+export function toSupplierDecisionMarginPercentUnits(ratio: number | null | undefined): number | null {
+  if (ratio == null || Number.isNaN(ratio)) return null;
+  return ratio * 100;
+}
+
+export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "revenue", header: "Prihod", dataType: "currency" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
-  { key: "preMarkdownMarginPct", header: "Marža %", dataType: "percent" },
+  {
+    key: "preMarkdownMarginPct",
+    header: "Marža %",
+    dataType: "percent",
+    getValue: (row) => toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct),
+  },
   { key: "qualityTrendPct", header: "Trend pune cene %", dataType: "percent" },
   { key: "status", header: "Scorecard signal", dataType: "text" },
 ];
@@ -140,7 +155,7 @@ function buildStatusTooltip(row: DecisionRow): string {
   const reliabilityText = row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(row.dataQualityStatus);
   const hintText = recommendationReasonHints(row.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(row.preMarkdownMarginPct * 100, 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
@@ -1159,7 +1174,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                             <td>{row.supplierName}</td>
                             <td className="align-right">{fmtRsd(row.revenue)}</td>
                             <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td className="align-right">{fmtPct(row.preMarkdownMarginPct * 100, 2)}</td>
+                            <td className="align-right">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
                             <td className={`align-right ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
                             <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span></td>
                             <td className="align-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>

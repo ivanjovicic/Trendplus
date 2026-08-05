@@ -26,7 +26,7 @@ import InfoTip from "../components/ui/InfoTip";
 import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { getDataScope } from "../utils/dataScope";
+import { getDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import {
@@ -339,6 +339,7 @@ export default function ShoeTypeSalesStatsPage() {
   const [data, setData] = useState<ShoeTypeSalesStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedTypeKey, setExpandedTypeKey] = useState<string | null>(null);
@@ -347,6 +348,17 @@ export default function ShoeTypeSalesStatsPage() {
     if (!fromDate || !toDate) return false;
     return new Date(fromDate) > new Date(toDate);
   }, [fromDate, toDate]);
+
+  useEffect(() => {
+    const handleScopeChange = () => {
+      setDataScopeValue(getDataScope());
+    };
+
+    window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
+    return () => {
+      window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
+    };
+  }, []);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -360,7 +372,7 @@ export default function ShoeTypeSalesStatsPage() {
     void loadStores();
   }, []);
 
-  const load = useCallback(async (filters: ActiveFilters) => {
+  const load = useCallback(async (filters: ActiveFilters, scope: DataScope) => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -371,6 +383,7 @@ export default function ShoeTypeSalesStatsPage() {
         ...currentRange,
         sezonaId: filters.sezonaId,
         storeId: filters.storeId,
+        dataScope: scope,
       });
 
       if (requestId !== requestIdRef.current) return;
@@ -387,8 +400,8 @@ export default function ShoeTypeSalesStatsPage() {
   }, []);
 
   useEffect(() => {
-    void load(activeFilters);
-  }, [activeFilters, load]);
+    void load(activeFilters, dataScope);
+  }, [activeFilters, dataScope, load]);
 
   const decisionRows = useMemo<DecisionShoeType[]>(() => {
     const rows = data?.shoeTypes ?? [];
@@ -644,13 +657,15 @@ export default function ShoeTypeSalesStatsPage() {
       { key: "toDate", label: "Do", value: activeFilters.toDate },
       { key: "sezonaId", label: "Sezona", value: activeSezonaLabel },
       { key: "storeId", label: "Objekat", value: activeFilters.storeId ?? "Svi objekti" },
+      { key: "dataScope", label: "Opseg podataka", value: dataScope },
     ],
-    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel]
+    [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeSezonaLabel, dataScope]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
     () => [
       { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
+      { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
       { key: "tipova", label: "Tipova", value: data?.totals.brojTipovaObuce ?? 0 },
       { key: "marginCoverage", label: "Pokrice direktnom nabavnom %", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
       { key: "fallbackCoverage", label: "Promet sa procenjenom nabavnom %", value: fmtPct(data?.dataQuality.estimatedCostRevenueSharePct, 1) },
@@ -673,10 +688,12 @@ export default function ShoeTypeSalesStatsPage() {
       data?.dataQuality.estimatedCostRevenueSharePct,
       data?.dataQuality.missingCostRevenueSharePct,
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
+      data?.dataScope,
       data?.generatedAt,
       data?.totals.brojTipovaObuce,
       data?.totals.snapshotCostCoveragePct,
       data?.totals.isSnapshotActive,
+      dataScope,
     ]
   );
 
@@ -690,9 +707,9 @@ export default function ShoeTypeSalesStatsPage() {
     params.set("toDate", `${activeFilters.toDate}T23:59:59Z`);
     if (activeFilters.sezonaId != null) params.set("sezonaId", String(activeFilters.sezonaId));
     if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
-    params.set("dataScope", getDataScope());
+    params.set("dataScope", dataScope);
 
-        saveAnalyticsDetailSnapshot(
+    saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
         table: "shoe-type-sales-stats",
         recordId,
@@ -707,7 +724,7 @@ export default function ShoeTypeSalesStatsPage() {
     navigate(`/analitika/shoe-type-sales-stats/${recordId}?${params.toString()}`, {
       state: { backgroundLocation: location },
     });
-  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, location, navigate, toolbarFilters]);
+  }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters]);
 
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -776,7 +793,7 @@ export default function ShoeTypeSalesStatsPage() {
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
         lastRefreshAt={data?.generatedAt ?? null}
-        dataSource="Sales facts analytics"
+        dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
         dataQualityStatus={headerDataQualityStatus}
         mode="signal"
         methodologyHref="/analytics/data-quality"
@@ -887,7 +904,7 @@ export default function ShoeTypeSalesStatsPage() {
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
           message="Ne prikazujemo nule jer nije potvrdjeno da je period stvarno prazan."
-          onRetry={() => void load(activeFilters)}
+          onRetry={() => void load(activeFilters, dataScope)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
@@ -919,7 +936,7 @@ export default function ShoeTypeSalesStatsPage() {
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           emptyReason={emptyStateHint}
-          onRetry={() => void load(activeFilters)}
+          onRetry={() => void load(activeFilters, dataScope)}
         />
       ) : null}
 
@@ -1218,7 +1235,7 @@ export default function ShoeTypeSalesStatsPage() {
                                     toDate: activeFilters.toDate,
                                     sezonaId: activeFilters.sezonaId,
                                     storeId: activeFilters.storeId,
-                                    dataScope: getDataScope(),
+                                    dataScope: dataScope,
                                   }}
                                 />
                               </div>

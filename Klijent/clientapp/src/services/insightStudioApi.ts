@@ -103,6 +103,7 @@ export interface CategoryStat {
   totalUnits: number;
   marginPct: number;
   profitLift: number;
+  /** Revenue share in percent units (25 = 25%). Not a 0–1 ratio. */
   revShare: number;
   velocity: number;
   uniqueSKU: number;
@@ -112,6 +113,7 @@ export interface GenderStat {
   pol: string;
   totalRevenue: number;
   totalUnits: number;
+  /** Revenue share in percent units (25 = 25%). Not a 0–1 ratio. */
   revShare: number;
 }
 

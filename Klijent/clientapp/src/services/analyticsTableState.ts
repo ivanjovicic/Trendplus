@@ -6,20 +6,86 @@ import type {
   AnalyticsTableColumn,
   ResolvedAnalyticsTablePayload,
 } from "../types/analyticsTable";
+import { fmtNumber, fmtPct, fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 
 const PRINT_PREFIX = "analytics-print:";
 const DETAIL_PREFIX = "analytics-detail:";
-const PRINT_TTL_MS = 10 * 60 * 1000;
+/** Browser-stored print/report preview TTL (10 minutes). */
+export const ANALYTICS_PRINT_TTL_MS = 10 * 60 * 1000;
+const PRINT_TTL_MS = ANALYTICS_PRINT_TTL_MS;
 
 type StoredPrintPayload = {
   savedAtUtc: string;
   payload: ResolvedAnalyticsTablePayload;
 };
 
+export type PrintPayloadSnapshot = {
+  payload: ResolvedAnalyticsTablePayload;
+  savedAtUtc: string;
+  expiresAtUtc: string;
+  ttlMs: number;
+  ageMs: number;
+};
+
 function stringifyValue(value: AnalyticsScalar): string {
   if (value == null) return "";
   if (typeof value === "boolean") return value ? "Da" : "Ne";
   return String(value);
+}
+
+function toFiniteNumber(value: AnalyticsScalar): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const normalized = value.trim().replace(/\s/g, "").replace(",", ".");
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Formats detail snapshot display values to match table formatters.
+ * Percent columns expect percent units (35 = 35%), never silent ratio→percent conversion.
+ */
+export function formatDetailFieldValue(
+  value: AnalyticsScalar,
+  dataType: AnalyticsTableColumn<unknown>["dataType"],
+): string {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Da" : "Ne";
+  }
+
+  switch (dataType) {
+    case "currency": {
+      const amount = toFiniteNumber(value);
+      return amount == null ? stringifyValue(value) : fmtRsd(amount, 0, stringifyValue(value));
+    }
+    case "percent": {
+      const pct = toFiniteNumber(value);
+      return pct == null ? stringifyValue(value) : fmtPct(pct, 2);
+    }
+    case "number": {
+      const num = toFiniteNumber(value);
+      if (num == null) return stringifyValue(value);
+      return fmtNumber(num, Number.isInteger(num) ? 0 : 2);
+    }
+    case "date":
+      return formatDate(typeof value === "string" ? value : String(value), stringifyValue(value));
+    case "datetime":
+      return formatDateTime(typeof value === "string" ? value : String(value), stringifyValue(value));
+    default:
+      return stringifyValue(value);
+  }
 }
 
 export function resolveAnalyticsTablePayload<Row>(input: {
@@ -85,7 +151,7 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
     return {
       key: column.key,
       label: column.detailLabel ?? column.header,
-      value: stringifyValue(rawValue),
+      value: formatDetailFieldValue(rawValue, column.dataType),
       dataType: column.dataType,
       highlight: column.dataType === "currency" || column.dataType === "percent",
     };
@@ -118,28 +184,48 @@ export function savePrintPayload(payload: ResolvedAnalyticsTablePayload): string
   return key;
 }
 
-export function getPrintPayload(key: string | null): ResolvedAnalyticsTablePayload | null {
+export function getPrintPayloadSnapshot(key: string | null): PrintPayloadSnapshot | null {
   if (!key) return null;
   const raw = localStorage.getItem(key);
   if (!raw) return null;
 
   try {
     const parsed = JSON.parse(raw) as ResolvedAnalyticsTablePayload | StoredPrintPayload;
+    const now = Date.now();
 
     if ("payload" in parsed && "savedAtUtc" in parsed) {
-      const ageMs = Date.now() - Date.parse(parsed.savedAtUtc);
+      const savedAtMs = Date.parse(parsed.savedAtUtc);
+      const ageMs = now - savedAtMs;
       if (!Number.isFinite(ageMs) || ageMs > PRINT_TTL_MS) {
         localStorage.removeItem(key);
         return null;
       }
 
-      return parsed.payload;
+      return {
+        payload: parsed.payload,
+        savedAtUtc: parsed.savedAtUtc,
+        expiresAtUtc: new Date(savedAtMs + PRINT_TTL_MS).toISOString(),
+        ttlMs: PRINT_TTL_MS,
+        ageMs,
+      };
     }
 
-    return parsed as ResolvedAnalyticsTablePayload;
+    // Legacy unwrapped payload: treat as freshly readable but without durable provenance.
+    const savedAtUtc = new Date(now).toISOString();
+    return {
+      payload: parsed as ResolvedAnalyticsTablePayload,
+      savedAtUtc,
+      expiresAtUtc: new Date(now + PRINT_TTL_MS).toISOString(),
+      ttlMs: PRINT_TTL_MS,
+      ageMs: 0,
+    };
   } catch {
     return null;
   }
+}
+
+export function getPrintPayload(key: string | null): ResolvedAnalyticsTablePayload | null {
+  return getPrintPayloadSnapshot(key)?.payload ?? null;
 }
 
 export function saveAnalyticsDetailSnapshot(snapshot: AnalyticsDetailResponse): void {

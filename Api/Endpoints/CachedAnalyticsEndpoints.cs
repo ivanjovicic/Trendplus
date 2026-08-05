@@ -1839,6 +1839,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             ILogger<Program> logger,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -1876,16 +1877,19 @@ public static class CachedAnalyticsEndpoints
             catch (OperationCanceledException ex)
             {
                 logger.LogWarning(ex, "Supplier filters fallback due to timeout.");
+                SetFilterFallbackHeaders(httpContext, "supplier_filters_timeout", "Filteri dobavljača trenutno koriste pomoćni signal.");
                 return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
             }
             catch (NpgsqlException ex)
             {
                 logger.LogWarning(ex, "Supplier filters fallback due to database issue.");
+                SetFilterFallbackHeaders(httpContext, "supplier_filters_db_unavailable", "Filteri dobavljača trenutno koriste pomoćni signal.");
                 return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
             }
             catch (TimeoutException ex)
             {
                 logger.LogWarning(ex, "Supplier filters fallback due to timeout.");
+                SetFilterFallbackHeaders(httpContext, "supplier_filters_timeout", "Filteri dobavljača trenutno koriste pomoćni signal.");
                 return Results.Ok(Array.Empty<SupplierFilterOptionDto>());
             }
         });
@@ -1895,6 +1899,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsDbContext analyticsDb,
             ITrendplusDbContext trendDb,
             ILogger<Program> logger,
+            HttpContext httpContext,
             CancellationToken ct = default) =>
         {
             var requestAborted = ct;
@@ -1954,18 +1959,21 @@ public static class CachedAnalyticsEndpoints
             {
                 logger.LogWarning(ex, "Store filters fallback due to timeout.");
                 var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                SetFilterFallbackHeaders(httpContext, "store_filters_timeout", "Filteri prodavnica trenutno koriste pomoćni signal.");
                 return Results.Ok(fallback);
             }
             catch (NpgsqlException ex)
             {
                 logger.LogWarning(ex, "Store filters fallback due to database issue.");
                 var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                SetFilterFallbackHeaders(httpContext, "store_filters_db_unavailable", "Filteri prodavnica trenutno koriste pomoćni signal.");
                 return Results.Ok(fallback);
             }
             catch (TimeoutException ex)
             {
                 logger.LogWarning(ex, "Store filters fallback due to timeout.");
                 var fallback = await TryBuildStoreFiltersFallbackAsync(trendDb, logger, requestAborted);
+                SetFilterFallbackHeaders(httpContext, "store_filters_timeout", "Filteri prodavnica trenutno koriste pomoćni signal.");
                 return Results.Ok(fallback);
             }
         });
@@ -4687,6 +4695,16 @@ public static class CachedAnalyticsEndpoints
             logger.LogWarning(ex, "Store filters fallback query from Trend DB failed.");
             return Array.Empty<StoreFilterOptionDto>();
         }
+    }
+
+    private static void SetFilterFallbackHeaders(
+        HttpContext httpContext,
+        string warningCode,
+        string warningMessage)
+    {
+        httpContext.Response.Headers["X-Analytics-Fallback"] = "true";
+        httpContext.Response.Headers["X-Analytics-Fallback-Code"] = warningCode;
+        httpContext.Response.Headers["X-Analytics-Fallback-Reason"] = warningMessage;
     }
 
     private static async Task<List<PaymentDataDto>> BuildPaymentDataSnapshotAsync(

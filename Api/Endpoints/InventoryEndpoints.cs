@@ -1113,6 +1113,9 @@ public static class InventoryEndpoints
     {
         var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
         var decisions = await actionDecisionService.ListAsync(ct);
+        var articleIds = items.Select(item => item.Id).ToArray();
+        var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
+        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
         var suggestions = new List<InventoryActionSuggestionDto>();
 
         foreach (var item in items.Where(item => item.Quantity <= item.Minimum && item.DaysSinceMovement <= 60))
@@ -1131,7 +1134,9 @@ public static class InventoryEndpoints
                 item.StoreName,
                 null,
                 Math.Max(item.Minimum - item.Quantity, 1),
-                item.EstimatedValue));
+                item.EstimatedValue,
+                soldUnitsByArticle,
+                movementWindowStatsByArticle));
         }
 
         foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum * 2, 8) && item.DaysSinceMovement >= 60 && item.DaysSinceMovement < 90))
@@ -1148,7 +1153,9 @@ public static class InventoryEndpoints
                 item.StoreName,
                 null,
                 Math.Max(item.Quantity - item.Minimum, 1),
-                item.EstimatedValue));
+                item.EstimatedValue,
+                soldUnitsByArticle,
+                movementWindowStatsByArticle));
         }
 
         foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum, 3) && item.DaysSinceMovement >= 90))
@@ -1165,7 +1172,9 @@ public static class InventoryEndpoints
                 item.StoreName,
                 null,
                 item.Quantity,
-                item.EstimatedValue));
+                item.EstimatedValue,
+                soldUnitsByArticle,
+                movementWindowStatsByArticle));
         }
 
         foreach (var group in items.Where(item => item.StoreId.HasValue).GroupBy(NormalizeSkuKey))
@@ -1208,7 +1217,9 @@ public static class InventoryEndpoints
                     source.StoreName,
                     destination.StoreName,
                     qty,
-                    Math.Round(destination.UnitCost * qty, 2)));
+                    Math.Round(destination.UnitCost * qty, 2),
+                    soldUnitsByArticle,
+                    movementWindowStatsByArticle));
             }
         }
 
@@ -1241,9 +1252,12 @@ public static class InventoryEndpoints
         string? fromStoreName,
         string? toStoreName,
         int suggestedQty,
-        decimal estimatedValue)
+        decimal estimatedValue,
+        IReadOnlyDictionary<int, int> soldUnitsByArticle,
+        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
         decisions.TryGetValue(key, out var decision);
+        var signalEvidence = ComputeSuggestionSignalEvidence(item, soldUnitsByArticle, movementWindowStatsByArticle);
         return new InventoryActionSuggestionDto(
             key,
             actionType,
@@ -1260,7 +1274,63 @@ public static class InventoryEndpoints
             Math.Round(estimatedValue, 2),
             item.DaysSinceMovement,
             decision?.Note,
-            decision?.UpdatedAtUtc);
+            decision?.UpdatedAtUtc,
+            signalEvidence.SignalConfidencePct,
+            signalEvidence.RecommendationAllowed,
+            signalEvidence.DataQualityStatus,
+            signalEvidence.ReasonCodes);
+    }
+
+    private sealed record InventorySuggestionSignalEvidence(
+        decimal SignalConfidencePct,
+        bool RecommendationAllowed,
+        string DataQualityStatus,
+        IReadOnlyList<string> ReasonCodes);
+
+    private static InventorySuggestionSignalEvidence ComputeSuggestionSignalEvidence(
+        InventoryDatasetItem item,
+        IReadOnlyDictionary<int, int> soldUnitsByArticle,
+        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
+    {
+        var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
+        var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
+            ? stats
+            : new InventorySignalWindowStats(0, 0);
+        var openingStockUnits = Math.Max(item.Quantity - movementWindowStats.NetMovementUnits, 0);
+        var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+        var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+        var hasSufficientData = soldUnits30d > 0 || item.Quantity > 0 || hasReliableSellThroughInputs;
+        var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
+            ? "good"
+            : hasSufficientData
+                ? "warning"
+                : "insufficient_data";
+
+        var signal = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: item.Quantity,
+            avgDailySalesUnits: avgDailySalesUnits,
+            soldUnits: soldUnits30d,
+            openingStockUnits: openingStockUnits,
+            inboundUnits: movementWindowStats.InboundUnits,
+            dataQualityStatus: signalDataQuality,
+            hasSufficientData: hasSufficientData);
+
+        var reasonCodes = signal.ReasonCodes.ToList();
+        if (signal.StockCoverStatus == InventorySignalCalculator.StockCoverOutOfStockRisk)
+        {
+            reasonCodes.Add("replenish_needed");
+        }
+
+        if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlowStock or InventorySignalCalculator.StockCoverNoVelocity)
+        {
+            reasonCodes.Add("slow_stock");
+        }
+
+        return new InventorySuggestionSignalEvidence(
+            signal.SignalConfidencePct,
+            signal.RecommendationAllowed,
+            signalDataQuality,
+            reasonCodes.Distinct(StringComparer.Ordinal).ToList());
     }
 
     private static string NormalizeDecisionStatus(string? status)

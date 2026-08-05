@@ -12,6 +12,7 @@ Scanned roots:
  - Klijent/clientapp/src/pages
  - Klijent/clientapp/src/services
  - Klijent/clientapp/src/utils
+ - ../../Api/Endpoints/SupplierDecisionHubEndpoints.cs
 
 Allowlist:
  - legacy benchmark/scraper surfaces that are outside the current analytics pilot
@@ -32,11 +33,13 @@ const scanRoots = [
   'Klijent/clientapp/src/pages',
   'Klijent/clientapp/src/services',
   'Klijent/clientapp/src/utils',
+  '../../Api/Endpoints/SupplierDecisionHubEndpoints.cs',
 ];
 
 const ignoredExactFiles = new Set([
   'Klijent/clientapp/src/components/TrendDashboard.tsx',
   'Klijent/clientapp/src/pages/DeichmannPage.tsx',
+  'docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md',
 ]);
 
 const ignoredPathParts = [
@@ -80,6 +83,15 @@ async function walk(dir) {
   return files;
 }
 
+async function collectFiles(entryPath) {
+  const stat = await fs.stat(entryPath);
+  if (stat.isDirectory()) {
+    return walk(entryPath);
+  }
+
+  return [entryPath];
+}
+
 async function scanFile(filePath) {
   const content = await fs.readFile(filePath, 'utf8');
   const lines = content.split(/\r?\n/);
@@ -105,7 +117,7 @@ async function main() {
   for (const root of scanRoots) {
     const absoluteRoot = path.join(base, root);
     try {
-      const files = await walk(absoluteRoot);
+      const files = await collectFiles(absoluteRoot);
       for (const filePath of files) {
         if (!/\.(md|mdx|txt|ts|tsx|js|jsx)$/i.test(filePath)) continue;
         const rel = relPath(filePath);
@@ -129,7 +141,7 @@ async function main() {
     process.exit(2);
   }
 
-  console.log('OK: No mojibake detected in maintained docs/frontend surfaces.');
+  console.log('OK: No mojibake detected in maintained docs/frontend/backend analytics surfaces.');
 }
 
 main().catch((error) => {

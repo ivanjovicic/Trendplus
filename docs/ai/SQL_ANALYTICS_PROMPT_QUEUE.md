@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: Q76
+Current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -30,10 +30,10 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q73 | DONE | supplier-sales-stats-verification | Harden manual verification SQL script/runbook |
 | Q74 | DONE | analytics-refresh-window-contracts | Lock refresh and windowed MV contracts in tests |
 | Q75 | DONE | supplier-decision-windowed-readiness | Audit startup readiness for 90d/180d supplier decision MVs |
-| Q76 | READY | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
-| Q77 | WAITING | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
-| Q78 | WAITING | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
-| Q79 | WAITING | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
+| Q76 | DONE | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
+| Q77 | DONE | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
+| Q78 | DONE | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
+| Q79 | READY | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
 | Q80 | WAITING | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | WAITING | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | WAITING | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
@@ -552,7 +552,7 @@ Startup readiness and cache-count helpers currently focus on the all-time suppli
 
 ## Q76 - Supplier decision precomputed/live SQL parity matrix
 
-Status: READY
+Status: DONE
 Ready after: Q69 DONE; Q71 DONE or explicitly not required
 Priority: P0
 Type: backend/tests/docs
@@ -603,11 +603,28 @@ Supplier decision uses two query contracts: precomputed MV SQL and live CTE SQL.
 - Any real parity gap becomes a new smaller prompt.
 - No broad SQL rewrite.
 
+### Notes
+
+- 2026-08-05: DONE.
+- Commit: not created in this pass.
+- Changed files:
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/SUPPLIER_DECISION_SQL_PARITY.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName=Api.Tests.SupplierDecisionSchemaSqlTests.SupplierDecisionPrecomputedAndLiveSqlParityMatrixLocksIntentionalDifferences"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~Api.Tests.SupplierDecisionSchemaSqlTests"` - pass
+- Risk:
+  - Precomputed and live supplier-decision SQL remain intentionally asymmetric for `dataScope` and article-level filters; any dedupe should stay a follow-up prompt.
+- Next:
+  - `Q77 - Supplier decision nullable reader and detail-query trust audit`
+
 ---
 
 ## Q77 - Supplier decision nullable reader and detail-query trust audit
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P0
 Type: backend/tests/docs
@@ -655,11 +672,27 @@ Supplier decision reader helpers currently convert `DBNull` to `0`, `0m` or empt
 - Any required DTO change is split into a follow-up prompt.
 - No fake-zero behavior is introduced.
 
+### Notes
+
+- 2026-08-05: DONE.
+- Commit: not created in this pass.
+- Changed files:
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `docs/qa/SUPPLIER_DECISION_NULLABILITY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~Api.Tests.SupplierDecisionSchemaSqlTests"` - pass
+- Risk:
+  - Identifier and recommendation-code nulls would still be risky if the schema ever loosens; they remain documented rather than globally masked.
+- Next:
+  - `Q78 - Backend encoding guardrail for analytics decision strings`
+
 ---
 
 ## Q78 - Backend encoding guardrail for analytics decision strings
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P1
 Type: tooling/backend-copy/tests
@@ -707,11 +740,31 @@ Supplier decision endpoint contains user-facing Serbian strings with mojibake in
 - Guardrail catches future backend decision-string encoding regressions or documents why it cannot yet.
 - No business logic changes.
 
+### Notes
+
+- 2026-08-05: DONE.
+- Commit: not created in this pass.
+- Changed files:
+  - `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+  - `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+  - `Klijent/clientapp/scripts/check-encoding.mjs`
+  - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `npm run check:encoding` - pass
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~Api.Tests.SupplierDecisionSchemaSqlTests"` - pass
+  - `git diff --check` - pass, with existing LF/CRLF warnings only
+- Risk:
+  - `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md` stays allowlisted because it documents the historical mojibake issue instead of being a maintained copy surface.
+- Next:
+  - `Q79 - Dashboard filter/list fallback meta contract`
+
 ---
 
 ## Q79 - Dashboard filter/list fallback meta contract
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P1
 Type: backend/frontend-contract
@@ -757,11 +810,35 @@ Some dashboard endpoints return explicit `Meta` errors on database issues, while
 - Ancillary filter query failure cannot be silently confused with a valid empty list.
 - Existing consumers are not broken.
 
+### Notes
+
+- 2026-08-05: DONE.
+- Commit: not created in this pass.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+  - `Klijent/clientapp/src/pages/SupplierConsolidatedPage.css`
+  - `Klijent/clientapp/src/services/__tests__/analyticsApi.contract.spec.ts`
+  - `Klijent/clientapp/src/services/__tests__/supplierFilterFallbackMeta.spec.ts`
+  - `docs/qa/ANALYTICS_FILTER_FALLBACK_CONTRACT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet build Trendplus2.sln --no-restore --configuration Release` - pass
+  - `npm run test -- --run src/services/__tests__/supplierFilterFallbackMeta.spec.ts` - pass
+  - `git diff --check` - pass, with existing LF/CRLF warnings only
+- Risk:
+  - The shared `analyticsApi.contract.spec.ts` MSW-based suite still has an unrelated AbortSignal mismatch in this environment, so I used an isolated fetch-stub spec to verify the new fallback metadata contract.
+- Next:
+  - `Q80 - Lost-sales validation source/confidence contract`
+
 ---
 
 ## Q80 - Lost-sales validation source/confidence contract
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE; RQ03 DONE (reuse API vocabulary)
 Priority: P0
 Type: backend/tests/docs
@@ -811,12 +888,23 @@ Lost-sales validation can return `(0, 0)` when the view/connection is unavailabl
 ### Notes
 
 - 2026-08-04: RQ03 landed the shared API vocabulary (`view`/`fallback`/`unavailable`/`true_zero`) and contract doc. Q80 should not invent a second model; remaining work is SQL-evidence/docs follow-up only if DB proof of the view path is still needed.
+- 2026-08-05: DONE. Verified the endpoint already follows the shared source-confidence contract: unavailable returns `insufficient_data` with a null estimate, true zero stays `good`, and fallback zero remains `warning`. Confirmed by `Api.Tests/LostSalesValidationSourceStatusTests.cs` and the current `CachedAnalyticsEndpoints` implementation.
+- Changed files:
+  - `docs/qa/LOST_SALES_VALIDATION_CONTRACT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~LostSalesValidationSourceStatusTests"` - pass
+  - `git diff --check` - pass
+- Risk:
+  - The queue task was validation-only because the implementation already existed; no code path changed in this turn.
+- Next:
+  - `Q81 - Analytics dataScope/store/supplier SQL consistency audit`
 
 ---
 
 ## Q81 - Analytics dataScope/store/supplier SQL consistency audit
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P1
 Type: docs/tests
@@ -864,11 +952,24 @@ Analytics endpoints apply `dataScope`, store and supplier filters through differ
 - Filter semantics are documented across raw SQL helpers.
 - Mismatches are visible before any SQL rewrite.
 
+### Notes
+
+- 2026-08-05: DONE. Added a focused SQL filter consistency audit documenting the shared `dataScope` baseline and the current mismatches across Product Decision Center, lost-sales, inventory, supplier decision hub, and supplier-sales-stats paths.
+- Changed files:
+  - `docs/qa/ANALYTICS_SQL_FILTER_CONSISTENCY_AUDIT.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+- Risk:
+  - This prompt is audit-only; the helper contracts are now explicit, but the runtime cross-surface mismatches still exist until a follow-up prompt changes them.
+- Next:
+  - `Q82 - SQL timeout, cancellation and observability consistency audit`
+
 ---
 
 ## Q82 - SQL timeout, cancellation and observability consistency audit
 
-Status: WAITING
+Status: DONE
 Ready after: Q69 DONE
 Priority: P2
 Type: docs/backend-observability
@@ -915,3 +1016,16 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 - Timeout and observability behavior is documented across SQL analytics paths.
 - Future fixes can be prioritized without mixing with SQL formula changes.
+
+### Notes
+
+- 2026-08-05: DONE. Added an observability audit covering supplier decision hard SQL timeout handling, supplier-sales-stats cancellation/503 behavior, cached filter fallback semantics, board partial-meta behavior, and nightly worker timeout/correlation logging.
+- Changed files:
+  - `docs/qa/ANALYTICS_SQL_OBSERVABILITY_TIMEOUTS.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass, with existing LF/CRLF warnings only
+- Risk:
+  - No runtime behavior changed; the audit only makes the current split timeout model explicit.
+- Next:
+  - none
