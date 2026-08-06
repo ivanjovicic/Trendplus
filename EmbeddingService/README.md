@@ -11,7 +11,8 @@ This service is intended for local or private-network use only. It is not wired 
 - Uploads are size-limited, batch requests are count-limited, and invalid images return safe generic errors.
 - Long-running inference is wrapped with a timeout.
 - The .NET backend must explicitly set `EmbeddingService:UseMock=false` and a private `EmbeddingService:BaseUrl` before it will call this service.
-- Production startup is fail-closed if the backend still points to the mock service or to a public embedding URL.
+- Production startup is fail-closed for mock embeddings: `UseMock=true` is rejected.
+- When production has `UseMock=false` but no private `BaseUrl` (or `Enabled=false`), the API starts with a disabled/quarantined embedding adapter that rejects similarity calls instead of returning random vectors.
 
 ## Start locally
 
@@ -70,7 +71,8 @@ If you want the API to call this service, configure:
 Notes:
 
 - `UseMock=true` is allowed only outside production.
-- Production rejects loopback URLs and only allows private-network service URLs.
+- Production rejects loopback/public embedding URLs and only allows private-network service URLs when the Python path is enabled.
+- Production default is quarantine: `UseMock=false` and `Enabled=false` (see `Api/appsettings.Production.json`).
 - The repository does not include service-to-service auth for this path, so keep the service on trusted networking only.
 
 ## Validation and testing

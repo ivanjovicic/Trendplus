@@ -4,10 +4,21 @@ using Microsoft.Extensions.Configuration;
 
 namespace Api.Config;
 
+public enum EmbeddingServiceRuntimeMode
+{
+    Mock = 0,
+    Disabled = 1,
+    Python = 2
+}
+
 public sealed record EmbeddingServiceRuntimeSettings(
-    bool UseMock,
+    EmbeddingServiceRuntimeMode Mode,
     Uri? BaseAddress,
-    TimeSpan Timeout);
+    TimeSpan Timeout)
+{
+    public bool UseMock => Mode == EmbeddingServiceRuntimeMode.Mock;
+    public bool IsDisabled => Mode == EmbeddingServiceRuntimeMode.Disabled;
+}
 
 public static class EmbeddingServiceRuntimePolicy
 {
@@ -23,11 +34,29 @@ public static class EmbeddingServiceRuntimePolicy
         ArgumentException.ThrowIfNullOrWhiteSpace(environmentName);
 
         var useMock = configuration.GetValue("EmbeddingService:UseMock", true);
+        var enabled = configuration.GetValue<bool?>("EmbeddingService:Enabled");
         var timeoutSeconds = configuration.GetValue("EmbeddingService:Timeout", DefaultTimeoutSeconds);
         if (timeoutSeconds is < MinTimeoutSeconds or > MaxTimeoutSeconds)
         {
             throw new InvalidOperationException(
                 $"EmbeddingService:Timeout must be between {MinTimeoutSeconds} and {MaxTimeoutSeconds} seconds.");
+        }
+
+        var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        // Explicit quarantine: Enabled=false keeps the API up without mock or remote calls.
+        if (enabled == false)
+        {
+            if (useMock && IsProduction(environmentName))
+            {
+                throw new InvalidOperationException(
+                    "EmbeddingService:UseMock must be false in production.");
+            }
+
+            return new EmbeddingServiceRuntimeSettings(
+                Mode: EmbeddingServiceRuntimeMode.Disabled,
+                BaseAddress: null,
+                Timeout: timeout);
         }
 
         if (useMock)
@@ -39,16 +68,19 @@ public static class EmbeddingServiceRuntimePolicy
             }
 
             return new EmbeddingServiceRuntimeSettings(
-                UseMock: true,
+                Mode: EmbeddingServiceRuntimeMode.Mock,
                 BaseAddress: null,
-                Timeout: TimeSpan.FromSeconds(timeoutSeconds));
+                Timeout: timeout);
         }
 
         var baseUrl = configuration["EmbeddingService:BaseUrl"]?.Trim();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            throw new InvalidOperationException(
-                "EmbeddingService:BaseUrl is required when EmbeddingService:UseMock is false.");
+            // Incomplete real-service config: quarantine instead of crashing the whole API.
+            return new EmbeddingServiceRuntimeSettings(
+                Mode: EmbeddingServiceRuntimeMode.Disabled,
+                BaseAddress: null,
+                Timeout: timeout);
         }
 
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseAddress))
@@ -70,9 +102,9 @@ public static class EmbeddingServiceRuntimePolicy
         }
 
         return new EmbeddingServiceRuntimeSettings(
-            UseMock: false,
+            Mode: EmbeddingServiceRuntimeMode.Python,
             BaseAddress: baseAddress,
-            Timeout: TimeSpan.FromSeconds(timeoutSeconds));
+            Timeout: timeout);
     }
 
     private static bool IsProduction(string environmentName)

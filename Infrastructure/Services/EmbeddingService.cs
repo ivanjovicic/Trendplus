@@ -254,3 +254,35 @@ public class PythonEmbeddingService : IEmbeddingService
 
     private record EmbeddingResponse(float[] Embedding);
 }
+
+/// <summary>
+/// Quarantined embedding path: API can start, but similarity calls fail closed
+/// without returning random mock vectors.
+/// </summary>
+public sealed class DisabledEmbeddingService : IEmbeddingService
+{
+    private readonly ILogger<DisabledEmbeddingService> _logger;
+
+    public DisabledEmbeddingService(ILogger<DisabledEmbeddingService> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task<float[]> GetEmbeddingAsync(string imagePath, CancellationToken ct = default)
+    {
+        _logger.LogWarning("Embedding service is disabled; rejecting embedding request for {ImagePath}", imagePath);
+        throw new InvalidOperationException(
+            "Image embedding is disabled in this environment. Configure a private EmbeddingService:BaseUrl to enable it.");
+    }
+
+    public Task<List<SimilarProduct>> FindSimilarProductsAsync(
+        float[] embedding,
+        float threshold = 0.8f,
+        int limit = 10,
+        CancellationToken ct = default)
+    {
+        _logger.LogWarning("Embedding service is disabled; rejecting similarity search");
+        throw new InvalidOperationException(
+            "Image embedding is disabled in this environment. Configure a private EmbeddingService:BaseUrl to enable it.");
+    }
+}

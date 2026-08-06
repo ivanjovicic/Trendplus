@@ -449,10 +449,15 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         builder.Configuration,
         builder.Environment.EnvironmentName);
 
-    if (embeddingServiceSettings.UseMock)
+    if (embeddingServiceSettings.Mode == EmbeddingServiceRuntimeMode.Mock)
     {
         Console.WriteLine("⚠️ Using MOCK embedding service (no AI)");
         builder.Services.AddScoped<IEmbeddingService, MockEmbeddingService>();
+    }
+    else if (embeddingServiceSettings.Mode == EmbeddingServiceRuntimeMode.Disabled)
+    {
+        Console.WriteLine("⛔ Embedding service DISABLED (quarantined; no mock vectors)");
+        builder.Services.AddScoped<IEmbeddingService, DisabledEmbeddingService>();
     }
     else
     {
