@@ -36,7 +36,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d trendplus_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -57,12 +57,15 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
+        id: restore
         run: dotnet restore Api.Tests/Api.Tests.csproj
 
       - name: Build solution
+        id: build
         run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
 
       - name: Run all backend tests with coverage
+        id: test
         run: >-
           dotnet test Api.Tests/Api.Tests.csproj
           --no-build
@@ -76,6 +79,10 @@ jobs:
       - name: Publish coverage summary
         if: always()
         shell: bash
+        env:
+          RESTORE_OUTCOME: ${{ steps.restore.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
         run: |
           python3 - <<'PY'
           import glob
@@ -85,24 +92,61 @@ jobs:
 
           reports = glob.glob("TestResults/**/coverage.cobertura.xml", recursive=True)
           summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+          restore_outcome = os.environ.get("RESTORE_OUTCOME", "unknown")
+          build_outcome = os.environ.get("BUILD_OUTCOME", "unknown")
+          test_outcome = os.environ.get("TEST_OUTCOME", "unknown")
 
           with open(summary_path, "a", encoding="utf-8") as summary:
               summary.write("## Backend analytics test coverage\n\n")
-              if not reports:
-                  summary.write("Coverage report was not produced. Check the test and collector logs.\n")
+              summary.write(
+                  f"- Restore outcome: `{restore_outcome}`\n"
+                  f"- Build outcome: `{build_outcome}`\n"
+                  f"- Test outcome: `{test_outcome}`\n\n"
+              )
+
+              if reports:
+                  root = ET.parse(reports[0]).getroot()
+                  line_rate = float(root.attrib.get("line-rate", "0")) * 100
+                  branch_rate = float(root.attrib.get("branch-rate", "0")) * 100
+                  lines_covered = root.attrib.get("lines-covered", "0")
+                  lines_valid = root.attrib.get("lines-valid", "0")
+                  branches_covered = root.attrib.get("branches-covered", "0")
+                  branches_valid = root.attrib.get("branches-valid", "0")
+
+                  summary.write(f"- Line coverage: **{line_rate:.2f}%** ({lines_covered}/{lines_valid})\n")
+                  summary.write(f"- Branch coverage: **{branch_rate:.2f}%** ({branches_covered}/{branches_valid})\n")
+                  summary.write(f"- Cobertura reports: **{len(reports)}**\n")
+                  sys.exit(0)
+
+              if test_outcome == "success":
+                  summary.write(
+                      "Coverage collector did not produce `coverage.cobertura.xml` after a successful test run.\n"
+                      "Treat this as a coverage-pipeline failure, not a secondary artifact issue.\n"
+                  )
+                  print(
+                      "::error::Coverage collector produced no Cobertura report after successful tests.",
+                      file=sys.stderr,
+                  )
                   sys.exit(1)
 
-              root = ET.parse(reports[0]).getroot()
-              line_rate = float(root.attrib.get("line-rate", "0")) * 100
-              branch_rate = float(root.attrib.get("branch-rate", "0")) * 100
-              lines_covered = root.attrib.get("lines-covered", "0")
-              lines_valid = root.attrib.get("lines-valid", "0")
-              branches_covered = root.attrib.get("branches-covered", "0")
-              branches_valid = root.attrib.get("branches-valid", "0")
+              if test_outcome == "failure":
+                  summary.write(
+                      "No Cobertura report is available because the test step failed. "
+                      "Use the failing tests as the primary root cause; coverage was not required for this red run.\n"
+                  )
+              elif test_outcome == "skipped":
+                  summary.write(
+                      "No Cobertura report is available because the test step did not run "
+                      f"(restore=`{restore_outcome}`, build=`{build_outcome}`). "
+                      "Treat the earliest failed restore/build step as the primary root cause.\n"
+                  )
+              else:
+                  summary.write(
+                      f"No Cobertura report is available (test outcome=`{test_outcome}`). "
+                      "Do not treat missing coverage as an independent root cause.\n"
+                  )
 
-              summary.write(f"- Line coverage: **{line_rate:.2f}%** ({lines_covered}/{lines_valid})\n")
-              summary.write(f"- Branch coverage: **{branch_rate:.2f}%** ({branches_covered}/{branches_valid})\n")
-              summary.write(f"- Cobertura reports: **{len(reports)}**\n")
+              sys.exit(0)
           PY
 
       - name: Upload test results and coverage
@@ -111,5 +155,5 @@ jobs:
         with:
           name: analytics-backend-test-results
           path: TestResults
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14

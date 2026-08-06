@@ -1,0 +1,13 @@
+{
+  "solution": {
+    "path": "Trendplus2.sln",
+    "projects": [
+      "Api\\Api.csproj",
+      "Application\\Application.csproj",
+      "Domain\\Domain.csproj",
+      "Infrastructure\\Infrastructure.csproj",
+      "Workers\\Workers.csproj",
+      "Trendplus.POS\\Trendplus.POS.csproj"
+    ]
+  }
+}

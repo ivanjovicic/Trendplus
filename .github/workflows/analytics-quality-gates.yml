@@ -8,6 +8,10 @@ on:
     paths:
       - '.github/workflows/**'
       - 'Klijent/clientapp/**'
+      - 'Klijent/Klijent.esproj'
+      - 'Trendplus.POS.Ui/Trendplus.POS.Ui.esproj'
+      - 'scripts/check-javascript-sdk-pins.mjs'
+      - 'Trendplus2.Backend.slnf'
 
 permissions:
   contents: read
@@ -17,6 +21,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  javascript-sdk-pins:
+    name: JavaScript SDK pin availability
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify .esproj JavaScript SDK pins exist on nuget.org
+        run: node scripts/check-javascript-sdk-pins.mjs
+
   frontend:
     name: Frontend analytics tests, guardrails and build
     runs-on: ubuntu-latest

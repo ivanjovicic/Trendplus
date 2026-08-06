@@ -7,11 +7,20 @@ Current READY prompt: `none`
 
 ## Current diagnosis
 
-The bootstrap blocker is fixed. The backend tests now start and fail on real assertions / runtime contract drift.
+The bootstrap blocker is fixed. Backend workflow restore/build now succeed against `Api.Tests/Api.Tests.csproj`, and the suite reaches real assertions.
+
+BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step; real failures are owned by later repair prompts after BCI04 triage.
+
+Canonical GHA proof that bootstrap is unblocked:
+
+| Commit | Workflow run | Restore | Build | Test step |
+| --- | ---: | --- | --- | --- |
+| `568f03c65891e96bf2c0f27592aeea96c2e58361` | `31080378321` (job `92547604945`) | success | success | failure |
+| `ad1d86bfd15253c93f09a27b2c305342ea770332` | `31098165726` (job `92605052947`) | success | success | failure |
 
 The first real failures are triaged in `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`.
 
-The last three inspected runs of `Analytics Tests & Data Integrity` failed before build and test execution:
+Historical pre-fix runs that failed before build and test execution:
 
 | Commit | Workflow run | Result | First failing step |
 | --- | ---: | --- | --- |
@@ -180,55 +189,47 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 ### Completion note
 
 - Date: 2026-08-06
-- Agent: Codex
-- Changed files:
+- Agent: Codex + Cursor follow-up
+- Status kept: `PARTIAL` — bootstrap contract is met; `DONE` is blocked until the test step is green (owned by later repair prompts, not more workflow scoping).
+- Changed files (bootstrap fix commit `568f03c`):
+  - `.github/workflows/analytics-tests.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
   - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - Validation:
   - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
   - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
-  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail
-- Test totals:
-  - 781 total
-  - 715 passed
-  - 66 failed
-- Failing evidence:
-  - initial local run hit `password authentication failed for user "postgres"` when the host Postgres password did not match the workflow expectation
-  - the matching local run reached real test execution and then failed on existing DB/runtime issues, including `relation "PerformanceLogs" does not exist`
-  - failing families included `AccessImportAdminAuthorizationTests`, `AccessImportForeignKeyGuardTests`, `AnalyticsActionsEndpointsTests`, `AnalyticsActionsCriticalWorkflowTests`, `AccessImportJobQueueTests`, `DataQualityPostgresIntegrationTests`, `InventoryListEndpointIntegrationTests`, `SupplierDecisionHubContractTests`, and `WorkerRuntimePolicyServiceTests`
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release ...` - fail (real assertions)
 - GitHub Actions evidence:
-  - not inspected in this pass; no run ID recorded yet
+  - run `31080378321` / job `92547604945` on `568f03c…`: restore success, build success, test step failure
+  - run `31098165726` / job `92605052947` on `ad1d86b…`: restore success, build success, test step failure
+  - no `Microsoft.VisualStudio.JavaScript.Sdk` restore failure on these runs
+- Test totals (triaged from `31080378321` / local matching suite):
+  - `741 passed` / `40 failed`
+- First failing families (see `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`):
+  - Access import test-host route/auth contract
+  - Analytics actions list filter/paging
+  - Inventory list empty/count regression
+  - Data quality top-offender SQL scope
 - Checks:
   - `git diff --check` - pass
 - Risk:
-  - BCI01 bootstrap is unblocked locally, but the backend test suite still depends on a clean relational test DB and a matching GitHub Actions run is still needed before this can be promoted to `DONE`.
+  - Coverage/artifact cascade still obscures the primary test failure (`Publish coverage summary` fails after tests fail) — that is `BCI02`, not another BCI01 change.
 - Next:
-  - `BCI02` WAITING
-  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
-  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
-  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail: 741 passed / 40 failed
-- First failing tests:
-  - `Api.Tests.DataQualityPostgresIntegrationTests.IssuesHandler_PaginatesAndUsesStableRevenueOrdering`
-  - `Api.Tests.AnalyticsActionsCriticalWorkflowTests.Upsert_SameOpenSourceTupleIsIdempotent`
-  - `Api.Tests.InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments`
-  - `Api.Tests.AccessImportAdminAuthorizationTests.DeleteBatch_RejectsRequestWithoutAdminKey`
-  - `Trendplus2.Tests.AnalyticsActionItemServiceTests.UpsertAsync_PersistsLedgerCreationSnapshotMetadata`
-- Risk:
-  - Workflow bootstrap is fixed, but the backend suite now reaches real assertion failures and needs root-cause triage in BCI04 instead of more bootstrap changes.
-- Next:
-  - `BCI04` READY
+  - `BCI02` READY
+  - `BCI04` already DONE with triage + follow-up prompts
 
 ---
 
 ## BCI02 - Stop coverage and artifact steps from creating cascading fake root failures
 
-Status: WAITING
+Status: DONE
 Ready after: `BCI01` reaches the test step, regardless of whether real tests pass
 Priority: P1
 Type: CI/observability
 Feature family: backend-ci-diagnostics
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI02-<agent>.lock.md`
+Owner: Cursor
+Local lock: `.ai/task-locks/BCI02-cursor.lock.md`
 Commit suggestion: `fix(ci): preserve backend failure root cause`
 
 ### Why
@@ -314,18 +315,42 @@ When restore or build fails, the workflow currently adds extra failures for miss
 - Successful runs still require and publish coverage.
 - Existing test evidence is uploaded whenever available.
 
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Cursor
+- Changed files:
+  - `.github/workflows/analytics-tests.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Behavior:
+  - restore/build/test steps now have IDs `restore`, `build`, `test`
+  - coverage summary fails only when `test` succeeded and Cobertura is missing
+  - after test/restore/build failure, coverage summary explains the gap and exits `0`
+  - artifact upload uses `if-no-files-found: warn`
+  - Postgres health probe is `pg_isready -U postgres -d trendplus_test`
+- Checks:
+  - `git diff --check` - pass
+  - YAML parse - pass
+  - local coverage-script matrix: test-failure exit 0, success-without-coverage exit 1, restore-skip exit 0
+  - GitHub Actions post-merge verification still needed for live annotation shape
+- Risk:
+  - Without a new GHA run on this YAML, live annotation cleanliness is inferred from step logic rather than observed on a fresh red suite.
+- Next:
+  - `BCI03` READY
+
 ---
 
 ## BCI03 - Repair or explicitly isolate unavailable JavaScript SDK pins from whole-solution builds
 
-Status: WAITING
+Status: DONE
 Ready after: `BCI01` is `DONE` or `PARTIAL` with backend restore/build unblocked
 Priority: P1
 Type: build-system audit/fix
 Feature family: mixed-solution-cross-platform-build
 Parallel-safe: yes, if BCI02 is not editing the same workflow/solution files
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI03-<agent>.lock.md`
+Owner: Cursor
+Local lock: `.ai/task-locks/BCI03-cursor.lock.md`
 Commit suggestion: `fix(build): restore javascript sdk compatibility`
 
 ### Why
@@ -415,6 +440,36 @@ Do not select a model solely because NuGet reports a nearest version.
 - Whole-solution or documented backend-solution behavior is intentional and reproducible.
 - No supported build path pins an unavailable SDK version.
 - Backend CI remains independent from unrelated frontend wrapper resolution.
+
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Cursor
+- Selected model: **explicit backend solution filter** (`Trendplus2.Backend.slnf`) as the canonical non-IDE path; IDE `.esproj` wrappers retained with an available SDK pin.
+- Changed files:
+  - `Trendplus2.Backend.slnf`
+  - `Klijent/Klijent.esproj` (SDK `1.0.3864779` → `1.0.3982316`)
+  - `Trendplus.POS.Ui/Trendplus.POS.Ui.esproj` (same pin bump)
+  - `scripts/check-javascript-sdk-pins.mjs`
+  - `docs/ci/SOLUTION_AND_FRONTEND_BUILD_CONTRACT.md`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `.github/workflows/analytics-quality-gates.yml`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Proof:
+  - nuget.org flat container lists `1.0.3982316` and does **not** list `1.0.3864779`
+  - `node scripts/check-javascript-sdk-pins.mjs` pass
+  - negative check: unavailable `1.0.3864779` fails the script
+  - `dotnet restore Trendplus2.Backend.slnf` pass
+  - `dotnet build Trendplus2.Backend.slnf --no-restore --configuration Release` pass
+  - `dotnet restore Trendplus2.sln --force` pass (no unavailable SDK failure)
+  - `cd Trendplus.POS.Ui && npm run build` pass
+  - primary React `npm run build` not re-run in this pass (existing quality gate still owns it)
+- Checks:
+  - `git diff --check` - pass
+- Residual risk:
+  - Visual Studio IDE load of the mixed solution was not opened in this session; NuGet pin availability and `dotnet restore` are proven, but a VS JavaScript workload may still be required for SPA project UI features.
+- Next:
+  - none in this queue; return to real backend assertion repairs (`RQ89`/`RQ90` / related) to make BCI01 `DONE`
 
 ---
 
@@ -551,8 +606,8 @@ If the first real run passes all tests, mark BCI04 `OBSOLETE` with the run ID an
 
 ## Expected transition
 
-1. Run `BCI01` now.
-2. If real tests fail, make `BCI04` READY before assuming application stability.
-3. After the workflow reaches tests, run `BCI02` to improve diagnostics without weakening the gate.
-4. Run `BCI03` separately to repair/document whole-solution JavaScript SDK compatibility.
-5. Return to `STAB01` and the analytics reliability queue only with truthful backend CI evidence.
+1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs.
+2. `BCI04` is `DONE`; remaining failures are owned by focused repair prompts.
+3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes.
+4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check.
+5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful.
