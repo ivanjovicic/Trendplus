@@ -56,6 +56,9 @@ Useful next documents:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md`
+- `docs/security/TENANT_SAFETY_CHECKLIST.md`
+- `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
 - `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
 - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
 - `docs/ai/GENAI_COPILOT_ROADMAP.md`
@@ -75,10 +78,12 @@ Use this order. Do not invent a parallel `TODO`/`OPEN` workflow.
    A workflow that never reaches tests cannot be used as proof that backend tests pass or fail.
 3. **Analytics correctness** → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, then only the named source-queue prompt section.
    Cross-surface/addenda WAITING items stay WAITING until the router or owner unblocks them.
-4. **Data-source connector portability** → `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` for Access-to-generic connector contracts, SQL Server/PostgreSQL/MySQL source readers, mapping and checkpoint work.
+4. **Multi-tenancy / shared SaaS isolation** → `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`.
+   `MT01` is the only initial READY contract/tests task and may run only when path-safe. It never outranks unresolved STAB P0 work. `MT02`–`MT10` are mandatory before two real customers share one data plane.
+5. **Data-source connector portability** → `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` for Access-to-generic connector contracts, SQL Server/PostgreSQL/MySQL source readers, mapping and checkpoint work.
    This is a P1/P2 queue. Its `QDB01` docs/tests task may run in parallel only when it has no path collision; it never outranks an unresolved P0 gate.
-5. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
-6. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) and (2) have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
+6. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
+7. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) and (2) have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
 
 Legacy `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger. Prefer evidence notes there; do not start new work from its old `TODO` instructions.
 
@@ -89,11 +94,13 @@ node scripts/check-prompt-queues.mjs
 node scripts/check-prompt-queues.mjs --self-test
 ```
 
-The data-source connector roadmap keeps the Trendplus internal database on PostgreSQL and treats Access, SQL Server, PostgreSQL, MySQL and later APIs/files as read-only import sources. Do not use that queue to create multi-provider EF Core migrations, arbitrary SQL, write-back, CDC infrastructure or bidirectional synchronization. `QDB01` is the only initial READY item and owns contract documentation plus characterization tests, not production import behavior.
+The current safe customer-isolation mode is one deployment/database/storage/cache scope per customer. Do not put two real customers into one `TrendplusDbContext`, Redis namespace, file root or worker/outbox scope until the `MT10` shared-SaaS release gate passes. `StoreId`/`IDObjekat`, user ID, source connection ID and caller-provided headers are not tenant ownership. Tenant scope must come from a server-validated membership or service binding.
 
-For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability and backend-CI routers; it does not replace an active analytics correctness task from the priority review.
+The data-source connector roadmap keeps the Trendplus internal database on PostgreSQL and treats Access, SQL Server, PostgreSQL, MySQL and later APIs/files as read-only import sources. Do not use that queue to create multi-provider EF Core migrations, arbitrary SQL, write-back, CDC infrastructure or bidirectional synchronization. `QDB01` is the only initial READY item and owns contract documentation plus characterization tests, not production import behavior. Persistent connector profiles, mappings and checkpoints must become tenant-owned before they are used in shared SaaS.
 
-For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend-CI queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
+For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability, multi-tenancy and backend-CI routers; it does not replace an active analytics correctness task from the priority review.
+
+For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend-CI queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. In shared SaaS mode, GenAI retrieval, vector indexes, conversations, tool calls, caches and artifacts must also satisfy the multi-tenancy roadmap and enabled-surface `MT02`–`MT10` gates. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
 
 ## The ten non-negotiables
 
@@ -118,6 +125,29 @@ For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI 
 10. UTF-8, no mojibake
     Serbian Latin text must preserve `č ć š đ ž`. If text is corrupted, fix text safely and keep logic out of that commit.
 
+## Tenant safety gate before coding
+
+Before changing tenant-sensitive code, write the answers in local notes or the prompt result:
+
+```md
+Tenant safety gate:
+- Tenant-owned or platform-global:
+- Canonical TenantId source:
+- Membership/authorization source:
+- Missing tenant behavior:
+- Mismatched tenant behavior:
+- EF/raw SQL paths affected:
+- Cache keys/invalidation affected:
+- Jobs/outbox/imports affected:
+- Documents/storage/exports affected:
+- Two-tenant negative tests:
+- Migration/backfill needed:
+- Dedicated-deployment compatibility:
+- Stop condition hit? no / details
+```
+
+If any tenant-owned line cannot be answered, do not implement broad runtime work. Narrow the task to docs/contracts/tests or mark it `BLOCKED`/`PARTIAL`.
+
 ## Analytics safety gate before coding
 
 Before changing analytics code, write the answers in local notes or the prompt result:
@@ -140,11 +170,11 @@ If any line cannot be answered, do not implement the runtime fix. Add docs/tests
 
 ## Task workflow
 
-1. Identify the owning screen, route, endpoint, or worker.
-2. Identify the source-of-truth service, DTO, or endpoint.
-3. Find the shared helper, component, formatter, or response-meta utility before creating anything new.
+1. Identify the owning screen, route, endpoint, worker, entity or tenant-owned resource.
+2. Identify the source-of-truth service, DTO, endpoint or tenant context.
+3. Find the shared helper, component, formatter, key/path builder or response-meta utility before creating anything new.
 4. Find existing tests and route smoke coverage.
-5. Run the analytics safety gate.
+5. Run the tenant safety gate for tenant-sensitive work and the analytics safety gate for analytics work.
 6. Make the smallest safe patch.
 7. Run the exact checks required by the task.
 8. Update queue/docs when the task is queue-based or changes canonical behavior.
@@ -154,8 +184,12 @@ If any line cannot be answered, do not implement the runtime fix. Add docs/tests
 Stop and report status if:
 
 - source of truth is unclear
+- tenant source or membership authority is unclear
+- caller-controlled tenant identity would become authoritative
+- unresolved tenant would fall back to a default tenant
+- the task combines auth, all entity migrations, cache, workers and storage
 - the task spills into unrelated modules
-- migration context is unclear
+- migration context or pilot-tenant backfill is unclear
 - the same command fails twice
 - route or lazy-import behavior is at risk
 - mojibake is found and the change is turning into mixed text-plus-logic cleanup
@@ -163,6 +197,7 @@ Stop and report status if:
 - a frontend helper would have to invent backend business semantics
 - a change fixes table display but leaves detail/export/action payload inconsistent
 - source-connector work would expose credentials, execute arbitrary SQL or advance checkpoints before durable destination commit
+- tenant-owned work has no two-tenant negative test plan
 
 ## Final report format
 
@@ -193,3 +228,6 @@ Next:
 - Do not turn docs drift into architecture drift; update canonical docs when a rule repeats.
 - Do not let action/outcome summaries call something measured unless measurement evidence exists.
 - Do not let report/export values use a different unit than the on-screen table.
+- Do not treat `StoreId`, user ID, source connection ID, file path or a caller header as tenant authority.
+- Do not authorize tenant resources by opaque ID/path alone.
+- Do not use process-global mutable tenant state for requests or workers.
