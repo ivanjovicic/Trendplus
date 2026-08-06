@@ -21,10 +21,16 @@ function ModalHarness() {
 
   return (
     <div>
-      <button type="button" onClick={() => setOpen(true)}>Otvori modal</button>
-      <Modal isOpen={open} onClose={() => setOpen(false)} title="Analytics podešavanja">
+      <button type="button" onClick={() => setOpen(true)}>
+        Otvori modal
+      </button>
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={"Analytics pode\u0161avanja"}
+      >
         <button type="button">Prva akcija</button>
-        <input aria-label="Naziv izveštaja" />
+        <input aria-label={"Naziv izve\u0161taja"} />
         <button type="button">Poslednja akcija</button>
       </Modal>
     </div>
@@ -50,7 +56,9 @@ describe("analytics modal accessibility", () => {
     trigger.focus();
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole("dialog", { name: "Analytics podešavanja" });
+    const dialog = screen.getByRole("dialog", {
+      name: "Analytics pode\u0161avanja",
+    });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(document.body.style.overflow).toBe("hidden");
 
@@ -67,7 +75,11 @@ describe("analytics modal accessibility", () => {
     expect(lastButton).toHaveFocus();
 
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Analytics podešavanja" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Analytics pode\u0161avanja" }),
+      ).not.toBeInTheDocument(),
+    );
     expect(trigger).toHaveFocus();
     expect(document.body.style.overflow).toBe("unset");
   });
@@ -75,13 +87,17 @@ describe("analytics modal accessibility", () => {
   it("closes from the backdrop without exposing the backdrop as interactive content", async () => {
     const { container } = render(<ModalHarness />);
     fireEvent.click(screen.getByRole("button", { name: "Otvori modal" }));
-    await screen.findByRole("dialog", { name: "Analytics podešavanja" });
+    await screen.findByRole("dialog", { name: "Analytics pode\u0161avanja" });
 
     const backdrop = container.querySelector(".modal-backdrop");
     expect(backdrop).toHaveAttribute("aria-hidden", "true");
     fireEvent.click(backdrop as HTMLElement);
 
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Analytics podešavanja" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Analytics pode\u0161avanja" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });
 
@@ -117,7 +133,9 @@ describe("analytics export menu accessibility", () => {
     expect(csv).toHaveFocus();
 
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("menu", { name: "Formati izvoza" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menu", { name: "Formati izvoza" }),
+    ).not.toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).toHaveFocus();
   });
@@ -128,13 +146,25 @@ describe("analytics export menu accessibility", () => {
     fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao PDF" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Export Accessibility tabela" });
+    const dialog = screen.getByRole("dialog", {
+      name: "Export Accessibility tabela",
+    });
     expect(dialog).toBeInTheDocument();
     expect(screen.getByLabelText("Format")).toHaveValue("pdf");
     expect(screen.getByLabelText("Orijentacija")).toHaveValue("landscape");
-    expect(screen.getByLabelText("Uključi filtere i metadata")).toBeChecked();
-    expect(screen.getByLabelText("Otvori preview pre eksportovanja (samo PDF)")).toBeEnabled();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Zatvori" })).toHaveFocus());
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Uklju\u010Di filtere i metadata",
+      }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Otvori preview pre eksportovanja (samo PDF)",
+      }),
+    ).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Zatvori" })).toHaveFocus(),
+    );
   });
 
   it("closes the open export menu when clicking outside", async () => {
@@ -144,6 +174,8 @@ describe("analytics export menu accessibility", () => {
     await screen.findByRole("menu", { name: "Formati izvoza" });
     fireEvent.mouseDown(document.body);
 
-    expect(screen.queryByRole("menu", { name: "Formati izvoza" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menu", { name: "Formati izvoza" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-02
+Current READY prompt: P-UI-07
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -18,9 +18,9 @@ Use with:
 | P-UI-05 | DONE | analytics-ui-visual-regression | Add screenshot/manual visual review protocol before broad visual refactors |
 | P-UI-06 | DONE | global-command-header | Add full command/search/breadcrumb/notification header system |
 | P-UI-01 | DONE | analytics-menu-ia | Redesign analytics menu information architecture |
-| P-UI-02 | READY | analytics-control-bar | Create shared premium analytics control bar |
-| P-UI-03 | WAITING | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
-| P-UI-07 | WAITING | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
+| P-UI-02 | DONE | analytics-control-bar | Create shared premium analytics control bar |
+| P-UI-03 | DONE | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
+| P-UI-07 | READY | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
 | P-UI-08 | WAITING | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
 | P-UI-04 | WAITING | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 
@@ -222,14 +222,14 @@ The analytics sidebar group is currently a long flat list mixing executive surfa
 
 ## P-UI-02 - Shared analytics control bar
 
-Status: READY
+Status: DONE
 Ready after: P-UI-05
 Priority: P1
 Type: frontend/component/tests
 Feature family: analytics-control-bar
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-02-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-02-codex.lock.md` (removed after DONE)
 Commit suggestion: `feat(ui): add shared analytics control bar`
 
 ### Why
@@ -253,18 +253,41 @@ Date presets, refresh buttons, store/supplier filters, search controls and expor
 
 - One analytics page uses a consistent premium control bar without breaking existing filters.
 
+### Completion note
+
+- Date: 2026-08-06
+- Commit: not created; base HEAD `ad1d86bfd15253c93f09a27b2c305342ea770332`
+- Changed files:
+  - `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx`
+  - `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css`
+  - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-06-P-UI-02-evidence.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx src/layout/components/__tests__/HeaderStatus.spec.tsx` - pass
+- Notes:
+  - Added a shared premium control bar with title/description, metadata chips, filter fields, and primary/secondary action slots.
+  - Migrated `AnalyticsDashboard` to the shared surface for period, store, supplier, freshness context, and refresh actions while preserving existing dashboard fetch behavior.
+  - Added targeted component and page tests; the dashboard test now scopes duplicate links to the new control bar and aligns `AbortSignal` with the browser test environment.
+- Remaining:
+  - P-UI-03 `analytics-table-system`
+
 ---
 
 ## P-UI-03 - Shared analytics table system
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-05 and RQ57/RQ58 if inventory table is touched
 Priority: P1
 Type: frontend/component/tests
 Feature family: analytics-table-system
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-03-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-03-codex.lock.md` (removed after DONE)
 Commit suggestion: `feat(ui): standardize analytics tables`
 
 ### Why
@@ -289,11 +312,37 @@ Analytics tables vary by page. Premium analytics needs consistent sticky headers
 
 - One migrated analytics table looks premium and preserves data/export parity.
 
+### Completion note
+
+- Date: 2026-08-06
+- Commit: not created; base HEAD `ad1d86bfd15253c93f09a27b2c305342ea770332`
+- Changed files:
+  - `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.tsx`
+  - `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.css`
+  - `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.css`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-06-P-UI-03-evidence.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx src/components/analytics/__tests__/AnalyticsTableToolbar.spec.tsx src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx src/layout/components/__tests__/HeaderStatus.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:encoding` - pass
+- Notes:
+  - Added a shared premium table surface with sticky headers, right-aligned numeric cells, shared metadata pills, and a reusable horizontal-scroll shell.
+  - Migrated only the `AnalyticsDashboard` top-products table in this prompt and kept the existing `AnalyticsTableToolbar` export payload tied to the same `topRows` array as the rendered table.
+  - Added a dashboard regression test that proves the rendered row count stays aligned with the export toolbar row count.
+- Remaining:
+  - P-UI-07 `supplier-analytics-table`
+
 ---
 
 ## P-UI-07 - Supplier analytics table migration
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-03
 Priority: P1
 Type: frontend/component/tests

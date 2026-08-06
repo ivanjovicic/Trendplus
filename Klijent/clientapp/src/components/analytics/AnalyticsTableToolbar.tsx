@@ -1,5 +1,13 @@
 import React from "react";
-import { CheckCircle2, ChevronDown, Download, FileSpreadsheet, FileText, Printer, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Printer,
+  ShieldCheck,
+} from "lucide-react";
 import Modal from "../Modal";
 import InfoTip from "../ui/InfoTip";
 import {
@@ -12,8 +20,14 @@ import {
   type ExportFormat,
   type ExportOrientation,
 } from "../../services/exportApi";
-import { resolveAnalyticsTablePayload, savePrintPayload } from "../../services/analyticsTableState";
-import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../../types/analyticsTable";
+import {
+  resolveAnalyticsTablePayload,
+  savePrintPayload,
+} from "../../services/analyticsTableState";
+import type {
+  AnalyticsNamedValue,
+  AnalyticsTableColumn,
+} from "../../types/analyticsTable";
 
 function formatLabel(format: ExportFormat): string {
   if (format === "pdf") return "PDF";
@@ -22,7 +36,10 @@ function formatLabel(format: ExportFormat): string {
 }
 
 function formatDescription(format: ExportFormat): string {
-  if (format === "pdf") return "Izveštaj za menadžment i štampu";
+  if (format === "pdf") {
+    return "Izve\u0161taj za menad\u017Ement i \u0161tampu";
+  }
+
   if (format === "xlsx") return "Tabela za dalju analizu";
   return "Brz flat-file izvoz";
 }
@@ -50,7 +67,9 @@ export default function AnalyticsTableToolbar<Row>(props: {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [format, setFormat] = React.useState<ExportFormat>("pdf");
-  const [orientation, setOrientation] = React.useState<ExportOrientation>(props.defaultOrientation ?? "landscape");
+  const [orientation, setOrientation] = React.useState<ExportOrientation>(
+    props.defaultOrientation ?? "landscape",
+  );
   const [includeFilters, setIncludeFilters] = React.useState(true);
   const [preview, setPreview] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -73,15 +92,29 @@ export default function AnalyticsTableToolbar<Row>(props: {
         templateName: props.templateName,
         templateVersion: props.templateVersion,
       }),
-    [props.columns, props.documentType, props.filters, props.locale, props.metadata, props.rows, props.tableKey, props.tableTitle, props.templateName, props.templateVersion]
+    [
+      props.columns,
+      props.documentType,
+      props.filters,
+      props.locale,
+      props.metadata,
+      props.rows,
+      props.tableKey,
+      props.tableTitle,
+      props.templateName,
+      props.templateVersion,
+    ],
   );
 
   React.useEffect(() => {
     if (!menuOpen) return;
 
-    const getMenuItems = () => Array.from(
-      exportMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
-    );
+    const getMenuItems = () =>
+      Array.from(
+        exportMenuRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="menuitem"]',
+        ) ?? [],
+      );
 
     const focusTimer = window.setTimeout(() => getMenuItems()[0]?.focus(), 0);
 
@@ -94,33 +127,45 @@ export default function AnalyticsTableToolbar<Row>(props: {
         return;
       }
 
-      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || items.length === 0) {
+      if (
+        !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) ||
+        items.length === 0
+      ) {
         return;
       }
 
       event.preventDefault();
-      const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+      const currentIndex = items.indexOf(
+        document.activeElement as HTMLButtonElement,
+      );
+
       if (event.key === "Home") {
         items[0].focus();
         return;
       }
+
       if (event.key === "End") {
         items[items.length - 1].focus();
         return;
       }
 
       const direction = event.key === "ArrowDown" ? 1 : -1;
-      const nextIndex = currentIndex < 0
-        ? 0
-        : (currentIndex + direction + items.length) % items.length;
+      const nextIndex =
+        currentIndex < 0
+          ? 0
+          : (currentIndex + direction + items.length) % items.length;
       items[nextIndex].focus();
     };
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (exportMenuRef.current?.contains(target) || exportButtonRef.current?.contains(target)) {
+      if (
+        exportMenuRef.current?.contains(target) ||
+        exportButtonRef.current?.contains(target)
+      ) {
         return;
       }
+
       setMenuOpen(false);
     };
 
@@ -143,7 +188,13 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
   const handlePrint = () => {
     const stateKey = savePrintPayload(payload);
-    window.open(`/print/analytics/${encodeURIComponent(props.tableKey)}?stateKey=${encodeURIComponent(stateKey)}`, "_blank", "noopener");
+    window.open(
+      `/print/analytics/${encodeURIComponent(
+        props.tableKey,
+      )}?stateKey=${encodeURIComponent(stateKey)}`,
+      "_blank",
+      "noopener",
+    );
   };
 
   const handleExport = async () => {
@@ -151,7 +202,12 @@ export default function AnalyticsTableToolbar<Row>(props: {
     setStatusText(null);
 
     try {
-      console.info("Export triggered", { table: props.tableKey, format, rowCount: payload.rows.length });
+      console.info("Export triggered", {
+        table: props.tableKey,
+        format,
+        rowCount: payload.rows.length,
+      });
+
       if (preview && format === "pdf") {
         const previewResult = await requestPrintPreview(payload, {
           orientation,
@@ -160,7 +216,11 @@ export default function AnalyticsTableToolbar<Row>(props: {
         });
 
         if (previewResult.printUrl) {
-          window.open(resolveApiUrl(previewResult.printUrl), "_blank", "noopener");
+          window.open(
+            resolveApiUrl(previewResult.printUrl),
+            "_blank",
+            "noopener",
+          );
           setStatusText("Print preview je otvoren u novom tabu.");
         }
 
@@ -175,12 +235,14 @@ export default function AnalyticsTableToolbar<Row>(props: {
       });
 
       if (result.isAsync) {
-        setStatusText("Veliki eksport je stavljen u red. Čekam da dokument bude spreman...");
+        setStatusText(
+          "Veliki eksport je stavljen u red. \u010Cekam da dokument bude spreman...",
+        );
         const completed = await waitForExport(result.documentId);
         if (completed.downloadUrl) {
           downloadExport(completed.downloadUrl, completed.fileName);
         }
-        setStatusText("Eksport je završen i preuzet.");
+        setStatusText("Eksport je zavr\u0161en i preuzet.");
       } else if (result.downloadUrl) {
         downloadExport(result.downloadUrl, result.fileName);
         setStatusText("Eksport je preuzet.");
@@ -190,7 +252,9 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
       setModalOpen(false);
     } catch (reason) {
-      setStatusText(reason instanceof Error ? reason.message : "Eksport nije uspeo.");
+      setStatusText(
+        reason instanceof Error ? reason.message : "Eksport nije uspeo.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -238,8 +302,12 @@ export default function AnalyticsTableToolbar<Row>(props: {
                       <OptionIcon size={15} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-semibold text-contrast">{formatLabel(option)}</span>
-                      <span className="block text-xs text-muted">{formatDescription(option)}</span>
+                      <span className="block font-semibold text-contrast">
+                        {formatLabel(option)}
+                      </span>
+                      <span className="block text-xs text-muted">
+                        {formatDescription(option)}
+                      </span>
                     </span>
                   </button>
                 );
@@ -252,18 +320,22 @@ export default function AnalyticsTableToolbar<Row>(props: {
           type="button"
           onClick={handlePrint}
           className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted transition hover:border-[var(--info)] hover:text-contrast"
-          title="Otvori prozor za štampu/printer"
+          title={"Otvori prozor za \u0161tampu/printer"}
         >
           <Printer size={14} />
-          Štampaj
-          <InfoTip text="Otvori print layout sa podešavanjima za izveštaj." />
+          {"\u0160tampaj"}
+          <InfoTip
+            text={"Otvori print layout sa pode\u0161avanjima za izve\u0161taj."}
+          />
         </button>
 
         {props.extraActions ?? null}
+
         <span className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-light)] px-2.5 py-1 text-xs font-semibold text-muted">
           <ShieldCheck size={13} />
           Redova: {payload.rows.length.toLocaleString("sr-RS")}
         </span>
+
         {statusText ? (
           <span
             role="status"
@@ -289,9 +361,13 @@ export default function AnalyticsTableToolbar<Row>(props: {
                 <ShieldCheck size={17} />
               </span>
               <div>
-                <p className="m-0 text-sm font-semibold text-contrast">Premium analytics export</p>
+                <p className="m-0 text-sm font-semibold text-contrast">
+                  Premium analytics export
+                </p>
                 <p className="m-0 mt-1 text-xs leading-relaxed text-muted">
-                  Dokument koristi iste kolone, redove, filtere i metadata kao tabela na ekranu. Za velike setove eksport prelazi u async queue.
+                  Dokument koristi iste kolone, redove, filtere i metadata kao
+                  tabela na ekranu. Za velike setove eksport prelazi u async
+                  queue.
                 </p>
               </div>
             </div>
@@ -299,7 +375,9 @@ export default function AnalyticsTableToolbar<Row>(props: {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1">
-              <span className="block text-xs uppercase tracking-wide text-muted">Format</span>
+              <span className="block text-xs uppercase tracking-wide text-muted">
+                Format
+              </span>
               <select
                 value={format}
                 onChange={(e) => setFormat(e.target.value as ExportFormat)}
@@ -312,10 +390,14 @@ export default function AnalyticsTableToolbar<Row>(props: {
             </label>
 
             <label className="space-y-1">
-              <span className="block text-xs uppercase tracking-wide text-muted">Orijentacija</span>
+              <span className="block text-xs uppercase tracking-wide text-muted">
+                Orijentacija
+              </span>
               <select
                 value={orientation}
-                onChange={(e) => setOrientation(e.target.value as ExportOrientation)}
+                onChange={(e) =>
+                  setOrientation(e.target.value as ExportOrientation)
+                }
                 className="w-full rounded-xl border border-border bg-surface px-3 py-2"
               >
                 <option value="landscape">Landscape</option>
@@ -325,11 +407,19 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </div>
 
           <label className="flex items-center gap-2 rounded-xl border border-border bg-[var(--surface-light)] px-3 py-2 text-sm">
-            <input type="checkbox" checked={includeFilters} onChange={(e) => setIncludeFilters(e.target.checked)} />
-            Uključi filtere i metadata
+            <input
+              type="checkbox"
+              checked={includeFilters}
+              onChange={(e) => setIncludeFilters(e.target.checked)}
+            />
+            {"Uklju\u010Di filtere i metadata"}
           </label>
 
-          <label className={`flex items-center gap-2 rounded-xl border border-border bg-[var(--surface-light)] px-3 py-2 text-sm ${format !== "pdf" ? "opacity-50" : ""}`}>
+          <label
+            className={`flex items-center gap-2 rounded-xl border border-border bg-[var(--surface-light)] px-3 py-2 text-sm ${
+              format !== "pdf" ? "opacity-50" : ""
+            }`}
+          >
             <input
               type="checkbox"
               checked={preview}
@@ -340,7 +430,9 @@ export default function AnalyticsTableToolbar<Row>(props: {
           </label>
 
           <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">
-            Manji setovi se generišu odmah. Veće tabele preko {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze u async queue.
+            {"Manji setovi se generi\u0161u odmah. Ve\u0107e tabele preko "}
+            {SYNC_ROW_LIMIT.toLocaleString("sr-RS")} redova automatski prelaze
+            u async queue.
           </div>
 
           <div className="flex justify-end gap-2">
@@ -350,7 +442,7 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted transition hover:text-contrast"
               disabled={submitting}
             >
-              Otkaži
+              {"Otka\u017Ei"}
             </button>
             <button
               type="button"
@@ -358,7 +450,11 @@ export default function AnalyticsTableToolbar<Row>(props: {
               className="rounded-xl border border-primary bg-primary px-3 py-2 text-xs font-semibold text-[var(--primary-text)] shadow-[0_12px_24px_-18px_var(--info)]"
               disabled={submitting}
             >
-              {submitting ? "Generišem..." : preview && format === "pdf" ? "Otvori preview" : "Pokreni export"}
+              {submitting
+                ? "Generi\u0161em..."
+                : preview && format === "pdf"
+                  ? "Otvori preview"
+                  : "Pokreni export"}
             </button>
           </div>
         </div>

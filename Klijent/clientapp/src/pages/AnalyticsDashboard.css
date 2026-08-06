@@ -555,34 +555,6 @@
   background: linear-gradient(120deg, var(--theme-rgba-61-217-164-0p22, var(--theme-color-rgba-61-217-164-0p22, rgba(61, 217, 164, 0.22))), var(--theme-color-rgba-52-124-254-0p22, rgba(52, 124, 254, 0.22)));
 }
 
-.top-table-wrap {
-  overflow-x: auto;
-}
-
-.top-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 760px;
-}
-
-.top-table th,
-.top-table td {
-  border-bottom: 1px solid var(--theme-color-rgba-138-160-214-0p2, rgba(138, 160, 214, 0.2));
-  text-align: left;
-  font-size: 12px;
-  padding: 10px 8px;
-}
-
-.top-table th {
-  color: var(--text-secondary, var(--theme-color-9bb0e5, #9bb0e5));
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-  background: var(--surface-darker, var(--surface-default));
-  z-index: 1;
-  overflow: visible;
-}
-
 .sku-cell {
   display: grid;
   gap: 2px;

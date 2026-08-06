@@ -3,7 +3,7 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB09`
+Current READY prompt: none
 Current gate verdict: STAB08 completed, but the release gate is NOT READY and GenAI remains blocked.
 
 ## Goal

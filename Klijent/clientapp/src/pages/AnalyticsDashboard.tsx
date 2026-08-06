@@ -15,6 +15,11 @@ import {
   upsertAnalyticsAction,
 } from "../services/analyticsApi";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import type {
@@ -899,6 +904,155 @@ export default function AnalyticsDashboard() {
       return freshnessStatusLabel(refreshStatus.dataFreshnessStatus);
     return "Nije dostupno";
   }, [dashboardMeta?.dataQualityStatus, refreshStatus?.dataFreshnessStatus]);
+  const selectedStoreLabel = useMemo(() => {
+    if (storeId == null) return "Sve prodavnice";
+
+    return buildStoreLabel(
+      stores.find((item) => item.storeId === storeId) ?? {
+        storeId,
+        storeName: `Prodavnica ${storeId}`,
+      },
+    );
+  }, [storeId, stores]);
+  const selectedSupplierLabel = useMemo(() => {
+    if (!selectedSupplier) return "Svi dobavljači";
+
+    return (
+      supplierOptions.find((item) => item.supplierId === supplierId)
+        ?.supplierName ?? `ID ${supplierId}`
+    );
+  }, [selectedSupplier, supplierId, supplierOptions]);
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      {
+        key: "range",
+        label: "Opseg",
+        value: `${selectedDays} dana`,
+        tone: "info",
+      },
+      {
+        key: "freshness",
+        label: "Svežina",
+        value: freshnessStatusLabel(refreshStatus?.dataFreshnessStatus),
+        tone:
+          statusTone(refreshStatus?.dataFreshnessStatus) === "good"
+            ? "success"
+            : statusTone(refreshStatus?.dataFreshnessStatus) === "warning"
+              ? "warning"
+              : statusTone(refreshStatus?.dataFreshnessStatus) === "critical"
+                ? "critical"
+                : "neutral",
+      },
+      {
+        key: "store",
+        label: "Prodavnica",
+        value: selectedStoreLabel,
+      },
+      {
+        key: "supplier",
+        label: "Dobavljač",
+        value: selectedSupplierLabel,
+      },
+    ],
+    [
+      refreshStatus?.dataFreshnessStatus,
+      selectedDays,
+      selectedStoreLabel,
+      selectedSupplierLabel,
+    ],
+  );
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "preset",
+        label: "Period",
+        control: (
+          <select
+            value={preset}
+            onChange={(e) =>
+              applyPreset(e.target.value as AnalyticsPeriodPreset)
+            }
+          >
+            {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      ...(preset === "custom"
+        ? [
+            {
+              key: "fromDate",
+              label: "Datum od",
+              control: (
+                <input
+                  type="datetime-local"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              ),
+            },
+            {
+              key: "toDate",
+              label: "Datum do",
+              control: (
+                <input
+                  type="datetime-local"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              ),
+            },
+          ]
+        : []),
+      {
+        key: "store",
+        label: "Prodavnica",
+        control: (
+          <select
+            value={selectedStore}
+            onChange={(e) => setSelectedStore(e.target.value)}
+          >
+            <option value="">Sve prodavnice</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>
+                {buildStoreLabel(store)}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "supplier",
+        label: "Dobavljač",
+        control: (
+          <select
+            value={selectedSupplier}
+            onChange={(e) => setSelectedSupplier(e.target.value)}
+          >
+            <option value="">Svi dobavljači</option>
+            {supplierOptions.map((supplier) => (
+              <option key={supplier.supplierId} value={supplier.supplierId}>
+                {supplier.supplierName}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+    ],
+    [
+      applyPreset,
+      fromDate,
+      preset,
+      selectedStore,
+      selectedSupplier,
+      stores,
+      supplierOptions,
+      toDate,
+    ],
+  );
   const executiveMiniQualityCards = useMemo(() => {
     const summary = executive?.dataQualitySummary;
 
@@ -1154,6 +1308,10 @@ export default function AnalyticsDashboard() {
     ],
     [healthText, topTab],
   );
+  const topTableTruncationLabel = useMemo(() => {
+    if (topRows.length < 10) return undefined;
+    return "Prikaz je ograni\u010Den na prvih 10 redova za izabrani KPI pogled.";
+  }, [topRows.length]);
 
   const openTopProductDetail = (row: TopProductAdvancedItem) => {
     const params = new URLSearchParams();
@@ -1222,19 +1380,48 @@ export default function AnalyticsDashboard() {
         loading={loading}
         error={refreshStatusError}
       />
-      <header className="analytics-header">
-        <div>
-          <h2 className="with-tip">
-            <span>Pregled poslovanja</span>
-            <InfoTip text="Fokus na ključne KPI-jeve, najvažnije akcije i pouzdanost podataka. Grafikoni i detalji su niže na stranici." />
-          </h2>
+      <AnalyticsControlBar
+        title="Opseg i filteri"
+        description="Menjajte period, prodavnicu ili dobavljača ovde; ključni pregled ispod ostaje fokusiran na odluku, ne na operativni šum."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "refresh",
+          label: loading ? "Učitavanje..." : "Osveži dashboard",
+          onClick: () => {
+            void load();
+          },
+          disabled: loading,
+        }}
+        secondaryActions={[
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+          },
+          {
+            key: "workers",
+            label: "Status workera",
+            to: "/admin/configuration?panel=workers",
+          },
+        ]}
+        fields={controlBarFields}
+      />
+      {healthText ? <div className="analytics-health">{healthText}</div> : null}
+      {isInvalidFilterRange ? (
+        <div className="analytics-empty warning">
+          Proverite filtere: neispravan vremenski opseg.
         </div>
-        <div className="analytics-controls">
-          <button onClick={() => void load()} disabled={loading}>
-            {loading ? "U\u010Ditavanje..." : "Osve\u017Ei"}
-          </button>
-        </div>
-      </header>
+      ) : null}
+      {errors.length > 0 && !hasFatalLoadError ? (
+        <section className="analytics-errors">
+          <h3>Validacione poruke</h3>
+          <ul>
+            {errors.map((error, index) => (
+              <li key={`err-${index}`}>{error}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {hasFatalLoadError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
@@ -1891,135 +2078,6 @@ export default function AnalyticsDashboard() {
                   </div>
                 ) : null}
               </section>
-
-              <section className="analytics-panel analytics-context-panel no-print">
-                <div className="analytics-context-head">
-                  <div>
-                    <h2>Opseg i filteri</h2>
-                    <p className="section-note">
-                      Menjajte period, prodavnicu ili dobavljača ovde; ključni
-                      pregled iznad ostaje fokusiran na odluku.
-                    </p>
-                  </div>
-                  <div className="analytics-controls">
-                    <button onClick={() => void load()} disabled={loading}>
-                      {loading ? "Učitavanje..." : "Osveži dashboard"}
-                    </button>
-                  </div>
-                </div>
-                <div className="analytics-filter-bar">
-                  <div className="analytics-filter-grid">
-                    <label>
-                      Period
-                      <select
-                        value={preset}
-                        onChange={(e) =>
-                          applyPreset(e.target.value as AnalyticsPeriodPreset)
-                        }
-                      >
-                        {ANALYTICS_PERIOD_PRESET_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {preset === "custom" && (
-                      <>
-                        <label>
-                          Datum od
-                          <input
-                            type="datetime-local"
-                            value={fromDate}
-                            onChange={(e) => setFromDate(e.target.value)}
-                          />
-                        </label>
-                        <label>
-                          Datum do
-                          <input
-                            type="datetime-local"
-                            value={toDate}
-                            onChange={(e) => setToDate(e.target.value)}
-                          />
-                        </label>
-                      </>
-                    )}
-                    <label>
-                      Prodavnica
-                      <select
-                        value={selectedStore}
-                        onChange={(e) => setSelectedStore(e.target.value)}
-                      >
-                        <option value="">Sve prodavnice</option>
-                        {stores.map((store) => (
-                          <option key={store.storeId} value={store.storeId}>
-                            {buildStoreLabel(store)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Dobavljač
-                      <select
-                        value={selectedSupplier}
-                        onChange={(e) => setSelectedSupplier(e.target.value)}
-                      >
-                        <option value="">Svi dobavljači</option>
-                        {supplierOptions.map((supplier) => (
-                          <option
-                            key={supplier.supplierId}
-                            value={supplier.supplierId}
-                          >
-                            {supplier.supplierName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="filter-chip-row">
-                    <span className="filter-chip">
-                      Opseg: {selectedDays} dana
-                    </span>
-                    <span className="filter-chip">
-                      Prodavnica:{" "}
-                      {storeId == null
-                        ? "Sve"
-                        : buildStoreLabel(
-                            stores.find((item) => item.storeId === storeId) ?? {
-                              storeId,
-                              storeName: `Prodavnica ${storeId}`,
-                            },
-                          )}
-                    </span>
-                    <span className="filter-chip">
-                      Dobavljač:{" "}
-                      {selectedSupplier
-                        ? (supplierOptions.find(
-                            (item) => item.supplierId === supplierId,
-                          )?.supplierName ?? `ID ${supplierId}`)
-                        : "Svi"}
-                    </span>
-                  </div>
-                </div>
-                {healthText ? (
-                  <div className="analytics-health">{healthText}</div>
-                ) : null}
-                {isInvalidFilterRange ? (
-                  <div className="analytics-empty warning">
-                    Proverite filtere: neispravan vremenski opseg.
-                  </div>
-                ) : null}
-                {errors.length > 0 ? (
-                  <section className="analytics-errors">
-                    <h3>Validacione poruke</h3>
-                    <ul>
-                      {errors.map((error, index) => (
-                        <li key={`err-${index}`}>{error}</li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-              </section>
             </>
           )}
         </>
@@ -2460,24 +2518,6 @@ export default function AnalyticsDashboard() {
                       obojen radi bržeg skeniranja.
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      className="analytics-export-button"
-                      onClick={exportTopRows}
-                      disabled={topRows.length === 0}
-                    >
-                      Izvezi CSV
-                    </button>
-                    <AnalyticsTableToolbar
-                      tableKey="top-products"
-                      tableTitle="Analytics top proizvodi"
-                      columns={topProductColumns}
-                      rows={topRows}
-                      filters={topTableFilters}
-                      metadata={topTableMetadata}
-                      defaultOrientation="landscape"
-                    />
-                  </div>
                 </div>
                 <div className="top-tabs">
                   <button
@@ -2519,7 +2559,30 @@ export default function AnalyticsDashboard() {
                 {topRows.length === 0 ? (
                   <div className="analytics-empty">Nema podataka.</div>
                 ) : (
-                  <div className="top-table-wrap">
+                  <AnalyticsDataTable
+                    rowCount={topRows.length}
+                    truncationLabel={topTableTruncationLabel}
+                    toolbar={
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="analytics-export-button"
+                          onClick={exportTopRows}
+                          disabled={topRows.length === 0}
+                        >
+                          Izvezi CSV
+                        </button>
+                        <AnalyticsTableToolbar
+                          tableKey="top-products"
+                          tableTitle="Analytics top proizvodi"
+                          columns={topProductColumns}
+                          rows={topRows}
+                          filters={topTableFilters}
+                          metadata={topTableMetadata}
+                          defaultOrientation="landscape"
+                        />
+                      </div>
+                    }
+                  >
                     <table className="top-table">
                       <thead>
                         <tr>
@@ -2529,31 +2592,31 @@ export default function AnalyticsDashboard() {
                               <InfoTip text={HELP.sku} />
                             </span>
                           </th>
-                          <th>
+                          <th className="analytics-data-table__numeric">
                             <span className="with-tip">
                               <span>Promet</span>
                               <InfoTip text={HELP.promet} />
                             </span>
                           </th>
-                          <th>
+                          <th className="analytics-data-table__numeric">
                             <span className="with-tip">
                               <span>Kom</span>
                               <InfoTip text={HELP.jedinice} />
                             </span>
                           </th>
-                          <th>
+                          <th className="analytics-data-table__numeric">
                             <span className="with-tip">
                               <span>Brzina prodaje</span>
                               <InfoTip text={HELP.velocity} />
                             </span>
                           </th>
-                          <th>
+                          <th className="analytics-data-table__numeric">
                             <span className="with-tip">
                               <span>Uticaj na maržu</span>
                               <InfoTip text={HELP.margin} />
                             </span>
                           </th>
-                          <th>
+                          <th className="analytics-data-table__numeric">
                             <span className="with-tip">
                               <span>Trend</span>
                               <InfoTip text={HELP.trend} />
@@ -2572,7 +2635,7 @@ export default function AnalyticsDashboard() {
                           <tr
                             key={`${topTab}-${row.productId}`}
                             title={`Trend: ${fmtPct(row.trendPct)} | Promet: ${fmtRsd(row.revenue)} | Komada: ${fmtNumber(row.units)}`}
-                            className="cursor-pointer"
+                            className="analytics-data-table__row--interactive"
                             onClick={() => openTopProductDetail(row)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
@@ -2589,33 +2652,39 @@ export default function AnalyticsDashboard() {
                                 <span>{row.productName}</span>
                               </div>
                             </td>
-                            <td>{fmtRsd(row.revenue)}</td>
-                            <td>{fmtNumber(row.units)}</td>
-                            <td>{fmtNumber(row.velocityUnitsPerDay, 2)}</td>
-                            <td>
+                            <td className="analytics-data-table__numeric">
+                              {fmtRsd(row.revenue)}
+                            </td>
+                            <td className="analytics-data-table__numeric">
+                              {fmtNumber(row.units)}
+                            </td>
+                            <td className="analytics-data-table__numeric">
+                              {fmtNumber(row.velocityUnitsPerDay, 2)}
+                            </td>
+                            <td className="analytics-data-table__numeric">
                               <div>
                                 {row.marginImpact == null
                                   ? "Nije dostupno"
                                   : fmtRsd(row.marginImpact)}
                               </div>
-                              <small>
+                              <small className="analytics-data-table__subvalue">
                                 {row.marginQualityLabel ??
                                   "Kvalitet marže nije dostupan"}
                               </small>
                             </td>
                             <td
-                              className={
+                              className={`analytics-data-table__numeric ${
                                 row.trendPct != null && row.trendPct < 0
                                   ? "trend down"
                                   : "trend up"
-                              }
+                              }`}
                             >
                               <div>
                                 {trendLabel(row.trendPct)}{" "}
                                 {fmtPct(row.trendPct)}
                               </div>
                               {row.trendPct == null ? (
-                                <small>
+                                <small className="analytics-data-table__subvalue">
                                   Nema prethodnog perioda za PoP poređenje.
                                 </small>
                               ) : null}
@@ -2631,7 +2700,7 @@ export default function AnalyticsDashboard() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </AnalyticsDataTable>
                 )}
               </section>
             )}

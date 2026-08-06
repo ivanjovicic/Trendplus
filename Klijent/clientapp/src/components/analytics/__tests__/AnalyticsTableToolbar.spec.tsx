@@ -2,12 +2,23 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AnalyticsTableToolbar from "../AnalyticsTableToolbar";
 import { getPrintPayload } from "../../../services/analyticsTableState";
-import { downloadExport, generateExport, requestPrintPreview, waitForExport } from "../../../services/exportApi";
-import type { DocumentOperationResponse, DocumentStatusResponse } from "../../../services/exportApi";
+import {
+  downloadExport,
+  generateExport,
+  requestPrintPreview,
+  waitForExport,
+} from "../../../services/exportApi";
+import type {
+  DocumentOperationResponse,
+  DocumentStatusResponse,
+} from "../../../services/exportApi";
 import type { AnalyticsTableColumn } from "../../../types/analyticsTable";
 
 vi.mock("../../../services/exportApi", async () => {
-  const actual = await vi.importActual<typeof import("../../../services/exportApi")>("../../../services/exportApi");
+  const actual = await vi.importActual<
+    typeof import("../../../services/exportApi")
+  >("../../../services/exportApi");
+
   return {
     ...actual,
     generateExport: vi.fn(),
@@ -25,16 +36,31 @@ type TestRow = {
 };
 
 const rows: TestRow[] = [
-  { supplier: "Dobavljač A", revenue: 120000, hiddenInternal: "ignore-a" },
-  { supplier: "Dobavljač B", revenue: 80000, hiddenInternal: "ignore-b" },
+  {
+    supplier: "Dobavlja\u010D A",
+    revenue: 120000,
+    hiddenInternal: "ignore-a",
+  },
+  {
+    supplier: "Dobavlja\u010D B",
+    revenue: 80000,
+    hiddenInternal: "ignore-b",
+  },
 ];
 
 const columns: AnalyticsTableColumn<TestRow>[] = [
-  { key: "supplier", header: "Dobavljač", dataType: "text" },
-  { key: "revenue", header: "Prihod", dataType: "currency", getValue: (row) => row.revenue },
+  { key: "supplier", header: "Dobavlja\u010D", dataType: "text" },
+  {
+    key: "revenue",
+    header: "Prihod",
+    dataType: "currency",
+    getValue: (row) => row.revenue,
+  },
 ];
 
-function operation(overrides: Partial<DocumentOperationResponse>): DocumentOperationResponse {
+function operation(
+  overrides: Partial<DocumentOperationResponse>,
+): DocumentOperationResponse {
   return {
     documentId: "doc-sync",
     status: "completed",
@@ -44,7 +70,9 @@ function operation(overrides: Partial<DocumentOperationResponse>): DocumentOpera
   };
 }
 
-function status(overrides: Partial<DocumentStatusResponse>): DocumentStatusResponse {
+function status(
+  overrides: Partial<DocumentStatusResponse>,
+): DocumentStatusResponse {
   return {
     documentId: "doc-status",
     status: "completed",
@@ -62,7 +90,9 @@ function renderToolbar() {
       columns={columns}
       rows={rows}
       filters={[{ key: "period", label: "Period", value: "30d" }]}
-      metadata={[{ key: "generatedAt", label: "Generisano", value: "2026-07-01" }]}
+      metadata={[
+        { key: "generatedAt", label: "Generisano", value: "2026-07-01" },
+      ]}
       defaultOrientation="landscape"
     />,
   );
@@ -80,42 +110,56 @@ describe("AnalyticsTableToolbar", () => {
   it("prints the exact resolved table payload through local print state", () => {
     renderToolbar();
 
-    fireEvent.click(screen.getByRole("button", { name: /Štampaj/i }));
+    fireEvent.click(screen.getByRole("button", { name: /\u0160tampaj/i }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = vi.mocked(window.open).mock.calls[0];
     expect(String(url)).toContain("/print/analytics/supplier-test?stateKey=");
 
-    const stateKey = new URL(String(url), "http://localhost").searchParams.get("stateKey");
+    const stateKey = new URL(String(url), "http://localhost").searchParams.get(
+      "stateKey",
+    );
     const payload = getPrintPayload(stateKey);
 
     expect(payload).not.toBeNull();
     expect(payload?.tableKey).toBe("supplier-test");
     expect(payload?.rows).toEqual([
-      { supplier: "Dobavljač A", revenue: 120000 },
-      { supplier: "Dobavljač B", revenue: 80000 },
+      { supplier: "Dobavlja\u010D A", revenue: 120000 },
+      { supplier: "Dobavlja\u010D B", revenue: 80000 },
     ]);
-    expect(payload?.filters).toEqual([{ key: "period", label: "Period", value: "30d" }]);
-    expect(payload?.metadata).toEqual([{ key: "generatedAt", label: "Generisano", value: "2026-07-01" }]);
+    expect(payload?.filters).toEqual([
+      { key: "period", label: "Period", value: "30d" },
+    ]);
+    expect(payload?.metadata).toEqual([
+      { key: "generatedAt", label: "Generisano", value: "2026-07-01" },
+    ]);
   });
 
   it("opens the export menu and sends sync Excel export with table rows, filters and metadata", async () => {
-    vi.mocked(generateExport).mockResolvedValue(operation({
-      downloadUrl: "/exports/supplier-test.xlsx",
-      fileName: "supplier-test.xlsx",
-    }));
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({
+        downloadUrl: "/exports/supplier-test.xlsx",
+        fileName: "supplier-test.xlsx",
+      }),
+    );
 
     renderToolbar();
 
     expect(screen.getByText("Redova: 2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Izvoz/i }));
-    expect(screen.getByRole("menu", { name: "Formati izvoza" })).toBeInTheDocument();
-    expect(screen.getByText("Izveštaj za menadžment i štampu")).toBeInTheDocument();
+    expect(
+      screen.getByRole("menu", { name: "Formati izvoza" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Izve\u0161taj za menad\u017Ement i \u0161tampu"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Tabela za dalju analizu")).toBeInTheDocument();
     expect(screen.getByText("Brz flat-file izvoz")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Izvezi kao Excel" }));
-    expect(screen.getByRole("dialog", { name: /Export Supplier test/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /Export Supplier test/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Premium analytics export")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
@@ -125,11 +169,13 @@ describe("AnalyticsTableToolbar", () => {
       expect.objectContaining({
         tableKey: "supplier-test",
         rows: [
-          { supplier: "Dobavljač A", revenue: 120000 },
-          { supplier: "Dobavljač B", revenue: 80000 },
+          { supplier: "Dobavlja\u010D A", revenue: 120000 },
+          { supplier: "Dobavlja\u010D B", revenue: 80000 },
         ],
         filters: [{ key: "period", label: "Period", value: "30d" }],
-        metadata: [{ key: "generatedAt", label: "Generisano", value: "2026-07-01" }],
+        metadata: [
+          { key: "generatedAt", label: "Generisano", value: "2026-07-01" },
+        ],
       }),
       expect.objectContaining({
         format: "xlsx",
@@ -137,12 +183,19 @@ describe("AnalyticsTableToolbar", () => {
         includeFiltersAndMetadata: true,
       }),
     );
-    expect(downloadExport).toHaveBeenCalledWith("/exports/supplier-test.xlsx", "supplier-test.xlsx");
-    expect(screen.getByRole("status")).toHaveTextContent("Eksport je preuzet.");
+    expect(downloadExport).toHaveBeenCalledWith(
+      "/exports/supplier-test.xlsx",
+      "supplier-test.xlsx",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Eksport je preuzet.",
+    );
   });
 
   it("routes PDF preview through print preview instead of direct export", async () => {
-    vi.mocked(requestPrintPreview).mockResolvedValue(operation({ printUrl: "/print-preview/123" }));
+    vi.mocked(requestPrintPreview).mockResolvedValue(
+      operation({ printUrl: "/print-preview/123" }),
+    );
 
     renderToolbar();
 
@@ -152,12 +205,20 @@ describe("AnalyticsTableToolbar", () => {
 
     await waitFor(() => expect(requestPrintPreview).toHaveBeenCalledTimes(1));
     expect(generateExport).not.toHaveBeenCalled();
-    expect(window.open).toHaveBeenCalledWith("https://api.local/print-preview/123", "_blank", "noopener");
+    expect(window.open).toHaveBeenCalledWith(
+      "https://api.local/print-preview/123",
+      "_blank",
+      "noopener",
+    );
   });
 
   it("waits for async exports before downloading the completed document", async () => {
-    vi.mocked(generateExport).mockResolvedValue(operation({ isAsync: true, documentId: "doc-1", status: "queued" }));
-    vi.mocked(waitForExport).mockResolvedValue(status({ downloadUrl: "/exports/ready.csv", fileName: "ready.csv" }));
+    vi.mocked(generateExport).mockResolvedValue(
+      operation({ isAsync: true, documentId: "doc-1", status: "queued" }),
+    );
+    vi.mocked(waitForExport).mockResolvedValue(
+      status({ downloadUrl: "/exports/ready.csv", fileName: "ready.csv" }),
+    );
 
     renderToolbar();
 
@@ -166,7 +227,12 @@ describe("AnalyticsTableToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: /Pokreni export/i }));
 
     await waitFor(() => expect(waitForExport).toHaveBeenCalledWith("doc-1"));
-    expect(downloadExport).toHaveBeenCalledWith("/exports/ready.csv", "ready.csv");
-    expect(screen.getByRole("status")).toHaveTextContent("Eksport je završen i preuzet.");
+    expect(downloadExport).toHaveBeenCalledWith(
+      "/exports/ready.csv",
+      "ready.csv",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Eksport je zavr\u0161en i preuzet.",
+    );
   });
 });
