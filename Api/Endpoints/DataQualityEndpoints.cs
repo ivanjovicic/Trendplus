@@ -291,7 +291,15 @@ public static class DataQualityEndpoints
                     string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope,
                     storeId?.ToString(CultureInfo.InvariantCulture),
                     supplierId?.ToString(CultureInfo.InvariantCulture),
-                    null, null, null, 0, "error", "Greska",
+                    LastImportAtUtc: null,
+                    LastImportStatus: null,
+                    LastImportScope: null,
+                    LastImportBatchId: null,
+                    LastRefreshAtUtc: null,
+                    DataFreshnessStatus: null,
+                    ReadinessScore: 0,
+                    ReadinessStatus: "error",
+                    ReadinessLabel: "Greska",
                     new PilotDataQualityIntakeLoadedDataDto(0, 0, 0, 0, 0, null, null),
                     new PilotDataQualityIntakeIssuesDto(0, 0, 0, null, null, 0, 0, 0, 0),
                     new PilotDataQualityIntakeImpactDto(0d, 0d, 0, 0, 0),
@@ -429,6 +437,25 @@ public static class DataQualityEndpoints
             warnings.Add("Analytics refresh može biti zastareo; proverite worker status.");
         }
 
+        if (IsFailedImportStatus(report.LastImportStatus))
+        {
+            warnings.Add("Poslednji import nije uspeo; ne tretirajte timestamp importa kao spremnost.");
+        }
+        else if (IsInFlightImportStatus(report.LastImportStatus))
+        {
+            warnings.Add("Poslednji import je još u toku ili nije potpuno završen.");
+        }
+        else if (report.LastImportAtUtc.HasValue && string.IsNullOrWhiteSpace(report.LastImportStatus))
+        {
+            warnings.Add("Postoji timestamp poslednjeg importa, ali status importa nije poznat.");
+        }
+
+        if (string.Equals(report.LastImportScope, "global", StringComparison.OrdinalIgnoreCase) &&
+            (!string.IsNullOrWhiteSpace(report.StoreId) || !string.IsNullOrWhiteSpace(report.SupplierId)))
+        {
+            warnings.Add("Status importa je globalan; nije pouzdano mapiran na izabrani store/supplier filter.");
+        }
+
         return warnings
             .Where(static item => !string.IsNullOrWhiteSpace(item))
             .Distinct(StringComparer.Ordinal)
@@ -533,11 +560,12 @@ public static class DataQualityEndpoints
 
         var latestBatch = await trendDb.DataImportBatches
             .AsNoTracking()
-            .OrderByDescending(x => x.CompletedAtUtc)
-            .ThenByDescending(x => x.StartedAtUtc)
+            .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc)
             .ThenByDescending(x => x.QueuedAtUtc)
+            .ThenByDescending(x => x.Id)
             .Select(x => new IntakeBatchSnapshot
             {
+                Id = x.Id,
                 SourceFileName = x.SourceFileName,
                 SourceFilePath = x.SourceFilePath,
                 CompletedAtUtc = x.CompletedAtUtc,
@@ -576,6 +604,9 @@ public static class DataQualityEndpoints
         var readiness = ResolveReadiness(readinessScore);
         var blockedRecommendationsCount = missingSupplierCount + missingCostCount + missingSupplierNameCount + saleWithoutArticleCount;
         var latestImportAtUtc = latestBatch?.CompletedAtUtc ?? latestBatch?.StartedAtUtc ?? latestBatch?.QueuedAtUtc;
+        var lastImportStatus = NormalizeImportBatchStatus(latestBatch?.Status);
+        // Batches are not store/supplier-scoped in schema; never pretend filter scope.
+        var lastImportScope = latestBatch is null ? null : "global";
         var generatedAtUtc = DateTime.UtcNow;
         var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc;
         var articlesWithoutSupplierPercent = totalArticles <= 0 ? 0d : (double)missingSupplierCount / totalArticles;
@@ -596,6 +627,9 @@ public static class DataQualityEndpoints
             storeId?.ToString(CultureInfo.InvariantCulture),
             supplierId?.ToString(CultureInfo.InvariantCulture),
             latestImportAtUtc,
+            lastImportStatus,
+            lastImportScope,
+            latestBatch?.Id,
             lastRefreshAtUtc,
             refreshStatus.DataFreshnessStatus,
             readinessScore,
@@ -673,6 +707,10 @@ public static class DataQualityEndpoints
             new("Header", "Scope", report.DataScope),
             new("Header", "Kvalitet podataka", report.Meta?.DataQualityStatus ?? "insufficient_data"),
             new("KPI", "Readiness score", report.ReadinessScore.ToString(CultureInfo.InvariantCulture), report.ReadinessLabel),
+            new("Import", "Poslednji import (UTC)", report.LastImportAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? "n/a"),
+            new("Import", "Status importa", report.LastImportStatus ?? "unknown"),
+            new("Import", "Scope importa", report.LastImportScope ?? "unknown"),
+            new("Import", "Batch id", report.LastImportBatchId?.ToString(CultureInfo.InvariantCulture) ?? "n/a"),
             new("Ucitano", "Artikli", report.LoadedData.ArticlesCount.ToString(CultureInfo.InvariantCulture)),
             new("Ucitano", "Stavke prodaje", report.LoadedData.SaleItemsCount.ToString(CultureInfo.InvariantCulture)),
             new("Ucitano", "Racuni", report.LoadedData.ReceiptsCount.ToString(CultureInfo.InvariantCulture)),
@@ -1120,6 +1158,9 @@ public static class DataQualityEndpoints
         string? StoreId,
         string? SupplierId,
         DateTime? LastImportAtUtc,
+        string? LastImportStatus,
+        string? LastImportScope,
+        long? LastImportBatchId,
         DateTime? LastRefreshAtUtc,
         string? DataFreshnessStatus,
         int ReadinessScore,
@@ -1426,6 +1467,7 @@ public static class DataQualityEndpoints
     private sealed record IntakeReadinessDto(string Code, string Label, string MetaStatus);
     private sealed record IntakeBatchSnapshot
     {
+        public long Id { get; init; }
         public string? SourceFileName { get; init; }
         public string? SourceFilePath { get; init; }
         public DateTime? CompletedAtUtc { get; init; }
@@ -1437,5 +1479,40 @@ public static class DataQualityEndpoints
         public int SkippedRowCount { get; init; }
         public int TotalErrors { get; init; }
         public string Status { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Canonical import-batch status vocabulary shared with pilot readiness UI.
+    /// </summary>
+    internal static string? NormalizeImportBatchStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return null;
+        }
+
+        var normalized = status.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "completed" or "complete" or "succeeded" or "success" or "ok" => "completed",
+            "failed" or "error" or "blocked" => "failed",
+            "cancelled" or "canceled" => "cancelled",
+            "running" or "in_progress" or "in-progress" => "running",
+            "queued" or "pending" => "queued",
+            "partial" or "warning" => "partial",
+            _ => normalized
+        };
+    }
+
+    internal static bool IsFailedImportStatus(string? status)
+    {
+        var normalized = NormalizeImportBatchStatus(status);
+        return normalized is "failed" or "cancelled";
+    }
+
+    internal static bool IsInFlightImportStatus(string? status)
+    {
+        var normalized = NormalizeImportBatchStatus(status);
+        return normalized is "running" or "queued" or "partial";
     }
 }

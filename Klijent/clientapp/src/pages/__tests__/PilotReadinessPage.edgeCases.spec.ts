@@ -40,6 +40,8 @@ function intake(overrides: Partial<PilotDataQualityIntakeReport> = {}): PilotDat
     storeId: null,
     supplierId: null,
     lastImportAtUtc: "2026-07-01T07:30:00Z",
+    lastImportStatus: "completed",
+    lastImportScope: "global",
     lastRefreshAtUtc: "2026-07-01T08:00:00Z",
     readinessStatus: "good",
     readinessLabel: "Spremno",

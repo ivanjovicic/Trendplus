@@ -18,8 +18,8 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ41 | DONE | xlsx-typed-cells | Write XLSX numeric/currency/percent/date cells as typed cells |
 | RQ42 | DONE | detail-snapshot-formatting | Format detail snapshot values consistently with table values |
 | RQ43 | DONE | stale-report-preview | Harden stale browser report preview fallback |
-| RQ44 | WAITING | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
-| RQ45 | WAITING | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
+| RQ44 | DONE | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
+| RQ45 | DONE | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
 | RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
 | RQ47 | WAITING | action-source-key-lineage | Include relevant filters in supplier action source keys |
 | RQ48 | WAITING | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
@@ -349,14 +349,14 @@ Supplier Decision report can fall back to a local browser preview when durable b
 
 ## RQ44 - Change badge baseline semantics
 
-Status: WAITING
+Status: DONE
 Ready after: RQ20/RQ31 or explicit unblocking
 Priority: P1
 Type: frontend/tests
 Feature family: change-badge-baseline
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ44-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/RQ44-codex.lock.md`
 Commit suggestion: `fix(analytics): distinguish neutral and no-baseline changes`
 
 ### Why
@@ -389,18 +389,35 @@ Commit suggestion: `fix(analytics): distinguish neutral and no-baseline changes`
 
 - UI does not signal improvement when baseline is missing or change is neutral.
 
+### Notes
+
+- 2026-08-06: DONE. `changeBadge` now treats positive, negative, zero and null/unknown changes as distinct states; zero renders neutral, null/unknown renders `N/A`.
+- Changed files:
+  - `Klijent/clientapp/src/pages/InsightStudioPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InsightStudioPage.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+- Checks:
+  - `git diff --check` - pass
+  - `npm run test -- --run src/pages/__tests__/InsightStudioPage.spec.tsx` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+- Risk:
+  - Current changelog payload still collapses missing baseline into numeric `0`, so the frontend cannot prove a true no-baseline signal until backend emits an explicit nullable/flagged field.
+- Next:
+  - `RQ45 - KPI margin coverage UI`
+
 ---
 
 ## RQ45 - KPI margin coverage UI
 
-Status: WAITING
+Status: DONE
 Ready after: RQ34/RQ36 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: kpi-margin-coverage-ui
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ45-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/RQ45-codex.lock.md`
 Commit suggestion: `fix(analytics): show kpi margin coverage`
 
 ### Why
@@ -432,6 +449,25 @@ KPI Snapshot backend supplies margin coverage, but frontend type/card hides it. 
 ### Acceptance
 
 - Users can see when displayed margin is low-coverage/estimated.
+
+### Notes
+
+- 2026-08-06: DONE. KPI margin card now shows margin coverage directly in the subtext and tooltip, and low coverage is marked as estimated.
+- Changed files:
+  - `Klijent/clientapp/src/services/insightStudioApi.ts`
+  - `Klijent/clientapp/src/pages/InsightStudioPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InsightStudioPage.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`
+  - `docs/qa/ANALYTICS_UI_TABLE_CHART_RELIABILITY_AUDIT.md`
+- Checks:
+  - `git diff --check` - pass
+  - `npm run test -- --run src/pages/__tests__/InsightStudioPage.spec.tsx` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+- Risk:
+  - Coverage is still a frontend trust signal layered on top of backend numbers; no backend formula was changed.
+- Next:
+  - `RQ46 - export trust metadata`
 
 ---
 

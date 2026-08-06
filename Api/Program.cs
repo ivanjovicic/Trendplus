@@ -614,17 +614,15 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     builder.Services.AddMediatR(typeof(CreateArtikalHandler).Assembly);
 
+    var corsAllowedOrigins = CorsOriginsResolver.Resolve(builder.Configuration, builder.Environment);
+    builder.Services.Configure<CorsOriginsOptions>(builder.Configuration.GetSection(CorsOriginsOptions.SectionName));
+    builder.Services.Configure<SwaggerExposureOptions>(builder.Configuration.GetSection(SwaggerExposureOptions.SectionName));
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
             policy
-               .WithOrigins(
-                   "http://localhost:5173",
-                   "http://localhost:5174",
-                   "http://localhost:8080",
-                   "https://trendplus.vercel.app"
-               )
+               .WithOrigins(corsAllowedOrigins)
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
@@ -780,29 +778,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         }
     }
 
-    var allowedHealthOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:8080",
-        "https://trendplus.vercel.app"
-    };
-
-    static void ApplyHealthCorsHeaders(HttpContext context, ISet<string> allowedOrigins)
-    {
-        if (!context.Request.Headers.TryGetValue("Origin", out var originValues))
-            return;
-
-        var origin = originValues.ToString();
-        if (string.IsNullOrWhiteSpace(origin) || !allowedOrigins.Contains(origin))
-            return;
-
-        context.Response.Headers["Access-Control-Allow-Origin"] = origin;
-        context.Response.Headers["Vary"] = "Origin";
-        context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
-        context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With";
-        context.Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
-    }
+    var allowedHealthOrigins = CorsOriginsResolver.ToSet(corsAllowedOrigins);
 
     static string ResolveProviderName(HttpContext? context)
     {
@@ -925,11 +901,22 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     async Task<IResult> CheckDatabaseHealthAsync(HttpContext context, CancellationToken ct)
     {
-        static async Task<(bool Ok, long ElapsedMs, string? Error)> ProbeAsync(string name, string? connectionString, CancellationToken requestToken)
+        var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Api.Health.Dependencies");
+        var correlationId =
+            context.Response.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? Guid.NewGuid().ToString("N");
+
+        async Task<(bool Ok, long ElapsedMs, string? Error)> ProbeAsync(string name, string? connectionString, CancellationToken requestToken)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                return (false, 0, $"{name} connection string is missing");
+                logger?.LogWarning(
+                    "Dependency probe {ProbeName} failed with {ErrorCode}. CorrelationId={CorrelationId}",
+                    name,
+                    DependencyHealthPublicErrors.MissingConnectionString,
+                    correlationId);
+                return (false, 0, DependencyHealthPublicErrors.ForMissingConnectionString());
             }
 
             var sw = Stopwatch.StartNew();
@@ -960,17 +947,39 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             catch (OperationCanceledException) when (requestToken.IsCancellationRequested)
             {
                 sw.Stop();
-                return (false, sw.ElapsedMilliseconds, "request_aborted");
+                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: true);
+                logger?.LogWarning(
+                    "Dependency probe {ProbeName} canceled by request. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
             }
             catch (OperationCanceledException)
             {
                 sw.Stop();
-                return (false, sw.ElapsedMilliseconds, "timeout");
+                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: false);
+                logger?.LogWarning(
+                    "Dependency probe {ProbeName} timed out. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
             }
             catch (Exception ex)
             {
                 sw.Stop();
-                return (false, sw.ElapsedMilliseconds, ex.GetBaseException().Message);
+                var code = DependencyHealthPublicErrors.ForUnexpectedFailure();
+                logger?.LogError(
+                    ex,
+                    "Dependency probe {ProbeName} failed. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
             }
         }
 
@@ -1072,12 +1081,20 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     // ================= MIDDLEWARE PIPELINE =================
 
     app.UseForwardedHeaders();
+
+    // HSTS for Production/Staging behind TLS-terminating proxy (not Development HTTP).
+    // Must run after ForwardedHeaders so X-Forwarded-Proto: https is visible as Request.IsHttps.
+    if (ProductionEdgePolicy.ShouldUseHsts(app.Environment))
+    {
+        app.UseHsts();
+    }
+
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path;
         if (path.StartsWithSegments("/health") || path.StartsWithSegments("/ready"))
         {
-            ApplyHealthCorsHeaders(context, allowedHealthOrigins);
+            HealthCorsHeaders.Apply(context, allowedHealthOrigins);
 
             if (HttpMethods.IsOptions(context.Request.Method))
             {
@@ -1155,24 +1172,28 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.UseCors("AllowFrontend");
     app.UseRateLimiter();
 
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseHsts();
-    }
-
     // ===== SWAGGER UI =====
-    app.UseSwagger(c =>
+    // Secure default: Development only unless Swagger:Enabled is set explicitly.
+    var swaggerEnabled = SwaggerExposurePolicy.IsEnabled(builder.Configuration, app.Environment);
+    if (swaggerEnabled)
     {
-        c.SerializeAsV2 = false; // Use OpenAPI 3.0
-    });
-    
-    app.UseSwaggerUI(c =>
+        app.UseSwagger(c =>
+        {
+            c.SerializeAsV2 = false; // Use OpenAPI 3.0
+        });
+
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trendplus API v1");
+            c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
+            c.DocumentTitle = "Trendplus API Documentation";
+            c.DisplayRequestDuration();
+        });
+    }
+    else
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trendplus API v1");
-        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
-        c.DocumentTitle = "Trendplus API Documentation";
-        c.DisplayRequestDuration();
-    });
+        app.Logger.LogInformation("Swagger UI disabled for environment {EnvironmentName}", app.Environment.EnvironmentName);
+    }
 
     app.UseAuthorization();
 

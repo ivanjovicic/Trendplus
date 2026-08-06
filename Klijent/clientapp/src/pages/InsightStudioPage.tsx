@@ -88,7 +88,7 @@ import {
   mergeSmartReorderAsPrimary,
 } from "../services/analyticsIntelligenceDerived";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -305,13 +305,59 @@ const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
 const fmtNum = (v: number) => v.toLocaleString("sr-RS");
 
-function changeBadge(change: number, suffix = "%") {
-  const up = change >= 0;
+export function changeBadge(change: number | null | undefined, suffix = "%") {
+  if (change == null || Number.isNaN(change)) {
+    return <span className="ml-1 text-[11px] font-semibold text-warning">N/A</span>;
+  }
+
+  if (change > 0) {
+    return (
+      <span className="ml-1 text-[11px] font-semibold text-success">
+        ▲ {fmtNumber(change, 1)}{suffix}
+      </span>
+    );
+  }
+
+  if (change < 0) {
+    return (
+      <span className="ml-1 text-[11px] font-semibold text-error">
+        ▼ {fmtNumber(Math.abs(change), 1)}{suffix}
+      </span>
+    );
+  }
+
   return (
-    <span className={`ml-1 text-[11px] font-semibold ${up ? "text-success" : "text-error"}`}>
-      {up ? "▲" : "▼"} {Math.abs(change).toFixed(1)}{suffix}
+    <span className="ml-1 text-[11px] font-semibold text-muted">
+      {fmtNumber(0, 1)}{suffix}
     </span>
   );
+}
+
+export function buildMarginCoverageCopy(kpi: Pick<KpiSnapshot, "revenue" | "marginDataCoveragePct" | "revenueWithCost">) {
+  const coveragePct = kpi.marginDataCoveragePct;
+  const hasCoverage = coveragePct != null && !Number.isNaN(coveragePct);
+  const isEstimated = !hasCoverage || coveragePct < 80;
+  const coverageText = hasCoverage
+    ? `Pokriće troška: ${fmtPct(coveragePct, 1)} prihoda`
+    : "Pokriće troška nije dostupno";
+  const revenueWithCostText = kpi.revenueWithCost != null && !Number.isNaN(kpi.revenueWithCost)
+    ? `Promet sa troškom: ${fmtRsd(kpi.revenueWithCost)}`
+    : null;
+  const uncoveredRevenue = kpi.revenueWithCost != null && !Number.isNaN(kpi.revenueWithCost)
+    ? Math.max(0, kpi.revenue - kpi.revenueWithCost)
+    : null;
+  const uncoveredRevenueText = uncoveredRevenue != null
+    ? `Nepokriven promet: ${fmtRsd(uncoveredRevenue)}`
+    : null;
+  const statusText = isEstimated
+    ? "Marža je procena zbog niskog pokrića troška."
+    : "Marža je pokrivena dovoljnim troškom.";
+
+  return {
+    subtext: `${coverageText}${isEstimated ? " ⚠" : ""}`,
+    tooltip: [coverageText, revenueWithCostText, uncoveredRevenueText, statusText].filter(Boolean).join(" • "),
+    isEstimated,
+  };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -321,7 +367,7 @@ function changeBadge(change: number, suffix = "%") {
 function KpiCard({
   label, value, sub, change, accent = PAL.blue, sparkline, icon, tooltip,
 }: {
-  label: string; value: string; sub?: string; change?: number; accent?: string;
+  label: string; value: string; sub?: string; change?: number | null; accent?: string;
   sparkline?: { date: string; revenue: number }[]; icon?: string; tooltip?: string;
 }) {
   const [showTip, setShowTip] = useState(false);
@@ -464,6 +510,7 @@ function OverviewTab({
   intelligenceError: string | null;
 }) {
   if (loading) return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
+  const marginCoverageCopy = kpi ? buildMarginCoverageCopy(kpi) : null;
 
   return (
     <div className="space-y-6">
@@ -548,7 +595,7 @@ function OverviewTab({
           <SectionHeader title="KPI Snapshot" subtitle="Ključni pokazatelji za izabrani period" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth. period" change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za izabrani period" />
-            <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub="Procenjena profitabilnost" accent={PAL.green} icon="📈" tooltip="(Prodajna - Nabavna) / Prodajna × 100" />
+            <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub={marginCoverageCopy?.subtext ?? "Procenjena profitabilnost"} accent={marginCoverageCopy?.isEstimated ? PAL.orange : PAL.green} icon="📈" tooltip={marginCoverageCopy?.tooltip ?? "(Prodajna - Nabavna) / Prodajna × 100"} />
             <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth. period" change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
             <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg. ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}/tr`} accent={PAL.yellow} icon="🧾" tooltip="Prosečna vrednost transakcije" />
             <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="SKU bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" tooltip="Artikli bez zaliha i artikli ispod minimalne količine" />
@@ -2184,6 +2231,8 @@ export default function InsightStudioPage() {
     loadedTabs.clear();
   };
 
+  const marginCoverageCopy = kpi ? buildMarginCoverageCopy(kpi) : null;
+
   return (
     <div className="space-y-5 pb-10">
       {/* ── Page Header ───────────────────────────────────────── */}
@@ -2222,7 +2271,7 @@ export default function InsightStudioPage() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth." change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za period" />
-          <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub="Procenjena" accent={PAL.green} icon="📈" tooltip="(Prodajna - Nabavna) / Prodajna × 100" />
+          <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub={marginCoverageCopy?.subtext ?? "Procenjena"} accent={marginCoverageCopy?.isEstimated ? PAL.orange : PAL.green} icon="📈" tooltip={marginCoverageCopy?.tooltip ?? "(Prodajna - Nabavna) / Prodajna × 100"} />
           <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth." change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
           <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}`} accent={PAL.yellow} icon="🧾" />
           <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="Bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" />

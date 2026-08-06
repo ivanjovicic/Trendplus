@@ -11,7 +11,7 @@ Related historical docs:
 
 - `docs/security/ANALYTICS_ACCESS_CONTROL_AUDIT.md` (2026-06-14 inventory; still useful)
 - `docs/security/ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`
-- Follow-up code task: `STAB04` (admin operational reads)
+- Follow-up after STAB04: `STAB05` (production edge / diagnostics)
 
 ## 1. Runtime identity sources
 
@@ -111,7 +111,7 @@ Evidence: `Infrastructure/Services/Documents/DocumentSecurityServices.cs` (`Docu
 |---|---|---|---|
 | `GET /api/workers/health`, `/control`, `/configuration` | None | Admin-key for config/control detail; health may stay public if redacted | none |
 | Worker start/stop/restart/schedule + control enable/disable | `AdminAccessControl` | Keep | `WorkerConfigurationEndpointsTests` |
-| `GET /api/admin/pending-batches`, `/health-check`, `/audit-log`, `/workers/list`, `/workers/{name}` | **None** (Swagger may claim 401) | **Admin-key** — **STAB04** | none |
+| `GET /api/admin/pending-batches`, `/health-check`, `/audit-log`, `/workers/list`, `/workers/{name}` | **Admin-key** (`AdminAccessControl`, STAB04) | **Admin-key** | tests: `AdminConfigOperationalReadsAuthorizationTests` |
 | Admin requeue / stale recovery / demo-verification / worker writes | `AdminAccessControl` | Keep | demo-verification, repair, backend-routing suites |
 | `GET /api/logs`, `/api/logs/{id}`, `/errors` | None | Admin-key (P0 info exposure) | none |
 | `DELETE /api/logs/clear` | `AdminAccessControl` | Keep | none dedicated |
@@ -164,7 +164,7 @@ Reasons:
 
 | Order | Task | Family | Smallest change |
 |---|---|---|---|
-| 1 | **STAB04** | Admin operational reads | Gate `GET /api/admin/pending-batches`, `/health-check`, `/audit-log`, `/workers/list`, `/workers/{name}` with `AdminAccessControl` + tests |
+| 1 | **STAB04** | Admin operational reads | **DONE** — gated with `AdminAccessControl` + `AdminConfigOperationalReadsAuthorizationTests` |
 | 2 | Import read/cleanup preview follow-up | Access-import sensitive reads | Gate cleanup preview/archive export + batch list if still public |
 | 3 | Logs read follow-up | `/api/logs*` | Gate reads; keep clear already gated |
 | 4 | Document header trust follow-up | Documents/exports | Stop trusting unauthenticated `X-User-*` for generate privilege |
@@ -187,5 +187,5 @@ Reasons:
 |---|---|
 | Current production authentication capability proven, not assumed | **Proven: no auth pipeline; Admin-key only** |
 | Every sensitive family has current + target boundary | **Yes (matrix above)** |
-| Next code task small enough for one family | **STAB04 admin operational reads** |
+| Next code task small enough for one family | **STAB05 production edge / diagnostics** |
 | No external provider / broad RBAC invented | **Yes** |

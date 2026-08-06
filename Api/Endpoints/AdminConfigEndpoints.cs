@@ -25,7 +25,8 @@ public static class AdminConfigEndpoints
             .WithName("GetPendingBatches")
             .WithSummary("List pending/running/failed import batches")
             .Produces<PendingBatchesResponse>(StatusCodes.Status200OK)
-            .Produces<object>(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/requeue-batch/{batchId}", RequeueBatch)
             .WithName("RequeueBatch")
@@ -44,7 +45,8 @@ public static class AdminConfigEndpoints
             .WithName("AdminHealthCheck")
             .WithSummary("Admin diagnostics")
             .Produces<AdminHealthCheckResponse>(StatusCodes.Status200OK)
-            .Produces<object>(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/demo-verification", DemoVerification)
             .WithName("DemoEnvironmentVerification")
@@ -57,21 +59,24 @@ public static class AdminConfigEndpoints
             .WithName("GetAuditLog")
             .WithSummary("Get recent admin action audit trail")
             .Produces<AuditLogResponse>(StatusCodes.Status200OK)
-            .Produces<object>(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         // Worker management endpoints
         group.MapGet("/workers/list", GetWorkersList)
             .WithName("GetWorkersList")
             .WithSummary("Get list of all workers with status and configuration")
             .Produces<WorkersListResponse>(StatusCodes.Status200OK)
-            .Produces<object>(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/workers/{workerName}", GetWorkerDetails)
             .WithName("GetWorkerDetails")
             .WithSummary("Get details for a specific worker")
             .Produces<WorkerDetailsDto>(StatusCodes.Status200OK)
-            .Produces<object>(StatusCodes.Status404NotFound)
-            .Produces<object>(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/workers/{workerName}/resume", ResumeWorker)
             .WithName("ResumeWorker")
@@ -102,12 +107,20 @@ public static class AdminConfigEndpoints
             .Produces<object>(StatusCodes.Status401Unauthorized);
     }
 
-    private static async Task<Ok<PendingBatchesResponse>> GetPendingBatches(
+    private static async Task<IResult> GetPendingBatches(
+        HttpContext context,
+        IConfiguration configuration,
         TrendplusDbContext db,
         [FromQuery] string? status,
         [FromQuery] int take = 50,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         take = Math.Clamp(take, 1, 500);
 
         IQueryable<Domain.Model.DataImportBatch> query = db.DataImportBatches.AsNoTracking();
@@ -212,12 +225,20 @@ public static class AdminConfigEndpoints
         }
     }
 
-    private static async Task<Ok<AdminHealthCheckResponse>> HealthCheck(
+    private static async Task<IResult> HealthCheck(
+        HttpContext context,
+        IConfiguration configuration,
         WorkerHealthService workerHealth,
         WorkerRuntimeControlService workerControl,
         TrendplusDbContext db,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         var response = new AdminHealthCheckResponse { Timestamp = DateTime.UtcNow, WorkerGlobalEnabled = workerControl.IsEnabled };
         var schemaStatus = WorkerRuntimeSettingsSchemaGuard.GetStatus();
         response.WorkerRuntimeSettingsSchemaReady = schemaStatus.IsSchemaReady && !schemaStatus.IsSchemaMissing;
@@ -333,11 +354,19 @@ public static class AdminConfigEndpoints
         !string.IsNullOrWhiteSpace(value) &&
         value.Contains(marker, StringComparison.OrdinalIgnoreCase);
 
-    private static async Task<Ok<AuditLogResponse>> GetAuditLog(
+    private static async Task<IResult> GetAuditLog(
+        HttpContext context,
+        IConfiguration configuration,
         TrendplusDbContext db,
         [FromQuery] int take = 100,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         take = Math.Clamp(take, 1, 1000);
         var recentLogs = await db.AccessImportLogs
             .AsNoTracking()
@@ -349,19 +378,35 @@ public static class AdminConfigEndpoints
         return TypedResults.Ok(new AuditLogResponse { Entries = recentLogs, Total = recentLogs.Count });
     }
 
-    private static async Task<Ok<WorkersListResponse>> GetWorkersList(
+    private static async Task<IResult> GetWorkersList(
+        HttpContext context,
+        IConfiguration configuration,
         WorkerRegistryService service,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         var workers = await service.GetConfigurationAsync(ct);
         return TypedResults.Ok(new WorkersListResponse { Workers = workers.Workers, Total = workers.Total });
     }
 
-    private static async Task<Results<Ok<WorkerConfigurationItemDto>, NotFound>> GetWorkerDetails(
+    private static async Task<IResult> GetWorkerDetails(
         string workerName,
+        HttpContext context,
+        IConfiguration configuration,
         WorkerRegistryService service,
         CancellationToken ct = default)
     {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
         var workers = await service.GetConfigurationAsync(ct);
         var worker = workers.Workers.FirstOrDefault(
             w => string.Equals(w.WorkerName, workerName, StringComparison.OrdinalIgnoreCase));

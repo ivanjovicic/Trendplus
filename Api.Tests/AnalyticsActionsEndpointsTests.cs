@@ -74,9 +74,8 @@ public sealed class AnalyticsActionsEndpointsTests
         using var response = await host.Client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<AnalyticsActionItem>();
-        Assert.NotNull(payload);
-        Assert.Equal("inventory:sku:auth-3", payload!.SourceKey);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("inventory:sku:auth-3", payload.RootElement.GetProperty("item").GetProperty("sourceKey").GetString());
     }
 
     [Fact]
@@ -364,15 +363,16 @@ public sealed class AnalyticsActionsEndpointsTests
     [Fact]
     public async Task PatchOutcome_ValidStatusUpdatesFields_AndReturnsDetailedAction()
     {
-        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
         var actionId = await host.SeedActionAsync();
 
-        using var response = await host.Client.PatchAsJsonAsync($"/api/analytics/actions/{actionId}/outcome", new
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
         {
             outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
             measuredImpactRsd = 12345.67m,
             outcomeNotes = "  Uticaj je potvrđen  "
-        });
+        }, AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
 
@@ -393,13 +393,14 @@ public sealed class AnalyticsActionsEndpointsTests
     [Fact]
     public async Task PatchOutcome_InvalidStatusReturnsBadRequest()
     {
-        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
         var actionId = await host.SeedActionAsync();
 
-        using var response = await host.Client.PatchAsJsonAsync($"/api/analytics/actions/{actionId}/outcome", new
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
         {
             outcomeStatus = "unknown"
-        });
+        }, AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var message = await response.Content.ReadAsStringAsync();
@@ -409,20 +410,21 @@ public sealed class AnalyticsActionsEndpointsTests
     [Fact]
     public async Task PatchOutcome_PendingClearsMeasuredFields_AndKeepsAuditTrail()
     {
-        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
         var actionId = await host.SeedActionAsync(
             outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
             measuredImpactRsd: 900m,
             outcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
             outcomeNotes: "Prethodno merenje");
 
-        using var response = await host.Client.PatchAsJsonAsync($"/api/analytics/actions/{actionId}/outcome", new
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
         {
             outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Pending,
             measuredImpactRsd = 42m,
             outcomeMeasuredAtUtc = "2026-06-12T00:00:00Z",
             outcomeNotes = "Čeka se potvrda"
-        });
+        }, AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
 

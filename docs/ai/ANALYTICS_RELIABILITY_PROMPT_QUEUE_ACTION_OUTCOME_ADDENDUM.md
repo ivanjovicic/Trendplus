@@ -26,6 +26,7 @@ Purpose: queue follow-up fixes for action/outcome semantics, measurement evidenc
 | RQ86 | WAITING | action-outcome-evidence-requirements | Prevent success/neutral/negative without evidence looking authoritative |
 | RQ87 | WAITING | action-outcome-resolution-ledger | Make outcome resolution snapshot self-contained |
 | RQ88 | WAITING | action-count-closed-kpi-split | Split or relabel done/rejected closed KPI |
+| RQ90 | WAITING | analytics-actions-list-contract | Preserve canonical filters, search and priority ordering in action lists |
 
 ---
 
@@ -297,3 +298,63 @@ KPI bar shows `Zatvoreno = done + rejected`. This is not wrong mathematically, b
 ### Acceptance
 
 - Rejected actions cannot be mistaken for completed actions in the top KPI bar.
+
+---
+
+## RQ90 - Analytics actions list contract
+
+Status: WAITING
+Ready after: STAB09 or explicit reprioritization
+Priority: P1
+Type: backend/tests
+Feature family: analytics-actions-list-contract
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ90-<agent>.lock.md`
+Commit suggestion: `fix(actions): preserve analytics actions list filters`
+
+### Why
+
+`AnalyticsActionsCriticalWorkflowTests.List_AppliesCanonicalFiltersSearchPagingAndPriorityOrdering` expected `totalCount=2` but the canonical list returned `0`. That is a list-contract failure, not just a display issue, because the seed data disappears before paging and ordering can be validated.
+
+### Evidence already found
+
+- `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs` seeds the in-memory analytics context and exercises the canonical list path.
+- The failing test expected the filtered set to include two rows after canonical filters, search and priority ordering were applied.
+- The route is implemented in `Api/Endpoints/AnalyticsActionsEndpoints.cs`.
+- The list/service contract is implemented in `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`.
+
+### Contract
+
+- Canonical list filters must preserve seeded rows.
+- `dataQualityStatus=warning` must still include legacy `fair` rows via normalization.
+- `totalCount` must reflect the filtered set before paging.
+- Priority ordering and pagination must remain deterministic.
+- Invalid filters must still return `400`.
+
+### Scope only
+
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+- `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs`
+- related endpoint tests only if needed
+
+### Do not touch
+
+- action-outcome evidence semantics
+- resolution ledger shape
+- unrelated inventory list routes
+
+### Test matrix
+
+- accepted product rows with `warning` and legacy `fair` data quality are both included
+- search term matches seeded product rows
+- `pageSize=1` returns one row but `totalCount` stays 2
+- invalid filters still return `400`
+- counts endpoint continues to reflect seed totals
+- priority ordering remains deterministic
+
+### Acceptance
+
+- Analytics actions list regression no longer collapses the canonical filtered set to empty.
+- Priority/search/filter behavior stays visible and testable.

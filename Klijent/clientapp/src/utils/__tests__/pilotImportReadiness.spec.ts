@@ -11,6 +11,9 @@ function buildReport(overrides: Partial<PilotDataQualityIntakeReport> = {}): Pil
     storeId: null,
     supplierId: null,
     lastImportAtUtc: "2026-06-14T09:00:00Z",
+    lastImportStatus: "completed",
+    lastImportScope: "global",
+    lastImportBatchId: 7,
     lastRefreshAtUtc: "2026-06-14T09:30:00Z",
     readinessStatus: "excellent",
     readinessLabel: "Spremno za pouzdanu analitiku",
@@ -106,5 +109,63 @@ describe("computePilotImportReadiness", () => {
     expect(result.status).toBe("unknown");
     expect(result.label).toBe("Nepoznato");
     expect(result.nextActions.some((action) => action.includes("import"))).toBe(true);
+  });
+
+  it("marks failed latest import as not_ready even when timestamp exists", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ lastImportStatus: "failed" }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("not_ready");
+    expect(result.reasons.some((reason) => reason.includes("nije uspeo"))).toBe(true);
+  });
+
+  it("marks cancelled latest import as not_ready", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ lastImportStatus: "cancelled" }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("not_ready");
+  });
+
+  it("marks running import as ready_with_warnings", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ lastImportStatus: "running" }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("ready_with_warnings");
+    expect(result.reasons.some((reason) => reason.includes("nije potvrdio"))).toBe(true);
+  });
+
+  it("treats timestamp without status as warning, not ready", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ lastImportStatus: null }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("ready_with_warnings");
+    expect(result.reasons.some((reason) => reason.includes("nije poznat"))).toBe(true);
+  });
+
+  it("reads lastImportStatus from report when third argument is omitted", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ lastImportStatus: "failed" }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("not_ready");
+  });
+
+  it("warns when import scope is global under store filter", () => {
+    const result = computePilotImportReadiness(
+      buildReport({ storeId: "12", lastImportScope: "global", lastImportStatus: "completed" }),
+      buildRefreshStatus()
+    );
+
+    expect(result.status).toBe("ready_with_warnings");
+    expect(result.reasons.some((reason) => reason.includes("globalan"))).toBe(true);
   });
 });

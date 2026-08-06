@@ -289,7 +289,10 @@ public sealed class AnalyticsActionsCriticalWorkflowTests
     {
         using var request = CreateAdminJsonRequest(HttpMethod.Post, "/api/analytics/actions", body);
         using var response = await client.SendAsync(request);
-        return await ReadJsonAsync(response, HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(string.IsNullOrWhiteSpace(json));
+        return JsonDocument.Parse(json).RootElement.Clone();
     }
 
     private static HttpRequestMessage CreateAdminJsonRequest(HttpMethod method, string url, object body)
@@ -323,6 +326,7 @@ public sealed class AnalyticsActionsCriticalWorkflowTests
 
         public static async Task<ActionsHost> CreateAsync()
         {
+            var databaseName = $"analytics-actions-critical-{Guid.NewGuid():N}";
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 EnvironmentName = Environments.Development
@@ -333,7 +337,7 @@ public sealed class AnalyticsActionsCriticalWorkflowTests
             builder.Services.AddRouting();
             builder.Services.AddLogging();
             builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-                options.UseInMemoryDatabase($"analytics-actions-critical-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase(databaseName));
             builder.Services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             builder.Services.AddScoped<AnalyticsActionItemService>();
 

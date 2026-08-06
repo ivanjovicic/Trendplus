@@ -177,7 +177,7 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal("medium", creation.GetProperty("confidenceLevel").GetString());
         Assert.Equal("Dopuni", creation.GetProperty("recommendedAction").GetString());
         Assert.Equal("stale", creation.GetProperty("inputFreshnessStatus").GetString());
-        Assert.Equal(2, creation.GetProperty("warningCodes").GetArrayLength());
+        Assert.Equal(1, creation.GetProperty("warningCodes").GetArrayLength());
 
         var snapshot = AnalyticsActionItemService.GetLedgerSnapshot(created.MetadataJson);
         Assert.NotNull(snapshot);

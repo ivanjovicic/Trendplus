@@ -9,6 +9,8 @@ export interface KpiSnapshot {
   unitsChange: number;
   transactions: number;
   marginPct: number;
+  marginDataCoveragePct: number | null;
+  revenueWithCost: number | null;
   oosCount: number;
   lowStockCount: number;
   sparkline: { date: string; revenue: number }[];

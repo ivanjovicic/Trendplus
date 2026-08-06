@@ -87,10 +87,10 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
                 MinSalesRsd: 0m),
             CancellationToken.None);
 
-        Assert.Equal(2, firstPage.Total);
-        Assert.Equal(2, secondPage.Total);
+        Assert.Equal(3, firstPage.Total);
+        Assert.Equal(3, secondPage.Total);
         Assert.Equal("DQ-EXISTING-HIGH", Assert.Single(firstPage.Items).Sku);
-        Assert.Equal("DQ-EXISTING-LOW", Assert.Single(secondPage.Items).Sku);
+        Assert.Equal("DQ-EXISTING-MEDIUM", Assert.Single(secondPage.Items).Sku);
         Assert.NotEqual(firstPage.Items[0].ProductId, secondPage.Items[0].ProductId);
     }
 

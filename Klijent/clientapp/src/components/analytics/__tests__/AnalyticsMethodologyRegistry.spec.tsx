@@ -47,6 +47,8 @@ function createPilotReport(overrides?: Partial<PilotReport>): PilotReport {
     periodToUtc: "2026-05-25T23:59:59Z",
     dataScope: "all",
     lastImportAtUtc: "2026-05-25T06:00:00Z",
+    lastImportStatus: "completed",
+    lastImportScope: "global",
     lastRefreshAtUtc: "2026-05-25T07:30:00Z",
     readinessStatus: "warning",
     readinessLabel: "Upotrebljivo uz upozorenja",

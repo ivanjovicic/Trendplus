@@ -237,6 +237,7 @@ public sealed class AccessImportAdminAuthorizationTests
             var queue = new RecordingAccessImportJobQueue();
             builder.Services.AddSingleton<IAccessImportService>(service);
             builder.Services.AddSingleton<IAccessImportJobQueue>(queue);
+            builder.Services.AddScoped<IBatchLogService, BatchLogService>();
             builder.Services.AddSingleton<ILogger<Program>>(NullLogger<Program>.Instance);
 
             var app = builder.Build();

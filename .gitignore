@@ -11,6 +11,7 @@
 *.sln.docstates
 *.laccdb
 trendplus-backup-*.dump
+tmp/ops-rehearsal/
 appsettings.local.json
 appsettings.*.local.json
 Api/appsettings.local.json

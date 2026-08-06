@@ -111,6 +111,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
         <div className="space-y-2.5">
           {NAV_GROUPS.map((group) => {
             const GroupIcon = group.icon;
+            const groupLabel = group.sidebarLabel ?? group.label;
             const isOpen = openGroups.has(group.id);
             const activeItemTo = findBestMatchForGroup(location.pathname, group);
             const isGroupActive = activeItemTo != null;
@@ -134,7 +135,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                       <GroupIcon size={16} className={isGroupActive ? "text-[var(--info)]" : "text-secondary"} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate">{group.label}</span>
+                      <span className="block truncate">{groupLabel}</span>
                       <span className="block text-[11px] font-medium text-muted">{group.items.length} ekrana</span>
                     </span>
                     {group.badge && (

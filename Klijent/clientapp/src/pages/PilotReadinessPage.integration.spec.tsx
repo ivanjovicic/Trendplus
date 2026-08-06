@@ -179,6 +179,8 @@ function readyIntake(overrides: Partial<PilotDataQualityIntakeReport> = {}): Pil
     storeId: null,
     supplierId: null,
     lastImportAtUtc: currentIso(),
+    lastImportStatus: "completed",
+    lastImportScope: "global",
     lastRefreshAtUtc: currentIso(),
     readinessStatus: "good",
     readinessLabel: "Spremno",

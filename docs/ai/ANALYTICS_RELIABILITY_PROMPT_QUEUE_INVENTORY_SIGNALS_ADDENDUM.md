@@ -26,6 +26,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ69 | WAITING | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
 | RQ70 | WAITING | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
 | RQ71 | WAITING | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
+| RQ89 | WAITING | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
 
 ---
 
@@ -386,3 +387,61 @@ Size-curve handler coalesces boolean nulls to false. Missing evidence can look l
 ### Acceptance
 
 - Size-curve missing evidence cannot be rendered as healthy run structure.
+
+---
+
+## RQ89 - Inventory list route contract
+
+Status: WAITING
+Ready after: STAB09 or explicit reprioritization
+Priority: P1
+Type: backend/tests
+Feature family: inventory-list-route-contract
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ89-<agent>.lock.md`
+Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
+
+### Why
+
+`InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments` expected `totalCount=4` but the cached inventory list route returned `0`. Multiple inventory list tests failed in the same area, which points to a route-contract or count-lineage regression rather than a single paging assertion.
+
+### Evidence already found
+
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs` seeds the in-memory `TrendplusDbContext` and exercises `/api/analytics/cached/inventory/list`.
+- The failing test expected seeded rows to remain visible after invalid paging arguments were clamped.
+- The cached route lives in `Api/Endpoints/CachedAnalyticsEndpoints.cs`.
+- The uncached inventory list route lives in `Api/Endpoints/InventoryEndpoints.cs`.
+
+### Contract
+
+- Seeded inventory rows must survive through both cached and uncached list routes.
+- `totalCount` must reflect the full filtered match count before paging.
+- Empty successful responses must remain explicit and must not masquerade as errors.
+- Error fallback must not fake an empty success if the backend is actually failing.
+
+### Scope only
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api/Endpoints/InventoryEndpoints.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+- shared test fixture/helper only if needed
+
+### Do not touch
+
+- unrelated inventory signal panels
+- forecast/rebalance signal handlers
+- production refresh scheduling
+
+### Test matrix
+
+- seeded non-empty dataset returns matching `totalCount`
+- empty search returns explicit empty-success meta
+- invalid paging clamps page and pageSize but still returns seeded rows
+- store/supplier/search combinations stay deterministic
+- fallback/error path does not fake an empty success
+
+### Acceptance
+
+- Inventory list regression no longer collapses seeded rows to zero on the cached route.
+- Empty-success behavior stays honest and explicit.

@@ -386,9 +386,11 @@ Problem:
 
 - Current GitHub connector changes cannot verify actual rendered pixels.
 
-Recommendation:
+Recommendation / status (2026-08-06):
 
-- Add Playwright or story/screenshot checklist for sidebar, global header, analytics dashboard, trust header, product decision, inventory, toolbar modal and key table pages in dark/light themes.
+- **DONE as protocol**: `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md` + `docs/qa/ANALYTICS_UI_VISUAL_REVIEW_EVIDENCE_TEMPLATE.md`.
+- No Playwright harness in `clientapp` yet; manual screenshot matrix (light/dark × mobile/tablet/desktop) is the gate for premium UI tasks.
+- Future automation should map checklist IDs `A1`–`C6` to screenshot assertions without changing `ThemeProvider defaultTheme`.
 
 ### P-UI-06 - Global command header system
 

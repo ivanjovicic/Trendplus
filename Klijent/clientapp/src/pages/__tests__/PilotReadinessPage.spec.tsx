@@ -147,6 +147,8 @@ const readyIntakeReport = {
   storeId: null,
   supplierId: null,
   lastImportAtUtc: "2026-06-15T09:30:00Z",
+  lastImportStatus: "completed",
+  lastImportScope: "global",
   lastRefreshAtUtc: "2026-06-15T10:00:00Z",
   readinessStatus: "good",
   readinessLabel: "Spremno",

@@ -1,7 +1,17 @@
 # GenAI Evaluation and Release Gate
 
-Updated: 2026-07-31
-Status: required before any Trendplus GenAI pilot
+Updated: 2026-08-06
+Status: BLOCKED until the current pilot release evidence is ready
+
+## Current entry verdict
+
+- Core pilot: NOT READY
+- GenAI entry: BLOCKED
+- Authoritative refresh evidence:
+  - [`ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md`](ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md)
+  - [`ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md`](ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md)
+
+The live backend is healthy, but the pilot readiness page indicates overall `Pilot nije spreman` with mixed readiness cards; the refresh status is `unknown`, and the executive decision-board aggregate is unavailable on live smoke. That is enough to keep GenAI off by default.
 
 ## Purpose
 

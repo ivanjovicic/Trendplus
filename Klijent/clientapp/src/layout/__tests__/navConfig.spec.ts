@@ -1,31 +1,37 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { NAV_GROUPS } from "../navConfig";
 
+function findGroup(id: string) {
+  return NAV_GROUPS.find((group) => group.id === id);
+}
+
 describe("navConfig", () => {
-  it("contains Pilot spremnost item in analytics group", () => {
-    const analyticsGroup = NAV_GROUPS.find((group) => group.id === "analytics");
-    expect(analyticsGroup).toBeDefined();
-
-    const readinessItem = analyticsGroup?.items.find((item) => item.to === "/analytics/pilot-readiness");
-    expect(readinessItem).toBeDefined();
-    expect(readinessItem?.label).toBe("Pilot spremnost");
+  it("splits analytics navigation into IA groups", () => {
+    expect(findGroup("analytics-executive")?.sidebarLabel).toBe("Executive");
+    expect(findGroup("analytics-decisions")?.sidebarLabel).toBe("Odluke");
+    expect(findGroup("analytics-operations")?.sidebarLabel).toBe("Operacije");
+    expect(findGroup("analytics-data-quality")?.sidebarLabel).toBe("Kvalitet podataka");
+    expect(findGroup("analytics-reports-legacy")?.sidebarLabel).toBe("Izveštaji / Legacy");
   });
 
-  it("contains Izvršni board item in analytics group", () => {
-    const analyticsGroup = NAV_GROUPS.find((group) => group.id === "analytics");
-    expect(analyticsGroup).toBeDefined();
+  it("keeps legacy and support screens clearly labeled", () => {
+    const reportsGroup = findGroup("analytics-reports-legacy");
+    const adminGroup = findGroup("admin");
 
-    const boardItem = analyticsGroup?.items.find((item) => item.to === "/analytics/decision-board");
-    expect(boardItem).toBeDefined();
-    expect(boardItem?.label).toBe("Izvršni board");
+    expect(reportsGroup?.items.find((item) => item.to === "/analytics-details")?.badge?.label).toBe("Legacy");
+    expect(reportsGroup?.items.find((item) => item.to === "/analytics/supplier/report")?.badge?.label).toBe("Izveštaj");
+    expect(adminGroup?.items.find((item) => item.to === "/admin/common-products")?.badge?.label).toBe("Support");
   });
 
-  it("contains Konfiguracija item in admin group", () => {
-    const adminGroup = NAV_GROUPS.find((group) => group.id === "admin");
-    expect(adminGroup).toBeDefined();
+  it("preserves representative analytics and admin routes", () => {
+    const routeSet = new Set(NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to)));
 
-    const configItem = adminGroup?.items.find((item) => item.to === "/admin/configuration");
-    expect(configItem).toBeDefined();
-    expect(configItem?.label).toBe("Konfiguracija");
+    expect(routeSet.has("/analytics/pilot-readiness")).toBe(true);
+    expect(routeSet.has("/analytics/decision-board")).toBe(true);
+    expect(routeSet.has("/analytics/products")).toBe(true);
+    expect(routeSet.has("/analytics/inventory")).toBe(true);
+    expect(routeSet.has("/analytics/data-quality")).toBe(true);
+    expect(routeSet.has("/analytics/supplier/report")).toBe(true);
+    expect(routeSet.has("/admin/common-products")).toBe(true);
   });
 });

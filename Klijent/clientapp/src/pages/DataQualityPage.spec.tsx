@@ -207,6 +207,8 @@ function intake(): PilotDataQualityIntakeReport {
     storeId: null,
     supplierId: null,
     lastImportAtUtc: "2026-07-01T07:30:00Z",
+    lastImportStatus: "completed",
+    lastImportScope: "global",
     lastRefreshAtUtc: "2026-07-01T07:55:00Z",
     readinessStatus: "warning",
     readinessLabel: "Potrebne korekcije",

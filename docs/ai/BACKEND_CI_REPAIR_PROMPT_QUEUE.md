@@ -3,11 +3,13 @@
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
 Purpose: restore truthful execution of the backend analytics test suite and separate real test failures from workflow/bootstrap failures.
-Current READY prompt: `BCI04`
+Current READY prompt: `none`
 
 ## Current diagnosis
 
-The backend tests are not currently failing as test assertions. They are not starting.
+The bootstrap blocker is fixed. The backend tests now start and fail on real assertions / runtime contract drift.
+
+The first real failures are triaged in `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`.
 
 The last three inspected runs of `Analytics Tests & Data Integrity` failed before build and test execution:
 
@@ -84,8 +86,8 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 ### Evidence already found
 
 - Workflow file: `.github/workflows/analytics-tests.yml`.
-- Current restore command: `dotnet restore Trendplus2.sln`.
-- Current build command: `dotnet build Trendplus2.sln --no-restore --configuration Release`.
+- Current restore command: `dotnet restore Api.Tests/Api.Tests.csproj`.
+- Current build command: `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release`.
 - `Trendplus2.sln` contains `Klijent/Klijent.esproj` and `Trendplus.POS.Ui/Trendplus.POS.Ui.esproj`.
 - Both `.esproj` files pin `Microsoft.VisualStudio.JavaScript.Sdk/1.0.3864779`.
 - NuGet on the Linux runner cannot resolve that exact package version.
@@ -180,12 +182,27 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 - Date: 2026-08-06
 - Agent: Codex
 - Changed files:
-  - `.github/workflows/analytics-tests.yml`
-  - `docs/ci/ANALYTICS_CI_GATES.md`
   - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Validation:
+  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail
+- Test totals:
+  - 781 total
+  - 715 passed
+  - 66 failed
+- Failing evidence:
+  - initial local run hit `password authentication failed for user "postgres"` when the host Postgres password did not match the workflow expectation
+  - the matching local run reached real test execution and then failed on existing DB/runtime issues, including `relation "PerformanceLogs" does not exist`
+  - failing families included `AccessImportAdminAuthorizationTests`, `AccessImportForeignKeyGuardTests`, `AnalyticsActionsEndpointsTests`, `AnalyticsActionsCriticalWorkflowTests`, `AccessImportJobQueueTests`, `DataQualityPostgresIntegrationTests`, `InventoryListEndpointIntegrationTests`, `SupplierDecisionHubContractTests`, and `WorkerRuntimePolicyServiceTests`
+- GitHub Actions evidence:
+  - not inspected in this pass; no run ID recorded yet
 - Checks:
-  - `gh auth status --hostname github.com` - fail: not logged in
   - `git diff --check` - pass
+- Risk:
+  - BCI01 bootstrap is unblocked locally, but the backend test suite still depends on a clean relational test DB and a matching GitHub Actions run is still needed before this can be promoted to `DONE`.
+- Next:
+  - `BCI02` WAITING
   - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
   - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
   - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail: 741 passed / 40 failed
@@ -403,14 +420,14 @@ Do not select a model solely because NuGet reports a nearest version.
 
 ## BCI04 - Triage the first real backend test failures after bootstrap is fixed
 
-Status: READY
+Status: DONE
 Ready after: `BCI01` produces a run where restore and build succeed but one or more tests fail
 Priority: P0
 Type: test triage/docs/prompts; runtime fix only in later root-cause tasks
 Feature family: backend-test-failure-triage
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI04-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/BCI04-codex.lock.md`
 Commit suggestion: `docs(ci): triage real backend test failures`
 
 ### Why
@@ -498,6 +515,37 @@ If the first real run passes all tests, mark BCI04 `OBSOLETE` with the run ID an
 - Every real failing test belongs to one evidenced root-cause group.
 - The next repair prompt is precise and minimal.
 - No failure is hidden or mislabeled as fixed.
+
+### Notes
+
+- 2026-08-06: DONE. Backend bootstrap is fixed and the suite reaches real failures. Triage evidence is recorded in `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`.
+- Commit / run evidence:
+  - commit `568f03c65891e96bf2c0f27592aeea96c2e58361`
+  - workflow run `31080378321`
+  - workflow job `92547604945`
+  - full CI totals: `741 passed`, `40 failed`
+- Root-cause groups:
+  - Access import test-host route registration and auth-first timeout contract drift.
+  - Analytics actions list filter/search/paging regression.
+  - Inventory list cached route / count regression.
+  - Data quality top-offender SQL scope drift and stale count/order expectations (already assigned to `RQ78` and `RQ77`).
+- Focused repros:
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AccessImportAdminAuthorizationTests.DeleteBatch_RejectsRequestWithoutAdminKey|FullyQualifiedName~AccessImportRunEndpointTests.PostRun_WhenStoragePreparationTimesOut_ReturnsGatewayTimeout"` - fail: route mapping body inference on `IBatchLogService`, plus `401 Unauthorized` vs `504 GatewayTimeout`
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsCriticalWorkflowTests.List_AppliesCanonicalFiltersSearchPagingAndPriorityOrdering"` - fail: expected `totalCount=2`, actual `0`
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments"` - fail: expected `totalCount=4`, actual `0`
+- Prompt mapping:
+  - `STAB09` READY - access import test-host route registration and auth-gated timeout repro
+  - `RQ89` WAITING - inventory list cached route regression
+  - `RQ90` WAITING - analytics actions list filter/order regression
+- Checks:
+  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail
+  - `git diff --check` - pass
+- Risk:
+  - The triage is complete, but the three follow-up prompt families still need separate implementation runs.
+- Next:
+  - `STAB09` READY
 
 ---
 

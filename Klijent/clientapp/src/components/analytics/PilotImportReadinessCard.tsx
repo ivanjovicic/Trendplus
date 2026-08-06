@@ -51,6 +51,8 @@ export default function PilotImportReadinessCard({
               <li>Prva prodaja: {formatDate(report.loadedData.firstSaleDate, "-")}</li>
               <li>Poslednja prodaja: {formatDate(report.loadedData.lastSaleDate, "-")}</li>
               <li>Poslednji import: {formatDateTime(report.lastImportAtUtc, "-")}</li>
+              <li>Status importa: {report.lastImportStatus?.trim() || "unknown"}</li>
+              <li>Scope importa: {report.lastImportScope?.trim() || "-"}</li>
               <li>Poslednje osveženje: {formatDateTime(report.lastRefreshAtUtc, "-")}</li>
               <li>Status osvežavanja: {refreshStatus?.dataFreshnessStatus ?? "-"}</li>
             </ul>

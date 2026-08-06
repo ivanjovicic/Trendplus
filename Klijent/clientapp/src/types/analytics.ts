@@ -724,6 +724,11 @@ export interface PilotDataQualityIntakeReport {
   storeId?: string | null;
   supplierId?: string | null;
   lastImportAtUtc?: string | null;
+  /** Canonical batch status: completed | failed | cancelled | running | queued | partial | unknown raw */
+  lastImportStatus?: string | null;
+  /** Honest scope label; currently always "global" when a batch exists (batches are not store/supplier keyed). */
+  lastImportScope?: string | null;
+  lastImportBatchId?: number | null;
   lastRefreshAtUtc?: string | null;
   readinessStatus: PilotDataQualityReadinessStatus;
   readinessLabel: string;

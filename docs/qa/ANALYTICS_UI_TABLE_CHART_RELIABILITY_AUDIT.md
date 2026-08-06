@@ -173,9 +173,19 @@ Risk:
 - A no-baseline or neutral 0.0% change can be displayed as an up/positive signal.
 - This compounds backend zero-baseline issues in the chart layer.
 
-Classification: UI semantics bug.
+Classification: fixed in RQ44 (2026-08-06).
 
-Recommended prompt: RQ44.
+Fix notes:
+
+- `changeBadge` now treats positive, negative, neutral zero and null/unknown values as distinct states.
+- Zero renders as neutral `0,0%` without an up arrow.
+- Null/unknown renders `N/A` with a warning tone.
+
+Residual risk:
+
+- The current changelog payload still collapses missing baseline into numeric `0`, so the frontend cannot prove a true no-baseline signal until the backend emits an explicit nullable or flagged field.
+
+Recommended prompt: RQ44 (DONE).
 
 ### R45 - KPI margin card hides margin coverage even when backend supplies it
 
@@ -196,9 +206,19 @@ Risk:
 - A low-coverage estimated margin can look as trustworthy as a fully cost-backed margin.
 - Users may trust profitability cards without seeing cost evidence.
 
-Classification: UI trust-contract gap.
+Classification: fixed in RQ45 (2026-08-06).
 
-Recommended prompt: RQ45.
+Fix notes:
+
+- `KpiSnapshot` now exposes `marginDataCoveragePct` and `revenueWithCost` in the frontend type.
+- The KPI margin card shows coverage in its subtext and tooltip.
+- Low coverage is marked as estimated with a warning tone.
+
+Residual risk:
+
+- The coverage signal is still advisory UI trust metadata; the backend margin formula itself was not changed.
+
+Recommended prompt: RQ45 (DONE).
 
 ### R46 - AnalyticsTableToolbar exports only configured visible columns, so hidden trust metadata is lost
 

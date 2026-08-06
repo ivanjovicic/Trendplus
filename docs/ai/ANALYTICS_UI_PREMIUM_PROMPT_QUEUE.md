@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-05
+Current READY prompt: P-UI-02
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -15,10 +15,10 @@ Use with:
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| P-UI-05 | READY | analytics-ui-visual-regression | Add screenshot/manual visual review protocol before broad visual refactors |
-| P-UI-06 | WAITING | global-command-header | Add full command/search/breadcrumb/notification header system |
-| P-UI-01 | WAITING | analytics-menu-ia | Redesign analytics menu information architecture |
-| P-UI-02 | WAITING | analytics-control-bar | Create shared premium analytics control bar |
+| P-UI-05 | DONE | analytics-ui-visual-regression | Add screenshot/manual visual review protocol before broad visual refactors |
+| P-UI-06 | DONE | global-command-header | Add full command/search/breadcrumb/notification header system |
+| P-UI-01 | DONE | analytics-menu-ia | Redesign analytics menu information architecture |
+| P-UI-02 | READY | analytics-control-bar | Create shared premium analytics control bar |
 | P-UI-03 | WAITING | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
 | P-UI-07 | WAITING | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
 | P-UI-08 | WAITING | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
@@ -28,13 +28,13 @@ Use with:
 
 ## P-UI-05 - Analytics visual regression protocol
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: docs/tests
 Feature family: analytics-ui-visual-regression
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-05-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/P-UI-05-cursor.lock.md` (removed after DONE)
 Commit suggestion: `docs(ui): add analytics visual regression protocol`
 
 ### Why
@@ -66,18 +66,29 @@ Premium UI changes need rendered verification. GitHub connector code edits canno
 
 - Future UI tasks have a repeatable way to verify visual regressions.
 
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Cursor-Composer
+- Added: `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`, `docs/qa/ANALYTICS_UI_VISUAL_REVIEW_EVIDENCE_TEMPLATE.md`
+- Also linked from `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md` and `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
+- Contract: light+dark × mobile/tablet/desktop; surfaces A/B/C (chrome, trust/dashboard, export/tables); route smoke is baseline only
+- Automation: none in repo (vitest only); Playwright deferred with ID mapping noted
+- Checks: docs-only; `node scripts/check-prompt-queues.mjs` after queue update
+- Next: `P-UI-06` READY
+
 ---
 
 ## P-UI-06 - Global command header system
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-05
 Priority: P1
 Type: frontend/design/tests
 Feature family: global-command-header
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-06-<agent>.lock.md`
+Owner: Cursor
+Local lock: `.ai/task-locks/P-UI-06-cursor.lock.md` (removed after DONE)
 Commit suggestion: `feat(ui): add global command header system`
 
 ### Why
@@ -111,18 +122,41 @@ The global header now has premium styling and consistent status flags, but it st
 - Header feels like a premium command center, not only a status strip.
 - Existing status/toggle behaviors remain unchanged.
 
+### Completion note
+
+- Date: 2026-08-06
+- Commit: not created; base HEAD `568f03c65891e96bf2c0f27592aeea96c2e58361`
+- Changed files:
+  - `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
+  - `Klijent/clientapp/src/layout/components/headerNavigation.ts`
+  - `Klijent/clientapp/src/layout/components/__tests__/HeaderStatus.spec.tsx`
+  - `Klijent/clientapp/src/layout/components/__tests__/headerNavigation.spec.ts`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-06-P-UI-06-evidence.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/layout/components/__tests__/HeaderStatus.spec.tsx src/layout/components/__tests__/headerNavigation.spec.ts` - pass
+- Notes:
+  - Added route-aware breadcrumbs for dynamic detail paths, a searchable global command launcher, an inbox for backend/worker/Redis/analytics signals, and prepared context slots without fake user/store data.
+  - Existing worker/Redis status toggles and theme link behavior were preserved.
+  - Targeted tests still emit pre-existing React `act(...)` warnings from the shared flag components, but they pass.
+- Remaining:
+  - P-UI-01 `analytics-menu-ia`
+  - Keep using the shared route helper if later header prompts need dynamic breadcrumb coverage.
+
 ---
 
 ## P-UI-01 - Analytics menu information architecture
 
-Status: WAITING
-Ready after: P-UI-05
+Status: DONE
+Ready after: P-UI-06
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-menu-ia
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-01-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-01-<agent>.lock.md` (removed after DONE)
 Commit suggestion: `feat(ui): restructure analytics navigation`
 
 ### Why
@@ -157,11 +191,38 @@ The analytics sidebar group is currently a long flat list mixing executive surfa
 
 - Analytics navigation is easier to scan and still preserves route coverage.
 
+### Completion note
+
+- Date: 2026-08-06
+- Commit: not created; base HEAD `568f03c65891e96bf2c0f27592aeea96c2e58361`
+- Changed files:
+  - `Klijent/clientapp/src/layout/navConfig.ts`
+  - `Klijent/clientapp/src/layout/components/Sidebar.tsx`
+  - `Klijent/clientapp/src/layout/components/headerNavigation.ts`
+  - `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`
+  - `Klijent/clientapp/src/layout/__tests__/navConfig.spec.ts`
+  - `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`
+  - `Klijent/clientapp/src/layout/components/__tests__/headerNavigation.spec.ts`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-06-P-UI-01-evidence.md`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/layout/__tests__/navConfig.spec.ts src/layout/components/__tests__/Sidebar.spec.tsx src/layout/components/__tests__/headerNavigation.spec.ts src/layout/components/__tests__/HeaderStatus.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+- Notes:
+  - Split analytics navigation into Executive, Decisions, Operations, Data Quality, and Reports / Legacy sections while preserving all routes.
+  - Added `sidebarLabel` support so the sidebar shows the new IA while header breadcrumbs stay on the broader `Analitika` label.
+  - Marked legacy/support screens with badges and kept route launcher grouping aligned to the sidebar IA.
+  - Existing header inbox still shows analytics signal content via the new `analytics-*` group ids.
+- Remaining:
+  - P-UI-02 `analytics-control-bar`
+  - Keep route-preserving smoke coverage in sync if any analytics route aliases are changed later.
+
 ---
 
 ## P-UI-02 - Shared analytics control bar
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-05
 Priority: P1
 Type: frontend/component/tests

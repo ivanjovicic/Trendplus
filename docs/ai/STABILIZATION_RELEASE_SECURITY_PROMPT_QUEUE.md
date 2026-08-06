@@ -3,7 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB04`
+Current READY prompt: `STAB09`
+Current gate verdict: STAB08 completed, but the release gate is NOT READY and GenAI remains blocked.
 
 ## Goal
 
@@ -416,14 +417,14 @@ The repo has an admin-key helper and several authorization tests, but it does no
 
 ## STAB04 - Protect admin operational read surfaces
 
-Status: READY
+Status: DONE
 Ready after: `STAB03` fixes the Phase 1 boundary or declares the existing admin-key boundary acceptable for this task
 Priority: P0
 Type: backend security/tests
 Feature family: admin-read-authorization
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB04-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB04-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(security): protect admin operational reads`
 
 ### Why
@@ -505,18 +506,29 @@ Risk class: confirmed authorization inconsistency and information exposure.
 - 401/403 behavior is consistent.
 - Authorized behavior remains unchanged.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/AdminConfigOperationalReadsAuthorizationTests.cs`
+- Gate: `AdminAccessControl.GetDecision` before DB/service work on `GET pending-batches`, `health-check`, `audit-log`, `workers/list`, `workers/{workerName}`
+- Behavior: missing key → `401`; wrong key → `403`; authorized preserves `200` (or `404` only after auth for unknown worker)
+- Checks: `git diff --check` pass; `AdminConfigOperationalReadsAuthorizationTests` 18/18 pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
+- Risk: import batch-list / logs / document header trust remain out of scope (STAB03 follow-ups)
+- Next: `STAB05` READY
+
 ---
 
 ## STAB05 - Production edge, diagnostics and reverse-proxy hardening
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB03` is `DONE`; may run before STAB04 only if no auth helper files overlap
 Priority: P0
 Type: backend security/config/tests
 Feature family: production-edge-exposure
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB05-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB05-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(security): harden production edge diagnostics`
 
 ### Why
@@ -600,18 +612,28 @@ Public health and documentation surfaces must help the platform without exposing
 - Swagger and CORS have explicit secure production configuration.
 - Existing health/readiness consumers keep a stable safe contract.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `Api/Program.cs`; `Api/Config/CorsOriginsOptions.cs`; `Api/Config/SwaggerExposureOptions.cs`; `Api/Services/Startup/{ProductionEdgePolicy,DependencyHealthPublicErrors,HealthCorsHeaders}.cs`; `Api.Tests/ProductionEdgeMiddlewareTests.cs`; `Api/appsettings.json`; `Api/appsettings.Production.json`; `docs/security/PRODUCTION_EDGE_CONTRACT_2026-08-05.md`
+- Behavior: dependency errors → stable public codes + logged detail; HSTS outside Development; Swagger off by default outside Development (`Swagger:Enabled`); CORS from `Cors:AllowedOrigins`
+- Checks: `git diff --check` pass; `ProductionEdge*` tests 15/15 pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass; live smoke after deploy **not run**
+- Risk: production must keep `Cors:AllowedOrigins` non-empty or startup throws; confirm HSTS header on Render host after deploy
+- Next: `STAB06` READY
+
 ---
 
 ## STAB06 - Wire authoritative last-import status into pilot readiness
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB02` is `DONE`; may run in parallel with STAB03-STAB05 if files do not overlap
 Priority: P1
 Type: backend/frontend contract/tests
 Feature family: pilot-import-provenance
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB06-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: `.ai/task-locks/STAB06-cursor.lock.md` (removed after DONE)
 Commit suggestion: `fix(data-quality): include last import status in readiness`
 
 ### Why
@@ -697,18 +719,28 @@ Pilot readiness currently uses the last import timestamp but not the authoritati
 - Import status and scope are visible and additive.
 - Unknown remains non-green.
 
+### Completion note
+
+- Date: 2026-08-05
+- Agent: Cursor-Composer
+- Changed: `Api/Endpoints/DataQualityEndpoints.cs`; `Api.Tests/PilotImportBatchStatusContractTests.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `pilotImportReadiness.ts` + tests; `PilotImportReadinessCard.tsx` + card spec; intake report metadata; fixture updates
+- Contract: additive `lastImportStatus` / `lastImportScope` / `lastImportBatchId`; latest batch by `CompletedAtUtc ?? StartedAtUtc`; scope always `global` (honest); failed/cancelled → not_ready
+- Checks: `PilotImportBatchStatusContractTests` 27/27; `pilotImportReadiness` 10/10; `PilotImportReadinessCard` 2/2; `check:analytics-guardrails` pass; `npm run build` pass; `git diff --check` pass
+- Risk: store/supplier filters still cannot map to batch rows (explicit global warning)
+- Next: `STAB07` READY
+
 ---
 
 ## STAB07 - Backup and restore evidence rehearsal gate
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB01` is at least `PARTIAL` with a usable environment and STAB03 identifies the safe admin/ops boundary
 Priority: P1
 Type: ops/docs/scripts, optional manual workflow
 Feature family: backup-restore-evidence
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB07-<agent>.lock.md`
+Owner: Cursor-Composer
+Local lock: none
 Commit suggestion: `docs(ops): add backup restore rehearsal evidence`
 
 ### Why
@@ -799,11 +831,22 @@ The repo documents what should be backed up and how restore should work, but it 
 - Production cannot be targeted accidentally by the new path.
 - Both DB responsibilities and post-restore analytics steps are explicit.
 
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Cursor-Composer
+- Status: **DONE** (live local disposable restore) with accepted non-P0 warnings
+- Changed: `scripts/ops/*` (Npgsql→libpq URI; Docker client via `TRENDPLUS_PG_DOCKER_CONTAINER`; default `pre-data`+`data` restore; `-IncludePostData`); `docs/ops/BACKUP_RESTORE_RUNBOOK.md`; `docs/ops/BACKUP_RESTORE_REHEARSAL_EVIDENCE_2026-08-06.md`
+- Checks: `Test-BackupRestoreGuards.ps1` PASS; live `Invoke-BackupRestoreRehearsal.ps1 -EnvironmentLabel local -AllowDestructiveRestore` PASS (~9s); ops dump SHA256 `D2B63EFC…`; analytics dump SHA256 `7C4A57DB…`; `prodaja_zaglavlje` 3655=3655; analytics table count 80=80
+- Accepted non-P0: provider retention not verified; post-data/MV refresh skipped by default (full `-IncludePostData` hung 23+ min on `mv_supplier_decision_score_cache`); app `/health` against restored URLs not run
+- Risk: full post-data restore still unproven in time-boxed gate; treat MV refresh as separate overnight check
+- Next: `STAB08` READY (if analytics P0 gate also satisfied per STAB08 Ready after)
+
 ---
 
 ## STAB08 - Refresh pilot release evidence and decide GenAI entry gate
 
-Status: WAITING
+Status: DONE
 Ready after:
 - `STAB01`, `STAB02`, `STAB03`, `STAB04`, `STAB05`, `STAB06` and `STAB07` are `DONE` or carry explicitly accepted non-P0 warnings;
 - the analytics reliability priority review confirms the required P0 correctness tasks are complete, including at minimum the current `RQ01` family and any linked frontend companion;
@@ -904,6 +947,123 @@ Existing production-readiness and pilot-release documents are historical snapsho
 - GenAI entry is explicitly ready or blocked with named evidence.
 - Historical readiness docs no longer create conflicting current claims.
 
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Cursor-Composer
+- Status: DONE
+- Changed files:
+  - `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md`
+  - `docs/qa/ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md`
+  - `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+  - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- Checks:
+  - live backend checks: `/ready` and `/api/analytics/refresh-status` (refresh provenance = `unknown`) - pass
+  - live auth check: `/api/admin/demo-verification` returned `401 Unauthorized` - pass
+  - live frontend DOM probes (Playwright): `.pilot-readiness-page` + `Pilot nije spreman` + `Spremno` present; `.decision-board-page` renders but `Backend decision board aggregate nije dostupan` is present - pass
+  - `dotnet build Trendplus2.sln -c Release` - pass (warnings only)
+  - `dotnet test Api.Tests/Api.Tests.csproj -c Release --no-build` (focused auth/middleware filters) - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+  - `git diff --check` - pass (LF/CRLF warnings only)
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+- Risk:
+  - Core pilot remains NOT READY because the executive decision-board aggregate is unavailable on live smoke; refresh provenance remains `unknown` and pilot readiness is mixed (warning/blocked signals present).
+- Next:
+  - none; GenAI entry stays BLOCKED (see `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`, and GAI01 runtime readiness audit stays BLOCKED).
+
+---
+
+## STAB09 - Stabilize access-import test host route registration and auth-first timeout contract
+
+Status: DONE
+Priority: P0
+Type: tests/docs
+Feature family: access-import-test-host-contract
+Parallel-safe: no
+Owner: Codex
+Local lock: `.ai/task-locks/STAB09-codex.lock.md`
+Commit suggestion: `fix(tests): stabilize access import route auth hosts`
+
+### Why
+
+Backend CI now reaches real tests, but access-import coverage still fails for two distinct reasons: the authorization host for delete-batch maps `MapAccessImportEndpoints()` without an `IBatchLogService`, so minimal API route discovery infers `logService` as a body parameter and throws before auth assertions run; and the timeout-path test for `/api/access-import/run` is unauthenticated, so it correctly returns `401` before the timeout branch is exercised.
+
+### Evidence already found
+
+- `Api.Tests/AccessImportAdminAuthorizationTests.DeleteBatch_RejectsRequestWithoutAdminKey` fails during route mapping because `IBatchLogService` is not registered in the test host and minimal API infers `logService` as a body parameter.
+- The same host registers `IAccessImportService`, `IAccessImportJobQueue`, `TrendplusDbContext`, memory cache and rate limiter, but not a batch-log service.
+- `Api.Tests/AccessImportRunEndpointTests.PostRun_WhenStoragePreparationTimesOut_ReturnsGatewayTimeout` expected `504` but got `401 Unauthorized`.
+- `Api/Endpoints/AccessImportEndpoints.cs` checks `AdminAccessControl.GetDecision(...)` before it enters the runtime/timeout path, so the timeout assertion must authenticate first.
+- Risk class: confirmed test-host contract drift plus stale timeout-test setup.
+
+### Contract
+
+- Access-import test hosts that map `MapAccessImportEndpoints()` must register the minimal batch-log service dependency needed for route discovery, or share a helper that does so.
+- Auth assertions must remain first: no credential -> `401`, wrong key -> `403`.
+- Timeout-path tests must send a valid admin key before expecting `504 GatewayTimeout`.
+- Do not change production access-import behavior just to satisfy the tests.
+
+### Scope only
+
+- `Api.Tests/AccessImportAdminAuthorizationTests.cs`
+- `Api.Tests/AccessImportRunEndpointTests.cs`
+- shared access-import test helper/fixture under `Api.Tests/` if needed
+- optional small note in `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`
+
+### Do not touch
+
+- `Api/Endpoints/AccessImportEndpoints.cs`
+- import runtime behavior
+- database schema/migrations
+- unrelated analytics tests
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`
+- `Api.Tests/AccessImportAdminAuthorizationTests.cs`
+- `Api.Tests/AccessImportRunEndpointTests.cs`
+- `Api/Endpoints/AccessImportEndpoints.cs`
+
+### Do
+
+1. Add the minimal missing access-import test-host dependency so endpoint mapping completes.
+2. Keep the unauthorized and forbidden assertions intact.
+3. Update the timeout test to authenticate before asserting the storage timeout path.
+4. If other access-import test hosts map the same endpoints, reuse the same helper so the route registration stays consistent.
+5. Add or update the smallest focused test only if needed to prove the contract.
+
+### Test matrix
+
+- no credential -> `401`;
+- wrong admin key -> `403`;
+- correct admin key -> accepted path still works;
+- timeout path with admin key -> `504`;
+- route mapping no longer throws body-inference errors;
+- auth-first behavior stays visible.
+
+### Checks
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AccessImportAdminAuthorizationTests|FullyQualifiedName~AccessImportRunEndpointTests"`
+- `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release`
+
+### Acceptance
+
+- Access-import authorization tests reach the auth assertions instead of failing during route discovery.
+- The timeout test proves the auth-first contract and can still reach `504 GatewayTimeout` when authenticated.
+- No production access-import endpoint behavior is changed as part of the test stabilization.
+
+### Notes
+
+- 2026-08-06: DONE. Added `IBatchLogService` registration to the admin auth test host, updated the timeout repro to send `X-Admin-Key`, and kept production access-import code unchanged.
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~AccessImportAdminAuthorizationTests.DeleteBatch_RejectsRequestWithoutAdminKey|FullyQualifiedName~AccessImportRunEndpointTests.PostRun_WhenStoragePreparationTimesOut_ReturnsGatewayTimeout"` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `git diff --check` - pass (LF/CRLF warnings only)
+
 ---
 
 ## Expected next-task transitions
@@ -914,3 +1074,4 @@ Existing production-readiness and pilot-release documents are historical snapsho
 - `STAB06` may run in parallel after queue reconciliation because it owns a separate data-quality contract family.
 - `STAB07` requires a safe environment and may remain BLOCKED without provider/DB access.
 - `STAB08` is the final cross-cutting gate before declaring `GAI01` runnable.
+- If the refreshed evidence says `NOT READY`, keep `GAI01` blocked even after `STAB08` is complete.

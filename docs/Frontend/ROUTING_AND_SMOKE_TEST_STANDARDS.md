@@ -52,7 +52,7 @@ Pravila:
 - Ako se default tema menja:
   - navesti razlog u PR opisu
   - proveriti glavne ekrane
-  - azurirati screenshot/smoke checklist ako postoji
+  - azurirati screenshot/smoke checklist ako postoji (`docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`)
   - dokumentovati promenu u theme standardu
 
 ## 5) Route smoke test vs browser smoke
@@ -111,3 +111,12 @@ npm run test -- --run src/__tests__/AppAnalyticsRoutes.spec.tsx
 
 - `npm run build` prolazi.
 - `npm run check:analytics-guardrails` prolazi.
+
+## 8) Visual regression (premium UI)
+
+Za layout/theme/table/header/sidebar izmene koristiti:
+
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`
+- evidence template: `docs/qa/ANALYTICS_UI_VISUAL_REVIEW_EVIDENCE_TEMPLATE.md`
+
+Route smoke nije zamena za visual review.

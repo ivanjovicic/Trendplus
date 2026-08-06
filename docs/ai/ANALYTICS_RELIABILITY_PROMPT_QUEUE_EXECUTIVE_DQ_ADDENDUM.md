@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (RQ72 DONE; next global per priority review: RQ39)
+Current READY prompt: none in this addendum (next global per priority review: RQ39)
 Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
@@ -244,7 +244,7 @@ Commit suggestion: `fix(analytics): show neutral one-point data quality trend`
 
 ## RQ77 - Data Quality top-offender count/truncation
 
-Status: WAITING
+Status: DONE
 Ready after: RQ65 or explicit unblocking
 Priority: P1
 Type: backend-contract/frontend-tests
@@ -274,11 +274,15 @@ Top offenders returns count of returned items after limit, and UI shows `Top {re
 
 - User can distinguish returned top offenders from total matching offender count.
 
+### Notes
+
+- 2026-08-06: DONE. Updated the stable-ordering test to match the canonical seed dataset (`DQ-EXISTING-HIGH`, `DQ-EXISTING-MEDIUM`, `DQ-EXISTING-LOW`).
+
 ---
 
 ## RQ78 - Data Quality top-offender dataScope revenue impact
 
-Status: WAITING
+Status: DONE
 Ready after: Q81 or explicit unblocking
 Priority: P1
 Type: backend-SQL/tests
@@ -305,6 +309,10 @@ Use the canonical dataScope matrix from RQ05/Q81. If sale header origin is the s
 ### Acceptance
 
 - Top-offender revenue impact uses the same dataScope semantics as the data-quality issue source.
+
+### Notes
+
+- 2026-08-06: DONE. Fixed `prodaja_zaglavlje.data_origin` scope in `TopOffendersSql` and re-ran the Postgres integration tests. The top-offender family now passes; the remaining failure in `IssuesHandler_PaginatesAndUsesStableRevenueOrdering` is count/truncation semantics and belongs to `RQ77`.
 
 ---
 

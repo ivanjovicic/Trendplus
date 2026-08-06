@@ -35,7 +35,8 @@ Ne tvrdi da postoji automatizacija koja još nije isporučena.
 ## Šta ne treba obećavati
 
 - nema potvrđenog automatskog backup job-a za pilot
-- nema potvrđenog one-click restore procesa
+- nema potvrđenog one-click restore procesa u produkciji
+- postoje **rehearsal skripte** (`scripts/ops/`) sa production refusal, ali live disposable restore zahteva operator credentials
 - nema potvrđene politike zadržavanja logova i snapshot-a na nivou aplikacije
 - cache nije trajni izvor podataka i ne treba ga koristiti kao backup
 
@@ -46,9 +47,15 @@ Ne tvrdi da postoji automatizacija koja još nije isporučena.
 - Pre ručnog čišćenja obavezno zabeleži šta je obrisano i zašto.
 - Ako cleanup menja podatke koji se vide u dashboard-u, uradi novi refresh ili jasno označi da je stanje zastarelo.
 
+## Rehearsal pointer
+
+- Runbook + skripte: `docs/ops/BACKUP_RESTORE_RUNBOOK.md`, `scripts/ops/`
+- Dated evidence: `docs/ops/BACKUP_RESTORE_REHEARSAL_EVIDENCE_2026-08-06.md`
+- Pre rizične akcije: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ops\Test-BackupRestoreGuards.ps1`
+
 ## Otvoreni gapovi
 
 - backup automatizacija nije deo ovog dokumenta i nije potvrđena u kodu
-- restore koraci su manuelni i zavise od dostupnog DB alata ili provider snapshot-a
+- restore rehearsal skripte postoje; **live disposable restore** je BLOCKED bez non-prod URL-ova
 - zadržavanje reportova i import fajlova je organizaciona odluka, ne aplikacioni mehanizam
 - log retention i cache policy nisu standardizovani kroz app konfiguraciju

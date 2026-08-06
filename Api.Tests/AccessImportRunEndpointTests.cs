@@ -122,14 +122,20 @@ public sealed class AccessImportRunEndpointTests
                 "Access import source upload timed out after 1 seconds.",
                 new OperationCanceledException("The operation was canceled."))
         };
-        await using var host = await AccessImportRunTestHost.CreateAsync(service);
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true);
 
         using var content = new MultipartFormDataContent();
         using var fileContent = new ByteArrayContent([1, 2, 3]);
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
         content.Add(fileContent, "file", "sample.accdb");
 
-        using var response = await host.Client.PostAsync("/api/access-import/run", content);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run")
+        {
+            Content = content
+        };
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.GatewayTimeout, response.StatusCode);
         Assert.Equal(1, service.StartImportCallCount);

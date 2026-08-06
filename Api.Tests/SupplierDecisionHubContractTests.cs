@@ -263,7 +263,11 @@ public sealed class SupplierDecisionHubContractTests
         Assert.False(report.Meta!.Success);
         Assert.Equal("supplier_decision_schema_missing", report.Meta.ErrorCode);
         Assert.Equal("supplier-contract-test", report.Meta.CorrelationId);
-        Assert.Contains(report.Rows, row => row.Section == "Status" && row.Value == "Greška");
+        Assert.Contains(report.Rows, row =>
+            row.Section == "Status" &&
+            row.Item == "Greška" &&
+            row.Value == "Supplier scorecard nije dostupan." &&
+            row.Secondary == "supplier_decision_schema_missing");
     }
 
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters Filters90Days(

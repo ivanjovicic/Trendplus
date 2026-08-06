@@ -154,6 +154,8 @@ function buildExportPayload(report: PilotDataQualityIntakeReport, filters: Analy
     metadata: [
       { key: "generatedAtUtc", label: "Generisano", value: report.generatedAtUtc },
       { key: "lastImportAtUtc", label: "Poslednji import", value: report.lastImportAtUtc ?? null },
+      { key: "lastImportStatus", label: "Status importa", value: report.lastImportStatus ?? null },
+      { key: "lastImportScope", label: "Scope importa", value: report.lastImportScope ?? null },
       { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: report.lastRefreshAtUtc ?? null },
       { key: "dataScope", label: "Opseg podataka", value: report.dataScope },
     ],

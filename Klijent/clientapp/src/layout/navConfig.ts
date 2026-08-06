@@ -1,16 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  AlertTriangle,
   BarChart3,
+  BookOpen,
   Boxes,
-  ClipboardList,
   CalendarDays,
+  ClipboardList,
   Gauge,
   Globe2,
   LayoutGrid,
   ListChecks,
   Logs,
-  AlertTriangle,
+  Microscope,
   Package,
   PackagePlus,
   Palette,
@@ -19,13 +21,11 @@ import {
   Settings2,
   ShoppingBag,
   ShoppingCart,
+  Sparkles,
   Tags,
   TrendingUp,
   Undo2,
   Wrench,
-  Microscope,
-  Sparkles,
-  BookOpen,
   Zap,
 } from "lucide-react";
 
@@ -39,6 +39,7 @@ export type NavItem = {
 export type NavGroup = {
   id: string;
   label: string;
+  sidebarLabel?: string;
   icon: LucideIcon;
   items: NavItem[];
   badge?: { label: string; tone?: string; title?: string };
@@ -107,29 +108,107 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "analytics",
+    id: "analytics-executive",
     label: "Analitika",
-    icon: BarChart3,
+    sidebarLabel: "Executive",
+    icon: Sparkles,
+    badge: { label: "P0", tone: "warning", title: "Izvršne i readiness površine" },
     items: [
       { to: "/analytics", label: "Trendplus pregled", icon: BarChart3 },
-      { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
-      { to: "/analytics/decision-board", label: "Izvršni board", icon: Sparkles },
+      {
+        to: "/analytics/pilot-readiness",
+        label: "Pilot spremnost",
+        icon: ListChecks,
+        badge: { label: "Ready", tone: "info", title: "Signal spremnosti i svežine" },
+      },
+      {
+        to: "/analytics/decision-board",
+        label: "Izvršni board",
+        icon: Sparkles,
+        badge: { label: "Board", tone: "info", title: "Izvršni decision surface" },
+      },
+    ],
+  },
+  {
+    id: "analytics-decisions",
+    label: "Analitika",
+    sidebarLabel: "Odluke",
+    icon: Microscope,
+    items: [
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
       { to: "/analytics/supplier", label: "Pregled dobavljača", icon: Microscope },
-      { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },
-      { to: "/analytics/data-quality", label: "Kvalitet podataka", icon: AlertTriangle },
       { to: "/analytics/actions", label: "Centralne akcije", icon: ClipboardList },
+      {
+        to: "/analytics/supplier-decision-hub",
+        label: "Odluke o dobavljačima",
+        icon: Microscope,
+        badge: { label: "Hub", tone: "info", title: "Konsolidovani hub odluka za dobavljače" },
+      },
+    ],
+  },
+  {
+    id: "analytics-operations",
+    label: "Analitika",
+    sidebarLabel: "Operacije",
+    icon: Boxes,
+    badge: { label: "Ops", tone: "warning", title: "Operativni tokovi i zalihe" },
+    items: [
+      { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },
       { to: "/analytics/supplier-sales-stats", label: "Prodaja po dobavljačima", icon: TrendingUp },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
       { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: ShoppingBag },
       { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: TrendingUp },
       { to: "/analytics/color-sales-stats", label: "Prodaja po boji artikla", icon: Palette },
-      { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },
+      {
+        to: "/analytics/pre-nivelacija-prioriteti",
+        label: "Prioriteti nivelacije",
+        icon: Sparkles,
+        badge: { label: "Task", tone: "warning", title: "Operativni prioriteti za nivelaciju" },
+      },
       { to: "/analytics/dobavljaci-tipovi-obuce", label: "Dobavljači i tipovi obuće", icon: ShoppingBag },
-      { to: "/analytics/supplier-decision-hub", label: "Odluke o dobavljačima", icon: Microscope },
-      { to: "/analytics/insight-studio", label: "Insight Studio", icon: Microscope },
-      { to: "/analytics-details", label: "Detaljne analize", icon: Activity },
-      { to: "/admin/common-products", label: "Zajednički proizvodi", icon: Boxes },
+    ],
+  },
+  {
+    id: "analytics-data-quality",
+    label: "Analitika",
+    sidebarLabel: "Kvalitet podataka",
+    icon: AlertTriangle,
+    badge: { label: "DQ", tone: "warning", title: "Kvalitet podataka i svežina signala" },
+    items: [
+      { to: "/analytics/data-quality", label: "Kvalitet podataka", icon: AlertTriangle },
+    ],
+  },
+  {
+    id: "analytics-reports-legacy",
+    label: "Analitika",
+    sidebarLabel: "Izveštaji / Legacy",
+    icon: BookOpen,
+    badge: { label: "Archive", tone: "warning", title: "Izveštaji i stariji pregledi" },
+    items: [
+      {
+        to: "/analytics/supplier/report",
+        label: "Izveštaj dobavljača",
+        icon: ClipboardList,
+        badge: { label: "Izveštaj", tone: "info", title: "Dokumentarni izveštaj za dobavljače" },
+      },
+      {
+        to: "/analytics/reports/pilot-intake",
+        label: "Pilot intake izveštaj",
+        icon: ClipboardList,
+        badge: { label: "Izveštaj", tone: "info", title: "Dokument za pilot intake i refresh" },
+      },
+      {
+        to: "/analytics/insight-studio",
+        label: "Insight Studio",
+        icon: Microscope,
+        badge: { label: "Lab", tone: "warning", title: "Eksperimentalni istraživački pregled" },
+      },
+      {
+        to: "/analytics-details",
+        label: "Detaljne analize",
+        icon: Activity,
+        badge: { label: "Legacy", tone: "warning", title: "Stariji detaljni pregled" },
+      },
     ],
   },
   {
@@ -158,6 +237,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
       { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
+      {
+        to: "/admin/common-products",
+        label: "Zajednički proizvodi",
+        icon: Boxes,
+        badge: { label: "Support", tone: "warning", title: "Pomoćni administrativni ekran" },
+      },
       { to: "/admin/configuration", label: "Konfiguracija", icon: Settings2 },
       { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
     ],

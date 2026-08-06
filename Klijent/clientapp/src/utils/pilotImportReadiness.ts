@@ -49,7 +49,7 @@ function isFailedImportStatus(value: string): boolean {
 }
 
 function isWarningImportStatus(value: string): boolean {
-  return value === "partial" || value === "warning" || value === "running" || value === "queued" || value === "in_progress";
+  return value === "partial" || value === "warning" || value === "running" || value === "queued" || value === "in_progress" || value === "pending";
 }
 
 function buildUnknownResult(reason: string): PilotImportReadinessResult {
@@ -79,7 +79,8 @@ export function computePilotImportReadiness(
 
   const baseStatus = normalizeStatus(report.readinessStatus);
   const freshnessStatus = normalizeStatus(refreshStatus?.dataFreshnessStatus);
-  const importStatus = normalizeStatus(lastImportStatus);
+  const importStatus = normalizeStatus(lastImportStatus ?? report.lastImportStatus);
+  const importScope = normalizeStatus(report.lastImportScope);
   const reasons: string[] = [];
   const nextActions: string[] = [];
 
@@ -112,6 +113,10 @@ export function computePilotImportReadiness(
     report.impact.insufficientSignalCount > 0 ? `${formatCount(report.impact.insufficientSignalCount)} artikala nema dovoljno signala.` : null,
     report.impact.ignoredRowsCount > 0 ? `${formatCount(report.impact.ignoredRowsCount)} redova je ignorisano pri importu.` : null,
     !report.lastImportAtUtc ? "Poslednji import nije dostupan." : null,
+    report.lastImportAtUtc && !importStatus ? "Status poslednjeg importa nije poznat." : null,
+    importScope === "global" && (report.storeId || report.supplierId)
+      ? "Status importa je globalan, nije mapiran na izabrani store/supplier filter."
+      : null,
     !refreshStatus ? "Status osvežavanja nije dostupan." : null,
     freshnessStatus === "stale" ? "Poslednje osvežavanje je zastarelo." : null,
     refreshStatus?.isRunning ? "Osvežavanje analitike je trenutno u toku." : null,
@@ -144,7 +149,7 @@ export function computePilotImportReadiness(
     nextActions.push("Pregledaj signalni period pre prezentacije.");
   }
 
-  if (!report.lastImportAtUtc) {
+  if (!report.lastImportAtUtc || !importStatus) {
     nextActions.push("Proveri poslednji import.");
   }
 

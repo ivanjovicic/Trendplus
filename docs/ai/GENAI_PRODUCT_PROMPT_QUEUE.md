@@ -2,7 +2,8 @@
 
 Created: 2026-07-31
 Repo: `ivanjovicic/Trendplus`
-Status: dormant until the analytics reliability router and the stabilization/release/security queue have no unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item
+Status: dormant until the analytics reliability router and the stabilization/release/security queue have no unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item.
+Current gate verdict: BLOCKED by STAB08 refresh evidence on 2026-08-06.
 
 ## Goal
 
