@@ -57,10 +57,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Trendplus2.sln
+        run: dotnet restore Api.Tests/Api.Tests.csproj
 
       - name: Build solution
-        run: dotnet build Trendplus2.sln --no-restore --configuration Release
+        run: dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release
 
       - name: Run all backend tests with coverage
         run: >-

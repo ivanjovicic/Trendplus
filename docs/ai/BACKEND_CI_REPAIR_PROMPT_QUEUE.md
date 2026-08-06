@@ -3,7 +3,7 @@
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
 Purpose: restore truthful execution of the backend analytics test suite and separate real test failures from workflow/bootstrap failures.
-Current READY prompt: `BCI01`
+Current READY prompt: `BCI04`
 
 ## Current diagnosis
 
@@ -68,13 +68,13 @@ Three additional observations must not be confused with the root cause:
 
 ## BCI01 - Restore and build the backend project graph instead of the mixed solution
 
-Status: READY
+Status: PARTIAL
 Priority: P0
 Type: CI/workflow
 Feature family: backend-ci-bootstrap
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI01-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/BCI01-codex.lock.md`
 Commit suggestion: `fix(ci): restore backend tests without frontend sdk`
 
 ### Why
@@ -174,6 +174,31 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 - The workflow reaches the backend test step.
 - No tests are filtered out or allowed to fail.
 - The final queue note records the exact GitHub Actions run ID, test totals and result.
+
+### Completion note
+
+- Date: 2026-08-06
+- Agent: Codex
+- Changed files:
+  - `.github/workflows/analytics-tests.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Checks:
+  - `gh auth status --hostname github.com` - fail: not logged in
+  - `git diff --check` - pass
+  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - fail: 741 passed / 40 failed
+- First failing tests:
+  - `Api.Tests.DataQualityPostgresIntegrationTests.IssuesHandler_PaginatesAndUsesStableRevenueOrdering`
+  - `Api.Tests.AnalyticsActionsCriticalWorkflowTests.Upsert_SameOpenSourceTupleIsIdempotent`
+  - `Api.Tests.InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments`
+  - `Api.Tests.AccessImportAdminAuthorizationTests.DeleteBatch_RejectsRequestWithoutAdminKey`
+  - `Trendplus2.Tests.AnalyticsActionItemServiceTests.UpsertAsync_PersistsLedgerCreationSnapshotMetadata`
+- Risk:
+  - Workflow bootstrap is fixed, but the backend suite now reaches real assertion failures and needs root-cause triage in BCI04 instead of more bootstrap changes.
+- Next:
+  - `BCI04` READY
 
 ---
 
@@ -378,7 +403,7 @@ Do not select a model solely because NuGet reports a nearest version.
 
 ## BCI04 - Triage the first real backend test failures after bootstrap is fixed
 
-Status: WAITING
+Status: READY
 Ready after: `BCI01` produces a run where restore and build succeed but one or more tests fail
 Priority: P0
 Type: test triage/docs/prompts; runtime fix only in later root-cause tasks

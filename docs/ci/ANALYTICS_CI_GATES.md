@@ -12,7 +12,7 @@ Ovaj dokument opisuje minimalne CI gate-ove za analytics i frontend guardrails.
 
 | Check | Command | Runs on PR | Runs on main | Blocks merge | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Backend build | `dotnet build Trendplus2.sln --no-restore --configuration Release` | Yes | Yes | Yes | Pokriva compile regresije u API/Domain/Infrastructure slojevima. |
+| Backend build | `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` | Yes | Yes | Yes | Pokriva compile regresije u API/Domain/Infrastructure/Workers graph-u bez učitavanja frontend `.esproj` wrappera. |
 | Backend tests | `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Unit"` i `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "Category=Integration"` | Yes | Yes | Yes | Targeted gate; full solution `dotnet test` nije uveden zbog Postgres/integration setup-a i sporijeg feedback loop-a. |
 | Frontend guardrails | `cd Klijent/clientapp && npm run check:analytics-guardrails` | Yes | Yes | Yes | Uključuje guardrail scan i `tsc -b` kroz postojeći npm script. |
 | Frontend build | `cd Klijent/clientapp && npm run build` | Yes | Yes | Yes | Hvata TypeScript/Vite regresije i bundle probleme. |
