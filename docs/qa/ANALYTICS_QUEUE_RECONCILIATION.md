@@ -1,5 +1,9 @@
 # Analytics Queue Reconciliation
 
+> [!WARNING]
+> **HISTORICAL SNAPSHOT — routing evidence only.**
+> Snapshot date: **2026-08-05** (`STAB02`). Do not use the `Current runnable` or `Current next READY prompts` statements below to select current work. Use `MASTER_ROADMAP.md` and the current owner-queue header instead. The body below is retained as historical evidence and is intentionally not rewritten to current status.
+
 Updated: 2026-08-05
 Task: `STAB02`
 Validator: `node scripts/check-prompt-queues.mjs`
