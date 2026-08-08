@@ -12,10 +12,10 @@ Existing execution programs:
 - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` (`BCI`)
 - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` (`STAB`)
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` and SQL queue (`RQ` / `Q`)
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` (`P-UI`)
 - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` (`QDB`)
 - `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` (`MT`)
 - `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` (`GAI`)
-- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` (`P-UI`)
 
 Future planning programs:
 
@@ -29,9 +29,10 @@ Future planning programs:
 1. Read `MASTER_ROADMAP.md`.
 2. Resolve the owning program and its current READY pointer.
 3. Preserve the existing global priority before considering lower-priority programs.
-4. Start only a prompt whose status is READY and whose dependencies are satisfied.
-5. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
-6. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
+4. Treat `P-UI` as a supplemental presentation lane: it may run only when path-safe and it must not displace BCI/STAB/RQ/QDB/MT/GAI priority or repair analytics correctness through frontend invention.
+5. Start only a prompt whose status is READY and whose dependencies are satisfied.
+6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
+7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
 
 ## Status model
 
@@ -202,7 +203,7 @@ node scripts/check-planning-architecture.mjs
 node scripts/check-planning-architecture.mjs --self-test
 ```
 
-`check-prompt-queues.mjs` remains the validator for legacy/current execution queues it already inventories. `check-planning-architecture.mjs` validates the master roadmap, new roadmap ownership and the DEX/RL/DT/PERF/OBS/SEC planning queues.
+`check-prompt-queues.mjs` remains the validator for legacy/current execution queues it already inventories. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.
 
 ## Commit hygiene
 
