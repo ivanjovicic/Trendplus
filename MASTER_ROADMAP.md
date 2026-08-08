@@ -1,0 +1,115 @@
+# Trendplus Master Roadmap
+
+Updated: 2026-08-08  
+Repository: `ivanjovicic/Trendplus`  
+Status: canonical planning entry point
+
+This file is the single routing entry point for Trendplus planning. It does not replace detailed roadmaps, audits, queues, or historical evidence. It tells an agent which program owns a topic, what is currently runnable, what is blocked, what may run in parallel, and what milestone comes next.
+
+## Canonical planning rule
+
+1. Read `AGENTS.md` and `.github/copilot-instructions.md`.
+2. Read `docs/ai/AGENT_START_HERE.md`.
+3. Read this file.
+4. Follow the owner queue named here.
+5. Read only the target prompt plus its `Read first` documents.
+
+If an older queue addendum, audit, status report, or completion note conflicts with this file and the current owner queue header, treat the older statement as historical evidence, not current routing.
+
+## Existing program priority
+
+The existing execution priority is preserved:
+
+1. Backend CI Repair (`BCI`)
+2. Stabilization / Release / Security (`STAB`)
+3. Analytics Reliability (`RQ`)
+4. remaining STAB work
+5. remaining analytics correctness
+6. Data Connector (`QDB`)
+7. Multi-Tenant (`MT`)
+8. GenAI (`GAI`)
+
+A historical task ID does not become READY merely because it appears in this priority list. Always use the current queue status. If a higher-priority program has no READY task, do not invent one; use its documented blocker or owner-gated promotion rule.
+
+The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first READY prompts are planning/contract tasks only. They do not authorize lower-priority runtime implementation ahead of the existing priority chain.
+
+## Program routing matrix
+
+| Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
+|---|---|---|---|---|---|
+| BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` | none | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite | No runtime overlap with active failure repairs | Backend suite green with truthful CI evidence |
+| STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | Current release evidence says core pilot is not ready; GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | none globally | Main RQ queue is complete; remaining addenda are WAITING and require explicit promotion/ownership | Selected docs/tests tasks only | Promote and close the next evidence-backed correctness family |
+| QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB01` | Must not outrank unresolved higher-priority P0 work | Yes, QDB01 docs/tests when paths are clear | Provider-neutral connector contract characterized |
+| MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | `MT01` | Shared SaaS remains forbidden until the full MT gate is complete | Yes, MT01 when paths are clear | Canonical TenantId/context seam, then staged tenant isolation |
+| GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
+| DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX01` | Runtime work waits for deterministic contract and higher-priority correctness gates | Yes, docs/contracts | Deterministic Decision Graph + evidence-chain contract |
+| RL | same queue/roadmap as DEX | `RL01` | Runtime learning waits for outcome vocabulary and durable evidence contract | Yes, docs/contracts | Recommendation outcome-learning contract |
+| DT | same queue/roadmap as DEX | `DT01` | Runtime timeline waits for canonical event model | Yes, docs/contracts | Decision Timeline event model and success metrics |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF01` | Runtime optimization waits for measured baseline and correctness preservation | Yes, measurement plan | Reproducible baseline and performance budget |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS01` | Runtime instrumentation waits for agreed SLI/SLA vocabulary | Yes, docs/contracts | Business + technical SLI/SLA catalog |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC01` | Must not duplicate STAB, MT, or GAI security ownership | Yes, reconciliation only | Consolidated post-STAB security evolution map |
+
+## Product and process documents
+
+- Product direction: `docs/product/PRODUCT_VISION.md`
+- Feature flow: `docs/planning/FEATURE_LIFECYCLE.md`
+- Business milestones: `docs/roadmaps/BUSINESS_ROADMAP.md`
+- Architecture decisions: `docs/architecture/ADRS.md`
+- Planning consolidation evidence: `docs/planning/PLANNING_CONSOLIDATION_AUDIT_2026-08-08.md`
+
+## Decision Intelligence boundary
+
+Decision Intelligence is not a synonym for analytics. Analytics describes and measures the business. Decision Intelligence links evidence to a recommended decision, exposes why that decision was made, records alternatives, tracks what happened after action, and learns from outcomes.
+
+The deterministic order is:
+
+`evidence -> decision -> explanation -> alternatives -> action -> execution -> outcome -> learning`
+
+No AI dependency is required for DEX, RL, or DT. LLMs may later explain already-authoritative evidence, but they must not become the source of truth for confidence, recommendation, outcome, or decision history.
+
+## Milestone routing
+
+| Milestone | Must be satisfied primarily by |
+|---|---|
+| Pilot Ready | BCI, STAB, RQ, OBS evidence |
+| First Customer | STAB, QDB, OBS, SEC, deterministic DEX foundations |
+| 10 Customers | QDB, MT staged isolation, PERF, OBS, SEC |
+| 50 Customers | MT shared-SaaS gates, PERF scalability, OBS SLA evidence, SEC operational hardening, RL/DT evidence |
+| SaaS Ready | MT release gate + tenant-owned QDB persistence + PERF/OBS/SEC gates |
+| AI Ready | Core pilot ready + GAI security/evaluation gate + tenant boundaries where applicable; deterministic decision evidence remains authoritative |
+
+Detailed milestone acceptance belongs in `docs/roadmaps/BUSINESS_ROADMAP.md`.
+
+## Historical/current separation
+
+- `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger and is never a current router.
+- Dated QA/audit documents remain immutable evidence snapshots unless a document explicitly declares itself current.
+- Addendum prose such as "main queue READY RQ01" or old "next READY" completion notes is historical when it conflicts with the current queue header and this master roadmap.
+- Do not delete historical evidence to make routing look clean. Add a current pointer or archive classification instead.
+
+## Governance checks
+
+Before claiming planning consolidation complete, run:
+
+```text
+node scripts/check-prompt-queues.mjs
+node scripts/check-prompt-queues.mjs --self-test
+node scripts/check-planning-architecture.mjs
+node scripts/check-planning-architecture.mjs --self-test
+```
+
+The planning validator owns the new master/roadmap/queue linkage. The existing prompt validator continues to own legacy queue status correctness.
+
+## Change rule
+
+When a feature is proposed:
+
+1. map it to an existing program first;
+2. create a new program only when ownership is genuinely different;
+3. update the roadmap before creating implementation work;
+4. expose at most one READY prompt per program;
+5. keep all later prompts WAITING until dependencies are met;
+6. update this file only when ownership, current READY, blocking relationship, or next milestone changes.
+
+Do not copy implementation detail into this file. The owner queue is the implementation contract.
