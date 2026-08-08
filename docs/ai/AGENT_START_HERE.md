@@ -47,6 +47,7 @@ Use `MASTER_ROADMAP.md` for current READY/blocked/parallel-safe truth. The owner
 - Backend CI Repair -> `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 - Stabilization / Release / current pilot Security -> `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
 - Analytics correctness -> `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` and its named source queue
+- Premium analytics UI -> `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` with `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`
 - Data-source connectors -> `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
 - Multi-tenancy/shared SaaS isolation -> `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
 - GenAI/RAG/LLM -> `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
@@ -58,6 +59,8 @@ Do not create another queue when one of these already owns the feature family.
 ## Priority rule
 
 Preserve the existing program priority declared in `MASTER_ROADMAP.md`. A local `P0` or READY in a future planning queue does not automatically outrank an existing higher-priority program.
+
+Premium UI is a supplemental presentation lane. It may run when path-safe, but it must not displace the main BCI/STAB/RQ/QDB/MT/GAI priority chain or implement business truth in frontend code.
 
 A task may run in parallel only when:
 
