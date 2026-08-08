@@ -1,5 +1,9 @@
 # Trendplus Stabilization Status
 
+> [!WARNING]
+> **HISTORICAL SNAPSHOT — do not use for current sprint priority.**
+> Snapshot date: **2026-07-01**. The RQ/SQL order below reflects the state at that date and is intentionally preserved as evidence. Use `MASTER_ROADMAP.md`, `docs/ai/AGENT_START_HERE.md`, and the current owner queues for present routing and READY status.
+
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
 Status: documentation snapshot; not a release certification
