@@ -1,0 +1,359 @@
+# Trendplus Decision Intelligence Planning Queue
+
+Created: 2026-08-08  
+Roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`  
+Purpose: planning/contracts only until later roadmap gates explicitly authorize runtime work.
+
+## Current READY by program
+
+| Program | Current READY | Execution class |
+|---|---|---|
+| DEX - Decision Explainability | `DEX01` | docs/contracts/tests-plan only |
+| RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
+| DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
+
+Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
+
+---
+
+## DEX01 - Define deterministic Decision Graph and evidence-chain contract
+
+Status: READY  
+Priority: future-high-value / planning  
+Feature family: decision-explainability-contract  
+Parallel-safe: yes, docs/contracts only  
+Owner: unassigned
+
+### Problem
+
+Trendplus recommendations already expose reasons, confidence and impact in multiple areas, but there is no single deterministic contract describing how a user can trace a recommendation through evidence, confidence contributors, alternatives and drill-down without relying on AI-generated interpretation.
+
+### Evidence
+
+- The current product already treats backend recommendation/confidence/reason semantics as authoritative.
+- Existing analytics reliability work explicitly protects no-fake-zero/no-fake-green behavior.
+- Decision Board, Product Decision Center, inventory/supplier analytics and action/outcome workflows already provide candidate inputs, but they are not organized as a reusable Decision Graph contract.
+- `docs/architecture/ADRS.md` ADR-001/004/005/006/007 define the governing principles.
+
+### Scope
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- one new deterministic Decision Graph contract document under `docs/architecture/` or `docs/product/`
+- inventory of existing DTO/reason/confidence/evidence fields needed to map the first recommendation family
+- test-plan/contract fixtures only if useful; no production behavior change
+
+### Read first
+
+- `MASTER_ROADMAP.md`
+- `docs/product/PRODUCT_VISION.md`
+- `docs/architecture/ADRS.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- current Decision Board / Product Decision Center contracts relevant to the selected first family
+
+### Do
+
+1. Define node types for decision, evidence, confidence contributor, rule/constraint, alternative and action link.
+2. Define stable identifiers/correlation expectations without using IDs as authorization.
+3. Define evidence fields for value, unit/denominator, source status, freshness, data quality and timestamp.
+4. Define confidence breakdown semantics that cannot manufacture certainty from missing evidence.
+5. Define alternative-decision contract and ranking/exclusion reason vocabulary.
+6. Define deterministic Why-panel rendering inputs.
+7. Choose one existing recommendation family as the first mapping example without implementing runtime graph generation.
+8. Record explicit compatibility/non-goals and the later implementation split.
+
+### Tests
+
+- contract examples cover positive evidence, true zero, missing evidence, stale evidence and partial/low-confidence evidence;
+- alternatives include selected/not-selected reason;
+- a Why panel can be rendered entirely from deterministic fields;
+- no AI/provider dependency appears in the contract;
+- no frontend-only confidence/recommendation rule is introduced.
+
+### Acceptance
+
+- one reusable Decision Graph/evidence-chain contract is documented;
+- confidence breakdown and alternative semantics are explicit;
+- the first future runtime implementation can be scoped to one recommendation family;
+- no runtime implementation was added by this prompt.
+
+### Dependencies
+
+- current analytics reliability semantics remain authoritative;
+- no dependency on GAI;
+- later shared-SaaS evidence persistence must satisfy MT/SEC.
+
+---
+
+## DEX02 - Prepare first-family explainability rollout plan
+
+Status: WAITING  
+Priority: future  
+Feature family: decision-explainability-rollout-plan  
+Parallel-safe: yes, planning only  
+Owner: unassigned
+
+### Problem
+
+After DEX01, runtime rollout still needs a bounded first family, exact surface list and compatibility plan before implementation prompts are created.
+
+### Evidence
+
+- DEX01 will define the common contract.
+- Existing recommendation families differ in impact/confidence/evidence maturity.
+
+### Scope
+
+- docs/planning only;
+- select one family and enumerate API/detail/export/action surfaces;
+- no runtime prompt generation beyond a proposed split list.
+
+### Read first
+
+- DEX01 output
+- selected family queue/audit/tests
+- `docs/planning/FEATURE_LIFECYCLE.md`
+
+### Do
+
+1. Score candidate families by business value, evidence completeness and implementation risk.
+2. Select one first family.
+3. Define rollout slices: backend contract, frontend Why/drill-down, evidence snapshot, hardening.
+4. Identify exact dependencies and stop conditions.
+
+### Tests
+
+- plan maps every affected surface;
+- no duplicate RQ/STAB ownership;
+- no slice exceeds a reviewable feature family.
+
+### Acceptance
+
+- implementation can later be promoted through separate bounded prompts without duplicating existing queues.
+
+### Dependencies
+
+- DEX01 DONE.
+
+---
+
+## RL01 - Define recommendation outcome-learning contract
+
+Status: READY  
+Priority: future / planning  
+Feature family: recommendation-learning-contract  
+Parallel-safe: yes, docs/contracts only  
+Owner: unassigned
+
+### Problem
+
+Trendplus can record recommendations/actions/outcomes, but a learning program would be unsafe if acceptance, execution and measured success were treated as the same thing or if historical statistics changed confidence without an explicit evidence contract.
+
+### Evidence
+
+- Existing analytics action/outcome reliability work distinguishes lifecycle/measurement states and denominators.
+- ADR-004 requires deterministic, evidence-backed recommendation principles.
+- The product vision requires `issued -> accepted -> executed -> measured -> outcome -> learning` rather than click/acceptance learning.
+
+### Scope
+
+- define lifecycle vocabulary, outcome eligibility and statistical dimensions;
+- map current action/outcome fields and gaps;
+- define confidence-calibration input/output contract at documentation level;
+- no runtime learning algorithm, ML model or automatic score change.
+
+### Read first
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/architecture/ADRS.md`
+- action/outcome reliability queue/audits
+- current action/outcome DTOs and tests
+
+### Do
+
+1. Define issued/accepted/rejected/ignored/executed/measured/not-measured outcome states.
+2. Define eligibility rules for measured success/failure/insufficient evidence.
+3. Define denominator vocabulary for acceptance, execution, measurement and success rates.
+4. Define attribution/window metadata needed before outcome statistics are trustworthy.
+5. Define segmentation rules and minimum-evidence principles for statistics.
+6. Define a future deterministic calibration interface while explicitly leaving runtime behavior unchanged.
+
+### Tests
+
+- examples distinguish accepted from executed and executed from measured;
+- no-measurement cannot count as success/failure;
+- zero-denominator behavior is explicit;
+- low-sample statistics remain low-confidence/insufficient;
+- no acceptance-only "learning" path exists.
+
+### Acceptance
+
+- one authoritative learning lifecycle/statistics contract exists;
+- later implementations can compute statistics without changing recommendation confidence yet;
+- no ML/AI/runtime learning was added.
+
+### Dependencies
+
+- existing action/outcome correctness semantics;
+- DEX optional but compatible;
+- OBS later owns operational/business metrics exposure.
+
+---
+
+## RL02 - Prepare deterministic statistics rollout plan
+
+Status: WAITING  
+Priority: future  
+Feature family: recommendation-learning-statistics-plan  
+Parallel-safe: yes, planning only  
+Owner: unassigned
+
+### Problem
+
+The learning contract needs a staged rollout that first measures truth before changing decisions.
+
+### Evidence
+
+- RL01 will define lifecycle/denominators.
+
+### Scope
+
+- plan phases for event completeness, outcome statistics, dashboards and only later calibration;
+- no runtime implementation prompt beyond proposed slices.
+
+### Read first
+
+- RL01 output
+- DT contract if available
+- OBS roadmap
+
+### Do
+
+1. Define phase 1 measurement-only statistics.
+2. Define minimum sample/evidence gates.
+3. Define phase 2 confidence-calibration experiment requirements.
+4. Define rollback/audit requirements before any score influence.
+
+### Tests
+
+- plan has a measurement-only stage;
+- confidence cannot change before explicit evidence gate;
+- statistics preserve tenant/dataScope boundaries.
+
+### Acceptance
+
+- runtime learning remains gated behind measurable staged evidence.
+
+### Dependencies
+
+- RL01 DONE.
+
+---
+
+## DT01 - Define Decision Timeline event model and success metrics
+
+Status: READY  
+Priority: future / planning  
+Feature family: decision-timeline-contract  
+Parallel-safe: yes, docs/contracts only  
+Owner: unassigned
+
+### Problem
+
+Recommendation, action, execution and outcome information exists in different records/surfaces. Without a canonical timeline event model, Trendplus cannot provide an auditable historical story or trustworthy decision success metrics.
+
+### Evidence
+
+- existing action/outcome workflows already contain lifecycle timestamps/statuses;
+- Decision Intelligence roadmap requires `Recommendation -> Action -> Execution -> Outcome -> Historical timeline -> Success metrics`;
+- ADR-007 makes historical decision evidence deterministic and AI-independent.
+
+### Scope
+
+- event types, correlation identifiers, timestamps, evidence links and lifecycle metrics;
+- current field inventory/gaps;
+- append/history semantics at documentation level;
+- no runtime event store or schema migration.
+
+### Read first
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/architecture/ADRS.md`
+- action/outcome DTOs/audits
+- relevant report/export contracts
+
+### Do
+
+1. Define canonical event types for recommendation issued, action accepted/rejected, execution, measurement started/completed and outcome.
+2. Define correlation identifiers and entity/recommendation-family dimensions.
+3. Define what historical fields must be snapshot vs live lookup.
+4. Define success metrics and exact denominators.
+5. Define missing/partial event behavior and timeline gaps.
+6. Define later export/report/drill-down requirements.
+
+### Tests
+
+- examples cover full lifecycle, rejected recommendation, executed-but-not-measured, delayed outcome and missing evidence;
+- success rate never uses issued count when measured count is the intended denominator;
+- timeline order/timestamps are unambiguous;
+- historical evidence cannot silently become current rewritten evidence.
+
+### Acceptance
+
+- one canonical event/timeline contract exists;
+- success metric vocabulary is explicit;
+- no runtime event store/migration was introduced.
+
+### Dependencies
+
+- existing action/outcome contract;
+- later persisted evidence must satisfy MT/SEC in shared SaaS.
+
+---
+
+## DT02 - Prepare historical timeline rollout plan
+
+Status: WAITING  
+Priority: future  
+Feature family: decision-timeline-rollout-plan  
+Parallel-safe: yes, planning only  
+Owner: unassigned
+
+### Problem
+
+DT01 needs a bounded persistence/API/UI rollout plan before implementation begins.
+
+### Evidence
+
+- DT01 will define the event model.
+
+### Scope
+
+- docs/planning only;
+- proposed slices for storage/API/timeline UI/export/hardening;
+- no runtime changes.
+
+### Read first
+
+- DT01 output
+- MT roadmap for tenant-owned history
+- OBS roadmap for correlation/tracing
+
+### Do
+
+1. Identify current storage reuse vs new persistence needs.
+2. Define compatibility/migration approach.
+3. Define timeline API and UI slices.
+4. Define evidence-retention/export/hardening slices.
+
+### Tests
+
+- plan keeps tenant/correlation/authorization boundaries explicit;
+- implementation slices are reviewable and do not mix unrelated analytics fixes.
+
+### Acceptance
+
+- future implementation can be queued safely without architecture guessing.
+
+### Dependencies
+
+- DT01 DONE.
