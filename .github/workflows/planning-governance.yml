@@ -1,0 +1,70 @@
+name: Planning Governance
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'MASTER_ROADMAP.md'
+      - 'docs/ai/**'
+      - 'docs/planning/**'
+      - 'docs/product/**'
+      - 'docs/roadmaps/**'
+      - 'docs/architecture/**'
+      - 'docs/archive/planning/**'
+      - 'docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md'
+      - 'docs/qa/TRENDPLUS_STABILIZATION_STATUS.md'
+      - 'docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md'
+      - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
+      - 'scripts/check-prompt-queues.mjs'
+      - 'scripts/check-planning-architecture.mjs'
+      - '.github/workflows/planning-governance.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'MASTER_ROADMAP.md'
+      - 'docs/ai/**'
+      - 'docs/planning/**'
+      - 'docs/product/**'
+      - 'docs/roadmaps/**'
+      - 'docs/architecture/**'
+      - 'docs/archive/planning/**'
+      - 'docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md'
+      - 'docs/qa/TRENDPLUS_STABILIZATION_STATUS.md'
+      - 'docs/qa/ANALYTICS_LIVE_SMOKE_RESULT.md'
+      - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
+      - 'scripts/check-prompt-queues.mjs'
+      - 'scripts/check-planning-architecture.mjs'
+      - '.github/workflows/planning-governance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: planning-governance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-planning:
+    name: Validate planning and queue architecture
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Self-test prompt queue validator
+        run: node scripts/check-prompt-queues.mjs --self-test
+
+      - name: Validate prompt queues
+        run: node scripts/check-prompt-queues.mjs
+
+      - name: Self-test planning architecture validator
+        run: node scripts/check-planning-architecture.mjs --self-test
+
+      - name: Validate planning architecture
+        run: node scripts/check-planning-architecture.mjs
