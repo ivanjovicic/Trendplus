@@ -3,7 +3,8 @@
  * Trendplus planning architecture validator.
  *
  * Complements scripts/check-prompt-queues.mjs by validating the consolidated
- * master roadmap and the new DEX/RL/DT/PERF/OBS/SEC planning families.
+ * master roadmap, roadmap/queue ownership, and the new DEX/RL/DT/PERF/OBS/SEC
+ * planning families.
  *
  * Usage:
  *   node scripts/check-planning-architecture.mjs
@@ -23,15 +24,18 @@ const REQUIRED_CANONICAL_PATHS = [
   "docs/roadmaps/PERFORMANCE_ROADMAP.md",
   "docs/roadmaps/OBSERVABILITY_ROADMAP.md",
   "docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md",
+  "docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md",
   "docs/roadmaps/BUSINESS_ROADMAP.md",
   "docs/architecture/ADRS.md",
   "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md",
   "docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md",
+  "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md",
   "docs/ai/AGENT_START_HERE.md",
   "docs/ai/PROMPT_QUEUE_PROTOCOL.md",
   "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
   "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md",
+  "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
   "docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md",
   "docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md",
   "docs/ai/MULTITENANCY_PROMPT_QUEUE.md",
@@ -44,6 +48,7 @@ const PROGRAM_OWNERSHIP = [
   { program: "BCI", roadmap: "MASTER_ROADMAP.md", queue: "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md" },
   { program: "STAB", roadmap: "MASTER_ROADMAP.md", queue: "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md" },
   { program: "RQ", roadmap: "docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md", queue: "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md" },
+  { program: "P-UI", roadmap: "docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md", queue: "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md" },
   { program: "QDB", roadmap: "docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md", queue: "docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md" },
   { program: "MT", roadmap: "docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md", queue: "docs/ai/MULTITENANCY_PROMPT_QUEUE.md" },
   { program: "GAI", roadmap: "docs/ai/GENAI_COPILOT_ROADMAP.md", queue: "docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md" },
@@ -173,12 +178,16 @@ function validate(root) {
       if (!master.includes(mapping.queue)) {
         errors.push(`MASTER_ROADMAP.md: missing queue link for ${mapping.program}: ${mapping.queue}`);
       }
+      if (!master.includes(mapping.roadmap)) {
+        errors.push(`MASTER_ROADMAP.md: missing roadmap/planning-owner link for ${mapping.program}: ${mapping.roadmap}`);
+      }
     }
   }
 
   if (exists(root, "docs/ai/AGENT_START_HERE.md")) {
     const agent = read(root, "docs/ai/AGENT_START_HERE.md");
     if (!agent.includes("MASTER_ROADMAP.md")) errors.push("docs/ai/AGENT_START_HERE.md: missing master roadmap routing");
+    if (!agent.includes("ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md")) errors.push("docs/ai/AGENT_START_HERE.md: missing Premium UI owner queue");
     if (!agent.includes("DECISION_INTELLIGENCE_PROMPT_QUEUE.md")) errors.push("docs/ai/AGENT_START_HERE.md: missing Decision Intelligence owner queue");
     if (!agent.includes("PLATFORM_EVOLUTION_PROMPT_QUEUE.md")) errors.push("docs/ai/AGENT_START_HERE.md: missing Platform Evolution owner queue");
   }
@@ -200,13 +209,12 @@ function runSelfTest() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "trendplus-planning-validator-"));
   try {
     for (const relative of REQUIRED_CANONICAL_PATHS) write(root, relative);
-    write(root, "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md");
     write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", fixtureQueue(["DEX", "RL", "DT"]));
     write(root, "docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", fixtureQueue(["PERF", "OBS", "SEC"]));
 
-    const masterRows = PROGRAM_OWNERSHIP.map((mapping) => `| ${mapping.program} | ${mapping.queue} |`).join("\n");
-    write(root, "MASTER_ROADMAP.md", `# Master\n${masterRows}\n${PROGRAM_OWNERSHIP.map((mapping) => mapping.queue).join("\n")}\n`);
-    write(root, "docs/ai/AGENT_START_HERE.md", "MASTER_ROADMAP.md\nDECISION_INTELLIGENCE_PROMPT_QUEUE.md\nPLATFORM_EVOLUTION_PROMPT_QUEUE.md\n");
+    const masterRows = PROGRAM_OWNERSHIP.map((mapping) => `| ${mapping.program} | ${mapping.queue} | ${mapping.roadmap} |`).join("\n");
+    write(root, "MASTER_ROADMAP.md", `# Master\n${masterRows}\n${PROGRAM_OWNERSHIP.map((mapping) => `${mapping.queue}\n${mapping.roadmap}`).join("\n")}\n`);
+    write(root, "docs/ai/AGENT_START_HERE.md", "MASTER_ROADMAP.md\nANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md\nDECISION_INTELLIGENCE_PROMPT_QUEUE.md\nPLATFORM_EVOLUTION_PROMPT_QUEUE.md\n");
 
     const valid = validate(root);
     if (valid.errors.length > 0) throw new Error(`valid fixture failed:\n${valid.errors.join("\n")}`);
