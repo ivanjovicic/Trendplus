@@ -29,6 +29,8 @@ The existing execution priority is preserved:
 7. Multi-Tenant (`MT`)
 8. GenAI (`GAI`)
 
+The existing Premium UI program (`P-UI`) is a supplemental presentation lane. Its current task may run only when path-safe and must never displace the priority chain above or repair analytics correctness through frontend invention.
+
 A historical task ID does not become READY merely because it appears in this priority list. Always use the current queue status. If a higher-priority program has no READY task, do not invent one; use its documented blocker or owner-gated promotion rule.
 
 The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first READY prompts are planning/contract tasks only. They do not authorize lower-priority runtime implementation ahead of the existing priority chain.
@@ -40,6 +42,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` | none | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite | No runtime overlap with active failure repairs | Backend suite green with truthful CI evidence |
 | STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | Current release evidence says core pilot is not ready; GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
 | RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | none globally | Main RQ queue is complete; remaining addenda are WAITING and require explicit promotion/ownership | Selected docs/tests tasks only | Promote and close the next evidence-backed correctness family |
+| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | `P-UI-07` | Must preserve backend/RQ semantics and not outrank the main priority chain | Yes, only when paths are clear | Supplier analytics table migration to shared premium system |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB01` | Must not outrank unresolved higher-priority P0 work | Yes, QDB01 docs/tests when paths are clear | Provider-neutral connector contract characterized |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | `MT01` | Shared SaaS remains forbidden until the full MT gate is complete | Yes, MT01 when paths are clear | Canonical TenantId/context seam, then staged tenant isolation |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
