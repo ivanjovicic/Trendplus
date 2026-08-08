@@ -1,5 +1,9 @@
 # Analytics Live Smoke Result
 
+> [!WARNING]
+> **HISTORICAL SNAPSHOT — deployment evidence only.**
+> Snapshot date: **2026-06-19**. Do not treat the PASS verdict below as current production or pilot readiness. Use `MASTER_ROADMAP.md`, the current STAB queue, and `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md` for newer release evidence. The body below is intentionally preserved as the June live-smoke snapshot.
+
 Date: 2026-06-19 11:17:49 UTC  
 Repo: `ivanjovicic/Trendplus`  
 Frontend base: `https://trendplus.vercel.app`  
