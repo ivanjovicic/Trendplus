@@ -21,6 +21,8 @@ The following accepted planning architecture remains valid and was preserved:
 - Multi-Tenant (`MT`)
 - GenAI (`GAI`)
 
+A final current-main READY scan also confirmed that the repository has an active Premium UI program (`P-UI`) that was not named in the original major-program list. It is now explicitly routed rather than left orphaned.
+
 Existing planning already covers Decision Board, Product Decision Center, recommendation behavior, data quality, freshness, confidence, reason codes, inventory/supplier analytics, executive surfaces, workers and reporting. This consolidation did not recreate those implementation plans.
 
 ## Current repository evidence that changed the originally supplied task pointers
@@ -32,6 +34,7 @@ The user-supplied program priority was preserved, but the named historical task 
 | BCI | queue header says current READY `none`; `BCI01` remains `PARTIAL` because bootstrap is fixed but the full backend test gate is not green | preserve BCI as highest existing program priority; do not falsely mark BCI01 READY |
 | STAB | queue header says current READY `none`; STAB08 is complete, but current release evidence still says core pilot is not ready and GenAI remains blocked | preserve STAB priority and current blocker truth |
 | RQ | main reliability queue says current READY `none (queue complete)`; priority router says no global analytics READY | preserve RQ priority; remaining addenda stay owner-gated/WAITING until explicitly promoted |
+| P-UI | existing Premium UI queue says `P-UI-07` READY; P-UI-05/06/01/02/03 are DONE and later P-UI work is WAITING | route as supplemental presentation lane; never let it displace correctness or invent frontend business truth |
 | QDB | `QDB01` is current READY | preserve as first connector task, still below unresolved higher-priority work |
 | MT | `MT01` is current READY | preserve; dedicated one-customer deployment remains safe fallback until MT shared-SaaS gate |
 | GAI | current queue is dormant/blocked by current release evidence | do not promote AI work |
@@ -62,6 +65,14 @@ Decision Intelligence is explicitly separate from analytics and deterministic be
 - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
 
 The SEC roadmap was added because a new SEC queue without a roadmap would violate the requested roadmap/queue symmetry. Its ownership is deliberately post-STAB/cross-cutting and does not replace STAB, MT, QDB or GAI security work.
+
+### Existing Premium UI ownership
+
+- `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`
+- existing `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- existing `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
+
+The new Premium UI roadmap is intentionally a thin routing companion. It does not duplicate the existing queue/audit implementation detail; it exists to satisfy the no-orphan roadmap/queue rule for an already-active program.
 
 ### Architecture governance
 
@@ -105,13 +116,14 @@ The first READY tasks are contract/baseline/audit tasks only. No production runt
 
 ## Routing changes
 
-`docs/ai/AGENT_START_HERE.md` now routes agents through `MASTER_ROADMAP.md` before an owner queue.
+`docs/ai/AGENT_START_HERE.md` now routes agents through `MASTER_ROADMAP.md` before an owner queue and explicitly includes the existing Premium UI owner.
 
 `docs/ai/PROMPT_QUEUE_PROTOCOL.md` now makes these rules explicit:
 
 - master roadmap owns cross-program routing;
 - at most one READY prompt per program;
 - future planning READY does not outrank the existing execution priority;
+- Premium UI is supplemental and cannot substitute frontend presentation for backend correctness;
 - later prompts remain WAITING;
 - new prompts require the eight standard sections;
 - historical/current conflicts are resolved through the current canonical layer rather than deletion of evidence.
@@ -145,33 +157,34 @@ This consolidation did not edit the legacy queue files parsed by that script; it
 
 ### New planning validator
 
-Added `scripts/check-planning-architecture.mjs`.
+Added and then expanded `scripts/check-planning-architecture.mjs`.
 
 It validates:
 
 - required canonical planning paths exist;
-- each program has a declared roadmap and owner queue;
+- BCI/STAB/RQ/P-UI/QDB/MT/GAI/DEX/RL/DT/PERF/OBS/SEC have declared planning owners and owner queues;
 - DEX/RL/DT/PERF/OBS/SEC tasks have valid statuses and an Owner;
 - every new prompt has all eight required sections;
 - exactly one READY prompt exists per new program;
 - later prompts are not READY;
-- `MASTER_ROADMAP.md` contains every program route and queue link;
-- `AGENT_START_HERE.md` routes through the master and both new queue owners.
+- `MASTER_ROADMAP.md` contains every program route plus queue and roadmap/planning-owner link;
+- `AGENT_START_HERE.md` routes through the master, Premium UI owner, Decision Intelligence owner and Platform Evolution owner.
 
-Validator self-test result during this consolidation: **PASS**. The self-test also proves that a duplicate READY in a program is rejected.
+The validator's positive/negative self-test passed during this consolidation before the final ownership expansion; the final change only extends the same existence/routing checks to Premium UI. Current-main fetch inspection confirms the new P-UI roadmap, queue and master route are present.
 
 ### Current-main static consistency inspection
 
 Current-main files were fetched after their commits and inspected for the same invariants:
 
-- `MASTER_ROADMAP.md` contains BCI/STAB/RQ/QDB/MT/GAI/DEX/RL/DT/PERF/OBS/SEC routing rows;
+- `MASTER_ROADMAP.md` contains BCI/STAB/RQ/P-UI/QDB/MT/GAI/DEX/RL/DT/PERF/OBS/SEC routing rows;
+- Premium UI queue has `P-UI-07` READY with later listed work WAITING;
 - Decision Intelligence queue has DEX01/RL01/DT01 READY and DEX02/RL02/DT02 WAITING;
 - Platform Evolution queue has PERF01/OBS01/SEC01 READY and PERF02/OBS02/SEC02 WAITING;
 - existing QDB, MT and GAI roadmap/queue paths exist;
 - current QDB and MT READY pointers remain QDB01 and MT01;
 - GAI remains blocked rather than being activated by this documentation work.
 
-No orphan was found among the programs listed in the master roadmap.
+No orphan was found among the active program owners now listed in the master roadmap. SQL analytics and reliability addenda remain sub-queues/addenda of RQ rather than separate top-level programs; Premium UI addenda remain owned by P-UI; `NEXT_PROMPT_QUEUE.md` remains historical.
 
 ## Implementation impact
 
