@@ -1,5 +1,9 @@
 ﻿# Analytics Production Readiness Status
 
+> [!WARNING]
+> **HISTORICAL SNAPSHOT — do not use as current release readiness.**
+> Snapshot date: **2026-05-31**. This file is retained as evidence of the May verification state. For current cross-program routing use `MASTER_ROADMAP.md`; for newer release evidence use `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md` and the current STAB queue. The body below is intentionally preserved as the original snapshot.
+
 Datum verifikacije: 2026-05-31
 Repo: ivanjovicic/Trendplus
 Osnovni checklist: docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md
