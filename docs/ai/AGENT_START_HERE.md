@@ -1,49 +1,36 @@
 # Agent Start Here
 
+Updated: 2026-08-08
+
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
-## Repo mission in 10 lines
+## Repo mission
 
-- Trendplus is a retail decision-support product, not just a dashboard collection.
-- Analytics must help operators decide what to do this week.
-- Every serious analytics surface should explain period, freshness, data quality, reason, and next action.
-- Empty is not the same as error.
-- Unknown is not the same as zero.
-- Stale or partial data must stay visible.
-- Backend business decisions stay in backend contracts.
-- Frontend should present, format, filter, and guide; it should not invent confidence or recommendations.
-- Pilot safety matters more than flashy UI.
-- Small, evidence-based changes beat broad rewrites.
+Trendplus is a retail decision-support product, not a dashboard collection.
 
-## Why analytics bugs keep appearing
+- Analytics must help operators decide what to do.
+- Important decisions must expose trustworthy evidence, confidence, reason and next action.
+- Empty is not error; unknown is not zero.
+- Stale, partial, fallback or insufficient evidence must stay visible.
+- Backend business semantics are authoritative.
+- Frontend presents and navigates; it does not invent recommendation/confidence truth.
+- Pilot safety and deterministic evidence outrank flashy UI or AI.
+- Small evidence-backed changes beat broad rewrites.
 
-Most recurring bugs come from one of these patterns:
-
-1. Fallback values are treated as real evidence.
-   - `null -> 0`, missing status -> `good`, missing severity -> `info`, or unknown boolean -> `false`.
-2. The same number has different meanings on different surfaces.
-   - ratio vs percent, revenue vs expected impact, returned count vs total count.
-3. Local UI helpers re-create backend business semantics.
-   - frontend scoring, fallback recommendations, action impact inference.
-4. List/detail/export/action metadata drift apart.
-   - table uses one filter or unit, detail/export/action uses another.
-5. Date and denominator contracts are implicit.
-   - inclusive end vs whole day, visible rows vs all filtered rows, closed actions vs measured actions.
-6. Agents optimize one screen without checking downstream readers.
-   - chart fixed, but CSV/detail/report/action queue still wrong.
-
-The fix is not “more code”. The fix is stricter contracts, smaller prompts, and tests that cover true-zero vs unknown.
-
-## Read order
+## Canonical planning read order
 
 1. `AGENTS.md`
 2. `.github/copilot-instructions.md`
 3. `docs/ai/AGENT_START_HERE.md`
-4. `docs/ai/CODEX_TASK_CHECKLIST.md`
-5. Task-specific standards and module docs
+4. `MASTER_ROADMAP.md`
+5. the roadmap and owner queue named by the master roadmap
+6. only the target prompt's `Read first` documents and scoped source/tests
 
-Useful next documents:
+`MASTER_ROADMAP.md` is the cross-program planning router. Do not choose work from an old addendum completion note, historical audit, or stale "next READY" sentence when it conflicts with the master roadmap and current owner-queue header.
 
+Useful standards:
+
+- `docs/ai/CODEX_TASK_CHECKLIST.md`
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
@@ -52,82 +39,73 @@ Useful next documents:
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
-- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
-- `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
-- `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md`
-- `docs/security/TENANT_SAFETY_CHECKLIST.md`
-- `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
-- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
-- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
-- `docs/ai/GENAI_COPILOT_ROADMAP.md`
-- `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
-- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
-- `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
 
-For analytics reliability tasks, treat `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` as the routing/index document. Do not read every queue addendum unless the index says the prompt has a read-together dependency.
+## Program ownership
 
-## Canonical queue routing (STAB02)
+Use `MASTER_ROADMAP.md` for current READY/blocked/parallel-safe truth. The owner families are:
 
-Use this order. Do not invent a parallel `TODO`/`OPEN` workflow.
+- Backend CI Repair -> `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Stabilization / Release / current pilot Security -> `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- Analytics correctness -> `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` and its named source queue
+- Data-source connectors -> `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Multi-tenancy/shared SaaS isolation -> `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
+- GenAI/RAG/LLM -> `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
+- Decision Explainability / Recommendation Learning / Decision Timeline -> `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Performance / Observability / long-term Security Evolution -> `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
 
-1. **Deploy / security / governance P0** → `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
-   Current READY is declared at the top of that file.
-2. **Backend CI bootstrap and execution failures** → `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` when the backend workflow is red before or during restore/build/test execution.
-   A workflow that never reaches tests cannot be used as proof that backend tests pass or fail.
-3. **Analytics correctness** → `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, then only the named source-queue prompt section.
-   Cross-surface/addenda WAITING items stay WAITING until the router or owner unblocks them.
-4. **Multi-tenancy / shared SaaS isolation** → `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`.
-   `MT01` is the only initial READY contract/tests task and may run only when path-safe. It never outranks unresolved STAB P0 work. `MT02`–`MT10` are mandatory before two real customers share one data plane.
-5. **Data-source connector portability** → `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` for Access-to-generic connector contracts, SQL Server/PostgreSQL/MySQL source readers, mapping and checkpoint work.
-   This is a P1/P2 queue. Its `QDB01` docs/tests task may run in parallel only when it has no path collision; it never outranks an unresolved P0 gate.
-6. **Premium UI polish** → `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` only when its Current READY is set and the task is parallel-safe or explicitly prioritized.
-7. **GenAI / RAG / LLM** → `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after (1) and (2) have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` and the analytics router has no earlier unresolved P0 item.
+Do not create another queue when one of these already owns the feature family.
 
-Legacy `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger. Prefer evidence notes there; do not start new work from its old `TODO` instructions.
+## Priority rule
 
-Validate queue governance with:
+Preserve the existing program priority declared in `MASTER_ROADMAP.md`. A local `P0` or READY in a future planning queue does not automatically outrank an existing higher-priority program.
 
-```powershell
-node scripts/check-prompt-queues.mjs
-node scripts/check-prompt-queues.mjs --self-test
-```
+A task may run in parallel only when:
 
-The current safe customer-isolation mode is one deployment/database/storage/cache scope per customer. Do not put two real customers into one `TrendplusDbContext`, Redis namespace, file root or worker/outbox scope until the `MT10` shared-SaaS release gate passes. `StoreId`/`IDObjekat`, user ID, source connection ID and caller-provided headers are not tenant ownership. Tenant scope must come from a server-validated membership or service binding.
+- its queue explicitly marks it parallel-safe;
+- it does not overlap the higher-priority task's paths/feature family;
+- it does not weaken or bypass the higher-priority gate;
+- it is not using planning READY as permission for runtime implementation.
 
-The data-source connector roadmap keeps the Trendplus internal database on PostgreSQL and treats Access, SQL Server, PostgreSQL, MySQL and later APIs/files as read-only import sources. Do not use that queue to create multi-provider EF Core migrations, arbitrary SQL, write-back, CDC infrastructure or bidirectional synchronization. `QDB01` is the only initial READY item and owns contract documentation plus characterization tests, not production import behavior. Persistent connector profiles, mappings and checkpoints must become tenant-owned before they are used in shared SaaS.
+If a higher-priority program has no current READY task, do not resurrect an old DONE/PARTIAL task or infer readiness from historical prose. Follow that program's documented blocker/promotion rule.
 
-For current-main deployment truth, queue reconciliation, authentication/authorization, public operational exposure, production edge security, pilot import provenance, backup/restore evidence or the final release gate, use `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`. This queue supplements the analytics reliability, multi-tenancy and backend-CI routers; it does not replace an active analytics correctness task from the priority review.
+## Historical/current separation
 
-For GenAI, RAG, LLM, agent, MCP or analytics-copilot tasks, read the four GenAI documents above in order. Use `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` only after the analytics reliability router, backend-CI queue and stabilization/release/security queue have no earlier unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item. In shared SaaS mode, GenAI retrieval, vector indexes, conversations, tool calls, caches and artifacts must also satisfy the multi-tenancy roadmap and enabled-surface `MT02`–`MT10` gates. Do not skip `GAI01` or another P0 gate to start provider integration, tool calling or UI work.
+- `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger.
+- Dated QA/audit/release files are evidence snapshots, not live routers unless explicitly declared current.
+- Older addenda may contain stale `Main queue READY ...` or `Next: ... READY` text from the date they were written. Those lines are historical when the current queue header/master roadmap says otherwise.
+- Never delete historical evidence merely to remove a conflict. Fix the current canonical routing layer or archive/label the old source.
+
+## Product/architecture direction
+
+Read these when the task changes product direction rather than just implementing an accepted contract:
+
+- `docs/product/PRODUCT_VISION.md`
+- `docs/planning/FEATURE_LIFECYCLE.md`
+- `docs/architecture/ADRS.md`
+- `docs/roadmaps/BUSINESS_ROADMAP.md`
+
+Decision Intelligence is deterministic before AI. DEX/RL/DT own explanation, decision history and outcome learning. GAI may later summarize/cite authoritative decision evidence; it does not become the source of truth.
+
+The safe current customer-isolation fallback remains one deployment/database/storage/cache scope per customer until the shared-SaaS MT release gate passes. `StoreId`, `IDObjekat`, user ID, source connection ID, path or caller-provided header is not tenant authority.
+
+The connector program keeps Trendplus internal storage on PostgreSQL/Npgsql and treats external Access/SQL Server/PostgreSQL/MySQL/API/file systems as read-only import sources unless a future ADR explicitly changes that decision.
 
 ## The ten non-negotiables
 
-1. No fake zero
-   Backend failure or missing evidence must never look like valid `0 RSD`, `0 kom`, or `0%`.
-2. No fake green
-   Missing, stale, fallback, partial or insufficient data must never look like `good`, `healthy`, `fresh`, `normal`, `maintain`, or `measured`.
-3. Backend source of truth
-   Backend computes recommendations, confidence, reliability, reason codes, expected impact, and data quality semantics.
-4. No frontend-invented confidence or recommendations
-   Pages must not create local scoring thresholds or fake decision labels.
-5. Impact vocabulary must stay strict
-   `expectedImpactRsd` is actionable impact. Use `potentialExposureRsd`, `contextRevenueRsd`, or `estimatedValueRsd` when the value is not actionable expected impact.
-6. Units must be explicit
-   Every percent/share/rate must say whether it is ratio `0.35` or percent unit `35`.
-7. Counts must be explicit
-   Do not label returned rows as total matching rows. Use `returnedCount`, `totalMatchingCount`, or visible truncation labels.
-8. Date ranges must be explicit
-   Date-only UI filters should use half-open whole-day semantics unless a task states otherwise.
-9. Surface parity is required
-   API, table, chart, detail, CSV/XLSX/PDF/report, and action payload must agree or clearly document why not.
-10. UTF-8, no mojibake
-    Serbian Latin text must preserve `č ć š đ ž`. If text is corrupted, fix text safely and keep logic out of that commit.
+1. **No fake zero.** Missing/unavailable evidence must not silently become trusted `0`.
+2. **No fake green.** Missing/stale/partial/fallback/insufficient evidence is not healthy/fresh/normal/measured.
+3. **Backend source of truth.** Backend owns recommendation, confidence, reason, expected-impact and evidence semantics.
+4. **No frontend-invented confidence/recommendations.** UI helpers must not create substitute business rules.
+5. **Impact vocabulary stays strict.** `expectedImpactRsd` means actionable expected impact; context/exposure/value use different fields.
+6. **Units are explicit.** Ratios and percent units are not interchangeable.
+7. **Counts are explicit.** Returned/visible rows are not automatically total matching rows.
+8. **Date ranges are explicit.** Date-only UI filters normally use half-open whole-day semantics unless the contract says otherwise.
+9. **Surface parity is required.** API/table/chart/detail/export/report/action agree or explain the difference.
+10. **UTF-8/no mojibake.** Preserve Serbian Latin characters and isolate text cleanup from logic changes.
 
-## Tenant safety gate before coding
+## Tenant safety gate
 
-Before changing tenant-sensitive code, write the answers in local notes or the prompt result:
+Before changing tenant-sensitive behavior, record:
 
 ```md
 Tenant safety gate:
@@ -146,11 +124,11 @@ Tenant safety gate:
 - Stop condition hit? no / details
 ```
 
-If any tenant-owned line cannot be answered, do not implement broad runtime work. Narrow the task to docs/contracts/tests or mark it `BLOCKED`/`PARTIAL`.
+If a tenant-owned line cannot be answered, narrow to docs/contracts/tests or mark BLOCKED/PARTIAL.
 
-## Analytics safety gate before coding
+## Analytics safety gate
 
-Before changing analytics code, write the answers in local notes or the prompt result:
+Before changing analytics behavior, record:
 
 ```md
 Analytics safety gate:
@@ -162,46 +140,55 @@ Analytics safety gate:
 - No-baseline case:
 - Freshness/fallback case:
 - Surfaces affected:
-- Tests that prove table/detail/export/action parity:
+- Tests proving table/detail/export/action parity:
 - Stop condition hit? no / details
 ```
 
-If any line cannot be answered, do not implement the runtime fix. Add docs/tests or mark the prompt `BLOCKED`/`PARTIAL`.
+If a line cannot be answered, do not guess the runtime contract.
 
 ## Task workflow
 
-1. Identify the owning screen, route, endpoint, worker, entity or tenant-owned resource.
-2. Identify the source-of-truth service, DTO, endpoint or tenant context.
-3. Find the shared helper, component, formatter, key/path builder or response-meta utility before creating anything new.
-4. Find existing tests and route smoke coverage.
-5. Run the tenant safety gate for tenant-sensitive work and the analytics safety gate for analytics work.
-6. Make the smallest safe patch.
-7. Run the exact checks required by the task.
-8. Update queue/docs when the task is queue-based or changes canonical behavior.
+1. Resolve owner program from `MASTER_ROADMAP.md`.
+2. Verify the current READY pointer in that owner queue.
+3. Confirm no other program owns the same feature family.
+4. Identify source-of-truth service/DTO/endpoint/context.
+5. Find shared helpers/contracts before creating new ones.
+6. Find existing tests and route/surface coverage.
+7. Run tenant/analytics safety gate where relevant.
+8. Make the smallest scoped patch.
+9. Run exact prompt checks.
+10. Update queue status/evidence and master roadmap only if routing/current READY/blocker/milestone truth changed.
 
 ## Stop rules
 
-Stop and report status if:
+Stop and report rather than expanding scope when:
 
-- source of truth is unclear
-- tenant source or membership authority is unclear
-- caller-controlled tenant identity would become authoritative
-- unresolved tenant would fall back to a default tenant
-- the task combines auth, all entity migrations, cache, workers and storage
-- the task spills into unrelated modules
-- migration context or pilot-tenant backfill is unclear
-- the same command fails twice
-- route or lazy-import behavior is at risk
-- mojibake is found and the change is turning into mixed text-plus-logic cleanup
-- a missing value would become zero/good/fresh/normal/measured
-- a frontend helper would have to invent backend business semantics
-- a change fixes table display but leaves detail/export/action payload inconsistent
-- source-connector work would expose credentials, execute arbitrary SQL or advance checkpoints before durable destination commit
-- tenant-owned work has no two-tenant negative test plan
+- source of truth is unclear;
+- correct business contract is unclear;
+- tenant source/membership authority is unclear;
+- caller-controlled tenant identity would become authoritative;
+- unresolved tenant would fall back to a default tenant;
+- a missing value would become zero/good/fresh/normal/measured;
+- frontend would invent backend business semantics;
+- table is fixed while detail/export/action remains inconsistent;
+- source connector work would expose credentials, arbitrary SQL, write-back or premature checkpoints;
+- tenant-owned work lacks a two-tenant negative-test plan;
+- a task spills into unrelated modules/programs;
+- the same check fails twice without new evidence;
+- mojibake cleanup is turning into a mixed logic/text change.
+
+## Queue and planning validation
+
+Run before queue/planning cleanup is called complete:
+
+```text
+node scripts/check-prompt-queues.mjs
+node scripts/check-prompt-queues.mjs --self-test
+node scripts/check-planning-architecture.mjs
+node scripts/check-planning-architecture.mjs --self-test
+```
 
 ## Final report format
-
-Use this structure:
 
 ```text
 Changed:
@@ -222,12 +209,12 @@ Next:
 
 ## Quick reminders
 
-- Do not replace lazy/Suspense routing just to satisfy tests.
-- Do not bypass shared formatters or analytics meta helpers.
-- Do not hide stale, partial, fallback, or insufficient-data states.
-- Do not turn docs drift into architecture drift; update canonical docs when a rule repeats.
-- Do not let action/outcome summaries call something measured unless measurement evidence exists.
-- Do not let report/export values use a different unit than the on-screen table.
-- Do not treat `StoreId`, user ID, source connection ID, file path or a caller header as tenant authority.
+- Do not bypass lazy/Suspense routing just to satisfy tests.
+- Do not bypass shared formatters/analytics meta helpers.
+- Do not hide stale/partial/fallback/insufficient states.
+- Do not treat StoreId/user/source/path/header as tenant authority.
 - Do not authorize tenant resources by opaque ID/path alone.
-- Do not use process-global mutable tenant state for requests or workers.
+- Do not use process-global mutable tenant state.
+- Do not let action/outcome summaries call something measured without measurement evidence.
+- Do not let reports/exports silently use different units from on-screen values.
+- Do not turn a roadmap idea directly into runtime code; follow `docs/planning/FEATURE_LIFECYCLE.md`.
