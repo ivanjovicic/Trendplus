@@ -1,4 +1,4 @@
-import type { InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import type { InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import type { InventoryRow } from "./types";
 import { TONE, resolveTone } from "./toneMap";
 
@@ -13,6 +13,7 @@ type InventoryListItemWithSignals = InventoryListItem & {
   recommendationAllowed?: boolean | null;
   dataQualityStatus?: string | null;
   reasonCodes?: string[] | null;
+  contextStatus?: "loadingContext" | "contextMissing" | null;
 };
 
 export const WEEKDAY_OPTIONS = [
@@ -36,6 +37,25 @@ export function formatCurrency(value: number | null | undefined, fallback = "Nij
 
 export function formatPercent(value: number) {
   return `${value.toLocaleString("sr-RS", { maximumFractionDigits: 1 })}%`;
+}
+
+export function formatSignalCountBadge(
+  returnedCount: number | null | undefined,
+  totalMatchingCount: number | null | undefined,
+  unitLabel: string,
+  isTruncated?: boolean | null,
+) {
+  const returned = returnedCount ?? 0;
+
+  if (totalMatchingCount == null) {
+    return isTruncated ? `Prikazano do ${formatNumber(returned)} ${unitLabel}` : `Prikazano ${formatNumber(returned)} ${unitLabel}`;
+  }
+
+  if (isTruncated || totalMatchingCount > returned) {
+    return `Prikazano ${formatNumber(returned)} od ${formatNumber(totalMatchingCount)} ${unitLabel}`;
+  }
+
+  return `Prikazano ${formatNumber(returned)} ${unitLabel}`;
 }
 
 export function formatDateTime(value?: string | null) {
@@ -251,6 +271,48 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
     idObjekat: stores.find((store) => store.storeName === item.storeName)?.storeId ?? null,
     idDobavljac: suppliers.find((supplier) => supplier.supplierName === item.supplierName)?.supplierId ?? null,
   }, stores, suppliers);
+}
+
+export type ForecastRestockSignal = {
+  skuId: number;
+  storeId: number;
+  sizeCode: string;
+  forecast7d: number | null;
+  probabilityOfOOSIn7d: number | null;
+};
+
+export function buildForecastRestockSuggestion(
+  row: InventoryRow,
+  signal: ForecastRestockSignal,
+  stores: StoreOption[],
+  daysSinceMovement = 0,
+): InventoryActionSuggestion {
+  const forecast7d = signal.forecast7d ?? 0;
+  const probabilityOfOOSIn7d = signal.probabilityOfOOSIn7d ?? 0;
+  const suggestedQty = Math.max(1, Math.ceil(forecast7d));
+  const unitCost = row.unitCost;
+  const costMissing = row.unitCost == null || row.unitCost <= 0;
+
+  return {
+    suggestionKey: `forecast-${signal.skuId}-${signal.storeId}-${signal.sizeCode}`,
+    actionType: "dopuna",
+    priority: probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
+    label: `Predlozena dopuna za ${row.naziv}`,
+    reason: `Forecast 7d je ${forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(probabilityOfOOSIn7d * 100)}%.`,
+    status: "pending",
+    artikalId: signal.skuId,
+    plu: row.plu,
+    naziv: row.naziv,
+    fromStoreName: null,
+    toStoreName: stores.find((store) => store.storeId === signal.storeId)?.storeName ?? row.storeName,
+    suggestedQty,
+    forecastDemandQty: suggestedQty,
+    estimatedValue: costMissing || unitCost == null ? null : unitCost * suggestedQty,
+    costMissing,
+    daysSinceMovement,
+    note: `Automatski dodat iz forecast sekcije za velicinu ${signal.sizeCode} kao signal prognozirane potraznje.`,
+    updatedAtUtc: new Date().toISOString(),
+  };
 }
 
 export function getCoverageText(row: InventoryRow) {

@@ -22,6 +22,7 @@ export type InventoryRow = InventoryListItem & {
   signalText: string;
   dataQualityStatus: string;
   reasonCodes: string[];
+  contextStatus?: "loadingContext" | "contextMissing" | null;
 };
 
 export type BuildInventoryRowFn = (item: InventoryListItem, stores: StoreOption[], suppliers: SupplierFilterOption[]) => InventoryRow;

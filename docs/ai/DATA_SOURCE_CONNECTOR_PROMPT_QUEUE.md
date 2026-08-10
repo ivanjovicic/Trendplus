@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `QDB01`
+Current READY prompt: none
 
 ## Global routing
 
@@ -34,13 +34,13 @@ Before claiming from this queue, confirm:
 
 ## QDB01 - Characterize the current Access reader as a provider-neutral source contract
 
-Status: READY  
-Priority: P1  
-Type: architecture docs/tests  
-Feature family: data-source-connector-contract  
-Parallel-safe: yes, provided no other task owns the same Access test files  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB01-<agent>.lock.md`  
+Status: DONE
+Priority: P1
+Type: architecture docs/tests
+Feature family: data-source-connector-contract
+Parallel-safe: yes, provided no other task owns the same Access test files
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `test(import): characterize source connector contract`
 
 ### Why
@@ -159,6 +159,24 @@ If repository CI is red before tests execute, follow the backend-CI queue and re
 - future refactor prompts can cite exact tests as compatibility gates;
 - final notes record checks, remaining untested behavior and the next prompt.
 
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md`
+  - `Api.Tests/DataSourceConnectorContractTests.cs`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test --filter FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests` - pass (11/11)
+  - `git diff --check` - pass
+  - no production Access runtime files changed
+- Remaining untested (for QDB02+ / real engines):
+  - live ODBC metadata/streaming
+  - live mdbtools CLI metadata/streaming
+  - exact vs sampled count selection against real engines
+- Next: `QDB02` READY
+
 ### Stop conditions
 
 - stop if a test requires ODBC, `mdbtools`, a real customer file or external database;
@@ -171,14 +189,14 @@ If repository CI is red before tests execute, follow the backend-CI queue and re
 
 ## QDB02 - Introduce provider-neutral source contracts through an Access compatibility adapter
 
-Status: WAITING  
-Ready after: `QDB01` is `DONE` and its focused characterization suite is green  
-Priority: P1  
-Type: backend refactor/tests  
-Feature family: data-source-connector-abstraction  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB02-<agent>.lock.md`  
+Status: DONE
+Ready after: `QDB01` is `DONE` and its focused characterization suite is green
+Priority: P1
+Type: backend refactor/tests
+Feature family: data-source-connector-abstraction
+Parallel-safe: no
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `refactor(import): add provider-neutral source session`
 
 ### Goal
@@ -209,18 +227,34 @@ Expected new area:
 - provider capabilities replace new provider-name switches;
 - the diff is small enough to review as an abstraction seam, not a rewrite.
 
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `Api/Services/DataSources/ISourceDataSession.cs`
+  - `Api/Services/DataSources/AccessSourceDataSessionAdapter.cs`
+  - `Api.Tests/SourceDataSessionAdapterTests.cs`
+  - `docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test --filter FullyQualifiedName~SourceDataSessionAdapterTests|FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests` - pass (16/16)
+  - `git diff --check` - pass (queued files)
+  - no Access ODBC/CLI runtime rewrite; import consumers still use `IAccessDataReaderSession`
+- Next: `QDB03` stays WAITING until backend CI executes real tests (BCI01 PARTIAL)
+
 ---
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
-Status: WAITING  
-Ready after: `QDB02` is `DONE` and backend CI executes real tests  
-Priority: P1  
-Type: backend/integration tests  
-Feature family: sqlserver-source-connector  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB03-<agent>.lock.md`  
+Status: WAITING
+Ready after: `QDB02` is `DONE` and backend CI executes real tests
+Priority: P1
+Type: backend/integration tests
+Feature family: sqlserver-source-connector
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/QDB03-<agent>.lock.md`
 Commit suggestion: `feat(import): add sql server source connector`
 
 ### Goal

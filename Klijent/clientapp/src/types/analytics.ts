@@ -1053,18 +1053,21 @@ export interface ForecastRowDto {
   skuId: number;
   storeId: number;
   sizeCode: string;
-  forecast7d: number;
-  forecast14d: number;
-  forecast28d: number;
-  probabilityOfOOSIn7d: number;  // 0–1
-  overstockRisk: number;         // 0–1
-  confidenceScore: number;       // 0–1
+  forecast7d: number | null;
+  forecast14d: number | null;
+  forecast28d: number | null;
+  probabilityOfOOSIn7d: number | null;  // 0–1
+  overstockRisk: number | null;         // 0–1
+  confidenceScore: number | null;       // 0–1
   explanation: string;
 }
 
 export interface ForecastDto {
   generatedAtUtc: string;
   totalCount: number;
+  returnedCount?: number | null;
+  totalMatchingCount?: number | null;
+  isTruncated?: boolean | null;
   snapshotAvailable: boolean;
   warning?: string | null;
   items: ForecastRowDto[];
@@ -1076,19 +1079,23 @@ export interface SizeCurvePointDto {
   skuId: number;
   storeId: number;
   sizeCode: string;
-  actualSizeShare: number;   // percentage 0–100
-  idealSizeShare: number;    // percentage 0–100
-  deviationPct: number;      // actualSizeShare - idealSizeShare
-  isCoreSizeMissing: boolean;
-  isDeadSize: boolean;
-  brokenRun: boolean;
-  curveConfidence: number;   // 0–1
+  actualSizeShare: number | null;   // percentage 0–100
+  idealSizeShare: number | null;     // percentage 0–100
+  deviationPct: number | null;       // actualSizeShare - idealSizeShare
+  isCoreSizeMissing: boolean | null;
+  isDeadSize: boolean | null;
+  brokenRun: boolean | null;
+  curveConfidence: number | null;    // 0–1
+  evidenceStatus?: "complete" | "missing" | null;
   reasonCodes: string[];
 }
 
 export interface SizeCurveDto {
   generatedAtUtc: string;
   totalCount: number;
+  returnedCount?: number | null;
+  totalMatchingCount?: number | null;
+  isTruncated?: boolean | null;
   snapshotAvailable: boolean;
   warning?: string | null;
   items: SizeCurvePointDto[];
@@ -1101,17 +1108,20 @@ export interface RebalanceSuggestionDto {
   toStoreId: number;
   skuId: number;
   sizeCode: string;
-  recommendedQty: number;
-  urgency: string;              // 'urgent' | 'recommended' | 'optional'
-  confidence: number;           // 0–1
+  recommendedQty: number | null;
+  urgency: string | null;              // 'urgent' | 'recommended' | 'optional'
+  confidence: number | null;           // 0–1
   reason: string;
-  expectedSavedSales: number;   // RSD
-  expectedCapitalRelease: number;
+  expectedSavedSales: number | null;   // RSD
+  expectedCapitalRelease: number | null;
 }
 
 export interface RebalanceListDto {
   generatedAtUtc: string;
   totalCount: number;
+  returnedCount?: number | null;
+  totalMatchingCount?: number | null;
+  isTruncated?: boolean | null;
   snapshotAvailable: boolean;
   warning?: string | null;
   items: RebalanceSuggestionDto[];
@@ -1124,15 +1134,18 @@ export interface InventoryAlertDto {
   skuId: number;
   storeId: number;
   sizeCode?: string | null;
-  severity: string;   // 'critical' | 'warning' | 'info'
+  severity: string | null;   // 'critical' | 'warning' | 'info'
   title: string;
   message: string;
-  confidenceScore: number;
+  confidenceScore: number | null;
 }
 
 export interface InventoryAlertListDto {
   generatedAtUtc: string;
   totalCount: number;
+  returnedCount?: number | null;
+  totalMatchingCount?: number | null;
+  isTruncated?: boolean | null;
   snapshotAvailable: boolean;
   warning?: string | null;
   items: InventoryAlertDto[];
@@ -1180,7 +1193,9 @@ export interface InventoryActionSuggestion {
   fromStoreName?: string | null;
   toStoreName?: string | null;
   suggestedQty: number;
+  forecastDemandQty?: number | null;
   estimatedValue: number | null;
+  costMissing?: boolean | null;
   daysSinceMovement: number;
   note?: string | null;
   updatedAtUtc?: string | null;

@@ -1,10 +1,11 @@
 ﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileSpreadsheet, FileText, Printer, RefreshCw, Search, Warehouse } from "lucide-react";
+import { Warehouse } from "lucide-react";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsControlBar from "../components/analytics/AnalyticsControlBar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { ActionWorkflowPanel } from "../components/inventory/ActionWorkflowPanel";
 import { DecisionSummaryBar } from "../components/inventory/DecisionSummaryBar";
@@ -22,7 +23,7 @@ import { SKUDetailModal } from "../components/inventory/SKUDetailModal";
 import { SizeCurvePanel } from "../components/inventory/SizeCurvePanel";
 import { StoreComparisonPanel } from "../components/inventory/StoreComparisonPanel";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
-import { buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
+import { buildForecastRestockSuggestion, buildInventoryRow, buildInventoryScreenCsvFilename, buildInventoryScreenCsvLines, buildSupplierChart, createScheduleDraft, formatPercent, inventoryRiskSortScopeWarning, isInventoryPageLocalRiskSort } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { fmtNumber, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -217,6 +218,10 @@ export default function InventoryPage() {
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
   const serverSortBy = isInventoryPageLocalRiskSort(sortBy) ? "kolicina" : sortBy;
+  const selectedStoreName = selectedStoreId == null ? null : stores.find((store) => store.storeId === selectedStoreId)?.storeName ?? null;
+  const rebalanceScopeLabel = selectedStoreId == null
+    ? "za sve prodavnice"
+    : `za prodavnicu ${selectedStoreName ?? `#${selectedStoreId}`}`;
   const previousLoadRef = useRef<PreviousLoadState | null>(null);
 
   useEffect(() => {
@@ -386,7 +391,7 @@ export default function InventoryPage() {
       const signalTasks = [
         { key: "forecast" as const, promise: getForecast({ storeId: selectedStoreId, supplierId: selectedSupplierId, top: FORECAST_FETCH_LIMIT }) },
         { key: "alerts" as const, promise: getInventoryAlerts({ storeId: selectedStoreId, supplierId: selectedSupplierId }) },
-        { key: "rebalance" as const, promise: getRebalanceSuggestions({ supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }) },
+        { key: "rebalance" as const, promise: getRebalanceSuggestions({ fromStoreId: selectedStoreId, supplierId: selectedSupplierId, top: REBALANCE_FETCH_LIMIT }) },
       ];
 
       void Promise.allSettled(signalTasks.map((task) => task.promise))
@@ -539,9 +544,11 @@ export default function InventoryPage() {
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => (right.estimatedValueAmount ?? Number.NEGATIVE_INFINITY) - (left.estimatedValueAmount ?? Number.NEGATIVE_INFINITY)).slice(0, TOP_VALUE_ITEMS), [rows]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
     const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));
+    const oosRisk = matching.reduce((max, item) => item.probabilityOfOOSIn7d == null ? max : Math.max(max, item.probabilityOfOOSIn7d), Number.NEGATIVE_INFINITY);
+    const overstockRisk = matching.reduce((max, item) => item.overstockRisk == null ? max : Math.max(max, item.overstockRisk), Number.NEGATIVE_INFINITY);
     return [`${row.id}:${row.idObjekat ?? 0}`, {
-      oosRisk: matching.reduce((max, item) => Math.max(max, item.probabilityOfOOSIn7d), 0),
-      overstockRisk: matching.reduce((max, item) => Math.max(max, item.overstockRisk), 0),
+      oosRisk: Number.isFinite(oosRisk) ? oosRisk : null,
+      overstockRisk: Number.isFinite(overstockRisk) ? overstockRisk : null,
     }];
   })), [forecast, rows]);
   const displayedRows = useMemo(() => {
@@ -550,8 +557,8 @@ export default function InventoryPage() {
       const leftMetrics = forecastMetricsByRowKey.get(`${left.id}:${left.idObjekat ?? 0}`);
       const rightMetrics = forecastMetricsByRowKey.get(`${right.id}:${right.idObjekat ?? 0}`);
       return sortBy === "oosRisk"
-        ? (rightMetrics?.oosRisk ?? 0) - (leftMetrics?.oosRisk ?? 0)
-        : (rightMetrics?.overstockRisk ?? 0) - (leftMetrics?.overstockRisk ?? 0);
+        ? (rightMetrics?.oosRisk ?? -1) - (leftMetrics?.oosRisk ?? -1)
+        : (rightMetrics?.overstockRisk ?? -1) - (leftMetrics?.overstockRisk ?? -1);
     });
   }, [forecastMetricsByRowKey, rows, sortBy]);
 
@@ -570,7 +577,6 @@ export default function InventoryPage() {
     const sourceKeys = Array.from(new Set([...signalKeys, ...workflowKeys]));
 
     if (sourceKeys.length === 0) {
-      setQueuedSuggestionKeys([]);
       return () => {
         cancelled = true;
       };
@@ -692,6 +698,9 @@ export default function InventoryPage() {
 
     return `Primarni bilans je osvežen ${formatDateTime(primaryRefreshAt)}, a sekundarni paneli ${formatDateTime(secondaryPanelTimestamps)}.`;
   }, [primaryRefreshAt, secondaryPanelTimestamps]);
+  const signalSearchLineageNote = searchInput.trim().length > 0
+    ? "Napomena: tekst pretraga ne utiče na prognozu, upozorenja i redistribuciju; ti paneli slede samo prodavnicu i dobavljača."
+    : null;
 
   const refreshSchedules = async () => setSchedules(await getInventoryReportSchedules());
   const refreshOperations = async () => {
@@ -794,12 +803,14 @@ export default function InventoryPage() {
         description: item.reason,
         recommendationStatus: item.actionType,
         priority: mapWorkflowPriorityToQueuePriority(item.priority),
-        impactEstimateRsd: item.estimatedValue,
+        impactEstimateRsd: item.costMissing ? undefined : item.estimatedValue ?? undefined,
         actionUrl: "/analytics/inventory",
         metadataJson: JSON.stringify({
           suggestionKey: item.suggestionKey,
           actionType: item.actionType,
           suggestedQty: item.suggestedQty,
+          forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
+          costMissing: item.costMissing ?? false,
           fromStoreName: item.fromStoreName,
           toStoreName: item.toStoreName,
         }),
@@ -879,6 +890,7 @@ export default function InventoryPage() {
       estimatedValue: 0,
       idObjekat: storeId ?? null,
       idDobavljac: null,
+      contextStatus: "loadingContext",
     }, stores, suppliers));
   }
 
@@ -890,37 +902,24 @@ export default function InventoryPage() {
   }
 
   function queueForecastRestock(item: ForecastDto["items"][number]) {
+    if (item.forecast7d == null || item.probabilityOfOOSIn7d == null) {
+      setExportStatus("Forecast signal nema dovoljno evidencije za predlog dopune.");
+      return;
+    }
+
     const row = rows.find((entry) => entry.id === item.skuId && (entry.idObjekat == null || entry.idObjekat === item.storeId));
     if (!row) {
       setExportStatus("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.");
       return;
     }
-
-    const suggestionKey = `forecast-${item.skuId}-${item.storeId}-${item.sizeCode}`;
+    const suggestion = buildForecastRestockSuggestion(row, item, stores, detailData?.daysSinceMovement ?? 0);
     setActionWorkflow((current) => {
       const base = current ?? { generatedAtUtc: "", pendingCount: 0, approvedCount: 0, deferredCount: 0, closedCount: 0, items: [] };
-      if (base.items.some((entry) => entry.suggestionKey === suggestionKey)) return base;
+      if (base.items.some((entry) => entry.suggestionKey === suggestion.suggestionKey)) return base;
       return {
         ...base,
         pendingCount: base.pendingCount + 1,
-        items: [{
-          suggestionKey,
-          actionType: "dopuna",
-          priority: item.probabilityOfOOSIn7d > 0.7 ? "critical" : "high",
-          label: `Predlozena dopuna za ${row.naziv}`,
-          reason: `Forecast 7d je ${item.forecast7d.toFixed(1)} kom, a OOS rizik ${Math.round(item.probabilityOfOOSIn7d * 100)}%.`,
-          status: "pending",
-          artikalId: item.skuId,
-          plu: row.plu,
-          naziv: row.naziv,
-          fromStoreName: null,
-          toStoreName: stores.find((store) => store.storeId === item.storeId)?.storeName ?? row.storeName,
-          suggestedQty: Math.max(1, Math.ceil(item.forecast7d)),
-          estimatedValue: row.unitCost == null ? null : row.unitCost * Math.max(1, Math.ceil(item.forecast7d)),
-          daysSinceMovement: detailData?.daysSinceMovement ?? 0,
-          note: `Automatski dodat iz forecast sekcije za velicinu ${item.sizeCode}.`,
-          updatedAtUtc: new Date().toISOString(),
-        }, ...base.items],
+        items: [suggestion, ...base.items],
       };
     });
     setExportStatus("Forecast signal je dodat u workflow kao signalni predlog dopune.");
@@ -1112,91 +1111,137 @@ export default function InventoryPage() {
       </section>
 
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-contrast">Filteri i akcije</h2>
-              <p className="text-sm text-muted">Pretraži bilans, suzi lokaciju i odmah pokreni report ili štampu.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-xl border border-muted overflow-hidden text-xs font-semibold" role="group" aria-label="Orijentacija štampe">
-                <button
-                  type="button"
-                  aria-pressed={printOrientation === "landscape"}
-                  onClick={() => setPrintOrientation("landscape")}
-                  className={`px-3 py-2 transition-colors duration-150 ${printOrientation === "landscape" ? "bg-[var(--info)] text-white" : "surface-elevated text-contrast hover:bg-[var(--surface-darker)]"}`}
-                  title="Horizontalno (A4 landscape)"
-                >↔ Hor.</button>
-                <button
-                  type="button"
-                  aria-pressed={printOrientation === "portrait"}
-                  onClick={() => setPrintOrientation("portrait")}
-                  className={`px-3 py-2 border-l border-muted transition-colors duration-150 ${printOrientation === "portrait" ? "bg-[var(--info)] text-white" : "surface-elevated text-contrast hover:bg-[var(--surface-darker)]"}`}
-                  title="Vertikalno (A4 portrait)"
-                >↕ Ver.</button>
-              </span>
-              <button type="button" aria-label="Otvori print preview filtriranog izveštaja" onClick={() => void runServerExport("pdf", true)} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Print preview</button>
-              <button type="button" aria-label="Odštampaj prazan obrazac bilansa stanja" onClick={() => void runBlankPrint()} disabled={exportBusy} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-[var(--warning)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Printer size={14} />Prazan obrazac</button>
-              <button type="button" aria-label="Izvezi CSV za trenutni ekran" onClick={exportVisibleCsv} disabled={rows.length === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV ekran</button>
-              <button type="button" aria-label="Izvezi CSV filtrirano" onClick={() => void runServerExport("csv")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />CSV filtrirano</button>
-              <button type="button" aria-label="Izvezi Excel filtrirano" onClick={() => void runServerExport("xlsx")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--success)] transition-all duration-200 hover:border-[var(--success)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileSpreadsheet size={14} />Excel filtrirano</button>
-              <button type="button" aria-label="Izvezi PDF filtrirano" onClick={() => void runServerExport("pdf")} disabled={exportBusy || totalCount === 0} className="inline-flex items-center gap-2 rounded-xl border border-muted bg-[var(--surface-darker)] px-3 py-2 text-xs font-semibold text-[var(--error)] transition-all duration-200 hover:border-[var(--error)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"><FileText size={14} />PDF filtrirano</button>
-              <a href={INVENTORY_ACTIONS_QUEUE_URL} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-[var(--info)] transition-all duration-200 hover:border-[var(--info)] hover:shadow-md">Otvori centralni red akcija</a>
-              <button type="button" aria-label="Osveži stranicu bilansa stanja" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast transition-all duration-200 hover:border-secondary hover:shadow-md"><RefreshCw size={14} />Osveži</button>
-            </div>
-          </div>
+        <AnalyticsControlBar
+          title="Filteri i akcije"
+          description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
+          chips={[
+            {
+              key: "rows",
+              label: "Prikazano",
+              value: `${fmtNumber(rows.length, 0, "0")} od ${fmtNumber(totalCount, 0, "0")} artikala`,
+              tone: "info",
+            },
+            {
+              key: "page",
+              label: "Strana",
+              value: `${fmtNumber(pageNumber, 0, "0")} / ${fmtNumber(totalPages, 0, "0")}`,
+            },
+            ...(riskSortScopeWarning
+              ? [{
+                  key: "risk-sort",
+                  label: "Rizik sort",
+                  value: "Lokalno po strani",
+                  tone: "warning" as const,
+                }]
+              : []),
+          ]}
+          primaryAction={{
+            key: "queue",
+            label: "Otvori centralni red akcija",
+            to: INVENTORY_ACTIONS_QUEUE_URL,
+          }}
+          secondaryActions={[
+            {
+              key: "refresh",
+              label: "Osveži",
+              onClick: () => window.location.reload(),
+              tone: "secondary",
+            },
+          ]}
+          fields={[
+            {
+              key: "search",
+              label: "Pretraga artikala",
+              span: "wide",
+              control: (
+                <input
+                  role="searchbox"
+                  aria-label="Pretraga artikala"
+                  value={searchInput}
+                  onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }}
+                  placeholder="Pretraga po PLU ili nazivu artikla"
+                />
+              ),
+            },
+            {
+              key: "store",
+              label: "Prodavnica",
+              control: (
+                <select
+                  aria-label="Filter po prodavnici"
+                  value={selectedStoreId ?? ""}
+                  onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }}
+                >
+                  <option value="">Sve prodavnice</option>
+                  {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
+                </select>
+              ),
+            },
+            {
+              key: "supplier",
+              label: "Dobavljač",
+              control: (
+                <div className="space-y-2">
+                  <select
+                    aria-label="Filter po dobavljaču"
+                    value={selectedSupplierId ?? ""}
+                    onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }}
+                    disabled={filtersLoading}
+                  >
+                    <option value="">Svi dobavljači</option>
+                    {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
+                  </select>
+                  {supplierFiltersWarning ? (
+                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]">
+                      {supplierFiltersWarning}
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "sort",
+              label: "Sortiranje",
+              control: (
+                <div className="space-y-2">
+                  <select
+                    aria-label="Sortiranje tabele artikala"
+                    value={sortBy}
+                    onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }}
+                  >
+                    <option value="kolicina">Količina opadajuće</option>
+                    <option value="naziv">Naziv A-Z</option>
+                    <option value="vrednost">Vrednost opadajuce</option>
+                    <option value="azuriranje">Poslednje ažuriranje</option>
+                    <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
+                    <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
+                  </select>
+                  {riskSortScopeWarning ? (
+                    <p className="text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status" data-testid="inventory-risk-sort-scope-warning">
+                      {riskSortScopeWarning}
+                    </p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "page-size",
+              label: "Veličina strane",
+              control: (
+                <select
+                  aria-label="Veličina strane tabele artikala"
+                  value={pageSize}
+                  onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
+                </select>
+              ),
+            },
+          ]}
+        />
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
-            <label className="flex items-center gap-3 rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
-              <Search size={16} className="text-[var(--info)]" />
-              <input role="searchbox" aria-label="Pretraga artikala" value={searchInput} onChange={(event) => { setSearchInput(event.target.value); setPageNumber(1); }} placeholder="Pretraga po PLU ili nazivu artikla" className="w-full bg-transparent text-sm text-contrast outline-none placeholder:text-muted focus:outline-none" />
-            </label>
-            <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Prodavnica</span>
-              <select aria-label="Filter po prodavnici" value={selectedStoreId ?? ""} onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
-                <option value="">Sve prodavnice</option>
-                {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
-              </select>
-            </label>
-            <label className={`rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 ${filtersLoading ? 'opacity-60 cursor-not-allowed' : 'hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30'}`}>
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Dobavljač</span>
-              <select aria-label="Filter po dobavljaču" value={selectedSupplierId ?? ""} onChange={(event) => { setSelectedSupplierId(event.target.value ? Number(event.target.value) : null); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={filtersLoading}>
-                <option value="">Svi dobavljači</option>
-                {suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierName}</option>)}
-              </select>
-              {supplierFiltersWarning ? (
-                <p className="mt-2 text-[11px] font-semibold tracking-wide text-[var(--warning)]">
-                  {supplierFiltersWarning}
-                </p>
-              ) : null}
-            </label>
-            <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Sortiranje</span>
-              <select aria-label="Sortiranje tabele artikala" value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
-                <option value="kolicina">Količina opadajuće</option>
-                <option value="naziv">Naziv A-Z</option>
-                <option value="vrednost">Vrednost opadajuce</option>
-                <option value="azuriranje">Poslednje ažuriranje</option>
-                <option value="oosRisk">OOS rizik opadajuce (samo trenutna strana)</option>
-                <option value="overstockRisk">Overstock rizik opadajuce (samo trenutna strana)</option>
-              </select>
-              {riskSortScopeWarning ? (
-                <p className="mt-2 text-[11px] font-semibold tracking-wide text-[var(--warning)]" role="status" data-testid="inventory-risk-sort-scope-warning">
-                  {riskSortScopeWarning}
-                </p>
-              ) : null}
-            </label>
-            <label className="rounded-2xl border border-muted bg-[var(--surface-darker)] px-4 py-3 text-sm text-contrast transition-all duration-200 hover:border-secondary focus-within:border-[var(--focus-ring)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)] focus-within:ring-opacity-30">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Veličina strane</span>
-              <select aria-label="Veličina strane tabele artikala" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageNumber(1); }} className="w-full bg-transparent outline-none focus:outline-none cursor-pointer">
-                {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} redova</option>)}
-              </select>
-            </label>
-          </div>
-
-          {exportStatus ? <div className="rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
-          {error ? <div className="rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
-        </div>
+        {exportStatus ? <div className="mt-3 rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
+        {error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
       </section>
 
       <div className="space-y-1">
@@ -1230,6 +1275,12 @@ export default function InventoryPage() {
         <p className="text-sm text-muted">Signalizacija rizika praznih polica, prekomernih zaliha i transfer potencijala.</p>
       </div>
 
+      {signalSearchLineageNote ? (
+        <div className="rounded-2xl border border-border bg-surface-darker px-4 py-3 text-sm text-muted" data-testid="signal-lineage-note">
+          {signalSearchLineageNote}
+        </div>
+      ) : null}
+
       <div className="grid gap-5 xl:grid-cols-2">
         <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Alerts nisu dostupni. Osveži stranicu.</div>}>
           <InventoryAlertsFeed alerts={alerts} alertsLoading={alertsLoading} alertsError={alertsError} alertSeverityFilter={alertSeverityFilter} onSeverityFilterChange={setAlertSeverityFilter} displayCount={ALERTS_DISPLAY_COUNT} onOpenSizeCurve={setSizeCurveSkuId} onOpenDetail={openDetailBySku} />
@@ -1241,7 +1292,7 @@ export default function InventoryPage() {
 
       {/* Rebalancing & Transfer Suggestions */}
       <ErrorBoundary fallback={<div className="rounded-[28px] border border-error bg-surface-darker p-5 text-sm text-error">Rebalancing sugestije nisu dostupne. Osveži stranicu.</div>}>
-        <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rebalanceError={rebalanceError} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} onCompareStores={compareStoresFromRebalance} />
+        <RebalancingTable rebalance={rebalance} rebalanceLoading={rebalanceLoading} rebalanceError={rebalanceError} rows={rows} stores={stores} displayCount={REBALANCE_DISPLAY_COUNT} scopeLabel={rebalanceScopeLabel} onCompareStores={compareStoresFromRebalance} />
       </ErrorBoundary>
 
       <div className="space-y-1">

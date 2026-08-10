@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { rest } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
+import * as analyticsApi from "../../services/analyticsApi";
 import AnalyticsDashboard from "../AnalyticsDashboard";
 
 vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
@@ -101,5 +102,103 @@ describe("AnalyticsDashboard control bar", () => {
       "href",
       "/analytics/data-quality",
     );
+  });
+
+  it("renders the executive command center with trust and risk highlights", async () => {
+    vi.spyOn(analyticsApi, "getDashboardBootstrap").mockResolvedValue({
+      summary: {
+        totalRevenue: 12345,
+        totalTransactions: 12,
+        totalUnits: 8,
+      },
+      inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+      dailySales: [],
+      categoryData: [],
+      genderData: [],
+      supplierData: [],
+      supplierOptions: [{ supplierId: 77, supplierName: "Alfa Shoes" }],
+      weekdayData: [],
+      hourData: [],
+      paymentData: [],
+      quickInsights: null,
+      transactionStats: null,
+      advanced: null,
+      topAdvanced: null,
+      validationCompleteness: null,
+      validationFreshness: null,
+      validationLostSales: null,
+      executive: {
+        dataQualitySummary: {
+          missingSupplierCount: 2,
+          missingCostCount: 1,
+          insufficientSignalCount: 1,
+          ignoredRowsCount: 0,
+          zeroRevenueRowsCount: 0,
+          freshnessStatus: "warning",
+        },
+        inventoryDangerValueRsd: 1234,
+        totalMarginContributionRsd: 4567,
+        topMarginCategories: [],
+        topMarginProducts: [],
+        topSuppliers: [],
+        negativeSignals: [],
+      },
+      decisionActions: [
+        {
+          sourceType: "dashboard",
+          priority: "P1",
+          title: "Otvori inventar",
+          description: "Prioritetna operativna akcija.",
+          reason: "Rizična zaliha zahteva pregled.",
+          statusReason: "Signal je validiran.",
+          recommendationStatus: "READY",
+          expectedImpact: "12.000 RSD",
+          impactEstimateRsd: 12000,
+          confidencePct: 0.92,
+          reliabilityPct: 0.88,
+          recommendationAllowed: true,
+          dataQualityStatus: "good",
+          actionUrl: "/analytics/inventory",
+          metadata: {},
+          link: "/analytics/inventory",
+          linkLabel: "Otvori inventar",
+        },
+      ],
+      errors: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    } as never);
+    vi.spyOn(analyticsApi, "getStores").mockResolvedValue([{ storeId: 5, storeName: "Delta" }] as never);
+    vi.spyOn(analyticsApi, "getAnalyticsRefreshStatus").mockResolvedValue({
+      isRunning: false,
+      currentStep: null,
+      dataFreshnessStatus: "good",
+      lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
+      jobs: [],
+    } as never);
+    vi.spyOn(analyticsApi, "checkAnalyticsHealth").mockResolvedValue({
+      status: "ok",
+      tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
+      message: "ok",
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("heading", { name: "U 30 sekundi: prodaja, marža, rizici i prioriteti" });
+    const commandCenter = screen.getByTestId("analytics-command-center");
+
+    expect(within(commandCenter).getByRole("heading", { name: "U 30 sekundi: prodaja, marža, rizici i prioriteti" })).toBeInTheDocument();
+    expect(within(commandCenter).getByRole("heading", { name: "Ključni KPI strip" })).toBeInTheDocument();
+    expect(within(commandCenter).getByRole("heading", { name: "Šta treba uraditi ove nedelje?" })).toBeInTheDocument();
+    expect(within(commandCenter).getByRole("link", { name: "Centralne akcije" })).toHaveAttribute(
+      "href",
+      "/analytics/actions",
+    );
+    expect(within(commandCenter).getByRole("heading", { name: "Kvalitet podataka i svežina" })).toBeInTheDocument();
+    expect(within(commandCenter).getByRole("heading", { name: "Gde gubimo novac?" })).toBeInTheDocument();
+    expect(within(commandCenter).getByText(/Kapital blokiran u rizičnoj i sporoj zalihi\./i)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 ﻿import { ArrowRightLeft } from "lucide-react";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
-import { formatCurrency, getRebalanceUrgencyTone } from "./inventoryUtils";
+import { fmtNumber } from "../../utils/analyticsFormatters";
+import { formatCurrency, formatSignalCountBadge, getRebalanceUrgencyTone } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
 
 type RebalancingTableProps = {
@@ -10,6 +11,7 @@ type RebalancingTableProps = {
   rows: InventoryRow[];
   stores: StoreOption[];
   displayCount: number;
+  scopeLabel: string;
   onCompareStores: (fromStoreId: number, toStoreId: number) => void;
 };
 
@@ -20,6 +22,7 @@ export function RebalancingTable({
   rows,
   stores,
   displayCount,
+  scopeLabel,
   onCompareStores,
 }: RebalancingTableProps) {
   return (
@@ -32,10 +35,13 @@ export function RebalancingTable({
           <div>
             <h2 className="text-lg font-semibold text-foreground">Pametna redistribucija</h2>
             <p className="text-sm text-[var(--text-primary)]">Predlozi za redistribuciju robe između lokacija. Sortirano po urgentnosti i očekivanim uštedama.</p>
+            <div className="mt-2 inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
+              Opseg: {scopeLabel}
+            </div>
           </div>
         </div>
         <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
-          {rebalanceLoading ? "Učitavam..." : `${rebalance?.totalCount ?? 0} predloga`}
+          {rebalanceLoading ? "Učitavam..." : formatSignalCountBadge(rebalance?.returnedCount ?? rebalance?.totalCount, rebalance?.totalMatchingCount, "predloga", rebalance?.isTruncated)}
         </div>
       </div>
 
@@ -49,7 +55,7 @@ export function RebalancingTable({
         </div>
       ) : (rebalance.items ?? []).length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          Nema preporučenih redistribucija za trenutne filtere.
+          Nema preporučenih redistribucija {scopeLabel}.
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border-default)]">
@@ -73,19 +79,21 @@ export function RebalancingTable({
                   const name = rows.find((row) => row.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
                   const fromStore = stores.find((store) => store.storeId === item.fromStoreId)?.storeName ?? `#${item.fromStoreId}`;
                   const toStore = stores.find((store) => store.storeId === item.toStoreId)?.storeName ?? `#${item.toStoreId}`;
+                  const urgencyLabel = item.urgency === "urgent" ? "Hitno" : item.urgency === "recommended" ? "Preporučeno" : item.urgency === "optional" ? "Opciono" : "Nepoznato";
+                  const urgencyTone = item.urgency ? getRebalanceUrgencyTone(item.urgency) : "border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]";
 
                   return (
                     <tr key={`${item.skuId}-${item.fromStoreId}-${item.toStoreId}-${item.sizeCode}-${index}`} className={`border-t border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--surface-light)] ${item.urgency === "urgent" ? "border-l-4 border-l-[var(--border-default)]" : ""}`}>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getRebalanceUrgencyTone(item.urgency)}`}>
-                          {item.urgency === "urgent" ? "Hitno" : item.urgency === "recommended" ? "Preporučeno" : "Opciono"}
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${urgencyTone}`}>
+                          {urgencyLabel}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[var(--text-primary)]">{fromStore}</td>
                       <td className="px-4 py-3 text-[var(--text-primary)]">{toStore}</td>
                       <td className="px-4 py-3 font-semibold text-foreground">{name}</td>
                       <td className="px-4 py-3 text-[var(--text-primary)]">{item.sizeCode}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">{item.recommendedQty}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">{fmtNumber(item.recommendedQty)}</td>
                       <td className="px-4 py-3 text-right text-[var(--text-primary)]">{formatCurrency(item.expectedSavedSales)}</td>
                       <td className="max-w-[220px] truncate px-4 py-3 text-[var(--text-primary)]">{item.reason}</td>
                       <td className="px-4 py-3 text-right">

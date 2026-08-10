@@ -18,28 +18,28 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ64 | WAITING | inventory-snapshot-null-evidence | Prevent snapshot nulls from becoming fake zero/info/false |
-| RQ65 | WAITING | inventory-signal-total-count | Distinguish returned rows from total matching rows/truncation |
-| RQ66 | WAITING | inventory-placeholder-zero | Stop synthetic detail placeholders from creating fake zero baseline |
-| RQ67 | WAITING | forecast-workflow-value-trust | Avoid zero-value forecast workflow suggestions when cost missing |
-| RQ68 | WAITING | inventory-signal-search-lineage | Align/search-label inventory signal panels with active filters |
-| RQ69 | WAITING | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
-| RQ70 | WAITING | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
-| RQ71 | WAITING | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
+| RQ64 | DONE | inventory-snapshot-null-evidence | Prevent snapshot nulls from becoming fake zero/info/false |
+| RQ65 | DONE | inventory-signal-total-count | Distinguish returned rows from total matching rows/truncation |
+| RQ66 | DONE | inventory-placeholder-zero | Stop synthetic detail placeholders from creating fake zero baseline |
+| RQ67 | DONE | forecast-workflow-value-trust | Avoid zero-value forecast workflow suggestions when cost missing |
+| RQ68 | DONE | inventory-signal-search-lineage | Align/search-label inventory signal panels with active filters |
+| RQ69 | DONE | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
+| RQ70 | DONE | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
+| RQ71 | DONE | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
 | RQ89 | READY | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
 
 ---
 
 ## RQ64 - Inventory snapshot null evidence must not become fake zero/info/false
 
-Status: WAITING
-Ready after: RQ60 or explicit reprioritization
+Status: DONE
+Ready after: n/a
 Priority: P0
 Type: backend-contract/tests
 Feature family: inventory-snapshot-null-evidence
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ64-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): preserve missing snapshot evidence`
 
 ### Why
@@ -60,6 +60,39 @@ Risk class: likely fake-confidence bug.
 - Missing numeric evidence must be nullable or carry `sourceStatus/evidenceStatus`.
 - Missing severity must not become normal `info` without a warning/reason.
 - Missing boolean evidence must not become healthy `false` without `evidenceStatus=missing`.
+
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1` (HEAD at validation time)
+- Changed files:
+  - `Application/Analytics/Queries/DbDataReaderNullableExtensions.cs`
+  - `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+  - `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastQuery.cs`
+  - `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`
+  - `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsQuery.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`
+  - `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`
+  - `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsQuery.cs`
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+  - `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
+  - `Klijent/clientapp/src/components/inventory/SizeCurveVisualization.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter "InventorySnapshotContractTests"`: pass
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: remaining RQ65-RQ71 items still need follow-up; this task only resolves fake-zero / fake-green evidence handling.
+- Next: RQ65 - Inventory signal total count and truncation semantics
 
 ### Scope only
 
@@ -92,14 +125,14 @@ Risk class: likely fake-confidence bug.
 
 ## RQ65 - Inventory signal total count and truncation semantics
 
-Status: WAITING
+Status: DONE
 Ready after: RQ64 or explicit unblocking
 Priority: P1
 Type: backend-contract/frontend-tests
 Feature family: inventory-signal-total-count
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ65-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): expose signal result truncation`
 
 ### Why
@@ -142,18 +175,48 @@ Risk class: likely count/truncation semantics bug.
 
 - UI no longer implies limited result count is the total matching signal count.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1`
+- Changed files:
+  - `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`
+  - `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsQuery.cs`
+  - `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+  - `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastQuery.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`
+  - `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`
+  - `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsQuery.cs`
+  - `Api.Tests/InventorySnapshotContractTests.cs`
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+  - `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
+  - `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter "InventorySnapshotContractTests"`: pass
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: `TotalCount` is still a compatibility field; consumers should move to `ReturnedCount` and `TotalMatchingCount` for exact semantics.
+- Next: RQ66 - Synthetic inventory detail placeholder fake-zero baseline
+
 ---
 
 ## RQ66 - Synthetic inventory detail placeholder fake-zero baseline
 
-Status: WAITING
+Status: DONE
 Ready after: RQ60 or explicit unblocking
 Priority: P1
 Type: frontend-tests
 Feature family: inventory-placeholder-zero
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ66-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): avoid zero placeholder detail rows`
 
 ### Why
@@ -187,18 +250,35 @@ Commit suggestion: `fix(inventory): avoid zero placeholder detail rows`
 
 - Synthetic detail placeholders cannot be mistaken for true zero inventory.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1`
+- Changed files:
+  - `Klijent/clientapp/src/components/inventory/SKUDetailModal.spec.tsx`
+  - `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx`
+  - `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+  - `Klijent/clientapp/src/components/inventory/types.ts`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- Checks:
+  - `npm run test -- --run src/components/inventory/SKUDetailModal.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: placeholder rows still exist transiently while detail data loads, but the modal no longer renders them as a trusted zero baseline.
+- Next: RQ67 - Forecast workflow value trust
+
 ---
 
 ## RQ67 - Forecast workflow value trust
 
-Status: WAITING
+Status: DONE
 Ready after: RQ60/RQ64 or explicit unblocking
 Priority: P1
 Type: frontend/action-contract/tests
 Feature family: forecast-workflow-value-trust
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ67-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): mark forecast workflow value reliability`
 
 ### Why
@@ -227,18 +307,37 @@ Commit suggestion: `fix(inventory): mark forecast workflow value reliability`
 
 - Forecast workflow suggestions do not show missing cost as zero value.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1` (HEAD at validation time)
+- Changed files:
+  - `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.spec.tsx`
+  - `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: only the forecast workflow path now distinguishes missing cost from known value; other workflow sources remain unchanged.
+- Next: `RQ68 - Inventory signal search/filter lineage`
+
 ---
 
 ## RQ68 - Inventory signal search/filter lineage
 
-Status: WAITING
+Status: DONE
 Ready after: RQ65 or explicit unblocking
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: inventory-signal-search-lineage
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ68-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): clarify signal search filter lineage`
 
 ### Why
@@ -268,18 +367,36 @@ Choose one:
 
 - User cannot believe signal panels are filtered by search when they are not.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1` (HEAD at validation time)
+- Changed files:
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+  - `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: signal panels still scope data by store/supplier only; the UI now makes that scope explicit instead of implying text-search lineage.
+- Next: `RQ69 - Rebalance store filter lineage`
+
 ---
 
 ## RQ69 - Rebalance selected-store filter lineage
 
-Status: WAITING
+Status: DONE
 Ready after: RQ68 or explicit unblocking
 Priority: P1
 Type: frontend/API-contract/tests
 Feature family: rebalance-store-filter-lineage
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ69-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): align rebalance store scope`
 
 ### Why
@@ -310,18 +427,38 @@ When selected store filter is active, choose and document one behavior:
 
 - Rebalance panel does not silently ignore selected inventory store filter.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1`
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
+  - `Klijent/clientapp/src/components/inventory/RebalancingTable.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/components/inventory/RebalancingTable.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: rebalance suggestions now follow the selected store scope through `fromStoreId`; clear the store filter to see global suggestions.
+- Next: `RQ70 - Forecast restock suggested quantity semantics`
+
 ---
 
 ## RQ70 - Forecast restock suggested quantity semantics
 
-Status: WAITING
+Status: DONE
 Ready after: RQ67 or explicit unblocking
 Priority: P2
 Type: frontend-contract/tests
 Feature family: forecast-suggested-qty-semantics
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ70-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `docs(inventory): clarify forecast suggested quantity semantics`
 
 ### Why
@@ -349,18 +486,41 @@ Forecast panel creates workflow suggestion with `suggestedQty = ceil(forecast7d)
 
 - Forecast suggested quantity cannot be mistaken for a confirmed purchase/replenishment order.
 
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1`
+- Changed files:
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+  - `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.spec.tsx`
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+  - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.spec.tsx`
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+- Checks:
+  - `npm run test -- --run src/components/inventory/DemandForecastPanel.spec.tsx`: pass
+  - `npm run test -- --run src/components/inventory/ActionWorkflowPanel.spec.tsx`: pass
+  - `npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: forecast restock suggestions are still demand signals, not operational reorder quantities; users should confirm stock baseline before purchase decisions.
+- Next: `RQ71 - Size-curve boolean evidence status`
+
 ---
 
 ## RQ71 - Size-curve boolean evidence status
 
-Status: WAITING
+Status: DONE
 Ready after: RQ64 or explicit unblocking
 Priority: P1
 Type: backend-contract/tests
 Feature family: size-curve-boolean-evidence
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ71-<agent>.lock.md`
+Local lock: none
 Commit suggestion: `fix(inventory): preserve size curve boolean evidence`
 
 ### Why
@@ -387,6 +547,27 @@ Size-curve handler coalesces boolean nulls to false. Missing evidence can look l
 ### Acceptance
 
 - Size-curve missing evidence cannot be rendered as healthy run structure.
+
+### Note
+
+- Date: 2026-08-10
+- Commit SHA: `5db83e1`
+- Changed files:
+  - `Api.Tests/InventorySnapshotContractTests.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+  - `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`
+  - `Klijent/clientapp/src/components/inventory/SizeCurveVisualization.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter "InventorySnapshotContractTests"`: pass
+  - `dotnet build`: pass
+  - `npm run test -- --run src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`: pass
+  - `npm run check:analytics-guardrails`: pass
+  - `npm run build`: pass
+- Risk: chart rendering still depends on container measurement in test/runtime contexts, but missing-evidence status now stays explicit instead of collapsing into a healthy false.
+- Next: `RQ89 - Inventory list route contract`
 
 ---
 

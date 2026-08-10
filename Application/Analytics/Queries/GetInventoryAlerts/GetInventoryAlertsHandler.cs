@@ -1,5 +1,7 @@
 using System.Data;
+using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
+using Application.Analytics.Queries;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -37,21 +39,23 @@ public sealed class GetInventoryAlertsHandler
                 sku_id,
                 store_id,
                 size_code,
-                coalesce(severity, 'info') as severity,
+                severity,
                 coalesce(title, 'Alert') as title,
                 coalesce(message, '') as message,
-                cast(coalesce(confidence_score, 0) as numeric(18,4)) as confidence_score
+                confidence_score,
+                count(*) over() as total_matching_count
             from analytics_inventory_alert_snapshot
             where (@storeId is null or store_id = @storeId)
               and (@supplierId is null or supplier_id = @supplierId)
               and (@severity is null or severity = @severity)
             order by
-                case coalesce(severity, 'info')
+                case severity
                     when 'critical' then 0
                     when 'warning' then 1
-                    else 2
+                    when 'info' then 2
+                    else 3
                 end,
-                confidence_score desc
+                confidence_score desc nulls last
             limit @top;
             """;
 
@@ -70,17 +74,29 @@ public sealed class GetInventoryAlertsHandler
                     SkuId: reader.GetInt32(1),
                     StoreId: reader.GetInt32(2),
                     SizeCode: reader.IsDBNull(3) ? null : reader.GetString(3),
-                    Severity: reader.GetString(4),
+                    Severity: reader.GetNullableString(4),
                     Title: reader.GetString(5),
                     Message: reader.GetString(6),
-                    ConfidenceScore: reader.GetDecimal(7)));
+                    ConfidenceScore: reader.GetNullableDecimal(7)));
             }
+
+            var totalMatchingCount = items.Count == 0
+                ? 0
+                : Convert.ToInt32(reader.GetInt64(8));
+            var returnedCount = items.Count;
+
+            var hasMissingEvidence = items.Any(item => item.Severity is null || item.ConfidenceScore is null);
 
             return new InventoryAlertListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
-                TotalCount: items.Count,
+                TotalCount: returnedCount,
+                ReturnedCount: returnedCount,
+                TotalMatchingCount: totalMatchingCount,
+                IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
-                Warning: items.Count == 0 ? "Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere." : null,
+                Warning: items.Count == 0
+                    ? "Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere."
+                    : hasMissingEvidence ? "Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
                 Items: items);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
@@ -89,6 +105,9 @@ public sealed class GetInventoryAlertsHandler
             return new InventoryAlertListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
                 TotalCount: 0,
+                ReturnedCount: 0,
+                TotalMatchingCount: 0,
+                IsTruncated: false,
                 SnapshotAvailable: false,
                 Warning: "Inventory alert snapshot jos nije dostupan.",
                 Items: []);

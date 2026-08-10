@@ -11,6 +11,9 @@ describe("DemandForecastPanel guardrails", () => {
         forecast={{
           generatedAtUtc: "2026-06-22T10:00:00Z",
           totalCount: 1,
+          returnedCount: 1,
+          totalMatchingCount: 2,
+          isTruncated: true,
           snapshotAvailable: true,
           warning: null,
           items: [
@@ -74,6 +77,7 @@ describe("DemandForecastPanel guardrails", () => {
     );
 
     expect(screen.getByRole("heading", { name: /Procena potra/i })).toBeInTheDocument();
+    expect(screen.getByText("Prikazano 1 od 2 SKU")).toBeInTheDocument();
     expect(screen.getByText(/signalni indikatori, ne automatski nalozi/i)).toBeInTheDocument();
     expect(screen.getByText(/Predlozi dopune su procene zasnovane na forecast signalu/i)).toBeInTheDocument();
 
@@ -189,5 +193,80 @@ describe("DemandForecastPanel guardrails", () => {
 
     expect(screen.getByText("Model A - prava prodavnica")).toBeInTheDocument();
     expect(screen.queryByText("Model A - pogresna prodavnica")).not.toBeInTheDocument();
+  });
+
+  it("shows missing forecast evidence as N/A and disables the restock action", () => {
+    const onSuggestRestock = vi.fn();
+
+    render(
+      <DemandForecastPanel
+        forecast={{
+          generatedAtUtc: "2026-06-22T10:00:00Z",
+          totalCount: 1,
+          snapshotAvailable: true,
+          warning: "Forecast snapshot sadrzi redove sa nepotpunom signalnom evidencijom.",
+          items: [
+            {
+              skuId: 501,
+              storeId: 1,
+              sizeCode: "42",
+              forecast7d: null,
+              forecast14d: null,
+              forecast28d: null,
+              probabilityOfOOSIn7d: 0.82,
+              overstockRisk: 0.12,
+              confidenceScore: null,
+              explanation: "Forecast nema dovoljno evidencije.",
+            },
+          ],
+        }}
+        forecastLoading={false}
+        forecastError={null}
+        rows={[
+          {
+            id: 501,
+            naziv: "Model A",
+            plu: "SKU-501",
+            kolicina: 4,
+            minimalnaKolicina: 2,
+            nabavnaCena: 1000,
+            estimatedValue: 4000,
+            idObjekat: 1,
+            idDobavljac: 7,
+            supplierName: "Dobavljac A",
+            storeName: "Prodavnica 1",
+            quantity: 4,
+            minimum: 2,
+            reorderGap: 0,
+            stockState: "healthy",
+            stockStateLabel: "Stabilno",
+            estimatedValueAmount: 4000,
+            unitCost: 1000,
+            coverageRatio: 2,
+            stockCoverDays: 4,
+            stockCoverStatus: "low_cover",
+            stockCoverStatusLabel: "Niska pokrivenost",
+            sellThroughRatio: 0.45,
+            sellThroughStatus: "warning",
+            sellThroughStatusLabel: "Sell-through upozorenje",
+            signalConfidencePct: 76,
+            recommendationAllowed: true,
+            signalText: "Prati signal",
+            dataQualityStatus: "warning",
+            reasonCodes: [],
+          },
+        ]}
+        stores={[{ storeId: 1, storeName: "Prodavnica 1" }]}
+        oosThreshold={0.25}
+        overstockThreshold={0.5}
+        oosDisplayCount={5}
+        overstockDisplayCount={5}
+        onSuggestRestock={onSuggestRestock}
+      />,
+    );
+
+    expect(screen.getByText("7d: N/A")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Predloži signal dopune za SKU 501 veličinu 42/i })).toBeDisabled();
+    expect(screen.getByText(/nepotpunom signalnom evidencijom/i)).toBeInTheDocument();
   });
 });

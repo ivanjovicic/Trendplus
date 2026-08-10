@@ -14,18 +14,21 @@ public sealed record InventoryForecastDto(
     int SkuId,
     int StoreId,
     string SizeCode,
-    decimal Forecast7d,
-    decimal Forecast14d,
-    decimal Forecast28d,
-    decimal ProbabilityOfOOSIn7d,
-    decimal OverstockRisk,
-    decimal ConfidenceScore,
+    decimal? Forecast7d,
+    decimal? Forecast14d,
+    decimal? Forecast28d,
+    decimal? ProbabilityOfOOSIn7d,
+    decimal? OverstockRisk,
+    decimal? ConfidenceScore,
     string Explanation
 );
 
 public sealed record InventoryForecastListDto(
     DateTime GeneratedAtUtc,
     int TotalCount,
+    int ReturnedCount,
+    int TotalMatchingCount,
+    bool IsTruncated,
     bool SnapshotAvailable,
     string? Warning,
     IReadOnlyList<InventoryForecastDto> Items

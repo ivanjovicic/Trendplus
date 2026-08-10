@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import InventoryPage from "../InventoryPage";
 
 const getAnalyticsActionSourceStatusesMock = vi.fn();
@@ -116,7 +117,11 @@ describe("InventoryPage queue status sync", () => {
   });
 
   it("uses batch source status endpoint for visible inventory rows", async () => {
-    render(<InventoryPage />);
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalled();
@@ -131,62 +136,112 @@ describe("InventoryPage queue status sync", () => {
     );
   });
 
-  it("keeps queued inventory suggestions visible when source status lookup fails", async () => {
-    const refreshedInventoryList = {
-      items: [
-        {
-          id: 501,
-          naziv: "Artikal A",
-          plu: "PLU-501",
-          kolicina: 10,
-          minimalnaKolicina: 3,
-          nabavnaCena: 100,
-          estimatedValue: 1000,
-          idObjekat: 1,
-          idDobavljac: null,
-          stockCoverDays: 4,
-          stockCoverStatus: "low_cover",
-          sellThroughRatio: 0.5,
-          sellThroughStatus: "good",
-        },
-      ],
-      totalCount: 1,
-      pageNumber: 1,
-      pageSize: 50,
-      meta: { success: true, dataQualityStatus: "good" },
-    };
-    const refreshedActionWorkflow = {
-      generatedAtUtc: "2026-05-26T12:00:00Z",
-      pendingCount: 0,
-      approvedCount: 0,
-      deferredCount: 0,
-      closedCount: 0,
-      items: [],
-      meta: { success: true, dataQualityStatus: "good" },
-    };
-
-    getAnalyticsActionSourceStatusesMock
-      .mockImplementationOnce(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
-        items: items.map(({ sourceKey }) => ({ sourceKey, exists: true })),
-      }))
-      .mockRejectedValueOnce(new Error("status lookup failed"));
-    getInventoryListMock.mockImplementationOnce(async () => refreshedInventoryList);
-    getInventoryActionSuggestionsMock.mockImplementationOnce(async () => refreshedActionWorkflow);
-
-    render(<InventoryPage />);
+  it("passes the selected store into rebalance suggestions", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByTestId("inventory-items-table").getAttribute("data-queued")).toBe("true");
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalled();
     });
+
+    getRebalanceSuggestionsMock.mockClear();
 
     fireEvent.change(screen.getByLabelText("Filter po prodavnici"), { target: { value: "1" } });
 
     await waitFor(() => {
-      expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalledTimes(2);
+      expect(getRebalanceSuggestionsMock).toHaveBeenCalledWith(expect.objectContaining({ fromStoreId: 1 }));
     });
+  });
+
+  it("keeps queued inventory suggestions visible when source status lookup fails", async () => {
+    const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const refreshedInventoryList = {
+        items: [
+          {
+            id: 501,
+            naziv: "Artikal A",
+            plu: "PLU-501",
+            kolicina: 10,
+            minimalnaKolicina: 3,
+            nabavnaCena: 100,
+            estimatedValue: 1000,
+            idObjekat: 1,
+            idDobavljac: null,
+            stockCoverDays: 4,
+            stockCoverStatus: "low_cover",
+            sellThroughRatio: 0.5,
+            sellThroughStatus: "good",
+          },
+        ],
+        totalCount: 1,
+        pageNumber: 1,
+        pageSize: 50,
+        meta: { success: true, dataQualityStatus: "good" },
+      };
+      const refreshedActionWorkflow = {
+        generatedAtUtc: "2026-05-26T12:00:00Z",
+        pendingCount: 0,
+        approvedCount: 0,
+        deferredCount: 0,
+        closedCount: 0,
+        items: [],
+        meta: { success: true, dataQualityStatus: "good" },
+      };
+
+      getAnalyticsActionSourceStatusesMock
+        .mockImplementationOnce(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
+          items: items.map(({ sourceKey }) => ({ sourceKey, exists: true })),
+        }))
+        .mockRejectedValue(new Error("status lookup failed"));
+      getInventoryListMock.mockImplementationOnce(async () => refreshedInventoryList);
+      getInventoryActionSuggestionsMock.mockImplementationOnce(async () => refreshedActionWorkflow);
+
+      render(
+        <MemoryRouter>
+          <InventoryPage />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(getAnalyticsActionSourceStatusesMock).toHaveBeenCalled();
+      });
+
+      fireEvent.change(screen.getByRole("searchbox", { name: "Pretraga artikala" }), { target: { value: "Artikal" } });
+
+      await waitFor(() => {
+        expect(getAnalyticsActionSourceStatusesMock.mock.calls.length).toBeGreaterThan(1);
+      });
+
+      expect(screen.getByTestId("inventory-items-table")).toBeInTheDocument();
+    } finally {
+      consoleWarnSpy.mockRestore();
+    }
+  });
+
+  it("renders the shared inventory control surface with explicit local-risk labeling", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByTestId("inventory-items-table").getAttribute("data-queued")).toBe("true");
+      expect(screen.getByTestId("analytics-control-bar")).toBeInTheDocument();
     });
+
+    expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter po prodavnici")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter po dobavljaču")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sortiranje tabele artikala")).toBeInTheDocument();
+    expect(screen.getByLabelText("Veličina strane tabele artikala")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otvori centralni red akcija" })).toHaveAttribute("href", "/analytics/actions?sourceType=inventory");
+    expect(screen.getByRole("button", { name: "Osveži" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /OOS rizik opadajuce \(samo trenutna strana\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Overstock rizik opadajuce \(samo trenutna strana\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Izvoz i raspored izveštaja/i })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 ﻿import { AlertTriangle } from "lucide-react";
 import type { InventoryAlertListDto } from "../../types/analytics";
-import { getAlertSeverityTone } from "./inventoryUtils";
+import { fmtPctFromRatio } from "../../utils/analyticsFormatters";
+import { formatSignalCountBadge, getAlertSeverityTone } from "./inventoryUtils";
 
 type InventoryAlertsFeedProps = {
   alerts: InventoryAlertListDto | null;
@@ -23,7 +24,7 @@ export function InventoryAlertsFeed({
   onOpenSizeCurve,
   onOpenDetail,
 }: InventoryAlertsFeedProps) {
-  const filteredAlerts = (alerts?.items ?? []).filter((alert) => !alertSeverityFilter || alert.severity === alertSeverityFilter);
+  const filteredAlerts = (alerts?.items ?? []).filter((alert) => !alertSeverityFilter || (alert.severity ?? "") === alertSeverityFilter);
 
     return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
@@ -50,7 +51,7 @@ export function InventoryAlertsFeed({
             </button>
           ))}
           <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted">
-            {alertsLoading ? "..." : `${alerts?.totalCount ?? 0} ukupno`}
+            {alertsLoading ? "..." : formatSignalCountBadge(alerts?.returnedCount ?? alerts?.totalCount, alerts?.totalMatchingCount, "alerta", alerts?.isTruncated)}
           </div>
         </div>
       </div>
@@ -69,11 +70,11 @@ export function InventoryAlertsFeed({
           {filteredAlerts.slice(0, displayCount).map((alert, index) => (
             <article key={`${alert.alertType}-${alert.skuId}-${alert.sizeCode ?? "all"}-${index}`} onClick={() => onOpenDetail(alert.skuId, alert.storeId, alert.title)} className={`cursor-pointer rounded-2xl border border-border bg-surface p-4 ${alert.severity === "critical" ? "inventory-alert-critical" : ""}`}>
               <div className="flex items-start justify-between gap-3">
-                <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getAlertSeverityTone(alert.severity)}`}>
-                  {alert.severity === "critical" ? "Kritično" : alert.severity === "warning" ? "Upozorenje" : "Info"}
+                <div className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${alert.severity ? getAlertSeverityTone(alert.severity) : "border-dashed border-border bg-surface text-muted"}`}>
+                  {alert.severity === "critical" ? "Kritično" : alert.severity === "warning" ? "Upozorenje" : alert.severity === "info" ? "Info" : "Nepoznato"}
                 </div>
                 <div className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-                  {Math.round(alert.confidenceScore * 100)}%
+                  {fmtPctFromRatio(alert.confidenceScore)}
                 </div>
               </div>
               <div className="mt-3 text-sm font-semibold text-foreground">{alert.title}</div>
@@ -91,7 +92,7 @@ export function InventoryAlertsFeed({
             </article>
           ))}
           {filteredAlerts.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Nema alertova za izabrani filter.</div>
+            <div className="col-span-full rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Nema alertova za izabranu prodavnicu i dobavljača.</div>
           ) : null}
         </div>
       )}

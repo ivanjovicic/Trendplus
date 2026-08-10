@@ -3,7 +3,7 @@
 Created: 2026-08-05
 Repository: `ivanjovicic/Trendplus`
 Queue purpose: introduce tenant isolation in reviewable phases while preserving the current safe dedicated-customer pilot model.
-Current READY prompt: `MT01`
+Current READY prompt: `none`
 
 ## Global routing
 
@@ -51,13 +51,13 @@ The safe fallback is a dedicated deployment per customer.
 
 ## MT01 - Add the canonical TenantId and tenant-context contract seam
 
-Status: READY
+Status: DONE
 Priority: P1 now; P0 prerequisite before shared SaaS
 Type: application contract/tests/docs
 Feature family: tenant-context-contract
 Parallel-safe: yes, when no task owns the exact Application tenancy/test/doc paths
-Owner: unassigned
-Local lock: `.ai/task-locks/MT01-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(tenancy): add tenant context contract`
 
 ### Why
@@ -176,6 +176,29 @@ node scripts/check-prompt-queues.mjs
 - focused tests document value/context semantics;
 - contract documentation explicitly rejects StoreId/user/header as ownership authority;
 - later prompts can depend on exact types rather than reinventing tenancy primitives.
+
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `Application/Common/Tenancy/TenantId.cs`
+  - `Application/Common/Tenancy/ITenantContext.cs`
+  - `Api.Tests/TenantContextContractTests.cs`
+  - `docs/architecture/TENANT_CONTEXT_CONTRACT.md`
+  - `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~TenantContextContractTests` - pass (6/6)
+  - `dotnet build Application/Application.csproj --configuration Release` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `git diff --check` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+- Notes:
+  - Canonical `TenantId` rejects `Guid.Empty`; string form is GUID `D`.
+  - Unresolved `ITenantContext` throws on `TenantId` access; no DI/runtime registration added.
+  - Contract doc rejects StoreId/user/header as ownership authority.
+- Remaining:
+  - `MT02` stays WAITING until owner approves identity/membership source or single-tenant API-key binding.
 
 ### Stop conditions
 

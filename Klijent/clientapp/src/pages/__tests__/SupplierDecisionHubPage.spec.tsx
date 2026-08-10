@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import SupplierDecisionHubPage from "../SupplierDecisionHubPage";
@@ -136,6 +136,7 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
     expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Trend pune cene/i).length).toBeGreaterThan(0);
+    expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
   });
 
   it("loads every ranking page before deriving table and KPI data", async () => {
@@ -322,5 +323,18 @@ describe("SupplierDecisionHubPage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
 
     expect((await screen.findAllByText(/backend nije dostavio confidence\/reliability signal/i)).length).toBeGreaterThan(0);
+  });
+
+  it("uses the shared premium table shell and numeric alignment on the ranking table", async () => {
+    installFetchMock();
+
+    renderPage();
+
+    const tableSurface = await screen.findByTestId("supplier-decision-hub-data-table");
+    const table = within(tableSurface).getByRole("table");
+
+    expect(within(tableSurface).getByText("Prikazano: 2 redova")).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: /Prihod/i })).toHaveClass("analytics-data-table__numeric");
+    expect(within(table).getByText(/100.000/).closest("td")).toHaveClass("analytics-data-table__numeric");
   });
 });

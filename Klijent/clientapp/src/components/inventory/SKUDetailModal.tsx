@@ -29,6 +29,31 @@ export function SKUDetailModal({
   onRetry,
   onTabChange,
 }: SKUDetailModalProps) {
+  const hasPlaceholderContext = detailRow?.contextStatus != null;
+  const showPlaceholderValues = hasPlaceholderContext && detailData == null;
+  const detailQuantity = detailData?.kolicina ?? (showPlaceholderValues ? null : detailRow?.quantity ?? null);
+  const detailMinimum = detailData?.minimalnaKolicina ?? (showPlaceholderValues ? null : detailRow?.minimum ?? null);
+  const detailUnitCost = detailData?.nabavnaCena ?? (showPlaceholderValues ? null : detailRow?.unitCost ?? null);
+  const detailEstimatedValue = detailData?.estimatedValue ?? (showPlaceholderValues ? null : detailRow?.estimatedValueAmount ?? null);
+  const detailCoverageRatio = detailQuantity != null && detailMinimum != null && detailMinimum > 0 ? detailQuantity / detailMinimum : null;
+  const detailGap = detailQuantity != null && detailMinimum != null ? Math.max(detailMinimum - detailQuantity, 0) : null;
+  const resolvedStockState = detailQuantity != null && detailMinimum != null ? getStockState(detailQuantity, detailMinimum) : null;
+  const showContextBanner = hasPlaceholderContext && detailData == null;
+  const contextBannerText = detailRow?.contextStatus === "loadingContext"
+    ? (detailError ? "Kontekst artikla nije pronađen. Prikazuju se samo ograničeni podaci." : "Učitavam kontekst artikla...")
+    : detailRow?.contextStatus === "contextMissing"
+      ? "Kontekst artikla nije pronađen."
+      : null;
+  const statusCardClass = resolvedStockState
+    ? `rounded-2xl border border-[var(--border-default)] bg-gradient-to-br ${resolvedStockState.panel} p-5 text-white`
+    : "rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5 text-[var(--text-primary)]";
+  const statusLabel = resolvedStockState?.label ?? (showPlaceholderValues ? "Kontekst nije učitan" : detailRow?.stockStateLabel ?? "Nije dostupno");
+  const recommendationText = showPlaceholderValues
+    ? "Kontekst artikla nije učitan. Sačekajte učitavanje ili pokušajte ponovo."
+    : detailRow
+      ? getRecommendation(detailRow)
+      : "Nije dostupno";
+
   return (
     <Modal isOpen={detailRow != null} onClose={onClose} title={detailRow ? `Detalj artikla: ${detailRow.naziv}` : "Detalj artikla"} size="lg">
       {detailRow ? (
@@ -42,21 +67,26 @@ export function SKUDetailModal({
             detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Ucitavam size curve za SKU #{detailRow.id}...</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema size curve podataka za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
           ) : (
             <>
-          <div className={`rounded-2xl border border-[var(--border-default)] bg-gradient-to-br ${getStockState(detailRow.quantity, detailRow.minimum).panel} p-5 text-white`}>
+          {showContextBanner && contextBannerText ? (
+            <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">
+              {contextBannerText}
+            </div>
+          ) : null}
+          <div className={statusCardClass}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="text-xs uppercase tracking-[0.22em] text-white/70">Status artikla</div>
-                <div className="mt-2 text-2xl font-semibold">{detailRow.stockStateLabel}</div>
-                <div className="mt-2 text-sm text-white/80">{getRecommendation(detailRow)}</div>
+                <div className={`text-xs uppercase tracking-[0.22em] ${resolvedStockState ? "text-white/70" : "text-[var(--text-primary)]"}`}>Status artikla</div>
+                <div className={`mt-2 text-2xl font-semibold ${resolvedStockState ? "text-white" : "text-[var(--text-primary)]"}`}>{statusLabel}</div>
+                <div className={`mt-2 text-sm ${resolvedStockState ? "text-white/80" : "text-[var(--text-primary)]"}`}>{recommendationText}</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {detailData?.abcClass ? <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAbcTone(detailData.abcClass)}`}>ABC {detailData.abcClass}</span> : null}
                   {detailData?.agingLabel ? <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(detailData.agingBucket)}`}>{detailData.agingLabel}</span> : null}
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-right">
-                <div className="text-xs uppercase tracking-[0.2em] text-white/70">Procena vrednosti</div>
-                <div className="mt-2 text-xl font-semibold">{formatCurrency(detailRow.estimatedValueAmount)}</div>
-                <div className="mt-2 text-xs text-white/75">
+              <div className={`rounded-2xl px-4 py-3 text-right ${resolvedStockState ? "border border-white/15 bg-white/10" : "border border-[var(--border-default)] bg-white"}`}>
+                <div className={`text-xs uppercase tracking-[0.2em] ${resolvedStockState ? "text-white/70" : "text-[var(--text-primary)]"}`}>Procena vrednosti</div>
+                <div className={`mt-2 text-xl font-semibold ${resolvedStockState ? "text-white" : "text-[var(--text-primary)]"}`}>{detailEstimatedValue == null ? "Nije dostupno" : formatCurrency(detailEstimatedValue)}</div>
+                <div className={`mt-2 text-xs ${resolvedStockState ? "text-white/75" : "text-[var(--text-primary)]"}`}>
                   {detailData ? `${formatNumber(detailData.daysSinceMovement)} dana bez kretanja` : "Ucitavam aging detalj..."}
                 </div>
               </div>
@@ -71,11 +101,11 @@ export function SKUDetailModal({
               ["PLU", detailRow.plu ?? "Nije dodeljen"],
               ["Prodavnica", detailData?.storeName ?? detailRow.storeName],
               ["Dobavljac", detailData?.supplierName ?? detailRow.supplierName],
-              ["Kolicina", formatNumber(detailRow.quantity)],
-              ["Minimalna kolicina", formatNumber(detailRow.minimum)],
-              ["Gap do minimuma", formatNumber(detailRow.reorderGap)],
-              ["Nabavna cena", formatCurrency(detailRow.unitCost)],
-              ["Pokrice minimuma", detailRow.coverageRatio == null ? "Bez minimuma" : `${detailRow.coverageRatio.toFixed(2)}x`],
+              ["Kolicina", detailQuantity == null ? "Nije dostupno" : formatNumber(detailQuantity)],
+              ["Minimalna kolicina", detailMinimum == null ? "Nije dostupno" : formatNumber(detailMinimum)],
+              ["Gap do minimuma", detailGap == null ? "Nije dostupno" : formatNumber(detailGap)],
+              ["Nabavna cena", detailUnitCost == null ? "Nije dostupno" : formatCurrency(detailUnitCost)],
+              ["Pokrice minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
               ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
               ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Ucitavanje..."],
               ["Kretanja u 30 dana", detailData ? formatNumber(detailData.movementCount30d) : "Ucitavanje..."],

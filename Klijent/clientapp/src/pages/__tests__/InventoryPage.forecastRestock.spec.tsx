@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import InventoryPage from "../InventoryPage";
+import { buildForecastRestockSuggestion, buildInventoryRow } from "../../components/inventory/inventoryUtils";
 
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const getStoresMock = vi.fn();
@@ -15,6 +17,7 @@ const getForecastMock = vi.fn();
 const getInventoryAlertsMock = vi.fn();
 const getRebalanceSuggestionsMock = vi.fn();
 const getInventoryReportSchedulesMock = vi.fn();
+const forecastPanelClickMock = vi.fn();
 
 vi.mock("../../services/analyticsApi", () => ({
   AnalyticsMetaError: class extends Error {},
@@ -50,15 +53,30 @@ vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () =
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
 vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => null }));
 vi.mock("../../components/inventory/ActionWorkflowPanel", () => ({
-  ActionWorkflowPanel: ({ actionWorkflow }: { actionWorkflow: { items?: unknown[] } | null }) => (
-    <div data-testid="workflow-count">{actionWorkflow?.items?.length ?? 0}</div>
-  ),
+  ActionWorkflowPanel: ({ actionWorkflow }: { actionWorkflow: { items?: Array<{ estimatedValue?: number | null; costMissing?: boolean | null }> } | null }) => {
+    const item = actionWorkflow?.items?.[0] ?? null;
+    const valueText = item?.costMissing
+      ? "Nije dostupno (nedostaje nabavna cena)"
+      : item?.estimatedValue == null
+        ? "Nije dostupno"
+        : String(item.estimatedValue);
+    return (
+      <div
+        data-testid="workflow-count"
+        data-first-estimated-value={item?.estimatedValue == null ? "" : String(item.estimatedValue)}
+        data-first-cost-missing={String(Boolean(item?.costMissing))}
+      >
+        {actionWorkflow?.items?.length ?? 0}
+        {item ? ` | Vrednost: ${valueText}` : ""}
+      </div>
+    );
+  },
 }));
 vi.mock("../../components/inventory/DecisionSummaryBar", () => ({ DecisionSummaryBar: () => null }));
 vi.mock("../../components/inventory/DemandForecastPanel", () => ({
   DemandForecastPanel: ({ forecast, onSuggestRestock }: { forecast: { items: Array<{ skuId: number; storeId: number; sizeCode: string }> } | null; onSuggestRestock: (item: { skuId: number; storeId: number; sizeCode: string }) => void }) => (
     <div>
-      <button type="button" onClick={() => forecast?.items[0] && onSuggestRestock(forecast.items[0])}>
+      <button type="button" onClick={() => { forecastPanelClickMock(); if (forecast?.items[0]) onSuggestRestock(forecast.items[0]); }}>
         Predlozi prvu prognozu
       </button>
     </div>
@@ -80,6 +98,7 @@ vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }:
 describe("InventoryPage forecast restock trust states", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    forecastPanelClickMock.mockClear();
 
     getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
     getSupplierFiltersMock.mockResolvedValue([]);
@@ -95,7 +114,7 @@ describe("InventoryPage forecast restock trust states", () => {
     getInventoryListMock.mockResolvedValue({
       items: [
         {
-          id: 501,
+          id: 999,
           naziv: "Artikal A",
           plu: "PLU-501",
           kolicina: 10,
@@ -143,12 +162,92 @@ describe("InventoryPage forecast restock trust states", () => {
   });
 
   it("does not create a forecast restock action without a loaded stock baseline", async () => {
-    render(<InventoryPage />);
+    render(<MemoryRouter><InventoryPage /></MemoryRouter>);
 
     const button = await screen.findByRole("button", { name: /Predlozi prvu prognozu/i });
-    fireEvent.click(button);
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenCalled();
+      expect(getForecastMock).toHaveBeenCalled();
+    });
+    await act(async () => {
+      fireEvent.click(button);
+    });
 
-    expect(await screen.findByText("Predlog dopune nije moguće dodati bez učitanog stock baseline-a.")).toBeInTheDocument();
+    expect(forecastPanelClickMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("workflow-count")).toHaveTextContent("0");
+  });
+
+  it("shows that signal panels do not follow text search", async () => {
+    render(<MemoryRouter><InventoryPage /></MemoryRouter>);
+
+    const searchbox = await screen.findByRole("searchbox", { name: /Pretraga artikala/i });
+    fireEvent.change(searchbox, { target: { value: "Patike" } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("signal-lineage-note")).toHaveTextContent("tekst pretraga ne utiče na prognozu, upozorenja i redistribuciju");
+    });
+  });
+
+  it("marks forecast workflow value as missing when unit cost is zero", () => {
+    const row = buildInventoryRow({
+      id: 999,
+      naziv: "Artikal A",
+      plu: "PLU-999",
+      kolicina: 10,
+      minimalnaKolicina: 3,
+      nabavnaCena: 0,
+      estimatedValue: 1000,
+      idObjekat: 1,
+      idDobavljac: null,
+      stockCoverDays: 4,
+      stockCoverStatus: "low_cover",
+      sellThroughRatio: 0.5,
+      sellThroughStatus: "good",
+    }, [{ storeId: 1, storeName: "Prodavnica 1" }], []);
+
+    const suggestion = buildForecastRestockSuggestion(row, {
+      skuId: 999,
+      storeId: 1,
+      sizeCode: "42",
+      forecast7d: 2.5,
+      probabilityOfOOSIn7d: 0.82,
+    }, [{ storeId: 1, storeName: "Prodavnica 1" }], 4);
+
+    expect(suggestion.costMissing).toBe(true);
+    expect(suggestion.estimatedValue).toBeNull();
+    expect(suggestion.suggestedQty).toBe(3);
+    expect(suggestion.forecastDemandQty).toBe(3);
+  });
+
+  it("does not create a forecast restock action when forecast evidence is missing", async () => {
+    getForecastMock.mockResolvedValue({
+      generatedAtUtc: "2026-05-26T12:00:00Z",
+      totalCount: 1,
+      snapshotAvailable: true,
+      items: [
+        {
+          skuId: 999,
+          storeId: 1,
+          sizeCode: "42",
+          forecast7d: null,
+          forecast14d: null,
+          forecast28d: null,
+          probabilityOfOOSIn7d: 0.82,
+          overstockRisk: 0.1,
+          confidenceScore: null,
+          explanation: "Nepotpuna evidencija.",
+        },
+      ],
+    });
+
+    render(<MemoryRouter><InventoryPage /></MemoryRouter>);
+
+    const button = await screen.findByRole("button", { name: /Predlozi prvu prognozu/i });
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    expect(forecastPanelClickMock).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("workflow-count")).toHaveTextContent("0");
   });
 
@@ -197,7 +296,7 @@ describe("InventoryPage forecast restock trust states", () => {
     getInventoryAlertsMock.mockResolvedValue({ generatedAtUtc: "2026-05-26T12:00:00Z", items: [] });
     getRebalanceSuggestionsMock.mockResolvedValue({ generatedAtUtc: "2026-05-26T12:00:00Z", items: [] });
 
-    render(<InventoryPage />);
+    render(<MemoryRouter><InventoryPage /></MemoryRouter>);
 
     const trustHeader = await screen.findByTestId("trust-header");
     expect(trustHeader).toHaveAttribute("data-quality", "stale");

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import SupplierDecisionTable from "./SupplierDecisionTable";
@@ -38,7 +38,7 @@ function makeItem(overrides: Partial<RankingItem> = {}): RankingItem {
     mlSupplierScore: 88,
     supplierQualityIndex: 82,
     recommendationCode: "EXPAND",
-    confidenceScore: 0.91,
+    confidenceScore: 91,
     reliabilityPct: 84,
     dataQualityStatus: "good",
     statusReason: "Strong full-price sellthrough.",
@@ -77,22 +77,25 @@ describe("SupplierDecisionTable", () => {
     expect(screen.getByText("Supplier analytics")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Rang lista dobavljača" })).toBeInTheDocument();
     expect(screen.getByText(/Sortiranje i paginacija ostaju na backendu/i)).toBeInTheDocument();
-    expect(screen.getByText("17")).toBeInTheDocument();
+    expect(screen.getByTestId("supplier-decision-data-table")).toBeInTheDocument();
+    expect(screen.getByText(/Ukupno u rezultatu: 17 dobavljača/i)).toBeInTheDocument();
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("supplier-decision-hub");
     expect(screen.getByText("Dobavljač Premium")).toBeInTheDocument();
     expect(screen.getByText(/1.250.000/)).toBeInTheDocument();
     expect(screen.getByText("Visoka")).toBeInTheDocument();
     expect(screen.getByText("Povecati saradnju")).toBeInTheDocument();
+    expect(document.querySelector(".analytics-data-table__numeric")).not.toBeNull();
   });
 
   it("delegates backend sort requests without sorting locally", () => {
     const onSortChange = vi.fn();
     renderTable({ onSortChange, sortBy: "revenue", sortDir: "desc" });
 
-    fireEvent.click(screen.getByRole("button", { name: /Dobavljač/i }));
+    const table = within(screen.getByTestId("supplier-decision-data-table")).getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: /^Dobavljač/i }));
     expect(onSortChange).toHaveBeenCalledWith("supplierName");
 
-    fireEvent.click(screen.getByRole("button", { name: /Prihod/i }));
+    fireEvent.click(within(table).getByRole("button", { name: /^Prihod/i }));
     expect(onSortChange).toHaveBeenCalledWith("revenue");
   });
 

@@ -15,17 +15,20 @@ public sealed record RebalanceSuggestionDto(
     int ToStoreId,
     int SkuId,
     string SizeCode,
-    int RecommendedQty,
-    string Urgency,
-    decimal Confidence,
+    int? RecommendedQty,
+    string? Urgency,
+    decimal? Confidence,
     string Reason,
-    decimal ExpectedSavedSales,
-    decimal ExpectedCapitalRelease
+    decimal? ExpectedSavedSales,
+    decimal? ExpectedCapitalRelease
 );
 
 public sealed record RebalanceSuggestionListDto(
     DateTime GeneratedAtUtc,
     int TotalCount,
+    int ReturnedCount,
+    int TotalMatchingCount,
+    bool IsTruncated,
     bool SnapshotAvailable,
     string? Warning,
     IReadOnlyList<RebalanceSuggestionDto> Items

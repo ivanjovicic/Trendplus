@@ -1,5 +1,7 @@
 using System.Data;
+using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
+using Application.Analytics.Queries;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -35,19 +37,20 @@ public sealed class GetInventorySizeCurveHandler
                 sku_id,
                 store_id,
                 coalesce(size_code, 'UNKNOWN') as size_code,
-                cast(coalesce(actual_size_share, 0) as numeric(18,4)) as actual_size_share,
-                cast(coalesce(ideal_size_share, 0) as numeric(18,4)) as ideal_size_share,
-                cast(coalesce(deviation_pct, 0) as numeric(18,4)) as deviation_pct,
-                coalesce(is_core_size_missing, false) as is_core_size_missing,
-                coalesce(is_dead_size, false) as is_dead_size,
-                coalesce(broken_run, false) as broken_run,
-                cast(coalesce(curve_confidence, 0) as numeric(18,4)) as curve_confidence,
-                coalesce(reason_codes, '') as reason_codes
+                actual_size_share,
+                ideal_size_share,
+                deviation_pct,
+                is_core_size_missing,
+                is_dead_size,
+                broken_run,
+                curve_confidence,
+                coalesce(reason_codes, '') as reason_codes,
+                count(*) over() as total_matching_count
             from analytics_size_curve_snapshot
             where (@storeId is null or store_id = @storeId)
               and (@supplierId is null or supplier_id = @supplierId)
               and (@skuId is null or sku_id = @skuId)
-            order by broken_run desc, is_core_size_missing desc, abs(deviation_pct) desc
+            order by broken_run desc nulls last, is_core_size_missing desc nulls last, abs(deviation_pct) desc nulls last
             limit @top;
             """;
 
@@ -70,21 +73,43 @@ public sealed class GetInventorySizeCurveHandler
                     SkuId: reader.GetInt32(0),
                     StoreId: reader.GetInt32(1),
                     SizeCode: reader.GetString(2),
-                    ActualSizeShare: reader.GetDecimal(3),
-                    IdealSizeShare: reader.GetDecimal(4),
-                    DeviationPct: reader.GetDecimal(5),
-                    IsCoreSizeMissing: reader.GetBoolean(6),
-                    IsDeadSize: reader.GetBoolean(7),
-                    BrokenRun: reader.GetBoolean(8),
-                    CurveConfidence: reader.GetDecimal(9),
+                    ActualSizeShare: reader.GetNullableDecimal(3),
+                    IdealSizeShare: reader.GetNullableDecimal(4),
+                    DeviationPct: reader.GetNullableDecimal(5),
+                    IsCoreSizeMissing: reader.GetNullableBoolean(6),
+                    IsDeadSize: reader.GetNullableBoolean(7),
+                    BrokenRun: reader.GetNullableBoolean(8),
+                    CurveConfidence: reader.GetNullableDecimal(9),
+                    EvidenceStatus: reader.IsDBNull(6) || reader.IsDBNull(7) || reader.IsDBNull(8) || reader.IsDBNull(3) || reader.IsDBNull(4) || reader.IsDBNull(5) || reader.IsDBNull(9)
+                        ? "missing"
+                        : "complete",
                     ReasonCodes: reasons));
             }
 
+            var totalMatchingCount = items.Count == 0
+                ? 0
+                : Convert.ToInt32(reader.GetInt64(11));
+            var returnedCount = items.Count;
+
+            var hasMissingEvidence = items.Any(item =>
+                item.ActualSizeShare is null
+                || item.IdealSizeShare is null
+                || item.DeviationPct is null
+                || item.IsCoreSizeMissing is null
+                || item.IsDeadSize is null
+                || item.BrokenRun is null
+                || item.CurveConfidence is null);
+
             return new InventorySizeCurveListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
-                TotalCount: items.Count,
+                TotalCount: returnedCount,
+                ReturnedCount: returnedCount,
+                TotalMatchingCount: totalMatchingCount,
+                IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
-                Warning: items.Count == 0 ? "Size curve snapshot postoji, ali nema redova za trazene filtere." : null,
+                Warning: items.Count == 0
+                    ? "Size curve snapshot postoji, ali nema redova za trazene filtere."
+                    : hasMissingEvidence ? "Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
                 Items: items);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
@@ -93,6 +118,9 @@ public sealed class GetInventorySizeCurveHandler
             return new InventorySizeCurveListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
                 TotalCount: 0,
+                ReturnedCount: 0,
+                TotalMatchingCount: 0,
+                IsTruncated: false,
                 SnapshotAvailable: false,
                 Warning: "Size curve snapshot jos nije dostupan.",
                 Items: []);

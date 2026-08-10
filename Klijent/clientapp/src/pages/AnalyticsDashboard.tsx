@@ -1465,17 +1465,40 @@ export default function AnalyticsDashboard() {
             />
           ) : (
             <>
-              <section className="analytics-section analytics-executive-stack">
+              <section className="analytics-section analytics-command-center" data-testid="analytics-command-center">
                 <div className="analytics-executive-top">
                   <section className="analytics-section analytics-executive-kpis">
+                    <div className="analytics-command-center__hero">
+                      <div className="analytics-command-center__hero-copy">
+                        <p className="analytics-eyebrow">Komandni centar</p>
+                        <h2>U 30 sekundi: prodaja, marža, rizici i prioriteti</h2>
+                        <p className="analytics-command-center__lede">
+                          Pregled je složen za odluku, ne za skrolovanje: prvo KPI strip, zatim akcije ove nedelje, pa trust i rizik.
+                        </p>
+                      </div>
+                      <div className="analytics-command-center__hero-meta" aria-label="Sažetak perioda i trust signala">
+                        <span>
+                          Period: <strong>{selectedDays} dana</strong>
+                        </span>
+                        <span>
+                          Transakcije:{" "}
+                          <strong>
+                            {summary == null
+                              ? "Nije dostupno"
+                              : fmtNumber(summary.totalTransactions)}
+                          </strong>
+                        </span>
+                        <Link to="/analytics/data-quality" className="analytics-command-center__hero-link">
+                          Kvalitet podataka
+                        </Link>
+                      </div>
+                    </div>
                     <div className="analytics-section-heading">
                       <div>
                         <p className="analytics-eyebrow">
                           Ključni KPI-jevi
                         </p>
-                        <h2>
-                          U 30 sekundi: prodaja, marža, rizici i prioriteti
-                        </h2>
+                        <h2>Ključni KPI strip</h2>
                       </div>
                       <p className="section-note">
                         Transakcije u periodu:{" "}
@@ -1528,6 +1551,11 @@ export default function AnalyticsDashboard() {
                       >
                         Centralne akcije
                       </Link>
+                    </div>
+                    <div className="decision-cockpit-meta" aria-label="Sažetak nedeljnog fokusa">
+                      <span>{prioritizedDecisionActions.length} prioritetne akcije</span>
+                      <span>{recommendationsBlocked ? "Pomoćni signali" : "Preporuke dostupne"}</span>
+                      <span>{selectedStoreLabel}</span>
                     </div>
                     {recommendationsBlocked ? (
                       <div className="analytics-empty warning">
@@ -1804,6 +1832,43 @@ export default function AnalyticsDashboard() {
                       </span>
                     ) : null}
                   </div>
+                  <div className="analytics-command-center__loss-preview">
+                    <div className="exec-section-head">
+                      <div>
+                        <h3>Gde gubimo novac?</h3>
+                        <p className="section-note">
+                          Rizičan lager, spora zaliha, OOS i data gaps koji traže akciju.
+                        </p>
+                      </div>
+                      <div className="exec-section-links">
+                        <Link
+                          to="/analytics/inventory"
+                          className="decision-all-actions-link"
+                        >
+                          Zalihe i dopuna
+                        </Link>
+                        <Link
+                          to="/analytics/data-quality"
+                          className="decision-all-actions-link"
+                        >
+                          Kvalitet podataka
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="exec-loss-grid">
+                      {executiveLossHighlights.map((item) => (
+                        <Link
+                          key={item.key}
+                          to={item.href}
+                          className={`exec-loss-card tone-${item.tone}`}
+                        >
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                          <small>{item.note}</small>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                   {executiveDataQualityHighlights.length === 0 &&
                   !showMetaWarning ? (
                     <div className="analytics-empty success">
@@ -1952,39 +2017,11 @@ export default function AnalyticsDashboard() {
                 <section className="analytics-panel analytics-exec-lose">
                   <div className="exec-section-head">
                     <div>
-                      <h2>Gde gubimo novac?</h2>
+                      <h2>Najkritičniji negativni signali</h2>
                       <p className="section-note">
-                        Rizičan lager, spora zaliha, OOS i data gaps koji traže
-                        akciju.
+                        Detalji iza komandnog centra za signale koji tek treba da se isprave.
                       </p>
                     </div>
-                    <div className="exec-section-links">
-                      <Link
-                        to="/analytics/inventory"
-                        className="decision-all-actions-link"
-                      >
-                        Zalihe i dopuna
-                      </Link>
-                      <Link
-                        to="/analytics/data-quality"
-                        className="decision-all-actions-link"
-                      >
-                        Kvalitet podataka
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="exec-loss-grid">
-                    {executiveLossHighlights.map((item) => (
-                      <Link
-                        key={item.key}
-                        to={item.href}
-                        className={`exec-loss-card tone-${item.tone}`}
-                      >
-                        <span>{item.label}</span>
-                        <strong>{item.value}</strong>
-                        <small>{item.note}</small>
-                      </Link>
-                    ))}
                   </div>
                   {!executive ||
                   (executive.negativeSignals ?? []).length === 0 ? (

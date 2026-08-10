@@ -61,8 +61,10 @@ export function ActionWorkflowPanel({
                   <span>Artikal: {item.naziv}</span>
                   {item.fromStoreName ? <span>Iz: {item.fromStoreName}</span> : null}
                   {item.toStoreName ? <span>U: {item.toStoreName}</span> : null}
-                  <span>Qty: {formatNumber(item.suggestedQty)}</span>
-                  <span>Vrednost: {formatCurrency(item.estimatedValue)}</span>
+                  {item.forecastDemandQty != null
+                    ? <span>Forecast demand qty: {formatNumber(item.forecastDemandQty)}</span>
+                    : <span>Qty: {formatNumber(item.suggestedQty)}</span>}
+                  <span>Vrednost: {item.costMissing ? "Nije dostupno (nedostaje nabavna cena)" : formatCurrency(item.estimatedValue)}</span>
                 </div>
                 {item.note ? <div className="mt-2 text-xs text-muted">Napomena: {item.note}</div> : null}
               </div>

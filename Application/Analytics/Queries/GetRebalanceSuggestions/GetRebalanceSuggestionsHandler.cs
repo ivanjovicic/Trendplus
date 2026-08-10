@@ -1,5 +1,7 @@
 using System.Data;
+using System.Data.Common;
 using Application.Artikli.Common.Interfaces;
+using Application.Analytics.Queries;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -37,18 +39,19 @@ public sealed class GetRebalanceSuggestionsHandler
                 to_store_id,
                 sku_id,
                 coalesce(size_code, 'UNKNOWN') as size_code,
-                coalesce(recommended_qty, 0) as recommended_qty,
-                coalesce(urgency, 'normal') as urgency,
-                cast(coalesce(confidence, 0) as numeric(18,4)) as confidence,
+                recommended_qty,
+                urgency,
+                confidence,
                 coalesce(reason, 'snapshot') as reason,
-                cast(coalesce(expected_saved_sales, 0) as numeric(18,2)) as expected_saved_sales,
-                cast(coalesce(expected_capital_release, 0) as numeric(18,2)) as expected_capital_release
+                expected_saved_sales,
+                expected_capital_release,
+                count(*) over() as total_matching_count
             from analytics_rebalance_suggestion_snapshot
             where (@fromStoreId is null or from_store_id = @fromStoreId)
               and (@toStoreId is null or to_store_id = @toStoreId)
               and (@supplierId is null or supplier_id = @supplierId)
               and (@urgency is null or urgency = @urgency)
-            order by confidence desc, expected_saved_sales desc, recommended_qty desc
+            order by confidence desc nulls last, expected_saved_sales desc nulls last, recommended_qty desc nulls last
             limit @top;
             """;
 
@@ -68,19 +71,36 @@ public sealed class GetRebalanceSuggestionsHandler
                     ToStoreId: reader.GetInt32(1),
                     SkuId: reader.GetInt32(2),
                     SizeCode: reader.GetString(3),
-                    RecommendedQty: reader.GetInt32(4),
-                    Urgency: reader.GetString(5),
-                    Confidence: reader.GetDecimal(6),
+                    RecommendedQty: reader.GetNullableInt32(4),
+                    Urgency: reader.GetNullableString(5),
+                    Confidence: reader.GetNullableDecimal(6),
                     Reason: reader.GetString(7),
-                    ExpectedSavedSales: reader.GetDecimal(8),
-                    ExpectedCapitalRelease: reader.GetDecimal(9)));
+                    ExpectedSavedSales: reader.GetNullableDecimal(8),
+                    ExpectedCapitalRelease: reader.GetNullableDecimal(9)));
             }
+
+            var totalMatchingCount = items.Count == 0
+                ? 0
+                : Convert.ToInt32(reader.GetInt64(10));
+            var returnedCount = items.Count;
+
+            var hasMissingEvidence = items.Any(item =>
+                item.RecommendedQty is null
+                || item.Urgency is null
+                || item.Confidence is null
+                || item.ExpectedSavedSales is null
+                || item.ExpectedCapitalRelease is null);
 
             return new RebalanceSuggestionListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
-                TotalCount: items.Count,
+                TotalCount: returnedCount,
+                ReturnedCount: returnedCount,
+                TotalMatchingCount: totalMatchingCount,
+                IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
-                Warning: items.Count == 0 ? "Rebalance snapshot postoji, ali nema predloga za trazene filtere." : null,
+                Warning: items.Count == 0
+                    ? "Rebalance snapshot postoji, ali nema predloga za trazene filtere."
+                    : hasMissingEvidence ? "Rebalance snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
                 Items: items);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
@@ -89,6 +109,9 @@ public sealed class GetRebalanceSuggestionsHandler
             return new RebalanceSuggestionListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
                 TotalCount: 0,
+                ReturnedCount: 0,
+                TotalMatchingCount: 0,
+                IsTruncated: false,
                 SnapshotAvailable: false,
                 Warning: "Rebalance snapshot jos nije dostupan.",
                 Items: []);

@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import SupplierDecisionReportActions from "../components/analytics/SupplierDecisionReportActions";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
@@ -1090,19 +1091,27 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   )}
                   <p className="sdh-decision-table-subtitle">Lista koristi backend scorecard signal i backend confidence/reliability payload bez lokalnog izračunavanja finalnog statusa.</p>
                 </div>
-                <AnalyticsTableToolbar
-                  tableKey="supplier-decision-hub"
-                  tableTitle="Skorkarta dobavljača - kompaktni prikaz"
-                  columns={resolvedDecisionColumns}
-                  rows={sortedRows}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                  extraActions={<SupplierDecisionReportActions payload={reportPayload} durableReportHref={durableReportHref} disabled={loading || showBlockingError || !summary || !ranking} />}
-                />
               </div>
-              <div className="sdh-decision-table-wrap">
-                <table className="sdh-decision-table">
+              <AnalyticsDataTable
+                testId="supplier-decision-hub-data-table"
+                rowCount={sortedRows.length}
+                truncationLabel={ranking.totalCount > sortedRows.length
+                  ? `Ukupno u rezultatu: ${ranking.totalCount.toLocaleString("sr-RS")} dobavljača`
+                  : undefined}
+                toolbar={(
+                  <AnalyticsTableToolbar
+                    tableKey="supplier-decision-hub"
+                    tableTitle="Skorkarta dobavljača - kompaktni prikaz"
+                    columns={resolvedDecisionColumns}
+                    rows={sortedRows}
+                    filters={toolbarFilters}
+                    metadata={toolbarMetadata}
+                    defaultOrientation="landscape"
+                    extraActions={<SupplierDecisionReportActions payload={reportPayload} durableReportHref={durableReportHref} disabled={loading || showBlockingError || !summary || !ranking} />}
+                  />
+                )}
+              >
+                <table className="min-w-full text-sm">
                   <thead>
                     <tr>
                       <th>
@@ -1112,28 +1121,28 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                           {sortMarker("supplierName", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("revenue")}>
                           Prihod
                           <InfoTip text="Prihod dobavljača u scorecard skupu za izabrani period." />
                           {sortMarker("revenue", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo %
                           <InfoTip text="Udeo ovog dobavljača u ukupnom scorecard prihodu. Veći udeo znači veći uticaj na ukupne KPI-jeve." />
                           {sortMarker("sharePct", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>
                           Marža %
                           <InfoTip text="Pre-markdown marža: procenat zarade pre prvog sniženja. Viša marža je bolji signal, osim ako dolazi uz visok stock rizik." />
                           {sortMarker("preMarkdownMarginPct", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("qualityTrendPct")}>
                           Trend pune cene %
                           <InfoTip text="Udeo pune cene minus udeo nivelacija. Pozitivno znači zdraviju prodaju; negativno znači veću zavisnost od sniženja." />
@@ -1150,13 +1159,13 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                           {sortMarker("status", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="align-center">Detalj</th>
+                      <th className="text-center">Detalj</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sortedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="sdh-decision-empty-row">
+                        <td colSpan={7} className="py-12 text-center text-secondary">
                           <div>
                             <p>Nema pronađenih dobavljača za izabrane filtere.</p>
                             <p className="sdh-decision-table-helper">Ako Pregled ima promet, proširi period ili ukloni uske filtere. Skorkarta koristi uži scorecard skup zasnovan na prvim nivelacijama.</p>
@@ -1170,21 +1179,21 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                           ? statusDisplayLabel(row.status)
                           : "Pomoćni signal";
                         return (
-                          <tr key={row.supplierId} className={expanded ? "expanded-row" : ""}>
-                            <td>{row.supplierName}</td>
-                            <td className="align-right">{fmtRsd(row.revenue)}</td>
-                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td className="align-right">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
-                            <td className={`align-right ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
+                          <tr key={row.supplierId} className={`analytics-data-table__row--interactive ${expanded ? "expanded-row" : ""}`}>
+                            <td className="font-semibold text-contrast">{row.supplierName}</td>
+                            <td className="analytics-data-table__numeric text-secondary">{fmtRsd(row.revenue)}</td>
+                            <td className="analytics-data-table__numeric text-secondary">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="analytics-data-table__numeric text-secondary">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
+                            <td className={`analytics-data-table__numeric text-secondary ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
                             <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span></td>
-                            <td className="align-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
+                            <td className="text-center"><button type="button" className="sdh-decision-detail-btn" onClick={() => setExpandedSupplierId(expanded ? null : row.supplierId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
                           </tr>
                         );
                       })
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 

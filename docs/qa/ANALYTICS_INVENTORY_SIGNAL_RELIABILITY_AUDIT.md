@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Status: mixed audit; one small runtime fix landed separately
+Status: mixed audit; RQ64 resolved in queue task
 
 ## Scope
 
@@ -24,6 +24,19 @@ Reviewed files:
 - `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
 - `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
 - `Klijent/clientapp/src/types/analytics.ts`
+
+## Resolution note
+
+RQ64 from this audit was resolved in queue task `RQ64` on 2026-08-10.
+
+Validation completed:
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "InventorySnapshotContractTests"`: pass
+- `npm run test -- --run src/pages/__tests__/InventoryPage.forecastGuardrails.spec.tsx`: pass
+- `npm run test -- --run src/pages/__tests__/InventoryPage.forecastRestock.spec.tsx`: pass
+- `npm run test -- --run src/pages/__tests__/InventorySignalNullEvidence.spec.tsx`: pass
+- `npm run check:analytics-guardrails`: pass
+- `npm run build`: pass
 
 ## Fixed in this pass
 

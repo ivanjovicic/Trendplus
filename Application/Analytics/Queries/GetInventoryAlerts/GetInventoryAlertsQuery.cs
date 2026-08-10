@@ -14,15 +14,18 @@ public sealed record InventoryAlertDto(
     int SkuId,
     int StoreId,
     string? SizeCode,
-    string Severity,
+    string? Severity,
     string Title,
     string Message,
-    decimal ConfidenceScore
+    decimal? ConfidenceScore
 );
 
 public sealed record InventoryAlertListDto(
     DateTime GeneratedAtUtc,
     int TotalCount,
+    int ReturnedCount,
+    int TotalMatchingCount,
+    bool IsTruncated,
     bool SnapshotAvailable,
     string? Warning,
     IReadOnlyList<InventoryAlertDto> Items

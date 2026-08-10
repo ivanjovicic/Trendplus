@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-07
+Current READY prompt: none
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -20,9 +20,9 @@ Use with:
 | P-UI-01 | DONE | analytics-menu-ia | Redesign analytics menu information architecture |
 | P-UI-02 | DONE | analytics-control-bar | Create shared premium analytics control bar |
 | P-UI-03 | DONE | analytics-table-system | Standardize analytics table density, sticky headers, numeric alignment and trust metadata |
-| P-UI-07 | READY | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
-| P-UI-08 | WAITING | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
-| P-UI-04 | WAITING | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
+| P-UI-07 | DONE | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
+| P-UI-08 | DONE | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
+| P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 
 ---
 
@@ -342,14 +342,14 @@ Analytics tables vary by page. Premium analytics needs consistent sticky headers
 
 ## P-UI-07 - Supplier analytics table migration
 
-Status: READY
+Status: DONE
 Ready after: P-UI-03
 Priority: P1
 Type: frontend/component/tests
 Feature family: supplier-analytics-table
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-07-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(ui): migrate supplier analytics table`
 
 ### Why
@@ -379,18 +379,38 @@ Supplier decision/sales tables still use page-specific styles. Premium analytics
 
 - One supplier analytics table matches the premium table system without changing data semantics.
 
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/SupplierDecisionHubPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Live supplier ranking table now uses `AnalyticsDataTable` with row-count metadata and the shared premium scroll/sticky shell.
+  - `AnalyticsTableToolbar` payload, row click/detail behavior, and backend sort/export values were preserved.
+  - The regression test proves the shared table shell is rendered and numeric columns keep the shared alignment class.
+  - Remaining risk: no manual screenshot/pixel review was run in this session.
+- Next: `P-UI-08` READY
+
 ---
 
 ## P-UI-08 - Inventory page control surface consolidation
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-02 and RQ57/RQ58 if risk sort labels are touched
 Priority: P1
 Type: frontend/component/tests
 Feature family: inventory-control-surface
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-08-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(ui): consolidate inventory controls`
 
 ### Why
@@ -420,18 +440,38 @@ The inventory table panel is now more premium, but the page still has many separ
 
 - Inventory controls are easier to scan and still behave identically.
 
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `Klijent/clientapp/src/pages/InventoryPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/InventoryPage.queueStatus.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/InventoryPage.queueStatus.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Grouped inventory search, store, supplier, page-size and sort controls into `AnalyticsControlBar` so the page now reads like one premium control surface instead of scattered inputs.
+  - Kept export/print/scheduler as the secondary section and preserved the existing inventory API/state flow.
+  - Added a regression test for the shared control bar, explicit local risk-sort labels, and the central action queue link.
+  - Remaining risk: no manual screenshot/pixel review was run in this session.
+- Next: `P-UI-04` READY
+
 ---
 
 ## P-UI-04 - Dashboard command center redesign
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-02 and P-UI-03
 Priority: P2
 Type: frontend/design/tests
 Feature family: analytics-command-center
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-04-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(ui): redesign analytics command center`
 
 ### Why
@@ -464,3 +504,25 @@ Commit suggestion: `feat(ui): redesign analytics command center`
 ### Acceptance
 
 - The dashboard reads like a premium executive cockpit without changing analytics semantics.
+
+### Completion note
+
+- Date: 2026-08-09
+- Agent: Cursor
+- Changed files:
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsDashboard.css`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/task-locks/P-UI-04-cursor.lock.md` (removed after DONE)
+- Checks:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Reworked the analytics dashboard above-the-fold into a command center with a premium hero, KPI strip, weekly action cockpit, trust/freshness panel, and risk/loss preview.
+  - Preserved the existing data loading, trust header, refresh banner, empty/error behavior, and action links while making the top fold easier to scan.
+  - Added a regression test for the command center, KPI strip, trust panel, and risk preview so the layout does not drift back to scattered blocks.
+  - Remaining risk: no manual screenshot/pixel review was run in this session.
+- Next: none
