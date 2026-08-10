@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
 
@@ -304,7 +304,7 @@ KPI bar shows `Zatvoreno = done + rejected`. This is not wrong mathematically, b
 ## RQ90 - Analytics actions list contract
 
 Status: WAITING
-Ready after: STAB09 or explicit reprioritization
+Ready after: `RQ89` DONE. `STAB09` dependency is already satisfied; serialize this root cause after inventory repair for clean attribution.
 Priority: P1
 Type: backend/tests
 Feature family: analytics-actions-list-contract
@@ -323,6 +323,8 @@ Commit suggestion: `fix(actions): preserve analytics actions list filters`
 - The failing test expected the filtered set to include two rows after canonical filters, search and priority ordering were applied.
 - The route is implemented in `Api/Endpoints/AnalyticsActionsEndpoints.cs`.
 - The list/service contract is implemented in `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`.
+- `BCI04` grouped this as a real assertion failure after restore/build became healthy.
+- `STAB09`, `RQ77`, and `RQ78` are already DONE; RQ89 is promoted first, then this prompt.
 
 ### Contract
 
@@ -347,14 +349,25 @@ Commit suggestion: `fix(actions): preserve analytics actions list filters`
 
 ### Test matrix
 
+- exact failing test from BCI04 first
 - accepted product rows with `warning` and legacy `fair` data quality are both included
 - search term matches seeded product rows
 - `pageSize=1` returns one row but `totalCount` stays 2
 - invalid filters still return `400`
 - counts endpoint continues to reflect seed totals
 - priority ordering remains deterministic
+- full `AnalyticsActionsCriticalWorkflowTests` class passes after the focused fix
+
+### Checks
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsCriticalWorkflowTests.List_AppliesCanonicalFiltersSearchPagingAndPriorityOrdering"`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsActionsCriticalWorkflowTests"`
+- after this prompt is green, run the full backend suite before changing BCI01 status
 
 ### Acceptance
 
 - Analytics actions list regression no longer collapses the canonical filtered set to empty.
 - Priority/search/filter behavior stays visible and testable.
+- Focused actions workflow tests are green without weakening expectations.
+- Completion must trigger the full backend suite/GitHub Actions evidence step; do not mark `BCI01` DONE from focused tests alone.
