@@ -1,6 +1,6 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-10  
 Repository: `ivanjovicic/Trendplus`  
 Status: canonical planning entry point
 
@@ -39,9 +39,9 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` | none | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite | No runtime overlap with active failure repairs | Backend suite green with truthful CI evidence |
-| STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | Current release evidence says core pilot is not ready; GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | none globally | Main RQ queue is complete; remaining addenda are WAITING and require explicit promotion/ownership | Selected docs/tests tasks only | Promote and close the next evidence-backed correctness family |
+| BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none directly; delegated repair is `RQ89` | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite. BCI02 live annotation evidence and BCI03 Windows/VS proof have explicit follow-up prompts BCI05/BCI06. | Evidence work only when it does not delay RQ89/RQ90 | RQ89 -> RQ90 -> full backend suite/GHA proof -> BCI01 DONE decision |
+| STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` is DONE; current release evidence still says core pilot is not ready and GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | `RQ89` | BCI04-derived assertion repair override is active. `RQ89` owns inventory list route/count; `RQ90` is serialized next. `RQ77`, `RQ78`, and `STAB09` are already DONE. | Selected docs/tests only; do not overlap RQ89 backend paths | RQ89 DONE, then RQ90, then full backend suite/GHA evidence |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | `P-UI-07` | Must preserve backend/RQ semantics and not outrank the main priority chain | Yes, only when paths are clear | Supplier analytics table migration to shared premium system |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB01` | Must not outrank unresolved higher-priority P0 work | Yes, QDB01 docs/tests when paths are clear | Provider-neutral connector contract characterized |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | `MT01` | Shared SaaS remains forbidden until the full MT gate is complete | Yes, MT01 when paths are clear | Canonical TenantId/context seam, then staged tenant isolation |
@@ -60,6 +60,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 - Business milestones: `docs/roadmaps/BUSINESS_ROADMAP.md`
 - Architecture decisions: `docs/architecture/ADRS.md`
 - Planning consolidation evidence: `docs/planning/PLANNING_CONSOLIDATION_AUDIT_2026-08-08.md`
+- Latest prompt/commit implementation audit: `docs/qa/PROMPT_IMPLEMENTATION_AUDIT_2026-08-10.md`
 
 ## Decision Intelligence boundary
 
@@ -102,7 +103,7 @@ node scripts/check-planning-architecture.mjs
 node scripts/check-planning-architecture.mjs --self-test
 ```
 
-The planning validator owns the new master/roadmap/queue linkage. The existing prompt validator continues to own legacy queue status correctness.
+The planning validator owns the new master/roadmap/queue linkage. The prompt validator owns active execution queues, including BCI and its evidence addendum, plus the legacy/current queues it inventories.
 
 ## Change rule
 
