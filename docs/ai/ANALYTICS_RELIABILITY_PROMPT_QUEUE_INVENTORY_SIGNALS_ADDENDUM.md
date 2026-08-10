@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Current READY prompt: `RQ89`
+Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
 
@@ -26,7 +26,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ69 | WAITING | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
 | RQ70 | WAITING | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
 | RQ71 | WAITING | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
-| RQ89 | WAITING | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
+| RQ89 | READY | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
 
 ---
 
@@ -392,8 +392,8 @@ Size-curve handler coalesces boolean nulls to false. Missing evidence can look l
 
 ## RQ89 - Inventory list route contract
 
-Status: WAITING
-Ready after: STAB09 or explicit reprioritization
+Status: READY
+Ready after: STAB09 DONE (satisfied 2026-08-06); promoted 2026-08-10 as the first remaining BCI04 assertion-repair root cause
 Priority: P1
 Type: backend/tests
 Feature family: inventory-list-route-contract
@@ -412,6 +412,8 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 - The failing test expected seeded rows to remain visible after invalid paging arguments were clamped.
 - The cached route lives in `Api/Endpoints/CachedAnalyticsEndpoints.cs`.
 - The uncached inventory list route lives in `Api/Endpoints/InventoryEndpoints.cs`.
+- `BCI04` grouped this as a real assertion failure after backend restore/build became healthy.
+- `STAB09`, `RQ77`, and `RQ78` are already DONE, leaving RQ89/RQ90 as the explicit unresolved BCI04 repair prompts.
 
 ### Contract
 
@@ -432,16 +434,29 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 - unrelated inventory signal panels
 - forecast/rebalance signal handlers
 - production refresh scheduling
+- analytics actions list (`RQ90` owns that root cause)
 
 ### Test matrix
 
+- exact failing test from BCI04 first
 - seeded non-empty dataset returns matching `totalCount`
 - empty search returns explicit empty-success meta
 - invalid paging clamps page and pageSize but still returns seeded rows
 - store/supplier/search combinations stay deterministic
+- cached and uncached paths preserve the same row/count contract
 - fallback/error path does not fake an empty success
+- full `InventoryListEndpointIntegrationTests` class passes after the focused fix
+
+### Checks
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments"`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~InventoryListEndpointIntegrationTests"`
+- Do not mark RQ89 DONE from a narrowed assertion change alone if the class still fails for the same root cause.
 
 ### Acceptance
 
 - Inventory list regression no longer collapses seeded rows to zero on the cached route.
 - Empty-success behavior stays honest and explicit.
+- Focused inventory-list tests are green without weakening assertions or hiding errors.
+- On completion, promote `RQ90` next; do not mark `BCI01` DONE until RQ90 and the full backend suite are green.
