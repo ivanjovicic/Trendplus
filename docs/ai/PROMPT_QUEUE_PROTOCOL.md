@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-08  
+Updated: 2026-08-10  
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -9,7 +9,7 @@ This protocol defines live prompt-queue governance. Cross-program routing lives 
 
 Existing execution programs:
 
-- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` (`BCI`)
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` (`BCI`)
 - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` (`STAB`)
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` and SQL queue (`RQ` / `Q`)
 - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` (`P-UI`)
@@ -57,6 +57,7 @@ Use these statuses exactly:
 - Parallel-safe means path/feature-family parallelism is allowed; it never means dependency gates can be skipped.
 - Current READY must be declared near the queue top or in the queue's per-program current-READY table.
 - All later prompts remain WAITING until dependencies are met.
+- A follow-up/evidence addendum belongs to the same program as its parent queue; it does not create a second READY allowance.
 
 ## Required prompt sections
 
@@ -203,7 +204,7 @@ node scripts/check-planning-architecture.mjs
 node scripts/check-planning-architecture.mjs --self-test
 ```
 
-`check-prompt-queues.mjs` remains the validator for legacy/current execution queues it already inventories. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.
+`check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.
 
 ## Commit hygiene
 
