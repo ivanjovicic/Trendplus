@@ -30,9 +30,10 @@ const ALLOWED_STATUSES = new Set([
 ]);
 
 const UNSUPPORTED_STATUSES = new Set(["OPEN", "TODO", "IN PROGRESS", "COMPLETE", "COMPLETED"]);
-const TASK_ID_PATTERN = "(?:STAB\\d+[A-Z]?|MT\\d+[A-Z]?|RQ\\d+[A-Z]?|QDB\\d+[A-Z]?|Q\\d+[A-Z]?|GAI\\d+[A-Z]?|P-UI-\\d+)";
+const TASK_ID_PATTERN = "(?:BCI\\d+[A-Z]?|STAB\\d+[A-Z]?|MT\\d+[A-Z]?|RQ\\d+[A-Z]?|QDB\\d+[A-Z]?|Q\\d+[A-Z]?|GAI\\d+[A-Z]?|P-UI-\\d+)";
 
 const ACTIVE_QUEUE_FILES = [
+  "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md",
@@ -286,6 +287,22 @@ function runSelfTest() {
     if (valid.errors.length > 0) {
       failures.push(`valid sample failed:\n${valid.errors.join("\n")}`);
     }
+
+    // Prove BCI IDs are parsed and their Current READY pointer is validated.
+    writeFixture(
+      tmpRoot,
+      "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
+      `# BCI\nCurrent READY prompt: BCI99\n\n## BCI99 - Evidence\n\nStatus: WAITING\nPriority: P0\nFeature family: backend-ci-selftest\nParallel-safe: no\n`,
+    );
+    const bciCurrentReady = validateRoot(tmpRoot);
+    if (!bciCurrentReady.errors.some((error) => error.includes("Current READY prompt 'BCI99' has status 'WAITING'"))) {
+      failures.push("expected BCI Current READY/status mismatch failure");
+    }
+    writeFixture(
+      tmpRoot,
+      "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
+      `# BCI\nCurrent READY prompt: none\n\n## BCI99 - Evidence\n\nStatus: WAITING\nPriority: P0\nFeature family: backend-ci-selftest\nParallel-safe: no\n`,
+    );
 
     writeFixture(
       tmpRoot,
