@@ -1,6 +1,7 @@
 # Analytics Reliability Prompt Priority Review
 
 Date: 2026-06-28
+Routing reviewed: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
 Status: planning/review only; no runtime code changed
 
@@ -24,9 +25,9 @@ Primary goals:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` - RQ25-RQ38
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md` - RQ39-RQ50
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` - RQ51-RQ63
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88 + RQ90
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 - `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`
@@ -44,6 +45,18 @@ For a normal implementation run, read only:
 7. source/test files in `Scope only`
 
 Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
+
+## Current BCI assertion-repair override (2026-08-10)
+
+The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04`.
+
+1. `RQ89` is the single current analytics-correctness READY prompt. It owns the inventory-list route/count failure (`expected totalCount=4`, observed `0`).
+2. `RQ90` remains WAITING and becomes next only after `RQ89` is DONE. It owns the analytics-actions canonical filter/search/paging failure (`expected totalCount=2`, observed `0`).
+3. `STAB09`, `RQ77`, and `RQ78`, which owned the other explicit BCI04 root-cause groups, are already DONE.
+4. After RQ90, run the full `Api.Tests` suite and GitHub Actions backend workflow. Only that evidence may move `BCI01` from PARTIAL to DONE.
+5. If the full suite exposes a new root-cause family, return to BCI triage and create/reuse one focused prompt; do not weaken tests or silently broaden RQ89/RQ90.
+
+This override exists to close known red CI evidence before resuming lower-priority generic analytics work.
 
 ## Global execution lanes
 
@@ -82,7 +95,7 @@ This lane prevents missing evidence from looking safe.
 | C2 | RQ60/RQ67 | Inventory missing cost/value and forecast workflow value trust. | RQ60 establishes row value contract; RQ67 follows for workflow payload. |
 | C3 | RQ04/RQ75 | Data Quality no-data/no-sales must not show green. | Treat as one fake-green family. Backend/Decision Board first if RQ04 is active; DataQualityPage surface from RQ75 after or in same scoped PR if tests are small. |
 | C4 | RQ03/Q80 | Lost-sales unavailable vs true zero/source confidence. | Do not implement independently. Choose one source-status vocabulary and mark the other as SQL-specific follow-up or obsolete. |
-| C5 | RQ81 | `not_measured` must not get fake measured timestamp. | Ready. Can be done before broader outcome denominator work. |
+| C5 | RQ81 | `not_measured` must not get fake measured timestamp. | Ready-quality contract, but remains WAITING while the BCI repair override is active. |
 | C6 | RQ86 | Authoritative outcome status needs evidence or qualitative label. | Prepared staged default exists, but hard validation remains contract-gated. Read prep doc; run after RQ81. |
 
 ### Lane D - date, period and denominator contracts
@@ -132,7 +145,7 @@ SQL prompts should not be merged with frontend fixes unless a new prompt explici
 
 ## Updated top-20 recommended sequence
 
-This is the safest single-agent sequence if only one agent is working:
+The list below is the generic analytics order retained for when the BCI assertion-repair override is closed. While RQ89/RQ90 are active, the override above wins.
 
 1. RQ01
 2. RQ72
@@ -157,16 +170,18 @@ This is the safest single-agent sequence if only one agent is working:
 
 Parallel-safe options if separate agents are careful:
 
-- Q69 can run in a SQL-only branch while RQ01 runs in backend Decision Board.
-- RQ39 can run frontend-only after RQ01 if it does not touch Decision Board files.
+- Q69 can run in a SQL-only branch while a higher-priority backend task runs, but it must not displace the BCI repair override.
+- Frontend-only tasks may run only when path-safe and must not change backend contracts under RQ89/RQ90.
 - RQ76/RQ88 are safe small UX tasks, but should not displace P0/P1 tasks.
 
 ## Prompt quality assessment
 
 ### Ready-quality prompts
 
-These are clear enough for direct execution with minimal extra research:
+These are clear enough for direct execution with minimal extra research when their routing/dependencies permit them:
 
+- RQ89 (current READY)
+- RQ90 (ready-quality, serialized after RQ89)
 - RQ01
 - RQ39
 - RQ40
@@ -241,12 +256,14 @@ Next prompt:
 
 ## Final recommendation
 
-The queues are now strong enough for agent execution, but the agent should not start from local addendum P0. Use the global lane order above. The biggest token saver is to treat this document as the routing layer and read the waiting-prompt prep document only when a prompt is explicitly listed as prepared/gated.
+The queues are strong enough for agent execution, but current routing is not the old generic lane order. Close the BCI04-derived assertion sequence first: `RQ89` -> `RQ90` -> full backend suite/GitHub Actions evidence. After that, return to the general lane order and owner-gated promotions.
 
-### Current next runnable pointers (2026-08-05, STAB02)
+### Current next runnable pointers (2026-08-10)
 
-- Cross-cutting / governance: `STAB03` in `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
-- Analytics correctness: no global READY in reliability/cross-surface queues; promote the next WAITING family from the lanes above only with explicit unblocking
-- Premium UI (parallel-safe): `P-UI-05`
-- GenAI: dormant until STAB P0 gates are clear
-- Validator: `node scripts/check-prompt-queues.mjs`
+- Backend CI: `BCI01` remains PARTIAL; its remaining assertion repair is delegated to the analytics prompts below.
+- Analytics correctness: `RQ89` READY in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`.
+- Next after RQ89: promote `RQ90` in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`.
+- After RQ90: run the full backend suite and GitHub Actions evidence; only then reconsider `BCI01` DONE.
+- Premium UI: `P-UI-07` remains supplemental/path-safe only.
+- GenAI: dormant until core release gates are clear.
+- Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.
