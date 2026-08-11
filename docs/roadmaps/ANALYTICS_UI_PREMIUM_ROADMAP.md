@@ -24,11 +24,11 @@ P-UI must not:
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
-Current queue truth on 2026-08-08:
+Current queue truth on 2026-08-11:
 
-- `P-UI-07` is READY: migrate supplier analytics tables to the shared premium table system;
-- `P-UI-08` is WAITING: consolidate inventory controls/export/scheduler surface;
-- `P-UI-04` is WAITING: analytics command-center redesign.
+- `P-UI-17` is DONE: PreNivelacijaPriorityPage chrome modernization.
+- `P-UI-18` is DONE: SupplierFootwearAnalyticsPage chrome modernization.
+- No current READY prompt.
 
 The queue remains authoritative for exact task status and acceptance.
 

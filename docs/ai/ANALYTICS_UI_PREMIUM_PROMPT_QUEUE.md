@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-18` (see least-improved addendum; SupplierFootwearAnalyticsPage chrome)
+Current READY prompt: none (P-UI-18 DONE; see least-improved addendum completion note)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -23,6 +23,7 @@ Use with:
 | P-UI-07 | DONE | supplier-analytics-table | Migrate supplier analytics tables to shared premium table system |
 | P-UI-08 | DONE | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
 | P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
+| P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 
 ---
 
@@ -664,6 +665,86 @@ npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
   - Migrated the page to shared `AnalyticsControlBar` and `AnalyticsDataTable` chrome.
   - Replaced tooltip hardcoded trend colors with theme tokens.
   - Kept P-UI-16 reliability semantics intact.
+- Remaining:
+  - none
+
+---
+
+## P-UI-18 - SupplierFootwearAnalyticsPage chrome modernization
+
+Status: DONE
+Ready after: P-UI-17 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-18-codex.lock.md` (released on DONE)
+Commit suggestion: `feat(ui): modernize SupplierFootwearAnalyticsPage chrome`
+Canonical detail: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md` (P-UI-18)
+
+### Problem
+
+`SupplierFootwearAnalyticsPage` still uses page-local `sf-decision-filters` and `sf-decision-table-wrap` instead of shared `AnalyticsControlBar` and `AnalyticsDataTable`. It also needs an `AnalyticsTrustHeader` pattern that stays compatible with the embedded `SupplierConsolidatedPage` flow.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+- No `AnalyticsControlBar`, `AnalyticsDataTable` or `AnalyticsTrustHeader` imports on this page
+- `SupplierConsolidatedPage` embeds this page with `sharedFilters`
+
+### Scope
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.css`
+- focused tests under `Klijent/clientapp/src/pages/__tests__/`
+
+### Read first
+
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+
+### Do
+
+1. Add or confirm `AnalyticsTrustHeader` in full-page mode while keeping embedded mode compatible.
+2. Migrate filters to `AnalyticsControlBar`.
+3. Migrate the supplier priority table to `AnalyticsDataTable`.
+4. Preserve embedded/sharedFilters behavior used by `SupplierConsolidatedPage`.
+5. Keep chart and recommendation semantics unchanged.
+6. Add or update focused tests for the page chrome and embedded wrapper if needed.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx src/pages/__tests__/SupplierConsolidatedPage.spec.tsx
+```
+
+### Acceptance
+
+- Supplier footwear analytics uses shared premium chrome without breaking embedded/sharedFilters behavior.
+- Charts and recommendation semantics stay intact.
+
+### Dependencies
+
+- `P-UI-17` DONE
+- Path-safe vs higher-priority BCI/STAB/RQ exclusive work
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: codex
+- Commit: `2fa16a5`
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Added shared `AnalyticsTrustHeader`, `AnalyticsControlBar`, and `AnalyticsDataTable` chrome.
+  - Kept the embedded `SupplierConsolidatedPage` trust metadata path intact.
 - Remaining:
   - none
 

@@ -22,7 +22,7 @@ Use with:
 | P-UI-15 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ProdajaPrePostNivelacijePage) |
 | P-UI-16 | DONE | pre-nivelacija-priority-signal-copy | Fix unavailable reliability shown as Nisko + empty/copy polish |
 | P-UI-17 | DONE | legacy-analytics-modernization | Modernize PreNivelacijaPriorityPage chrome (ControlBar + DataTable) |
-| P-UI-18 | READY | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
+| P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 
 ---
 
@@ -644,14 +644,14 @@ Prefer a dedicated premium chrome assertion (control bar + data table test ids) 
 
 ## P-UI-18 - SupplierFootwearAnalyticsPage chrome modernization
 
-Status: READY
+Status: DONE
 Ready after: P-UI-17 DONE
 Priority: P2
 Type: frontend/design/tests
 Feature family: legacy-analytics-modernization
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-18-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-18-codex.lock.md` (released on DONE)
 Commit suggestion: `feat(ui): modernize SupplierFootwearAnalyticsPage chrome`
 Promotion note: 2026-08-11 - follow-up after P-UI-17 DONE; remaining supplier legacy chrome.
 
@@ -711,3 +711,21 @@ npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx
 
 - `P-UI-17` DONE
 - Path-safe vs higher-priority BCI/STAB/RQ exclusive work
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: codex
+- Commit: `2fa16a5`
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Added shared `AnalyticsTrustHeader`, `AnalyticsControlBar`, and `AnalyticsDataTable` chrome.
+  - Kept the embedded `SupplierConsolidatedPage` trust metadata path intact.
+- Remaining:
+  - none
