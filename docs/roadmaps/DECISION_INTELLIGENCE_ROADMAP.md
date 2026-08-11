@@ -79,6 +79,7 @@ Goal: improve recommendation confidence from measured outcomes without introduci
 Authoritative contract:
 
 - `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
 
 Roadmap sequence:
 

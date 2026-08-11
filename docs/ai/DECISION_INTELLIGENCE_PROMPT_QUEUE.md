@@ -9,7 +9,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 | Program | Current READY | Execution class |
 |---|---|---|
 | DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
-| RL - Recommendation Learning | `none` (`RL01` DONE) | docs/contracts/data-model inventory only |
+| RL - Recommendation Learning | `none` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
 | DT - Decision Timeline | `none` (`DT01`/`DT02` DONE) | docs/planning only |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
@@ -817,11 +817,14 @@ Local lock: removed after DONE
 
 ## RL02 - Prepare deterministic statistics rollout plan
 
-Status: WAITING  
-Priority: future  
-Feature family: recommendation-learning-statistics-plan  
-Parallel-safe: yes, planning only  
+Status: DONE
+Priority: future
+Feature family: recommendation-learning-statistics-plan
+Parallel-safe: yes, planning only
 Owner: unassigned
+Local lock: removed after DONE
+Commit suggestion: `docs(learning): add deterministic statistics rollout plan`
+Promotion note: 2026-08-11 — `RL01` DONE; planning-only; does not authorize runtime calibration.
 
 ### Problem
 
@@ -858,6 +861,25 @@ The learning contract needs a staged rollout that first measures truth before ch
 ### Acceptance
 
 - runtime learning remains gated behind measurable staged evidence.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Commit SHA: e57ac8d
+- Changed files:
+  - `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Provere:
+  - `git diff --check`
+  - `node scripts/check-prompt-queues.mjs`
+  - `node scripts/check-planning-architecture.mjs`
+- Rizici:
+  - planning-only rollout; no runtime learning mutation or schema migration was added
+- Sledece:
+  - none in RL program until a later runtime statistics prompt is explicitly promoted
 
 ### Dependencies
 
