@@ -22,6 +22,7 @@ Use with:
 | P-UI-15 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ProdajaPrePostNivelacijePage) |
 | P-UI-16 | DONE | pre-nivelacija-priority-signal-copy | Fix unavailable reliability shown as Nisko + empty/copy polish |
 | P-UI-17 | DONE | legacy-analytics-modernization | Modernize PreNivelacijaPriorityPage chrome (ControlBar + DataTable) |
+| P-UI-18 | READY | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 
 ---
 
@@ -638,4 +639,75 @@ Prefer a dedicated premium chrome assertion (control bar + data table test ids) 
   - P-UI-16 unavailable-reliability behavior remains intact.
 - Remaining:
   - none
+
+---
+
+## P-UI-18 - SupplierFootwearAnalyticsPage chrome modernization
+
+Status: READY
+Ready after: P-UI-17 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-18-<agent>.lock.md`
+Commit suggestion: `feat(ui): modernize SupplierFootwearAnalyticsPage chrome`
+Promotion note: 2026-08-11 - follow-up after P-UI-17 DONE; remaining supplier legacy chrome.
+
+### Problem
+
+`SupplierFootwearAnalyticsPage` still uses page-local `sf-decision-filters` and `sf-decision-table-wrap` instead of shared `AnalyticsControlBar` / `AnalyticsDataTable`, and it does not expose an `AnalyticsTrustHeader` on the same pattern as the premium analytics pages. The embedded `SupplierConsolidatedPage` flow must remain compatible.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx` (~437 local filters; ~504 table wrap)
+- No `AnalyticsControlBar`, `AnalyticsDataTable` or `AnalyticsTrustHeader` imports on this page
+- `SupplierConsolidatedPage` embeds this page with `sharedFilters`, so embedded mode must stay valid
+
+### Scope
+
+In scope:
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.css`
+- focused tests under `Klijent/clientapp/src/pages/__tests__/`
+
+Out of scope:
+
+- analytics formulas / backend endpoints / export values
+- embedded supplier consolidation API contract
+- inventing new filter catalogs or changing chart semantics
+
+### Read first
+
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`
+- recent legacy chrome migrations (Supplier / ShoeType / Color / Daily / ProdajaPrePost / PreNivelacija)
+
+### Do
+
+1. Add or confirm `AnalyticsTrustHeader` in full-page mode while keeping embedded mode sane.
+2. Migrate filters to `AnalyticsControlBar`.
+3. Migrate the supplier priority table to `AnalyticsDataTable` and keep the existing toolbar/detail flow.
+4. Preserve embedded/sharedFilters behavior used by `SupplierConsolidatedPage`.
+5. Keep chart and recommendation semantics unchanged.
+6. Add or update a focused test for the page chrome, plus the embedded wrapper if needed.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx src/pages/__tests__/SupplierConsolidatedPage.spec.tsx
+```
+
+### Acceptance
+
+- Supplier footwear analytics matches premium chrome without breaking embedded/sharedFilters behavior.
+- Shared filter controls and table wrapper are used instead of page-local chrome.
+- Charts and recommendation semantics stay intact.
+
+### Dependencies
+
+- `P-UI-17` DONE
 - Path-safe vs higher-priority BCI/STAB/RQ exclusive work
