@@ -81,6 +81,15 @@ In other words:
 - That bucket belongs to a future learning layer, not to the recommendation row itself.
 - The fallback from row-level numeric signals to the displayed expected impact should stay backend-led; if the backend changes its source fields, the page should continue to prefer backend truth over local heuristics.
 
+## DEX09 Decision Tree Test Plan
+
+The branch-path surface should stay contract-driven and backend-led.
+
+- backend contract tests should verify that a branch path is emitted only for rule-based recommendations and that the rule-set/version metadata stays stable for the same evaluated path;
+- frontend tests should verify that Product Decision Center renders the branch path when present and a plain no-tree state when it is absent;
+- `ReasonCodes`, `PrimaryDrivers`, `ConfidenceBreakdown`, `EvidenceChain` and `AlternativeRecommendations` must not be used as a local fallback tree;
+- the Why panel must remain readable even when the tree is unavailable.
+
 ## Verification
 
 - `git diff --check` - pass

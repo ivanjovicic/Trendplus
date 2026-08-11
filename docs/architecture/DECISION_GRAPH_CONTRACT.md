@@ -36,6 +36,56 @@ This is a declarative model. The current code does not need to emit a literal gr
 | Action link | The recommended next step | `RecommendedAction`, `RiskIfIgnored`, `ImpactWindowDays`, `ExpectedImpactRsd` | The action link should remain deterministic and reviewable |
 | Outcome link | What happened after action | future RL/DT contract, plus `DecisionBoardCard.MeasuredImpactRsd` and `RealizationRatio` as downstream consumers | Not required for the first runtime implementation |
 
+## Decision tree contract
+
+The decision tree is a deterministic branch-path projection of the same recommendation graph. It is only present when the backend can prove a rule-based evaluation path. It is not inferred from reason codes, alternative recommendations or the evidence chain.
+
+The current runtime does not yet emit a dedicated decision tree object. The contract below is the target additive shape for a later implementation.
+
+### Tree state
+
+| State | Meaning |
+|---|---|
+| `available` | The backend returned a deterministic branch path. |
+| `unavailable` | The recommendation was not rule-based, or the backend cannot prove the branch trace yet. |
+| `unknown` | The backend cannot confirm whether a tree exists. The UI must still render that absence explicitly. |
+
+### Tree metadata
+
+| Field | Meaning |
+|---|---|
+| `decisionTreeRuleSetId` | Stable rule family identifier. |
+| `decisionTreeRuleSetVersion` | Rule version used for evaluation. |
+| `decisionTreeEvaluatedAtUtc` | Timestamp of the backend evaluation. |
+| `decisionTreeLabel` | Short label for the branch family. |
+| `decisionTreeUnavailableReason` | Deterministic reason code for no tree. |
+| `decisionTreeNodes` | Ordered branch nodes from root to selected leaf. |
+
+### Node fields
+
+Each branch node should include:
+
+- `nodeId`
+- `parentNodeId`
+- `order`
+- `ruleId`
+- `ruleVersion`
+- `nodeLabel`
+- `predicateText`
+- `predicateResult`
+- `selectedBranchLabel`
+- `evidenceSourceFields`
+- `isFallback`
+- `isTerminal`
+- `explanationText`
+
+### Branch-path rules
+
+- show the branch path only when rule-based logic applies;
+- if no branch path exists, render that absence explicitly;
+- never infer a tree from `ReasonCodes`, `PrimaryDrivers`, `ConfidenceBreakdown`, `EvidenceChain` or `AlternativeRecommendations`;
+- keep the tree backend-led and additive to the Why panel, not a replacement for it.
+
 ## Stable identity and correlation rules
 
 - `RecommendationId` is the best current row-level identity for tracing a decision across surfaces.
@@ -194,6 +244,7 @@ If one of these inputs is missing, the UI should show the absence explicitly ins
 - Existing analytics reliability semantics remain authoritative.
 - The first runtime implementation can stay scoped to the Product Decision Center family.
 - Decision Board can reuse the same semantics without becoming a second source of truth.
+- The current Product Decision Center fields can gate tree display, but they cannot reconstruct a branch path on their own.
 
 ## Next implementation split
 

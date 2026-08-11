@@ -36,7 +36,7 @@ Roadmap sequence:
 4. **Alternative recommendations** - show valid competing actions and why they were not selected.
 5. **Drill-down** - navigate from decision summary to evidence and source-level supporting data.
 6. **Why panel** - concise user-facing explanation generated from deterministic fields, not free-form inference.
-7. **Decision Tree** - inspect the rule/branch path that produced the recommendation where rule-based logic applies.
+7. **Decision Tree** - inspect the rule/branch path that produced the recommendation where rule-based logic applies, and show the absence of a tree explicitly when no branch path exists.
 8. **Decision evidence snapshot** - persist a versioned evidence snapshot when a recommendation is acted on so later review is not rewritten by new data.
 
 ### DEX02 - First-family rollout plan
@@ -61,6 +61,7 @@ Compatibility and stop conditions:
 - additive only for the first bounded implementation slices;
 - no AI dependency;
 - if a field is absent, show the gap rather than synthesizing a fallback;
+- branch-path surfaces are explicit when present and explicit when absent; do not infer them from reasons or evidence chains;
 - do not expand beyond Product Decision Center until the first family is stable.
 
 Next bounded prompt:
