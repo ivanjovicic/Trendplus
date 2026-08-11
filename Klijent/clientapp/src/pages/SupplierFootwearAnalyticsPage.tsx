@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
@@ -16,6 +19,7 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -26,6 +30,7 @@ type DecisionStatus = VendorSalesNivelacijaRecommendation["status"];
 
 type ActiveFilters = { fromDate: string; toDate: string; vendorId: number | null; category: string; storeId: number | null; dataScope: string | null };
 type SuggestedRange = { fromDate: string; toDate: string; label: string };
+type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" | null;
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number;
@@ -141,7 +146,45 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   return { byVendor, globalTypeShare };
 }
 
-export default function SupplierFootwearAnalyticsPage({ embedded = false, sharedFilters }: SupplierEmbeddedPageProps = {}) {
+function normalizeDataQualityStatus(value: string | null | undefined): DataQualityStatus {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "good" || normalized === "warning" || normalized === "critical" || normalized === "insufficient_data") {
+    return normalized;
+  }
+
+  return null;
+}
+
+function getDataQualityStatus(data: VendorSalesNivelacijaResponse | null): DataQualityStatus {
+  if (!data) return null;
+
+  const metaStatus = normalizeDataQualityStatus(data.meta?.dataQualityStatus ?? null);
+  if (metaStatus) return metaStatus;
+
+  if (data.meta?.warningCode || data.meta?.isPartial) {
+    return "warning";
+  }
+
+  if ((data.vendorStats?.length ?? 0) === 0 || (data.articleStats?.length ?? 0) === 0) {
+    return "insufficient_data";
+  }
+
+  if ((data.dataQuality.analyzedRows ?? 0) === 0) {
+    return "insufficient_data";
+  }
+
+  if ((data.dataQuality.inactiveRows ?? 0) > 0 || (data.dataQuality.lowPostCoverageRows ?? 0) > 0) {
+    return "warning";
+  }
+
+  return "good";
+}
+
+export default function SupplierFootwearAnalyticsPage({
+  embedded = false,
+  sharedFilters,
+  onTrustMetadataChange,
+}: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const requestIdRef = useRef(0);
@@ -173,6 +216,12 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
   const [expandedVendorKey, setExpandedVendorKey] = useState<string | null>(null);
 
   const invalidRange = useMemo(() => (!fromDate || !toDate ? false : new Date(fromDate) > new Date(toDate)), [fromDate, toDate]);
+  const isDirty = useMemo(() => (
+    fromDate !== activeFilters.fromDate
+    || toDate !== activeFilters.toDate
+    || vendorId !== activeFilters.vendorId
+    || category !== activeFilters.category
+  ), [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, category, fromDate, toDate, vendorId]);
 
   useEffect(() => {
     if (!sharedFilters) return;
@@ -353,6 +402,104 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
     insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => vendorKey(row) === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
+  const dataMeta = data?.meta ?? null;
+  const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
+  const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
+  const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
+  const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
+  const recommendationAllowed = dataQualityStatus === "good" || dataQualityStatus === "warning";
+  const generatedAt = data?.generatedAt ?? null;
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
+    {
+      key: "period",
+      label: "Period",
+      value: `${fromDate} → ${toDate}`,
+      tone: "info",
+    },
+    {
+      key: "vendor",
+      label: "Dobavljač",
+      value: vendorId == null ? "Svi" : vendors.find((vendor) => vendor.id === vendorId)?.naziv ?? String(vendorId),
+      tone: vendorId == null ? "neutral" : "success",
+    },
+    {
+      key: "category",
+      label: "Kategorija",
+      value: category || "Sve",
+      tone: category ? "warning" : "neutral",
+    },
+    {
+      key: "rows",
+      label: "Prikazano",
+      value: `${sortedRows.length.toLocaleString("sr-RS")} redova`,
+      tone: sortedRows.length === 0 ? "warning" : "success",
+    },
+    {
+      key: "signal",
+      label: "Signal",
+      value: showMetaWarning ? "Delimičan" : (dataQualityStatus ?? "Nepoznat"),
+      tone: showMetaWarning ? "warning" : dataQualityStatus === "good" ? "success" : dataQualityStatus === "warning" ? "warning" : dataQualityStatus === "critical" ? "critical" : "neutral",
+    },
+  ], [category, dataQualityStatus, fromDate, showMetaWarning, sortedRows.length, toDate, vendorId, vendors]);
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(() => [
+    {
+      key: "periodPreset",
+      label: "Period",
+      control: (
+        <select
+          value={periodPreset}
+          onChange={(e) => {
+            const value = e.target.value as PeriodPreset;
+            setPeriodPreset(value);
+            if (value === "custom") return;
+            const range = getPresetRange(value);
+            setFromDate(range.fromDate);
+            setToDate(range.toDate);
+          }}
+        >
+          <option value="30d">Poslednjih 30 dana</option>
+          <option value="90d">Poslednjih 90 dana</option>
+          <option value="180d">Poslednjih 180 dana</option>
+          <option value="365d">Poslednjih 365 dana</option>
+          <option value="custom">Prilagođeno</option>
+        </select>
+      ),
+    },
+    {
+      key: "fromDate",
+      label: "Od",
+      control: <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />,
+    },
+    {
+      key: "toDate",
+      label: "Do",
+      control: <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />,
+    },
+    {
+      key: "vendor",
+      label: "Dobavljač",
+      control: (
+        <select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Svi</option>
+          {vendors.map((vendor) => (
+            <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "category",
+      label: "Kategorija",
+      control: (
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Sve</option>
+          {(data?.categories ?? []).map((item) => (
+            <option key={item} value={item}>{item}</option>
+          ))}
+        </select>
+      ),
+    },
+  ], [category, data?.categories, fromDate, periodPreset, toDate, vendorId, vendors]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "periodPreset", label: "Period", value: periodPreset },
@@ -366,10 +513,43 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-      { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
+    { key: "vendorsCount", label: "Dobavljača", value: data?.totals.vendorsCount ?? 0 },
     { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
     { key: "windowDays", label: "Prozor (dani)", value: data?.windowDays ?? 0 },
   ], [data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.windowDays]);
+
+  useEffect(() => {
+    if (!embedded || !onTrustMetadataChange) return;
+
+    if (!data) {
+      onTrustMetadataChange(null);
+      return;
+    }
+
+    onTrustMetadataChange({
+      periodFrom: activeFilters.fromDate,
+      periodTo: activeFilters.toDate,
+      lastRefreshAt: data.meta?.lastRefreshAtUtc ?? data.generatedAt ?? null,
+      dataFreshnessStatus: data.meta?.isPartial || data.meta?.warningCode ? "stale" : data.generatedAt ? "fresh" : "unknown",
+      dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
+      dataQualityStatus: dataQualityStatus ?? (showMetaWarning ? "warning" : "good"),
+      recommendationAllowed,
+      recommendationNote: "Asortiman je analitički signal. Finalna preporuka ostaje u centralnom dobavljačkom pregledu.",
+      emptyStateReason: showEmptyState ? (dataMetaMessage ?? dataHint ?? null) : null,
+    });
+  }, [
+    activeFilters.fromDate,
+    activeFilters.toDate,
+    data,
+    dataHint,
+    dataMetaMessage,
+    dataQualityStatus,
+    embedded,
+    onTrustMetadataChange,
+    recommendationAllowed,
+    showEmptyState,
+    showMetaWarning,
+  ]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) { setSortDir((current) => (current === "asc" ? "desc" : "asc")); return; }
@@ -424,16 +604,68 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
   return (
     <div className={`sf-decision-page ${embedded ? "sf-decision-page--embedded" : ""}`}>
       {!embedded ? (
+        <AnalyticsTrustHeader
+          title="Dobavljači i tipovi obuće"
+          description="Ovaj ekran prikazuje dodatni analitički signal za dobavljače i dominantne tipove obuće, uz isti period i kvalitet podataka koji koristi i konsolidovani dobavljački pregled."
+          periodFrom={activeFilters.fromDate}
+          periodTo={activeFilters.toDate}
+          lastRefreshAt={data?.meta?.lastRefreshAtUtc ?? data?.generatedAt ?? null}
+          dataFreshnessStatus={showMetaWarning || dataMeta?.isPartial ? "stale" : data?.generatedAt ? "fresh" : "unknown"}
+          dataSource="Supplier sales nivelacija"
+          dataQualityStatus={dataQualityStatus}
+          mode="signal"
+          recommendationNote="Asortiman je pomoćni signal. Finalna odluka ostaje u centralnom dobavljačkom pregledu."
+          emptyStateReason={showEmptyState ? (dataMetaMessage ?? dataHint ?? null) : null}
+          methodologyHref="/analytics/data-quality"
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          recommendationAllowed={recommendationAllowed}
+          isPartial={showMetaWarning}
+          compact
+        />
+      ) : null}
+
+      {!embedded ? (
+        <AnalyticsControlBar
+          title="Kontrole asortimana"
+          description="Filtriraj period, dobavljača i kategoriju bez menjanja poslovne logike preporuke."
+          chips={controlBarChips}
+          primaryAction={{
+            key: "apply",
+            label: "Primeni filtere",
+            onClick: handleApplyFilters,
+            disabled: loading || !isDirty || invalidRange,
+          }}
+          secondaryActions={[
+            {
+              key: "reset",
+              label: "Reset filtera",
+              onClick: handleResetFilters,
+              disabled: loading || !isDirty,
+              tone: "secondary",
+            },
+            {
+              key: "quality",
+              label: "Kvalitet podataka",
+              to: "/analytics/data-quality",
+              tone: "secondary",
+            },
+          ]}
+          fields={controlBarFields}
+        />
+      ) : null}
+
+      {false ? (
       <header className="sf-decision-header">
         <div>
           <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
           <p className="sf-decision-subtitle">Ekran za podrsku odluci koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
         </div>
-        <div className="sf-decision-generated">Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}</div>
+        <div className="sf-decision-generated">Generisano: {generatedAt ? new Date(generatedAt ?? "").toLocaleString("sr-RS") : "-"}</div>
       </header>
       ) : null}
 
-      {!embedded ? (
+      {false ? (
       <section className="sf-decision-filters">
         <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
         <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
@@ -495,8 +727,12 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                 </div>
               ) : <div className="sf-decision-empty">Nema podataka za grafikon tipova obuce.</div>}
             </article>
-
             <article className="sf-decision-card analytics-surface-panel">
+              <AnalyticsDataTable
+                testId="supplier-footwear-analytics-data-table"
+                rowCount={sortedRows.length}
+                truncationLabel={showMetaWarning ? "Delimičan signal" : "Pregled prioriteta"}
+              >
               <div className="sf-decision-table-head">
                 <div><h2>Prioritetna lista dobavljača</h2><p>Pojačaj: {vendorCounts.increaseFocus} | Zadrži: {vendorCounts.maintain} | Proveri: {vendorCounts.review} | Ne veruj: {vendorCounts.doNotTrust} | Nedovoljno: {vendorCounts.insufficientData}</p></div>
                 <AnalyticsTableToolbar tableKey="dobavljaci-tipovi-obuce" tableTitle="Dobavljači i tipovi obuće" columns={decisionColumns} rows={sortedRows} filters={toolbarFilters} metadata={toolbarMetadata} defaultOrientation="landscape" />
@@ -536,6 +772,7 @@ export default function SupplierFootwearAnalyticsPage({ embedded = false, shared
                   </tbody>
                 </table>
               </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 
