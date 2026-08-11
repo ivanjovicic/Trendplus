@@ -18,21 +18,27 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ## DEX08 - Implement Product Decision Center deterministic Why-panel contract
 
-Status: READY
+Status: DONE
 Priority: future-high-value / implementation
 Feature family: decision-explainability-product-decision-center-phase5
 Parallel-safe: no, coupled backend/frontend contract
-Owner: unassigned
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
 DEX07 makes alternatives explicit, but the Product Decision Center Why panel still needs a single deterministic contract for how reason, evidence, confidence and alternatives are composed into the concise user-facing explanation instead of relying on ad hoc UI glue or free-form inference.
 
+### Progress
+
+- claimed by Codex on 2026-08-11
+- completed a single backend-led Why-panel contract for Product Decision Center
+
 ### Evidence
 
 - `docs/architecture/DECISION_GRAPH_CONTRACT.md` defines the Why panel as deterministic backend fields only.
 - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places Why panel after alternatives in the explainability sequence.
-- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still renders the explanation surface as a page-local composition layer.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` now renders the explanation surface from the backend WhyPanel bundle and preserves explicit fallback labels.
 - `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md` keeps Product Decision Center as the reference implementation for the shared explainability contract.
 
 ### Scope
@@ -72,6 +78,29 @@ DEX07 makes alternatives explicit, but the Product Decision Center Why panel sti
 ### Dependencies
 
 - DEX07 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Commit SHA: 9c5f355
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+  - `npm run build` - pass
+  - `git diff --check` - pass
+- Risk:
+  - The Why panel is deterministic and backend-led, but the frontend still keeps a compatibility fallback if older payloads omit `whyPanel`.
+- Next:
+  - `RL01 - Recommendation Learning`
 
 ---
 
