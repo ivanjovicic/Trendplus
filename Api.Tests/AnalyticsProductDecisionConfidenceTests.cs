@@ -97,6 +97,28 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Equal(1, boostAlternative.Rank);
         Assert.Equal("Pojačaj", boostAlternative.RecommendationLabel);
         Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
+
+        row.RecommendationId = profile.RecommendationId;
+        row.RecommendationType = profile.RecommendationType;
+        row.ConfidenceLevel = profile.ConfidenceLevel;
+        row.ConfidenceScore = profile.ConfidenceScore;
+        row.ExplainabilityText = profile.ExplainabilityText;
+        row.InputFreshnessStatus = profile.InputFreshnessStatus;
+        row.PrimaryDrivers = [.. profile.PrimaryDrivers];
+        row.WarningCodes = [.. profile.WarningCodes];
+        row.EvidenceChain = [.. profile.EvidenceChain];
+        row.ConfidenceBreakdown = [.. profile.ConfidenceBreakdown];
+        CachedAnalyticsEndpoints.ApplyDecisionEvidenceSnapshotPreview(
+            row,
+            new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc));
+        Assert.Equal("absent", row.EvidenceSnapshotStatus);
+        Assert.NotNull(row.EvidenceSnapshotPreview);
+        Assert.Equal(1, row.EvidenceSnapshotPreview!.SchemaVersion);
+        Assert.Equal(profile.RecommendationId, row.EvidenceSnapshotPreview.RecommendationId);
+        Assert.Equal(profile.RecommendationType, row.EvidenceSnapshotPreview.RecommendationType);
+        Assert.Equal(profile.EvidenceChain.Count, row.EvidenceSnapshotPreview.EvidenceChain.Count);
+        Assert.Equal(profile.ConfidenceBreakdown.Count, row.EvidenceSnapshotPreview.ConfidenceBreakdown.Count);
     }
 
     [Fact]

@@ -547,6 +547,28 @@ export interface ProductDecisionCenterItem {
   learningEligible?: boolean | null;
   learningEligibilityReasonCodes?: string[] | null;
   recommendationLifecycle?: RecommendationLifecycleCapture | null;
+  evidenceSnapshotStatus?: "absent" | "available" | string | null;
+  evidenceSnapshotPreview?: ProductDecisionEvidenceSnapshotPreview | null;
+}
+
+export interface ProductDecisionEvidenceSnapshotPreview {
+  schemaVersion: number;
+  recommendationId: string;
+  recommendationType: string;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  dataQualityStatus: string;
+  confidenceLevel: string;
+  confidenceScore?: number | null;
+  confidencePct: number;
+  reliabilityPct: number;
+  inputFreshnessStatus: string;
+  explainabilityText: string;
+  reasonCodes: string[];
+  warningCodes: string[];
+  primaryDrivers: string[];
+  evidenceChain: ProductDecisionEvidenceNode[];
+  confidenceBreakdown: ProductDecisionEvidenceNode[];
 }
 
 export type ProductDecisionDenominatorScope =
@@ -1480,6 +1502,37 @@ export interface AnalyticsActionCreationSnapshot {
   inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
 }
 
+export interface AnalyticsActionEvidenceNodeSnapshot {
+  category: string;
+  code: string;
+  label: string;
+  valueText: string;
+  sourceFields: string[];
+  isMissing: boolean;
+  detail?: string | null;
+}
+
+export interface AnalyticsActionDecisionEvidenceSnapshot {
+  schemaVersion: number;
+  capturedAtUtc: string;
+  recommendationId: string;
+  recommendationType: string;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  dataQualityStatus: string;
+  confidenceLevel: string;
+  confidenceScore?: number | null;
+  confidencePct: number;
+  reliabilityPct: number;
+  inputFreshnessStatus: string;
+  explainabilityText: string;
+  reasonCodes: string[];
+  warningCodes: string[];
+  primaryDrivers: string[];
+  evidenceChain: AnalyticsActionEvidenceNodeSnapshot[];
+  confidenceBreakdown: AnalyticsActionEvidenceNodeSnapshot[];
+}
+
 export interface AnalyticsActionResolutionSnapshot {
   outcomeStatus?: "pending" | "success" | "neutral" | "negative" | "not_measured" | string | null;
   measuredImpactRsd?: number | null;
@@ -1494,6 +1547,7 @@ export interface AnalyticsActionLedgerSnapshot {
   schemaVersion: number;
   creationSnapshot?: AnalyticsActionCreationSnapshot | null;
   resolutionSnapshot?: AnalyticsActionResolutionSnapshot | null;
+  evidenceSnapshot?: AnalyticsActionDecisionEvidenceSnapshot | null;
 }
 
 export interface AnalyticsActionImpactLedgerSnapshot {
@@ -1603,6 +1657,24 @@ export interface AnalyticsActionUpsertInput {
   dataQualityStatus?: AnalyticsActionDataQualityStatus | null;
   actionUrl?: string | null;
   metadataJson?: string | null;
+  sourceRecommendationId?: string | null;
+  recommendationType?: string | null;
+  expectedImpactBasis?: string | null;
+  impactWindowDays?: number | null;
+  confidenceLevel?: string | null;
+  confidenceScore?: number | null;
+  warningCodes?: string[] | null;
+  primaryDrivers?: string[] | null;
+  reasonCodes?: string[] | null;
+  decisionReason?: string | null;
+  recommendedAction?: string | null;
+  generatedAtUtc?: string | null;
+  inputFreshnessStatus?: string | null;
+  explainabilityText?: string | null;
+  periodFromUtc?: string | null;
+  periodToUtc?: string | null;
+  evidenceChain?: AnalyticsActionEvidenceNodeSnapshot[] | null;
+  confidenceBreakdown?: AnalyticsActionEvidenceNodeSnapshot[] | null;
 }
 
 export interface AnalyticsActionStatusUpdateInput {

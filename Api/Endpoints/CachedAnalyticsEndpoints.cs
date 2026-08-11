@@ -5521,6 +5521,7 @@ public static class CachedAnalyticsEndpoints
             row.EvidenceChain = confidenceProfile.EvidenceChain.ToList();
             row.WhyPanel = confidenceProfile.WhyPanel;
             ApplyIssuedRecommendationLifecycle(row);
+            ApplyDecisionEvidenceSnapshotPreview(row, periodFromUtc, periodToExclusiveUtc.AddDays(-1));
 
             rows.Add(row);
         }
@@ -5906,6 +5907,34 @@ public static class CachedAnalyticsEndpoints
         row.WhyPanel.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
         row.WhyPanel.LearningEligible = lifecycle.LearningEligible;
         row.WhyPanel.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
+    }
+
+    internal static void ApplyDecisionEvidenceSnapshotPreview(
+        ProductDecisionCenterRowDto row,
+        DateTime periodFromUtc,
+        DateTime periodToUtc)
+    {
+        row.EvidenceSnapshotStatus = "absent";
+        row.EvidenceSnapshotPreview = new ProductDecisionEvidenceSnapshotPreviewDto
+        {
+            SchemaVersion = 1,
+            RecommendationId = row.RecommendationId,
+            RecommendationType = row.RecommendationType,
+            PeriodFromUtc = periodFromUtc.ToString("yyyy-MM-dd"),
+            PeriodToUtc = periodToUtc.ToString("yyyy-MM-dd"),
+            DataQualityStatus = row.DataQualityStatus,
+            ConfidenceLevel = row.ConfidenceLevel,
+            ConfidenceScore = row.ConfidenceScore,
+            ConfidencePct = row.ConfidencePct,
+            ReliabilityPct = row.ReliabilityPct,
+            InputFreshnessStatus = row.InputFreshnessStatus,
+            ExplainabilityText = row.ExplainabilityText,
+            ReasonCodes = [.. row.ReasonCodes],
+            WarningCodes = [.. row.WarningCodes],
+            PrimaryDrivers = [.. row.PrimaryDrivers],
+            EvidenceChain = [.. row.EvidenceChain],
+            ConfidenceBreakdown = [.. row.ConfidenceBreakdown]
+        };
     }
 
     private static IReadOnlyList<ProductDecisionDecisionTreeNodeDto> BuildProductDecisionDecisionTree(
@@ -7340,6 +7369,30 @@ public class ProductDecisionCenterRowDto
     public List<string> LearningEligibilityReasonCodes { get; set; } = [];
     public RecommendationLifecycleCaptureDto RecommendationLifecycle { get; set; }
         = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
+    /// <summary>DEX10: live recommendations are absent until acted on and frozen into the action ledger.</summary>
+    public string EvidenceSnapshotStatus { get; set; } = "absent";
+    public ProductDecisionEvidenceSnapshotPreviewDto? EvidenceSnapshotPreview { get; set; }
+}
+
+public class ProductDecisionEvidenceSnapshotPreviewDto
+{
+    public int SchemaVersion { get; set; } = 1;
+    public string RecommendationId { get; set; } = string.Empty;
+    public string RecommendationType { get; set; } = string.Empty;
+    public string? PeriodFromUtc { get; set; }
+    public string? PeriodToUtc { get; set; }
+    public string DataQualityStatus { get; set; } = "insufficient_data";
+    public string ConfidenceLevel { get; set; } = "insufficient_data";
+    public int? ConfidenceScore { get; set; }
+    public int ConfidencePct { get; set; }
+    public int ReliabilityPct { get; set; }
+    public string InputFreshnessStatus { get; set; } = "unknown";
+    public string ExplainabilityText { get; set; } = string.Empty;
+    public List<string> ReasonCodes { get; set; } = [];
+    public List<string> WarningCodes { get; set; } = [];
+    public List<string> PrimaryDrivers { get; set; } = [];
+    public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
+    public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
 }
 
 public class ProductDecisionEvidenceNodeDto

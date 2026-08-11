@@ -186,6 +186,147 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_PersistsImmutableDecisionEvidenceSnapshot()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_PersistsImmutableDecisionEvidenceSnapshot));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            new AnalyticsActionUpsertRequest(
+                SourceType: AnalyticsActionConstants.SourceTypes.Product,
+                SourceKey: "evidence-freeze-1",
+                SourceId: 101,
+                Title: "Dopuni zalihe",
+                Description: "Brza prodaja",
+                RecommendationStatus: "REPLENISH",
+                Priority: AnalyticsActionConstants.Priorities.P1,
+                ImpactEstimateRsd: 25000m,
+                DueAtUtc: null,
+                ExpectedImpactRsd: 25000m,
+                ConfidencePct: 88,
+                ReliabilityPct: 80,
+                DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good,
+                ActionUrl: "/analytics/products",
+                SourceRecommendationId: "product:101:REPLENISH:20260528:20260626",
+                RecommendationType: "REPLENISH",
+                ExpectedImpactBasis: "product_decision_center",
+                ImpactWindowDays: 14,
+                ConfidenceLevel: "high",
+                WarningCodes: new[] { "STALE_REFRESH" },
+                PrimaryDrivers: new[] { "sales_velocity", "stock_risk" },
+                DecisionReason: "Brza prodaja i nizak stock cover.",
+                RecommendedAction: "Dopuni zalihe",
+                GeneratedAtUtc: new DateTime(2026, 6, 21, 9, 0, 0, DateTimeKind.Utc),
+                InputFreshnessStatus: "fresh",
+                MetadataJson: null,
+                PeriodFromUtc: "2026-05-28",
+                PeriodToUtc: "2026-06-26",
+                ConfidenceScore: 88,
+                ExplainabilityText: "Brza prodaja i nizak stock cover.",
+                ReasonCodes: new[] { "high_velocity", "low_stock" },
+                EvidenceChain: new[]
+                {
+                    new AnalyticsActionEvidenceNodeSnapshot(
+                        "decision",
+                        "selected_recommendation",
+                        "Odabrana preporuka",
+                        "Dopuni",
+                        new[] { "RecommendationStatus" },
+                        false,
+                        "Brza prodaja")
+                },
+                ConfidenceBreakdown: new[]
+                {
+                    new AnalyticsActionEvidenceNodeSnapshot(
+                        "confidence",
+                        "confidence_score",
+                        "Ocena pouzdanosti",
+                        "88%",
+                        new[] { "ConfidenceScore" },
+                        false,
+                        null)
+                }),
+            userId: "u1");
+
+        var initialSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(created.MetadataJson);
+        Assert.NotNull(initialSnapshot);
+        Assert.NotNull(initialSnapshot!.EvidenceSnapshot);
+        Assert.Equal(1, initialSnapshot.EvidenceSnapshot!.SchemaVersion);
+        Assert.Equal("product:101:REPLENISH:20260528:20260626", initialSnapshot.EvidenceSnapshot.RecommendationId);
+        Assert.Equal("REPLENISH", initialSnapshot.EvidenceSnapshot.RecommendationType);
+        Assert.Equal("2026-05-28", initialSnapshot.EvidenceSnapshot.PeriodFromUtc);
+        Assert.Equal("2026-06-26", initialSnapshot.EvidenceSnapshot.PeriodToUtc);
+        Assert.Equal("high", initialSnapshot.EvidenceSnapshot.ConfidenceLevel);
+        Assert.Equal(88, initialSnapshot.EvidenceSnapshot.ConfidenceScore);
+        Assert.Contains("high_velocity", initialSnapshot.EvidenceSnapshot.ReasonCodes);
+        Assert.Contains(initialSnapshot.EvidenceSnapshot.EvidenceChain, n => n.Code == "selected_recommendation");
+        Assert.Contains(initialSnapshot.EvidenceSnapshot.ConfidenceBreakdown, n => n.Code == "confidence_score");
+        var frozenCapturedAt = initialSnapshot.EvidenceSnapshot.CapturedAtUtc;
+        var frozenEvidenceJson = JsonSerializer.Serialize(initialSnapshot.EvidenceSnapshot);
+
+        var afterOutcome = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 1200m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Mereno",
+                EvidenceSource: "action_outcome_summary"),
+            userId: "u1",
+            userName: "tester");
+
+        var afterOutcomeSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(afterOutcome!.MetadataJson);
+        Assert.NotNull(afterOutcomeSnapshot?.EvidenceSnapshot);
+        Assert.Equal(frozenCapturedAt, afterOutcomeSnapshot!.EvidenceSnapshot!.CapturedAtUtc);
+        Assert.Equal(frozenEvidenceJson, JsonSerializer.Serialize(afterOutcomeSnapshot.EvidenceSnapshot));
+        Assert.NotNull(afterOutcomeSnapshot.ResolutionSnapshot);
+
+        // Existing open action returns early — evidence remains the original freeze.
+        var existing = await service.UpsertAsync(
+            new AnalyticsActionUpsertRequest(
+                SourceType: AnalyticsActionConstants.SourceTypes.Product,
+                SourceKey: "evidence-freeze-1",
+                SourceId: 101,
+                Title: "Dopuni zalihe (changed)",
+                Description: "Drifted reason",
+                RecommendationStatus: "MARKDOWN",
+                Priority: AnalyticsActionConstants.Priorities.P2,
+                ImpactEstimateRsd: 1m,
+                DueAtUtc: null,
+                ExpectedImpactRsd: 1m,
+                ConfidencePct: 10,
+                ReliabilityPct: 10,
+                DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Critical,
+                ActionUrl: "/analytics/products",
+                SourceRecommendationId: "product:101:MARKDOWN:drifted",
+                RecommendationType: "MARKDOWN",
+                ExpectedImpactBasis: "drift",
+                ImpactWindowDays: 1,
+                ConfidenceLevel: "low",
+                WarningCodes: new[] { "DRIFT" },
+                PrimaryDrivers: new[] { "margin" },
+                DecisionReason: "Should not rewrite evidence.",
+                RecommendedAction: "Smanji cenu",
+                GeneratedAtUtc: new DateTime(2026, 8, 1, 9, 0, 0, DateTimeKind.Utc),
+                InputFreshnessStatus: "critical",
+                MetadataJson: null,
+                PeriodFromUtc: "2026-08-01",
+                PeriodToUtc: "2026-08-31",
+                ConfidenceScore: 10,
+                ExplainabilityText: "Drifted",
+                ReasonCodes: new[] { "drifted" },
+                EvidenceChain: null,
+                ConfidenceBreakdown: null),
+            userId: "u1");
+
+        var afterReupsert = AnalyticsActionItemService.GetLedgerSnapshot(existing.MetadataJson);
+        Assert.NotNull(afterReupsert?.EvidenceSnapshot);
+        Assert.Equal(frozenCapturedAt, afterReupsert!.EvidenceSnapshot!.CapturedAtUtc);
+        Assert.Equal(frozenEvidenceJson, JsonSerializer.Serialize(afterReupsert.EvidenceSnapshot));
+        Assert.Equal("product:101:REPLENISH:20260528:20260626", afterReupsert.EvidenceSnapshot.RecommendationId);
+    }
+
+    [Fact]
     public async Task UpdateOutcomeAsync_PersistsOutcomeFields()
     {
         await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PersistsOutcomeFields));

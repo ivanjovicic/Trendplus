@@ -205,7 +205,14 @@ public static class AnalyticsActionsEndpoints
                 RecommendedAction: body.RecommendedAction,
                 GeneratedAtUtc: body.GeneratedAtUtc,
                 InputFreshnessStatus: body.InputFreshnessStatus,
-                MetadataJson: body.MetadataJson
+                MetadataJson: body.MetadataJson,
+                PeriodFromUtc: body.PeriodFromUtc,
+                PeriodToUtc: body.PeriodToUtc,
+                ConfidenceScore: body.ConfidenceScore,
+                ExplainabilityText: body.ExplainabilityText,
+                ReasonCodes: body.ReasonCodes,
+                EvidenceChain: MapEvidenceNodes(body.EvidenceChain),
+                ConfidenceBreakdown: MapEvidenceNodes(body.ConfidenceBreakdown)
             );
 
             var result = await svc.UpsertWithResultAsync(request, userId, ct);
@@ -364,6 +371,27 @@ public static class AnalyticsActionsEndpoints
         item.LedgerSnapshot ??= AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
         item.RecommendationLifecycle = RecommendationLifecycleSemantics.Project(item);
     }
+
+    private static IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? MapEvidenceNodes(
+        IReadOnlyList<AnalyticsActionEvidenceNodeBody>? nodes)
+    {
+        if (nodes is null || nodes.Count == 0)
+        {
+            return null;
+        }
+
+        return nodes
+            .Where(node => !string.IsNullOrWhiteSpace(node.Code) && !string.IsNullOrWhiteSpace(node.Label))
+            .Select(node => new AnalyticsActionEvidenceNodeSnapshot(
+                Category: node.Category ?? "evidence",
+                Code: node.Code!,
+                Label: node.Label!,
+                ValueText: node.ValueText ?? string.Empty,
+                SourceFields: node.SourceFields ?? Array.Empty<string>(),
+                IsMissing: node.IsMissing,
+                Detail: node.Detail))
+            .ToArray();
+    }
 }
 
 // ── Request bodies ────────────────────────────────────────────────────────────
@@ -394,7 +422,24 @@ public sealed record AnalyticsActionUpsertBody(
     string? RecommendedAction,
     DateTime? GeneratedAtUtc,
     string? InputFreshnessStatus,
-    string? MetadataJson
+    string? MetadataJson,
+    string? PeriodFromUtc = null,
+    string? PeriodToUtc = null,
+    int? ConfidenceScore = null,
+    string? ExplainabilityText = null,
+    IReadOnlyList<string>? ReasonCodes = null,
+    IReadOnlyList<AnalyticsActionEvidenceNodeBody>? EvidenceChain = null,
+    IReadOnlyList<AnalyticsActionEvidenceNodeBody>? ConfidenceBreakdown = null
+);
+
+public sealed record AnalyticsActionEvidenceNodeBody(
+    string? Category,
+    string? Code,
+    string? Label,
+    string? ValueText,
+    IReadOnlyList<string>? SourceFields,
+    bool IsMissing = false,
+    string? Detail = null
 );
 
 public sealed record AnalyticsActionStatusUpdateBody(

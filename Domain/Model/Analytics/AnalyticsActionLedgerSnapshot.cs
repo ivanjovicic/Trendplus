@@ -3,7 +3,8 @@ namespace Domain.Model.Analytics;
 public sealed record AnalyticsActionLedgerSnapshot(
     int SchemaVersion,
     AnalyticsActionCreationSnapshot? CreationSnapshot,
-    AnalyticsActionResolutionSnapshot? ResolutionSnapshot
+    AnalyticsActionResolutionSnapshot? ResolutionSnapshot,
+    AnalyticsActionDecisionEvidenceSnapshot? EvidenceSnapshot = null
 );
 
 public sealed record AnalyticsActionCreationSnapshot(
@@ -28,6 +29,40 @@ public sealed record AnalyticsActionResolutionSnapshot(
     string? EvidenceSource,
     string? EvidenceReference,
     string? ResolutionNote
+);
+
+/// <summary>
+/// DEX10 immutable decision-evidence freeze captured when a recommendation is acted on.
+/// </summary>
+public sealed record AnalyticsActionDecisionEvidenceSnapshot(
+    int SchemaVersion,
+    DateTime CapturedAtUtc,
+    string RecommendationId,
+    string RecommendationType,
+    string? PeriodFromUtc,
+    string? PeriodToUtc,
+    string DataQualityStatus,
+    string ConfidenceLevel,
+    int? ConfidenceScore,
+    int ConfidencePct,
+    int ReliabilityPct,
+    string InputFreshnessStatus,
+    string ExplainabilityText,
+    IReadOnlyList<string> ReasonCodes,
+    IReadOnlyList<string> WarningCodes,
+    IReadOnlyList<string> PrimaryDrivers,
+    IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot> EvidenceChain,
+    IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot> ConfidenceBreakdown
+);
+
+public sealed record AnalyticsActionEvidenceNodeSnapshot(
+    string Category,
+    string Code,
+    string Label,
+    string ValueText,
+    IReadOnlyList<string> SourceFields,
+    bool IsMissing,
+    string? Detail
 );
 
 /// <summary>

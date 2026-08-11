@@ -8,22 +8,195 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX10` | docs/contracts/tests-plan only |
-| RL - Recommendation Learning | `none` (`RL01`/`RL02`/`RL04` DONE) | runtime lifecycle capture + measured-learning eligibility |
-| DT - Decision Timeline | `none` (`DT03`/`DT05` DONE) | Slice-2 filtered timeline projection |
+| DEX - Decision Explainability | `DEX11` | docs/contracts only — cross-family readiness |
+| RL - Recommendation Learning | `RL05` | docs/contracts only — measurement-only statistics |
+| DT - Decision Timeline | `DT06` | docs/contracts only — export/report planning |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
 ---
 
-## DEX10 - Implement Product Decision Center evidence snapshot contract
+## DEX11 - Prepare cross-family Decision Explainability readiness contract
 
 Status: READY
+Priority: future / planning
+Feature family: decision-explainability-cross-family
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+Product Decision Center now has graph, evidence, confidence, alternatives, Why, decision tree and immutable evidence snapshots, but other decision families still lack a shared readiness checklist for reusing the same explainability contracts without inventing local semantics.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` DI-4 calls for cross-family reuse after the first-family explainability loop.
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md` is the shared vocabulary.
+- DEX01–DEX10 closed the Product Decision Center first-family loop through evidence snapshot freeze.
+
+### Scope
+
+- docs/contracts only: readiness checklist and gap matrix for inventory/supplier/decision-board families;
+- no runtime implementation;
+- no confidence mutation.
+
+### Read first
+
+- DEX10 completion notes
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Do
+
+1. Document which explainability fields each major decision family already exposes.
+2. Mark gaps that would break snapshot/Why/tree reuse.
+3. Keep Product Decision Center as the reference implementation, not a template to copy blindly.
+4. Propose the smallest next family rollout without authorizing runtime work.
+
+### Tests
+
+- checklist distinguishes present vs missing vs invented fields;
+- no runtime code or fake evidence is introduced;
+- governance READY pointer remains single for DEX.
+
+### Acceptance
+
+- a docs-only readiness contract exists for cross-family explainability reuse;
+- no family is marked ready without an explicit evidence gap list;
+- runtime remains gated.
+
+### Dependencies
+
+- DEX10 DONE.
+
+---
+
+## RL05 - Prepare measurement-only recommendation statistics projection contract
+
+Status: READY
+Priority: future / planning
+Feature family: recommendation-learning-statistics-projection
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+Lifecycle capture and learning eligibility exist, but there is still no frozen measurement-only statistics projection contract that can count issued/accepted/executed/measured denominators without mutating confidence.
+
+### Evidence
+
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+- RL04 runtime eligibility projection
+
+### Scope
+
+- docs/contracts only for the measurement-only statistics DTO and denominator rules;
+- no confidence calibration;
+- no schema migration;
+- no opaque scoring.
+
+### Read first
+
+- RL01 / RL02 / RL04
+- Recommendation outcome learning contract
+- Decision Intelligence roadmap
+
+### Do
+
+1. Define the measurement-only statistics response shape and denominators.
+2. Require learning-eligible measured evidence before success/negative counts.
+3. Keep acceptance and execution out of success denominators.
+4. Gate any later calibration behind an explicit owner-promoted prompt.
+
+### Tests
+
+- contract keeps acceptance ≠ success;
+- missing measured evidence stays not_measured;
+- no runtime implementation is authorized by this prompt.
+
+### Acceptance
+
+- a docs-only measurement-only statistics projection contract is ready for a later runtime slice;
+- confidence mutation remains forbidden;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL04 DONE.
+
+---
+
+## DT06 - Prepare Decision Timeline export and retrospective reporting contract
+
+Status: READY
+Priority: future / planning
+Feature family: decision-timeline-export-report
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+Filtered timeline Slice-2 exists for Product Decision Center, but export/reporting for decision retrospectives still lacks a frozen docs contract for period, freshness, data quality and snapshot-linked evidence.
+
+### Evidence
+
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` Slice 5 export/reporting
+- DT03/DT05 projection surfaces
+- DEX10 immutable evidence snapshots
+
+### Scope
+
+- docs/contracts only for timeline export/report fields and honesty rules;
+- no runtime export implementation;
+- no invented replay history.
+
+### Read first
+
+- DT01 / DT02 / DT05
+- DEX10 evidence snapshot notes
+- Decision Timeline rollout plan
+
+### Do
+
+1. Define export/report fields for recommendation → action → outcome timelines.
+2. Require snapshot presence/absence and empty-period honesty.
+3. Keep print/export failure graceful in the contract language.
+4. Do not authorize runtime work in this prompt.
+
+### Tests
+
+- contract forbids fake events and silent period widening;
+- snapshot links remain optional but explicit when absent;
+- no runtime code lands under this prompt.
+
+### Acceptance
+
+- a docs-only timeline export/retrospective contract exists;
+- filtered Slice-2 remains the live runtime baseline;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT05 DONE.
+- DEX10 DONE (snapshot vocabulary reuse).
+
+---
+
+## DEX10 - Implement Product Decision Center evidence snapshot contract
+
+Status: DONE
 Priority: future-high-value / implementation
 Feature family: decision-explainability-product-decision-center-phase7
 Parallel-safe: no, coupled backend/frontend contract
-Owner: Codex
-Local lock: `.ai/task-locks/DEX10-codex.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
+Commit: (this delivery)
+Completed: 2026-08-11
 
 ### Problem
 
@@ -74,6 +247,13 @@ The deterministic Decision Graph, evidence chain, alternatives, Why panel and de
 ### Dependencies
 
 - DEX09 DONE.
+
+### Completion notes
+
+- Action upsert freezes `ledger.evidenceSnapshot` (schema v1) with period, confidence, reason codes, evidence chain and confidence breakdown.
+- Creation/evidence snapshots stay immutable once written; outcome updates only merge resolution.
+- PDC rows expose `evidenceSnapshotStatus=absent` plus a live preview contract until action time; UI shows absent vs captured timestamp after queue.
+- Focused tests: `AnalyticsActionItemServiceTests` immutability, PDC builder/confidence snapshot preview, frontend confidence snapshot panel.
 
 ---
 

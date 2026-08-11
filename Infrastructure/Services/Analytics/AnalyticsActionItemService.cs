@@ -16,6 +16,7 @@ public sealed class AnalyticsActionItemService
 {
     private const int MaxOutcomeNotesLength = 4000;
     private const int LedgerSchemaVersion = 1;
+    private const int DecisionEvidenceSchemaVersion = 1;
     private static readonly JsonSerializerOptions LedgerJsonOptions = new(JsonSerializerDefaults.Web)
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
@@ -384,6 +385,7 @@ public sealed class AnalyticsActionItemService
                 request.MetadataJson,
                 BuildCreationSnapshot(request),
                 resolutionSnapshot: null,
+                evidenceSnapshot: BuildDecisionEvidenceSnapshot(request),
                 preserveExistingResolutionSnapshot: true),
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -662,6 +664,7 @@ public sealed class AnalyticsActionItemService
             item.MetadataJson,
             creationSnapshot: null,
             resolutionSnapshot,
+            evidenceSnapshot: null,
             preserveExistingResolutionSnapshot);
 
         var outcomeChanged = !string.Equals(oldOutcomeStatus, item.OutcomeStatus, StringComparison.Ordinal)
@@ -709,10 +712,11 @@ public sealed class AnalyticsActionItemService
         var schemaVersion = root["schemaVersion"]?.GetValue<int?>() ?? LedgerSchemaVersion;
         var creationSnapshot = ParseCreationSnapshot(ledger["creationSnapshot"] as JsonObject);
         var resolutionSnapshot = ParseResolutionSnapshot(ledger["resolutionSnapshot"] as JsonObject);
+        var evidenceSnapshot = ParseDecisionEvidenceSnapshot(ledger["evidenceSnapshot"] as JsonObject);
 
-        return creationSnapshot is null && resolutionSnapshot is null
+        return creationSnapshot is null && resolutionSnapshot is null && evidenceSnapshot is null
             ? null
-            : new AnalyticsActionLedgerSnapshot(schemaVersion, creationSnapshot, resolutionSnapshot);
+            : new AnalyticsActionLedgerSnapshot(schemaVersion, creationSnapshot, resolutionSnapshot, evidenceSnapshot);
     }
 
     private static string? NormalizeOutcomeNotes(string? outcomeNotes)
@@ -791,6 +795,54 @@ public sealed class AnalyticsActionItemService
             InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? string.Empty);
     }
 
+    private static AnalyticsActionDecisionEvidenceSnapshot? BuildDecisionEvidenceSnapshot(AnalyticsActionUpsertRequest request)
+    {
+        var hasEvidenceFields =
+            !string.IsNullOrWhiteSpace(request.SourceRecommendationId)
+            || !string.IsNullOrWhiteSpace(request.RecommendationType)
+            || HasNonEmptyValues(request.ReasonCodes)
+            || HasNonEmptyEvidenceNodes(request.EvidenceChain)
+            || HasNonEmptyEvidenceNodes(request.ConfidenceBreakdown)
+            || !string.IsNullOrWhiteSpace(request.ExplainabilityText)
+            || !string.IsNullOrWhiteSpace(request.DecisionReason);
+
+        if (!hasEvidenceFields)
+        {
+            return null;
+        }
+
+        var recommendationId = request.SourceRecommendationId?.Trim();
+        if (string.IsNullOrWhiteSpace(recommendationId))
+        {
+            recommendationId = $"{request.SourceType}:{request.SourceKey}:{request.RecommendationType ?? request.RecommendationStatus ?? "UNKNOWN"}";
+        }
+
+        return new AnalyticsActionDecisionEvidenceSnapshot(
+            SchemaVersion: DecisionEvidenceSchemaVersion,
+            CapturedAtUtc: DateTime.UtcNow,
+            RecommendationId: recommendationId,
+            RecommendationType: request.RecommendationType?.Trim()
+                ?? request.RecommendationStatus?.Trim()
+                ?? string.Empty,
+            PeriodFromUtc: NormalizeOptionalText(request.PeriodFromUtc),
+            PeriodToUtc: NormalizeOptionalText(request.PeriodToUtc),
+            DataQualityStatus: AnalyticsActionConstants.NormalizeDataQualityStatus(request.DataQualityStatus)
+                ?? AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
+            ConfidenceLevel: request.ConfidenceLevel?.Trim() ?? "insufficient_data",
+            ConfidenceScore: request.ConfidenceScore ?? request.ConfidencePct,
+            ConfidencePct: request.ConfidencePct ?? 0,
+            ReliabilityPct: request.ReliabilityPct ?? 0,
+            InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? "unknown",
+            ExplainabilityText: request.ExplainabilityText?.Trim()
+                ?? request.DecisionReason?.Trim()
+                ?? string.Empty,
+            ReasonCodes: NormalizeStringList(request.ReasonCodes),
+            WarningCodes: NormalizeStringList(request.WarningCodes),
+            PrimaryDrivers: NormalizeStringList(request.PrimaryDrivers),
+            EvidenceChain: NormalizeEvidenceNodes(request.EvidenceChain),
+            ConfidenceBreakdown: NormalizeEvidenceNodes(request.ConfidenceBreakdown));
+    }
+
     private static AnalyticsActionResolutionSnapshot? BuildResolutionSnapshot(
         AnalyticsActionOutcomeUpdateRequest request,
         string normalizedOutcomeStatus,
@@ -828,9 +880,13 @@ public sealed class AnalyticsActionItemService
         string? existingMetadataJson,
         AnalyticsActionCreationSnapshot? creationSnapshot,
         AnalyticsActionResolutionSnapshot? resolutionSnapshot,
+        AnalyticsActionDecisionEvidenceSnapshot? evidenceSnapshot,
         bool preserveExistingResolutionSnapshot)
     {
-        if (creationSnapshot is null && resolutionSnapshot is null && string.IsNullOrWhiteSpace(existingMetadataJson))
+        if (creationSnapshot is null
+            && resolutionSnapshot is null
+            && evidenceSnapshot is null
+            && string.IsNullOrWhiteSpace(existingMetadataJson))
         {
             return existingMetadataJson;
         }
@@ -848,7 +904,10 @@ public sealed class AnalyticsActionItemService
         var changed = false;
         JsonObject? ledger = root["ledger"] as JsonObject;
 
-        if (creationSnapshot is not null || resolutionSnapshot is not null || preserveExistingResolutionSnapshot)
+        if (creationSnapshot is not null
+            || resolutionSnapshot is not null
+            || evidenceSnapshot is not null
+            || preserveExistingResolutionSnapshot)
         {
             root["schemaVersion"] = LedgerSchemaVersion;
             changed = true;
@@ -857,9 +916,16 @@ public sealed class AnalyticsActionItemService
             root["ledger"] = ledger;
         }
 
-        if (creationSnapshot is not null)
+        // Creation and evidence snapshots are immutable once written.
+        if (creationSnapshot is not null && ledger!["creationSnapshot"] is null)
         {
-            ledger!["creationSnapshot"] = JsonSerializer.SerializeToNode(creationSnapshot, LedgerJsonOptions);
+            ledger["creationSnapshot"] = JsonSerializer.SerializeToNode(creationSnapshot, LedgerJsonOptions);
+            changed = true;
+        }
+
+        if (evidenceSnapshot is not null && ledger!["evidenceSnapshot"] is null)
+        {
+            ledger["evidenceSnapshot"] = JsonSerializer.SerializeToNode(evidenceSnapshot, LedgerJsonOptions);
             changed = true;
         }
 
@@ -970,6 +1036,104 @@ public sealed class AnalyticsActionItemService
             ? snapshot
             : null;
     }
+
+    private static AnalyticsActionDecisionEvidenceSnapshot? ParseDecisionEvidenceSnapshot(JsonObject? evidenceNode)
+    {
+        if (evidenceNode is null)
+        {
+            return null;
+        }
+
+        var recommendationId = evidenceNode["recommendationId"]?.GetValue<string>()?.Trim();
+        var recommendationType = evidenceNode["recommendationType"]?.GetValue<string>()?.Trim();
+        var capturedAtUtc = evidenceNode["capturedAtUtc"]?.GetValue<DateTime?>();
+        if (string.IsNullOrWhiteSpace(recommendationId)
+            || string.IsNullOrWhiteSpace(recommendationType)
+            || !capturedAtUtc.HasValue)
+        {
+            return null;
+        }
+
+        return new AnalyticsActionDecisionEvidenceSnapshot(
+            SchemaVersion: evidenceNode["schemaVersion"]?.GetValue<int?>() ?? DecisionEvidenceSchemaVersion,
+            CapturedAtUtc: capturedAtUtc.Value,
+            RecommendationId: recommendationId,
+            RecommendationType: recommendationType,
+            PeriodFromUtc: NormalizeOptionalText(evidenceNode["periodFromUtc"]?.GetValue<string>()),
+            PeriodToUtc: NormalizeOptionalText(evidenceNode["periodToUtc"]?.GetValue<string>()),
+            DataQualityStatus: NormalizeOptionalText(evidenceNode["dataQualityStatus"]?.GetValue<string>())
+                ?? AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
+            ConfidenceLevel: NormalizeOptionalText(evidenceNode["confidenceLevel"]?.GetValue<string>()) ?? "insufficient_data",
+            ConfidenceScore: evidenceNode["confidenceScore"]?.GetValue<int?>(),
+            ConfidencePct: evidenceNode["confidencePct"]?.GetValue<int?>() ?? 0,
+            ReliabilityPct: evidenceNode["reliabilityPct"]?.GetValue<int?>() ?? 0,
+            InputFreshnessStatus: NormalizeOptionalText(evidenceNode["inputFreshnessStatus"]?.GetValue<string>()) ?? "unknown",
+            ExplainabilityText: NormalizeOptionalText(evidenceNode["explainabilityText"]?.GetValue<string>()) ?? string.Empty,
+            ReasonCodes: ReadStringArray(evidenceNode["reasonCodes"]),
+            WarningCodes: ReadStringArray(evidenceNode["warningCodes"]),
+            PrimaryDrivers: ReadStringArray(evidenceNode["primaryDrivers"]),
+            EvidenceChain: ReadEvidenceNodes(evidenceNode["evidenceChain"]),
+            ConfidenceBreakdown: ReadEvidenceNodes(evidenceNode["confidenceBreakdown"]));
+    }
+
+    private static IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot> ReadEvidenceNodes(JsonNode? node)
+    {
+        if (node is not JsonArray array || array.Count == 0)
+        {
+            return Array.Empty<AnalyticsActionEvidenceNodeSnapshot>();
+        }
+
+        var nodes = new List<AnalyticsActionEvidenceNodeSnapshot>();
+        foreach (var entry in array)
+        {
+            if (entry is not JsonObject obj)
+            {
+                continue;
+            }
+
+            var code = obj["code"]?.GetValue<string>()?.Trim();
+            var label = obj["label"]?.GetValue<string>()?.Trim();
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(label))
+            {
+                continue;
+            }
+
+            nodes.Add(new AnalyticsActionEvidenceNodeSnapshot(
+                Category: obj["category"]?.GetValue<string>()?.Trim() ?? "evidence",
+                Code: code,
+                Label: label,
+                ValueText: obj["valueText"]?.GetValue<string>()?.Trim() ?? string.Empty,
+                SourceFields: ReadStringArray(obj["sourceFields"]),
+                IsMissing: obj["isMissing"]?.GetValue<bool?>() ?? false,
+                Detail: NormalizeOptionalText(obj["detail"]?.GetValue<string>())));
+        }
+
+        return nodes;
+    }
+
+    private static IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot> NormalizeEvidenceNodes(
+        IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? nodes)
+    {
+        if (nodes is null || nodes.Count == 0)
+        {
+            return Array.Empty<AnalyticsActionEvidenceNodeSnapshot>();
+        }
+
+        return nodes
+            .Where(node => !string.IsNullOrWhiteSpace(node.Code) && !string.IsNullOrWhiteSpace(node.Label))
+            .Select(node => new AnalyticsActionEvidenceNodeSnapshot(
+                Category: string.IsNullOrWhiteSpace(node.Category) ? "evidence" : node.Category.Trim(),
+                Code: node.Code.Trim(),
+                Label: node.Label.Trim(),
+                ValueText: node.ValueText?.Trim() ?? string.Empty,
+                SourceFields: NormalizeStringList(node.SourceFields),
+                IsMissing: node.IsMissing,
+                Detail: NormalizeOptionalText(node.Detail)))
+            .ToArray();
+    }
+
+    private static bool HasNonEmptyEvidenceNodes(IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? nodes)
+        => nodes is not null && nodes.Any(node => !string.IsNullOrWhiteSpace(node.Code) && !string.IsNullOrWhiteSpace(node.Label));
 
     private static IReadOnlyList<string> ReadStringArray(JsonNode? node)
         => node is JsonArray array
@@ -1253,7 +1417,14 @@ public sealed record AnalyticsActionUpsertRequest(
     string? RecommendedAction,
     DateTime? GeneratedAtUtc,
     string? InputFreshnessStatus,
-    string? MetadataJson
+    string? MetadataJson,
+    string? PeriodFromUtc = null,
+    string? PeriodToUtc = null,
+    int? ConfidenceScore = null,
+    string? ExplainabilityText = null,
+    IReadOnlyList<string>? ReasonCodes = null,
+    IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? EvidenceChain = null,
+    IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? ConfidenceBreakdown = null
 );
 
 public sealed record AnalyticsActionUpsertResult(

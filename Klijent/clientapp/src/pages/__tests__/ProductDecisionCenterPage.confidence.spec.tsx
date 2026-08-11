@@ -141,6 +141,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     ],
     recommendedAction: "Dopuni zalihe",
     daysSinceLastSale: 12,
+    evidenceSnapshotStatus: "absent",
     ...overrides,
   };
   const reasonCodes = Array.isArray(row.reasonCodes) ? row.reasonCodes : [];
@@ -192,6 +193,25 @@ function makeRow(overrides: Record<string, unknown> = {}) {
 
   return {
     ...row,
+    evidenceSnapshotPreview: overrides.evidenceSnapshotPreview ?? {
+      schemaVersion: 1,
+      recommendationId: row.recommendationId,
+      recommendationType: row.recommendationType,
+      periodFromUtc: "2026-04-27",
+      periodToUtc: "2026-05-26",
+      dataQualityStatus: row.dataQualityStatus,
+      confidenceLevel: row.confidenceLevel,
+      confidenceScore: row.confidenceScore,
+      confidencePct: row.confidencePct,
+      reliabilityPct: row.reliabilityPct,
+      inputFreshnessStatus: row.inputFreshnessStatus,
+      explainabilityText: row.explainabilityText,
+      reasonCodes: [...reasonCodes],
+      warningCodes: [...warningCodes],
+      primaryDrivers: [...primaryDrivers],
+      evidenceChain: [...evidenceChain],
+      confidenceBreakdown: [...confidenceBreakdown],
+    },
     whyPanel: overrides.whyPanel ?? {
       recommendationStatus: row.recommendationStatus,
       recommendationLabel: row.recommendationLabel,
@@ -247,7 +267,30 @@ beforeEach(() => {
   getSupplierFiltersMock.mockResolvedValue([]);
   getAnalyticsActionSourceStatusesMock.mockResolvedValue({ items: [] });
   upsertAnalyticsActionWithResultMock.mockResolvedValue({
-    item: { id: 1, sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all" },
+    item: {
+      id: 1,
+      sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all",
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        evidenceSnapshot: {
+          schemaVersion: 1,
+          capturedAtUtc: "2026-06-26T12:00:00Z",
+          recommendationId: "product:101:REPLENISH:20260528:20260626",
+          recommendationType: "REPLENISH",
+          dataQualityStatus: "good",
+          confidenceLevel: "high",
+          confidencePct: 88,
+          reliabilityPct: 80,
+          inputFreshnessStatus: "fresh",
+          explainabilityText: "Brza prodaja i nizak stock cover.",
+          reasonCodes: ["high_velocity", "low_stock"],
+          warningCodes: [],
+          primaryDrivers: ["sales_velocity", "stock_risk", "margin"],
+          evidenceChain: [],
+          confidenceBreakdown: [],
+        },
+      },
+    },
     created: true,
     existing: false,
     status: "new",
@@ -323,8 +366,33 @@ describe("ProductDecisionCenterPage confidence contract", () => {
         expectedImpactRsd: 25000,
         impactEstimateRsd: 25000,
         confidencePct: 88,
+        sourceRecommendationId: "product:101:REPLENISH:20260528:20260626",
+        recommendationType: "REPLENISH",
+        reasonCodes: ["high_velocity", "low_stock"],
+        explainabilityText: expect.any(String),
       }),
     );
+  });
+
+  it("shows evidence snapshot absent until action freezes it", async () => {
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    const snapshotPanel = await screen.findByTestId("decision-evidence-snapshot");
+    expect(snapshotPanel).toHaveTextContent(/Nije snimljen/i);
+    expect(snapshotPanel).toHaveTextContent(/Preview ugovora v1/i);
+    expect(snapshotPanel).toHaveTextContent(/REPLENISH/i);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
+
+    await waitFor(() => {
+      expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(snapshotPanel).toHaveTextContent(/Snimljen 2026-06-26T12:00:00Z/i);
+    expect(snapshotPanel).toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
   });
 
   it("renders a structured evidence chain in the Why panel", async () => {

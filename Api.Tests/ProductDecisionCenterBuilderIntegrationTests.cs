@@ -94,6 +94,13 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(replenish.EvidenceChain, node => node.Code == "selected_recommendation");
         Assert.Contains(replenish.EvidenceChain, node => node.Code == "sales_signal");
         Assert.Contains(replenish.EvidenceChain, node => node.Code == "expected_impact");
+        Assert.Equal("absent", replenish.EvidenceSnapshotStatus);
+        Assert.NotNull(replenish.EvidenceSnapshotPreview);
+        Assert.Equal(1, replenish.EvidenceSnapshotPreview!.SchemaVersion);
+        Assert.Equal(replenish.RecommendationId, replenish.EvidenceSnapshotPreview.RecommendationId);
+        Assert.Equal(replenish.RecommendationType, replenish.EvidenceSnapshotPreview.RecommendationType);
+        Assert.Equal(replenish.ConfidenceLevel, replenish.EvidenceSnapshotPreview.ConfidenceLevel);
+        Assert.Equal(replenish.EvidenceChain.Count, replenish.EvidenceSnapshotPreview.EvidenceChain.Count);
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.ReplenishNeeded, replenish.ReasonCodes);
         Assert.Equal(500m, replenish.ExpectedImpactRsd);
         Assert.Equal(14, replenish.ImpactWindowDays);

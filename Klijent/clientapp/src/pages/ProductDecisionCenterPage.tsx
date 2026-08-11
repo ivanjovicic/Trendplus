@@ -635,6 +635,7 @@ export default function ProductDecisionCenterPage() {
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
   const [timelineFamilyFilter, setTimelineFamilyFilter] = useState<"row" | "all">("row");
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -979,6 +980,40 @@ export default function ProductDecisionCenterPage() {
         reliabilityPct: row.reliabilityPct ?? undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: queueSpec.sourceType === "data_quality" ? "/analytics/data-quality" : "/analytics/products",
+        sourceRecommendationId: row.recommendationId ?? undefined,
+        recommendationType: row.recommendationType ?? row.recommendationStatus,
+        expectedImpactBasis: "product_decision_center",
+        impactWindowDays: row.impactWindowDays ?? undefined,
+        confidenceLevel,
+        confidenceScore: confidenceScore ?? undefined,
+        warningCodes,
+        primaryDrivers,
+        reasonCodes: [...(row.reasonCodes ?? [])],
+        decisionReason: reasonText ?? undefined,
+        recommendedAction: row.recommendedAction,
+        generatedAtUtc: payload?.generatedAtUtc ?? undefined,
+        inputFreshnessStatus,
+        explainabilityText: reasonText ?? undefined,
+        periodFromUtc: fromDate,
+        periodToUtc: toDate,
+        evidenceChain: (row.evidenceChain ?? []).map((node) => ({
+          category: node.category,
+          code: node.code,
+          label: node.label,
+          valueText: node.valueText,
+          sourceFields: [...node.sourceFields],
+          isMissing: node.isMissing,
+          detail: node.detail ?? null,
+        })),
+        confidenceBreakdown: (row.confidenceBreakdown ?? []).map((node) => ({
+          category: node.category,
+          code: node.code,
+          label: node.label,
+          valueText: node.valueText,
+          sourceFields: [...node.sourceFields],
+          isMissing: node.isMissing,
+          detail: node.detail ?? null,
+        })),
         metadataJson: JSON.stringify({
           productId: row.productId,
           sku: row.sku,
@@ -1017,9 +1052,21 @@ export default function ProductDecisionCenterPage() {
         if (result.item.sourceKey) next.add(result.item.sourceKey);
         return next;
       });
+      const capturedEvidence = result.item.ledgerSnapshot?.evidenceSnapshot;
+      setEvidenceSnapshotByProductId((prev) => ({
+        ...prev,
+        [row.productId]: capturedEvidence
+          ? {
+              capturedAtUtc: capturedEvidence.capturedAtUtc,
+              recommendationId: capturedEvidence.recommendationId,
+            }
+          : null,
+      }));
       setQueueMessage(result.existing
         ? "Akcija je već u centralnim akcijama."
-        : "Akcija je dodata u centralni red.");
+        : capturedEvidence
+          ? "Akcija je dodata i evidence snapshot je snimljen."
+          : "Akcija je dodata u centralni red.");
     } catch (reason) {
       setQueueMessage(getAnalyticsActionWriteErrorMessage(reason));
     } finally {
@@ -1483,6 +1530,22 @@ export default function ProductDecisionCenterPage() {
                                     ? "Mereno — može u statistiku"
                                     : "Nije mereno — prihvatanje nije uspeh"}
                                 </small>
+                              </div>
+
+                              <div className="reason-block" data-testid="decision-evidence-snapshot">
+                                <strong>Evidence snapshot:</strong>{" "}
+                                {evidenceSnapshotByProductId[row.productId]
+                                  ? `Snimljen ${evidenceSnapshotByProductId[row.productId]!.capturedAtUtc} (${evidenceSnapshotByProductId[row.productId]!.recommendationId})`
+                                  : row.evidenceSnapshotStatus === "available"
+                                    ? "Dostupan"
+                                    : "Nije snimljen — snapshot se zamrzava tek kada preporuka uđe u akcije"}
+                                {row.evidenceSnapshotPreview ? (
+                                  <small>
+                                    Preview ugovora v{row.evidenceSnapshotPreview.schemaVersion}: {row.evidenceSnapshotPreview.recommendationType}
+                                    {" · "}
+                                    {row.evidenceSnapshotPreview.periodFromUtc ?? "?"} – {row.evidenceSnapshotPreview.periodToUtc ?? "?"}
+                                  </small>
+                                ) : null}
                               </div>
 
                               <div className="reason-block" data-testid="decision-timeline-panel">
