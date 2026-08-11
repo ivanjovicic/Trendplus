@@ -9,8 +9,8 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 | Program | Current READY | Execution class |
 |---|---|---|
 | DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
-| RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
-| DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
+| RL - Recommendation Learning | `none` (`RL01` DONE) | docs/contracts/data-model inventory only |
+| DT - Decision Timeline | `DT01` (IN_PROGRESS by Cursor) | docs/contracts/event-model only |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -866,11 +866,12 @@ The learning contract needs a staged rollout that first measures truth before ch
 
 ## DT01 - Define Decision Timeline event model and success metrics
 
-Status: READY  
-Priority: future / planning  
-Feature family: decision-timeline-contract  
-Parallel-safe: yes, docs/contracts only  
-Owner: unassigned
+Status: DONE
+Priority: future / planning
+Feature family: decision-timeline-contract
+Parallel-safe: yes, docs/contracts only
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
@@ -917,6 +918,21 @@ Recommendation, action, execution and outcome information exists in different re
 - one canonical event/timeline contract exists;
 - success metric vocabulary is explicit;
 - no runtime event store/migration was introduced.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Commit SHA: 1b154e7
+- Changed files:
+  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- Provere:
+  - `git diff --check`
+- Rizici:
+  - contract is docs-only; no runtime event store or schema migration was added
+- Sledece:
+  - `DT02 - Prepare historical timeline rollout plan`
 
 ### Dependencies
 
