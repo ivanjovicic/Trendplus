@@ -1,106 +1,494 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { rest } from "msw";
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { server } from "../../mocks/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import ColorSalesStatsPage from "../ColorSalesStatsPage";
+import { getStores } from "../../services/analyticsApi";
+import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
+import { getColorSalesStats } from "../../services/colorSalesStatsApi";
+import type { ColorSalesStat, ColorSalesStatsResponse } from "../../services/colorSalesStatsApi";
 
-// Mock the chart components
 vi.mock("recharts", () => ({
-  PieChart: ({ children }: any) => <div>{children}</div>,
-  BarChart: ({ children }: any) => <div>{children}</div>,
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  CartesianGrid: () => <div />,
-  XAxis: () => <div />,
-  YAxis: () => <div />,
-  Tooltip: () => <div />,
-  Bar: () => <div />,
-  Pie: () => <div />,
-  Cell: () => <div />,
-  Legend: () => <div />,
+  Bar: () => null,
+  BarChart: ({ children }: { children?: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  CartesianGrid: () => null,
+  ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  Tooltip: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
 }));
 
-describe("ColorSalesStatsPage (integration)", () => {
-  const colorSalesResponse = {
-    status: "ok",
-    fromDate: "2026-04-01",
-    toDate: "2026-04-30",
-    summary: {
-      totalRevenue: 150000,
-      totalItems: 300,
-      uniqueColors: 25,
-      topColor: "Black",
-      topColorRevenue: 50000,
-      avgRevenuePerColor: 6000,
-      topColorSharePct: 33.33,
-    },
-    colorRows: [
-      {
-        colorId: 1,
-        colorName: "Black",
-        revenue: 50000,
-        items: 100,
-        sharePct: 33.33,
-        margin: 15000,
-      },
-      {
-        colorId: 2,
-        colorName: "White",
-        revenue: 40000,
-        items: 80,
-        sharePct: 26.67,
-        margin: 12000,
-      },
-    ],
-    message: "OK",
-  };
+vi.mock("../../components/analytics/AnalyticsDataTable", () => ({
+  default: ({ toolbar, children, testId }: { toolbar?: ReactNode; children?: ReactNode; testId?: string }) => (
+    <section data-testid={testId ?? "analytics-data-table"}>
+      {toolbar}
+      {children}
+    </section>
+  ),
+}));
 
-  const storesResponse = [
-    { storeId: 1, storeName: "Store 1" },
-    { storeId: 2, storeName: "Store 2" },
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ tableKey, rows }: { tableKey: string; rows: unknown[] }) => (
+    <div data-testid="analytics-toolbar">
+      {tableKey}: {rows.length} rows
+    </div>
+  ),
+}));
+
+vi.mock("../../components/ui/InfoTip", () => ({
+  default: ({ text }: { text: string }) => <span data-testid="info-tip">{text}</span>,
+}));
+
+vi.mock("../../services/analyticsApi", async () => {
+  const actual = await vi.importActual<typeof import("../../services/analyticsApi")>("../../services/analyticsApi");
+  return {
+    ...actual,
+    getStores: vi.fn(),
+  };
+});
+
+vi.mock("../../services/colorSalesStatsApi", async () => {
+  const actual = await vi.importActual<typeof import("../../services/colorSalesStatsApi")>("../../services/colorSalesStatsApi");
+  return {
+    ...actual,
+    getColorSalesStats: vi.fn(),
+  };
+});
+
+function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
+  return {
+    boja: "Crna",
+    preNivelacijePromet: 90000,
+    preNivelacijeKolicina: 9,
+    posleNivelacijePromet: 30000,
+    posleNivelacijeKolicina: 3,
+    ukupanPromet: 120000,
+    ukupnaKolicina: 12,
+    previousPeriodRevenue: 80000,
+    previousPeriodUnits: 8,
+    brojArtikalaSaNivelacijom: 5,
+    brojArtikalaUkupno: 8,
+    revenueWithCost: 100000,
+    estimatedCostRevenue: 20000,
+    marginContribution: 46000,
+    marginDataCoveragePct: 83.3,
+    fallbackCostCoveragePct: 16.7,
+    marginPct: 38.3,
+    totalCost: 74000,
+    historicalCostRevenue: 100000,
+    historicalCostCoveragePct: 83.3,
+    estimatedCostCoveragePct: 16.7,
+    noCostRevenue: 0,
+    noCostCoveragePct: 0,
+    snapshotCostRevenue: 100000,
+    snapshotCostCoveragePct: 83.3,
+    isEstimatedMargin: false,
+    marginQualityLabel: "Dobra pokrivenost",
+    marginQualityTier: "good",
+    marginQualityShortLabel: "Good",
+    marginQualityTooltip: "Većina prometa ima poznatu nabavnu cenu.",
+    revenueWithNivelacijaSplit: 100000,
+    popRevenueChangePct: 50,
+    popUnitsChangePct: 20,
+    prePostNivelacijaRevenueImpactPct: -12.5,
+    prePostNivelacijaUnitsImpactPct: -10,
+    prePostNivelacijaRevenueCoveragePct: 75,
+    prePostSignalNote: "Dovoljna pre/post pokrivenost.",
+    prePostComparableArticleCount: 5,
+    sharePct: 60,
+    reliabilityPct: 82,
+    isUnknown: false,
+    recommendation: {
+      status: "increase_focus",
+      label: "Increase focus",
+      summary: "Jak rast i zdrava marža.",
+      confidencePct: 88,
+      reliabilityPct: 82,
+      dataQualityStatus: "good",
+      reasonCodes: ["strong_pop_growth"],
+    },
+    ...overrides,
+  };
+}
+
+function response(overrides: Partial<ColorSalesStatsResponse> = {}): ColorSalesStatsResponse {
+  const colors = overrides.colors ?? [
+    color({
+      boja: "Crna",
+      ukupanPromet: 120000,
+      marginContribution: 46000,
+      recommendation: {
+        status: "increase_focus",
+        label: "Increase focus",
+        summary: "Jak rast i zdrava marža.",
+        confidencePct: 88,
+        reliabilityPct: 82,
+        dataQualityStatus: "good",
+        reasonCodes: ["strong_pop_growth"],
+      },
+    }),
+    color({
+      boja: "Bež",
+      ukupanPromet: 45000,
+      marginContribution: 12000,
+      popRevenueChangePct: -20,
+      recommendation: {
+        status: "review",
+        label: "Review",
+        summary: "Pad i slabiji doprinos.",
+        confidencePct: 61,
+        reliabilityPct: 70,
+        dataQualityStatus: "warning",
+        reasonCodes: ["weak_pop"],
+      },
+    }),
   ];
 
+  return {
+    generatedAt: "2026-07-01T08:30:00Z",
+    fromDate: "2026-06-01T00:00:00Z",
+    toDate: "2026-06-30T23:59:59Z",
+    dataWindowFrom: "2024-01-01T00:00:00Z",
+    dataWindowTo: "2026-06-30T23:59:59Z",
+    sezonaId: null,
+    storeId: null,
+    dataScope: "all",
+    colors,
+    totals: {
+      ukupanPromet: colors.reduce((sum, item) => sum + item.ukupanPromet, 0),
+      ukupanMarzniDoprinos: colors.reduce((sum, item) => sum + item.marginContribution, 0),
+      ukupanTrosak: 107000,
+      prosecnaMarza: 35,
+      historicalCostCoveragePct: 78,
+      estimatedCostCoveragePct: 15,
+      noCostCoveragePct: 7,
+      snapshotCostRevenue: 100000,
+      snapshotCostCoveragePct: 78,
+      isSnapshotActive: true,
+      snapshotGeneratedAtUtc: "2026-07-01T08:00:00Z",
+      isEstimatedMargin: false,
+      marginQualityLabel: "Dobra pokrivenost",
+      marginQualityTier: "good",
+      marginQualityShortLabel: "Good",
+      marginQualityTooltip: "Dovoljna pokrivenost nabavnom cenom.",
+      prePromet: 120000,
+      poslePromet: 45000,
+      ukupnaKolicina: 17,
+      preKolicina: 12,
+      posleKolicina: 5,
+      previousPeriodRevenue: 110000,
+      previousPeriodUnits: 11,
+      brojBoja: colors.length,
+      popRevenueChangePct: 30,
+      popUnitsChangePct: 18,
+      prePostNivelacijaRevenueImpactPct: -8,
+      prePostNivelacijaUnitsImpactPct: -6,
+      recommendationSummary: {
+        increaseFocus: colors.filter((item) => item.recommendation?.status === "increase_focus").length,
+        maintain: colors.filter((item) => item.recommendation?.status === "maintain").length,
+        review: colors.filter((item) => item.recommendation?.status === "review").length,
+        doNotTrust: 0,
+        insufficientData: 0,
+      },
+    },
+    dataQuality: {
+      missingCostRevenue: 15000,
+      missingCostRevenueSharePct: 10,
+      estimatedCostRevenue: 20000,
+      estimatedCostRevenueSharePct: 12,
+      unknownColorRevenue: 5000,
+      unknownColorRevenueSharePct: 3,
+      revenueWithNivelacijaSplit: 100000,
+      revenueWithNivelacijaSplitSharePct: 45,
+    },
+    sezone: [
+      { id: 3, naziv: "Leto 2026", datumOd: "2026-06-01T00:00:00Z", datumDo: "2026-08-31T23:59:59Z" },
+    ],
+    ...overrides,
+  };
+}
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={["/analitika/color-sales-stats"]}>
+      <Routes>
+        <Route path="/analitika/color-sales-stats" element={<ColorSalesStatsPage />} />
+        <Route path="/analitika/color-sales-stats/:color" element={<div>Color detail route</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+function getDecisionTable() {
+  return screen.getByRole("table");
+}
+
+describe("ColorSalesStatsPage", () => {
   beforeEach(() => {
-    server.use(
-      rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) =>
-        res(ctx.status(200), ctx.json(storesResponse))
-      ),
-      rest.get("/api/analytics/color-sales", (_req, res, ctx) =>
-        res(ctx.status(200), ctx.json(colorSalesResponse))
-      )
-    );
+    vi.clearAllMocks();
+    localStorage.setItem("trendplus:dataScope", "all");
+    vi.mocked(getStores).mockResolvedValue([
+      { storeId: 1, storeName: "Centar", city: "Beograd", region: "BG" },
+      { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
+    ]);
+    vi.mocked(getColorSalesStats).mockResolvedValue(response());
   });
 
-  it("renders page title", () => {
-    render(
-      <MemoryRouter initialEntries={["/analytics/color-sales"]}>
-        <Routes>
-          <Route
-            path="/analytics/color-sales"
-            element={<ColorSalesStatsPage />}
-          />
-        </Routes>
-      </MemoryRouter>
+  it("renders premium chrome with shared control bar and shared data table", async () => {
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Prodaja po boji artikla" })).toBeInTheDocument();
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    expect(within(controlBar).getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Od")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Do")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Sezona")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Objekat")).toBeInTheDocument();
+    expect(within(controlBar).getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute(
+      "href",
+      "/analytics/data-quality",
     );
 
-    const title = screen.getByText(/Prodaja po boji/i);
-    expect(title).toBeInTheDocument();
+    await screen.findByText("Crna");
+    expect(screen.getByText("Koncentracija prometa po bojama")).toBeInTheDocument();
+    expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
+    expect(screen.getByText("Pojačaj")).toBeInTheDocument();
+    expect(screen.getByText("Smanji")).toBeInTheDocument();
   });
 
-  it("renders filter controls", () => {
-    render(
-      <MemoryRouter initialEntries={["/analytics/color-sales"]}>
-        <Routes>
-          <Route
-            path="/analytics/color-sales"
-            element={<ColorSalesStatsPage />}
-          />
-        </Routes>
-      </MemoryRouter>
-    );
+  it("includes dataScope in list calls, reloads on scope change, and keeps detail navigation aligned", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
 
-    const periodLabel = screen.getByText("Period");
-    expect(periodLabel).toBeInTheDocument();
+    expect(getColorSalesStats).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing" }));
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    expect(snapshot?.metadata.some((field) => field.key === "dataScope" && field.value === "existing")).toBe(true);
+  });
+
+  it("blocks invalid date ranges before issuing a new analytics request", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    expect(getColorSalesStats).toHaveBeenCalledTimes(1);
+
+    const [fromInput, toInput] = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+    fireEvent.change(fromInput, { target: { value: "2026-07-10" } });
+    fireEvent.change(toInput, { target: { value: "2026-07-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+
+    expect(screen.getByText("Datum „Od” ne može biti posle datuma „Do”.")).toBeInTheDocument();
+    expect(getColorSalesStats).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies season and store filters using backend query semantics", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    const comboBoxes = screen.getAllByRole("combobox");
+    const seasonSelect = comboBoxes[1];
+    const storeSelect = comboBoxes[2];
+
+    fireEvent.change(seasonSelect, { target: { value: "3" } });
+    fireEvent.change(storeSelect, { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+
+    await waitFor(() => expect(getColorSalesStats).toHaveBeenCalledTimes(2));
+    expect(getColorSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      fromDate: "2026-06-01T00:00:00Z",
+      toDate: "2026-08-31T23:59:59Z",
+      sezonaId: 3,
+      storeId: 2,
+    }));
+  });
+
+  it("sorts visible table rows without changing the source export row count", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Crna",
+          ukupanPromet: 120000,
+          marginContribution: 46000,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: 88,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+        color({
+          boja: "Bela",
+          ukupanPromet: 220000,
+          marginContribution: 72000,
+          recommendation: {
+            status: "maintain",
+            label: "Maintain",
+            summary: "Stabilno.",
+            confidencePct: 70,
+            reliabilityPct: 80,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-toolbar")).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    const table = getDecisionTable();
+    const revenueButton = within(table).getAllByRole("button").find((button) => button.textContent?.startsWith("Promet"));
+    expect(revenueButton).toBeDefined();
+    fireEvent.click(revenueButton as HTMLButtonElement);
+
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Bela");
+    expect(rows[2]).toHaveTextContent("Crna");
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("color-sales-stats: 2 rows");
+    }, { timeout: 5000 });
+  });
+
+  it("preserves backend insufficient_data as Nedovoljno podataka instead of Zadrži", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Siva",
+          ukupanPromet: 8000,
+          marginContribution: 500,
+          recommendation: {
+            status: "insufficient_data",
+            label: "Insufficient data",
+            summary: "Nedovoljno signala.",
+            confidencePct: 20,
+            reliabilityPct: 35,
+            dataQualityStatus: "insufficient_data",
+            reasonCodes: ["insufficient_data"],
+          },
+        }),
+        color({
+          boja: "Crna",
+          ukupanPromet: 120000,
+          marginContribution: 46000,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: 88,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
+
+    const table = getDecisionTable();
+    const sivaRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Siva"));
+    expect(sivaRow).toBeDefined();
+    expect(sivaRow).toHaveTextContent("Nedovoljno podataka");
+    expect(sivaRow).not.toHaveTextContent("Zadrži");
+  });
+
+  it("maps recommendation status codes without promoting insufficient_data to Zadrži", async () => {
+    const { mapRecommendationStatus, displayStatusLabel } = await import("../ColorSalesStatsPage");
+    expect(mapRecommendationStatus("insufficient_data")).toBe("NedovoljnoPodataka");
+    expect(displayStatusLabel("NedovoljnoPodataka")).toBe("Nedovoljno podataka");
+    expect(mapRecommendationStatus("maintain")).toBe("Zadrzi");
+    expect(mapRecommendationStatus("increase_focus")).toBe("Pojacaj");
+  });
+
+  it("does not invent a business recommendation when backend recommendation is missing", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Teget",
+          ukupanPromet: 250000,
+          marginContribution: 90000,
+          sharePct: 70,
+          popRevenueChangePct: 80,
+          recommendation: undefined,
+        }),
+        color({
+          boja: "Crna",
+          ukupanPromet: 120000,
+          marginContribution: 46000,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: 88,
+            reliabilityPct: 82,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Pojačaj: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Zadrži: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Smanji: 0/)).toBeInTheDocument();
+
+    const table = getDecisionTable();
+    const tegetRow = within(table).getAllByRole("row").find((row) => row.textContent?.includes("Teget"));
+    expect(tegetRow).toBeDefined();
+    expect(tegetRow).toHaveTextContent("Nedovoljno podataka");
+    expect(tegetRow).not.toHaveTextContent("Pojačaj");
+    expect(tegetRow).not.toHaveTextContent("Zadrži");
+    expect(tegetRow).not.toHaveTextContent("Smanji");
+
+    fireEvent.click(within(tegetRow as HTMLElement).getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
+  });
+
+  it("expands a color row and saves a detail snapshot before navigating to the detail route", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    expect(await screen.findByRole("heading", { name: /Detalj odluke:/i })).toBeInTheDocument();
+    expect(screen.getByText("PoP trend prometa")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    expect(await screen.findByText("Color detail route")).toBeInTheDocument();
+    const snapshot = getAnalyticsDetailSnapshot("color-sales-stats", encodeURIComponent("Crna"));
+    expect(snapshot).toEqual(expect.objectContaining({
+      table: "color-sales-stats",
+      recordId: "Crna",
+      title: "Crna",
+    }));
+    expect(snapshot?.fields.some((field) => field.key === "ukupanPromet" && field.value === "120.000 RSD")).toBe(true);
   });
 });

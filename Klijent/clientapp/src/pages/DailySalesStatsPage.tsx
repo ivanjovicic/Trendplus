@@ -13,7 +13,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
 import { getStores } from "../services/analyticsApi";
@@ -1130,23 +1136,49 @@ export default function DailySalesStatsPage() {
     );
   }, []);
 
-  return (
-    <div className="daily-sales-page">
-      <header className="daily-sales-header">
-        <div>
-          <h1>Prodaja po smeni</h1>
-          <p>
-            Dnevni pregled po smenama: količine, prihodi i top dobavljači.
-          </p>
-        </div>
-        <div className="daily-sales-generated">
-          Opseg: {fmtDateShort(data?.requestedFrom ?? fromDate)} - {fmtDateShort(data?.requestedTo ?? toDate)}
-        </div>
-      </header>
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      {
+        key: "scope",
+        label: "Opseg",
+        value: data?.dataScope ?? memoizedQueryDataScope,
+        tone: "info",
+      },
+      {
+        key: "period",
+        label: "Period",
+        value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
+        tone: "neutral",
+      },
+      {
+        key: "rows",
+        label: "Prikazano",
+        value: `${sortedRows.length.toLocaleString("sr-RS")} dana`,
+        tone: sortedRows.length === 0 ? "warning" : "success",
+      },
+      {
+        key: "topn",
+        label: "Top N",
+        value: String(activeFilters.topN),
+        tone: "neutral",
+      },
+    ],
+    [
+      activeFilters.fromDate,
+      activeFilters.toDate,
+      activeFilters.topN,
+      data?.dataScope,
+      memoizedQueryDataScope,
+      sortedRows.length,
+    ],
+  );
 
-      <section className="daily-sales-filters">
-        <label>
-          <span>Period</span>
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "preset",
+        label: "Period",
+        control: (
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
@@ -1154,10 +1186,12 @@ export default function DailySalesStatsPage() {
             <option value="365d">Poslednjih 365 dana</option>
             <option value="custom">Prilagođeno</option>
           </select>
-        </label>
-
-        <label>
-          <span>Od</span>
+        ),
+      },
+      {
+        key: "from",
+        label: "Od",
+        control: (
           <input
             type="date"
             value={fromDate}
@@ -1166,10 +1200,12 @@ export default function DailySalesStatsPage() {
               setFromDate(event.target.value);
             }}
           />
-        </label>
-
-        <label>
-          <span>Do</span>
+        ),
+      },
+      {
+        key: "to",
+        label: "Do",
+        control: (
           <input
             type="date"
             value={toDate}
@@ -1178,10 +1214,12 @@ export default function DailySalesStatsPage() {
               setToDate(event.target.value);
             }}
           />
-        </label>
-
-        <label>
-          <span>Objekat</span>
+        ),
+      },
+      {
+        key: "store",
+        label: "Objekat",
+        control: (
           <select
             value={storeId ?? ""}
             onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
@@ -1193,10 +1231,12 @@ export default function DailySalesStatsPage() {
               </option>
             ))}
           </select>
-        </label>
-
-        <label>
-          <span>Top dobavljača</span>
+        ),
+      },
+      {
+        key: "topn",
+        label: "Top dobavljača",
+        control: (
           <input
             type="number"
             min={1}
@@ -1204,17 +1244,57 @@ export default function DailySalesStatsPage() {
             value={topN}
             onChange={(event) => setTopN(parseTopN(event.target.value))}
           />
-        </label>
+        ),
+      },
+    ],
+    [fromDate, periodPreset, storeId, stores, toDate, topN],
+  );
 
-        <div className="daily-sales-actions">
-          <button type="button" onClick={handleApplyFilters} disabled={loading}>
-            Primeni
-          </button>
-          <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>
-            Reset
-          </button>
-        </div>
-      </section>
+  return (
+    <div className="daily-sales-page">
+      <AnalyticsTrustHeader
+        title="Prodaja po smeni"
+        description="Dnevni pregled po smenama: količine, prihodi i top dobavljači."
+        periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
+        periodTo={data?.requestedTo ?? activeFilters.toDate}
+        lastRefreshAt={null}
+        dataFreshnessStatus="unknown"
+        dataSource={`Daily sales analytics (scope: ${data?.dataScope ?? memoizedQueryDataScope})`}
+        dataQualityStatus={null}
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
+      />
+
+      <AnalyticsControlBar
+        title="Opseg i filteri"
+        description="Period, objekat i top N ostaju ovde; tabela po danima ispod ostaje fokusirana na smene i dobavljače."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "apply",
+          label: loading ? "Učitavanje..." : "Primeni filtere",
+          onClick: handleApplyFilters,
+          disabled: loading,
+        }}
+        secondaryActions={[
+          {
+            key: "reset",
+            label: "Reset filtera",
+            onClick: handleResetFilters,
+            disabled: loading,
+            tone: "secondary",
+          },
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+            tone: "secondary",
+          },
+        ]}
+        fields={controlBarFields}
+      />
 
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
@@ -1275,29 +1355,34 @@ export default function DailySalesStatsPage() {
                   Top dobavljači su određeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
                 </p>
               </div>
-              <AnalyticsTableToolbar
-                tableKey="daily-sales-stats"
-                tableTitle="Dnevna prodaja po smeni i dobavljačima"
-                columns={toolbarColumns}
-                rows={sortedRows}
-                filters={toolbarFilters}
-                metadata={toolbarMetadata}
-                defaultOrientation="portrait"
-                documentType="daily-sales-filled"
-                extraActions={(
-                  <button
-                    type="button"
-                    onClick={handlePrintBlank}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
-                    title="Otvori prazan obrazac za ručno popunjavanje"
-                  >
-                    Štampaj obrazac
-                  </button>
-                )}
-              />
             </div>
 
-            <div className="daily-sales-table-wrap">
+            <AnalyticsDataTable
+              testId="daily-sales-stats-data-table"
+              rowCount={sortedRows.length}
+              toolbar={(
+                <AnalyticsTableToolbar
+                  tableKey="daily-sales-stats"
+                  tableTitle="Dnevna prodaja po smeni i dobavljačima"
+                  columns={toolbarColumns}
+                  rows={sortedRows}
+                  filters={toolbarFilters}
+                  metadata={toolbarMetadata}
+                  defaultOrientation="portrait"
+                  documentType="daily-sales-filled"
+                  extraActions={(
+                    <button
+                      type="button"
+                      onClick={handlePrintBlank}
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted"
+                      title="Otvori prazan obrazac za ručno popunjavanje"
+                    >
+                      Štampaj obrazac
+                    </button>
+                  )}
+                />
+              )}
+            >
               <table className="daily-sales-table">
                 <thead>
                   <tr>
@@ -1306,19 +1391,19 @@ export default function DailySalesStatsPage() {
                         Datum{sortMarker("date", sortKey, sortDir)}
                       </button>
                     </th>
-                    <th className="align-right col-shift1">
+                    <th className="analytics-data-table__numeric col-shift1">
                       <button type="button" onClick={() => handleSort("firstShiftTotalItems")}>
                         Prva smena{sortMarker("firstShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 06:00 do 13:59." />
                       </button>
                     </th>
-                    <th className="align-right col-shift2">
+                    <th className="analytics-data-table__numeric col-shift2">
                       <button type="button" onClick={() => handleSort("secondShiftTotalItems")}>
                         Druga smena{sortMarker("secondShiftTotalItems", sortKey, sortDir)}{" "}
                         <InfoTip text="Suma komada prodatih od 14:00 do 21:59." />
                       </button>
                     </th>
-                    <th className="align-right col-revenue">
+                    <th className="analytics-data-table__numeric col-revenue">
                       <button type="button" onClick={() => handleSort("totalRevenue")}>
                         Prihod dana{sortMarker("totalRevenue", sortKey, sortDir)}
                       </button>
@@ -1326,20 +1411,20 @@ export default function DailySalesStatsPage() {
                     {supplierHeaders.map((name, index) => {
                       const displayName = sortedRows.length === 0 ? "" : name;
                       return (
-                        <th key={`supplier-header-${index}`} className="align-right">
+                        <th key={`supplier-header-${index}`} className="analytics-data-table__numeric">
                           <button type="button" onClick={() => handleSort(`supplier:${index}`)}>
                             {displayName}{sortMarker(`supplier:${index}`, sortKey, sortDir)}
                           </button>
                         </th>
                       );
                     })}
-                    <th className="align-right">
+                    <th className="analytics-data-table__numeric">
                       <button type="button" onClick={() => handleSort("othersCount")}>
                         Ostali{sortMarker("othersCount", sortKey, sortDir)}{" "}
                         <InfoTip text="Komadi dobavljača koji nisu u top N listi za izabrani opseg." />
                       </button>
                     </th>
-                    <th className="align-right">
+                    <th className="analytics-data-table__numeric">
                       <button type="button" onClick={() => handleSort("totalItemsSold")}>
                         Ukupno kom{sortMarker("totalItemsSold", sortKey, sortDir)}
                       </button>
@@ -1360,16 +1445,16 @@ export default function DailySalesStatsPage() {
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
                           <td>{fmtDate(row.date)}</td>
-                          <td className="align-right">{shiftDisplayValue(row, "first")}</td>
-                          <td className="align-right">{shiftDisplayValue(row, "second")}</td>
-                          <td className="align-right">{fmtRsd(row.totalRevenue, 2)}</td>
+                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "first")}</td>
+                          <td className="analytics-data-table__numeric">{shiftDisplayValue(row, "second")}</td>
+                          <td className="analytics-data-table__numeric">{fmtRsd(row.totalRevenue, 2)}</td>
                           {supplierHeaders.map((_, index) => (
-                            <td key={`${row.date}-supplier-${index}`} className="align-right">
+                            <td key={`${row.date}-supplier-${index}`} className="analytics-data-table__numeric">
                               {fmtNumber(row.topSupplierCounts[index] ?? 0)}
                             </td>
                           ))}
-                          <td className="align-right">{fmtNumber(row.othersCount)}</td>
-                          <td className="align-right">
+                          <td className="analytics-data-table__numeric">{fmtNumber(row.othersCount)}</td>
+                          <td className="analytics-data-table__numeric">
                             {fmtNumber(row.totalItemsSold)}
                             {mismatch ? <span className="mismatch-badge">Check</span> : null}
                           </td>
@@ -1379,7 +1464,7 @@ export default function DailySalesStatsPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            </AnalyticsDataTable>
             {mismatchCount > 0 ? (
               <p className="daily-sales-footnote">
                 Upozorenje: {mismatchCount} redova ima mismatch između total kolone i top+others sabiranja.

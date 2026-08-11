@@ -1,5 +1,4 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { rest } from "msw";
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -102,7 +101,7 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabel = screen.getByText("Period");
-    expect(periodLabel).toBeInTheDocument();
+    const controlBar = screen.getByTestId("analytics-control-bar");
+    expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
   });
 });

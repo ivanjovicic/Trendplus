@@ -17,7 +17,9 @@ Use with:
 | P-UI-10 | DONE | data-quality-table-migration | Migrate Data Quality issue/top-offender tables to shared premium table system |
 | P-UI-11 | DONE | legacy-analytics-modernization | Modernize legacy supplier/shoe/color/daily/nivelacija analytics pages |
 | P-UI-12 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ShoeTypeSalesStatsPage) |
-| P-UI-13 | READY | legacy-analytics-modernization | Continue legacy page modernization (one page per run) |
+| P-UI-13 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ColorSalesStatsPage) |
+| P-UI-14 | DONE | legacy-analytics-modernization | Continue legacy page modernization (DailySalesStatsPage) |
+| P-UI-15 | READY | legacy-analytics-modernization | Continue legacy page modernization (one page per run) |
 
 ---
 
@@ -267,26 +269,143 @@ P-UI-11 modernized one page. Remaining legacy analytics pages still use page-loc
 
 ## P-UI-13 - Continue legacy analytics page modernization
 
-Status: READY
+Status: DONE
 Ready after: P-UI-12 DONE
 Priority: P2
 Type: frontend/design/tests
 Feature family: legacy-analytics-modernization
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-13-<agent>.lock.md`
+Owner: Cursor
+Local lock: `.ai/task-locks/P-UI-13-cursor.lock.md`
 Commit suggestion: `feat(ui): modernize legacy analytics page`
 Promotion note: 2026-08-11 — remaining candidates after ShoeTypeSalesStatsPage.
-Recommended first: `ColorSalesStatsPage.tsx`
+This run: `ColorSalesStatsPage.tsx` only.
 
 ### Why
 
-P-UI-12 modernized ShoeType. Remaining legacy analytics pages still use page-local filter/table chrome.
+P-UI-13 is done. Remaining legacy analytics pages still use page-local filter/table chrome.
 
 ### Candidate pages (pick one)
 
 - `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
 - `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+
+### Do not touch
+
+- analytics formulas
+- backend endpoints
+- chart data contracts
+- export values
+
+### Do
+
+1. Pick one page per run.
+2. Confirm `AnalyticsTrustHeader`.
+3. Migrate filters to `AnalyticsControlBar`.
+4. Migrate tables to `AnalyticsDataTable`.
+5. Keep chart semantics unchanged.
+6. Add/update focused tests.
+
+### Acceptance
+
+- One more legacy page matches premium analytics chrome without semantic drift.
+
+### Completion note (2026-08-11)
+
+- Modernized `ColorSalesStatsPage.tsx`: `AnalyticsTrustHeader`, `AnalyticsControlBar`, `AnalyticsDataTable`, `AnalyticsErrorState`, and `AnalyticsEmptyState` now replace page-local chrome.
+- Kept chart semantics, recommendations, and export payload behavior unchanged.
+- Added focused regression coverage for premium chrome, filter interactions, sorting, empty/error states, and detail snapshot behavior.
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/ColorSalesStatsPage.spec.tsx` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+- Checks not run:
+  - `dotnet build`
+  - `dotnet test`
+- Remaining risk:
+  - Legacy copy in some touched strings still needs broader encoding cleanup outside this prompt scope.
+- Next:
+  - Current P-UI READY: `P-UI-14`
+
+---
+
+## P-UI-14 - Continue legacy analytics page modernization
+
+Status: DONE
+Ready after: P-UI-13 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: Cursor
+Local lock: `.ai/task-locks/P-UI-14-cursor.lock.md` (released on DONE)
+Commit suggestion: `feat(ui): modernize DailySalesStatsPage chrome`
+Promotion note: 2026-08-11 — remaining candidates after ColorSalesStatsPage.
+This run: `DailySalesStatsPage.tsx` only.
+
+### Why
+
+P-UI-13 modernized Color. Remaining legacy analytics pages still use page-local filter/table chrome.
+
+### Candidate pages (pick one)
+
+- ~~`Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`~~ (DONE this run)
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+
+### Do not touch
+
+- analytics formulas
+- backend endpoints
+- chart data contracts
+- export values
+
+### Do
+
+1. Pick one page per run.
+2. Confirm `AnalyticsTrustHeader`.
+3. Migrate filters to `AnalyticsControlBar`.
+4. Migrate tables to `AnalyticsDataTable`.
+5. Keep chart semantics unchanged.
+6. Add/update focused tests.
+
+### Acceptance
+
+- One more legacy page matches premium analytics chrome without semantic drift.
+
+### Completion note (2026-08-11)
+
+- Modernized `DailySalesStatsPage.tsx`: TrustHeader, filters → `AnalyticsControlBar` (Primeni/Reset), day table → `AnalyticsDataTable` + toolbar, numeric cols → `analytics-data-table__numeric`.
+- Charts / export blank print / apply-filter semantics unchanged.
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx src/pages/__tests__/DailySalesStatsPage.spec.tsx` - pass (3/3)
+- Next:
+  - Current P-UI READY: `P-UI-15`
+
+---
+
+## P-UI-15 - Continue legacy analytics page modernization
+
+Status: READY
+Ready after: P-UI-14 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-15-<agent>.lock.md`
+Commit suggestion: `feat(ui): modernize legacy analytics page`
+Promotion note: 2026-08-11 — remaining candidates after DailySalesStatsPage.
+Recommended first: `ProdajaPrePostNivelacijePage.tsx`
+
+### Why
+
+P-UI-14 modernized Daily. Remaining legacy analytics pages still use page-local filter/table chrome.
+
+### Candidate pages (pick one)
+
 - `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`
 - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
 

@@ -22,6 +22,12 @@
     0 0 0 1px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
+.color-decision-page > .analytics-trust-header,
+.color-decision-page > .analytics-control-bar,
+.color-decision-page > .analytics-data-table {
+  margin-bottom: 16px;
+}
+
 .color-decision-header {
   align-items: flex-start;
   display: flex;
@@ -170,6 +176,16 @@
   color: var(--color-accent);
 }
 
+.color-decision-message.loading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.color-decision-loading-spinner {
+  flex: 0 0 auto;
+}
+
 .color-decision-message.error {
   background: color-mix(in srgb, var(--color-danger) 13%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-danger) 42%, transparent);
@@ -244,6 +260,10 @@
   border-radius: 22px;
   box-shadow: 0 14px 36px color-mix(in srgb, black 22%, transparent);
   padding: 14px;
+}
+
+.color-decision-card .analytics-data-table {
+  margin-top: 12px;
 }
 
 .color-decision-card h2,

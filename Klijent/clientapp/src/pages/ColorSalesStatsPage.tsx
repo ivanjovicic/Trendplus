@@ -16,12 +16,21 @@ import {
   type ColorSalesStatsResponse,
 } from "../services/colorSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
-import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import "./ColorSalesStatsPage.css";
 
@@ -73,24 +82,6 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   { key: "decisionScore", header: "Skor odluke", dataType: "number" },
 ];
 
-function toDateInput(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getPresetRange(preset: Exclude<PeriodPreset, "custom">): { fromDate: string; toDate: string } {
-  const to = new Date();
-  const from = new Date(to);
-  if (preset === "30d") from.setDate(from.getDate() - 29);
-  if (preset === "90d") from.setDate(from.getDate() - 89);
-  if (preset === "180d") from.setDate(from.getDate() - 179);
-  if (preset === "365d") from.setDate(from.getDate() - 364);
-
-  return {
-    fromDate: toDateInput(from),
-    toDate: toDateInput(to),
-  };
-}
-
 function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
   return {
     fromDate: `${fromDate}T00:00:00Z`,
@@ -104,23 +95,6 @@ function toDateOnly(value: string): string {
   return parsed.toISOString().slice(0, 10);
 }
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("sr-RS");
-}
-
-function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${fmtPct(value, digits)}`;
-}
-
-function fmtQty(value: number): string {
-  return `${value.toLocaleString("sr-RS")} kom`;
-}
-
 function normalizeName(value: string | null | undefined): string {
   return (value ?? "").trim().toUpperCase();
 }
@@ -128,6 +102,10 @@ function normalizeName(value: string | null | undefined): string {
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string {
   if (field !== activeField) return "";
   return dir === "asc" ? " ^" : " v";
+}
+
+function isSortActive(field: SortField, activeField: SortField): boolean {
+  return field === activeField;
 }
 
 function statusClass(status: DecisionStatus): string {
@@ -186,7 +164,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  return `${displayStatusLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marza ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrice ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
+  return `${displayStatusLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
 }
 
 function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
@@ -208,7 +186,7 @@ function describePopMetric(item: ColorSalesStat): { label: string; title: string
 
   return {
     label: "N/A",
-    title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poredjenje.",
+    title: "PoP trend nije dostupan jer ne postoji validna prethodna baza za poređenje.",
     className: "trend-neutral",
   };
 }
@@ -217,7 +195,7 @@ function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: string; 
   if (item.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
-      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokrice: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
+      title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
       className: trendClass(item.prePostNivelacijaRevenueImpactPct),
     };
   }
@@ -522,15 +500,15 @@ export default function ColorSalesStatsPage() {
     const unknownShare = data.dataQuality.unknownColorRevenueSharePct;
 
     if (splitCoverage != null && splitCoverage < 60) {
-      notes.push(`Pre/posle nivelacije trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba citati kao delimican.`);
+      notes.push(`Pre/post nivelacija trenutno pokriva ${fmtPct(splitCoverage, 1)} ukupnog prometa, pa taj signal treba čitati kao delimičan.`);
     }
 
     if (knownCostShare != null && knownCostShare < 100) {
-      notes.push(`Marza i marzni doprinos su zasnovani na ${fmtPct(knownCostShare, 1)} prometa sa poznatom nabavnom cenom.`);
+      notes.push(`Marža i maržni doprinos su zasnovani na ${fmtPct(knownCostShare, 1)} prometa sa poznatom nabavnom cenom.`);
     }
 
     if (unknownShare != null && unknownShare > 0) {
-      notes.push(`Nepoznate boje ucestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
+      notes.push(`Nepoznate boje učestvuju sa ${fmtPct(unknownShare, 1)} ukupnog prometa.`);
     }
 
     return notes;
@@ -553,7 +531,7 @@ export default function ColorSalesStatsPage() {
       { key: "dataScope", label: "Opseg podataka", value: data?.dataScope ?? dataScope },
       { key: "bojaCount", label: "Broj boja", value: data?.totals.brojBoja ?? 0 },
       { key: "marginCoverage", label: "Promet sa nabavnom cenom", value: fmtPct(data?.dataQuality.missingCostRevenueSharePct == null ? null : 100 - data.dataQuality.missingCostRevenueSharePct, 1) },
-      { key: "splitCoverage", label: "Pre/post pokrice", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
+      { key: "splitCoverage", label: "Pre/post pokriće", value: fmtPct(data?.dataQuality.revenueWithNivelacijaSplitSharePct, 1) },
       { key: "boost", label: "Pojačaj", value: counts.boost },
       { key: "keep", label: "Zadrži", value: counts.keep },
       { key: "reduce", label: "Smanji", value: counts.reduce },
@@ -571,6 +549,42 @@ export default function ColorSalesStatsPage() {
       data?.totals.brojBoja,
       dataScope,
     ]
+  );
+
+  const headerDataQualityStatus = useMemo(() => {
+    if (!data) return null;
+    if (sortedRows.length === 0) return "insufficient_data";
+    return qualityNotes.length > 0 ? "warning" : "good";
+  }, [data, qualityNotes.length, sortedRows.length]);
+
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+    if (!data || loading || sortedRows.length > 0) return null;
+    if (qualityNotes.length > 0) return "insufficient_data";
+    return "no_data";
+  }, [data, loading, qualityNotes.length, sortedRows.length]);
+
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      {
+        key: "scope",
+        label: "Opseg",
+        value: dataScope,
+        tone: "info",
+      },
+      {
+        key: "period",
+        label: "Period",
+        value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
+        tone: "neutral",
+      },
+      {
+        key: "rows",
+        label: "Prikazano",
+        value: `${sortedRows.length.toLocaleString("sr-RS")} / ${(data?.colors?.length ?? 0).toLocaleString("sr-RS")}`,
+        tone: sortedRows.length === 0 ? "warning" : "success",
+      },
+    ],
+    [activeFilters.fromDate, activeFilters.toDate, data?.colors?.length, dataScope, sortedRows.length],
   );
 
   const openDetail = useCallback((row: DecisionColor) => {
@@ -600,16 +614,16 @@ export default function ColorSalesStatsPage() {
     });
   }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters]);
 
-  const applyPreset = (preset: PeriodPreset) => {
+  function applyPreset(preset: PeriodPreset) {
     setPeriodPreset(preset);
     if (preset === "custom") return;
     const range = getPresetRange(preset);
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-  };
+  }
 
-  const handleSeasonChange = (value: string) => {
+  function handleSeasonChange(value: string) {
     const parsed = value ? Number(value) : null;
     setSezonaId(parsed);
     setPeriodPreset("custom");
@@ -620,7 +634,7 @@ export default function ColorSalesStatsPage() {
     if (!selected) return;
     setFromDate(toDateOnly(selected.datumOd));
     setToDate(toDateOnly(selected.datumDo));
-  };
+  }
 
   const applyFilters = () => {
     if (invalidRange) {
@@ -651,6 +665,86 @@ export default function ColorSalesStatsPage() {
     });
   };
 
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "preset",
+        label: "Period",
+        control: (
+          <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
+            <option value="30d">Poslednjih 30 dana</option>
+            <option value="90d">Poslednjih 90 dana</option>
+            <option value="180d">Poslednjih 180 dana</option>
+            <option value="365d">Poslednjih 365 dana</option>
+            <option value="custom">Prilagođeno</option>
+          </select>
+        ),
+      },
+      {
+        key: "from",
+        label: "Od",
+        control: (
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => {
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setFromDate(event.target.value);
+            }}
+          />
+        ),
+      },
+      {
+        key: "to",
+        label: "Do",
+        control: (
+          <input
+            type="date"
+            value={toDate}
+            onChange={(event) => {
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setToDate(event.target.value);
+            }}
+          />
+        ),
+      },
+      {
+        key: "season",
+        label: "Sezona",
+        control: (
+          <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
+            <option value="">Sve sezone</option>
+            {(data?.sezone ?? []).map((sezona) => (
+              <option key={sezona.id} value={sezona.id}>
+                {sezona.naziv}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "store",
+        label: "Objekat",
+        control: (
+          <select
+            value={storeId ?? ""}
+            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
+          >
+            <option value="">Svi objekti</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>
+                {buildStoreLabel(store)}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+    ],
+    [data?.sezone, fromDate, handleSeasonChange, periodPreset, sezonaId, storeId, stores, toDate],
+  );
+
   const handleSort = (field: SortField) => {
     setSortField((previousField) => {
       if (previousField === field) {
@@ -665,98 +759,81 @@ export default function ColorSalesStatsPage() {
 
   return (
     <div className="color-decision-page">
-      <header className="color-decision-header">
-        <div>
-          <h1 className="color-decision-title">Prodaja po boji artikla</h1>
-          <p className="color-decision-subtitle">
-            Decision-support pogled za izbor boja koje treba pojačati u nabavci.
-          </p>
-        </div>
-        {data?.generatedAt ? (
-          <div className="color-decision-generated">
-            Generisano: {new Date(data.generatedAt).toLocaleString("sr-RS")}
-          </div>
-        ) : null}
-      </header>
+      <AnalyticsTrustHeader
+        title="Prodaja po boji artikla"
+        description="Decision-support pogled za izbor boja koje treba pojačati u nabavci."
+        periodFrom={data?.fromDate ?? activeFilters.fromDate}
+        periodTo={data?.toDate ?? activeFilters.toDate}
+        lastRefreshAt={data?.generatedAt ?? null}
+        dataFreshnessStatus="unknown"
+        dataSource={`Color sales stats materialized view (scope: ${data?.dataScope ?? dataScope})`}
+        dataQualityStatus={headerDataQualityStatus}
+        mode="recommendation"
+        recommendationNote="Preporuke dolaze iz backenda; ovaj ekran zadržava odluku, period i kvalitet podataka na jednom mestu."
+        emptyStateReason={!loading && !error && emptyStateHint ? emptyStateHint : null}
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
+      />
 
-      <section className="color-decision-filters">
-        <label className="color-decision-field">
-          <span>Period</span>
-          <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
-            <option value="30d">Poslednjih 30 dana</option>
-            <option value="90d">Poslednjih 90 dana</option>
-            <option value="180d">Poslednjih 180 dana</option>
-            <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
-          </select>
-        </label>
-
-        <label className="color-decision-field">
-          <span>Od</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(event) => {
-              setPeriodPreset("custom");
-              setSezonaId(null);
-              setFromDate(event.target.value);
-            }}
-          />
-        </label>
-
-        <label className="color-decision-field">
-          <span>Do</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(event) => {
-              setPeriodPreset("custom");
-              setSezonaId(null);
-              setToDate(event.target.value);
-            }}
-          />
-        </label>
-
-        <label className="color-decision-field">
-          <span>Sezona</span>
-          <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
-            <option value="">Sve sezone</option>
-            {(data?.sezone ?? []).map((sezona) => (
-              <option key={sezona.id} value={sezona.id}>
-                {sezona.naziv}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="color-decision-field">
-          <span>Objekat</span>
-          <select
-            value={storeId ?? ""}
-            onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}
-          >
-            <option value="">Svi objekti</option>
-            {stores.map((store) => (
-              <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="color-decision-actions">
-          <button type="button" onClick={applyFilters} disabled={loading}>Primeni</button>
-          <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
-        </div>
-      </section>
+      <AnalyticsControlBar
+        title="Opseg i filteri"
+        description="Period, sezona i objekat ostaju ovde; prioritetna lista ispod ostaje fokusirana na boje."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "apply",
+          label: loading ? "Učitavanje..." : "Primeni filtere",
+          onClick: applyFilters,
+          disabled: loading,
+        }}
+        secondaryActions={[
+          {
+            key: "reset",
+            label: "Reset filtera",
+            onClick: resetFilters,
+            disabled: loading,
+            tone: "secondary",
+          },
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+            tone: "secondary",
+          },
+        ]}
+        fields={controlBarFields}
+      />
 
       {invalidRange ? (
-        <div className="color-decision-message error">Datum od ne moze biti posle datuma do.</div>
+        <div className="color-decision-message error">Datum „Od” ne može biti posle datuma „Do”.</div>
       ) : null}
-      {error ? <div className="color-decision-message error">{error}</div> : null}
-      {loading ? <div className="color-decision-message loading">Ucitavam boje...</div> : null}
-      {!loading && !error && emptyStateHint ? (
-        <div className="color-decision-message info">{emptyStateHint}</div>
+      {error ? (
+        <AnalyticsErrorState
+          title="Boje trenutno nisu dostupne"
+          message={error}
+          onRetry={() => {
+            void load(activeFilters, dataScope);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
+      {loading ? (
+        <div className="color-decision-message loading">
+          <UltraSpinner size="sm" label="Učitavam boje" className="color-decision-loading-spinner" />
+          <span>Učitavam boje...</span>
+        </div>
+      ) : null}
+      {!loading && !error && emptyStateVariant ? (
+        <AnalyticsEmptyState
+          variant={emptyStateVariant ?? undefined}
+          emptyReason={emptyStateHint}
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          onRetry={() => {
+            void load(activeFilters, dataScope);
+          }}
+        />
       ) : null}
       {!loading && !error && qualityNotes.length > 0 ? (
         <div className="color-decision-message info">
@@ -817,18 +894,22 @@ export default function ColorSalesStatsPage() {
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
                 </div>
-                <AnalyticsTableToolbar
-                  tableKey="color-sales-stats"
-                  tableTitle="Podrška odluci - boje artikala"
-                  columns={decisionColumns}
-                  rows={sortedRows}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                />
               </div>
 
-              <div className="color-decision-table-wrap">
+              <AnalyticsDataTable
+                rowCount={sortedRows.length}
+                toolbar={(
+                  <AnalyticsTableToolbar
+                    tableKey="color-sales-stats"
+                    tableTitle="Podrška odluci - boje artikala"
+                    columns={decisionColumns}
+                    rows={sortedRows}
+                    filters={toolbarFilters}
+                    metadata={toolbarMetadata}
+                    defaultOrientation="landscape"
+                  />
+                )}
+              >
                 <table className="color-decision-table">
                   <thead>
                     <tr>
@@ -837,34 +918,34 @@ export default function ColorSalesStatsPage() {
                           Boja{sortMarker("boja", sortField, sortDir)} <InfoTip text="Naziv boje artikla." />
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className={`analytics-data-table__numeric${isSortActive("ukupanPromet", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("ukupanPromet")}>
                           Promet{sortMarker("ukupanPromet", sortField, sortDir)} <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo%{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
+                          Udeo %{sortMarker("sharePct", sortField, sortDir)} <InfoTip text="Udeo u ukupnom prometu (procenat)." />
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("marginContribution")}>
                           Maržni doprinos{sortMarker("marginContribution", sortField, sortDir)} <InfoTip text="Doprinos marže: razlika između prodajne vrednosti i nabavne vrednosti za prodatu robu." />
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
                           PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
                         </button>
                       </th>
-                      <th className="align-right">
+                      <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("prePostNivelacijaRevenueImpactPct")}>
-                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto sto i PoP trend." />
+                          Nivelacija impact{sortMarker("prePostNivelacijaRevenueImpactPct", sortField, sortDir)} <InfoTip text="Pre/post promena prometa unutar artikala sa poznatim prvim datumom nivelacije. Nije isto što i PoP trend." />
                         </button>
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
-                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Systemska preporuka: Pojačaj / Zadrži / Smanji / Nedovoljno podataka. Kliknite na red za detaljnije objašnjenje." />
+                          Preporuka{sortMarker("status", sortField, sortDir)} <InfoTip text="Sistemska preporuka: Pojačaj / Zadrži / Smanji / Nedovoljno podataka. Kliknite na red za detaljnije objašnjenje." />
                         </button>
                       </th>
                       <th className="align-center">Detalj</th>
@@ -886,11 +967,11 @@ export default function ColorSalesStatsPage() {
                         return (
                           <tr key={rowKey} className={expanded ? "expanded-row" : ""}>
                             <td>{row.boja}</td>
-                            <td className="align-right">{fmtRsd(row.ukupanPromet)}</td>
-                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td className="align-right">{fmtRsd(row.marginContribution)}</td>
-                            <td className={["align-right", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
-                            <td className={["align-right", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
+                            <td className="analytics-data-table__numeric">{fmtRsd(row.ukupanPromet)}</td>
+                            <td className="analytics-data-table__numeric">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="analytics-data-table__numeric">{fmtRsd(row.marginContribution)}</td>
+                            <td className={["analytics-data-table__numeric", popMetric.className].join(" ")} title={popMetric.title}>{popMetric.label}</td>
+                            <td className={["analytics-data-table__numeric", nivelacijaImpactMetric.className].join(" ")} title={nivelacijaImpactMetric.title}>{nivelacijaImpactMetric.label}</td>
                             <td>
                               <span
                                 className={statusClass(row.status)}
@@ -915,7 +996,7 @@ export default function ColorSalesStatsPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 

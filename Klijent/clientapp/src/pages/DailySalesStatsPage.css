@@ -11,6 +11,14 @@
   color: var(--text-primary);
 }
 
+.daily-sales-page > .analytics-control-bar {
+  margin-bottom: 0;
+}
+
+.daily-sales-table-card .analytics-data-table {
+  margin-top: 0.75rem;
+}
+
 .daily-sales-header {
   display: flex;
   justify-content: space-between;
