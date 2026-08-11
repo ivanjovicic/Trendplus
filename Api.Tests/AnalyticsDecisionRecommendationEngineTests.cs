@@ -179,4 +179,34 @@ public class AnalyticsDecisionRecommendationEngineTests
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 12d);
         Assert.Contains("unknown_heavy_dataset", res.ReasonCodes);
     }
+
+    [Fact(DisplayName = "RL04 lifecycle capture stays orthogonal to decision engine status")]
+    public void RecommendationLifecycle_IssuedIsNotLearningEvidence()
+    {
+        // Decision engine recommendation status remains independent from learning eligibility.
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: 90d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d);
+
+        var decision = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
+        var lifecycle = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
+
+        Assert.Equal("increase_focus", decision.Status);
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Issued, lifecycle.LifecycleState);
+        Assert.False(lifecycle.LearningEligible);
+        Assert.DoesNotContain(lifecycle.LearningEligibilityReasonCodes, code => code == "measured_learning_eligible");
+    }
 }

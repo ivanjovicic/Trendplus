@@ -408,6 +408,16 @@ function inputFreshnessLabel(value: string | null | undefined): string {
   return "Nije poznato";
 }
 
+function lifecycleStateLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "issued") return "Izdata";
+  if (normalized === "accepted") return "Prihvaćena";
+  if (normalized === "rejected") return "Odbijena";
+  if (normalized === "ignored") return "Ignorisana";
+  if (normalized === "executed") return "Izvršena";
+  return "Nije dostupno";
+}
+
 function primaryDriverLabel(value: string): string {
   return DRIVER_LABELS[value] ?? value;
 }
@@ -1419,6 +1429,17 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-block">
                                 <strong>Zašto ova preporuka?</strong> {whyPanel.explainabilityText ?? whyPanel.recommendationReason ?? "Objašnjenje nije dostupno."}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Životni ciklus preporuke:</strong>{" "}
+                                {lifecycleStateLabel(row.lifecycleState ?? whyPanel.lifecycleState ?? row.recommendationLifecycle?.lifecycleState)}
+                                <small>
+                                  Ishod za učenje:{" "}
+                                  {(row.learningEligible ?? whyPanel.learningEligible ?? row.recommendationLifecycle?.learningEligible)
+                                    ? "Mereno — može u statistiku"
+                                    : "Nije mereno — prihvatanje nije uspeh"}
+                                </small>
                               </div>
 
                               <div className="reason-block">

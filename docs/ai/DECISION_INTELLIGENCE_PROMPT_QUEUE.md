@@ -9,8 +9,8 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 | Program | Current READY | Execution class |
 |---|---|---|
 | DEX - Decision Explainability | `DEX10` | docs/contracts/tests-plan only |
-| RL - Recommendation Learning | `RL03` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
-| DT - Decision Timeline | `DT04` (`DT03` DONE) | Slice-2 filtered timeline projection |
+| RL - Recommendation Learning | `none` (`RL01`/`RL02`/`RL04` DONE) | runtime lifecycle capture + measured-learning eligibility |
+| DT - Decision Timeline | `DT05` (`DT03` DONE) | Slice-2 filtered timeline projection |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -846,63 +846,94 @@ Trendplus recommendations already expose reasons, confidence and impact in multi
 
 ## RL04 - Implement recommendation lifecycle capture and outcome eligibility runtime slice
 
-Status: READY
-Priority: future / implementation
-Feature family: recommendation-learning-lifecycle-capture
-Parallel-safe: no, coupled backend/runtime contract
-Owner: Codex
-Local lock: `.ai/task-locks/RL04-codex.lock.md`
+Status: DONE
+Priority: future / runtime slice
+Feature family: recommendation-lifecycle-eligibility
+Parallel-safe: yes, when no overlapping action/outcome RQ runtime task owns the same paths
+Owner: Cursor
+Local lock: removed after DONE
+Promotion note: 2026-08-11 — owner-promoted runtime slice after RL01/RL02; does not authorize confidence mutation or calibration.
 
 ### Problem
 
-The learning contract is still only a contract: Trendplus needs the first executable runtime slice that records recommendation lifecycle states and the outcome-eligibility boundary in the backend so later statistics can count real evidence.
+RL01/RL02 froze lifecycle vocabulary and statistics rollout, but runtime surfaces still lacked an explicit, testable capture of issued/accepted/rejected/ignored/executed vs measured-learning eligibility. Acceptance could be confused with success if later statistics read raw outcome fields without eligibility gates.
 
 ### Evidence
 
-- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` keeps RL in the deterministic learning lane after DEX/DT.
-- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md` defines the lifecycle vocabulary that should become executable.
-- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md` requires a measured lifecycle before confidence calibration.
-- `Api/Endpoints/CachedAnalyticsEndpoints.cs` and the existing action/outcome surfaces already expose the data that can anchor the first capture slice.
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+- Existing action/outcome fields and Product Decision Center recommendation rows
 
 ### Scope
 
-- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
-- `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`
-- `Api.Tests/AnalyticsActionsEndpointsTests.cs`
-- `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs`
-- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
-- `Klijent/clientapp/src/types/analytics.ts`
+- deterministic lifecycle + outcome-evidence projection helper;
+- attach projection to analytics action responses and Product Decision Center issued rows;
+- enforce learning eligibility so only executed + measured evidence counts toward later learning;
+- focused backend/UI contract updates; no confidence mutation; no schema migration; no opaque scoring.
 
 ### Read first
 
-- RL01 output
-- RL02 output
-- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
-- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+- RL01 contract
+- RL02 rollout plan
+- Decision Intelligence roadmap
+- action/outcome endpoints and Product Decision Center contracts
 
 ### Do
 
-1. Record recommendation lifecycle states explicitly instead of inferring them from later outcome data.
-2. Keep accepted/rejected/ignored semantics deterministic and separate from success/failure outcomes.
-3. Define which rows are eligible for measured learning and which remain excluded.
-4. Preserve the existing deterministic recommendation semantics and no-fake-success rule.
+1. Implement lifecycle capture (`issued`/`accepted`/`rejected`/`ignored`/`executed`) separate from outcome evidence.
+2. Define learning eligibility requiring execution + measured timestamp + evidence source.
+3. Expose projection on action and Product Decision Center responses.
+4. Keep acceptance from inflating success/learning counts.
+5. Add focused tests proving absent evidence stays absent.
 
 ### Tests
 
-- lifecycle transitions are recorded deterministically;
-- outcome-eligibility boundaries are explicit and testable;
-- acceptance does not count as success unless outcome evidence exists.
+- acceptance alone is not learning-eligible;
+- executed-not-measured is not learning-eligible;
+- measured with evidence after execution is learning-eligible;
+- Product Decision Center issued rows start as `issued` / not eligible;
+- decision recommendation engine status remains orthogonal.
 
 ### Acceptance
 
-- the product can distinguish issued, accepted, executed, measured and ignored recommendations;
-- learning evidence cannot be faked by acceptance alone;
-- later statistics work has a trustworthy lifecycle source.
+- recommendation lifecycle states are explicit and testable;
+- measured-learning eligibility is deterministic;
+- acceptance alone cannot inflate success;
+- later statistics/calibration work has a trustworthy runtime source.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `Application/Analytics/RecommendationLifecycleSemantics.cs`
+  - `Domain/Model/Analytics/AnalyticsActionItem.cs`
+  - `Domain/Model/Analytics/AnalyticsActionLedgerSnapshot.cs`
+  - `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/RecommendationLifecycleSemanticsTests.cs`
+  - `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`
+  - `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+  - `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - focused `dotnet test` RL04/actions/PDC filters - pass
+- Risks:
+  - existing outcome-summary denominators remain RQ-owned and are intentionally unchanged by this eligibility projection
+  - ignored detection depends on `DueAtUtc` for `new` actions
+- Next:
+  - later RL statistics projection prompt when owner promotes measurement-only cohort counts
 
 ### Dependencies
 
 - RL01 DONE.
 - RL02 DONE.
+
+---
 
 ## RL01 - Define recommendation outcome-learning contract
 
@@ -971,12 +1002,13 @@ Recommendation outcome learning needed a deterministic lifecycle contract before
 
 ## RL03 - Implement recommendation lifecycle capture and outcome eligibility contract follow-up
 
-Status: WAITING
+Status: OBSOLETE
 Priority: future / implementation
 Feature family: recommendation-learning-lifecycle-capture
 Parallel-safe: no, coupled backend/runtime contract
 Owner: Codex
-Local lock: `.ai/task-locks/RL03-codex.lock.md`
+Local lock: none
+Promotion note: Superseded by owner-promoted `RL04` runtime slice (same acceptance; executed 2026-08-11).
 
 ### Problem
 
@@ -1107,7 +1139,7 @@ The learning contract needs a staged rollout that first measures truth before ch
 - Rizici:
   - planning-only rollout; no runtime learning mutation or schema migration was added
 - Sledece:
-  - none in RL program until a later runtime statistics prompt is explicitly promoted
+  - `RL04` runtime lifecycle capture (owner-promoted)
 
 ### Dependencies
 
@@ -1172,6 +1204,8 @@ The Slice-2 filtered timeline still needs the first executable runtime slice tha
 ### Dependencies
 
 - DT03 DONE.
+
+---
 
 ## DT01 - Define Decision Timeline event model and success metrics
 

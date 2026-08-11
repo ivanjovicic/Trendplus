@@ -377,6 +377,36 @@ export interface ProductDecisionDecisionTreeNode {
   detail?: string | null;
 }
 
+export type RecommendationLifecycleState =
+  | "issued"
+  | "accepted"
+  | "rejected"
+  | "ignored"
+  | "executed";
+
+export type RecommendationOutcomeEvidenceState =
+  | "pending"
+  | "measured"
+  | "not_measured";
+
+export interface RecommendationLifecycleCapture {
+  lifecycleState: RecommendationLifecycleState | string;
+  outcomeEvidenceState: RecommendationOutcomeEvidenceState | string;
+  outcomeResult: string;
+  learningEligible: boolean;
+  learningEligibilityReasonCodes: string[];
+  countsTowardIssued: boolean;
+  countsTowardAccepted: boolean;
+  countsTowardRejected: boolean;
+  countsTowardIgnored: boolean;
+  countsTowardExecuted: boolean;
+  countsTowardMeasured: boolean;
+  countsTowardSuccess: boolean;
+  countsTowardNeutral: boolean;
+  countsTowardNegative: boolean;
+  countsTowardNotMeasured: boolean;
+}
+
 export interface ProductDecisionWhyPanel {
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
@@ -403,6 +433,10 @@ export interface ProductDecisionWhyPanel {
   alternativeRecommendations: ProductDecisionAlternativeRecommendation[];
   evidenceChain: ProductDecisionEvidenceNode[];
   decisionTree?: ProductDecisionDecisionTreeNode[] | null;
+  lifecycleState?: RecommendationLifecycleState | string | null;
+  outcomeEvidenceState?: RecommendationOutcomeEvidenceState | string | null;
+  learningEligible?: boolean | null;
+  learningEligibilityReasonCodes?: string[] | null;
 }
 
 export interface ProductDecisionCenterItem {
@@ -454,6 +488,11 @@ export interface ProductDecisionCenterItem {
   evidenceChain?: ProductDecisionEvidenceNode[] | null;
   whyPanel?: ProductDecisionWhyPanel | null;
   recommendedAction: string;
+  lifecycleState?: RecommendationLifecycleState | string | null;
+  outcomeEvidenceState?: RecommendationOutcomeEvidenceState | string | null;
+  learningEligible?: boolean | null;
+  learningEligibilityReasonCodes?: string[] | null;
+  recommendationLifecycle?: RecommendationLifecycleCapture | null;
 }
 
 export type ProductDecisionDenominatorScope =
@@ -1474,6 +1513,7 @@ export interface AnalyticsActionItem {
   updatedByUserName?: string | null;
   notes?: AnalyticsActionNote[];
   impactLedger?: AnalyticsActionImpactLedger | null;
+  recommendationLifecycle?: RecommendationLifecycleCapture | null;
 }
 
 export interface AnalyticsActionListResponse {

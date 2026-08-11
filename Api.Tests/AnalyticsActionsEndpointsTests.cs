@@ -405,6 +405,11 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(payload.Status, auditNote.StatusFrom);
         Assert.Equal(payload.Status, auditNote.StatusTo);
         Assert.Contains("Outcome: success", auditNote.Note);
+        Assert.NotNull(payload.RecommendationLifecycle);
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Accepted, payload.RecommendationLifecycle!.LifecycleState);
+        Assert.False(payload.RecommendationLifecycle.LearningEligible);
+        Assert.Contains("execution_required_for_learning", payload.RecommendationLifecycle.LearningEligibilityReasonCodes);
+        Assert.Contains("acceptance_is_not_success", payload.RecommendationLifecycle.LearningEligibilityReasonCodes);
     }
 
     [Fact]

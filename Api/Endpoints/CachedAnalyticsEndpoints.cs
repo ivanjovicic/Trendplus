@@ -11,6 +11,7 @@ using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using MediatR;
 using Domain.Model;
+using Domain.Model.Analytics;
 using Trendplus2.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -5366,6 +5367,7 @@ public static class CachedAnalyticsEndpoints
             row.InputFreshnessStatus = confidenceProfile.InputFreshnessStatus;
             row.EvidenceChain = confidenceProfile.EvidenceChain.ToList();
             row.WhyPanel = confidenceProfile.WhyPanel;
+            ApplyIssuedRecommendationLifecycle(row);
 
             rows.Add(row);
         }
@@ -5725,8 +5727,32 @@ public static class CachedAnalyticsEndpoints
             ConfidenceBreakdown = [.. confidenceBreakdown],
             AlternativeRecommendations = [.. alternativeRecommendations],
             EvidenceChain = [.. evidenceChain],
-            DecisionTree = [.. decisionTree]
+            DecisionTree = [.. decisionTree],
+            LifecycleState = RecommendationLifecycleSemantics.LifecycleStates.Issued,
+            OutcomeEvidenceState = RecommendationLifecycleSemantics.OutcomeEvidenceStates.Pending,
+            LearningEligible = false,
+            LearningEligibilityReasonCodes =
+            [
+                "lifecycle_issued_only",
+                "outcome_not_measured",
+                "acceptance_is_not_success"
+            ]
         };
+    }
+
+    private static void ApplyIssuedRecommendationLifecycle(ProductDecisionCenterRowDto row)
+    {
+        var lifecycle = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
+        row.RecommendationLifecycle = lifecycle;
+        row.LifecycleState = lifecycle.LifecycleState;
+        row.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
+        row.LearningEligible = lifecycle.LearningEligible;
+        row.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
+
+        row.WhyPanel.LifecycleState = lifecycle.LifecycleState;
+        row.WhyPanel.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
+        row.WhyPanel.LearningEligible = lifecycle.LearningEligible;
+        row.WhyPanel.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
     }
 
     private static IReadOnlyList<ProductDecisionDecisionTreeNodeDto> BuildProductDecisionDecisionTree(
@@ -7152,6 +7178,15 @@ public class ProductDecisionCenterRowDto
     public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
     public ProductDecisionWhyPanelDto WhyPanel { get; set; } = new();
     public string RecommendedAction { get; set; } = string.Empty;
+    /// <summary>RL04 lifecycle tip state for this issued recommendation instance.</summary>
+    public string LifecycleState { get; set; } = RecommendationLifecycleSemantics.LifecycleStates.Issued;
+    /// <summary>RL04 outcome evidence axis: pending | measured | not_measured.</summary>
+    public string OutcomeEvidenceState { get; set; } = RecommendationLifecycleSemantics.OutcomeEvidenceStates.Pending;
+    /// <summary>True only when measured evidence may feed later learning statistics.</summary>
+    public bool LearningEligible { get; set; }
+    public List<string> LearningEligibilityReasonCodes { get; set; } = [];
+    public RecommendationLifecycleCaptureDto RecommendationLifecycle { get; set; }
+        = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
 }
 
 public class ProductDecisionEvidenceNodeDto
@@ -7207,6 +7242,10 @@ public class ProductDecisionWhyPanelDto
     public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
     public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
     public List<ProductDecisionDecisionTreeNodeDto> DecisionTree { get; set; } = [];
+    public string LifecycleState { get; set; } = RecommendationLifecycleSemantics.LifecycleStates.Issued;
+    public string OutcomeEvidenceState { get; set; } = RecommendationLifecycleSemantics.OutcomeEvidenceStates.Pending;
+    public bool LearningEligible { get; set; }
+    public List<string> LearningEligibilityReasonCodes { get; set; } = [];
 }
 
 public class ProductDecisionDecisionTreeNodeDto

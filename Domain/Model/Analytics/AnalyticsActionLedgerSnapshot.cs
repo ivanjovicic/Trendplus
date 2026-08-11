@@ -29,3 +29,24 @@ public sealed record AnalyticsActionResolutionSnapshot(
     string? EvidenceReference,
     string? ResolutionNote
 );
+
+/// <summary>
+/// RL04 read-only capture of recommendation lifecycle and measured-learning eligibility.
+/// </summary>
+public sealed record RecommendationLifecycleCaptureDto(
+    string LifecycleState,
+    string OutcomeEvidenceState,
+    string OutcomeResult,
+    bool LearningEligible,
+    IReadOnlyList<string> LearningEligibilityReasonCodes,
+    bool CountsTowardIssued,
+    bool CountsTowardAccepted,
+    bool CountsTowardRejected,
+    bool CountsTowardIgnored,
+    bool CountsTowardExecuted,
+    bool CountsTowardMeasured,
+    bool CountsTowardSuccess,
+    bool CountsTowardNeutral,
+    bool CountsTowardNegative,
+    bool CountsTowardNotMeasured
+);

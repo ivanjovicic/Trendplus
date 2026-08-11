@@ -42,6 +42,10 @@ public static class AnalyticsActionsEndpoints
                 return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
 
             var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, normalizedDataQualityStatus, search, page, pageSize, ct);
+            foreach (var item in items)
+            {
+                AttachRecommendationLifecycle(item);
+            }
 
             return Results.Ok(new
             {
@@ -133,6 +137,7 @@ public static class AnalyticsActionsEndpoints
                 return Results.NotFound();
 
             item.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
+            AttachRecommendationLifecycle(item);
             return Results.Ok(item);
         })
         .WithName("GetAnalyticsActionById");
@@ -205,6 +210,7 @@ public static class AnalyticsActionsEndpoints
 
             var result = await svc.UpsertWithResultAsync(request, userId, ct);
             result.Item.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(result.Item.MetadataJson);
+            AttachRecommendationLifecycle(result.Item);
             return Results.Ok(result);
         })
         .WithName("UpsertAnalyticsAction");
@@ -278,6 +284,7 @@ public static class AnalyticsActionsEndpoints
                 return Results.NotFound();
 
             detailed.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(detailed.MetadataJson);
+            AttachRecommendationLifecycle(detailed);
             return Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionStatus");
@@ -346,9 +353,16 @@ public static class AnalyticsActionsEndpoints
                 return Results.NotFound();
 
             detailed.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(detailed.MetadataJson);
+            AttachRecommendationLifecycle(detailed);
             return Results.Ok(detailed);
         })
         .WithName("UpdateAnalyticsActionOutcome");
+    }
+
+    private static void AttachRecommendationLifecycle(AnalyticsActionItem item)
+    {
+        item.LedgerSnapshot ??= AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
+        item.RecommendationLifecycle = RecommendationLifecycleSemantics.Project(item);
     }
 }
 

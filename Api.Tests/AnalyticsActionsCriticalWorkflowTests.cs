@@ -114,6 +114,13 @@ public sealed class AnalyticsActionsCriticalWorkflowTests
         Assert.Equal("supplier:77:expand", creation.GetProperty("sourceRecommendationId").GetString());
         Assert.Equal("EXPAND_SELECTIVELY", creation.GetProperty("recommendationType").GetString());
         Assert.Equal("Proširi selektivno", creation.GetProperty("recommendedAction").GetString());
+
+        var lifecycle = item.GetProperty("recommendationLifecycle");
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Issued, lifecycle.GetProperty("lifecycleState").GetString());
+        Assert.False(lifecycle.GetProperty("learningEligible").GetBoolean());
+        Assert.Contains(
+            "acceptance_is_not_success",
+            lifecycle.GetProperty("learningEligibilityReasonCodes").EnumerateArray().Select(x => x.GetString()));
     }
 
     [Fact]

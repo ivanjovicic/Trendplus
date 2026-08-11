@@ -156,4 +156,11 @@ public class AnalyticsActionItem
     /// </summary>
     [NotMapped]
     public AnalyticsActionLedgerSnapshot? LedgerSnapshot { get; set; }
+
+    /// <summary>
+    /// Optional read-only RL04 lifecycle + measured-learning eligibility projection.
+    /// Not persisted; derived from workflow status, outcome fields and evidence metadata.
+    /// </summary>
+    [NotMapped]
+    public RecommendationLifecycleCaptureDto? RecommendationLifecycle { get; set; }
 }

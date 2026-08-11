@@ -57,6 +57,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("Dopuni", replenish.WhyPanel.RecommendationLabel);
         Assert.Equal("recommendation_reason", replenish.WhyPanel.SummarySource);
         Assert.False(replenish.WhyPanel.SummaryFallbackUsed);
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Issued, replenish.LifecycleState);
+        Assert.False(replenish.LearningEligible);
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Issued, replenish.WhyPanel.LifecycleState);
+        Assert.False(replenish.WhyPanel.LearningEligible);
+        Assert.Contains("acceptance_is_not_success", replenish.LearningEligibilityReasonCodes);
         Assert.NotEmpty(replenish.WhyPanel.ConfidenceBreakdown);
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
