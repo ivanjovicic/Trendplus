@@ -77,6 +77,12 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Contains(profile.EvidenceChain, node => node.Code == "sales_signal");
         Assert.Contains(profile.EvidenceChain, node => node.Code == "expected_impact");
         Assert.DoesNotContain(profile.WarningCodes, code => code == "expected_impact_denominator_missing");
+        Assert.NotEmpty(profile.AlternativeRecommendations);
+        var boostAlternative = Assert.Single(profile.AlternativeRecommendations, node => node.RecommendationStatus == "BOOST");
+        Assert.False(string.IsNullOrWhiteSpace(boostAlternative.WhyLowerRanked));
+        Assert.Equal(1, boostAlternative.Rank);
+        Assert.Equal("Pojačaj", boostAlternative.RecommendationLabel);
+        Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
     }
 
     [Fact]
@@ -139,5 +145,9 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         var impactNode = Assert.Single(profile.EvidenceChain.Where(node => node.Code == "expected_impact"));
         Assert.True(impactNode.IsMissing);
         Assert.Equal("Nije dostupno", impactNode.ValueText);
+        Assert.NotEmpty(profile.AlternativeRecommendations);
+        Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "FIX_DATA");
+        Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
+        Assert.All(profile.AlternativeRecommendations, node => Assert.False(string.IsNullOrWhiteSpace(node.WhyLowerRanked)));
     }
 }

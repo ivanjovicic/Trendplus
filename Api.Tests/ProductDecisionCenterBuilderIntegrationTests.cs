@@ -70,6 +70,15 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(500m, replenish.ExpectedImpactRsd);
         Assert.Equal(14, replenish.ImpactWindowDays);
         Assert.False(string.IsNullOrWhiteSpace(replenish.ExplainabilityText));
+        Assert.NotEmpty(replenish.AlternativeRecommendations);
+        Assert.Contains(replenish.AlternativeRecommendations, node => node.RecommendationStatus == "BOOST");
+        Assert.Contains(replenish.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
+        Assert.All(replenish.AlternativeRecommendations, node =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(node.Reason));
+            Assert.False(string.IsNullOrWhiteSpace(node.WhyLowerRanked));
+            Assert.NotEmpty(node.ReasonCodes);
+        });
 
         var fixData = Assert.Single(response.Rows.Where(row => row.ProductId == 102));
         Assert.Equal("FIX_DATA", fixData.RecommendationStatus);
@@ -88,6 +97,13 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:missing_cost");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:expected_impact_denominator_missing");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);
+        Assert.NotEmpty(fixData.AlternativeRecommendations);
+        Assert.Contains(fixData.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
+        Assert.All(fixData.AlternativeRecommendations, node =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(node.Reason));
+            Assert.False(string.IsNullOrWhiteSpace(node.WhyLowerRanked));
+        });
 
         Assert.Equal(1, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);

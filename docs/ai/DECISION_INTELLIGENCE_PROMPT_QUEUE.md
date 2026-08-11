@@ -1,14 +1,14 @@
 # Trendplus Decision Intelligence Planning Queue
 
-Created: 2026-08-08  
-Roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`  
+Created: 2026-08-08
+Roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Purpose: planning/contracts only until later roadmap gates explicitly authorize runtime work.
 
 ## Current READY by program
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX07` | docs/contracts/tests-plan only |
+| DEX - Decision Explainability | `DEX08` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
 | DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
 
@@ -16,17 +16,103 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ---
 
-## DEX07 - Implement Product Decision Center alternative recommendations contract
+## DEX08 - Implement Product Decision Center deterministic Why-panel contract
 
 Status: READY
 Priority: future-high-value / implementation
-Feature family: decision-explainability-product-decision-center-phase4
+Feature family: decision-explainability-product-decision-center-phase5
 Parallel-safe: no, coupled backend/frontend contract
 Owner: unassigned
 
 ### Problem
 
+DEX07 makes alternatives explicit, but the Product Decision Center Why panel still needs a single deterministic contract for how reason, evidence, confidence and alternatives are composed into the concise user-facing explanation instead of relying on ad hoc UI glue or free-form inference.
+
+### Evidence
+
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md` defines the Why panel as deterministic backend fields only.
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places Why panel after alternatives in the explainability sequence.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still renders the explanation surface as a page-local composition layer.
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md` keeps Product Decision Center as the reference implementation for the shared explainability contract.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DEX07 output
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+
+### Do
+
+1. Compose the Why panel from backend-authoritative deterministic fields only.
+2. Keep evidence, confidence and alternatives grouped without inventing missing context.
+3. Preserve explicit missing-data and fallback states.
+4. Keep Decision Board compatibility unchanged.
+
+### Tests
+
+- frontend coverage verifies Why-panel composition and regression paths;
+- backend contract coverage still confirms the same deterministic fields;
+- no fake zero, fake alternative or inferred explanation is introduced.
+
+### Acceptance
+
+- Product Decision Center renders a single deterministic Why panel from backend fields;
+- missing evidence remains explicit;
+- no local inference path invents explanation structure.
+
+### Dependencies
+
+- DEX07 DONE.
+
+---
+
+## DEX07 - Implement Product Decision Center alternative recommendations contract
+
+Status: DONE
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase4
+Parallel-safe: no, coupled backend/frontend contract
+Owner: unassigned
+Local lock: removed after DONE
+
+### Problem
+
 DEX06 makes confidence contributors explicit, but the Why panel still needs deterministic alternative recommendations that show which valid actions were considered and why the selected recommendation ranked above them instead of leaving alternatives implicit or inventing them locally.
+
+### Completion note
+
+- 2026-08-11: completed by Codex.
+- Commit SHA: not created.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.css`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+  - `dotnet build` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - fail (existing MASTER_ROADMAP.md gaps for BCI, STAB and RQ)
+- Risk:
+  - Alternative ranking is deterministic but still heuristic-weighted and should be revisited if Product Decision Center semantics expand.
+- Next:
+  - `DEX08 - Implement Product Decision Center deterministic Why-panel contract`
 
 ### Evidence
 

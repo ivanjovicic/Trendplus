@@ -17,7 +17,6 @@ The contract starts with the Product Decision Center because that family already
 - no runtime graph engine
 - no endpoint or schema changes in this prompt
 - no frontend-invented confidence, recommendation or impact logic
-- no alternative-generation algorithm yet
 
 ## Canonical shape
 
@@ -33,7 +32,7 @@ This is a declarative model. The current code does not need to emit a literal gr
 | Evidence | Business facts supporting the decision | `Revenue`, `UnitsSold`, `VelocityUnitsPerDay`, `MarginContribution`, `MarginPct`, `MarginCoveragePct`, `CurrentStock`, `MinStock`, `StockGap`, `DaysSinceLastSale`, `TrendPct`, `LostSalesEstimate`, `SlowStockCapital`, `StockCoverDays`, `SellThroughRatio` | Evidence must preserve null/unknown values instead of collapsing into zero |
 | Confidence contributor | Inputs that explain how trustworthy the decision is | `ConfidenceLevel`, `ConfidenceScore`, `ConfidencePct`, `ConfidenceBreakdown`, `ReliabilityPct`, `SignalConfidencePct`, `InputFreshnessStatus`, `DataQualityStatus` | Contributors can lower confidence; they must never fabricate certainty |
 | Constraint | A reason the decision is not fully actionable | `RecommendationAllowed`, `WarningCodes`, `StockCoverStatus`, `SellThroughStatus`, `MarginQualityLabel` | Constraint state is not the same as confidence state |
-| Alternative | A valid competing action or non-action | not yet emitted by the current Product Decision Center DTOs | Reserve the contract now; do not infer alternatives from `ReasonCodes` |
+| Alternative | A valid competing action or non-action | `AlternativeRecommendations` on `ProductDecisionCenterRowDto` | Alternatives must stay explicit and backend-led; do not infer them from `ReasonCodes` |
 | Action link | The recommended next step | `RecommendedAction`, `RiskIfIgnored`, `ImpactWindowDays`, `ExpectedImpactRsd` | The action link should remain deterministic and reviewable |
 | Outcome link | What happened after action | future RL/DT contract, plus `DecisionBoardCard.MeasuredImpactRsd` and `RealizationRatio` as downstream consumers | Not required for the first runtime implementation |
 
@@ -152,7 +151,7 @@ These are consumer fields, not a second source of truth for the underlying recom
 
 ## Alternative contract
 
-The current Product Decision Center DTOs do not yet emit explicit alternative nodes.
+The current Product Decision Center DTOs emit explicit alternative recommendations for the Product Decision Center row contract.
 
 For the future contract:
 
@@ -200,7 +199,7 @@ If one of these inputs is missing, the UI should show the absence explicitly ins
 
 1. Keep the Product Decision Center as the first mapping family.
 2. Use the contract to define a deterministic Why-panel and evidence-chain model.
-3. Add explicit alternative nodes in a later prompt.
+3. Extend the same vocabulary to other decision families only after the Product Decision Center alternatives are stable.
 4. Extend the same vocabulary to other decision families only after the first family is stable.
 
 ## Completion note

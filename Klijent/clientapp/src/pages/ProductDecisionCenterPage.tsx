@@ -31,6 +31,7 @@ import type {
   AnalyticsActionDataQualityStatus,
   AnalyticsActionSourceType,
   ProductDecisionCenterItem,
+  ProductDecisionAlternativeRecommendation,
   ProductDecisionCenterResponse,
   ProductDecisionEvidenceNode,
   ProductDecisionRecommendationStatus,
@@ -132,6 +133,21 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   expected_impact_denominator_missing: "Nedostaje ulaz za procenu očekivanog uticaja.",
   data_quality_critical: "Kvalitet podataka je kritičan i traži proveru.",
   insufficient_data: "Signal nije dovoljno jak za pouzdanu preporuku.",
+  positive_trend: "Trend podržava rast.",
+  weak_signal: "Signal je slab i traži oprez.",
+  monitor_only: "Potrebno je samo praćenje.",
+  confidence_monitor: "Pouzdanost sugeriše praćenje, ne agresivnu akciju.",
+  signal_gap: "Signal je previše tanak za čvrstu odluku.",
+  selected_action_has_stronger_signal: "Odabrana preporuka ima jači signal.",
+  demand_not_weak_enough: "Potražnja još nije dovoljno slaba za sniženje.",
+  no_replenishment_gap: "Nema dovoljno razlike do minimalne zalihe.",
+  margin_support_missing: "Marža ne podržava jaču akciju.",
+  understock_risk: "Postoji rizik od premale zalihe.",
+  enough_signal_for_action: "Signal je dovoljan za aktivniju akciju.",
+  no_blocking_data_issue: "Nema blokirajućeg problema sa podacima.",
+  weak_demand: "Potražnja nije dovoljno jaka.",
+  negative_trend: "Trend nije povoljan.",
+  stock_gap: "Postoji rupa u zalihama.",
 };
 
 type ConfidenceLevel = "high" | "medium" | "low" | "insufficient_data";
@@ -1215,6 +1231,7 @@ export default function ProductDecisionCenterPage() {
                     ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
                   const confidenceBreakdownItems: ProductDecisionEvidenceNode[] = row.confidenceBreakdown ?? [];
+                  const alternativeRecommendationsItems: ProductDecisionAlternativeRecommendation[] = row.alternativeRecommendations ?? [];
                   const evidenceChainItems: ProductDecisionEvidenceNode[] = row.evidenceChain ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
@@ -1340,6 +1357,51 @@ export default function ProductDecisionCenterPage() {
                                   </ol>
                                 ) : (
                                   <span>Raspodela pouzdanosti nije dostupna.</span>
+                                )}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Alternativne preporuke:</strong>
+                                {alternativeRecommendationsItems.length ? (
+                                  <ol className="alternative-recommendations-list">
+                                    {alternativeRecommendationsItems.map((item) => {
+                                      const itemConfidenceLevel = normalizeConfidenceLevel(item.confidenceLevel);
+                                      const itemDataQuality = canonicalDataQualityStatus(item.dataQualityStatus);
+                                      return (
+                                        <li key={`${item.rank}:${item.recommendationStatus}`} className="alternative-recommendation-item">
+                                          <div className="evidence-chain-headline">
+                                            <span className="evidence-chain-category">Alternativa {item.rank}</span>
+                                            <span className="evidence-chain-label">{item.recommendationLabel}</span>
+                                          </div>
+                                          <div className="reason-statuses">
+                                            <span className={recommendationToneClass(item.recommendationStatus)}>
+                                              {item.recommendationLabel}
+                                            </span>
+                                            <span className={confidenceLevelClass(itemConfidenceLevel)}>
+                                              {confidenceScoreText(itemConfidenceLevel, item.confidenceScore)}
+                                            </span>
+                                            <span className={dataQualityClass(itemDataQuality)}>
+                                              {DATA_QUALITY_LABELS[itemDataQuality]}
+                                            </span>
+                                          </div>
+                                          <span className="evidence-chain-value">{item.recommendedAction}</span>
+                                          <small>{item.reason}</small>
+                                          <small className="evidence-chain-source">Zašto niže: {item.whyLowerRanked}</small>
+                                          {item.reasonCodes.length ? (
+                                            <ul className="reason-chip-list">
+                                              {item.reasonCodes.map((code) => (
+                                                <li key={code} className="reason-chip">
+                                                  {translateReasonCode(code)}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          ) : null}
+                                        </li>
+                                      );
+                                    })}
+                                  </ol>
+                                ) : (
+                                  <span>Alternativne preporuke nisu dostupne.</span>
                                 )}
                               </div>
 

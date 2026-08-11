@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
@@ -370,6 +370,66 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.getByText("dobar")).toBeInTheDocument();
   });
 
+  it("renders alternative recommendations in the Why panel", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 808,
+          recommendationId: "product:808:REPLENISH:20260528:20260626",
+          sourceKey: "product:808",
+          productName: "Model Alternative",
+          sku: "SKU-808",
+          alternativeRecommendations: [
+            {
+              rank: 1,
+              recommendationStatus: "BOOST",
+              recommendationLabel: "Pojačaj",
+              recommendedAction: "Pojačaj vidljivost i planiraj brzu dopunu.",
+              reason: "Trend 7.0%, marža 26.0%, velocity 1.40/dan i gap zalihe 1.",
+              reasonCodes: ["high_velocity", "low_stock"],
+              confidenceLevel: "medium",
+              confidenceScore: 64,
+              reliabilityPct: 58,
+              dataQualityStatus: "good",
+              whyLowerRanked: "Dopuna ima neposredniji signal od širenja potražnje, jer je stock gap već vidljiv.",
+            },
+            {
+              rank: 2,
+              recommendationStatus: "WATCH",
+              recommendationLabel: "Prati",
+              recommendedAction: "Nastavi praćenje bez hitne intervencije.",
+              reason: "Stabilan signal bez hitne akcije.",
+              reasonCodes: ["insufficient_history"],
+              confidenceLevel: "low",
+              confidenceScore: 34,
+              reliabilityPct: 29,
+              dataQualityStatus: "good",
+              whyLowerRanked: "Čekanje bi odložilo odgovor na postojeći manjak zalihe.",
+            },
+          ],
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText("Alternativne preporuke:")).toBeInTheDocument();
+    expect(screen.getByText("Alternativa 1", { selector: ".evidence-chain-category" })).toBeInTheDocument();
+    expect(screen.getByText("Pojačaj", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getByText("Srednja sigurnost · 64%", { selector: ".confidence-pill" })).toBeInTheDocument();
+    expect(screen.getByText("Pojačaj vidljivost i planiraj brzu dopunu.")).toBeInTheDocument();
+    expect(screen.getByText("Zašto niže: Dopuna ima neposredniji signal od širenja potražnje, jer je stock gap već vidljiv.")).toBeInTheDocument();
+    expect(screen.getByText("Prati", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) =>
+        ((element?.classList.contains("evidence-chain-source") ?? false)
+          && (element.textContent?.includes("Čekanje bi odložilo odgovor na postojeći manjak zalihe.") ?? false)),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("keeps confident recommendations honest when expected impact is missing", async () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(
       buildResponse([
@@ -609,7 +669,6 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     render(<ProductDecisionCenterPage />);
 
     fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
-
     expect(screen.getByText(/Svežina ulaza: Zastarelo/i)).toBeInTheDocument();
   });
 });

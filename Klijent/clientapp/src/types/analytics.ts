@@ -353,6 +353,20 @@ export interface ProductDecisionEvidenceNode {
   detail?: string | null;
 }
 
+export interface ProductDecisionAlternativeRecommendation {
+  rank: number;
+  recommendationStatus: ProductDecisionRecommendationStatus;
+  recommendationLabel: string;
+  recommendedAction: string;
+  reason: string;
+  reasonCodes: string[];
+  confidenceLevel: "high" | "medium" | "low" | "insufficient_data" | string;
+  confidenceScore: number;
+  reliabilityPct: number;
+  dataQualityStatus: string;
+  whyLowerRanked: string;
+}
+
 export interface ProductDecisionCenterItem {
   productId: number;
   recommendationId?: string | null;
@@ -398,6 +412,7 @@ export interface ProductDecisionCenterItem {
   explainabilityText?: string | null;
   inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
   confidenceBreakdown?: ProductDecisionEvidenceNode[] | null;
+  alternativeRecommendations?: ProductDecisionAlternativeRecommendation[] | null;
   evidenceChain?: ProductDecisionEvidenceNode[] | null;
   recommendedAction: string;
 }

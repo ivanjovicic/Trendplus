@@ -5358,6 +5358,7 @@ public static class CachedAnalyticsEndpoints
             row.PrimaryDrivers = confidenceProfile.PrimaryDrivers.ToList();
             row.WarningCodes = confidenceProfile.WarningCodes.ToList();
             row.ConfidenceBreakdown = confidenceProfile.ConfidenceBreakdown.ToList();
+            row.AlternativeRecommendations = confidenceProfile.AlternativeRecommendations.ToList();
             row.ExpectedImpactRsd = confidenceProfile.ExpectedImpactRsd;
             row.ImpactWindowDays = confidenceProfile.ImpactWindowDays;
             row.RiskIfIgnored = confidenceProfile.RiskIfIgnored;
@@ -5620,6 +5621,12 @@ public static class CachedAnalyticsEndpoints
             confidenceScore,
             warningCodes,
             inputFreshnessStatus);
+        var alternativeRecommendations = BuildProductDecisionAlternativeRecommendations(
+            row,
+            confidenceLevel,
+            confidenceScore,
+            warningCodes,
+            inputFreshnessStatus);
         var evidenceChain = BuildProductDecisionEvidenceChain(
             row,
             confidenceLevel,
@@ -5639,6 +5646,7 @@ public static class CachedAnalyticsEndpoints
             PrimaryDrivers: primaryDrivers,
             WarningCodes: warningCodes,
             ConfidenceBreakdown: confidenceBreakdown,
+            AlternativeRecommendations: alternativeRecommendations,
             ExpectedImpactRsd: expectedImpactRsd,
             ImpactWindowDays: impactWindowDays,
             RiskIfIgnored: riskIfIgnored,
@@ -5860,6 +5868,361 @@ public static class CachedAnalyticsEndpoints
 
         return breakdown;
     }
+
+    private static IReadOnlyList<ProductDecisionAlternativeRecommendationDto> BuildProductDecisionAlternativeRecommendations(
+        ProductDecisionCenterRowDto row,
+        string selectedConfidenceLevel,
+        int? selectedConfidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus)
+    {
+        var candidates = new List<ProductDecisionAlternativeRecommendationCandidate>();
+
+        void AddCandidate(string status)
+        {
+            if (string.Equals(status, row.RecommendationStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var score = ResolveProductDecisionAlternativeScore(status, row, selectedConfidenceLevel, selectedConfidenceScore, warningCodes, inputFreshnessStatus);
+            if (score <= 0)
+            {
+                return;
+            }
+
+            candidates.Add(new ProductDecisionAlternativeRecommendationCandidate(
+                status,
+                score,
+                BuildProductDecisionAlternativeWhyLowerRanked(status, row.RecommendationStatus, row, selectedConfidenceLevel, selectedConfidenceScore, warningCodes, inputFreshnessStatus)));
+        }
+
+        AddCandidate("FIX_DATA");
+        AddCandidate("REPLENISH");
+        AddCandidate("BOOST");
+        AddCandidate("MARKDOWN");
+        AddCandidate("DO_NOT_ORDER");
+        AddCandidate("WATCH");
+
+        return candidates
+            .OrderByDescending(candidate => candidate.Score)
+            .ThenByDescending(candidate => RecommendationPriority(candidate.RecommendationStatus))
+            .Take(2)
+            .Select((candidate, index) =>
+            {
+                var recommendationStatus = NormalizeRecommendationStatus(candidate.RecommendationStatus);
+                var confidenceScore = candidate.Score;
+                var confidenceLevel = ResolveAlternativeConfidenceLevel(confidenceScore);
+                var reasonCodes = BuildProductDecisionAlternativeReasonCodes(recommendationStatus, row, warningCodes);
+
+                return new ProductDecisionAlternativeRecommendationDto
+                {
+                    Rank = index + 1,
+                    RecommendationStatus = recommendationStatus,
+                    RecommendationLabel = RecommendationLabel(recommendationStatus),
+                    RecommendedAction = RecommendedAction(recommendationStatus),
+                    Reason = BuildRecommendationReason(
+                        recommendationStatus,
+                        row.Revenue,
+                        row.UnitsSold,
+                        row.VelocityUnitsPerDay,
+                        row.MarginPct,
+                        row.TrendPct,
+                        row.StockGap,
+                        row.CurrentStock,
+                        row.MinStock,
+                        row.DaysSinceLastSale,
+                        row.DataQualityStatus),
+                    ReasonCodes = [.. reasonCodes],
+                    ConfidenceLevel = confidenceLevel,
+                    ConfidenceScore = confidenceScore,
+                    ReliabilityPct = ResolveAlternativeReliabilityPct(confidenceScore, row),
+                    DataQualityStatus = string.IsNullOrWhiteSpace(row.DataQualityStatus) ? "insufficient_data" : row.DataQualityStatus,
+                    WhyLowerRanked = candidate.WhyLowerRanked
+                };
+            })
+            .ToList();
+    }
+
+    private static int ResolveProductDecisionAlternativeScore(
+        string recommendationStatus,
+        ProductDecisionCenterRowDto row,
+        string selectedConfidenceLevel,
+        int? selectedConfidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus)
+    {
+        var normalizedStatus = NormalizeRecommendationStatus(recommendationStatus);
+        var selectedScore = selectedConfidenceScore ?? 0;
+        var dataQuality = (row.DataQualityStatus ?? string.Empty).Trim().ToLowerInvariant();
+        var lowConfidencePenalty = selectedScore >= 80 ? 18 : selectedScore >= 60 ? 10 : selectedScore >= 40 ? 5 : 0;
+
+        var score = normalizedStatus switch
+        {
+            "FIX_DATA" => ResolveFixDataAlternativeScore(row, warningCodes),
+            "REPLENISH" => ResolveReplenishAlternativeScore(row, dataQuality, lowConfidencePenalty),
+            "BOOST" => ResolveBoostAlternativeScore(row, dataQuality, lowConfidencePenalty),
+            "MARKDOWN" => ResolveMarkdownAlternativeScore(row, dataQuality, lowConfidencePenalty),
+            "DO_NOT_ORDER" => ResolveDoNotOrderAlternativeScore(row, dataQuality, lowConfidencePenalty),
+            "WATCH" => ResolveWatchAlternativeScore(row, selectedConfidenceLevel, selectedScore, warningCodes, inputFreshnessStatus),
+            _ => 0
+        };
+
+        if (normalizedStatus == row.RecommendationStatus)
+        {
+            return 0;
+        }
+
+        return Math.Clamp(score, 0, 100);
+    }
+
+    private static int ResolveFixDataAlternativeScore(ProductDecisionCenterRowDto row, IReadOnlyCollection<string> warningCodes)
+    {
+        var score = 0;
+        if (warningCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase)) score += 55;
+        if (warningCodes.Contains("missing_supplier", StringComparer.OrdinalIgnoreCase)) score += 55;
+        if (warningCodes.Contains("data_quality_critical", StringComparer.OrdinalIgnoreCase)) score += 30;
+        if (warningCodes.Contains("insufficient_data", StringComparer.OrdinalIgnoreCase)) score += 20;
+        if (row.ReasonCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase)) score += 10;
+        if (row.ReasonCodes.Contains("missing_supplier", StringComparer.OrdinalIgnoreCase)) score += 10;
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase)) score += 10;
+        return score;
+    }
+
+    private static int ResolveReplenishAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    {
+        var score = 15;
+        score += (int)Math.Round(Math.Clamp(row.StockGap, 0, 20) * 4m, MidpointRounding.AwayFromZero);
+        score += (int)Math.Round(Math.Clamp(row.VelocityUnitsPerDay, 0m, 3m) * 12m, MidpointRounding.AwayFromZero);
+        if (row.LostSalesEstimate > 0m) score += 10;
+        if (row.CurrentStock <= row.MinStock) score += 12;
+        if (row.CurrentStock <= 0) score += 8;
+        if (dataQuality == "warning") score -= 4;
+        if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 18;
+        return score - lowConfidencePenalty / 2;
+    }
+
+    private static int ResolveBoostAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    {
+        var score = 18;
+        if (row.TrendPct.HasValue && row.TrendPct.Value > 0m) score += (int)Math.Round(Math.Min(row.TrendPct.Value, 20m), MidpointRounding.AwayFromZero);
+        if (row.MarginPct.HasValue) score += (int)Math.Round(Math.Min(row.MarginPct.Value / 2m, 20m), MidpointRounding.AwayFromZero);
+        score += (int)Math.Round(Math.Clamp(row.VelocityUnitsPerDay, 0m, 3m) * 10m, MidpointRounding.AwayFromZero);
+        if (row.StockGap > 0) score += 8;
+        if (row.Revenue > 0m) score += 4;
+        if (dataQuality == "warning") score -= 3;
+        if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 16;
+        return score - lowConfidencePenalty / 3;
+    }
+
+    private static int ResolveMarkdownAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    {
+        var score = 18;
+        if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) score += 24;
+        if (row.VelocityUnitsPerDay < 0.25m) score += 22;
+        if ((row.TrendPct ?? 0m) < -5m) score += 16;
+        if ((row.MarginPct ?? 0m) < 12m) score += 10;
+        if (row.CurrentStock > row.MinStock) score += 10;
+        if (row.SlowStockCapital > 0m) score += 10;
+        if (dataQuality == "warning") score += 2;
+        if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 10;
+        return score - lowConfidencePenalty / 4;
+    }
+
+    private static int ResolveDoNotOrderAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    {
+        var score = 14;
+        if (row.CurrentStock > row.MinStock * 3) score += 28;
+        if (row.VelocityUnitsPerDay < 0.25m) score += 18;
+        if ((row.TrendPct ?? 0m) < 0m) score += 10;
+        if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) score += 10;
+        if (dataQuality == "warning") score += 2;
+        if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 12;
+        return score - lowConfidencePenalty / 5;
+    }
+
+    private static int ResolveWatchAlternativeScore(
+        ProductDecisionCenterRowDto row,
+        string selectedConfidenceLevel,
+        int selectedConfidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus)
+    {
+        var score = 26;
+        if (selectedConfidenceLevel is "low" or "insufficient_data") score += 18;
+        else if (selectedConfidenceLevel == "medium") score += 10;
+        else if (selectedConfidenceScore >= 80) score += 2;
+
+        if (warningCodes.Count > 0) score += 8;
+        if (string.Equals(inputFreshnessStatus, "stale", StringComparison.OrdinalIgnoreCase)) score += 4;
+        if (string.Equals(inputFreshnessStatus, "critical", StringComparison.OrdinalIgnoreCase)) score += 10;
+        if (row.RecommendationStatus == "FIX_DATA") score += 4;
+        if (row.RecommendationStatus == "REPLENISH" || row.RecommendationStatus == "BOOST") score += 2;
+        return score;
+    }
+
+    private static string BuildProductDecisionAlternativeWhyLowerRanked(
+        string candidateStatus,
+        string selectedStatus,
+        ProductDecisionCenterRowDto row,
+        string selectedConfidenceLevel,
+        int? selectedConfidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus)
+    {
+        var selectedLabel = RecommendationLabel(selectedStatus);
+
+        return selectedStatus switch
+        {
+            "FIX_DATA" => candidateStatus switch
+            {
+                "WATCH" => "Kritični problemi podataka i dalje imaju prednost nad čekanjem.",
+                "REPLENISH" => "Dopuna bi ostala zasnovana na nepouzdanim ulazima.",
+                "BOOST" => "Rast potražnje nije pouzdano potkrepljen dok je kvalitet podataka kritičan.",
+                "MARKDOWN" => "Sprečavanje greške u podacima ima veću hitnost od cenovne korekcije.",
+                "DO_NOT_ORDER" => "Zaustavljanje nove narudžbine ne rešava uzrok loših ulaza.",
+                _ => $"Odabrana preporuka {selectedLabel} je i dalje dominantna nad ovom alternativom."
+            },
+            "REPLENISH" => candidateStatus switch
+            {
+                "BOOST" => "Dopuna ima neposredniji signal od širenja potražnje, jer je stock gap već vidljiv.",
+                "WATCH" => "Čekanje bi odložilo odgovor na postojeći manjak zalihe.",
+                "DO_NOT_ORDER" => "Holding je slabiji odgovor od dopune dok je stock gap otvoren.",
+                "MARKDOWN" => "Sniženje ne rešava trenutni rizik rasprodaje.",
+                _ => $"Odabrana preporuka {selectedLabel} ima neposredniji signal od ove alternative."
+            },
+            "BOOST" => candidateStatus switch
+            {
+                "REPLENISH" => "Dopuna ostaje bliža trenutnom stock gap-u od širenja potražnje.",
+                "WATCH" => "Pasivno praćenje ne koristi dovoljno jak trend i maržu.",
+                "MARKDOWN" => "Sniženje bi slabilo signal koji traži rast, a ne rasprodaju.",
+                _ => $"Odabrana preporuka {selectedLabel} ima snažniju kombinaciju trenda i marže."
+            },
+            "MARKDOWN" => candidateStatus switch
+            {
+                "DO_NOT_ORDER" => "Potpuno zaustavljanje narudžbine je rigidnije od ciljane korekcije cene.",
+                "WATCH" => "Čekanje bi zadržalo kapital zarobljen u sporoj robi.",
+                "REPLENISH" => "Dopuna bi pojačala pritisak na već spor signal zalihe.",
+                _ => $"Odabrana preporuka {selectedLabel} bolje odgovara sporoj prodaji i starijoj zalihi."
+            },
+            "DO_NOT_ORDER" => candidateStatus switch
+            {
+                "MARKDOWN" => "Cenovna korekcija je aktivniji odgovor na spor obrt od pukog čekanja.",
+                "WATCH" => "Čekanje ne ublažava rizik dodatnog lagera dovoljno brzo.",
+                "REPLENISH" => "Dopuna je slabija od zadržavanja postojećeg lagera.",
+                _ => $"Odabrana preporuka {selectedLabel} je bezbednija za postojeći lager."
+            },
+            "WATCH" => candidateStatus switch
+            {
+                "REPLENISH" => "Signal već ima dovoljno snage za konkretnu akciju, pa praćenje kasni za njim.",
+                "BOOST" => "Aktivan potez bolje koristi postojeći signal od pukog praćenja.",
+                "MARKDOWN" => "Praćenje ne rešava spor obrt ako je signal već vidljiv.",
+                "DO_NOT_ORDER" => "Praćenje je slabije od jasne odluke o zalihama.",
+                "FIX_DATA" => "Ako je problem u podacima, bolje je ispraviti ih nego samo pratiti.",
+                _ => $"Odabrana preporuka {selectedLabel} je i dalje najbezbedniji odgovor."
+            },
+            _ => $"Odabrana preporuka {selectedLabel} je i dalje dominantna nad ovom alternativom."
+        };
+    }
+
+    private static IReadOnlyList<string> BuildProductDecisionAlternativeReasonCodes(
+        string recommendationStatus,
+        ProductDecisionCenterRowDto row,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        var codes = new List<string>();
+
+        void Add(string code)
+        {
+            if (!codes.Contains(code, StringComparer.OrdinalIgnoreCase))
+            {
+                codes.Add(code);
+            }
+        }
+
+        switch (recommendationStatus)
+        {
+            case "FIX_DATA":
+                foreach (var code in warningCodes.Where(code =>
+                             string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "data_quality_critical", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "insufficient_data", StringComparison.OrdinalIgnoreCase)))
+                {
+                    Add(code);
+                }
+
+                foreach (var code in row.ReasonCodes.Where(code =>
+                             string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "data_quality_blocker", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)))
+                {
+                    Add(code);
+                }
+                break;
+            case "REPLENISH":
+                if (row.StockGap > 0 || row.CurrentStock < row.MinStock) Add("low_stock");
+                if (row.VelocityUnitsPerDay >= 0.8m) Add("high_velocity");
+                if (row.ReasonCodes.Contains("replenish_needed", StringComparer.OrdinalIgnoreCase)) Add("replenish_needed");
+                break;
+            case "BOOST":
+                if (row.VelocityUnitsPerDay >= 0.8m) Add("high_velocity");
+                if (row.TrendPct.HasValue && row.TrendPct.Value >= 0m) Add("low_stock");
+                if (row.MarginPct.HasValue && row.MarginPct.Value >= 10m) Add("high_velocity");
+                if (row.StockGap > 0) Add("low_stock");
+                break;
+            case "MARKDOWN":
+                if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
+                if (row.CurrentStock > row.MinStock) Add("high_stock_risk");
+                if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
+                break;
+            case "DO_NOT_ORDER":
+                if (row.CurrentStock > row.MinStock * 3) Add("high_stock_risk");
+                if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
+                if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
+                break;
+            case "WATCH":
+                if (warningCodes.Contains("insufficient_data", StringComparer.OrdinalIgnoreCase)) Add("insufficient_history");
+                if (row.ReasonCodes.Contains("insufficient_history", StringComparer.OrdinalIgnoreCase)) Add("insufficient_history");
+                if (row.ReasonCodes.Contains("low_stock", StringComparer.OrdinalIgnoreCase)) Add("low_stock");
+                if (row.ReasonCodes.Contains("stale_stock", StringComparer.OrdinalIgnoreCase)) Add("stale_stock");
+                break;
+        }
+
+        if (codes.Count == 0)
+        {
+            codes.AddRange(row.ReasonCodes.Take(2));
+        }
+
+        return codes;
+    }
+
+    private static string ResolveAlternativeConfidenceLevel(int confidenceScore) =>
+        confidenceScore >= 80 ? "high"
+            : confidenceScore >= 55 ? "medium"
+            : confidenceScore >= 30 ? "low"
+            : "insufficient_data";
+
+    private static int ResolveAlternativeReliabilityPct(int confidenceScore, ProductDecisionCenterRowDto row)
+    {
+        var reliability = confidenceScore;
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            reliability -= 20;
+        }
+        else if (string.Equals(row.DataQualityStatus, "warning", StringComparison.OrdinalIgnoreCase))
+        {
+            reliability -= 10;
+        }
+
+        return Math.Clamp(reliability, 5, 99);
+    }
+
+    private sealed record ProductDecisionAlternativeRecommendationCandidate(
+        string RecommendationStatus,
+        int Score,
+        string WhyLowerRanked);
 
     private static string FormatProductDecisionNumber(decimal value, int decimals)
         => value.ToString(decimals > 0 ? $"0.{new string('#', decimals)}" : "0", CultureInfo.InvariantCulture);
@@ -6385,6 +6748,7 @@ public static class CachedAnalyticsEndpoints
         string ExplainabilityText,
         string InputFreshnessStatus,
         IReadOnlyList<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown,
+        IReadOnlyList<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations,
         IReadOnlyList<ProductDecisionEvidenceNodeDto> EvidenceChain);
 
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
@@ -6587,6 +6951,7 @@ public class ProductDecisionCenterRowDto
     public string ExplainabilityText { get; set; } = string.Empty;
     public string InputFreshnessStatus { get; set; } = "unknown";
     public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
+    public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
     public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
     public string RecommendedAction { get; set; } = string.Empty;
 }
@@ -6600,6 +6965,21 @@ public class ProductDecisionEvidenceNodeDto
     public List<string> SourceFields { get; set; } = [];
     public bool IsMissing { get; set; }
     public string? Detail { get; set; }
+}
+
+public class ProductDecisionAlternativeRecommendationDto
+{
+    public int Rank { get; set; }
+    public string RecommendationStatus { get; set; } = "WATCH";
+    public string RecommendationLabel { get; set; } = "Prati";
+    public string RecommendedAction { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public List<string> ReasonCodes { get; set; } = [];
+    public string ConfidenceLevel { get; set; } = "low";
+    public int ConfidenceScore { get; set; }
+    public int ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "insufficient_data";
+    public string WhyLowerRanked { get; set; } = string.Empty;
 }
 
 public class ProductDecisionCenterResponseDto
