@@ -5,6 +5,7 @@ Date: 2026-08-11
 Roadmap: `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
 Related:
 
+- `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` (OBS05 authoritative service-level terms)
 - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
 - `docs/qa/ANALYTICS_OBSERVABILITY_REVIEW.md`
 - `docs/qa/ANALYTICS_SQL_OBSERVABILITY_TIMEOUTS.md`
@@ -35,7 +36,13 @@ This contract is documentation only. It does not choose a paid vendor, publish c
 
 ## Service-level vocabulary
 
-Latency is measured in the OBS-2 contract. This section names the service-level words that wrap the measured evidence and keeps SLI, SLO and SLA distinct.
+Authoritative OBS05 glossary for API / import / analytics / worker / report terms, measurement boundaries and error-budget discussion rules:
+
+- `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`
+
+This catalog keeps the short summary below for SLI row readers. Prefer the OBS05 file when naming availability, import SLA, analytics freshness SLA, worker SLA, report SLA or error budgets.
+
+Latency is measured in the OBS-2 / OBS04 contract. The table names the service-level words that wrap measured evidence and keeps SLI, SLO and SLA distinct.
 
 | Service area | Measured evidence | Internal target word | External commitment word | Notes |
 |---|---|---|---|---|
@@ -205,7 +212,7 @@ Dashboards summarize evidence; they do not replace source events.
 |---|---|
 | OBS-1 | This document |
 | OBS-2 | A5 plus PERF01 protocol |
-| OBS-3 | Vocabulary section plus Import/Analytics/Worker SLA boundaries |
+| OBS-3 | `OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` (OBS05) + summary table above |
 | OBS-4 | I1-I6 |
 | OBS-5 | R1-R7 |
 | OBS-6 | W1-W6 |

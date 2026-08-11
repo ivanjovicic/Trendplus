@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. Current queue READY: `OBS05` (service level vocabulary for API/import/analytics/worker/report evidence).
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. Current queue READY: `OBS06` (Import SLA evidence contract).
 
 ### OBS-2 - Latency SLIs
 
@@ -52,6 +52,8 @@ Define p50/p95/p99 where useful for:
 Separate cold-start and warm-path latency.
 
 ### OBS-3 - Service level vocabulary
+
+**Status:** DONE (`OBS05`) — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`.
 
 Create explicit definitions for:
 

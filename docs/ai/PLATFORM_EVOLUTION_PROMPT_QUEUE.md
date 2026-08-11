@@ -13,7 +13,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | `PERF02` (`PERF01` DONE; `PERF03` WAITING on measurements) | baseline/measurement plan |
-| OBS - Observability | `OBS05` | service level vocabulary for API/import/analytics/worker/report evidence |
+| OBS - Observability | `OBS06` | Import SLA evidence contract (docs) |
 | SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -211,14 +211,76 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 ---
 
-## OBS05 - Define service level vocabulary for API/import/analytics/worker/report evidence
+## OBS06 - Define Import SLA evidence contract
 
 Status: READY
 Priority: future
-Feature family: observability-service-level-vocabulary
+Feature family: observability-import-sla-evidence
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
-Local lock: `.ai/task-locks/OBS05-<agent>.lock.md`
+Local lock: `.ai/task-locks/OBS06-<agent>.lock.md`
+Promotion note: 2026-08-11 — `OBS05` DONE; roadmap OBS-4 Import SLA evidence (docs only). Rewritten from a vocabulary duplicate so OBS READY stays single and non-overlapping.
+
+### Problem
+
+Import lifecycle timestamps and states exist across connectors and status surfaces, but there is still no frozen docs contract for how Import SLA evidence answers accept/start/complete/fail/cancel/partial and last-success age without inventing green or contractual hours.
+
+### Evidence
+
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-4;
+- `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` import terms;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` I1–I6;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` import slices.
+
+### Scope
+
+- docs/contracts only for Import SLA evidence fields, honesty rules and unknown behavior;
+- reuse OBS05 vocabulary and I1–I6 SLI IDs;
+- no runtime instrumentation rewrite;
+- no numeric customer SLA hours.
+
+### Read first
+
+- OBS05 vocabulary
+- OBS01 SLI catalog import rows
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-4
+- QDB import status surfaces already in the repo
+
+### Do
+
+1. Define the Import SLA evidence payload: accepted, started, completed, failed, cancelled, partial, last successful age, source/scope.
+2. Keep measurement from accept/queue to durable terminal status.
+3. Keep unknown/partial/cancel explicit and non-green.
+4. Gate any numeric SLA hours behind business/QDB approval.
+
+### Tests
+
+- contract forbids treating cancel/partial as successful freshness;
+- missing last-success stays unknown, not zero age;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable Import SLA evidence contract exists;
+- support can answer the OBS-4 questions from the contract language;
+- runtime wiring remains a later promoted slice.
+
+### Dependencies
+
+- OBS05 DONE.
+
+---
+
+## OBS05 - Define service level vocabulary for API/import/analytics/worker/report evidence
+
+Status: DONE
+Priority: future
+Feature family: observability-service-level-vocabulary
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor
+Local lock: removed after DONE
+Commit: pending
+Completed: 2026-08-11
 Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
 
 ### Problem
@@ -267,6 +329,21 @@ Support still needs one shared vocabulary for what counts as API availability, i
 ### Dependencies
 
 - OBS04 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Deliverable: `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`
+- Also updated:
+  - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` (pointer + summary)
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md` (OBS-3 DONE)
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks: docs/queue validators; `git diff --check`
+- Risks: vocabulary only — no numeric SLO/SLA; report SLI IDs remain thin until instrumented
+- Next: `OBS06` Import SLA evidence contract (roadmap OBS-4)
+- Scope repair: former OBS06 vocabulary duplicate rewritten to Import SLA evidence so READY stays single and non-overlapping
 
 ---
 
@@ -567,69 +644,8 @@ Slice-1 API/process evidence can show availability and request completion, but s
   - latency remains a measurement contract only until runtime prompts land
   - cold/warm naming still depends on future instrumentation slices for concrete evidence
 - Next:
-  - `OBS05` READY (service level vocabulary for API/import/analytics/worker/report evidence)
-  - Current READY in this queue: `OBS05`
-
----
-
-## OBS06 - Implement service level evidence surfaces for API/import/analytics/worker/report evidence
-
-Status: WAITING
-Priority: future
-Feature family: observability-service-level-vocabulary
-Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/OBS06-<agent>.lock.md`
-Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
-
-### Problem
-
-Latency now has a measurement contract, but support still needs a shared vocabulary for what counts as API availability, import SLA, analytics freshness SLA, worker processing SLA and report generation SLA before runtime prompts can wire it into evidence.
-
-### Evidence
-
-- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-3;
-- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` service-level section;
-- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` Slice 2-6;
-- `MASTER_ROADMAP.md` OBS current-ready routing.
-
-### Scope
-
-- define the service-level vocabulary and measurement boundaries for API/import/analytics/worker/report evidence;
-- keep SLI vs SLO vs SLA distinctions explicit and non-numeric;
-- preserve unknown != green and no fake-zero behavior;
-- no runtime instrumentation rewrite, no vendor choice, no contract numbers.
-
-### Read first
-
-- OBS04 completion note;
-- `docs/roadmaps/OBSERVABILITY_ROADMAP.md`;
-- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`;
-- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`;
-- `MASTER_ROADMAP.md`.
-
-### Do
-
-1. Define the service-level words for API, import, analytics, worker and report evidence.
-2. Keep measured SLI and business commitment language separated.
-3. Document when error budgets may be discussed, and when they may not.
-4. Add the smallest governance proof future runtime prompts can cite.
-
-### Tests
-
-- docs and queue validators pass for the touched planning files;
-- `git diff --check` passes for the touched files;
-- no runtime behavior changes.
-
-### Acceptance
-
-- the service-level vocabulary is written down and citeable;
-- future OBS runtime prompts can use the words without inventing target numbers;
-- no runtime code changes are made by this prompt.
-
-### Dependencies
-
-- OBS04 DONE.
+  - `OBS05` DONE → `OBS06` READY (Import SLA evidence contract)
+  - Current READY in this queue: `OBS06`
 
 ---
 
