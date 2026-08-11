@@ -91,7 +91,7 @@ DEX06 makes confidence contributors explicit, but the Why panel still needs dete
 ### Completion note
 
 - 2026-08-11: completed by Codex.
-- Commit SHA: not created.
+- Commit SHA: b11de57.
 - Changed files:
   - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
   - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
@@ -100,6 +100,7 @@ DEX06 makes confidence contributors explicit, but the Why panel still needs dete
   - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
   - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
   - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/architecture/DECISION_GRAPH_CONTRACT.md`
   - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
 - Checks:
   - `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
