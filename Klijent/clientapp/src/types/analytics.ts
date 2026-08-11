@@ -343,6 +343,16 @@ export type ProductDecisionRecommendationStatus =
   | "FIX_DATA"
   | "INSUFFICIENT_DATA";
 
+export interface ProductDecisionEvidenceNode {
+  category: "decision" | "evidence" | "confidence" | "constraint" | "impact" | string;
+  code: string;
+  label: string;
+  valueText: string;
+  sourceFields: string[];
+  isMissing: boolean;
+  detail?: string | null;
+}
+
 export interface ProductDecisionCenterItem {
   productId: number;
   recommendationId?: string | null;
@@ -387,6 +397,7 @@ export interface ProductDecisionCenterItem {
   riskIfIgnored?: string | null;
   explainabilityText?: string | null;
   inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
+  evidenceChain?: ProductDecisionEvidenceNode[] | null;
   recommendedAction: string;
 }
 

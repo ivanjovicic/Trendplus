@@ -223,32 +223,50 @@ public static class CachedAnalyticsEndpoints
                             }
                         }
 
-                        var baseQuery = from ps in trendDb.ProdajaStavke.AsNoTracking()
-                                        join p in trendDb.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
-                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
-                                        group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
-                                        select new TopProductDto(
-                                            g.Key.IdArtikal,
-                                            g.Key.Naziv,
-                                            g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                                            g.Sum(x => x.ps.Kolicina),
-                                            g.Key.Velicina,
-                                            g.Key.Boja
-                                        );
+                        var aggregatedRows = await (
+                            from ps in trendDb.ProdajaStavke.AsNoTracking()
+                            join p in trendDb.ProdajaZaglavlja.AsNoTracking() on ps.IdProdaja equals p.Id
+                            join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                            group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
+                            select new
+                            {
+                                g.Key.IdArtikal,
+                                g.Key.Naziv,
+                                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                                TotalUnits = g.Sum(x => x.ps.Kolicina),
+                                g.Key.Velicina,
+                                g.Key.Boja
+                            })
+                            .ToListAsync(ct);
 
-                        var all = await baseQuery.ToListAsync(ct);
-                        var topRevenue = all
+                        // Rank independently in-memory so InMemory and relational hosts share one contract.
+                        // Avoid re-ordering a DTO-projected IQueryable (EF cannot translate that composition).
+                        var topRevenue = aggregatedRows
                             .OrderByDescending(x => x.TotalRevenue)
                             .Take(top)
+                            .Select(x => new TopProductDto(
+                                x.IdArtikal,
+                                x.Naziv ?? string.Empty,
+                                x.TotalRevenue,
+                                x.TotalUnits,
+                                x.Velicina,
+                                x.Boja))
                             .ToList();
 
-                        var topUnits = all
+                        var topUnits = aggregatedRows
                             .OrderByDescending(x => x.TotalUnits)
                             .Take(top)
+                            .Select(x => new TopProductDto(
+                                x.IdArtikal,
+                                x.Naziv ?? string.Empty,
+                                x.TotalRevenue,
+                                x.TotalUnits,
+                                x.Velicina,
+                                x.Boja))
                             .ToList();
 
                         return new TopProductsResult(topRevenue, topUnits);
@@ -391,7 +409,7 @@ public static class CachedAnalyticsEndpoints
                     ct);
 
                 var meta = result.TotalSkuCount == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
                     : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
@@ -5344,6 +5362,7 @@ public static class CachedAnalyticsEndpoints
             row.RiskIfIgnored = confidenceProfile.RiskIfIgnored;
             row.ExplainabilityText = confidenceProfile.ExplainabilityText;
             row.InputFreshnessStatus = confidenceProfile.InputFreshnessStatus;
+            row.EvidenceChain = confidenceProfile.EvidenceChain.ToList();
 
             rows.Add(row);
         }
@@ -5594,6 +5613,20 @@ public static class CachedAnalyticsEndpoints
                 row.DataQualityStatus)
             : row.RecommendationReason;
         var inputFreshnessStatus = ResolveProductDecisionInputFreshnessStatus(row, confidenceLevel);
+        var confidenceBreakdown = BuildProductDecisionConfidenceBreakdown(
+            row,
+            confidenceLevel,
+            confidenceScore,
+            warningCodes,
+            inputFreshnessStatus);
+        var evidenceChain = BuildProductDecisionEvidenceChain(
+            row,
+            confidenceLevel,
+            confidenceScore,
+            warningCodes,
+            expectedImpactRsd,
+            inputFreshnessStatus,
+            explainabilityText);
 
         return new ProductDecisionConfidenceProfile(
             RecommendationId: recommendationId,
@@ -5604,11 +5637,286 @@ public static class CachedAnalyticsEndpoints
             ConfidenceScore: confidenceScore,
             PrimaryDrivers: primaryDrivers,
             WarningCodes: warningCodes,
+            ConfidenceBreakdown: confidenceBreakdown,
             ExpectedImpactRsd: expectedImpactRsd,
             ImpactWindowDays: impactWindowDays,
             RiskIfIgnored: riskIfIgnored,
             ExplainabilityText: explainabilityText,
-            InputFreshnessStatus: inputFreshnessStatus);
+            InputFreshnessStatus: inputFreshnessStatus,
+            EvidenceChain: evidenceChain);
+    }
+
+    private static IReadOnlyList<ProductDecisionEvidenceNodeDto> BuildProductDecisionEvidenceChain(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        int? confidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        decimal? expectedImpactRsd,
+        string inputFreshnessStatus,
+        string explainabilityText)
+    {
+        var evidence = new List<ProductDecisionEvidenceNodeDto>();
+        var impactWindowText = row.ImpactWindowDays.HasValue
+            ? $"{row.ImpactWindowDays.Value} dana"
+            : "nije dostupno";
+
+        void AddNode(
+            string category,
+            string code,
+            string label,
+            string valueText,
+            IReadOnlyList<string> sourceFields,
+            bool isMissing = false,
+            string? detail = null)
+        {
+            evidence.Add(new ProductDecisionEvidenceNodeDto
+            {
+                Category = category,
+                Code = code,
+                Label = label,
+                ValueText = valueText,
+                SourceFields = [.. sourceFields],
+                IsMissing = isMissing,
+                Detail = detail
+            });
+        }
+
+        AddNode(
+            "decision",
+            "selected_recommendation",
+            "Odabrana preporuka",
+            string.IsNullOrWhiteSpace(row.RecommendationLabel) ? row.RecommendationStatus : row.RecommendationLabel,
+            ["RecommendationStatus", "RecommendationLabel", "RecommendationReason"],
+            detail: string.IsNullOrWhiteSpace(explainabilityText) ? null : explainabilityText);
+
+        AddNode(
+            "evidence",
+            "sales_signal",
+            "Signal prodaje",
+            $"{FormatProductDecisionNumber(row.VelocityUnitsPerDay, 2)} kom/dan · {row.UnitsSold} kom",
+            ["VelocityUnitsPerDay", "UnitsSold", "Revenue"],
+            detail: $"Prihod {FormatProductDecisionAmount(row.Revenue)}");
+
+        AddNode(
+            "evidence",
+            "stock_signal",
+            "Signal zalihe",
+            $"{row.CurrentStock} kom · min {row.MinStock} · gap {row.StockGap}",
+            ["CurrentStock", "MinStock", "StockGap", "StockCoverDays", "StockCoverStatus"],
+            detail: $"Pokrivenost: {(string.IsNullOrWhiteSpace(row.StockCoverStatusLabel) ? row.StockCoverStatus : row.StockCoverStatusLabel)}");
+
+        AddNode(
+            "evidence",
+            "margin_signal",
+            "Signal marže",
+            row.MarginPct.HasValue
+                ? $"{FormatProductDecisionNumber(row.MarginPct.Value, 1)}% · doprinos {FormatProductDecisionAmount(row.MarginContribution)}"
+                : "Nedostaje marža",
+            ["MarginPct", "MarginContribution", "MarginCoveragePct"],
+            isMissing: !row.MarginPct.HasValue,
+            detail: $"Pokrivenost nabavnom cenom {FormatProductDecisionNumber(row.MarginCoveragePct, 1)}%");
+
+        AddNode(
+            "evidence",
+            "trend_signal",
+            "Signal trenda",
+            row.TrendPct.HasValue ? $"{FormatProductDecisionNumber(row.TrendPct.Value, 1)}%" : "Nedostaje trend",
+            ["TrendPct", "DaysSinceLastSale"],
+            isMissing: !row.TrendPct.HasValue,
+            detail: row.DaysSinceLastSale.HasValue ? $"Dani od poslednje prodaje {row.DaysSinceLastSale.Value}" : "Dani od poslednje prodaje nisu dostupni");
+
+        AddNode(
+            "confidence",
+            "confidence_signal",
+            "Pouzdanost",
+            confidenceLevel == "insufficient_data"
+                ? "Nedovoljno podataka"
+                : $"{DescribeProductDecisionConfidenceLevel(confidenceLevel)} · {(confidenceScore?.ToString(CultureInfo.InvariantCulture) ?? FormatProductDecisionNumber(row.ConfidencePct, 0))}%",
+            ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct", "ReliabilityPct"],
+            isMissing: confidenceLevel == "insufficient_data",
+            detail: $"Pouzdanost signala {FormatProductDecisionNumber(row.ReliabilityPct, 0)}%");
+
+        AddNode(
+            "confidence",
+            "freshness_signal",
+            "Svežina ulaza",
+            DescribeProductDecisionFreshnessStatus(inputFreshnessStatus),
+            ["InputFreshnessStatus", "DataQualityStatus"],
+            detail: $"Kvalitet podataka {DescribeProductDecisionDataQualityStatus(row.DataQualityStatus)}");
+
+        AddNode(
+            "constraint",
+            "actionability",
+            "Akcija je dozvoljena",
+            row.RecommendationAllowed ? "Da" : "Ne",
+            ["RecommendationAllowed"],
+            isMissing: false,
+            detail: row.RecommendationAllowed ? "Preporuka može da se izvrši." : "Preporuka je blokirana.");
+
+        foreach (var warningCode in warningCodes)
+        {
+            AddNode(
+                "constraint",
+                $"warning:{warningCode}",
+                DescribeProductDecisionWarningCode(warningCode),
+                "Upozorenje",
+                ["WarningCodes", "ReasonCodes"],
+                detail: warningCode);
+        }
+
+        AddNode(
+            "impact",
+            "expected_impact",
+            "Očekivani uticaj",
+            expectedImpactRsd.HasValue
+                ? $"{FormatProductDecisionAmount(expectedImpactRsd.Value)} u {impactWindowText}"
+                : "Nije dostupno",
+            ["ExpectedImpactRsd", "ImpactWindowDays", "RiskIfIgnored"],
+            isMissing: !expectedImpactRsd.HasValue,
+            detail: string.IsNullOrWhiteSpace(row.RiskIfIgnored) ? null : row.RiskIfIgnored);
+
+        return evidence;
+    }
+
+    private static IReadOnlyList<ProductDecisionEvidenceNodeDto> BuildProductDecisionConfidenceBreakdown(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        int? confidenceScore,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus)
+    {
+        var breakdown = new List<ProductDecisionEvidenceNodeDto>();
+        var confidenceScoreText = confidenceScore.HasValue
+            ? confidenceScore.Value.ToString(CultureInfo.InvariantCulture)
+            : FormatProductDecisionNumber(row.ConfidencePct, 0);
+
+        void AddNode(
+            string category,
+            string code,
+            string label,
+            string valueText,
+            IReadOnlyList<string> sourceFields,
+            bool isMissing = false,
+            string? detail = null)
+        {
+            breakdown.Add(new ProductDecisionEvidenceNodeDto
+            {
+                Category = category,
+                Code = code,
+                Label = label,
+                ValueText = valueText,
+                SourceFields = [.. sourceFields],
+                IsMissing = isMissing,
+                Detail = detail
+            });
+        }
+
+        AddNode(
+            "confidence",
+            "confidence_score",
+            "Ocena pouzdanosti",
+            confidenceLevel == "insufficient_data"
+                ? "Nedovoljno podataka"
+                : $"{DescribeProductDecisionConfidenceLevel(confidenceLevel)} · {confidenceScoreText}%",
+            ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct"],
+            isMissing: confidenceLevel == "insufficient_data",
+            detail: "Ocena kombinuje snagu signala i dostupnost ulaza.");
+
+        AddNode(
+            "confidence",
+            "evidence_coverage",
+            "Pokrivenost signala",
+            ResolveProductDecisionConfidenceCoverageText(row, confidenceLevel, confidenceScore, warningCodes),
+            ["UnitsSold", "VelocityUnitsPerDay", "MarginPct", "TrendPct", "DaysSinceLastSale", "WarningCodes", "ReasonCodes"],
+            detail: ResolveProductDecisionConfidenceCoverageDetail(row, confidenceLevel, warningCodes));
+
+        AddNode(
+            "confidence",
+            "reliability_signal",
+            "Pouzdanost signala",
+            $"{FormatProductDecisionNumber(row.ReliabilityPct, 0)}%",
+            ["ReliabilityPct", "SignalConfidencePct"],
+            detail: row.SignalConfidencePct > 0m
+                ? $"SignalConfidence {FormatProductDecisionNumber(row.SignalConfidencePct, 0)}%"
+                : "Nema dodatnog signala pouzdanosti.");
+
+        AddNode(
+            "confidence",
+            "freshness_signal",
+            "Svežina ulaza",
+            DescribeProductDecisionFreshnessStatus(inputFreshnessStatus),
+            ["InputFreshnessStatus", "DataQualityStatus"],
+            detail: $"Kvalitet podataka {DescribeProductDecisionDataQualityStatus(row.DataQualityStatus)}");
+
+        AddNode(
+            "confidence",
+            "data_quality_signal",
+            "Kvalitet podataka",
+            DescribeProductDecisionDataQualityStatus(row.DataQualityStatus),
+            ["DataQualityStatus", "WarningCodes"],
+            isMissing: string.Equals(row.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase),
+            detail: ResolveProductDecisionDataQualityDetail(row, warningCodes));
+
+        return breakdown;
+    }
+
+    private static string FormatProductDecisionNumber(decimal value, int decimals)
+        => value.ToString(decimals > 0 ? $"0.{new string('#', decimals)}" : "0", CultureInfo.InvariantCulture);
+
+    private static string FormatProductDecisionAmount(decimal value)
+        => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} RSD";
+
+    private static string DescribeProductDecisionWarningCode(string code)
+    {
+        var normalized = (code ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "missing_cost" => "Nedostaje nabavna cena",
+            "missing_supplier" => "Nedostaje dobavljač",
+            "insufficient_history" => "Nedovoljno istorije",
+            "expected_impact_denominator_missing" => "Nedostaje ulaz za procenu uticaja",
+            "data_quality_critical" => "Kvalitet podataka je kritičan",
+            "insufficient_data" => "Nedovoljno podataka",
+            "data_quality_blocker" => "Blokada kvaliteta podataka",
+            _ => code
+        };
+    }
+
+    private static string DescribeProductDecisionConfidenceLevel(string confidenceLevel)
+    {
+        var normalized = (confidenceLevel ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "high" => "Visoka sigurnost",
+            "medium" => "Srednja sigurnost",
+            "low" => "Niska sigurnost",
+            _ => "Nedovoljno podataka"
+        };
+    }
+
+    private static string DescribeProductDecisionFreshnessStatus(string freshnessStatus)
+    {
+        var normalized = (freshnessStatus ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "fresh" => "Sveže",
+            "stale" => "Zastarelo",
+            "critical" => "Kritično",
+            _ => "Nije poznato"
+        };
+    }
+
+    private static string DescribeProductDecisionDataQualityStatus(string dataQualityStatus)
+    {
+        var normalized = (dataQualityStatus ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "good" => "dobar",
+            "warning" => "upozorenje",
+            "critical" => "kritičan",
+            "insufficient_data" => "nedovoljno podataka",
+            _ => dataQualityStatus
+        };
     }
 
     private static string NormalizeRecommendationStatus(string? recommendationStatus) =>
@@ -5648,12 +5956,7 @@ public static class CachedAnalyticsEndpoints
             return "insufficient_data";
         }
 
-        var strongEvidence = row.UnitsSold >= 20
-            && row.MarginCoveragePct >= 80m
-            && row.TrendPct.HasValue
-            && row.VelocityUnitsPerDay > 0.5m;
-
-        if (confidenceScore.Value >= 80 && strongEvidence)
+        if (confidenceScore.Value >= 80 && HasStrongProductDecisionEvidence(row))
         {
             return "high";
         }
@@ -5664,6 +5967,97 @@ public static class CachedAnalyticsEndpoints
         }
 
         return "low";
+    }
+
+    private static bool HasStrongProductDecisionEvidence(ProductDecisionCenterRowDto row) =>
+        row.UnitsSold >= 20
+        && row.MarginCoveragePct >= 80m
+        && row.TrendPct.HasValue
+        && row.VelocityUnitsPerDay > 0.5m;
+
+    private static string ResolveProductDecisionConfidenceCoverageText(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        int? confidenceScore,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        if (string.Equals(confidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Nedovoljna";
+        }
+
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Ograničena";
+        }
+
+        if (warningCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase)
+            || warningCodes.Contains("missing_supplier", StringComparer.OrdinalIgnoreCase)
+            || warningCodes.Contains("insufficient_history", StringComparer.OrdinalIgnoreCase))
+        {
+            return "Delimična";
+        }
+
+        if (confidenceScore.HasValue && confidenceScore.Value >= 80 && HasStrongProductDecisionEvidence(row))
+        {
+            return "Široka";
+        }
+
+        if (confidenceScore.HasValue && confidenceScore.Value >= 60)
+        {
+            return "Dovoljna";
+        }
+
+        return "Ograničena";
+    }
+
+    private static string ResolveProductDecisionConfidenceCoverageDetail(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        if (string.Equals(confidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Obavezni signali nisu kompletni.";
+        }
+
+        if (HasStrongProductDecisionEvidence(row))
+        {
+            return "Više nezavisnih signala je prisutno: prodaja, marža, zaliha i trend.";
+        }
+
+        if (warningCodes.Contains("missing_cost", StringComparer.OrdinalIgnoreCase)
+            || warningCodes.Contains("missing_supplier", StringComparer.OrdinalIgnoreCase)
+            || warningCodes.Contains("insufficient_history", StringComparer.OrdinalIgnoreCase))
+        {
+            return "Upozorenja i nedostajući signali smanjuju pokrivenost.";
+        }
+
+        return "Kombinacija signala je ograničena.";
+    }
+
+    private static string ResolveProductDecisionDataQualityDetail(
+        ProductDecisionCenterRowDto row,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        if (warningCodes.Contains("data_quality_critical", StringComparer.OrdinalIgnoreCase))
+        {
+            return "Kritični kvalitet podataka spušta pouzdanost.";
+        }
+
+        if (warningCodes.Contains("insufficient_data", StringComparer.OrdinalIgnoreCase))
+        {
+            return "Nedovoljno signala za stabilnu preporuku.";
+        }
+
+        return (row.DataQualityStatus ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "good" => "Podaci su konzistentni.",
+            "warning" => "Podaci nose upozorenja, ali preporuka ostaje upotrebljiva.",
+            "critical" => "Kvalitet podataka je kritičan.",
+            "insufficient_data" => "Kvalitet podataka nije dovoljan.",
+            _ => "Kvalitet podataka nije eksplicitno klasifikovan."
+        };
     }
 
     private static IReadOnlyList<string> BuildProductDecisionWarningCodes(ProductDecisionCenterRowDto row)
@@ -5927,8 +6321,6 @@ public static class CachedAnalyticsEndpoints
             foreach (var movement in movementRows)
             {
                 stats.TryGetValue(movement.ArtikalId, out var current);
-                current ??= new InventorySignalWindowStats(0, 0);
-
                 var netMovement = current.NetMovementUnits + movement.Quantity;
                 var inboundUnits = current.InboundUnits;
 
@@ -5990,10 +6382,12 @@ public static class CachedAnalyticsEndpoints
         int? ImpactWindowDays,
         string RiskIfIgnored,
         string ExplainabilityText,
-        string InputFreshnessStatus);
+        string InputFreshnessStatus,
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown,
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> EvidenceChain);
 
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
-    private sealed record InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
+    private readonly record struct InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
 }
 
 // DTOs za cache (moraju biti klase za JSON serijalizaciju)
@@ -6191,7 +6585,20 @@ public class ProductDecisionCenterRowDto
     public string RiskIfIgnored { get; set; } = string.Empty;
     public string ExplainabilityText { get; set; } = string.Empty;
     public string InputFreshnessStatus { get; set; } = "unknown";
+    public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
+    public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
     public string RecommendedAction { get; set; } = string.Empty;
+}
+
+public class ProductDecisionEvidenceNodeDto
+{
+    public string Category { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string ValueText { get; set; } = string.Empty;
+    public List<string> SourceFields { get; set; } = [];
+    public bool IsMissing { get; set; }
+    public string? Detail { get; set; }
 }
 
 public class ProductDecisionCenterResponseDto

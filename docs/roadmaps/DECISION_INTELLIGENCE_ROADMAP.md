@@ -1,6 +1,6 @@
 # Trendplus Decision Intelligence Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-11
 Status: approved future product direction; runtime implementation remains queue-gated  
 Owner queue: `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
 
@@ -30,6 +30,7 @@ Goal: every high-value recommendation can expose a deterministic explanation.
 Roadmap sequence:
 
 1. **Decision Graph** - canonical graph of decision, evidence nodes, rules, confidence contributors and downstream action.
+   - First mapping example: Product Decision Center, documented in `docs/architecture/DECISION_GRAPH_CONTRACT.md`.
 2. **Evidence chain** - trace every explanation back to the concrete metrics/statuses that support it.
 3. **Confidence breakdown** - separate confidence contributors such as freshness, coverage, data quality, baseline quality and model/rule reliability.
 4. **Alternative recommendations** - show valid competing actions and why they were not selected.
@@ -37,6 +38,34 @@ Roadmap sequence:
 6. **Why panel** - concise user-facing explanation generated from deterministic fields, not free-form inference.
 7. **Decision Tree** - inspect the rule/branch path that produced the recommendation where rule-based logic applies.
 8. **Decision evidence snapshot** - persist a versioned evidence snapshot when a recommendation is acted on so later review is not rewritten by new data.
+
+### DEX02 - First-family rollout plan
+
+First family: Product Decision Center.
+
+Why this family:
+
+- it already exposes the richest row-level recommendation semantics;
+- it already feeds the Executive Decision Board as a downstream consumer;
+- it already has explicit confidence and candidate-contract audits in the repo.
+
+Rollout slices:
+
+1. **Backend contract alignment** - keep recommendation, status, confidence, impact and reason fields authoritative; preserve null and unknown values; no runtime graph engine.
+2. **Frontend Why / drill-down** - render from backend deterministic fields only; missing evidence stays explicit; no local scoring or invented alternatives.
+3. **Evidence snapshot / hardening** - preserve period, freshness, data-quality and warning context so later review and timeline reuse are stable.
+4. **Regression coverage** - test true zero vs missing evidence, stale evidence, partial confidence and no fake green.
+
+Compatibility and stop conditions:
+
+- additive only for the first bounded implementation slices;
+- no AI dependency;
+- if a field is absent, show the gap rather than synthesizing a fallback;
+- do not expand beyond Product Decision Center until the first family is stable.
+
+Next bounded prompt:
+
+- DEX06 is the executable Product Decision Center confidence breakdown prompt.
 
 Desired flow:
 
@@ -136,7 +165,7 @@ Each alternative should eventually state:
 
 ### DI-1 - Explainable deterministic decisions
 
-DEX01 contract complete, graph/evidence vocabulary accepted, first high-value recommendation family ready for later implementation.
+DEX01 contract complete, graph/evidence vocabulary accepted, DEX02 selects Product Decision Center as the first bounded rollout family, and DEX03 prepares the implementation prompt.
 
 ### DI-2 - Auditable decision history
 

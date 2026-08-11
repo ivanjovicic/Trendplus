@@ -1,10 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 
 const devHost = "127.0.0.1";
 const devPort = 5174;
+const clientRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+    root: clientRoot,
     build: {
         sourcemap: true,
         minify: "esbuild", // Changed from 'terser' to 'esbuild' for proper UTF-8 support

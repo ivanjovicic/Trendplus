@@ -229,6 +229,9 @@ public sealed class DemoEnvironmentVerificationEndpointTests
         using var response = await host.Client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<RequeueResponse>();
+        Assert.NotNull(payload);
+        Assert.True(payload!.Success, payload.Message);
         Assert.Equal(1, host.Queue.EnqueueCallCount);
     }
 
@@ -310,10 +313,12 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             {
                 EnvironmentName = environmentName
             });
-            var databaseName = $"demo-verification-{Guid.NewGuid():N}";
             builder.WebHost.UseTestServer();
             builder.Services.AddRouting();
             builder.Services.AddLogging();
+            // Capture the database name once so every scoped DbContext shares the same InMemory store.
+            // Evaluating Guid.NewGuid() inside the options lambda can create a fresh empty database per scope.
+            var databaseName = $"demo-verification-{Guid.NewGuid():N}";
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
                 options.UseInMemoryDatabase(databaseName, DatabaseRoot));
             builder.Services.AddSingleton<WorkerHealthService>();

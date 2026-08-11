@@ -75,4 +75,27 @@ node scripts/check-javascript-sdk-pins.mjs
 ## Unsupported / out of scope claims
 
 - Passing `dotnet restore Trendplus2.sln` does not prove React or POS UI production readiness.
-- Visual Studio IDE load of the mixed solution is best-effort and may require a local VS JavaScript workload even when NuGet can resolve the SDK package.
+- Visual Studio GUI “open solution” clicks are optional when the JavaScript SDK project system is exercised by an equivalent VS/`dotnet` build of both `.esproj` wrappers without an unavailable-SDK error.
+
+## Windows / Visual Studio verification (BCI06, 2026-08-11)
+
+Observed on this Windows agent:
+
+| Check | Result |
+|---|---|
+| OS | Windows 10.0.22000 (win-x64) |
+| Visual Studio | Community 2026 (`18.2.11415.280`) at `C:\Program Files\Microsoft Visual Studio\18\Community` |
+| Required workloads / components | `Microsoft.VisualStudio.Workload.NetWeb`, `Microsoft.VisualStudio.Workload.Node`, `Microsoft.VisualStudio.ComponentGroup.WebToolsExtensions.JavaScript` |
+| `node scripts/check-javascript-sdk-pins.mjs` | pass (`1.0.3982316`) |
+| `dotnet restore/build Trendplus2.Backend.slnf` | pass (canonical non-IDE / Linux path) |
+| `dotnet restore Trendplus2.sln --force` | pass |
+| `dotnet build Klijent/Klijent.esproj` | pass (JavaScript SDK project system; 0 errors) |
+| `dotnet build Trendplus.POS.Ui/Trendplus.POS.Ui.esproj` | pass (JavaScript SDK project system; 0 errors) |
+| `cd Klijent/clientapp && npm run build` | pass (independent React gate) |
+| `cd Trendplus.POS.Ui && npm run build` | pass (independent POS gate) |
+
+Support boundary:
+
+- Mixed-solution IDE wrappers are supported on Windows when Visual Studio Community (or equivalent) includes the NetWeb + Node + JavaScript web-tools components above and the NuGet pin resolves.
+- Linux / GitHub Actions backend CI must continue using `Trendplus2.Backend.slnf` or `Api.Tests/Api.Tests.csproj` and must not depend on `.esproj` availability.
+- Interactive Visual Studio GUI load was not required for this proof; `dotnet build` of each `.esproj` is the documented equivalent that loads the JavaScript SDK targets.

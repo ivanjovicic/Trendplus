@@ -50,9 +50,20 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Equal(14, profile.ImpactWindowDays);
         Assert.Equal("Brza prodaja i nizak stock cover.", profile.ExplainabilityText);
         Assert.Equal("fresh", profile.InputFreshnessStatus);
+        var confidenceNode = Assert.Single(profile.EvidenceChain, node => node.Code == "confidence_signal");
+        Assert.Equal("Pouzdanost", confidenceNode.Label);
+        Assert.Equal("Visoka sigurnost · 88%", confidenceNode.ValueText);
+        var freshnessNode = Assert.Single(profile.EvidenceChain, node => node.Code == "freshness_signal");
+        Assert.Equal("Svežina ulaza", freshnessNode.Label);
+        Assert.Equal("Sveže", freshnessNode.ValueText);
+        Assert.Equal("Kvalitet podataka dobar", freshnessNode.Detail);
         Assert.Contains("sales_velocity", profile.PrimaryDrivers);
         Assert.Contains("stock_risk", profile.PrimaryDrivers);
         Assert.Contains("margin", profile.PrimaryDrivers);
+        Assert.NotEmpty(profile.EvidenceChain);
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "selected_recommendation");
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "sales_signal");
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "expected_impact");
         Assert.DoesNotContain(profile.WarningCodes, code => code == "expected_impact_denominator_missing");
     }
 
@@ -93,9 +104,18 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Null(profile.ConfidenceScore);
         Assert.Null(profile.ExpectedImpactRsd);
         Assert.Equal("critical", profile.InputFreshnessStatus);
+        var criticalConfidenceNode = Assert.Single(profile.EvidenceChain, node => node.Code == "confidence_signal");
+        Assert.Equal("Nedovoljno podataka", criticalConfidenceNode.ValueText);
+        var criticalFreshnessNode = Assert.Single(profile.EvidenceChain, node => node.Code == "freshness_signal");
+        Assert.Equal("Kritično", criticalFreshnessNode.ValueText);
         Assert.Contains("missing_cost", profile.WarningCodes);
         Assert.Contains("insufficient_history", profile.WarningCodes);
         Assert.Contains("expected_impact_denominator_missing", profile.WarningCodes);
         Assert.Contains("sparse_sales", profile.PrimaryDrivers);
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "warning:missing_cost");
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "warning:insufficient_history");
+        var impactNode = Assert.Single(profile.EvidenceChain.Where(node => node.Code == "expected_impact"));
+        Assert.True(impactNode.IsMissing);
+        Assert.Equal("Nije dostupno", impactNode.ValueText);
     }
 }

@@ -161,6 +161,92 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     );
   });
 
+  it("renders a structured evidence chain in the Why panel", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 606,
+          recommendationId: "product:606:REPLENISH:20260528:20260626",
+          sourceKey: "product:606",
+          productName: "Model Evidence",
+          sku: "SKU-606",
+          revenue: 144000,
+          unitsSold: 42,
+          velocityUnitsPerDay: 1.4,
+          marginContribution: 28800,
+          marginPct: 26,
+          marginCoveragePct: 88,
+          currentStock: 8,
+          minStock: 4,
+          stockGap: 1,
+          trendPct: 6,
+          confidenceLevel: "high",
+          confidenceScore: 90,
+          confidencePct: 90,
+          reliabilityPct: 82,
+          recommendationReason: "Brza prodaja i nizak stock cover.",
+          explainabilityText: "Brza prodaja i nizak stock cover.",
+          warningCodes: [],
+          primaryDrivers: ["sales_velocity", "stock_risk", "margin"],
+          expectedImpactRsd: 28800,
+          impactWindowDays: 14,
+          riskIfIgnored: "Rizik je gubitka prodaje.",
+          inputFreshnessStatus: "fresh",
+          evidenceChain: [
+            {
+              category: "decision",
+              code: "selected_recommendation",
+              label: "Odabrana preporuka",
+              valueText: "Dopuni",
+              sourceFields: ["RecommendationStatus", "RecommendationLabel", "RecommendationReason"],
+              isMissing: false,
+              detail: "Brza prodaja i nizak stock cover.",
+            },
+            {
+              category: "evidence",
+              code: "sales_signal",
+              label: "Signal prodaje",
+              valueText: "1.4 kom/dan | 42 kom",
+              sourceFields: ["VelocityUnitsPerDay", "UnitsSold", "Revenue"],
+              isMissing: false,
+              detail: "Prihod 144000 RSD",
+            },
+            {
+              category: "confidence",
+              code: "freshness_signal",
+              label: "Svezina ulaza",
+              valueText: "fresh",
+              sourceFields: ["InputFreshnessStatus", "DataQualityStatus"],
+              isMissing: false,
+              detail: "Kvalitet podataka good",
+            },
+            {
+              category: "impact",
+              code: "expected_impact",
+              label: "Ocekivani uticaj",
+              valueText: "28800 RSD u 14 dana",
+              sourceFields: ["ExpectedImpactRsd", "ImpactWindowDays", "RiskIfIgnored"],
+              isMissing: false,
+              detail: "Rizik je gubitka prodaje.",
+            },
+          ],
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText("Lanac dokaza:")).toBeInTheDocument();
+    expect(screen.getByText("Odabrana preporuka", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getByText("Signal prodaje", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getByText("28800 RSD u 14 dana")).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Izvor: VelocityUnitsPerDay · UnitsSold · Revenue"),
+    ).toBeInTheDocument();
+  });
+
   it("keeps confident recommendations honest when expected impact is missing", async () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(
       buildResponse([
@@ -180,7 +266,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           minStock: 10,
           stockGap: 7,
           trendPct: 14,
-          lostSalesEstimate: 0,
+          lostSalesEstimate: 25000,
           stockCoverDays: 2,
           stockCoverStatus: "low_cover",
           sellThroughRatio: 0.5,
@@ -199,6 +285,17 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           riskIfIgnored: "Moguca rasprodaja.",
           explainabilityText: "Brza prodaja i niska zaliha.",
           inputFreshnessStatus: "fresh",
+          evidenceChain: [
+            {
+              category: "impact",
+              code: "expected_impact",
+              label: "Ocekivani uticaj",
+              valueText: "Nije dostupno",
+              sourceFields: ["ExpectedImpactRsd", "ImpactWindowDays", "RiskIfIgnored"],
+              isMissing: true,
+              detail: "Moguca rasprodaja.",
+            },
+          ],
           recommendedAction: "Dopuni odmah.",
         }),
       ], "warning"),
@@ -209,8 +306,10 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
     expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
     expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Za.*\?/i }));
+    expect(screen.getByText("Nije dostupno", { selector: ".evidence-chain-missing" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Dodaj u akcije" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
 
     await waitFor(() => {
       expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
@@ -223,6 +322,51 @@ describe("ProductDecisionCenterPage confidence contract", () => {
         confidencePct: 91,
       }),
     );
+  });
+
+  it("uses backend warning codes without backfilling from reason codes", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 505,
+          recommendationId: "product:505:REPLENISH:20260528:20260626",
+          sourceKey: "product:505",
+          productName: "Model Warning",
+          sku: "SKU-505",
+          currentStock: 4,
+          minStock: 8,
+          stockGap: 4,
+          warningCodes: [],
+          reasonCodes: ["missing_cost"],
+          primaryDrivers: null,
+          confidenceScore: null,
+          confidencePct: 89,
+          expectedImpactRsd: null,
+          inputFreshnessStatus: null,
+          daysSinceLastSale: 90,
+          recommendationReason: "Brza prodaja i nizak stock cover.",
+          explainabilityText: "Brza prodaja i nizak stock cover.",
+          confidenceLevel: "high",
+          reliabilityPct: 66,
+          recommendationAllowed: true,
+        }),
+      ], "warning"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText("Model Warning")).toBeInTheDocument();
+    expect(screen.getByText("Visoka sigurnost")).toBeInTheDocument();
+    expect(screen.queryByText(/89%/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Upozorenja:/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText("Nema dodatnih upozorenja.")).toBeInTheDocument();
+    expect(screen.getByText("Nedostaje nabavna cena.")).toBeInTheDocument();
+    expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
+    expect(screen.getByText(/Svežina ulaza: Nije poznato/i)).toBeInTheDocument();
+    expect(screen.queryByText("Brzina prodaje", { selector: ".reason-chip" })).not.toBeInTheDocument();
   });
 
   it("shows insufficient-data confidence and avoids fake zero impact", async () => {
@@ -291,7 +435,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           recommendationId: "product:404:REPLENISH:20260528:20260626",
           sourceKey: "product:404",
           productName: "Model Stale",
-          daysSinceLastSale: 75,
+          daysSinceLastSale: 12,
           inputFreshnessStatus: "stale",
           dataQualityStatus: "warning",
           recommendationReason: "Signal dopune postoji, ali ulaz nije svez.",

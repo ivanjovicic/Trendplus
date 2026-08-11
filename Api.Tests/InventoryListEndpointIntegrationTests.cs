@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trendplus2.Endpoints;
@@ -135,6 +136,18 @@ public sealed class InventoryListEndpointIntegrationTests
     {
         await using var factory = CreateFactory();
         var root = await GetJsonAsync(factory, "/api/analytics/cached/inventory/list?page=-10&pageSize=5001");
+
+        Assert.Equal(1, root.GetProperty("pageNumber").GetInt32());
+        Assert.Equal(1000, root.GetProperty("pageSize").GetInt32());
+        Assert.Equal(4, root.GetProperty("totalCount").GetInt32());
+        Assert.Equal(4, root.GetProperty("items").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task InventoryList_UncachedRouteMatchesSeededRowCountAndEmptyMeta()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/list?page=-10&pageSize=5001");
 
         Assert.Equal(1, root.GetProperty("pageNumber").GetInt32());
         Assert.Equal(1000, root.GetProperty("pageSize").GetInt32());
@@ -294,6 +307,7 @@ public sealed class InventoryListEndpointIntegrationTests
     private sealed class InventoryFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"inventory-list-screen-{Guid.NewGuid():N}";
+        private readonly InMemoryDatabaseRoot _databaseRoot = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -305,9 +319,9 @@ public sealed class InventoryListEndpointIntegrationTests
                 services.RemoveAll<ITrendplusDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             });
         }

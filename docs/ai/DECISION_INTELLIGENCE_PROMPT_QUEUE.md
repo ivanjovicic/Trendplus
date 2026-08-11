@@ -8,7 +8,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX01` | docs/contracts/tests-plan only |
+| DEX - Decision Explainability | `DEX06` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
 | DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
 
@@ -16,13 +16,398 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ---
 
+## DEX06 - Implement Product Decision Center confidence breakdown contract
+
+Status: IN_PROGRESS
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase3
+Parallel-safe: no, coupled backend/frontend contract
+Owner: unassigned
+Local lock: `.ai/task-locks/DEX06-codex.lock.md`
+
+### Problem
+
+DEX05 added a structured evidence chain to Product Decision Center, but the Why panel still needs a deterministic confidence breakdown that explains how freshness, coverage, reliability and data quality contribute to the final confidence level instead of leaving confidence as a single opaque number.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places confidence breakdown immediately after evidence chain in the decision explainability sequence.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` already computes backend confidence, reliability and warning signals that can be exposed as a structured breakdown.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still presents confidence as a compact label and needs a richer deterministic breakdown view.
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` shows the downstream Decision Board should keep consuming the same canonical semantics.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DEX05 output
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+
+### Do
+
+1. Expose confidence contributors from backend as deterministic fields or structured breakdown items.
+2. Render confidence contributors in Product Decision Center without recreating business logic locally.
+3. Preserve missing, stale and insufficient-data semantics explicitly.
+4. Keep the downstream Decision Board semantics unchanged.
+
+### Tests
+
+- backend coverage confirms the confidence breakdown is stable and traceable;
+- frontend coverage shows the structured confidence breakdown and keeps missing values explicit;
+- API failure and empty-state regressions still avoid fake zero or fake confidence;
+- downstream Decision Board compatibility does not regress.
+
+### Acceptance
+
+- Product Decision Center can explain confidence with a structured deterministic breakdown;
+- no frontend-local heuristic invents confidence contributors;
+- no Decision Board regression was introduced.
+
+### Dependencies
+
+- DEX05 DONE.
+
+## DEX05 - Implement Product Decision Center evidence chain drill-down contract
+
+Status: DONE
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase2
+Parallel-safe: no, coupled backend/frontend contract
+Owner: unassigned
+Local lock: removed after DONE
+
+### Problem
+
+DEX04 aligned Product Decision Center on deterministic confidence, impact, warning and freshness fields, but the Why/drill-down view still needs a structured evidence chain that traces each explanation back to concrete backend signals instead of a plain text summary.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` sequences decision explainability from evidence chain through confidence breakdown, alternatives, drill-down and why panel.
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md` captures the decision graph vocabulary that should back the drill-down view.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still shows explanation text and reason codes without a structured evidence chain panel.
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` shows the downstream Decision Board should keep consuming the same canonical semantics.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx` if the new drill-down data path changes error or empty-state behavior
+
+### Read first
+
+- DEX04 output
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+
+### Do
+
+1. Keep evidence items backend-led and deterministic.
+2. Render the evidence chain in the Product Decision Center Why/drill-down experience without reconstructing business truth locally.
+3. Preserve null and missing-evidence behavior explicitly.
+4. Keep the downstream Decision Board semantics unchanged.
+
+### Tests
+
+- backend coverage confirms the evidence chain payload is stable and traceable;
+- frontend drill-down coverage shows concrete evidence nodes, not only free-form text;
+- API failure and empty-state regressions still avoid fake zero or fake evidence;
+- downstream Decision Board compatibility does not regress.
+
+### Acceptance
+
+- Product Decision Center can explain a recommendation with a structured evidence chain that maps to backend signals;
+- no frontend-local heuristic invents evidence nodes;
+- no Decision Board regression was introduced.
+
+### Dependencies
+
+- DEX04 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.css`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
+- `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check -- docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` - pass
+- Remaining risk:
+  - The client app build still emits the existing chunk-size warning for `recharts`.
+- Next:
+  - `DEX06 - Implement Product Decision Center confidence breakdown contract`
+
+## DEX04 - Implement Product Decision Center deterministic explainability contract
+
+Status: DONE
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase1
+Parallel-safe: no, coupled backend/frontend contract
+Owner: unassigned
+Local lock: removed after DONE
+
+### Problem
+
+Product Decision Center already has the deterministic backend explainability profile, but the page still carries local confidence, impact and freshness derivations. The first executable implementation prompt needs to align backend, frontend and regression tests around the backend as source of truth without drifting into Decision Board refactoring.
+
+### Evidence
+
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md` already names Product Decision Center as the Phase 1 reference module.
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs` verifies backend recommendation, confidence and impact behavior.
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs` verifies the backend confidence profile for high-confidence and insufficient-data rows.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still derives confidence, impact, warning and freshness presentation locally.
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` and `ProductDecisionCenterPage.actionStatusFallback.spec.tsx` already cover the user-facing contract that must remain honest.
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md` and `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` show Product Decision Center is the right first bounded family and Decision Board is the downstream consumer.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+- `Klijent/clientapp/src/types/analytics.ts`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx` if the action metadata snapshot contract changes
+
+### Read first
+
+- DEX01 output
+- DEX02 output
+- DEX03 output
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+
+### Do
+
+1. Keep Product Decision Center rows and response metadata backend-led for recommendation identity, confidence, drivers, warnings, expected impact, impact window, risk and freshness.
+2. Remove or narrow frontend heuristics so the page formats backend fields instead of inventing confidence, impact or freshness substitutes.
+3. Preserve null, missing and insufficient-data semantics, including explicit stale/critical cases and no fake zero.
+4. Keep the action queue metadata snapshot aligned with the authoritative backend explainability fields.
+5. Leave Decision Board behavior unchanged except for regression coverage that proves the shared contract still holds downstream.
+
+### Tests
+
+- backend integration covers a high-confidence replenish row and an insufficient-data row with honest nullable impact;
+- backend unit coverage confirms the explainability profile includes stable identity, confidence level, drivers, warnings, impact, risk and freshness;
+- frontend confidence specs cover strong recommendations, missing impact, insufficient-data and stale freshness;
+- API failure and empty-state regressions do not render fake zero or fake confidence;
+- downstream Decision Board compatibility does not regress.
+
+### Acceptance
+
+- Product Decision Center render, detail and action metadata are driven from deterministic backend explainability fields;
+- null/missing/stale/critical signals remain explicit;
+- no frontend-local heuristic invents business truth for confidence or impact;
+- no Decision Board regression was introduced.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/vite.config.ts`
+  - `Klijent/clientapp/vitest.config.ts`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- Checks:
+  - `git diff --check -- Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx Klijent/clientapp/vite.config.ts Klijent/clientapp/vitest.config.ts docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` - pass
+  - `npm.cmd run check:analytics-guardrails` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests --no-restore` - pass
+  - `npm.cmd run build` - pass
+  - `npm.cmd run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+- Remaining risk:
+  - The client app build still emits the existing chunk-size warning for `recharts`.
+- Next:
+  - `DEX05 - Implement Product Decision Center evidence chain drill-down contract`
+
+### Dependencies
+
+- DEX03 DONE.
+
+## DEX03 - Prepare Product Decision Center explainability implementation prompt
+
+Status: DONE
+Priority: future-high-value / planning
+Feature family: decision-explainability-product-decision-center
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+
+### Problem
+
+DEX02 selects Product Decision Center as the first bounded family, but the next implementation prompt still needs a small, reviewable boundary that names the exact backend, frontend and hardening surfaces without expanding into the whole decision system.
+
+### Evidence
+
+- DEX01 defined the deterministic Decision Graph and evidence-chain contract.
+- DEX02 selected Product Decision Center as the first-family rollout target.
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md` shows Product Decision Center already exposes confidence, impact, warnings and freshness semantics.
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` shows Decision Board already consumes Product Decision Center semantics downstream.
+
+### Scope
+
+- docs/planning only;
+- one bounded implementation prompt for Product Decision Center explainability;
+- enumerate exact backend DTO fields, frontend Why/drill-down inputs, evidence snapshot requirements and regression tests;
+- no production code changes in this prompt.
+
+### Read first
+
+- DEX01 output
+- DEX02 output
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`
+
+### Do
+
+1. Split Product Decision Center work into backend, frontend and hardening slices.
+2. Define the first implementation prompt boundary and what stays for later.
+3. Keep additive compatibility rules explicit.
+4. Call out the fields that must remain backend-led and deterministic.
+
+### Tests
+
+- implementation prompt does not invent confidence, impact or alternatives;
+- no AI dependency or runtime graph engine;
+- true zero, missing evidence and stale evidence remain explicit;
+- no frontend-only decision logic is introduced.
+
+### Acceptance
+
+- one executable Product Decision Center implementation prompt exists with bounded scope and follow-up slices;
+- no production behavior change was introduced by this planning prompt.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check -- docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Remaining risk:
+  - DEX04 still needs runtime execution to land the Product Decision Center explainability contract.
+- Next:
+  - `DEX04 - Implement Product Decision Center deterministic explainability contract`
+
+### Dependencies
+
+- DEX02 DONE.
+
+---
+
+## DEX02 - Prepare first-family explainability rollout plan
+
+Status: DONE
+Priority: future
+Feature family: decision-explainability-rollout-plan
+Parallel-safe: yes, planning only
+Owner: unassigned
+
+### Problem
+
+After DEX01, runtime rollout still needs a bounded first family, exact surface list and compatibility plan before implementation prompts are created.
+
+### Evidence
+
+- DEX01 will define the common contract.
+- Existing recommendation families differ in impact/confidence/evidence maturity.
+
+### Scope
+
+- docs/planning only;
+- select one family and enumerate API/detail/export/action surfaces;
+- no runtime prompt generation beyond a proposed split list.
+
+### Read first
+
+- DEX01 output
+- selected family queue/audit/tests
+- `docs/planning/FEATURE_LIFECYCLE.md`
+
+### Do
+
+1. Score candidate families by business value, evidence completeness and implementation risk.
+2. Select one first family.
+3. Define rollout slices: backend contract, frontend Why/drill-down, evidence snapshot, hardening.
+4. Identify exact dependencies and stop conditions.
+
+### Tests
+
+- plan maps every affected surface;
+- no duplicate RQ/STAB ownership;
+- no slice exceeds a reviewable feature family.
+
+### Acceptance
+
+- implementation can later be promoted through separate bounded prompts without duplicating existing queues.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check -- docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Remaining risk:
+  - rollout plan is documentation-only; no runtime Product Decision Center implementation was added.
+- Next:
+  - `DEX03 - Prepare Product Decision Center explainability implementation prompt`
+
+### Dependencies
+
+- DEX01 DONE.
+
+---
+
 ## DEX01 - Define deterministic Decision Graph and evidence-chain contract
 
-Status: READY  
-Priority: future-high-value / planning  
-Feature family: decision-explainability-contract  
-Parallel-safe: yes, docs/contracts only  
+Status: DONE
+Priority: future-high-value / planning
+Feature family: decision-explainability-contract
+Parallel-safe: yes, docs/contracts only
 Owner: unassigned
+Local lock: removed after DONE
 
 ### Problem
 
@@ -76,63 +461,28 @@ Trendplus recommendations already expose reasons, confidence and impact in multi
 - the first future runtime implementation can be scoped to one recommendation family;
 - no runtime implementation was added by this prompt.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `git diff --check -- .ai/task-locks/DEX01-codex.lock.md docs/architecture/DECISION_GRAPH_CONTRACT.md docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Remaining risk:
+  - This is a contract/documentation pass only; no runtime decision graph generation exists yet.
+- Next:
+  - `DEX02 - Prepare first-family explainability rollout plan`
+
 ### Dependencies
 
 - current analytics reliability semantics remain authoritative;
 - no dependency on GAI;
 - later shared-SaaS evidence persistence must satisfy MT/SEC.
-
----
-
-## DEX02 - Prepare first-family explainability rollout plan
-
-Status: WAITING  
-Priority: future  
-Feature family: decision-explainability-rollout-plan  
-Parallel-safe: yes, planning only  
-Owner: unassigned
-
-### Problem
-
-After DEX01, runtime rollout still needs a bounded first family, exact surface list and compatibility plan before implementation prompts are created.
-
-### Evidence
-
-- DEX01 will define the common contract.
-- Existing recommendation families differ in impact/confidence/evidence maturity.
-
-### Scope
-
-- docs/planning only;
-- select one family and enumerate API/detail/export/action surfaces;
-- no runtime prompt generation beyond a proposed split list.
-
-### Read first
-
-- DEX01 output
-- selected family queue/audit/tests
-- `docs/planning/FEATURE_LIFECYCLE.md`
-
-### Do
-
-1. Score candidate families by business value, evidence completeness and implementation risk.
-2. Select one first family.
-3. Define rollout slices: backend contract, frontend Why/drill-down, evidence snapshot, hardening.
-4. Identify exact dependencies and stop conditions.
-
-### Tests
-
-- plan maps every affected surface;
-- no duplicate RQ/STAB ownership;
-- no slice exceeds a reviewable feature family.
-
-### Acceptance
-
-- implementation can later be promoted through separate bounded prompts without duplicating existing queues.
-
-### Dependencies
-
-- DEX01 DONE.
 
 ---
 

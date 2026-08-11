@@ -55,6 +55,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.NotNull(replenish.ConfidenceScore);
         Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
+        Assert.Equal("fresh", replenish.InputFreshnessStatus);
+        Assert.NotEmpty(replenish.EvidenceChain);
+        Assert.Contains(replenish.EvidenceChain, node => node.Code == "selected_recommendation");
+        Assert.Contains(replenish.EvidenceChain, node => node.Code == "sales_signal");
+        Assert.Contains(replenish.EvidenceChain, node => node.Code == "expected_impact");
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.ReplenishNeeded, replenish.ReasonCodes);
         Assert.Equal(500m, replenish.ExpectedImpactRsd);
         Assert.Equal(14, replenish.ImpactWindowDays);
@@ -68,7 +73,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MissingCost, fixData.ReasonCodes);
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, fixData.ReasonCodes);
         Assert.Contains("missing_cost", fixData.WarningCodes);
+        Assert.Equal("critical", fixData.InputFreshnessStatus);
         Assert.Null(fixData.ExpectedImpactRsd);
+        Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:missing_cost");
+        Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:expected_impact_denominator_missing");
+        Assert.Contains(fixData.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);
 
         Assert.Equal(1, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);

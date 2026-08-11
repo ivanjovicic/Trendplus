@@ -32,6 +32,7 @@ import type {
   AnalyticsActionSourceType,
   ProductDecisionCenterItem,
   ProductDecisionCenterResponse,
+  ProductDecisionEvidenceNode,
   ProductDecisionRecommendationStatus,
   StoreOption,
   SupplierFilterOption,
@@ -152,6 +153,14 @@ const DRIVER_LABELS: Record<string, string> = {
   sparse_sales: "Malo prodaje",
 };
 
+const EVIDENCE_CATEGORY_LABELS: Record<string, string> = {
+  decision: "Odluka",
+  evidence: "Dokaz",
+  confidence: "Sigurnost",
+  constraint: "Ograničenje",
+  impact: "Uticaj",
+};
+
 const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "productName", header: "Artikal", dataType: "text" },
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
@@ -224,20 +233,13 @@ function translateReasonCode(code: string): string {
 
 function normalizeConfidenceLevel(
   value: string | null | undefined,
-  confidenceScore: number | null | undefined,
 ): ConfidenceLevel {
   const normalized = (value ?? "").trim().toLowerCase();
   if (normalized === "high" || normalized === "medium" || normalized === "low" || normalized === "insufficient_data") {
     return normalized;
   }
 
-  if (confidenceScore == null || Number.isNaN(confidenceScore)) {
-    return "insufficient_data";
-  }
-
-  if (confidenceScore >= 80) return "high";
-  if (confidenceScore >= 60) return "medium";
-  return "low";
+  return "insufficient_data";
 }
 
 function confidenceLevelClass(level: ConfidenceLevel): string {
@@ -266,11 +268,7 @@ function resolveConfidenceScore(row: ProductDecisionRow): number | null {
     return row.confidenceScore;
   }
 
-  if (row.confidenceLevel === "insufficient_data") {
-    return null;
-  }
-
-  return Number.isNaN(row.confidencePct) ? null : row.confidencePct;
+  return null;
 }
 
 function resolveExpectedImpactRsd(row: ProductDecisionRow): number | null {
@@ -278,58 +276,24 @@ function resolveExpectedImpactRsd(row: ProductDecisionRow): number | null {
     return row.expectedImpactRsd;
   }
 
-  return row.lostSalesEstimate > 0 ? row.lostSalesEstimate : null;
+  return null;
 }
 
 function resolveWarningCodes(row: ProductDecisionRow): string[] {
-  const source = row.warningCodes?.length ? row.warningCodes : row.reasonCodes;
-  return normalizeSignalList(source).filter((code) => {
-    const normalized = code.toLowerCase();
-    return normalized === "missing_cost"
-      || normalized === "missing_supplier"
-      || normalized === "insufficient_history"
-      || normalized === "expected_impact_denominator_missing"
-      || normalized === "data_quality_critical"
-      || normalized === "insufficient_data"
-      || normalized === "data_quality_blocker";
-  });
+  return normalizeSignalList(row.warningCodes);
 }
 
 function resolvePrimaryDrivers(row: ProductDecisionRow): string[] {
-  const drivers: string[] = [];
-  const add = (driver: string) => {
-    if (!drivers.includes(driver)) drivers.push(driver);
-  };
-
-  if (row.velocityUnitsPerDay > 0.5 || row.unitsSold >= 20) add("sales_velocity");
-  if (row.marginPct != null || row.marginContribution > 0) add("margin");
-  if (row.stockGap > 0 || row.currentStock <= row.minStock || ["low_cover", "out_of_stock_risk", "slow_stock", "no_velocity"].includes((row.stockCoverStatus ?? "").trim().toLowerCase())) {
-    add("stock_risk");
-  }
-  if (row.trendPct != null) add("trend");
-  if (resolveWarningCodes(row).some((code) => code === "missing_cost")) add("missing_cost");
-  if ((row.supplierName && row.reliabilityPct < 70) || resolveWarningCodes(row).some((code) => code === "missing_supplier")) {
-    add("supplier_reliability");
-  }
-  if (row.unitsSold < 8 || row.daysSinceLastSale == null) add("sparse_sales");
-
-  return drivers;
+  return normalizeSignalList(row.primaryDrivers);
 }
 
-function resolveInputFreshnessStatus(row: ProductDecisionRow, confidenceLevel: ConfidenceLevel): "fresh" | "stale" | "critical" | "unknown" {
-  if (confidenceLevel === "insufficient_data" || canonicalDataQualityStatus(row.dataQualityStatus) === "critical") {
-    return "critical";
+function resolveInputFreshnessStatus(row: ProductDecisionRow): "fresh" | "stale" | "critical" | "unknown" {
+  const normalized = (row.inputFreshnessStatus ?? "").trim().toLowerCase();
+  if (normalized === "fresh" || normalized === "stale" || normalized === "critical" || normalized === "unknown") {
+    return normalized;
   }
 
-  if (row.daysSinceLastSale == null) {
-    return "unknown";
-  }
-
-  if (row.daysSinceLastSale > 60) {
-    return "stale";
-  }
-
-  return "fresh";
+  return "unknown";
 }
 
 function confidenceLevelLabel(level: ConfidenceLevel): string {
@@ -354,6 +318,10 @@ function inputFreshnessLabel(value: string | null | undefined): string {
 
 function primaryDriverLabel(value: string): string {
   return DRIVER_LABELS[value] ?? value;
+}
+
+function evidenceCategoryLabel(value: string): string {
+  return EVIDENCE_CATEGORY_LABELS[value] ?? value;
 }
 
 function stockCoverStatusLabel(status: string | null | undefined): string {
@@ -834,12 +802,12 @@ export default function ProductDecisionCenterPage() {
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
-    const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel, row.confidenceScore ?? row.confidencePct);
+    const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
     const confidenceScore = resolveConfidenceScore(row);
     const warningCodes = resolveWarningCodes(row);
     const primaryDrivers = resolvePrimaryDrivers(row);
     const expectedImpactRsd = resolveExpectedImpactRsd(row);
-    const inputFreshnessStatus = resolveInputFreshnessStatus(row, confidenceLevel);
+    const inputFreshnessStatus = resolveInputFreshnessStatus(row);
 
     if (queueBusyKeyRef.current === sourceKey || queuedActionKeys.has(sourceKey)) {
       return;
@@ -1231,12 +1199,12 @@ export default function ProductDecisionCenterPage() {
                   const isQueued = queuedActionKeys.has(sourceKey);
                   const isQueueBusy = queueBusyKey === sourceKey;
                   const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
-                  const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel, row.confidenceScore ?? row.confidencePct);
+                  const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
                   const confidenceScore = resolveConfidenceScore(row);
                   const warningCodes = resolveWarningCodes(row);
                   const primaryDrivers = resolvePrimaryDrivers(row);
                   const expectedImpactRsd = resolveExpectedImpactRsd(row);
-                  const inputFreshnessStatus = resolveInputFreshnessStatus(row, confidenceLevel);
+                  const inputFreshnessStatus = resolveInputFreshnessStatus(row);
                   const reasonCodeItems = row.reasonCodes.length
                     ? row.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
                     : null;
@@ -1246,6 +1214,7 @@ export default function ProductDecisionCenterPage() {
                   const primaryDriverItems = primaryDrivers.length
                     ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
+                  const evidenceChainItems: ProductDecisionEvidenceNode[] = row.evidenceChain ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
 
@@ -1349,7 +1318,28 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-block">
-                                <strong>Zašto ova preporuka?</strong> {row.explainabilityText || row.recommendationReason || "Objašnjenje nije dostupno."}
+                                <strong>Zašto ova preporuka?</strong> {row.explainabilityText ?? row.recommendationReason ?? "Objašnjenje nije dostupno."}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Lanac dokaza:</strong>
+                                {evidenceChainItems.length ? (
+                                  <ol className="evidence-chain-list">
+                                    {evidenceChainItems.map((item) => (
+                                      <li key={item.code} className={`evidence-chain-item evidence-chain-${item.category}`}>
+                                        <div className="evidence-chain-headline">
+                                          <span className="evidence-chain-category">{evidenceCategoryLabel(item.category)}</span>
+                                          <span className="evidence-chain-label">{item.label}</span>
+                                        </div>
+                                        <span className={`evidence-chain-value${item.isMissing ? " evidence-chain-missing" : ""}`}>{item.valueText}</span>
+                                        {item.detail ? <small>{item.detail}</small> : null}
+                                        <small className="evidence-chain-source">Izvor: {item.sourceFields.join(" · ")}</small>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                ) : (
+                                  <span>Lanac dokaza nije dostupan.</span>
+                                )}
                               </div>
 
                               <div className="reason-block">
