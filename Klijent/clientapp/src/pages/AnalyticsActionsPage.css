@@ -712,6 +712,52 @@
   flex-wrap: wrap;
 }
 
+.aaq-outcome-guidance {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-default, #c6c8ca);
+  background: var(--surface-light, #f4f5f6);
+  color: var(--text-secondary, #383d41);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.aaq-outcome-guidance--pending {
+  border-color: var(--warning-border, #e0c36a);
+  background: var(--warning-surface, #fff8e6);
+}
+
+.aaq-outcome-guidance--not-measured {
+  border-color: var(--border-default, #c6c8ca);
+  background: var(--surface-muted, #eef0f2);
+}
+
+.aaq-outcome-guidance--measured {
+  border-color: var(--info-border, #9ec5e8);
+  background: var(--info-surface, #eef6fc);
+}
+
+.aaq-outcome-fields {
+  margin-bottom: 0.35rem;
+}
+
+.aaq-outcome-fields--locked {
+  opacity: 0.78;
+}
+
+.aaq-outcome-fields--locked input:disabled {
+  cursor: not-allowed;
+  background: var(--surface-muted, #eef0f2);
+}
+
+.aaq-modal-field-hint {
+  margin: -0.25rem 0 0.85rem;
+  color: var(--text-secondary, #5c636a);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
 @media (max-width: 760px) {
   .aaq-page {
     padding: 1rem;

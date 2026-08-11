@@ -33,7 +33,7 @@ const OUTCOME_NOTES_PREVIEW_LIMIT = 96;
 const SOURCE_LABELS: Record<AnalyticsActionSourceType, string> = {
   dashboard: "Dashboard",
   product: "Proizvodi",
-  supplier: "Dobavljaci",
+  supplier: "Dobavljači",
   inventory: "Zalihe",
   nivelacija: "Nivelacija",
   data_quality: "Kvalitet podataka",
@@ -267,6 +267,30 @@ function getMeasuredOutcomeCount(value: MeasuredOutcomeContract): number {
 
 function isMeasuredOutcomeLocked(status: AnalyticsActionOutcomeUpdateInput["outcomeStatus"]): boolean {
   return status === "pending" || status === "not_measured";
+}
+
+function getOutcomeModalGuidance(status: AnalyticsActionOutcomeUpdateInput["outcomeStatus"]): {
+  tone: "pending" | "not-measured" | "measured";
+  text: string;
+} {
+  if (status === "pending") {
+    return {
+      tone: "pending",
+      text: "Čeka proveru: merljivi uticaj, datum merenja i izvor dokaza nisu obavezni i ostaju prazni dok merenje nije završeno. Ne unosite 0 RSD kao zamenu za nedostajuće merenje.",
+    };
+  }
+
+  if (status === "not_measured") {
+    return {
+      tone: "not-measured",
+      text: "Nije izmereno: akcija je zatvorena bez merljivog dokaza. Polja za uticaj, datum i izvor dokaza namerno su nedostupna — to nije greška i nije 0 RSD.",
+    };
+  }
+
+  return {
+    tone: "measured",
+    text: "Za pozitivan, neutralan ili negativan ishod izvor dokaza je obavezan. Merljivi uticaj i datum merenja unesite samo kada postoji stvarno merenje; prazno polje znači da broj još nije dostupan.",
+  };
 }
 
 function formatImpactValue(value: number | null | undefined, unavailableLabel: string): string {
@@ -679,7 +703,7 @@ export default function AnalyticsActionsPage() {
 
     const evidenceSource = outcomeModal.evidenceSource.trim();
     if (authoritativeOutcome && evidenceSource.length === 0) {
-      setOutcomeModalError("Izvor dokaza je obavezan za success, neutral i negative ishode.");
+      setOutcomeModalError("Izvor dokaza je obavezan za pozitivan, neutralan i negativan ishod.");
       return;
     }
 
@@ -715,6 +739,9 @@ export default function AnalyticsActionsPage() {
   }
 
   const openStatuses: AnalyticsActionStatus[] = ["new", "accepted", "deferred"];
+  const outcomeModalGuidance = outcomeModal
+    ? getOutcomeModalGuidance(outcomeModal.outcomeStatus)
+    : null;
 
   return (
     <div className="aaq-page">
@@ -1167,7 +1194,7 @@ export default function AnalyticsActionsPage() {
                                   onClick={() => openStatusNoteModal(item, "done")}
                                   title="Označi kao završeno"
                                 >
-                                  Zavrsi
+                                  Završi
                                 </button>
                               )}
                               {isOpen && (
@@ -1205,8 +1232,8 @@ export default function AnalyticsActionsPage() {
                         <tr id={`aaq-details-${item.id}`} className="aaq-row-details">
                           <td colSpan={13}>
                             <div className="aaq-detail-sections">
-                              <section className="aaq-detail-card" aria-label={`Outcome detalji za ${detailsItem.title}`}>
-                                <h3 className="aaq-detail-card-title">Outcome pregled</h3>
+                              <section className="aaq-detail-card" aria-label={`Detalji ishoda za ${detailsItem.title}`}>
+                                <h3 className="aaq-detail-card-title">Pregled ishoda</h3>
                                 <p className="aaq-detail-card-note">{getOutcomeStateMessage(detailsItem)}</p>
                                 <div className="aaq-details-grid">
                                   <div><strong>Status ishoda:</strong> {getOutcomeStatusLabel(detailsItem.outcomeStatus)}</div>
@@ -1224,18 +1251,18 @@ export default function AnalyticsActionsPage() {
                               <section className="aaq-detail-card" aria-label={`Kontekst preporuke za ${detailsItem.title}`}>
                                 <h3 className="aaq-detail-card-title">Kontekst preporuke</h3>
                                 <div className="aaq-details-grid">
-                                  <div><strong>Ledger schema:</strong> {getLedgerSchemaLabel(detailsItem.ledgerSnapshot)}</div>
-                                  <div><strong>Recommendation type:</strong> {creationSnapshot?.recommendationType?.trim() || "Nije evidentirano"}</div>
-                                  <div><strong>Confidence level:</strong> {formatConfidenceLevelLabel(creationSnapshot?.confidenceLevel)}</div>
+                                  <div><strong>Verzija ledger šeme:</strong> {getLedgerSchemaLabel(detailsItem.ledgerSnapshot)}</div>
+                                  <div><strong>Tip preporuke:</strong> {creationSnapshot?.recommendationType?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Nivo pouzdanosti:</strong> {formatConfidenceLevelLabel(creationSnapshot?.confidenceLevel)}</div>
                                   <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(creationSnapshot?.inputFreshnessStatus)}</div>
-                                  <div><strong>Impact window:</strong> {formatWindowDays(creationSnapshot?.impactWindowDays, "Nije evidentirano")}</div>
-                                  <div><strong>Generated at:</strong> {formatTimestamp(creationSnapshot?.generatedAtUtc)}</div>
-                                  <div><strong>Expected impact basis:</strong> {creationSnapshot?.expectedImpactBasis?.trim() || "Nije evidentirano"}</div>
-                                  <div><strong>Source recommendation id:</strong> {creationSnapshot?.sourceRecommendationId?.trim() || "Nije evidentirano"}</div>
-                                  <div><strong>Recommended action:</strong> {creationSnapshot?.recommendedAction?.trim() || "Nije evidentirano"}</div>
-                                  <div><strong>Decision reason:</strong> {creationSnapshot?.decisionReason?.trim() || "Nije evidentirano"}</div>
-                                  <div><strong>Primary drivers:</strong> {formatLedgerList(creationSnapshot?.primaryDrivers, "Nije evidentirano")}</div>
-                                  <div><strong>Warning codes:</strong> {formatLedgerList(creationSnapshot?.warningCodes, "Nije evidentirano")}</div>
+                                  <div><strong>Prozor uticaja:</strong> {formatWindowDays(creationSnapshot?.impactWindowDays, "Nije evidentirano")}</div>
+                                  <div><strong>Generisano:</strong> {formatTimestamp(creationSnapshot?.generatedAtUtc)}</div>
+                                  <div><strong>Osnova očekivanog uticaja:</strong> {creationSnapshot?.expectedImpactBasis?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>ID izvorne preporuke:</strong> {creationSnapshot?.sourceRecommendationId?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Preporučena akcija:</strong> {creationSnapshot?.recommendedAction?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Razlog odluke:</strong> {creationSnapshot?.decisionReason?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Primarni signali:</strong> {formatLedgerList(creationSnapshot?.primaryDrivers, "Nije evidentirano")}</div>
+                                  <div><strong>Kodovi upozorenja:</strong> {formatLedgerList(creationSnapshot?.warningCodes, "Nije evidentirano")}</div>
                                 </div>
                               </section>
                             </div>
@@ -1260,10 +1287,10 @@ export default function AnalyticsActionsPage() {
                                   <div><strong>Izvor preporuke:</strong> {impactLedger.sourceRecommendationId ?? "-"}</div>
                                   <div><strong>Derivacija izvora:</strong> {impactLedger.sourceRecommendationIdDerivation}</div>
                                   <div><strong>Prikupljeno:</strong> {formatTimestamp(impactLedger.capturedAtUtc)}</div>
-                                  <div><strong>Osnova ocekivanja:</strong> {impactLedger.snapshot.expectedImpactBasis}</div>
+                                  <div><strong>Osnova očekivanja:</strong> {impactLedger.snapshot.expectedImpactBasis}</div>
                                   <div><strong>Primarni signali:</strong> {formatList(impactLedger.snapshot.primaryDrivers)}</div>
                                   <div><strong>Razlog odluke:</strong> {impactLedger.snapshot.decisionReason}</div>
-                                  <div><strong>Preporucena akcija:</strong> {impactLedger.snapshot.recommendedAction}</div>
+                                  <div><strong>Preporučena akcija:</strong> {impactLedger.snapshot.recommendedAction}</div>
                                   <div><strong>Period izvora:</strong> {formatImpactLedgerPeriod(impactLedger.snapshot.sourcePeriodStartUtc, impactLedger.snapshot.sourcePeriodEndUtc)}</div>
                                   <div><strong>Izvorni modul:</strong> {impactLedger.snapshot.sourceModule ?? "-"}</div>
                                   <div><strong>Freshness ulaza:</strong> {impactLedger.snapshot.inputFreshnessStatus}</div>
@@ -1413,8 +1440,17 @@ export default function AnalyticsActionsPage() {
           >
             <h2 id="aaq-outcome-modal-title">Ažuriraj ishod</h2>
             <p className="aaq-modal-subtitle">
-              Beležite ishod za akciju <strong>{outcomeModal.title}</strong>.
+              Beležite ishod za akciju <strong>{outcomeModal.title}</strong>. Status određuje da li su merljiva polja obavezna, opciona ili namerno nedostupna.
             </p>
+            {outcomeModalGuidance ? (
+              <div
+                className={`aaq-outcome-guidance aaq-outcome-guidance--${outcomeModalGuidance.tone}`}
+                role="status"
+                data-testid="aaq-outcome-guidance"
+              >
+                {outcomeModalGuidance.text}
+              </div>
+            ) : null}
             {outcomeModalError ? <div className="aaq-error" role="alert">{outcomeModalError}</div> : null}
             <label htmlFor="aaq-outcome-status">Ishod</label>
             <select
@@ -1444,43 +1480,53 @@ export default function AnalyticsActionsPage() {
                 <option key={status} value={status}>{OUTCOME_LABELS[status]}</option>
               ))}
             </select>
-            <label htmlFor="aaq-outcome-impact">Merljivi uticaj (RSD)</label>
-            <input
-              id="aaq-outcome-impact"
-              type="number"
-              step="0.01"
-              value={outcomeModal.measuredImpactRsd}
-              onChange={(e) => {
-                setOutcomeModalError(null);
-                setOutcomeModal((current) => current ? { ...current, measuredImpactRsd: e.target.value } : current);
-              }}
-              placeholder="npr. 12500"
-              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
-            />
-            <label htmlFor="aaq-outcome-measured-at">Datum merenja ishoda</label>
-            <input
-              id="aaq-outcome-measured-at"
-              type="datetime-local"
-              value={outcomeModal.outcomeMeasuredAtLocal}
-              onChange={(e) => {
-                setOutcomeModalError(null);
-                setOutcomeModal((current) => current ? { ...current, outcomeMeasuredAtLocal: e.target.value } : current);
-              }}
-              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
-            />
-            <label htmlFor="aaq-outcome-evidence-source">Izvor dokaza</label>
-            <input
-              id="aaq-outcome-evidence-source"
-              type="text"
-              value={outcomeModal.evidenceSource}
-              onChange={(e) => {
-                setOutcomeModalError(null);
-                setOutcomeModal((current) => current ? { ...current, evidenceSource: e.target.value } : current);
-              }}
-              placeholder="npr. action_outcome_summary"
-              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
-            />
-            <div className="aaq-modal-subtitle">Obavezno za success, neutral i negative ishode.</div>
+            <div className={isMeasuredOutcomeLocked(outcomeModal.outcomeStatus) ? "aaq-outcome-fields aaq-outcome-fields--locked" : "aaq-outcome-fields"}>
+              <label htmlFor="aaq-outcome-impact">Merljivi uticaj (RSD)</label>
+              <input
+                id="aaq-outcome-impact"
+                type="number"
+                step="0.01"
+                value={outcomeModal.measuredImpactRsd}
+                onChange={(e) => {
+                  setOutcomeModalError(null);
+                  setOutcomeModal((current) => current ? { ...current, measuredImpactRsd: e.target.value } : current);
+                }}
+                placeholder={isMeasuredOutcomeLocked(outcomeModal.outcomeStatus) ? "Nije dostupno za ovaj status" : "npr. 12500 (ostavite prazno ako nema merenja)"}
+                disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
+              />
+              <label htmlFor="aaq-outcome-measured-at">Datum merenja ishoda</label>
+              <input
+                id="aaq-outcome-measured-at"
+                type="datetime-local"
+                value={outcomeModal.outcomeMeasuredAtLocal}
+                onChange={(e) => {
+                  setOutcomeModalError(null);
+                  setOutcomeModal((current) => current ? { ...current, outcomeMeasuredAtLocal: e.target.value } : current);
+                }}
+                disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
+              />
+              <label htmlFor="aaq-outcome-evidence-source">Izvor dokaza</label>
+              <input
+                id="aaq-outcome-evidence-source"
+                type="text"
+                value={outcomeModal.evidenceSource}
+                onChange={(e) => {
+                  setOutcomeModalError(null);
+                  setOutcomeModal((current) => current ? { ...current, evidenceSource: e.target.value } : current);
+                }}
+                placeholder={isMeasuredOutcomeLocked(outcomeModal.outcomeStatus) ? "Nije potreban za ovaj status" : "npr. action_outcome_summary"}
+                disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
+              />
+              {!isMeasuredOutcomeLocked(outcomeModal.outcomeStatus) ? (
+                <p className="aaq-modal-field-hint">
+                  Izvor dokaza je obavezan. Merljivi uticaj i datum merenja unesite samo kada postoji stvarno merenje.
+                </p>
+              ) : (
+                <p className="aaq-modal-field-hint">
+                  Merljiva polja su zaključana za status „{OUTCOME_LABELS[outcomeModal.outcomeStatus]}”.
+                </p>
+              )}
+            </div>
             <label htmlFor="aaq-outcome-notes">Napomena</label>
             <textarea
               id="aaq-outcome-notes"

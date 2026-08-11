@@ -42,7 +42,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none (`BCI05` PARTIAL) | `BCI01` is PARTIAL. RQ89-RQ95 DONE. Local Docker suite green `809/809`; GHA proof blocked on commit/push. | Evidence/docs only | Commit/push -> green GHA -> BCI01 DONE |
 | STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` DONE. Residual authz watchlist (import/logs/docs) unqueued — STAB-owned, not SEC. | Evidence/docs when paths clear | Queue STAB follow-ups or accept residual risk |
 | RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | none (`RQ95` DONE) | BCI05 override active until GHA green; do not promote RQ WAITING over BCI05. | Selected docs/tests only | BCI05 commit/push/GHA |
-| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum | `P-UI-10` | P-UI-09 DONE (Actions copy/outcome UX). Preserve DQ health/top-count semantics. | Yes, when paths clear | P-UI-10 Data Quality table migration |
+| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum | `P-UI-11` | P-UI-10 DONE (DQ tables on `AnalyticsDataTable`). One legacy page per run; keep formulas/contracts. | Yes, when paths clear | P-UI-11 legacy analytics modernization |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB01`/`QDB02` DONE) | `QDB03` WAITING until backend CI executes real tests (`BCI01` PARTIAL). | Docs/tests when paths clear | Green BCI → promote QDB03 |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision → MT02 |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
@@ -51,7 +51,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | DT | same queue/roadmap as DEX | none | `DT01`/`DT02` DONE | Yes, docs/contracts | Queue Slice-1 timeline projection implementation when owner promotes |
 | PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | none | `PERF01` DONE (`docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`). `PERF02` WAITING on recorded measurements. | Yes, measurement plan | Run S-tier B1-B3/B8 pack, then PERF02 |
 | OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | none | `OBS01`/`OBS02` DONE (`OBSERVABILITY_SLI_CATALOG.md`, `OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`). Runtime starts at O2-1 when queued. | Yes, docs/contracts | Queue O2-1 read-model SLI snapshot implementation |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC01`/`SEC02`/`SEC03` DONE; `SEC04` WAITING. | Yes, docs only | SEC04 supply-chain policy |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC04` | `SEC01`/`SEC02`/`SEC03` DONE; `SEC04` READY. | Yes, docs only | SEC04 supply-chain policy |
 
 ## Product and process documents
 

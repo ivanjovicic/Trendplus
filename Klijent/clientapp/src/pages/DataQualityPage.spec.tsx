@@ -280,6 +280,25 @@ describe("DataQualityPage", () => {
     expect(screen.getAllByText("Premium sandala").length).toBeGreaterThan(0);
     expect(screen.getAllByText("SKU-101").length).toBeGreaterThan(0);
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("data-quality-missingSupplier: 1 rows");
+    expect(screen.getByTestId("data-quality-issues-table")).toBeInTheDocument();
+    expect(await screen.findByTestId("data-quality-top-offenders-table")).toBeInTheDocument();
+    expect(screen.getByText(/Ukupno u rezultatu: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Top lista: 1/)).toBeInTheDocument();
+  });
+
+  it("labels returned page rows separately from backend total count", async () => {
+    vi.mocked(getDataQualityIssues).mockResolvedValue(issues({
+      total: 42,
+      page: 1,
+      pageSize: 1,
+    }));
+
+    renderPage();
+    await screen.findByText("Problematični artikli");
+
+    expect(screen.getByTestId("data-quality-issues-table")).toHaveTextContent(/Ukupno u rezultatu: 42/);
+    expect(screen.getByTestId("data-quality-issues-table")).toHaveTextContent(/prikazana je trenutna strana/);
+    expect(screen.getByTestId("data-quality-issues-table")).toHaveTextContent(/Prikazano: 1 red/);
   });
 
   it("preserves context query parameters and calls APIs with dataScope", async () => {

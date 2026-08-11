@@ -241,14 +241,14 @@ Expected new area:
   - `dotnet test --filter FullyQualifiedName~SourceDataSessionAdapterTests|FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests` - pass (16/16)
   - `git diff --check` - pass (queued files)
   - no Access ODBC/CLI runtime rewrite; import consumers still use `IAccessDataReaderSession`
-- Next: `QDB03` stays WAITING until backend CI executes real tests (BCI01 PARTIAL)
+- Next: `QDB03` stays WAITING until backend CI executes real tests and the open BCI gate clears
 
 ---
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
 Status: WAITING
-Ready after: `QDB02` is `DONE` and backend CI executes real tests
+Ready after: `QDB02` is `DONE` and backend CI executes real tests without an open BCI `PARTIAL`/`BLOCKED` gate (`BCI01`/`BCI05`)
 Priority: P1
 Type: backend/integration tests
 Feature family: sqlserver-source-connector
@@ -256,6 +256,7 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/QDB03-<agent>.lock.md`
 Commit suggestion: `feat(import): add sql server source connector`
+Demotion note: 2026-08-11 — not READY while `BCI05`/`BCI01` remain PARTIAL (GHA proof pending), despite local Docker suite green.
 
 ### Goal
 

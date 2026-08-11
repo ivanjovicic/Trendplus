@@ -113,6 +113,8 @@ Create layered dashboards only after metric ownership is defined:
 
 A dashboard must preserve WARN/BLOCKED/unknown states rather than defaulting to green when telemetry is absent.
 
+**Planning:** dashboard/alert slice order is defined in `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` (O2-6).
+
 ### OBS-8 - Tracing
 
 Introduce distributed/request tracing where it gives diagnostic value:
@@ -125,6 +127,8 @@ Introduce distributed/request tracing where it gives diagnostic value:
 - future AI/provider calls only after GAI gates.
 
 Tracing must sample safely and avoid attaching sensitive row payloads.
+
+**Planning:** tracing is slice O2-7 and must follow correlation unification (O2-4).
 
 ### OBS-9 - Correlation IDs
 

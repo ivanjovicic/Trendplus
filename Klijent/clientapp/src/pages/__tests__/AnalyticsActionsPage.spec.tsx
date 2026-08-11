@@ -403,7 +403,7 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
-    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(screen.getAllByText("action_outcome_summary").length).toBeGreaterThan(0);
     expect(screen.getAllByText("14 dana").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Pad mar/i).length).toBeGreaterThan(0);
@@ -422,6 +422,9 @@ describe("AnalyticsActionsPage", () => {
     expect(evidenceInput.value).toBe("action_outcome_summary");
     fireEvent.change(screen.getByLabelText("Ishod"), { target: { value: "not_measured" } });
 
+    expect(screen.getByTestId("aaq-outcome-guidance")).toHaveTextContent(/Nije izmereno/);
+    expect(screen.getByTestId("aaq-outcome-guidance")).toHaveTextContent(/nije 0 RSD/);
+    expect(screen.getByText(/Merljiva polja su zaključana/)).toBeInTheDocument();
     expect(evidenceInput.value).toBe("");
     expect(evidenceInput).toBeDisabled();
     expect(impactInput).toBeDisabled();
@@ -500,7 +503,7 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Legacy outcome bez dokaza")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
-    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(screen.getByText("Ishod je evidentiran kvalitativno, ali bez potvrđenog dokaza i merljivog traga.")).toBeInTheDocument();
   });
 
@@ -550,7 +553,7 @@ describe("AnalyticsActionsPage", () => {
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
 
-    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(screen.getByText("Ishod je još u toku. Merljivi uticaj ostaje nedostupan dok merenje ne bude završeno.")).toBeInTheDocument();
     expect(screen.getAllByText("Još nije izmereno").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Kalibracija poverenja/i)).not.toBeInTheDocument();

@@ -35,7 +35,7 @@ Create one current security ownership/threat map covering:
 
 The output must link existing STAB/MT/GAI work rather than copying it.
 
-**Status:** SEC01 complete — `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`.
+**Status:** SEC01 complete - `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`.
 Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphans (supply-chain, retention assurance, incident ownership, key-rotation runbook).
 
 ### SEC-2 - Secrets and privileged operations assurance
@@ -47,6 +47,9 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 - source-connector credential storage/usage;
 - emergency access and audit expectations.
 
+**Status:** SEC03 complete - `docs/architecture/PRIVILEGED_SECRETS_ASSURANCE.md`.
+**Planning:** prioritized as slice **S2-1** in `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`. QDB remains primary for connector credential *features*.
+
 ### SEC-3 - Dependency and supply-chain posture
 
 - dependency vulnerability scanning policy;
@@ -54,6 +57,8 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 - JavaScript/.NET/Python dependency update strategy;
 - signed/reproducible release evidence where practical;
 - handling of abandoned/unavailable packages.
+
+**Planning:** slice **S2-2**; CI wiring collaborates with BCI. Current queue prompt: `SEC04` READY after SEC03.
 
 ### SEC-4 - Data protection and retention
 
@@ -63,6 +68,8 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 - generated reports/files;
 - tenant/customer offboarding;
 - AI data retention/provider policy when enabled.
+
+**Planning:** slice **S2-3**; consumes MT09 / GAI retention, does not replace them.
 
 ### SEC-5 - Authorization assurance
 
@@ -75,6 +82,8 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 
 This phase consumes MT and STAB contracts; it does not invent a parallel identity model.
 
+**Planning:** slice **S2-5**; blocked on STAB watchlist close/accept for overlapping surfaces.
+
 ### SEC-6 - Security observability and incident response
 
 - security-relevant audit events;
@@ -83,6 +92,8 @@ This phase consumes MT and STAB contracts; it does not invent a parallel identit
 - incident classification/runbooks;
 - customer/tenant impact assessment;
 - evidence retention appropriate to supported deployments.
+
+**Planning:** slice **S2-4**; consumes OBS unknown≠green rules.
 
 ### SEC-7 - SaaS security gate
 
@@ -95,6 +106,8 @@ Before shared SaaS claims:
 - operational security alerts and incident ownership exist;
 - no known cross-tenant data path remains untested.
 
+**Planning:** slice **S2-6** checklist only after MT gate.
+
 ### SEC-8 - AI security gate
 
 Before customer-facing GenAI:
@@ -105,6 +118,8 @@ Before customer-facing GenAI:
 - provider secrets isolated;
 - no arbitrary SQL/write tools without separate approval design;
 - AI disabled mode remains fully supported.
+
+**Planning:** slice **S2-7** checklist only after GAI gates.
 
 ## Evidence principles
 

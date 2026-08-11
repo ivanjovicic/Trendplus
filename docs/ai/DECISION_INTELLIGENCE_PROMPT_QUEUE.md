@@ -10,7 +10,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 |---|---|---|
 | DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `none` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
-| DT - Decision Timeline | `none` (`DT01`/`DT02` DONE) | docs/planning only |
+| DT - Decision Timeline | `DT03` | Slice-1 read-only timeline projection |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -1022,8 +1022,66 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 - Rizici:
   - rollout is docs-only; first runtime slice still needs a queued implementation prompt
 - Sledece:
-  - none in DT program until an owner promotes a Slice-1 implementation prompt; planning peers `PERF01` / `OBS01` / `SEC01` remain READY
+  - Current DT READY: `DT03` (Slice-1 projection)
 
 ### Dependencies
 
 - DT01 DONE.
+
+---
+
+## DT03 - Implement Decision Timeline Slice-1 read-only projection
+
+Status: READY
+Priority: future
+Feature family: decision-timeline-slice1-projection
+Parallel-safe: yes, when no overlapping action/outcome RQ runtime task owns the same paths
+Owner: unassigned
+Local lock: `.ai/task-locks/DT03-<agent>.lock.md`
+Promotion note: 2026-08-11 — `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
+
+### Problem
+
+DT02 planned historical timeline slices, but no queued implementation exists for the first read-only projection from existing action/note/snapshot data.
+
+### Evidence
+
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` Slice 1
+
+### Scope
+
+- derive a read-only timeline projection from existing `AnalyticsActionItem` + notes + metadata snapshots;
+- preserve correlation identifiers and stage gaps (`no_acceptance_record`, `no_execution_proof`, `no_measurement_evidence`, `legacy_partial_history`);
+- keep `done` / `rejected` / `pending` / `not_measured` distinct;
+- focused tests for projection/gap behavior;
+- no new persistence store; no Slice-2 API/UI productization in this prompt unless required to prove the projection helper.
+
+### Read first
+
+- DT01/DT02 outputs
+- action/outcome DTOs and existing notes history
+- `docs/ai/ANALYTICS_STANDARDS.md` trust rules
+
+### Do
+
+1. Implement the smallest reviewable projection helper/service from current action data.
+2. Emit explicit gap reasons instead of inventing missing events.
+3. Add focused unit/integration tests for stage order and gap codes.
+4. Stop if stage order cannot be preserved without guessing.
+
+### Tests
+
+- projection never invents acceptance/execution/measurement events;
+- fake-zero / fake-measured rules unchanged;
+- tenant/correlation IDs are not treated as authorization.
+
+### Acceptance
+
+- Slice-1 projection is testable and citable by later Slice-2 API work without architecture guessing.
+
+### Dependencies
+
+- DT02 DONE.
+
+---

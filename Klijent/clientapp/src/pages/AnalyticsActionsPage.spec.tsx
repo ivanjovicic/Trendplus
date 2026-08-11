@@ -296,7 +296,7 @@ describe("AnalyticsActionsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
 
-    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(getAnalyticsActionById).toHaveBeenCalledWith(101);
     expect(screen.getByText(/Ishod je još u toku/i)).toBeInTheDocument();
     expect(screen.getByText("Ledger uticaja")).toBeInTheDocument();
@@ -324,12 +324,13 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Napomena"), { target: { value: "Još čekamo dokaz." } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Ažuriraj ishod" }));
 
-    await waitFor(() => expect(updateAnalyticsActionOutcome).toHaveBeenCalledWith(101, {
+    await waitFor(() => expect(updateAnalyticsActionOutcome).toHaveBeenCalledWith(101, expect.objectContaining({
       outcomeStatus: "pending",
       measuredImpactRsd: null,
       outcomeMeasuredAtUtc: null,
       outcomeNotes: "Još čekamo dokaz.",
-    }));
+      evidenceSource: null,
+    })));
   });
 
   it("submits measured successful outcome with parsed impact and note", async () => {
@@ -340,8 +341,13 @@ describe("AnalyticsActionsPage", () => {
     const dialog = await screen.findByRole("dialog", { name: "Ažuriraj ishod" });
 
     fireEvent.change(within(dialog).getByLabelText("Ishod"), { target: { value: "success" } });
-    fireEvent.change(within(dialog).getByLabelText("Merljivi uticaj (RSD)"), { target: { value: "12500,50" } });
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText("Merljivi uticaj (RSD)")).not.toBeDisabled();
+      expect(within(dialog).getByLabelText("Izvor dokaza")).not.toBeDisabled();
+    });
+    fireEvent.change(within(dialog).getByLabelText("Merljivi uticaj (RSD)"), { target: { value: "12500.50" } });
     fireEvent.change(within(dialog).getByLabelText("Datum merenja ishoda"), { target: { value: "2026-07-01T10:30" } });
+    fireEvent.change(within(dialog).getByLabelText("Izvor dokaza"), { target: { value: "action_outcome_summary" } });
     fireEvent.change(within(dialog).getByLabelText("Napomena"), { target: { value: "Dopuna je donela dodatnu prodaju." } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Ažuriraj ishod" }));
 
@@ -350,6 +356,7 @@ describe("AnalyticsActionsPage", () => {
       measuredImpactRsd: 12500.5,
       outcomeMeasuredAtUtc: expect.any(String),
       outcomeNotes: "Dopuna je donela dodatnu prodaju.",
+      evidenceSource: "action_outcome_summary",
     })));
   });
 });

@@ -2,6 +2,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -213,19 +214,26 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
           <h2>Top problemi</h2>
           <p>Rangirano po pogođenom prometu unutar aktivnog tipa problema.</p>
         </div>
-        <span className="data-quality-top-offenders-meta">Top {result.count}</span>
       </div>
 
-      <div className="data-quality-table-wrap">
-        <table className="data-quality-table data-quality-table-compact">
+      <AnalyticsDataTable
+        testId="data-quality-top-offenders-table"
+        rowCount={result.items.length}
+        truncationLabel={
+          result.count > result.items.length
+            ? `Ukupno u top listi: ${result.count.toLocaleString("sr-RS")} (prikazan je vraćeni uzorak)`
+            : `Top lista: ${result.count.toLocaleString("sr-RS")}`
+        }
+      >
+        <table>
           <thead>
             <tr>
               <th>SKU</th>
               <th>Artikal</th>
               <th>Dobavljač</th>
-              <th className="align-right">Promet 30d</th>
-              <th className="align-right">Uticaj (RSD)</th>
-              <th className="align-right">Uticaj (%)</th>
+              <th className="analytics-data-table__numeric">Promet 30d</th>
+              <th className="analytics-data-table__numeric">Uticaj (RSD)</th>
+              <th className="analytics-data-table__numeric">Uticaj (%)</th>
               <th>Akcija</th>
             </tr>
           </thead>
@@ -236,13 +244,13 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
                 <td>
                   <div className="data-quality-name">
                     <strong>{item.name || "Naziv nedostaje"}</strong>
-                    <span>ID: {item.productId}</span>
+                    <span className="analytics-data-table__subvalue">ID: {item.productId}</span>
                   </div>
                 </td>
                 <td>{item.supplierName || item.shoeTypeName || "-"}</td>
-                <td className="align-right">{fmtRsd(item.sales30d, 2)}</td>
-                <td className="align-right">{fmtRsd(item.revenueImpactRsd, 2)}</td>
-                <td className="align-right">{fmtPct(item.revenueImpactPct, 1)}</td>
+                <td className="analytics-data-table__numeric">{fmtRsd(item.sales30d, 2)}</td>
+                <td className="analytics-data-table__numeric">{fmtRsd(item.revenueImpactRsd, 2)}</td>
+                <td className="analytics-data-table__numeric">{fmtPct(item.revenueImpactPct, 1)}</td>
                 <td>
                   <Link className="data-quality-action" to={item.actionUrl || `/artikli/${item.productId}/edit`}>
                     Otvori artikal
@@ -252,7 +260,7 @@ function TopOffendersPanel({ issueType, dataScope }: { issueType: DataQualityIss
             ))}
           </tbody>
         </table>
-      </div>
+      </AnalyticsDataTable>
     </section>
   );
 }
@@ -977,31 +985,40 @@ export default function DataQualityPage() {
             <div>
               <h2>Problematični artikli</h2>
               <span className="data-quality-table-meta">
-                Ukupno: {data.total} | Strana {page} / {totalPages}
+                Strana {page} / {totalPages}
               </span>
             </div>
-
-            <AnalyticsTableToolbar
-              tableKey={`data-quality-${issueType}`}
-              tableTitle={`Data quality - ${issueLabel(issueType)}`}
-              columns={analyticsColumns}
-              rows={data.items}
-              filters={toolbarFilters}
-              metadata={toolbarMetadata}
-              defaultOrientation="landscape"
-            />
           </div>
 
-          <div className="data-quality-table-wrap">
-            <table className="data-quality-table">
+          <AnalyticsDataTable
+            testId="data-quality-issues-table"
+            rowCount={data.items.length}
+            truncationLabel={
+              data.total > data.items.length
+                ? `Ukupno u rezultatu: ${data.total.toLocaleString("sr-RS")} (prikazana je trenutna strana, ${data.items.length.toLocaleString("sr-RS")} redova)`
+                : `Ukupno u rezultatu: ${data.total.toLocaleString("sr-RS")}`
+            }
+            toolbar={(
+              <AnalyticsTableToolbar
+                tableKey={`data-quality-${issueType}`}
+                tableTitle={`Data quality - ${issueLabel(issueType)}`}
+                columns={analyticsColumns}
+                rows={data.items}
+                filters={toolbarFilters}
+                metadata={toolbarMetadata}
+                defaultOrientation="landscape"
+              />
+            )}
+          >
+            <table>
               <thead>
                 <tr>
                   <th>SKU</th>
                   <th>Artikal</th>
                   <th>Dobavljač</th>
                   <th>Tip obuće</th>
-                  <th className="align-right">Pogođeni promet 30d</th>
-                  <th className="align-right">Stanje</th>
+                  <th className="analytics-data-table__numeric">Pogođeni promet 30d</th>
+                  <th className="analytics-data-table__numeric">Stanje</th>
                   <th>Ažurirano</th>
                   <th>Problem</th>
                   <th>Akcija</th>
@@ -1021,13 +1038,13 @@ export default function DataQualityPage() {
                       <td>
                         <div className="data-quality-name">
                           <strong>{item.name || "Naziv nedostaje"}</strong>
-                          <span>ID: {item.productId}</span>
+                          <span className="analytics-data-table__subvalue">ID: {item.productId}</span>
                         </div>
                       </td>
                       <td>{item.supplierName || "-"}</td>
                       <td>{item.shoeTypeName || "-"}</td>
-                      <td className="align-right">{fmtRsd(item.sales30d, 2)}</td>
-                      <td className="align-right">{fmtNumber(item.stock)}</td>
+                      <td className="analytics-data-table__numeric">{fmtRsd(item.sales30d, 2)}</td>
+                      <td className="analytics-data-table__numeric">{fmtNumber(item.stock)}</td>
                       <td>{formatDateTime(item.lastUpdated)}</td>
                       <td>
                         <span className={`data-quality-badge ${rowTone(item.issueType)}`}>
@@ -1044,7 +1061,7 @@ export default function DataQualityPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </AnalyticsDataTable>
 
           <div className="data-quality-pagination">
             <button type="button" onClick={() => updateParams({ page: Math.max(1, page - 1) })} disabled={page <= 1}>
@@ -1058,7 +1075,7 @@ export default function DataQualityPage() {
               onClick={() => updateParams({ page: Math.min(totalPages, page + 1) })}
               disabled={page >= totalPages}
             >
-              Sledeca
+              Sledeća
             </button>
           </div>
         </section>

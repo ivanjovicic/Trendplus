@@ -13,22 +13,22 @@ Use with:
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| P-UI-09 | WAITING | analytics-actions-copy-outcome-ux | Polish action queue copy and outcome modal evidence UX |
-| P-UI-10 | WAITING | data-quality-table-migration | Migrate Data Quality issue/top-offender tables to shared premium table system |
-| P-UI-11 | WAITING | legacy-analytics-modernization | Modernize legacy supplier/shoe/color/daily/nivelacija analytics pages |
+| P-UI-09 | DONE | analytics-actions-copy-outcome-ux | Polish action queue copy and outcome modal evidence UX |
+| P-UI-10 | DONE | data-quality-table-migration | Migrate Data Quality issue/top-offender tables to shared premium table system |
+| P-UI-11 | READY | legacy-analytics-modernization | Modernize legacy supplier/shoe/color/daily/nivelacija analytics pages |
 
 ---
 
 ## P-UI-09 - Analytics Actions copy and outcome UX refinement
 
-Status: WAITING
-Ready after: P-UI-05 and RQ81/RQ86 if outcome semantics are touched
+Status: DONE
+Ready after: P-UI-05 DONE; RQ81/RQ86 only if outcome *semantics* are touched (this prompt is copy/UX only — do not change backend outcome rules)
 Priority: P1
 Type: frontend/copy/ux/tests
 Feature family: analytics-actions-copy-outcome-ux
-Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-09-<agent>.lock.md`
+Parallel-safe: yes, when no overlapping RQ action/outcome runtime task owns the same TSX paths
+Owner: Cursor
+Local lock: none
 Commit suggestion: `feat(ui): refine analytics actions outcome ux`
 
 ### Why
@@ -62,18 +62,37 @@ Commit suggestion: `feat(ui): refine analytics actions outcome ux`
 - Outcome modal is easier to use and does not imply fake measurement evidence.
 - No backend semantics are changed.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.css`
+  - `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+  - `Klijent/clientapp/src/pages/AnalyticsActionsPage.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/AnalyticsActionsPage.spec.tsx src/pages/AnalyticsActionsPage.spec.tsx` - pass (22/22)
+- Risks:
+  - RQ81/RQ86 semantics unchanged; copy only clarifies locked/optional measured fields
+- Next:
+  - Current P-UI READY: `P-UI-10`
+
 ---
 
 ## P-UI-10 - Data Quality table migration
 
-Status: WAITING
+Status: DONE
 Ready after: P-UI-03 and after relevant reliability prompts for health/top-count semantics
 Priority: P1
 Type: frontend/component/tests
 Feature family: data-quality-table-migration
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-10-<agent>.lock.md`
+Owner: Cursor
+Local lock: none
 Commit suggestion: `feat(ui): migrate data quality tables`
 
 ### Why
@@ -105,11 +124,29 @@ Data Quality already has decent page styling, but issue and top-offender tables 
 
 - Data Quality table matches the premium table system without hiding reliability warnings.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `Klijent/clientapp/src/pages/DataQualityPage.tsx`
+  - `Klijent/clientapp/src/pages/DataQualityPage.css`
+  - `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `npm run test -- --run src/pages/DataQualityPage.spec.tsx` - pass (5/5)
+- Risks:
+  - page-local `.data-quality-table` CSS remains for unused legacy selectors; visual QA via P-UI-05 if needed
+- Next:
+  - Current P-UI READY: `P-UI-11`
+
 ---
 
 ## P-UI-11 - Legacy analytics pages modernization
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-02, P-UI-03, and P-UI-05
 Priority: P2
 Type: frontend/design/tests
@@ -118,6 +155,7 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/P-UI-11-<agent>.lock.md`
 Commit suggestion: `feat(ui): modernize legacy analytics pages`
+Promotion note: 2026-08-11 — promoted after P-UI-10 DONE.
 
 ### Why
 

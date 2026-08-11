@@ -406,6 +406,15 @@
   flex-wrap: wrap;
 }
 
+.data-quality-card .analytics-data-table,
+.data-quality-top-offenders .analytics-data-table {
+  margin-top: 0.35rem;
+}
+
+.data-quality-pagination {
+  margin-top: 1rem;
+}
+
 .data-quality-table-wrap {
   overflow-x: auto;
   margin-top: 1rem;

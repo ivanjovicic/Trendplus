@@ -13,8 +13,8 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | `none` (`PERF01` DONE; `PERF02` WAITING on measurements) | baseline/measurement plan |
-| OBS - Observability | `none` (`OBS01` DONE; `OBS02` WAITING) | SLI/SLA contract/inventory |
-| SEC - Security Evolution | `none` (`SEC01` DONE; `SEC02` WAITING) | ownership/threat-model reconciliation |
+| OBS - Observability | `OBS03` | first instrumentation slice (API/process evidence) |
+| SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -236,11 +236,12 @@ Health, import status, freshness, worker state and latency exist across several 
 
 ## OBS02 - Prepare observability instrumentation rollout plan
 
-Status: WAITING  
-Priority: future  
-Feature family: observability-rollout-plan  
-Parallel-safe: yes, planning only  
-Owner: unassigned
+Status: DONE
+Priority: future
+Feature family: observability-rollout-plan
+Parallel-safe: yes, planning only
+Owner: Cursor
+Local lock: none
 
 ### Problem
 
@@ -279,9 +280,84 @@ OBS01 must be translated into bounded instrumentation slices without a broad tel
 
 - future OBS runtime prompts can be created without duplicating STAB or PERF.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime instrumentation
+- Risks:
+  - O2-1 still needs a queued runtime implementation prompt
+  - queue-depth SLIs remain unknown until real queues are instrumented
+- Next:
+  - Current OBS READY: `OBS03` (Slice 1 API/process evidence)
+
 ### Dependencies
 
 - OBS01 DONE.
+
+---
+
+## OBS03 - Implement observability Slice-1 API/process evidence
+
+Status: READY
+Priority: future
+Feature family: observability-api-process-evidence
+Parallel-safe: yes, when paths do not collide with BCI/STAB auth or PERF optimization work
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS03-<agent>.lock.md`
+Promotion note: 2026-08-11 — `OBS01`/`OBS02` DONE; first slice from `OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
+
+### Problem
+
+OBS02 ranked instrumentation slices, but no queued runtime prompt exists for the first API/process evidence improvements support needs in pilot.
+
+### Evidence
+
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` Slice 1
+
+### Scope
+
+- make request/availability/latency evidence consistent from existing `/ready`, `/health`, `/health/dependencies`, runtime version and request performance logging;
+- preserve unknown ≠ green;
+- admin/ops visibility only where privileged; do not broaden public `/health` disclosure;
+- focused tests for unknown-when-missing and no fake-zero collapse;
+- no paid APM vendor selection; no broad rewrite.
+
+### Read first
+
+- OBS01/OBS02 outputs
+- PERF01 baseline contract (targets only; do not optimize queries here)
+- STAB public health disclosure constraints
+
+### Do
+
+1. Inventory current fields already available from the named sources of truth.
+2. Expose or normalize the minimal Slice-1 evidence surface (prefer reuse over new store).
+3. Mark missing probes as unknown/non-green.
+4. Add focused tests for unknown and error ≠ zero.
+
+### Tests
+
+- missing probe stays unknown, not healthy;
+- error responses do not become fake zero metrics;
+- no secrets/customer payloads in telemetry;
+- STAB authz fail-closed unchanged for admin-only surfaces.
+
+### Acceptance
+
+- Slice-1 evidence is usable by support without inventing green defaults; later OBS slices can cite it.
+
+### Dependencies
+
+- OBS02 DONE.
 
 ---
 
@@ -372,11 +448,12 @@ Security planning is currently distributed across STAB pilot security work, MT t
 
 ## SEC02 - Prepare post-STAB security assurance backlog
 
-Status: WAITING  
-Priority: future  
-Feature family: security-assurance-plan  
-Parallel-safe: yes, planning only  
-Owner: unassigned
+Status: DONE
+Priority: future
+Feature family: security-assurance-plan
+Parallel-safe: yes, planning only
+Owner: Cursor
+Local lock: none
 
 ### Problem
 
@@ -414,6 +491,220 @@ After SEC01, only orphan/post-STAB risks should become SEC backlog items.
 
 - post-STAB security evolution has a bounded, non-duplicative backlog plan.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+  - `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime security changes
+- Risks:
+  - STAB watchlist (import/logs/docs) still unqueued — must not be re-homed to SEC
+  - SEC runtime still gated by STAB residual acceptance + MT/GAI where claimed
+- Next:
+  - Platform Evolution Current READY: `SEC03` (S2-1 docs)
+  - Alternate candidate remains WAITING: `SEC04` (S2-2 supply-chain) after SEC03
+  - Higher priority: BCI05 commit/push → GHA if user authorizes
+
 ### Dependencies
 
 - SEC01 DONE.
+
+---
+
+## SEC03 - Privileged secrets and emergency-access assurance (S2-1)
+
+Status: DONE
+Priority: future
+Feature family: security-privileged-secrets-assurance
+Parallel-safe: yes, planning/docs only
+Owner: Codex
+Local lock: removed after DONE
+Promotion note: 2026-08-11 - `SEC02` DONE; slice S2-1 from `SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+
+### Problem
+
+Admin API-key / deployment-secret rotation and emergency-access expectations are an SEC orphan. Without a written assurance inventory, pilot ops can leave key sprawl unowned after STAB authz work.
+
+### Evidence
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md` slice **S2-1**
+- `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md` (S2 / rotation orphan)
+- STAB Admin API-key boundary remains primary for authz defects
+
+### Scope
+
+- docs/planning only;
+- privileged secret *classes* inventory (names/types, no values);
+- rotation / revoke / emergency-access runbook expectations;
+- fail-closed checklist linking existing STAB auth tests;
+- no runtime authz change, no IdP, no secret values in git.
+
+### Read first
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+- `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`
+- `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` (SEC-2)
+- existing Admin access / config key docs if cited by those maps
+
+### Do
+
+1. Produce `docs/architecture/PRIVILEGED_SECRETS_ASSURANCE.md` (or equivalent under `docs/security/`).
+2. List secret classes: Admin key, DB, storage, cache, connector SecretReference - types only.
+3. Define rotation/revoke expectations and emergency-access steps (who, blast radius, post-incident revoke).
+4. Explicitly mark STAB as owner of authz defects; QDB as owner of connector credential *features*.
+5. Name evidence gaps that still block runtime PASS.
+
+### Tests
+
+- document contains no real secrets or connection strings;
+- each class has owner + fail-closed note;
+- STAB/QDB/MT/GAI boundaries are cited, not redefined;
+- missing evidence remains unknown/BLOCKED, never PASS.
+
+### Acceptance
+
+- S2-1 has a durable assurance doc agents can cite;
+- no runtime security code changed;
+- `SEC04` (supply-chain) remains the natural next SEC READY after this DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/PRIVILEGED_SECRETS_ASSURANCE.md`
+  - `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime security changes
+- Risks:
+  - rotation/revoke evidence remains docs-only until a future rehearsal or runtime prompt
+  - STAB authz defects remain STAB-owned
+- Next:
+  - Platform Evolution Current READY: `SEC04`
+  - `SEC04` is READY
+
+### Dependencies
+
+- SEC02 DONE.
+
+---
+
+## SEC04 - Dependency and supply-chain assurance policy (S2-2)
+
+Status: READY
+Ready after: `SEC03` is `DONE`
+Priority: future
+Feature family: security-supply-chain-policy
+Parallel-safe: yes, planning/docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC04-<agent>.lock.md`
+Promotion note: 2026-08-11 — `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+
+### Problem
+
+Vulnerable/abandoned package posture has no queued owner outside SEC-3.
+
+### Evidence
+
+- SEC02 slice **S2-2**
+- SEC01 orphan S14
+
+### Scope
+
+- docs/policy only;
+- scan frequency/severity fail rules for .NET and npm;
+- triage ownership (SEC + BCI for CI wiring);
+- abandoned-package handling;
+- no broad dependency upgrades in this prompt.
+
+### Read first
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+- BCI queue ownership for CI wiring
+
+### Do
+
+1. Write supply-chain policy doc with ecosystems, severity gates, and accepted-risk template.
+2. Name the reproducible scan command(s) or CI job placeholders (BCI wires later).
+3. Keep BCI as collaborator for pipeline; SEC owns policy.
+
+### Tests
+
+- no duplicate of BCI repair scope;
+- missing scan output cannot claim PASS;
+- no secrets in evidence.
+
+### Acceptance
+
+- S2-2 policy exists and points to BCI for CI integration.
+
+### Dependencies
+
+- SEC03 DONE (keeps one READY-at-a-time in SEC).
+
+---
+
+## SEC05 - Data protection and retention assurance plan (S2-3)
+
+Status: WAITING
+Ready after: `SEC04` is `DONE` and MT09 tenant lifecycle contracts exist (or dedicated-deploy offboarding is explicitly accepted as interim scope)
+Priority: future
+Feature family: security-retention-assurance-plan
+Parallel-safe: yes, planning/docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC05-<agent>.lock.md`
+
+### Problem
+
+Cross-cutting retention/classification/offboarding assurance remains an SEC orphan (S15 / S2-3) beyond MT09 product work.
+
+### Evidence
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md` slice **S2-3**
+- SEC01 orphan S15
+
+### Scope
+
+- docs/planning only;
+- data-class inventory and retention/deletion expectations;
+- dedicated-deploy wipe/restore checklist until MT09;
+- AI provider retention remains blocked until GAI policy;
+- no runtime delete tooling in this prompt.
+
+### Read first
+
+- SEC02 backlog plan
+- MT09 / tenant safety checklist
+- `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
+
+### Do
+
+1. Produce retention/classification assurance doc.
+2. Name owners per data class (STAB/MT/QDB/GAI collaborators).
+3. Fail closed when delete scope is unknown.
+4. Keep MT/GAI gates explicit.
+
+### Tests
+
+- no duplicate of MT09 implementation;
+- missing evidence cannot claim PASS;
+- no secrets/customer payloads in the doc.
+
+### Acceptance
+
+- S2-3 has a durable assurance plan agents can cite.
+
+### Dependencies
+
+- SEC04 DONE; MT09 contracts or accepted interim dedicated-deploy scope.
+
+---
