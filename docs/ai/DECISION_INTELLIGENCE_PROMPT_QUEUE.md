@@ -10,7 +10,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 |---|---|---|
 | DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `none` (`RL01` DONE) | docs/contracts/data-model inventory only |
-| DT - Decision Timeline | `DT01` (IN_PROGRESS by Cursor) | docs/contracts/event-model only |
+| DT - Decision Timeline | `none` (`DT01`/`DT02` DONE) | docs/planning only |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -350,6 +350,7 @@ DEX05 added a structured evidence chain to Product Decision Center, but the Why 
 
 - Date: 2026-08-11
 - Agent: Codex
+- Commit SHA: 63300cb
 - Changed files:
   - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
   - `Api/Endpoints/InventoryEndpoints.cs`
@@ -943,11 +944,12 @@ Recommendation, action, execution and outcome information exists in different re
 
 ## DT02 - Prepare historical timeline rollout plan
 
-Status: WAITING  
-Priority: future  
-Feature family: decision-timeline-rollout-plan  
-Parallel-safe: yes, planning only  
-Owner: unassigned
+Status: DONE
+Priority: future
+Feature family: decision-timeline-rollout-plan
+Parallel-safe: yes, planning only
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
@@ -955,7 +957,7 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 
 ### Evidence
 
-- DT01 will define the event model.
+- DT01 DONE: `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 
 ### Scope
 
@@ -984,6 +986,21 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 ### Acceptance
 
 - future implementation can be queued safely without architecture guessing.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
+  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md` (examples 4–5 + export/drill-down gap-fill)
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- Provere:
+  - `git diff --check`
+- Rizici:
+  - rollout is docs-only; first runtime slice still needs a queued implementation prompt
+- Sledece:
+  - none in DT program until an owner promotes a Slice-1 implementation prompt; planning peers `PERF01` / `OBS01` / `SEC01` remain READY
 
 ### Dependencies
 
