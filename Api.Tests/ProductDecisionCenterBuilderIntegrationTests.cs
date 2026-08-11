@@ -84,7 +84,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.NotEmpty(fixData.ConfidenceBreakdown);
         Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "confidence_score" && node.IsMissing);
         Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "evidence_coverage" && node.ValueText == "Nedovoljna");
-        Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "data_quality_signal" && node.IsMissing);
+        Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "data_quality_signal" && node.ValueText == "kritičan");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:missing_cost");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:expected_impact_denominator_missing");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);

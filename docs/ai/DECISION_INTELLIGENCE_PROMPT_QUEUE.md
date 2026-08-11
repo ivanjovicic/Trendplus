@@ -8,7 +8,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX06` | docs/contracts/tests-plan only |
+| DEX - Decision Explainability | `DEX07` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
 | DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
 
@@ -16,14 +16,75 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ---
 
+## DEX07 - Implement Product Decision Center alternative recommendations contract
+
+Status: READY
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase4
+Parallel-safe: no, coupled backend/frontend contract
+Owner: unassigned
+
+### Problem
+
+DEX06 makes confidence contributors explicit, but the Why panel still needs deterministic alternative recommendations that show which valid actions were considered and why the selected recommendation ranked above them instead of leaving alternatives implicit or inventing them locally.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places alternative recommendations after confidence breakdown.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` already computes deterministic product decision evidence and confidence state that can anchor alternative reasoning.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still lacks an explicit alternatives view in the Why panel.
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` shows the downstream Decision Board should keep consuming the same canonical semantics.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DEX06 output
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+
+### Do
+
+1. Expose alternative candidates or alternative decision metadata deterministically from backend.
+2. Render alternatives in Product Decision Center without local heuristics or invented options.
+3. Keep rejected or unavailable alternatives explicit.
+4. Preserve missing-data semantics and downstream Decision Board compatibility.
+
+### Tests
+
+- backend coverage confirms alternatives are deterministic and traceable;
+- frontend coverage shows alternatives and keeps missing values explicit;
+- API failure and empty-state regressions still avoid fake zero or fake alternatives;
+- downstream Decision Board compatibility does not regress.
+
+### Acceptance
+
+- Product Decision Center can explain valid alternatives and why they ranked lower;
+- no frontend-local heuristic invents alternatives;
+- no Decision Board regression was introduced.
+
+### Dependencies
+
+- DEX06 DONE.
+
+---
+
 ## DEX06 - Implement Product Decision Center confidence breakdown contract
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: future-high-value / implementation
 Feature family: decision-explainability-product-decision-center-phase3
 Parallel-safe: no, coupled backend/frontend contract
 Owner: unassigned
-Local lock: `.ai/task-locks/DEX06-codex.lock.md`
+Local lock: removed after DONE
 
 ### Problem
 
@@ -76,6 +137,32 @@ DEX05 added a structured evidence chain to Product Decision Center, but the Why 
 
 - DEX05 DONE.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api/Endpoints/InventoryEndpoints.cs`
+  - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.css`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx` - pass
+  - `dotnet build` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - fail (existing unrelated MASTER_ROADMAP gaps remain)
+  - `git diff --check -- docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md .ai/task-locks/DEX06-codex.lock.md Api/Endpoints/CachedAnalyticsEndpoints.cs Api/Endpoints/InventoryEndpoints.cs Api.Tests/AnalyticsProductDecisionConfidenceTests.cs Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs Klijent/clientapp/src/types/analytics.ts Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx Klijent/clientapp/src/pages/ProductDecisionCenterPage.css Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+- Remaining risk:
+  - `node scripts/check-planning-architecture.mjs` still reports unrelated `MASTER_ROADMAP.md` link gaps outside this task.
+  - The client build still emits the existing chunk-size warning for `recharts`.
 ## DEX05 - Implement Product Decision Center evidence chain drill-down contract
 
 Status: DONE
