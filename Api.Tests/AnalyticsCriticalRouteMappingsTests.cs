@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Api.Endpoints;
 using Api.Services;
+using Api.Services.Startup;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
@@ -114,6 +115,26 @@ public sealed class AnalyticsCriticalRouteMappingsTests
             "processType",
             "provider"
         }.SetEquals(propertyNames));
+    }
+
+    [Fact]
+    public async Task RuntimeVersionRequest_IsPersistedInPerformanceLogs()
+    {
+        await using var factory = await AnalyticsProgramRouteTestFactory.CreateAsync();
+        using var client = factory.CreateClient();
+
+        using var runtimeVersionResponse = await client.GetAsync("/api/runtime/version");
+        runtimeVersionResponse.EnsureSuccessStatusCode();
+
+        using var scope = factory.Services.CreateScope();
+        var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+        var logs = await analyticsDb.PerformanceLogs.OrderBy(log => log.Id).ToListAsync();
+
+        var runtimeLog = Assert.Single(logs.Where(log => log.RequestName == "GET /api/runtime/version"));
+        Assert.Equal("HttpRequest", runtimeLog.RequestType);
+        Assert.True(runtimeLog.IsSuccess);
+        Assert.Contains("\"statusCode\":200", runtimeLog.RequestData ?? string.Empty);
+        Assert.DoesNotContain("Password", runtimeLog.RequestData ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -239,10 +260,16 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         private readonly string _trendDbName = $"trendplus-route-program-{Guid.NewGuid():N}";
         private readonly string _analyticsDbName = $"trendplus-analytics-route-program-{Guid.NewGuid():N}";
         private readonly string _trainingDbName = $"trendplus-training-route-program-{Guid.NewGuid():N}";
+        private readonly bool _useMissingConnections;
 
-        public static async Task<AnalyticsProgramRouteTestFactory> CreateAsync()
+        private AnalyticsProgramRouteTestFactory(bool useMissingConnections = false)
         {
-            var factory = new AnalyticsProgramRouteTestFactory();
+            _useMissingConnections = useMissingConnections;
+        }
+
+        public static async Task<AnalyticsProgramRouteTestFactory> CreateAsync(bool useMissingConnections = false)
+        {
+            var factory = new AnalyticsProgramRouteTestFactory(useMissingConnections);
             _ = factory.CreateClient();
             await Task.CompletedTask;
             return factory;
@@ -262,8 +289,9 @@ public sealed class AnalyticsCriticalRouteMappingsTests
                     ["PROCESS_TYPE"] = "web",
                     ["Database:AutoMigrate"] = "false",
                     ["StartupReadiness:GateApiTraffic"] = "false",
-                    ["ConnectionStrings:DefaultConnection"] = BuildConnectionString(_trendDbName),
-                    ["ConnectionStrings:AnalyticsConnection"] = BuildConnectionString(_analyticsDbName),
+                    ["StartupReadiness:MaxWarmupAttempts"] = _useMissingConnections ? "1" : "12",
+                    ["ConnectionStrings:DefaultConnection"] = _useMissingConnections ? string.Empty : BuildConnectionString(_trendDbName),
+                    ["ConnectionStrings:AnalyticsConnection"] = _useMissingConnections ? string.Empty : BuildConnectionString(_analyticsDbName),
                     ["ConnectionStrings:OpenProductTrainingConnection"] = BuildConnectionString(_trainingDbName)
                 });
             });

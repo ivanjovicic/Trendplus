@@ -890,6 +890,16 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
         return "unknown";
     }
 
+    static long? ResolveProbeLatency(long? defaultLatencyMs, long? analyticsLatencyMs)
+    {
+        if (defaultLatencyMs.HasValue && analyticsLatencyMs.HasValue)
+        {
+            return Math.Max(defaultLatencyMs.Value, analyticsLatencyMs.Value);
+        }
+
+        return defaultLatencyMs ?? analyticsLatencyMs;
+    }
+
     IResult CheckLiveness(HttpContext context)
     {
         var readinessState = app.Services.GetRequiredService<StartupReadinessState>();
@@ -912,84 +922,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             ?? context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
             ?? Guid.NewGuid().ToString("N");
 
-        async Task<(bool Ok, long ElapsedMs, string? Error)> ProbeAsync(string name, string? connectionString, CancellationToken requestToken)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                logger?.LogWarning(
-                    "Dependency probe {ProbeName} failed with {ErrorCode}. CorrelationId={CorrelationId}",
-                    name,
-                    DependencyHealthPublicErrors.MissingConnectionString,
-                    correlationId);
-                return (false, 0, DependencyHealthPublicErrors.ForMissingConnectionString());
-            }
-
-            var sw = Stopwatch.StartNew();
-
-            try
-            {
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(requestToken);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
-
-                var csb = new NpgsqlConnectionStringBuilder(connectionString)
-                {
-                    Timeout = 5,
-                    CommandTimeout = 5
-                };
-
-                await using var connection = new NpgsqlConnection(csb.ConnectionString);
-                await connection.OpenAsync(timeoutCts.Token);
-
-                await using var command = new NpgsqlCommand("SELECT 1;", connection)
-                {
-                    CommandTimeout = 5
-                };
-
-                await command.ExecuteScalarAsync(timeoutCts.Token);
-                sw.Stop();
-                return (true, sw.ElapsedMilliseconds, null);
-            }
-            catch (OperationCanceledException) when (requestToken.IsCancellationRequested)
-            {
-                sw.Stop();
-                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: true);
-                logger?.LogWarning(
-                    "Dependency probe {ProbeName} canceled by request. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
-                    name,
-                    code,
-                    sw.ElapsedMilliseconds,
-                    correlationId);
-                return (false, sw.ElapsedMilliseconds, code);
-            }
-            catch (OperationCanceledException)
-            {
-                sw.Stop();
-                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: false);
-                logger?.LogWarning(
-                    "Dependency probe {ProbeName} timed out. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
-                    name,
-                    code,
-                    sw.ElapsedMilliseconds,
-                    correlationId);
-                return (false, sw.ElapsedMilliseconds, code);
-            }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                var code = DependencyHealthPublicErrors.ForUnexpectedFailure();
-                logger?.LogError(
-                    ex,
-                    "Dependency probe {ProbeName} failed. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
-                    name,
-                    code,
-                    sw.ElapsedMilliseconds,
-                    correlationId);
-                return (false, sw.ElapsedMilliseconds, code);
-            }
-        }
-
-        var defaultDb = await ProbeAsync("default", defaultConnection, ct);
-        var analyticsDb = await ProbeAsync("analytics", analyticsConnection, ct);
+        var defaultDb = await DbConnectionHelper.TryProbeConnectionStringAsync("default", defaultConnection, ct, logger, correlationId);
+        var analyticsDb = await DbConnectionHelper.TryProbeConnectionStringAsync("analytics", analyticsConnection, ct, logger, correlationId);
         var ok = defaultDb.Ok && analyticsDb.Ok;
 
         var readinessState = app.Services.GetRequiredService<StartupReadinessState>();
@@ -1020,7 +954,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             db = new
             {
                 ok,
-                latencyMs = Math.Max(defaultDb.ElapsedMs, analyticsDb.ElapsedMs)
+                latencyMs = ResolveProbeLatency(defaultDb.ElapsedMs, analyticsDb.ElapsedMs)
             },
             timestampUtc = DateTimeOffset.UtcNow,
             retryAfterSeconds = ok ? (int?)null : 5,
@@ -1228,7 +1162,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             db = new
             {
                 ok = readiness.DefaultDb.Ok && readiness.AnalyticsDb.Ok,
-                latencyMs = Math.Max(readiness.DefaultDb.LatencyMs, readiness.AnalyticsDb.LatencyMs)
+                latencyMs = ResolveProbeLatency(readiness.DefaultDb.LatencyMs, readiness.AnalyticsDb.LatencyMs)
             },
             timestampUtc = DateTimeOffset.UtcNow,
             retryAfterSeconds,

@@ -5,7 +5,7 @@ public sealed class StartupReadinessState
     public sealed class DatabaseProbeState
     {
         public bool Ok { get; set; }
-        public long LatencyMs { get; set; }
+        public long? LatencyMs { get; set; }
         public string? Error { get; set; }
     }
 

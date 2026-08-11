@@ -25,11 +25,33 @@ public sealed class StartupReadinessStateTests
             });
 
         Assert.True(state.DefaultDb.Ok);
-        Assert.Equal(123, state.DefaultDb.LatencyMs);
+        Assert.Equal(123L, state.DefaultDb.LatencyMs);
         Assert.False(state.AnalyticsDb.Ok);
-        Assert.Equal(456, state.AnalyticsDb.LatencyMs);
+        Assert.Equal(456L, state.AnalyticsDb.LatencyMs);
         Assert.Equal("timeout", state.AnalyticsDb.Error);
         Assert.NotNull(state.LastProbeAtUtc);
+    }
+
+    [Fact]
+    public void FreshState_LeavesProbeLatencyUnknown()
+    {
+        var state = new StartupReadinessState();
+
+        Assert.Null(state.DefaultDb.LatencyMs);
+        Assert.Null(state.AnalyticsDb.LatencyMs);
+    }
+
+    [Fact]
+    public async Task MissingConnectionStringProbe_StaysUnknownAndFailsClosed()
+    {
+        var result = await DbConnectionHelper.TryProbeConnectionStringAsync(
+            "default",
+            connectionString: null,
+            CancellationToken.None);
+
+        Assert.False(result.Ok);
+        Assert.Null(result.ElapsedMs);
+        Assert.Equal(DependencyHealthPublicErrors.MissingConnectionString, result.Error);
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Api.Services.Startup
 {
@@ -61,6 +62,91 @@ namespace Api.Services.Startup
             }
 
             return false;
+        }
+
+        public static async Task<(bool Ok, long? ElapsedMs, string? Error)> TryProbeConnectionStringAsync(
+            string name,
+            string? connectionString,
+            CancellationToken requestToken,
+            ILogger? logger = null,
+            string? correlationId = null)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                if (logger is not null && correlationId is not null)
+                {
+                    logger.LogWarning(
+                        "Dependency probe {ProbeName} failed with {ErrorCode}. CorrelationId={CorrelationId}",
+                        name,
+                        DependencyHealthPublicErrors.MissingConnectionString,
+                        correlationId);
+                }
+
+                return (false, null, DependencyHealthPublicErrors.ForMissingConnectionString());
+            }
+
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(requestToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                var csb = new NpgsqlConnectionStringBuilder(connectionString)
+                {
+                    Timeout = 5,
+                    CommandTimeout = 5
+                };
+
+                await using var connection = new NpgsqlConnection(csb.ConnectionString);
+                await connection.OpenAsync(timeoutCts.Token);
+
+                await using var command = new NpgsqlCommand("SELECT 1;", connection)
+                {
+                    CommandTimeout = 5
+                };
+
+                await command.ExecuteScalarAsync(timeoutCts.Token);
+                sw.Stop();
+                return (true, sw.ElapsedMilliseconds, null);
+            }
+            catch (OperationCanceledException) when (requestToken.IsCancellationRequested)
+            {
+                sw.Stop();
+                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: true);
+                logger?.LogWarning(
+                    "Dependency probe {ProbeName} canceled by request. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
+            }
+            catch (OperationCanceledException)
+            {
+                sw.Stop();
+                var code = DependencyHealthPublicErrors.ForCanceled(requestAborted: false);
+                logger?.LogWarning(
+                    "Dependency probe {ProbeName} timed out. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                var code = DependencyHealthPublicErrors.ForUnexpectedFailure();
+                logger?.LogError(
+                    ex,
+                    "Dependency probe {ProbeName} failed. ErrorCode={ErrorCode} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    name,
+                    code,
+                    sw.ElapsedMilliseconds,
+                    correlationId);
+                return (false, sw.ElapsedMilliseconds, code);
+            }
         }
     }
 }
