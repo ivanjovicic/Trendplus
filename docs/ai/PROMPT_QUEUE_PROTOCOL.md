@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-10  
+Updated: 2026-08-11
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -73,6 +73,17 @@ Every new live prompt must contain:
 8. `Dependencies`
 
 Existing legacy prompts may retain richer historical templates, but new prompt families must not omit these eight sections.
+
+## Mechanical prompt conflicts
+
+A stale file count, old "next READY" sentence, contradictory `Avoid paths` line or similar mechanical defect is not by itself a blocker when the owner program, current `READY` pointer and acceptance outcome are otherwise clear.
+
+When this happens:
+
+1. Keep the owner program, current `READY` pointer and acceptance stronger than stale prose.
+2. Take the smallest same-owner repair needed to make the prompt executable.
+3. Record the scope repair or prompt defect in the completion note/run evidence.
+4. Do not use this exception to cross into another program, tenant authority, schema/API authority, secrets or production-only decisions.
 
 ## Local lock rule
 
@@ -189,6 +200,7 @@ A completed prompt records at minimum:
 - Checks not run:
 - Remaining risk:
 - Next:
+- Prompt defect / scope repair:
 ```
 
 Production/live smoke may be marked complete only from real current deployment evidence.

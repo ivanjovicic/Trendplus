@@ -1,65 +1,63 @@
 # Codex Queue Runner Instructions
 
-Ovo je uputstvo za Codex kada treba da izvršava `docs/ai/NEXT_PROMPT_QUEUE.md`.
+Updated: 2026-08-11
 
-## Važno
+Use this guide when Codex is explicitly asked to execute live Trendplus queue work.
 
-Codex ne treba da pokušava da završi ceo queue odjednom. Radi jedan task po sesiji i napravi jedan mali commit.
+## Important
 
-Za UX / screen clarity taskove `Q10–Q18`:
-- `Q10`, `Q11`, `Q16` i `Q17` su frontend code polish taskovi i rade se jedan po jedan.
-- `Q12`, `Q13`, `Q14`, `Q15` i `Q18` su audit/docs taskovi; kod menjati samo ako task eksplicitno kaže da je mali fix bezbedan.
-- Ne raditi `Q10–Q18` automatski u jednom prolazu.
-- Svaki task mora imati poseban commit.
+Codex should not try to finish the whole queue in one run. Work one prompt per session and keep the change set scoped to that prompt unless the prompt explicitly allows a bounded docs consolidation.
 
-## Start prompt za Codex
+## Start prompt for Codex
 
 ```text
 Repo: ivanjovicic/Trendplus
 
-Pre rada pročitaj:
+Before work, read:
 - .github/copilot-instructions.md
 - AGENTS.md
-- docs/ai/NEXT_PROMPT_QUEUE.md
+- docs/ai/AGENT_START_HERE.md
+- MASTER_ROADMAP.md
+- docs/ai/PROMPT_QUEUE_PROTOCOL.md
+- the current owner queue named by MASTER_ROADMAP.md
 
-Zadatak:
-Izvrši prvi task u docs/ai/NEXT_PROMPT_QUEUE.md koji ima Status: TODO.
+Task:
+Execute only the current READY prompt for the owning program.
 
-Pravila:
-1. Ne preskači redosled.
-2. Ne radi više od jednog queue taska u ovoj sesiji.
-3. Pre izmene promeni status taska u IN_PROGRESS.
-4. Uradi minimalnu izmenu u scope-u taska.
-5. Pokreni samo relevantne provere iz taska.
-6. Ako provere zapnu, ne ponavljaj istu komandu više puta. Probaj uži check ili označi BLOCKED.
-7. Posle rada ažuriraj status: DONE, PARTIAL ili BLOCKED.
-8. U task belešku upiši šta je promenjeno, koje provere su pokrenute, rezultat i rizike.
-9. Koristi commit message predložen u tasku.
-10. Ne menjaj nepovezane fajlove.
+Rules:
+1. Resolve the owner program from MASTER_ROADMAP.md.
+2. Start only a prompt that is currently READY and whose dependencies are satisfied.
+3. Treat docs/ai/NEXT_PROMPT_QUEUE.md as a historical ledger, not a live router.
+4. Do not run more than one queue prompt in the same session/commit.
+5. Before edits, set the prompt to IN_PROGRESS or create the local lock from docs/ai/PROMPT_QUEUE_PROTOCOL.md.
+6. Make the smallest change that satisfies the prompt acceptance.
+7. Run the exact prompt checks; if a check stalls or fails twice without new evidence, stop as PARTIAL/BLOCKED.
+8. Record status, changed files, checks, residual risk, next step and main verification evidence.
+9. Use only protocol statuses: READY, WAITING, IN_PROGRESS, BLOCKED, PARTIAL, DONE, OBSOLETE.
+10. Do not change unrelated files or another program's queue.
 
-Na kraju odgovori:
-- completed task
+Finish with:
+- completed prompt
 - changed files
 - checks
 - risks
-- next queue item
+- main verification
+- next owner-queue item if known
 ```
 
-## Kada Codex treba da stane
+## When Codex should stop
 
-Stani ako:
-- task izlazi iz scope-a
-- mora da menja više od 6–8 fajlova
-- nema jasnog auth/cache/import pattern-a
-- build/test pada zbog nepovezanog problema
-- treba secret/environment koji nije dostupan
-- postoji opasnost da se pokvari routing/lazy loading
-- vidiš mojibake u novom tekstu
+Stop if:
+- the prompt is not the current READY item for its owner program
+- source of truth, tenant authority or business contract is unclear
+- the task spills into another program or a broad rewrite
+- secrets, production access or unresolved security decisions are required
+- required proof cannot be produced honestly
 
-## Ručni nastavak
+## Manual continuation
 
-Posle svakog commita:
-1. Otvori `docs/ai/NEXT_PROMPT_QUEUE.md`.
-2. Nađi sledeći `Status: TODO`.
-3. Pokreni start prompt iznad.
-4. Ne vraćaj se na staru stavku osim ako je `PARTIAL` ili `BLOCKED`.
+After each commit:
+1. Re-open `MASTER_ROADMAP.md`.
+2. Re-check the current owner queue header/current READY pointer.
+3. Continue only if the same prompt still owns the next action.
+4. Do not jump to an older historical `TODO` or `OPEN` entry.

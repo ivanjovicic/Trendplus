@@ -59,6 +59,18 @@ Residual risk: <one sentence or none known>
 
 Use `NEEDS_EVIDENCE_SYNC` instead of `DONE` when commit SHA, validation, missed work, model/client metadata or run evidence cannot be verified.
 
+## Delivery truth
+
+Local diff, local commit, pushed branch, open PR or green branch CI are transport states. File-changing work becomes a `DONE` candidate only after the exact delivered SHA is verified on current `main`, whether delivery used direct-main or a pull request.
+
+Minimum delivery fields for file-changing work:
+
+```text
+Delivery mode: direct-main | pull-request | connector-write | none
+Main commit SHA: <full sha or pending>
+Main verification: <exact git/GitHub evidence or skipped reason>
+```
+
 ## Hard completion gate
 
 Before marking `DONE`, evidence must include:
@@ -66,6 +78,7 @@ Before marking `DONE`, evidence must include:
 - completion percentage
 - changed files
 - commit SHA or explicit no-commit reason
+- main verification evidence or explicit no-delivery reason
 - validation command(s) or skipped-validation reason
 - model/client metadata or `unknown-not-exposed`
 - missed work or `none known`
@@ -126,6 +139,7 @@ But they must not claim runtime behavior changed or tests passed.
 When work is done through the GitHub connector:
 
 - record commit SHA returned by the connector;
+- still verify that SHA on fresh current `main` before claiming `DONE`;
 - say tests/checks were not run unless another tool actually ran them;
 - cite changed docs/files in the final response when possible;
 - do not claim local build/test success.

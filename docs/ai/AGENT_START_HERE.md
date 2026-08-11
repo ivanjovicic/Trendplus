@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-08-08
+Updated: 2026-08-11
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -16,6 +16,15 @@ Trendplus is a retail decision-support product, not a dashboard collection.
 - Frontend presents and navigates; it does not invent recommendation/confidence truth.
 - Pilot safety and deterministic evidence outrank flashy UI or AI.
 - Small evidence-backed changes beat broad rewrites.
+
+## Default execution stance
+
+- Assume the user may be offline after assigning the task.
+- A direct repository request authorizes ordinary reversible work in Trendplus.
+- Do not invent a queue claim or rewrite planning docs for a direct request unless the task is itself about planning/governance.
+- Do not pause for routine choices like whether to inspect source, add the nearest focused proof, update the mapped owner doc or verify delivery on `main`.
+- Ask only for material business authority, privacy/security/secret decisions, destructive data/schema consequences, production impact, external cost or irreversible actions outside the repo.
+- Resolve non-material ambiguity by choosing the smallest same-owner reversible option and recording the assumption.
 
 ## Canonical planning read order
 

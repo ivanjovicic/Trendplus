@@ -1,7 +1,7 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-08-10  
-Repository: `ivanjovicic/Trendplus`  
+Updated: 2026-08-11
+Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
 This file is the single routing entry point for Trendplus planning. It does not replace detailed roadmaps, audits, queues, or historical evidence. It tells an agent which program owns a topic, what is currently runnable, what is blocked, what may run in parallel, and what milestone comes next.
@@ -39,9 +39,9 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none directly; delegated repair is `RQ89` | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite. BCI02 live annotation evidence and BCI03 Windows/VS proof have explicit follow-up prompts BCI05/BCI06. | Evidence work only when it does not delay RQ89/RQ90 | RQ89 -> RQ90 -> full backend suite/GHA proof -> BCI01 DONE decision |
-| STAB | `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` is DONE; current release evidence still says core pilot is not ready and GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` plus source queues | `RQ89` | BCI04-derived assertion repair override is active. `RQ89` owns inventory list route/count; `RQ90` is serialized next. `RQ77`, `RQ78`, and `STAB09` are already DONE. | Selected docs/tests only; do not overlap RQ89 backend paths | RQ89 DONE, then RQ90, then full backend suite/GHA evidence |
+| BCI | `MASTER_ROADMAP.md` + `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none directly; delegated repair is `RQ89` | `BCI01` is PARTIAL: bootstrap is fixed, but real backend assertions still prevent a green suite. BCI02 live annotation evidence and BCI03 Windows/VS proof have explicit follow-up prompts BCI05/BCI06. | Evidence work only when it does not delay RQ89/RQ90 | RQ89 -> RQ90 -> full backend suite/GHA proof -> BCI01 DONE decision |
+| STAB | `MASTER_ROADMAP.md` + `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` is DONE; current release evidence still says core pilot is not ready and GenAI remains blocked | Evidence/docs work only when paths do not overlap | Close named pilot blockers and refresh release gate |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` plus source queues | `RQ89` | BCI04-derived assertion repair override is active. `RQ89` owns inventory list route/count; `RQ90` is serialized next. `RQ77`, `RQ78`, and `STAB09` are already DONE. | Selected docs/tests only; do not overlap RQ89 backend paths | RQ89 DONE, then RQ90, then full backend suite/GHA evidence |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | `P-UI-07` | Must preserve backend/RQ semantics and not outrank the main priority chain | Yes, only when paths are clear | Supplier analytics table migration to shared premium system |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB01` | Must not outrank unresolved higher-priority P0 work | Yes, QDB01 docs/tests when paths are clear | Provider-neutral connector contract characterized |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | `MT01` | Shared SaaS remains forbidden until the full MT gate is complete | Yes, MT01 when paths are clear | Canonical TenantId/context seam, then staged tenant isolation |

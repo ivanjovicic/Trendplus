@@ -43,6 +43,14 @@ Ne razvijati "još jedan ekran" ako postojeći ekran ne objašnjava period, refr
 - Ako nisi siguran da li je broj 0 ili greška, tretiraj kao unknown/error.
 - Ako se task proširi preko planiranog, stani i prijavi gap.
 
+### Autonomy and questions
+
+- Assume the user may be offline after assigning the task.
+- A direct repository request authorizes normal, reversible work in this repo.
+- Do not stop for routine choices like whether to inspect source, add a focused test, update the mapped doc, commit, or verify `main`.
+- Ask only when the remaining decision has material business/product impact, tenant/privacy/security/secret implications, destructive data/schema consequences, production impact, external cost, or irreversible effects outside this repo.
+- If two same-owner options are both safe, choose the smaller reversible one and record the assumption.
+
 ### Posle rada
 
 U izveštaju napiši:
@@ -62,6 +70,8 @@ Rizici:
 Sledeće:
 - ...
 ```
+
+Local diff, local commit, pushed branch or open PR are transport states. File-changing work is closed only after the exact delivered SHA is verified on current `main`.
 
 ---
 
@@ -294,38 +304,31 @@ Ako nema lako dostupne test infrastrukture, dodaj najmanji testable helper ili d
 
 ## Prompt queue workflow
 
-Ako postoji `docs/ai/NEXT_PROMPT_QUEUE.md`, agent mora da radi po queue pravilima.
+If the task comes from a live queue, follow `MASTER_ROADMAP.md`, `docs/ai/AGENT_START_HERE.md` and `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-### Pravila
+### Rules
 
-1. Uzmi prvi task sa `Status: TODO`.
-2. Ne preskači taskove bez eksplicitnog zahteva korisnika.
-3. Ne radi više od jednog taska po sesiji/commitu.
-4. Pre izmene postavi status na `IN_PROGRESS`.
-5. Posle rada postavi `DONE`, `PARTIAL` ili `BLOCKED`.
-6. Dodaj belešku u task:
-   - datum
-   - commit SHA ako postoji
-   - promenjeni fajlovi
-   - provere
-   - rizik
-   - sledeći korak
-7. Ako je task `BLOCKED`, ne prelazi na sledeći task osim ako korisnik eksplicitno kaže.
-8. Ako je task `PARTIAL`, sledeći task treba biti follow-up za partial gap, osim ako queue kaže drugačije.
+1. Resolve the owner program from `MASTER_ROADMAP.md`.
+2. Start only the current `READY` prompt in that owner queue after checking dependencies and global priority.
+3. Treat `docs/ai/NEXT_PROMPT_QUEUE.md` as a historical ledger, not a live router.
+4. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
+5. Work one prompt per session/commit unless the prompt explicitly allows a bounded docs consolidation.
+6. Before implementation, set the prompt to `IN_PROGRESS` or create the local lock from `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
+7. After work, record status, commit SHA, changed files, checks, remaining risk and next step.
+8. If scope crosses into another program, the same failure repeats twice, or required proof cannot be produced, stop as `PARTIAL` or `BLOCKED` instead of guessing.
 
-### Stop rules za queue
+### Stop rules
 
-Stani ako:
-- task traži više od 6–8 fajlova
-- build/test pada dva puta
-- nema jasnog source-of-truth
-- endpoint/security/cache pattern nije jasan
-- potrebni su secrets ili produkcioni pristup
-- postoji rizik od broad rewrite-a
+Stop if:
+- the prompt is not the current `READY` item for its owner program
+- source of truth, tenant authority or business contract is unclear
+- build/test fails twice without new evidence
+- the fix needs unrelated files/programs or a broad rewrite
+- secrets, production access or unresolved security decisions are required
 
-### Finalni izveštaj
+### Final report
 
-Agent mora da završi porukom:
+Agent should finish with:
 
 ```text
 Queue task:
@@ -345,4 +348,7 @@ Rizici:
 
 Sledeće:
 - Qyy title
+
+Main verification:
+- pass/fail/not run
 ```

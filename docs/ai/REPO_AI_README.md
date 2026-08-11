@@ -24,6 +24,29 @@ After `AGENTS.md` and `.github/copilot-instructions.md`, read:
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 
+## Authority order when docs conflict
+
+Use this order instead of combining contradictory guidance:
+
+1. current code, focused tests and executable validators
+2. `MASTER_ROADMAP.md` plus the current owner queue header/READY pointer for planning and routing
+3. the canonical owner doc for the rule you are using
+4. short entrypoints such as `AGENTS.md`, `.github/copilot-instructions.md` and this README
+5. historical ledgers, old addenda, dated audits, stale "next READY" prose and interrupted command output
+
+If a summary doc disagrees with its owner, update or ignore the summary; do not merge both versions into a new hybrid rule.
+
+## Canonical owners by topic
+
+- Repo-wide agent behavior and question threshold: `AGENTS.md`
+- Queue routing/current READY/global priority: `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md` and `docs/ai/BACKEND_STANDARDS.md`
+- Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
+- Delivery evidence and honest completion: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- Commit naming and commit-body expectations: `docs/ai/COMMIT_STANDARDS.md`
+- UTF-8 and text-only repair workflow: `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+
 ## Architecture and boundaries
 
 Use `docs/ai/ARCHITECTURE_BOUNDARIES.md` to identify:
@@ -93,7 +116,8 @@ Update docs when:
 
 ## Production and queue references
 
-- Queue workflow: `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Queue workflow: `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, owner queue named by the roadmap
+- Historical queue ledger: `docs/ai/NEXT_PROMPT_QUEUE.md`
 - GenAI gated queue: `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
 - Analytics roadmap: `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
 - GenAI roadmap: `docs/ai/GENAI_COPILOT_ROADMAP.md`

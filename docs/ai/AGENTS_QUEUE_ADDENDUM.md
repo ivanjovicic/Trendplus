@@ -1,41 +1,21 @@
-# AGENTS.md Addendum — Prompt Queue Workflow
+# AGENTS.md Addendum - Prompt Queue Workflow
 
-Dodaj ovaj sadržaj na kraj postojećeg `AGENTS.md`.
+Use this content only when an older AGENTS variant needs the current Trendplus queue summary patched in. The live owner remains `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Prompt queue workflow
 
-Ako postoji `docs/ai/NEXT_PROMPT_QUEUE.md`, agent mora da radi po queue pravilima.
+If the task comes from a live queue:
 
-### Pravila
+1. Read `MASTER_ROADMAP.md`.
+2. Resolve the owner program and current `READY` prompt.
+3. Treat `docs/ai/NEXT_PROMPT_QUEUE.md` as a historical ledger, not a live router.
+4. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
+5. Work one prompt per session/commit unless the prompt explicitly allows a bounded docs consolidation.
+6. Before implementation, set `IN_PROGRESS` or create the local lock from `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
+7. After work, record changed files, checks, remaining risk, next step and main verification.
+8. Stop as `PARTIAL` or `BLOCKED` when scope crosses into another program, required proof is unavailable or the same check fails twice without new evidence.
 
-1. Uzmi prvi task sa `Status: TODO`.
-2. Ne preskači taskove bez eksplicitnog zahteva korisnika.
-3. Ne radi više od jednog taska po sesiji/commitu.
-4. Pre izmene postavi status na `IN_PROGRESS`.
-5. Posle rada postavi `DONE`, `PARTIAL` ili `BLOCKED`.
-6. Dodaj belešku u task:
-   - datum
-   - commit SHA ako postoji
-   - promenjeni fajlovi
-   - provere
-   - rizik
-   - sledeći korak
-7. Ako je task `BLOCKED`, ne prelazi na sledeći task osim ako korisnik eksplicitno kaže.
-8. Ako je task `PARTIAL`, sledeći task treba biti follow-up za partial gap, osim ako queue kaže drugačije.
-
-### Stop rules za queue
-
-Stani ako:
-- task traži više od 6–8 fajlova
-- build/test pada dva puta
-- nema jasnog source-of-truth
-- endpoint/security/cache pattern nije jasan
-- potrebni su secrets ili produkcioni pristup
-- postoji rizik od broad rewrite-a
-
-### Finalni izveštaj
-
-Agent mora da završi porukom:
+## Final report
 
 ```text
 Queue task:
@@ -44,15 +24,18 @@ Queue task:
 Status:
 - DONE/PARTIAL/BLOCKED
 
-Promenjeno:
+Changed:
 - ...
 
-Provere:
+Checks:
 - ...
 
-Rizici:
+Risks:
 - ...
 
-Sledeće:
+Main verification:
+- ...
+
+Next:
 - Qyy title
 ```

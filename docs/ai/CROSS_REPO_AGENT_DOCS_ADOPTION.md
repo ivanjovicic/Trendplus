@@ -1,6 +1,6 @@
 # Cross-Repo Agent Docs Adoption
 
-Date: 2026-07-01
+Date: 2026-08-11
 Repo: `ivanjovicic/Trendplus`
 Status: bridge document for imported/adapted agent practices
 
@@ -40,10 +40,18 @@ Useful ideas adapted:
 - queue refill discipline only after current prompt is honestly closed
 - critical test matrix thinking
 - explicit residual risk and follow-up prompt requirements
+- authority order for conflicting entrypoint/summary docs
+- autonomous execution defaults and a higher question threshold
+- direct-user-request guidance that does not invent a queue claim
+- mechanical prompt-defect repair inside the same owner boundary
+- delivery truth: local/branch transport states are not verified completion
 
 Trendplus-local docs created from those ideas:
 
 - `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- `docs/ai/REPO_AI_README.md`
+- `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `docs/qa/TRENDPLUS_STABILIZATION_STATUS.md`
 
 ## Trendplus read order for agent-system work
@@ -71,6 +79,8 @@ Do not copy these source-repo-specific rules into Trendplus:
 - MathLearning mobile/offline/cosmetics feature contracts that do not apply to Trendplus.
 - Flutter-specific validation commands unless a Trendplus Flutter/mobile module is added.
 - Source repo queue IDs or lane prefixes.
+- MathLearning remote-claim/worktree machinery that depends on repository-specific scripts Trendplus does not have.
+- Mobile/session/economy/offline invariants that do not map to Trendplus .NET, React, worker or analytics contracts.
 
 ## Practical effect for Trendplus agents
 
@@ -93,4 +103,4 @@ After 3-5 important prompt-system commits, run `docs/ai/PROMPT_BATCH_REVIEW_POLI
 
 ## Note
 
-`docs/ai/AGENT_START_HERE.md` should eventually link these new documents directly. If a connector write blocks that update, keep this bridge document as the source for cross-repo adoption until the next local doc cleanup pass.
+This bridge remains useful as an audit trail, but the live Trendplus owners now already point at the relevant queue, evidence and source-of-truth rules directly.
