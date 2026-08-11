@@ -34,6 +34,7 @@ import type {
   ProductDecisionAlternativeRecommendation,
   ProductDecisionCenterResponse,
   ProductDecisionEvidenceNode,
+  ProductDecisionDecisionTreeNode,
   ProductDecisionWhyPanel,
   ProductDecisionRecommendationStatus,
   StoreOption,
@@ -334,6 +335,15 @@ function whyPanelFallbackLabel(value: string | null | undefined): string {
   return `Fallback: ${value}`;
 }
 
+function decisionTreeCategoryLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "decision") return "Odluka";
+  if (normalized === "gate") return "Uslov";
+  if (normalized === "branch") return "Grana";
+  if (normalized === "outcome") return "Ishod";
+  return "Grana";
+}
+
 function buildProductDecisionWhyPanel(row: ProductDecisionRow): ProductDecisionWhyPanel {
   if (row.whyPanel) {
     return row.whyPanel;
@@ -368,7 +378,7 @@ function buildProductDecisionWhyPanel(row: ProductDecisionRow): ProductDecisionW
     reliabilityPct: row.reliabilityPct,
     dataQualityStatus: row.dataQualityStatus,
     inputFreshnessStatus,
-    recommendationAllowed: row.recommendationAllowed ?? true,
+    recommendationAllowed: Boolean(row.recommendationAllowed),
     expectedImpactRsd,
     impactWindowDays: row.impactWindowDays ?? null,
     riskIfIgnored: row.riskIfIgnored,
@@ -1300,6 +1310,7 @@ export default function ProductDecisionCenterPage() {
                   const confidenceBreakdownItems: ProductDecisionEvidenceNode[] = whyPanel.confidenceBreakdown ?? [];
                   const alternativeRecommendationsItems: ProductDecisionAlternativeRecommendation[] = whyPanel.alternativeRecommendations ?? [];
                   const evidenceChainItems: ProductDecisionEvidenceNode[] = whyPanel.evidenceChain ?? [];
+                  const decisionTreeItems: ProductDecisionDecisionTreeNode[] = whyPanel.decisionTree ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
 
@@ -1473,6 +1484,31 @@ export default function ProductDecisionCenterPage() {
                                   </ol>
                                 ) : (
                                   <span>Alternativne preporuke nisu dostupne.</span>
+                                )}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Put odluke:</strong>
+                                {decisionTreeItems.length ? (
+                                  <ol className="decision-tree-list">
+                                    {decisionTreeItems.map((item) => (
+                                      <li
+                                        key={item.code}
+                                        className={`decision-tree-item decision-tree-${item.category}${item.isSelected ? " decision-tree-selected" : " decision-tree-rejected"}`}
+                                      >
+                                        <div className="evidence-chain-headline">
+                                          <span className="evidence-chain-category">{decisionTreeCategoryLabel(item.category)}</span>
+                                          <span className="evidence-chain-label">{item.label}</span>
+                                          <span className="decision-tree-state">{item.isSelected ? "izabrana grana" : "sporedna grana"}</span>
+                                        </div>
+                                        <span className="evidence-chain-value">{item.valueText}</span>
+                                        {item.detail ? <small>{item.detail}</small> : null}
+                                        <small className="evidence-chain-source">Izvor: {item.sourceFields.join(" · ")}</small>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                ) : (
+                                  <span>Put odluke nije dostupan.</span>
                                 )}
                               </div>
 

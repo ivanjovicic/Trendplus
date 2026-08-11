@@ -147,6 +147,46 @@ function makeRow(overrides: Record<string, unknown> = {}) {
   const confidenceBreakdown = Array.isArray(row.confidenceBreakdown) ? row.confidenceBreakdown : [];
   const alternativeRecommendations = Array.isArray(row.alternativeRecommendations) ? row.alternativeRecommendations : [];
   const evidenceChain = Array.isArray(row.evidenceChain) ? row.evidenceChain : [];
+  const decisionTree = Array.isArray((row as { decisionTree?: unknown }).decisionTree)
+    ? ((row as { decisionTree?: Array<Record<string, unknown>> }).decisionTree ?? [])
+    : [
+        {
+          category: "decision",
+          code: "selected_recommendation",
+          label: "Odabrana preporuka",
+          valueText: row.recommendationLabel,
+          sourceFields: ["RecommendationStatus", "RecommendationLabel", "RecommendationReason"],
+          isSelected: true,
+          detail: row.explainabilityText,
+        },
+        {
+          category: "gate",
+          code: "data_quality_gate",
+          label: "Kvalitet podataka",
+          valueText: row.dataQualityStatus === "good" ? "Prolazi dalje" : "Blokira granu",
+          sourceFields: ["DataQualityStatus", "WarningCodes", "ReasonCodes"],
+          isSelected: row.dataQualityStatus === "good" || row.dataQualityStatus === "warning",
+          detail: "Deterministički uslov iz backend grane.",
+        },
+        {
+          category: "gate",
+          code: "freshness_gate",
+          label: "Svežina ulaza",
+          valueText: String(row.inputFreshnessStatus ?? "unknown"),
+          sourceFields: ["InputFreshnessStatus", "DataQualityStatus"],
+          isSelected: row.inputFreshnessStatus !== "critical",
+          detail: "Svežina ulaza se prikazuje bez lokalnog preračunavanja.",
+        },
+        {
+          category: "branch",
+          code: "selected_branch",
+          label: row.recommendationLabel,
+          valueText: row.recommendedAction,
+          sourceFields: ["RecommendationStatus", "RecommendedAction", "ReasonCodes", "PrimaryDrivers"],
+          isSelected: true,
+          detail: row.recommendationReason,
+        },
+      ];
 
   return {
     ...row,
@@ -175,6 +215,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       confidenceBreakdown: [...confidenceBreakdown],
       alternativeRecommendations: [...alternativeRecommendations],
       evidenceChain: [...evidenceChain],
+      decisionTree: [...(decisionTree as Array<Record<string, unknown>>)],
     },
   };
 }
@@ -323,12 +364,22 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
 
     expect(screen.getByText("Lanac dokaza:")).toBeInTheDocument();
-    expect(screen.getByText("Odabrana preporuka", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getAllByText("Odabrana preporuka", { selector: ".evidence-chain-label" }).length).toBeGreaterThan(0);
     expect(screen.getByText("Signal prodaje", { selector: ".evidence-chain-label" })).toBeInTheDocument();
     expect(screen.getByText("28800 RSD u 14 dana")).toBeInTheDocument();
     expect(
       screen.getByText((_, element) => element?.textContent === "Izvor: VelocityUnitsPerDay · UnitsSold · Revenue"),
     ).toBeInTheDocument();
+  });
+
+  it("renders a deterministic decision tree path in the Why panel", async () => {
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText("Put odluke:")).toBeInTheDocument();
+    expect(screen.getByText("Deterministički uslov iz backend grane.")).toBeInTheDocument();
+    expect(screen.getAllByText("izabrana grana").length).toBeGreaterThan(0);
   });
 
   it("renders a structured confidence breakdown in the Why panel", async () => {
@@ -575,7 +626,13 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     expect(screen.getByText(/Izvor objašnjenja: backend kompozicija signala/i)).toBeInTheDocument();
     expect(screen.getByText(/Fallback: RecommendationReason nije bio dostupan/i)).toBeInTheDocument();
-    expect(screen.getByText(/Kompovano iz backend signala\./i)).toBeInTheDocument();
+    const fallbackBlock = screen.getByText(/Zašto ova preporuka\?/i).closest(".reason-block");
+    expect(fallbackBlock).not.toBeNull();
+    if (!fallbackBlock) {
+      throw new Error("Fallback blok nije pronađen.");
+    }
+
+    expect(fallbackBlock.textContent).toContain("Kompovano iz backend signala.");
   });
 
   it("keeps confident recommendations honest when expected impact is missing", async () => {

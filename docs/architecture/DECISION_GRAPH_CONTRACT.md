@@ -40,7 +40,7 @@ This is a declarative model. The current code does not need to emit a literal gr
 
 The decision tree is a deterministic branch-path projection of the same recommendation graph. It is only present when the backend can prove a rule-based evaluation path. It is not inferred from reason codes, alternative recommendations or the evidence chain.
 
-The current runtime does not yet emit a dedicated decision tree object. The contract below is the target additive shape for a later implementation.
+The current runtime emits a dedicated `decisionTree` object on `ProductDecisionWhyPanelDto`. The contract below defines the canonical shape and keeps the absence state explicit for older payloads.
 
 ### Tree state
 
@@ -244,7 +244,7 @@ If one of these inputs is missing, the UI should show the absence explicitly ins
 - Existing analytics reliability semantics remain authoritative.
 - The first runtime implementation can stay scoped to the Product Decision Center family.
 - Decision Board can reuse the same semantics without becoming a second source of truth.
-- The current Product Decision Center fields can gate tree display, but they cannot reconstruct a branch path on their own.
+- The current Product Decision Center fields can gate tree display, but the emitted `decisionTree` object is the authoritative branch-path payload; older payloads may omit it, so the UI must show absence explicitly.
 
 ## Next implementation split
 

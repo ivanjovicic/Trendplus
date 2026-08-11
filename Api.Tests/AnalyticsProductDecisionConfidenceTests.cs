@@ -60,6 +60,10 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Null(profile.WhyPanel.SummaryFallbackReason);
         Assert.NotEmpty(profile.WhyPanel.ConfidenceBreakdown);
         Assert.NotEmpty(profile.WhyPanel.AlternativeRecommendations);
+        Assert.NotEmpty(profile.WhyPanel.DecisionTree);
+        var selectedTreeNode = Assert.Single(profile.WhyPanel.DecisionTree, node => node.Code == "selected_branch");
+        Assert.True(selectedTreeNode.IsSelected);
+        Assert.Equal("Aktiviraj dopunu prema minimalnoj zalihi.", selectedTreeNode.ValueText);
         Assert.NotEmpty(profile.ConfidenceBreakdown);
         var scoreNode = Assert.Single(profile.ConfidenceBreakdown, node => node.Code == "confidence_score");
         Assert.Equal("Ocena pouzdanosti", scoreNode.Label);
@@ -166,6 +170,8 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Equal("recommendation_reason", profile.WhyPanel.SummarySource);
         Assert.False(profile.WhyPanel.SummaryFallbackUsed);
         Assert.NotEmpty(profile.WhyPanel.EvidenceChain);
+        Assert.NotEmpty(profile.WhyPanel.DecisionTree);
+        Assert.Contains(profile.WhyPanel.DecisionTree, node => node.Code == "data_quality_gate" && !node.IsSelected);
     }
 
     [Fact]

@@ -367,6 +367,16 @@ export interface ProductDecisionAlternativeRecommendation {
   whyLowerRanked: string;
 }
 
+export interface ProductDecisionDecisionTreeNode {
+  category: "decision" | "gate" | "branch" | "outcome" | string;
+  code: string;
+  label: string;
+  valueText: string;
+  sourceFields: string[];
+  isSelected: boolean;
+  detail?: string | null;
+}
+
 export interface ProductDecisionWhyPanel {
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
@@ -392,6 +402,7 @@ export interface ProductDecisionWhyPanel {
   confidenceBreakdown: ProductDecisionEvidenceNode[];
   alternativeRecommendations: ProductDecisionAlternativeRecommendation[];
   evidenceChain: ProductDecisionEvidenceNode[];
+  decisionTree?: ProductDecisionDecisionTreeNode[] | null;
 }
 
 export interface ProductDecisionCenterItem {

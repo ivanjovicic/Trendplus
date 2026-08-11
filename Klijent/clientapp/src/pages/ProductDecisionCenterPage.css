@@ -311,7 +311,8 @@
 
 .evidence-chain-list,
 .confidence-breakdown-list,
-.alternative-recommendations-list {
+.alternative-recommendations-list,
+.decision-tree-list {
   margin: 0.45rem 0 0;
   padding: 0;
   display: grid;
@@ -320,7 +321,8 @@
 
 .evidence-chain-item,
 .confidence-breakdown-item,
-.alternative-recommendation-item {
+.alternative-recommendation-item,
+.decision-tree-item {
   border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 0.62rem 0.72rem;
@@ -379,6 +381,16 @@
 .confidence-breakdown-item.confidence-breakdown-constraint .evidence-chain-category { color: var(--error, #f87171); }
 .evidence-chain-item.evidence-chain-impact .evidence-chain-category,
 .confidence-breakdown-item.confidence-breakdown-impact .evidence-chain-category { color: #a78bfa; }
+.decision-tree-item.decision-tree-selected .evidence-chain-category { color: var(--success, #34d399); }
+.decision-tree-item.decision-tree-rejected .evidence-chain-category { color: var(--warning, #facc15); }
+.decision-tree-state {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
 .alternative-recommendation-headline {
   display: flex;

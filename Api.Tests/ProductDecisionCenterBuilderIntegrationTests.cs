@@ -59,6 +59,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.False(replenish.WhyPanel.SummaryFallbackUsed);
         Assert.NotEmpty(replenish.WhyPanel.ConfidenceBreakdown);
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
+        Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
+        Assert.Contains(replenish.WhyPanel.DecisionTree, node => node.Code == "selected_branch" && node.IsSelected);
         Assert.NotNull(replenish.ConfidenceScore);
         Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
@@ -111,6 +113,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.False(fixData.WhyPanel.SummaryFallbackUsed);
         Assert.NotEmpty(fixData.WhyPanel.EvidenceChain);
         Assert.NotEmpty(fixData.WhyPanel.AlternativeRecommendations);
+        Assert.NotEmpty(fixData.WhyPanel.DecisionTree);
+        Assert.Contains(fixData.WhyPanel.DecisionTree, node => node.Code == "data_quality_gate" && !node.IsSelected);
         Assert.NotEmpty(fixData.AlternativeRecommendations);
         Assert.Contains(fixData.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
         Assert.All(fixData.AlternativeRecommendations, node =>

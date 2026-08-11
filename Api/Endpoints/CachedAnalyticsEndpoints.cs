@@ -5636,6 +5636,13 @@ public static class CachedAnalyticsEndpoints
             expectedImpactRsd,
             inputFreshnessStatus,
             explainabilityText);
+        var decisionTree = BuildProductDecisionDecisionTree(
+            row,
+            confidenceLevel,
+            warningCodes,
+            inputFreshnessStatus,
+            alternativeRecommendations,
+            explainabilityText);
         var whyPanel = BuildProductDecisionWhyPanel(
             row,
             confidenceLevel,
@@ -5649,7 +5656,8 @@ public static class CachedAnalyticsEndpoints
             inputFreshnessStatus,
             confidenceBreakdown,
             alternativeRecommendations,
-            evidenceChain);
+            evidenceChain,
+            decisionTree);
 
         return new ProductDecisionConfidenceProfile(
             RecommendationId: recommendationId,
@@ -5684,7 +5692,8 @@ public static class CachedAnalyticsEndpoints
         string inputFreshnessStatus,
         IReadOnlyList<ProductDecisionEvidenceNodeDto> confidenceBreakdown,
         IReadOnlyList<ProductDecisionAlternativeRecommendationDto> alternativeRecommendations,
-        IReadOnlyList<ProductDecisionEvidenceNodeDto> evidenceChain)
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> evidenceChain,
+        IReadOnlyList<ProductDecisionDecisionTreeNodeDto> decisionTree)
     {
         var summarySource = string.IsNullOrWhiteSpace(row.RecommendationReason)
             ? "backend_composed"
@@ -5715,7 +5724,122 @@ public static class CachedAnalyticsEndpoints
             RiskIfIgnored = riskIfIgnored,
             ConfidenceBreakdown = [.. confidenceBreakdown],
             AlternativeRecommendations = [.. alternativeRecommendations],
-            EvidenceChain = [.. evidenceChain]
+            EvidenceChain = [.. evidenceChain],
+            DecisionTree = [.. decisionTree]
+        };
+    }
+
+    private static IReadOnlyList<ProductDecisionDecisionTreeNodeDto> BuildProductDecisionDecisionTree(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        IReadOnlyCollection<string> warningCodes,
+        string inputFreshnessStatus,
+        IReadOnlyList<ProductDecisionAlternativeRecommendationDto> alternativeRecommendations,
+        string explainabilityText)
+    {
+        var decisionTree = new List<ProductDecisionDecisionTreeNodeDto>();
+        var selectedRecommendationLabel = string.IsNullOrWhiteSpace(row.RecommendationLabel)
+            ? RecommendationLabel(row.RecommendationStatus)
+            : row.RecommendationLabel;
+        var selectedAction = RecommendedAction(row.RecommendationStatus);
+        var dataQualityBlocksDecision = IsProductDecisionInsufficientData(row) || row.DataQualityStatus is "critical" or "insufficient_data";
+        var freshnessBlocksDecision = inputFreshnessStatus is "critical";
+        var gateDetail = dataQualityBlocksDecision
+            ? "Kritični ili nedovoljni ulazi preusmeravaju odluku na sigurne grane."
+            : "Ulazi su dovoljno stabilni da se nastavi determinističkom granom.";
+        var freshnessDetail = freshnessBlocksDecision
+            ? "Ulaz je prestar za samouverenu granu."
+            : "Ulaz je dovoljno svež za nastavak grane.";
+
+        void AddNode(
+            string category,
+            string code,
+            string label,
+            string valueText,
+            IReadOnlyList<string> sourceFields,
+            bool isSelected,
+            string? detail = null)
+        {
+            decisionTree.Add(new ProductDecisionDecisionTreeNodeDto
+            {
+                Category = category,
+                Code = code,
+                Label = label,
+                ValueText = valueText,
+                SourceFields = [.. sourceFields],
+                IsSelected = isSelected,
+                Detail = detail
+            });
+        }
+
+        AddNode(
+            "decision",
+            "selected_recommendation",
+            "Odabrana preporuka",
+            selectedRecommendationLabel,
+            ["RecommendationStatus", "RecommendationLabel", "RecommendationReason"],
+            true,
+            string.IsNullOrWhiteSpace(explainabilityText) ? null : explainabilityText);
+
+        AddNode(
+            "gate",
+            "data_quality_gate",
+            "Kvalitet podataka",
+            dataQualityBlocksDecision ? "Blokira granu" : "Prolazi dalje",
+            ["DataQualityStatus", "WarningCodes", "ReasonCodes"],
+            !dataQualityBlocksDecision,
+            gateDetail);
+
+        AddNode(
+            "gate",
+            "freshness_gate",
+            "Svežina ulaza",
+            DescribeProductDecisionFreshnessStatus(inputFreshnessStatus),
+            ["InputFreshnessStatus", "DataQualityStatus"],
+            !freshnessBlocksDecision,
+            freshnessDetail);
+
+        AddNode(
+            "branch",
+            "selected_branch",
+            selectedRecommendationLabel,
+            selectedAction,
+            ["RecommendationStatus", "RecommendedAction", "ReasonCodes", "PrimaryDrivers"],
+            true,
+            BuildProductDecisionBranchDetail(row, confidenceLevel, warningCodes));
+
+        foreach (var alternative in alternativeRecommendations.Take(2))
+        {
+            AddNode(
+                "branch",
+                $"alternative_{alternative.Rank}",
+                alternative.RecommendationLabel,
+                alternative.RecommendedAction,
+                ["AlternativeRecommendations", "ReasonCodes"],
+                false,
+                alternative.WhyLowerRanked);
+        }
+
+        return decisionTree;
+    }
+
+    private static string BuildProductDecisionBranchDetail(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        IReadOnlyCollection<string> warningCodes)
+    {
+        return row.RecommendationStatus switch
+        {
+            "REPLENISH" => "Signal prodaje i zalihe otvaraju granu dopune.",
+            "BOOST" => "Signal prodaje i prostora za rast otvaraju granu pojačavanja.",
+            "MARKDOWN" => "Slabiji obrt i pritisak signala otvaraju granu sniženja.",
+            "DO_NOT_ORDER" => "Signal blokira novu narudžbinu dok se ne oporavi.",
+            "FIX_DATA" => "Nedostajući ili kritični ulazi preusmeravaju tok na ispravku podataka.",
+            "WATCH" => "Signal je dovoljno jasan da se nastavi praćenje bez hitne intervencije.",
+            "INSUFFICIENT_DATA" => "Nedovoljno signala ostavlja odluku u sigurnom režimu.",
+            _ when warningCodes.Contains("expected_impact_denominator_missing") => "Ograničen ulazni signal vodi ka konzervativnoj grani.",
+            _ when confidenceLevel == "high" => "Visoka sigurnost zadržava izabranu granu.",
+            _ => "Deterministička grana vodi do izabrane preporuke."
         };
     }
 
@@ -6709,6 +6833,14 @@ public static class CachedAnalyticsEndpoints
         _ => "Sačekaj dodatne podatke pre poslovne odluke."
     };
 
+    private static string InputFreshnessLabel(string status) => status switch
+    {
+        "fresh" => "Sveže",
+        "stale" => "Zastarelo",
+        "critical" => "Kritično",
+        _ => "Nepoznato"
+    };
+
     private static string NormalizeDataScope(string? dataScope)
     {
         var normalized = (dataScope ?? "all").Trim().ToLowerInvariant();
@@ -7074,6 +7206,18 @@ public class ProductDecisionWhyPanelDto
     public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
     public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
     public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
+    public List<ProductDecisionDecisionTreeNodeDto> DecisionTree { get; set; } = [];
+}
+
+public class ProductDecisionDecisionTreeNodeDto
+{
+    public string Category { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string ValueText { get; set; } = string.Empty;
+    public List<string> SourceFields { get; set; } = [];
+    public bool IsSelected { get; set; }
+    public string? Detail { get; set; }
 }
 
 public class ProductDecisionCenterResponseDto
