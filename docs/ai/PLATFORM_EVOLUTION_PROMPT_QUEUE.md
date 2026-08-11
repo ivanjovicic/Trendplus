@@ -279,7 +279,7 @@ Feature family: observability-service-level-vocabulary
 Parallel-safe: yes, docs/contracts only
 Owner: Cursor
 Local lock: removed after DONE
-Commit: pending
+Commit: `9cec275738fd033e6a633169e904bea9a1591125`
 Completed: 2026-08-11
 Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
 
