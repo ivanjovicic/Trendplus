@@ -26,6 +26,7 @@ import type {
   PaymentData,
   QuickInsights,
   ProductDecisionCenterResponse,
+  ProductDecisionTimelineFilterResponse,
   RebalanceListDto,
   ReorderSuggestion,
   InventoryStoreComparison,
@@ -770,6 +771,29 @@ export async function getProductDecisionCenter(options?: {
     "/api/analytics/cached/products/decision-center",
     params,
     "Greska pri ucitavanju Product Decision Center pregleda"
+  );
+}
+
+export async function getProductDecisionTimeline(options?: {
+  fromDate?: string;
+  toDate?: string;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  productId?: number | null;
+  recommendationType?: string | null;
+}): Promise<ProductDecisionTimelineFilterResponse> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.sourceType) params.append("sourceType", options.sourceType);
+  if (options?.sourceKey) params.append("sourceKey", options.sourceKey);
+  if (options?.productId != null) params.append("productId", String(options.productId));
+  if (options?.recommendationType) params.append("recommendationType", options.recommendationType);
+
+  return fetchJson(
+    "/api/analytics/cached/products/decision-center/timeline",
+    params,
+    "Greska pri ucitavanju Decision Timeline pregleda"
   );
 }
 

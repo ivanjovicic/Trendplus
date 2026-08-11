@@ -407,6 +407,60 @@ export interface RecommendationLifecycleCapture {
   countsTowardNotMeasured: boolean;
 }
 
+export interface DecisionTimelineEvent {
+  eventType: string;
+  stage: string;
+  occurredAtUtc: string;
+  status?: string | null;
+  sourceRecommendationId?: string | null;
+  correlationId?: string | null;
+  evidenceSource?: string | null;
+  evidenceReference?: string | null;
+  measurementWindowDays?: number | null;
+}
+
+export interface DecisionTimelineGap {
+  stage: string;
+  gapReason: string;
+  message: string;
+}
+
+export interface DecisionTimelineItem {
+  timelineId: string;
+  actionId: number;
+  sourceRecommendationId: string;
+  correlationId: string;
+  sourceType: string;
+  sourceKey: string;
+  recommendationType?: string | null;
+  projectionState: string;
+  issuedAtUtc: string;
+  currentStatus: string;
+  currentOutcomeStatus: string;
+  events: DecisionTimelineEvent[];
+  gaps: DecisionTimelineGap[];
+}
+
+export interface DecisionTimelineFilterScope {
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  productId?: number | null;
+  recommendationType?: string | null;
+  periodFromUtc: string;
+  periodToUtc: string;
+  scopeExplanation: string;
+}
+
+export interface ProductDecisionTimelineFilterResponse {
+  scope?: DecisionTimelineFilterScope | null;
+  emptyReason?: "no_events" | "outside_period" | "no_measurement" | string | null;
+  timelines: DecisionTimelineItem[];
+  matchedActionCount: number;
+  matchedEventCount: number;
+  warningCodes?: string[] | null;
+  meta?: AnalyticsResponseMeta | null;
+}
+
 export interface ProductDecisionWhyPanel {
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;

@@ -9,6 +9,7 @@ using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
+using Infrastructure.Services.Analytics;
 using MediatR;
 using Domain.Model;
 using Domain.Model.Analytics;
@@ -1489,6 +1490,60 @@ public static class CachedAnalyticsEndpoints
                         "ANALYTICS_UNEXPECTED_ERROR",
                         "Product Decision Center podaci trenutno nisu dostupni.",
                         ResolveCorrelationId(httpContext)),
+                });
+            }
+        });
+
+        // ========== PRODUCT DECISION TIMELINE FILTER (DT05, read-only) ==========
+        group.MapGet("/products/decision-center/timeline", async (
+            IAnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
+            HttpContext httpContext,
+            string? sourceType = null,
+            string? sourceKey = null,
+            int? productId = null,
+            string? recommendationType = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            CancellationToken ct = default) =>
+        {
+            try
+            {
+                var response = await BuildProductDecisionTimelineFilterAsync(
+                    analyticsDb,
+                    sourceType,
+                    sourceKey,
+                    productId,
+                    recommendationType,
+                    fromDate,
+                    toDate,
+                    ct);
+                response.Meta ??= BuildSuccessMeta();
+                response.Meta.CorrelationId = ResolveCorrelationId(httpContext);
+                return Results.Ok(response);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Product decision timeline filter fallback due to timeout.");
+                return Results.Ok(new ProductDecisionTimelineFilterResponseDto
+                {
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_TIMEOUT",
+                        "Decision Timeline podaci trenutno nisu dostupni zbog isteka vremena.",
+                        ResolveCorrelationId(httpContext)),
+                    EmptyReason = AnalyticsActionTimelineFilterProjection.EmptyReasonNoEvents
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Product decision timeline filter fallback due to unexpected issue.");
+                return Results.Ok(new ProductDecisionTimelineFilterResponseDto
+                {
+                    Meta = BuildErrorMeta(
+                        "ANALYTICS_UNEXPECTED_ERROR",
+                        "Decision Timeline podaci trenutno nisu dostupni.",
+                        ResolveCorrelationId(httpContext)),
+                    EmptyReason = AnalyticsActionTimelineFilterProjection.EmptyReasonNoEvents
                 });
             }
         });
@@ -5010,6 +5065,104 @@ public static class CachedAnalyticsEndpoints
         public decimal CostCoveredRevenue { get; init; }
     }
 
+    internal static async Task<ProductDecisionTimelineFilterResponseDto> BuildProductDecisionTimelineFilterAsync(
+        IAnalyticsDbContext analyticsDb,
+        string? sourceType,
+        string? sourceKey,
+        int? productId,
+        string? recommendationType,
+        DateTime? fromDate,
+        DateTime? toDate,
+        CancellationToken ct)
+    {
+        var nowUtc = DateTime.UtcNow.Date;
+        var periodToUtc = (toDate?.Date ?? nowUtc);
+        var periodFromUtc = fromDate?.Date ?? periodToUtc.AddDays(-29);
+        if (periodFromUtc > periodToUtc)
+        {
+            (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
+        }
+
+        var normalizedSourceType = string.IsNullOrWhiteSpace(sourceType)
+            ? (productId.HasValue ? "product" : null)
+            : sourceType.Trim();
+
+        IQueryable<AnalyticsActionItem> query = analyticsDb.AnalyticsActionItems
+            .AsNoTracking()
+            .Include(item => item.Notes);
+
+        if (!string.IsNullOrWhiteSpace(normalizedSourceType))
+        {
+            query = query.Where(item => item.SourceType == normalizedSourceType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(sourceKey))
+        {
+            var normalizedSourceKey = sourceKey.Trim();
+            query = query.Where(item => item.SourceKey == normalizedSourceKey);
+        }
+        else if (productId.HasValue)
+        {
+            var exactKey = $"product:{productId.Value}";
+            var prefix = exactKey + ":";
+            query = query.Where(item =>
+                item.SourceId == productId.Value
+                || item.SourceKey == exactKey
+                || item.SourceKey.StartsWith(prefix));
+        }
+
+        // Family and exact period precision are applied by the read-only filter helper.
+        // Keep SQL candidate window intentionally wider than the requested period.
+        var candidateFrom = periodFromUtc.AddDays(-14);
+        var candidateToExclusive = periodToUtc.AddDays(15);
+        query = query.Where(item =>
+            item.CreatedAtUtc >= candidateFrom
+            && item.CreatedAtUtc < candidateToExclusive);
+
+        var items = await query
+            .OrderBy(item => item.CreatedAtUtc)
+            .ThenBy(item => item.Id)
+            .Take(200)
+            .ToListAsync(ct);
+
+        var filtered = AnalyticsActionTimelineFilterProjection.Filter(
+            items,
+            new DecisionTimelineFilterQuery(
+                SourceType: normalizedSourceType,
+                SourceKey: string.IsNullOrWhiteSpace(sourceKey) ? null : sourceKey.Trim(),
+                ProductId: productId,
+                RecommendationType: string.IsNullOrWhiteSpace(recommendationType) ? null : recommendationType.Trim(),
+                PeriodFromUtc: periodFromUtc,
+                PeriodToUtc: periodToUtc));
+
+        var dataQuality = filtered.Timelines.Count == 0
+            ? "insufficient_data"
+            : filtered.WarningCodes.Contains(AnalyticsActionTimelineFilterProjection.EmptyReasonNoMeasurement)
+                ? "warning"
+                : "good";
+
+        return new ProductDecisionTimelineFilterResponseDto
+        {
+            Scope = filtered.Scope,
+            EmptyReason = filtered.EmptyReason,
+            Timelines = filtered.Timelines.ToList(),
+            MatchedActionCount = filtered.MatchedActionCount,
+            MatchedEventCount = filtered.MatchedEventCount,
+            WarningCodes = filtered.WarningCodes.ToList(),
+            Meta = filtered.EmptyReason is null
+                ? BuildSuccessMeta(dataQualityStatus: dataQuality, lastRefreshAtUtc: DateTime.UtcNow)
+                : BuildSuccessMeta(
+                    dataQualityStatus: "insufficient_data",
+                    message: filtered.EmptyReason switch
+                    {
+                        AnalyticsActionTimelineFilterProjection.EmptyReasonOutsidePeriod
+                            => "Nema timeline događaja u izabranom periodu.",
+                        _ => "Nema timeline događaja za izabrani entitet/porodicu."
+                    },
+                    lastRefreshAtUtc: DateTime.UtcNow)
+        };
+    }
+
     internal static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
@@ -7274,6 +7427,21 @@ public class ProductDecisionCenterResponseDto
     public string IgnoredRowsMeaning { get; set; } = ProductDecisionDenominatorScope.HiddenByTopLimit;
     public ProductDecisionCenterSummaryDto Summary { get; set; } = new();
     public List<ProductDecisionCenterRowDto> Rows { get; set; } = [];
+    public AnalyticsResponseMetaDto Meta { get; set; } = new()
+    {
+        Success = true,
+        GeneratedAtUtc = DateTime.UtcNow
+    };
+}
+
+public class ProductDecisionTimelineFilterResponseDto
+{
+    public DecisionTimelineFilterScopeDto? Scope { get; set; }
+    public string? EmptyReason { get; set; }
+    public List<DecisionTimelineItemDto> Timelines { get; set; } = [];
+    public int MatchedActionCount { get; set; }
+    public int MatchedEventCount { get; set; }
+    public List<string> WarningCodes { get; set; } = [];
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
     {
         Success = true,

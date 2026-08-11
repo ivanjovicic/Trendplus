@@ -2,6 +2,7 @@ using Application.Analytics;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
+using Infrastructure.Services.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Trendplus2.Endpoints;
 using Xunit;
@@ -63,6 +64,19 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.False(replenish.WhyPanel.LearningEligible);
         Assert.Contains("acceptance_is_not_success", replenish.LearningEligibilityReasonCodes);
         Assert.NotEmpty(replenish.WhyPanel.ConfidenceBreakdown);
+
+        var timelineFilter = AnalyticsActionTimelineFilterProjection.Filter(
+            Array.Empty<Domain.Model.Analytics.AnalyticsActionItem>(),
+            new DecisionTimelineFilterQuery(
+                SourceType: replenish.SourceType,
+                SourceKey: replenish.SourceKey,
+                ProductId: replenish.ProductId,
+                RecommendationType: replenish.RecommendationType,
+                PeriodFromUtc: fromDate,
+                PeriodToUtc: toDate));
+        Assert.Equal(AnalyticsActionTimelineFilterProjection.EmptyReasonNoEvents, timelineFilter.EmptyReason);
+        Assert.Contains(replenish.SourceKey!, timelineFilter.Scope.ScopeExplanation);
+        Assert.Contains(replenish.RecommendationType!, timelineFilter.Scope.ScopeExplanation);
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
         Assert.Contains(replenish.WhyPanel.DecisionTree, node => node.Code == "selected_branch" && node.IsSelected);

@@ -10,6 +10,7 @@ import {
   AnalyticsMetaError,
   getAnalyticsActionSourceStatuses,
   getProductDecisionCenter,
+  getProductDecisionTimeline,
   getStores,
   getSupplierFilters,
   upsertAnalyticsActionWithResult,
@@ -37,6 +38,7 @@ import type {
   ProductDecisionDecisionTreeNode,
   ProductDecisionWhyPanel,
   ProductDecisionRecommendationStatus,
+  ProductDecisionTimelineFilterResponse,
   StoreOption,
   SupplierFilterOption,
 } from "../types/analytics";
@@ -418,6 +420,14 @@ function lifecycleStateLabel(value: string | null | undefined): string {
   return "Nije dostupno";
 }
 
+function timelineEmptyReasonLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "outside_period") return "Nema događaja u izabranom periodu (outside_period).";
+  if (normalized === "no_measurement") return "Nema merenog ishoda (no_measurement).";
+  if (normalized === "no_events") return "Nema timeline događaja za izabrani entitet/porodicu (no_events).";
+  return "Timeline je prazan.";
+}
+
 function primaryDriverLabel(value: string): string {
   return DRIVER_LABELS[value] ?? value;
 }
@@ -621,6 +631,10 @@ export default function ProductDecisionCenterPage() {
   const [sortField, setSortField] = useState<SortField>("recommendationStatus");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
+  const [timelineByProductId, setTimelineByProductId] = useState<Record<number, ProductDecisionTimelineFilterResponse | null>>({});
+  const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
+  const [timelineFamilyFilter, setTimelineFamilyFilter] = useState<"row" | "all">("row");
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -897,9 +911,38 @@ export default function ProductDecisionCenterPage() {
     });
   };
 
-  const toggleExpandedRow = useCallback((productId: number) => {
-    setExpandedProductId((current) => (current === productId ? null : productId));
-  }, []);
+  const loadDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
+    setTimelineLoadingProductId(row.productId);
+    setTimelineError(null);
+    try {
+      const timeline = await getProductDecisionTimeline({
+        fromDate,
+        toDate,
+        sourceType: row.sourceType ?? "product",
+        sourceKey: row.sourceKey ?? `product:${row.productId}`,
+        productId: row.productId,
+        recommendationType: familyMode === "row"
+          ? (row.recommendationType ?? row.recommendationStatus)
+          : null,
+      });
+      setTimelineByProductId((current) => ({ ...current, [row.productId]: timeline }));
+    } catch (err) {
+      setTimelineByProductId((current) => ({ ...current, [row.productId]: null }));
+      setTimelineError(err instanceof Error ? err.message : "Decision Timeline nije dostupan.");
+    } finally {
+      setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
+    }
+  }, [fromDate, toDate]);
+
+  const toggleExpandedRow = useCallback((productId: number, row?: ProductDecisionRow) => {
+    setExpandedProductId((current) => {
+      const next = current === productId ? null : productId;
+      if (next != null && row) {
+        void loadDecisionTimeline(row, timelineFamilyFilter);
+      }
+      return next;
+    });
+  }, [loadDecisionTimeline, timelineFamilyFilter]);
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
@@ -1326,7 +1369,7 @@ export default function ProductDecisionCenterPage() {
 
                   return (
                     <Fragment key={`${row.productId}:${row.recommendationStatus}`}>
-                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId)} title="Klik za detalje preporuke.">
+                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId, row)} title="Klik za detalje preporuke.">
                         <td>
                           <strong>{row.productName}</strong>
                           <small>{row.sku || "N/A"} | {row.category ?? row.tipObuce ?? "N/A"}</small>
@@ -1375,7 +1418,7 @@ export default function ProductDecisionCenterPage() {
                             className="why-button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              toggleExpandedRow(row.productId);
+                              toggleExpandedRow(row.productId, row);
                             }}
                             title={whyPanel.explainabilityText ?? whyPanel.recommendationReason}
                           >
@@ -1440,6 +1483,79 @@ export default function ProductDecisionCenterPage() {
                                     ? "Mereno — može u statistiku"
                                     : "Nije mereno — prihvatanje nije uspeh"}
                                 </small>
+                              </div>
+
+                              <div className="reason-block" data-testid="decision-timeline-panel">
+                                <strong>Decision Timeline (Slice-2 filter):</strong>
+                                <div className="reason-statuses" style={{ marginTop: "0.5rem" }}>
+                                  <button
+                                    type="button"
+                                    className="why-button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setTimelineFamilyFilter("row");
+                                      void loadDecisionTimeline(row, "row");
+                                    }}
+                                  >
+                                    Porodica reda
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="why-button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setTimelineFamilyFilter("all");
+                                      void loadDecisionTimeline(row, "all");
+                                    }}
+                                  >
+                                    Sve porodice
+                                  </button>
+                                </div>
+                                {timelineLoadingProductId === row.productId ? (
+                                  <small>Učitavanje timeline filtera…</small>
+                                ) : null}
+                                {timelineError && expandedProductId === row.productId ? (
+                                  <small className="recommendation-warning-summary">{timelineError}</small>
+                                ) : null}
+                                {(() => {
+                                  const timeline = timelineByProductId[row.productId];
+                                  if (!timeline) {
+                                    return <small>Timeline još nije učitan za ovaj entitet.</small>;
+                                  }
+                                  return (
+                                    <>
+                                      <small data-testid="decision-timeline-scope">
+                                        {timeline.scope?.scopeExplanation
+                                          ?? `Entitet: ${row.sourceKey ?? `product:${row.productId}`} · Period: ${fromDate} – ${toDate}`}
+                                      </small>
+                                      {timeline.emptyReason ? (
+                                        <small data-testid="decision-timeline-empty">
+                                          {timelineEmptyReasonLabel(timeline.emptyReason)}
+                                        </small>
+                                      ) : (
+                                        <ol className="confidence-breakdown-list">
+                                          {timeline.timelines.map((item) => (
+                                            <li key={item.timelineId}>
+                                              <div className="evidence-chain-headline">
+                                                <span className="evidence-chain-label">
+                                                  {item.recommendationType ?? "N/A"} · action #{item.actionId}
+                                                </span>
+                                              </div>
+                                              <small>
+                                                Događaji: {item.events.map((eventItem) => eventItem.eventType).join(" → ") || "nema"}
+                                              </small>
+                                              {item.gaps.length ? (
+                                                <small className="recommendation-warning-summary">
+                                                  Praznine: {item.gaps.map((gap) => gap.gapReason).join(", ")}
+                                                </small>
+                                              ) : null}
+                                            </li>
+                                          ))}
+                                        </ol>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
 
                               <div className="reason-block">

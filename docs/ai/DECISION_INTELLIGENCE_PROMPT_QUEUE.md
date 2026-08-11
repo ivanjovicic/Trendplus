@@ -10,7 +10,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 |---|---|---|
 | DEX - Decision Explainability | `DEX10` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `none` (`RL01`/`RL02`/`RL04` DONE) | runtime lifecycle capture + measured-learning eligibility |
-| DT - Decision Timeline | `DT05` (`DT03` DONE) | Slice-2 filtered timeline projection |
+| DT - Decision Timeline | `none` (`DT03`/`DT05` DONE) | Slice-2 filtered timeline projection |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -1149,12 +1149,13 @@ The learning contract needs a staged rollout that first measures truth before ch
 
 ## DT05 - Implement filtered Decision Timeline Slice-2 runtime projection
 
-Status: READY
+Status: DONE
 Priority: future / implementation
 Feature family: decision-timeline-slice2-filtered-projection
 Parallel-safe: no, coupled backend/frontend contract
-Owner: Codex
-Local lock: `.ai/task-locks/DT05-codex.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
+Promotion note: 2026-08-11 — owner-promoted Slice-2 filtered runtime after DT03.
 
 ### Problem
 
@@ -1200,6 +1201,30 @@ The Slice-2 filtered timeline still needs the first executable runtime slice tha
 - users can narrow the timeline without losing deterministic evidence;
 - the projection still behaves read-only;
 - the UI can explain the chosen time window and entity scope.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `Infrastructure/Services/Analytics/AnalyticsActionTimelineFilterProjection.cs`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/AnalyticsActionTimelineFilterProjectionTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/services/analyticsApi.ts`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - focused backend filter/PDC tests - pass
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+- Risks:
+  - candidate SQL window is wider than requested period; exact period matching remains in the filter helper
+  - family matching uses creation snapshot / recommendationStatus only
+- Next:
+  - later export/report timeline slice when owner promotes
 
 ### Dependencies
 
@@ -1352,12 +1377,13 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 
 ## DT04 - Implement filtered Decision Timeline Slice-2 projection follow-up
 
-Status: WAITING
+Status: OBSOLETE
 Priority: future / implementation
 Feature family: decision-timeline-slice2-filtered-projection
 Parallel-safe: no, coupled backend/frontend contract
 Owner: Codex
-Local lock: `.ai/task-locks/DT04-codex.lock.md`
+Local lock: none
+Promotion note: Superseded by owner-promoted `DT05` filtered runtime slice (same acceptance; executed 2026-08-11).
 
 ### Problem
 

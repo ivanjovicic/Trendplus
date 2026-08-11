@@ -10,6 +10,7 @@ vi.mock("react-router-dom", async () => ({
 const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
 const getProductDecisionCenterMock = vi.fn();
+const getProductDecisionTimelineMock = vi.fn();
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const upsertAnalyticsActionWithResultMock = vi.fn();
 
@@ -18,6 +19,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getStores: (...args: unknown[]) => getStoresMock(...args),
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
+  getProductDecisionTimeline: (...args: unknown[]) => getProductDecisionTimelineMock(...args),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
 }));
@@ -252,9 +254,48 @@ beforeEach(() => {
     sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all",
   });
   getProductDecisionCenterMock.mockResolvedValue(buildResponse([makeRow()], "good"));
+  getProductDecisionTimelineMock.mockResolvedValue({
+    scope: {
+      sourceType: "product",
+      sourceKey: "product:101",
+      productId: 101,
+      recommendationType: "REPLENISH",
+      periodFromUtc: "2026-04-27",
+      periodToUtc: "2026-05-26",
+      scopeExplanation: "Entitet: product:101 · Porodica: REPLENISH · Period: 2026-04-27 – 2026-05-26",
+    },
+    emptyReason: "no_events",
+    timelines: [],
+    matchedActionCount: 0,
+    matchedEventCount: 0,
+    warningCodes: [],
+    meta: { success: true, dataQualityStatus: "insufficient_data" },
+  });
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
+  it("explains Decision Timeline filter scope and keeps empty results explicit", async () => {
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    expect(await screen.findByTestId("decision-timeline-panel")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getProductDecisionTimelineMock).toHaveBeenCalled();
+    });
+    expect(getProductDecisionTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+      }),
+    );
+    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: REPLENISH/i);
+    expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/no_events/i);
+  });
+
   it("renders strong recommendations with explicit estimated impact wording", async () => {
     render(<ProductDecisionCenterPage />);
 
