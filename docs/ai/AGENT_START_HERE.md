@@ -47,6 +47,7 @@ Useful standards:
 - `docs/ai/BACKEND_STANDARDS.md`
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 
 ## Program ownership
@@ -158,7 +159,17 @@ Analytics safety gate:
 
 If a line cannot be answered, do not guess the runtime contract.
 
-## Task workflow
+## Direct task workflow
+
+1. Record the work as a direct user request; do not invent a queue claim.
+2. Identify the owning source-of-truth service/DTO/endpoint/context and affected architecture layer.
+3. Find shared helpers/contracts and the nearest focused proof before creating new ones.
+4. Run the tenant/analytics safety gate where relevant.
+5. Make the smallest same-owner reversible patch.
+6. Select validation through `docs/ai/VALIDATION_SELECTOR.md` and verify delivery on `main` when files changed.
+7. Update planning only when the request changes routing/current READY/blocker/milestone truth.
+
+## Queue task workflow
 
 1. Resolve owner program from `MASTER_ROADMAP.md`.
 2. Verify the current READY pointer in that owner queue.
@@ -167,8 +178,8 @@ If a line cannot be answered, do not guess the runtime contract.
 5. Find shared helpers/contracts before creating new ones.
 6. Find existing tests and route/surface coverage.
 7. Run tenant/analytics safety gate where relevant.
-8. Make the smallest scoped patch.
-9. Run exact prompt checks.
+8. Make the smallest scoped patch, including a recorded same-owner mechanical prompt repair when required by acceptance.
+9. Select and run exact proof through `docs/ai/VALIDATION_SELECTOR.md`.
 10. Update queue status/evidence and master roadmap only if routing/current READY/blocker/milestone truth changed.
 
 ## Stop rules
@@ -194,10 +205,12 @@ Stop and report rather than expanding scope when:
 Run before queue/planning cleanup is called complete:
 
 ```text
-node scripts/check-prompt-queues.mjs
+node scripts/check-agent-instructions.mjs --self-test
+node scripts/check-agent-instructions.mjs
 node scripts/check-prompt-queues.mjs --self-test
-node scripts/check-planning-architecture.mjs
+node scripts/check-prompt-queues.mjs
 node scripts/check-planning-architecture.mjs --self-test
+node scripts/check-planning-architecture.mjs
 ```
 
 ## Final report format

@@ -7,6 +7,7 @@ Pre rada obavezno pogledaj i kanonske AI vodiče:
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
 
 ## Misija
 
@@ -41,7 +42,7 @@ Ne razvijati "još jedan ekran" ako postojeći ekran ne objašnjava period, refr
 - Ne ponavljaj istu neuspešnu komandu više puta.
 - Ako build/test traje predugo ili zapne, prekini i probaj uži scope.
 - Ako nisi siguran da li je broj 0 ili greška, tretiraj kao unknown/error.
-- Ako se task proširi preko planiranog, stani i prijavi gap.
+- Ako task pređe u drugi owner/program ili dobije drugi nezavisan cilj, stani i prijavi gap. Mali isti-owner scope repair potreban za acceptance zabeleži i nastavi.
 
 ### Autonomy and questions
 
@@ -253,6 +254,8 @@ Report je sales artefakt:
 ---
 
 ## Commands
+
+Choose the narrowest applicable proof through `docs/ai/VALIDATION_SELECTOR.md`; do not run every command below for every change.
 
 Frontend:
 ```powershell

@@ -20,6 +20,7 @@ After `AGENTS.md` and `.github/copilot-instructions.md`, read:
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
 - `docs/ai/COMMIT_STANDARDS.md`
 - `docs/ai/AI_WORKFLOW_AND_TOKEN_BUDGET.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
 - `docs/ai/PROMPT_TEMPLATES.md`
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
@@ -44,6 +45,7 @@ If a summary doc disagrees with its owner, update or ignore the summary; do not 
 - Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md` and `docs/ai/BACKEND_STANDARDS.md`
 - Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
 - Delivery evidence and honest completion: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- Validation selection by changed layer and risk: `docs/ai/VALIDATION_SELECTOR.md`
 - Commit naming and commit-body expectations: `docs/ai/COMMIT_STANDARDS.md`
 - UTF-8 and text-only repair workflow: `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 

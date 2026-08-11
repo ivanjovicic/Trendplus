@@ -13,7 +13,7 @@ This document keeps Codex/Cursor/ChatGPT runs small, scoped and cheap. It applie
 
 Use this compact rulebook for normal runs. Do not make every agent read every queue, audit and standard before coding.
 
-A prompt is not runnable unless it has:
+A formal queue prompt is not runnable unless it has:
 
 - one repository
 - one prompt ID or explicit task name
@@ -26,6 +26,8 @@ A prompt is not runnable unless it has:
 - expected final evidence
 
 If any item is missing, rewrite/split the prompt before implementation.
+
+For a direct user request, infer a low/medium lane from the owned scope when safe, record the assumption and continue. Do not force the user to restate a clear repository task as a formal queue prompt.
 
 ## Run modes
 
@@ -128,7 +130,7 @@ Reject or rewrite prompts containing:
 - `validation optional`
 - `skip tests`
 - `do as much as possible`
-- `continue from chat history`
+- `continue from chat history` without a repository, concrete outcome or recoverable task reference
 - `mark done if it looks okay`
 - runtime deploy proof mixed with SQL/formula changes
 - dashboard polish before correctness gates

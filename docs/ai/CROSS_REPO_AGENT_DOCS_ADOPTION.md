@@ -45,6 +45,8 @@ Useful ideas adapted:
 - direct-user-request guidance that does not invent a queue claim
 - mechanical prompt-defect repair inside the same owner boundary
 - delivery truth: local/branch transport states are not verified completion
+- changed-layer validation selection with focused proof before wider suites
+- failure classification that separates product defects from harness/environment/CI failures
 
 Trendplus-local docs created from those ideas:
 
@@ -52,6 +54,7 @@ Trendplus-local docs created from those ideas:
 - `docs/ai/REPO_AI_README.md`
 - `docs/ai/AGENT_START_HERE.md`
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
 - `docs/qa/TRENDPLUS_STABILIZATION_STATUS.md`
 
 ## Trendplus read order for agent-system work
@@ -80,6 +83,9 @@ Do not copy these source-repo-specific rules into Trendplus:
 - Flutter-specific validation commands unless a Trendplus Flutter/mobile module is added.
 - Source repo queue IDs or lane prefixes.
 - MathLearning remote-claim/worktree machinery that depends on repository-specific scripts Trendplus does not have.
+- MathLearning fixed 15/30-minute claim leases and hard command/read caps; Trendplus keeps risk-based scope and its existing low/medium/high budgets.
+- MathLearning's default branch/PR/merge machinery when the Trendplus user explicitly requests a safe direct-main docs delivery.
+- Flutter-specific mandatory RED/GREEN exceptions, periodic mobile audits and generated-platform cleanup rules.
 - Mobile/session/economy/offline invariants that do not map to Trendplus .NET, React, worker or analytics contracts.
 
 ## Practical effect for Trendplus agents

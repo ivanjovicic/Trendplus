@@ -117,7 +117,7 @@ Exclusive area: <paths/contract>
 5. Confirm no lock/branch/PR owns the same feature family/paths where that evidence is available.
 6. Create local lock for implementation work.
 7. Work only inside Scope.
-8. If extra scope is required, stop as PARTIAL/BLOCKED and create a separate follow-up plan rather than expanding silently.
+8. If extra scope crosses an owner/program boundary, stop as PARTIAL/BLOCKED and create a separate follow-up plan. A smallest same-owner mechanical repair allowed above is recorded and may continue.
 9. Run exact tests/checks.
 10. Record changed files, checks, remaining risk and next status.
 11. Delete local lock before commit.
@@ -207,13 +207,17 @@ Production/live smoke may be marked complete only from real current deployment e
 
 ## Validation
 
+Choose runtime/docs proof through `docs/ai/VALIDATION_SELECTOR.md`.
+
 Run both governance layers:
 
 ```text
-node scripts/check-prompt-queues.mjs
+node scripts/check-agent-instructions.mjs --self-test
+node scripts/check-agent-instructions.mjs
 node scripts/check-prompt-queues.mjs --self-test
-node scripts/check-planning-architecture.mjs
+node scripts/check-prompt-queues.mjs
 node scripts/check-planning-architecture.mjs --self-test
+node scripts/check-planning-architecture.mjs
 ```
 
 `check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.

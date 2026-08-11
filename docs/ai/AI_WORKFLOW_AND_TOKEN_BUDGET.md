@@ -21,8 +21,8 @@ Ne čitaj sve analytics stranice osim ako task traži audit.
 
 Stani ako:
 - treba više od 8-10 fajlova bez jasnog razloga
-- vidiš nepovezan bug
-- build/test environment ne radi
+- vidiš drugi nezavisan owner/subsystem; nepovezan bug samo zabeleži i ne širi scope
+- obavezna provera ne može da se izvrši ni kroz bezbednu užu alternativu
 - ne znaš source of truth
 - frontend i backend DTO se ne poklapaju
 - postoji rizik migracije
@@ -41,7 +41,9 @@ Najmanji sledeći korak:
 
 ## Komande
 
-Ne ponavljaj istu neuspešnu komandu.
+Izaberi proveru kroz `docs/ai/VALIDATION_SELECTOR.md`. Ne ponavljaj istu neuspešnu komandu bez promene uzroka.
+
+Pre izmene poznatog buga, pokreni najbliži focused reproducer kada je praktično. Compile/setup/timeout ili nevezan baseline kvar klasifikuj kao test-harness/environment problem, ne kao dokaz runtime buga i ne popravljaj produkcioni kod da bi ga sakrio.
 
 Ako `npm run build` padne:
 1. pročitaj prvu TypeScript grešku

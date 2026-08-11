@@ -7,6 +7,7 @@ Za kanonske detalje posle ovog fajla pogledaj:
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
 
 ## Glavni cilj
 
@@ -66,6 +67,8 @@ Ako `dotnet test --no-build` ne može jer build nije urađen, koristi `dotnet te
 ---
 
 ## Obavezne provere
+
+Izaberi najužu proveru kroz `docs/ai/VALIDATION_SELECTOR.md`; sledeće komande su podrazumevani skupovi za odgovarajući sloj, a ne obaveza da se svaki skup pokrene za svaku izmenu.
 
 Frontend analytics promena:
 ```powershell

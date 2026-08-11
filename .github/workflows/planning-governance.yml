@@ -4,6 +4,8 @@ on:
   pull_request:
     branches: [ main, master ]
     paths:
+      - 'AGENTS.md'
+      - '.github/copilot-instructions.md'
       - 'MASTER_ROADMAP.md'
       - 'docs/ai/**'
       - 'docs/planning/**'
@@ -17,10 +19,13 @@ on:
       - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
       - 'scripts/check-prompt-queues.mjs'
       - 'scripts/check-planning-architecture.mjs'
+      - 'scripts/check-agent-instructions.mjs'
       - '.github/workflows/planning-governance.yml'
   push:
     branches: [ main, master ]
     paths:
+      - 'AGENTS.md'
+      - '.github/copilot-instructions.md'
       - 'MASTER_ROADMAP.md'
       - 'docs/ai/**'
       - 'docs/planning/**'
@@ -34,6 +39,7 @@ on:
       - 'docs/Analytics/ANALYTICS_PRODUCTION_READINESS_STATUS.md'
       - 'scripts/check-prompt-queues.mjs'
       - 'scripts/check-planning-architecture.mjs'
+      - 'scripts/check-agent-instructions.mjs'
       - '.github/workflows/planning-governance.yml'
 
 permissions:
@@ -56,6 +62,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Self-test agent instruction validator
+        run: node scripts/check-agent-instructions.mjs --self-test
+
+      - name: Validate agent instructions
+        run: node scripts/check-agent-instructions.mjs
 
       - name: Self-test prompt queue validator
         run: node scripts/check-prompt-queues.mjs --self-test

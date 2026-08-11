@@ -80,6 +80,7 @@ Before marking `DONE`, evidence must include:
 - commit SHA or explicit no-commit reason
 - main verification evidence or explicit no-delivery reason
 - validation command(s) or skipped-validation reason
+- validation selected through `docs/ai/VALIDATION_SELECTOR.md` or a task-specific stricter owner
 - model/client metadata or `unknown-not-exposed`
 - missed work or `none known`
 - follow-up prompt or `none`

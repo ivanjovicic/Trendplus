@@ -6,7 +6,7 @@ Stop and report status if:
 
 - source of truth is unclear
 - the same command fails twice
-- build or test environment blocks validation
+- required proof is blocked and no narrower safe alternative from `VALIDATION_SELECTOR.md` can run
 - the task spills into unrelated modules
 - frontend and backend semantics are drifting apart
 - route or lazy-import behavior is at risk
@@ -73,6 +73,8 @@ Do not continue blind.
 - [ ] I did not execute the next queue task unless explicitly instructed.
 
 ## Commands
+
+Select the smallest applicable checks through `docs/ai/VALIDATION_SELECTOR.md`. The commands below are common defaults, not an instruction to run every suite for every patch.
 
 Frontend:
 
