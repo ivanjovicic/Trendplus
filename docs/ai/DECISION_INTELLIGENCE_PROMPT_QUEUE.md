@@ -195,7 +195,7 @@ Feature family: decision-explainability-product-decision-center-phase7
 Parallel-safe: no, coupled backend/frontend contract
 Owner: Cursor
 Local lock: removed after DONE
-Commit: (this delivery)
+Commit: `b52938cb647807c0bb36af68cc766a843a1466cc`
 Completed: 2026-08-11
 
 ### Problem
