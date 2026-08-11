@@ -8,11 +8,104 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX08` | docs/contracts/tests-plan only |
+| DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `RL01` | docs/contracts/data-model inventory only |
 | DT - Decision Timeline | `DT01` | docs/contracts/event-model only |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
+
+---
+
+## DEX09 - Implement Product Decision Center deterministic decision-tree contract
+
+Status: DONE
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase6
+Parallel-safe: no, coupled backend/frontend contract
+Owner: Codex
+Local lock: removed after DONE
+
+### Problem
+
+The Why panel now has a deterministic backend-led contract, but Product Decision Center still needs a separate deterministic decision-tree or branch-path view for rule-based logic so users can see which branch or guard produced the recommendation instead of collapsing every decision into a single explanation string.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places Decision Tree immediately after the Why panel in the explainability sequence.
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md` keeps the decision graph and branch-path vocabulary deterministic and backend-led.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` already exposes the row-level decision fields that can anchor rule-path explanations when the logic is branch-based.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still renders the decision summary without an explicit branch-path surface.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DEX08 output
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+
+### Do
+
+1. Expose deterministic decision-tree or branch-path inputs from backend only when rule-based logic applies.
+2. Render the branch path explicitly in Product Decision Center without inventing a local rule trace.
+3. Keep non-rule-based recommendations honest by showing that no decision tree exists when the engine did not branch.
+4. Preserve Decision Board compatibility and the existing Why-panel contract.
+
+### Tests
+
+- backend coverage confirms branch-path nodes are stable and traceable;
+- frontend coverage shows the branch path or the absence of one explicitly;
+- no fake zero, fake branch path or inferred rule trace is introduced.
+
+### Acceptance
+
+- Product Decision Center can show a deterministic branch path where rule-based logic exists;
+- missing rule branches remain explicit;
+- no frontend-local inference invents a decision tree.
+
+### Dependencies
+
+- DEX08 DONE.
+
+### Progress
+
+- claimed by Codex on 2026-08-11
+- implemented deterministic Product Decision Center decision-tree payload, backend branching helpers, frontend rendering, and regression coverage
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Commit SHA: c153b71
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.css`
+  - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+  - `Klijent/clientapp/src/types/analytics.ts`
+  - `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~AnalyticsProductDecisionConfidenceTests"` - pass
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass
+  - `npm run build` - pass
+  - `git diff --check` - pass
+- Risk:
+  - Older payloads may omit `decisionTree`, so the UI still needs an explicit absence state.
+- Next:
+  - `RL01 - Define recommendation outcome-learning contract`
 
 ---
 
@@ -22,7 +115,7 @@ Status: DONE
 Priority: future-high-value / implementation
 Feature family: decision-explainability-product-decision-center-phase5
 Parallel-safe: no, coupled backend/frontend contract
-Owner: Codex
+Owner: unassigned
 Local lock: removed after DONE
 
 ### Problem
@@ -100,7 +193,7 @@ DEX07 makes alternatives explicit, but the Product Decision Center Why panel sti
 - Risk:
   - The Why panel is deterministic and backend-led, but the frontend still keeps a compatibility fallback if older payloads omit `whyPanel`.
 - Next:
-  - `RL01 - Recommendation Learning`
+  - `DEX09 - Implement Product Decision Center deterministic decision-tree contract`
 
 ---
 
