@@ -5357,6 +5357,7 @@ public static class CachedAnalyticsEndpoints
             row.ConfidenceScore = confidenceProfile.ConfidenceScore;
             row.PrimaryDrivers = confidenceProfile.PrimaryDrivers.ToList();
             row.WarningCodes = confidenceProfile.WarningCodes.ToList();
+            row.ConfidenceBreakdown = confidenceProfile.ConfidenceBreakdown.ToList();
             row.ExpectedImpactRsd = confidenceProfile.ExpectedImpactRsd;
             row.ImpactWindowDays = confidenceProfile.ImpactWindowDays;
             row.RiskIfIgnored = confidenceProfile.RiskIfIgnored;

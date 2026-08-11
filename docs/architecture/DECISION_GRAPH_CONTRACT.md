@@ -31,7 +31,7 @@ This is a declarative model. The current code does not need to emit a literal gr
 |---|---|---|---|
 | Decision | The recommendation that will be shown and acted on | `RecommendationId`, `ProductId`, `SourceType`, `SourceKey`, `RecommendationType`, `RecommendationStatus`, `RecommendationLabel`, `RecommendedAction` | `RecommendationId` is the best current correlation key, not an authorization token |
 | Evidence | Business facts supporting the decision | `Revenue`, `UnitsSold`, `VelocityUnitsPerDay`, `MarginContribution`, `MarginPct`, `MarginCoveragePct`, `CurrentStock`, `MinStock`, `StockGap`, `DaysSinceLastSale`, `TrendPct`, `LostSalesEstimate`, `SlowStockCapital`, `StockCoverDays`, `SellThroughRatio` | Evidence must preserve null/unknown values instead of collapsing into zero |
-| Confidence contributor | Inputs that explain how trustworthy the decision is | `ConfidenceLevel`, `ConfidenceScore`, `ConfidencePct`, `ReliabilityPct`, `SignalConfidencePct`, `InputFreshnessStatus`, `DataQualityStatus` | Contributors can lower confidence; they must never fabricate certainty |
+| Confidence contributor | Inputs that explain how trustworthy the decision is | `ConfidenceLevel`, `ConfidenceScore`, `ConfidencePct`, `ConfidenceBreakdown`, `ReliabilityPct`, `SignalConfidencePct`, `InputFreshnessStatus`, `DataQualityStatus` | Contributors can lower confidence; they must never fabricate certainty |
 | Constraint | A reason the decision is not fully actionable | `RecommendationAllowed`, `WarningCodes`, `StockCoverStatus`, `SellThroughStatus`, `MarginQualityLabel` | Constraint state is not the same as confidence state |
 | Alternative | A valid competing action or non-action | not yet emitted by the current Product Decision Center DTOs | Reserve the contract now; do not infer alternatives from `ReasonCodes` |
 | Action link | The recommended next step | `RecommendedAction`, `RiskIfIgnored`, `ImpactWindowDays`, `ExpectedImpactRsd` | The action link should remain deterministic and reviewable |
@@ -114,6 +114,7 @@ The current Product Decision Center row DTO exposes the first useful mapping sur
 | `ConfidenceLevel` | coarse confidence band |
 | `ConfidenceScore` | internal numeric score when available |
 | `ConfidencePct` | user-facing confidence percent |
+| `ConfidenceBreakdown` | ordered confidence-contributor nodes for the Why panel |
 | `ReliabilityPct` | evidence reliability percent |
 | `SignalConfidencePct` | upstream signal trust input |
 | `RecommendationAllowed` | actionable constraint |
@@ -146,6 +147,7 @@ These are consumer fields, not a second source of truth for the underlying recom
 - Missing evidence must stay missing, not converted into a fake high confidence or a fake zero.
 - `RecommendationAllowed=false` is a constraint signal, not a confidence score.
 - `DataQualityStatus`, `InputFreshnessStatus`, `WarningCodes`, `StockCoverStatus` and `SellThroughStatus` are confidence contributors, not replacement recommendations.
+- `ConfidenceBreakdown` is a renderable evidence list, but it still must stay backend-led and deterministic.
 - Revenue, lost sales, stock value or other money fields are not confidence proxies.
 
 ## Alternative contract
@@ -177,6 +179,7 @@ Minimum inputs:
 - `ConfidenceLevel`
 - `ConfidenceScore`
 - `ConfidencePct`
+- `ConfidenceBreakdown`
 - `ReliabilityPct`
 - `DataQualityStatus`
 - `InputFreshnessStatus`

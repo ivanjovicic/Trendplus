@@ -56,6 +56,12 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
         Assert.Equal("fresh", replenish.InputFreshnessStatus);
+        Assert.NotEmpty(replenish.ConfidenceBreakdown);
+        Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "confidence_score");
+        Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "evidence_coverage");
+        Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "reliability_signal");
+        Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "freshness_signal");
+        Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "data_quality_signal");
         Assert.NotEmpty(replenish.EvidenceChain);
         Assert.Contains(replenish.EvidenceChain, node => node.Code == "selected_recommendation");
         Assert.Contains(replenish.EvidenceChain, node => node.Code == "sales_signal");
@@ -75,6 +81,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains("missing_cost", fixData.WarningCodes);
         Assert.Equal("critical", fixData.InputFreshnessStatus);
         Assert.Null(fixData.ExpectedImpactRsd);
+        Assert.NotEmpty(fixData.ConfidenceBreakdown);
+        Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "confidence_score" && node.IsMissing);
+        Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "evidence_coverage" && node.ValueText == "Nedovoljna");
+        Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "data_quality_signal" && node.IsMissing);
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:missing_cost");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:expected_impact_denominator_missing");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);

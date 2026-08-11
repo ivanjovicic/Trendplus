@@ -397,6 +397,7 @@ export interface ProductDecisionCenterItem {
   riskIfIgnored?: string | null;
   explainabilityText?: string | null;
   inputFreshnessStatus?: "fresh" | "stale" | "critical" | "unknown" | string | null;
+  confidenceBreakdown?: ProductDecisionEvidenceNode[] | null;
   evidenceChain?: ProductDecisionEvidenceNode[] | null;
   recommendedAction: string;
 }

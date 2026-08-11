@@ -1214,6 +1214,7 @@ export default function ProductDecisionCenterPage() {
                   const primaryDriverItems = primaryDrivers.length
                     ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
+                  const confidenceBreakdownItems: ProductDecisionEvidenceNode[] = row.confidenceBreakdown ?? [];
                   const evidenceChainItems: ProductDecisionEvidenceNode[] = row.evidenceChain ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
@@ -1319,6 +1320,27 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-block">
                                 <strong>Zašto ova preporuka?</strong> {row.explainabilityText ?? row.recommendationReason ?? "Objašnjenje nije dostupno."}
+                              </div>
+
+                              <div className="reason-block">
+                                <strong>Raspodela pouzdanosti:</strong>
+                                {confidenceBreakdownItems.length ? (
+                                  <ol className="confidence-breakdown-list">
+                                    {confidenceBreakdownItems.map((item) => (
+                                      <li key={item.code} className={`confidence-breakdown-item confidence-breakdown-${item.category}`}>
+                                        <div className="evidence-chain-headline">
+                                          <span className="evidence-chain-category">{evidenceCategoryLabel(item.category)}</span>
+                                          <span className="evidence-chain-label">{item.label}</span>
+                                        </div>
+                                        <span className={`evidence-chain-value${item.isMissing ? " evidence-chain-missing" : ""}`}>{item.valueText}</span>
+                                        {item.detail ? <small>{item.detail}</small> : null}
+                                        <small className="evidence-chain-source">Izvor: {item.sourceFields.join(" · ")}</small>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                ) : (
+                                  <span>Raspodela pouzdanosti nije dostupna.</span>
+                                )}
                               </div>
 
                               <div className="reason-block">

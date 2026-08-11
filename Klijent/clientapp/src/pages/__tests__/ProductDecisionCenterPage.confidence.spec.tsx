@@ -90,6 +90,53 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     riskIfIgnored: "Rizik je izgubljena prodaja i pad dostupnosti na polici.",
     explainabilityText: "Brza prodaja i nizak stock cover.",
     inputFreshnessStatus: "fresh",
+    confidenceBreakdown: [
+      {
+        category: "confidence",
+        code: "confidence_score",
+        label: "Ocena pouzdanosti",
+        valueText: "Visoka sigurnost · 88%",
+        sourceFields: ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct"],
+        isMissing: false,
+        detail: "Ocena kombinuje snagu signala i dostupnost ulaza.",
+      },
+      {
+        category: "confidence",
+        code: "evidence_coverage",
+        label: "Pokrivenost signala",
+        valueText: "Široka",
+        sourceFields: ["UnitsSold", "VelocityUnitsPerDay", "MarginPct", "TrendPct", "DaysSinceLastSale", "WarningCodes", "ReasonCodes"],
+        isMissing: false,
+        detail: "Više nezavisnih signala je prisutno: prodaja, marža, zaliha i trend.",
+      },
+      {
+        category: "confidence",
+        code: "reliability_signal",
+        label: "Pouzdanost signala",
+        valueText: "80%",
+        sourceFields: ["ReliabilityPct", "SignalConfidencePct"],
+        isMissing: false,
+        detail: "SignalConfidence 82%",
+      },
+      {
+        category: "confidence",
+        code: "freshness_signal",
+        label: "Svežina ulaza",
+        valueText: "Sveže",
+        sourceFields: ["InputFreshnessStatus", "DataQualityStatus"],
+        isMissing: false,
+        detail: "Kvalitet podataka dobar",
+      },
+      {
+        category: "confidence",
+        code: "data_quality_signal",
+        label: "Kvalitet podataka",
+        valueText: "dobar",
+        sourceFields: ["DataQualityStatus", "WarningCodes"],
+        isMissing: false,
+        detail: "Podaci su konzistentni.",
+      },
+    ],
     recommendedAction: "Dopuni zalihe",
     daysSinceLastSale: 12,
     ...overrides,
@@ -247,6 +294,82 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a structured confidence breakdown in the Why panel", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 707,
+          recommendationId: "product:707:REPLENISH:20260528:20260626",
+          sourceKey: "product:707",
+          productName: "Model Confidence",
+          sku: "SKU-707",
+          confidenceScore: 90,
+          confidencePct: 90,
+          reliabilityPct: 82,
+          confidenceBreakdown: [
+            {
+              category: "confidence",
+              code: "confidence_score",
+              label: "Ocena pouzdanosti",
+              valueText: "Visoka sigurnost · 90%",
+              sourceFields: ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct"],
+              isMissing: false,
+              detail: "Ocena kombinuje snagu signala i dostupnost ulaza.",
+            },
+            {
+              category: "confidence",
+              code: "evidence_coverage",
+              label: "Pokrivenost signala",
+              valueText: "Široka",
+              sourceFields: ["UnitsSold", "VelocityUnitsPerDay", "MarginPct", "TrendPct", "DaysSinceLastSale", "WarningCodes", "ReasonCodes"],
+              isMissing: false,
+              detail: "Više nezavisnih signala je prisutno: prodaja, marža, zaliha i trend.",
+            },
+            {
+              category: "confidence",
+              code: "reliability_signal",
+              label: "Pouzdanost signala",
+              valueText: "82%",
+              sourceFields: ["ReliabilityPct", "SignalConfidencePct"],
+              isMissing: false,
+              detail: "SignalConfidence 82%",
+            },
+            {
+              category: "confidence",
+              code: "freshness_signal",
+              label: "Svežina ulaza",
+              valueText: "Sveže",
+              sourceFields: ["InputFreshnessStatus", "DataQualityStatus"],
+              isMissing: false,
+              detail: "Kvalitet podataka dobar",
+            },
+            {
+              category: "confidence",
+              code: "data_quality_signal",
+              label: "Kvalitet podataka",
+              valueText: "dobar",
+              sourceFields: ["DataQualityStatus", "WarningCodes"],
+              isMissing: false,
+              detail: "Podaci su konzistentni.",
+            },
+          ],
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText("Raspodela pouzdanosti:")).toBeInTheDocument();
+    expect(screen.getByText("Ocena pouzdanosti", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getByText("Pokrivenost signala", { selector: ".evidence-chain-label" })).toBeInTheDocument();
+    expect(screen.getByText("Široka")).toBeInTheDocument();
+    expect(screen.getByText("82%", { selector: ".evidence-chain-value" })).toBeInTheDocument();
+    expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(screen.getByText("dobar")).toBeInTheDocument();
+  });
+
   it("keeps confident recommendations honest when expected impact is missing", async () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(
       buildResponse([
@@ -285,6 +408,44 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           riskIfIgnored: "Moguca rasprodaja.",
           explainabilityText: "Brza prodaja i niska zaliha.",
           inputFreshnessStatus: "fresh",
+          confidenceBreakdown: [
+            {
+              category: "confidence",
+              code: "confidence_score",
+              label: "Ocena pouzdanosti",
+              valueText: "Nedovoljno podataka",
+              sourceFields: ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct"],
+              isMissing: true,
+              detail: "Ocena kombinuje snagu signala i dostupnost ulaza.",
+            },
+            {
+              category: "confidence",
+              code: "evidence_coverage",
+              label: "Pokrivenost signala",
+              valueText: "Nedovoljna",
+              sourceFields: ["UnitsSold", "VelocityUnitsPerDay", "MarginPct", "TrendPct", "DaysSinceLastSale", "WarningCodes", "ReasonCodes"],
+              isMissing: true,
+              detail: "Obavezni signali nisu kompletni.",
+            },
+            {
+              category: "confidence",
+              code: "freshness_signal",
+              label: "Svežina ulaza",
+              valueText: "Kritično",
+              sourceFields: ["InputFreshnessStatus", "DataQualityStatus"],
+              isMissing: false,
+              detail: "Kvalitet podataka kritičan",
+            },
+            {
+              category: "confidence",
+              code: "data_quality_signal",
+              label: "Kvalitet podataka",
+              valueText: "nedovoljno podataka",
+              sourceFields: ["DataQualityStatus", "WarningCodes"],
+              isMissing: true,
+              detail: "Nedovoljno signala za stabilnu preporuku.",
+            },
+          ],
           evidenceChain: [
             {
               category: "impact",
@@ -307,6 +468,8 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
     expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Za.*\?/i }));
+    expect(screen.getByText("Raspodela pouzdanosti:")).toBeInTheDocument();
+    expect(screen.getByText("Nedovoljno podataka", { selector: ".evidence-chain-missing" })).toBeInTheDocument();
     expect(screen.getByText("Nije dostupno", { selector: ".evidence-chain-missing" })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
