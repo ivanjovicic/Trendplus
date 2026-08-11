@@ -14,7 +14,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 |---|---|---|
 | PERF - Performance | `PERF03` (`PERF02` DONE; baseline evidence recorded) | measurement-backed backlog |
 | OBS - Observability | `OBS06` | Import SLA evidence contract (docs) |
-| SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
+| SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | supply-chain assurance policy (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -22,7 +22,7 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ## PERF02 - Execute the S-tier baseline measurement pack and capture evidence
 
-Status: DONE
+Status: READY
 Priority: future / measurement
 Feature family: performance-measurement-pack
 Parallel-safe: yes, measurement/docs only
@@ -186,7 +186,7 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
 
-Status: READY
+Status: DONE
 Priority: future  
 Feature family: performance-measured-backlog  
 Parallel-safe: yes, planning only  
@@ -725,9 +725,30 @@ Vulnerable/abandoned package posture has no queued owner outside SEC-3.
 
 - SEC03 DONE (keeps one READY-at-a-time in SEC).
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md`
+  - `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+  - `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Risks:
+  - no CI wiring exists yet; placeholders are intentionally docs-only
+  - accepted-risk entries remain future evidence, not current PASS
+- Next:
+  - `SEC05` remains WAITING until MT09 or explicit interim dedicated-deploy offboarding scope exists
+  - Current READY in this queue: none
+
 ## SEC06 - Dependency and supply-chain assurance policy follow-up (S2-2)
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: `SEC03` is `DONE`
 Priority: future
 Feature family: security-supply-chain-policy
@@ -778,6 +799,10 @@ Vulnerable/abandoned package posture has no queued owner outside SEC-3.
 - one policy exists for dependency and supply-chain assurance;
 - the policy points to BCI for CI integration;
 - later SEC follow-ups can reuse the same scan vocabulary.
+
+### Completion note
+
+- Replaced by `SEC04`; keep this entry only as historical evidence of the duplicate follow-up and do not treat it as a live READY item.
 
 ### Dependencies
 

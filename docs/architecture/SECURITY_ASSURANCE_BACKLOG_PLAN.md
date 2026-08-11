@@ -109,11 +109,12 @@ Current posture (2026-08-11): STAB `Current READY: none` with completed STAB01�
 2. Ownership of advisory triage (SEC + BCI for CI wiring).
 3. Abandoned/unavailable package handling (pin, replace, or accepted risk note).
 4. Optional: container/base-image ownership when containers are in scope.
+5. Durable policy artifact: `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md` with supported runtimes, severity gates, exception handling, accepted-risk template and reproducible scan commands.
 
 **Evidence gaps:**
 
 - documented fail thresholds;
-- at least one reproducible scan command or CI job name (BCI-owned wiring);
+- reproducible scan commands and CI placeholders are named in the policy artifact;
 - no claim of “secure supply chain” without scan output retained outside secrets.
 
 **Dependencies:** BCI for CI integration; PERF not required.
