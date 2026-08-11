@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-15` (see least-improved addendum; next legacy page after DailySalesStatsPage)
+Current READY prompt: `P-UI-17` (see least-improved addendum; PreNivelacijaPriorityPage chrome)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -526,3 +526,124 @@ Commit suggestion: `feat(ui): redesign analytics command center`
   - Added a regression test for the command center, KPI strip, trust panel, and risk preview so the layout does not drift back to scattered blocks.
   - Remaining risk: no manual screenshot/pixel review was run in this session.
 - Next: none
+
+---
+
+## P-UI-16 - Pre-nivelacija priority: no fake reliability + empty/copy polish
+
+Status: DONE
+Ready after: P-UI-15 DONE
+Priority: P1
+Type: frontend/copy/ux/tests
+Feature family: pre-nivelacija-priority-signal-copy
+Parallel-safe: yes
+Owner: Cursor
+Local lock: `.ai/task-locks/P-UI-16-cursor.lock.md` (released on DONE)
+Commit suggestion: `fix(ui): stop showing missing reliability as Nisko on pre-nivelacija priority`
+Canonical detail: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md` (P-UI-16)
+
+### Problem
+
+On Prioriteti pre-nivelacije, missing reliability is shown as **"Nisko"** in the table because null is coerced to `0` and the pill ignores `reliabilityAvailable`. Empty-state copy references a sales period this screen does not have. Several strings lack Serbian diacritics / use English chrome.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx` (~333–336, ~827–847, ~640–644, ~275, ~701, ~705, ~747, ~1016)
+- Detail already correct (~928) via `RECOMMENDATION_SIGNAL_UNAVAILABLE`
+- Audit: `.ai/runs/2026-08-11-P-UI-16-audit-promote.md`
+
+### Scope
+
+- Page TSX/CSS + focused tests for reliability/empty/copy only
+- Out of scope: backend formulas, filter catalogs, ControlBar/DataTable migration (`P-UI-17`)
+
+### Read first
+
+- `AGENTS.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- Full prompt body in least-improved addendum (P-UI-16)
+
+### Do
+
+1. Unavailable reliability → unavailable label/pill (not Nisko).
+2. Fix empty-state copy for SKU priority filters (no sales-period wording).
+3. Fix listed diacritics / English toolbar title on this page.
+4. Do not change recommendation status, scores, or API payloads.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
+```
+
+Assert null reliability does not render “Nisko”.
+
+### Acceptance
+
+- No fake weak reliability; empty/copy polished; no API/formula changes.
+
+### Dependencies
+
+- P-UI-15 DONE; path-safe vs BCI/STAB/RQ exclusive work
+
+### Completion note (2026-08-11)
+
+- Unavailable reliability → “Nije dostupno” / `signal-na` (not “Nisko”); empty/copy polished; focused vitest 5/5.
+- Next READY: `P-UI-17`
+
+---
+
+## P-UI-17 - PreNivelacijaPriorityPage chrome modernization
+
+Status: READY
+Ready after: P-UI-16 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-17-<agent>.lock.md`
+Commit suggestion: `feat(ui): modernize PreNivelacijaPriorityPage chrome`
+Canonical detail: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md` (P-UI-17)
+
+### Problem
+
+Page still uses local `pnp-decision-filters` / table wrap; tooltip hardcodes trend hex colors.
+
+### Evidence
+
+- `PreNivelacijaPriorityPage.tsx` (~575 filters; ~120–123 hardcoded tooltip colors)
+- No AnalyticsControlBar/DataTable on this page; ProdajaPrePostNivelacije already migrated (P-UI-15)
+
+### Scope
+
+- ControlBar + DataTable migration + theme-token tooltip colors + focused tests
+- Out of scope: inventing filter catalogs; redoing P-UI-16
+
+### Read first
+
+- Premium queue + least-improved addendum P-UI-17; prior one-page migrations
+
+### Do
+
+1. Confirm TrustHeader.
+2. Migrate filters → AnalyticsControlBar.
+3. Migrate priority table → AnalyticsDataTable.
+4. Replace hardcoded tooltip colors with CSS variables.
+5. Keep chart/recommendation semantics; preserve P-UI-16 behavior.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
+```
+
+### Acceptance
+
+- Shared chrome without semantic drift; theme tokens for tooltip; P-UI-16 still green.
+
+### Dependencies
+
+- P-UI-16 DONE; promote to READY only after that (one READY per P-UI program)
+

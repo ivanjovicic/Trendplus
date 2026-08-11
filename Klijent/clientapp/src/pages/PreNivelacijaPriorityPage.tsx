@@ -148,6 +148,26 @@ function statusDisplayLabel(status: DecisionStatus): string {
   return recommendationStatusLabel(status);
 }
 
+function reliabilitySignalDisplay(row: DecisionCandidate): { label: string; className: string; title?: string } {
+  if (!row.reliabilityAvailable) {
+    return {
+      label: "Nije dostupno",
+      className: "pnp-signal-pill signal-na",
+      title: RECOMMENDATION_SIGNAL_UNAVAILABLE,
+    };
+  }
+
+  if (row.reliabilityPct >= 70) {
+    return { label: "Visoko", className: "pnp-signal-pill signal-strong" };
+  }
+
+  if (row.reliabilityPct >= 40) {
+    return { label: "Srednje", className: "pnp-signal-pill signal-watch" };
+  }
+
+  return { label: "Nisko", className: "pnp-signal-pill signal-weak" };
+}
+
 function isHighPriorityCandidate(row: DecisionCandidate): boolean {
   return (row.priorityBand ?? "").toLowerCase() === "high" && row.status !== "insufficient_data";
 }
@@ -272,7 +292,7 @@ export default function PreNivelacijaPriorityPage() {
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
-      setError(reason instanceof Error ? reason.message : "Greška pri ucitavanju pre-nivelacija prioriteta.");
+      setError(reason instanceof Error ? reason.message : "Greška pri učitavanju pre-nivelacija prioriteta.");
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -422,6 +442,20 @@ export default function PreNivelacijaPriorityPage() {
       : focusFilter !== "all"
         ? "filtered_out"
         : "no_data";
+  const emptyStateTitle =
+    emptyStateVariant === "insufficient_data"
+      ? "Signal nije dovoljno jak za prioritetnu listu."
+      : emptyStateVariant === "filtered_out"
+        ? "Nema rezultata za trenutne filtere."
+        : "Nema kandidata za pre-nivelaciju.";
+  const emptyStateMessage =
+    emptyStateVariant === "insufficient_data"
+      ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
+      : emptyStateVariant === "filtered_out"
+        ? "Promenite filtere dobavljača, sezone ili tipa obuće."
+        : "Nema kandidata koji ispunjavaju trenutne filtere za pre-nivelacioni prioritet.";
+  const emptyStateReason = dataMeta?.emptyReason ?? dataMetaMessage ?? null;
+  const safeEmptyStateReason = emptyStateReason && /period/i.test(emptyStateReason) ? null : emptyStateReason;
 
   const attentionNotices = useMemo(() => {
     const notices: Array<{ key: string; title: string; detail: string; tone: "info" | "warning" | "critical" }> = [];
@@ -623,33 +657,28 @@ export default function PreNivelacijaPriorityPage() {
       {error ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={error || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+          message={error || "Ne prikazujemo nule dok nije potvrđen prazan rezultat."}
           onRetry={() => void load(activeFilters, page)}
           helpHref="/analytics/data-quality"
         />
       ) : null}
       {showMetaWarning ? (
         <div className="pnp-decision-message warning" role="status">
-          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite analytics refresh status."}
+          Prikazani podaci su delimični. {dataMetaMessage ?? "Proverite status osvežavanja i signal kvaliteta podataka."}
         </div>
       ) : null}
       {showEmptyState ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant}
-          message={
-            emptyStateVariant === "insufficient_data"
-              ? "Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak."
-              : emptyStateVariant === "filtered_out"
-                ? "Promenite filtere ili proširite period."
-                : (dataMetaMessage ?? "Nije bilo prodaje u izabranom periodu.")
-          }
+          title={emptyStateTitle}
+          message={emptyStateMessage}
           actions={[
-            { label: "Promenite filtere dobavljača ili fokusa." },
-            { label: "Proverite analytics refresh.", href: "/analytics/data-quality" },
+            { label: "Promenite filtere dobavljača, sezone ili tipa obuće." },
+            { label: "Proverite kvalitet podataka.", href: "/analytics/data-quality" },
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
-          emptyReason={dataMeta?.emptyReason ?? dataMetaMessage ?? null}
+          emptyReason={safeEmptyStateReason}
           onRetry={() => void load(activeFilters, page)}
         />
       ) : null}
@@ -698,11 +727,11 @@ export default function PreNivelacijaPriorityPage() {
               <strong>{data.summary.totalStockAtRisk}</strong>
               <em>kom ukupno</em>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto snize.">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se kandidati istaknu umesto da se sniže.">
               <span>Procena povećanja prihoda <InfoTip text="Procenjeni prihod: scenario isticanja minus scenario sniženja za sve 'Pojačaj' kandidate. PROCENA – bazirana na scenariju sa istorijskim podacima prodaje, nije garantovani prihod. Tretirati kao relativni signal, ne kao apsolutnu predikciju." /></span>
               <strong>{fmtRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji moze da se izbegne pre nivelacije.">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena gubitka koji može da se izbegne pre nivelacije.">
               <span>Procena izbegljivog gubitka od sniženja <InfoTip text="Procenjeni gubitak prihoda koji se može izbeći pravovremenom intervencijom pre nivelacije. PROCENA bazirana na scenario modelu (isticanje vs. sniženje u 30-dnevnom prozoru). Apsolutni iznos je okvirna procena – relativni odnos između SKU-ova je relevantniji." /></span>
               <strong className="trend-down">{fmtRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
             </article>
@@ -732,7 +761,7 @@ export default function PreNivelacijaPriorityPage() {
             <article className="pnp-decision-card analytics-surface-panel">
               <div className="pnp-decision-table-head">
                 <div>
-                  <h2>Prioritetna lista SKU</h2>
+                  <h2>Prioritetna lista SKU kandidata</h2>
                   <p>
                     {recommendationStatusLabel("increase_focus")}: {candidateCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {candidateCounts.maintain} | {recommendationStatusLabel("review")}: {candidateCounts.review} | {recommendationStatusLabel("do_not_trust")}: {candidateCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
@@ -744,7 +773,7 @@ export default function PreNivelacijaPriorityPage() {
                 </div>
                 <AnalyticsTableToolbar
                   tableKey="pre-nivelacija-prioriteti"
-                  tableTitle="Pre-nivelacija decision support"
+                  tableTitle="Podrška za odluku pre nivelacije"
                   columns={decisionColumns}
                   rows={sortedRows}
                   filters={toolbarFilters}
@@ -811,7 +840,7 @@ export default function PreNivelacijaPriorityPage() {
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>Preporuka{sortMarker("status", sortField, sortDir)}</button>
-                        <InfoTip text="Backend-authoritative recommendation za pre-nivelacija workflow. Status i razlog dolaze iz server-side scoring sloja; frontend više ne računa lokalnu preporuku." />
+                        <InfoTip text="Backend je izvor istine za preporuku pre nivelacije. Status i razlog dolaze iz server-side scoring sloja; frontend više ne računa lokalnu preporuku." />
                       </th>
                       <th className="align-center">Detalj</th>
                     </tr>
@@ -824,8 +853,7 @@ export default function PreNivelacijaPriorityPage() {
                     ) : (
                       filteredRows.map((row) => {
                         const expanded = expandedArtikalId === row.artikalId;
-                        const reliabilityLabel = row.reliabilityPct >= 70 ? "Visoko" : row.reliabilityPct >= 40 ? "Srednje" : "Nisko";
-                        const reliabilityClass = row.reliabilityPct >= 70 ? "signal-strong" : row.reliabilityPct >= 40 ? "signal-watch" : "signal-weak";
+                        const reliability = reliabilitySignalDisplay(row);
                         return (
                           <tr key={row.artikalId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.sku}</td>
@@ -844,7 +872,13 @@ export default function PreNivelacijaPriorityPage() {
                             <td className="align-right">{row.daysSinceLastSale}</td>
                             <td className={`align-right ${row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{fmtRsd(row.revenueDelta)}</td>
                             <td className="align-center">
-                              <span className={`pnp-signal-pill ${reliabilityClass}`}>{reliabilityLabel}</span>
+                              <span
+                                className={reliability.className}
+                                title={reliability.title}
+                                aria-label={reliability.title ?? reliability.label}
+                              >
+                                {reliability.label}
+                              </span>
                             </td>
                             <td>
                               <div className="pnp-status-cell">
@@ -1013,7 +1047,7 @@ export default function PreNivelacijaPriorityPage() {
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
-                <InfoTip text="SKU su rasporedjeni po backend recommendation statusu (Pojacaj, Zadrzi, Pregledaj, Ne veruj, Nedovoljno podataka) i pomocnim prioritetnim signalima." />
+                <InfoTip text="SKU su raspoređeni po backend recommendation statusu (Pojačaj, Zadrži, Pregledaj, Ne veruj, Nedovoljno podataka) i pomoćnim prioritetnim signalima." />
               </h2>
               <div className="pnp-queues-grid">
                 <article className="pnp-queue-panel pnp-queue-panel--boost">

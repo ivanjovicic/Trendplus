@@ -33,6 +33,20 @@ This contract is documentation only. It does not choose a paid vendor, publish c
 - no treating page render time as analytics freshness
 - no shared-SaaS tenant dimension until MT authorizes it
 
+## Service-level vocabulary
+
+Latency is measured in the OBS-2 contract. This section names the service-level words that wrap the measured evidence and keeps SLI, SLO and SLA distinct.
+
+| Service area | Measured evidence | Internal target word | External commitment word | Notes |
+|---|---|---|---|---|
+| API | ready/health success rate, error rate | SLO | SLA only when externally approved | availability is distinct from latency |
+| Import | accept/start/complete timestamps, latest success age | SLO | SLA only when business commits | measure from accept/queue to durable completion |
+| Analytics | refresh duration, freshness age, partial/fallback state | SLO | SLA only when business commits | never infer freshness from render time |
+| Worker | enabled state, heartbeat age, backlog age, retry/DLQ rate | SLO | SLA only when business commits | disabled-by-policy is explicit, not healthy |
+| Report | generation success/failure, age, partial/export warnings | SLO | SLA only when business commits | report/export failure is visible, not hidden |
+
+Error budgets are only discussed after a target is adopted. Until then, keep measured SLI language separate from contract language.
+
 ## Authoritative SLI families
 
 Every SLI row uses: `ID`, `Name`, `Unit`, `Source surface`, `Owner`, `Dimensions`, `Unknown behavior`.
@@ -207,4 +221,3 @@ Dashboards summarize evidence; they do not replace source events.
 - unknown telemetry is explicitly non-green
 - correlation IDs are not auth or tenant identity
 - no contractual SLA numbers or vendor choice introduced
-

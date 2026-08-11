@@ -17,7 +17,6 @@ vi.mock("recharts", () => ({
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
 vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
 const getPreNivelacijaPrioritetiMock = vi.fn();
@@ -245,5 +244,56 @@ describe("PreNivelacijaPriorityPage", () => {
 
     expect(screen.getByText("Potrebna je dodatna provera")).toBeInTheDocument();
     expect(screen.getByText(/Signal ima mali ili redak prodajni uzorak/i)).toBeInTheDocument();
+  });
+
+  it("shows unavailable reliability instead of a weak signal when the backend omits it", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
+      makeResponse([
+        makeCandidate({
+          artikalId: 501,
+          sku: "SKU-501",
+          reliabilityPct: null,
+          recommendation: {
+            status: "review",
+            label: "Pregledaj",
+            summary: "Reliability signal nije dostupan.",
+            confidencePct: 61,
+            reliabilityPct: null,
+            dataQualityStatus: "warning",
+            reasonCodes: ["missing_cost"],
+          },
+        }),
+      ]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const unavailablePill = (await screen.findAllByText("Nije dostupno")).find((element) =>
+      element.className.includes("signal-na"),
+    );
+
+    expect(unavailablePill).toBeTruthy();
+    expect(unavailablePill).toHaveAttribute("title", expect.stringContaining("Pouzdanost nije dostupna"));
+    expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("keeps empty-state copy tied to the SKU priority filters, not a sales period", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Nema kandidata za pre-nivelaciju.")).toBeInTheDocument();
+    expect(screen.getByText("Nema kandidata koji ispunjavaju trenutne filtere za pre-nivelacioni prioritet.")).toBeInTheDocument();
+    expect(screen.getByText("Promenite filtere dobavljača, sezone ili tipa obuće.")).toBeInTheDocument();
+    expect(screen.getByText("Proverite kvalitet podataka.")).toBeInTheDocument();
+    expect(screen.queryByText(/period/i)).not.toBeInTheDocument();
   });
 });

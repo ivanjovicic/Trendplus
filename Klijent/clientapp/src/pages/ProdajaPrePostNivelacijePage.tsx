@@ -10,6 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -991,6 +996,51 @@ const advancedSignals = useMemo(
     ]
   );
 
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      { key: "scope", label: "Opseg", value: dataScope, tone: "info" },
+      {
+        key: "period",
+        label: "Period",
+        value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
+        tone: "neutral",
+      },
+      {
+        key: "focus",
+        label: "Fokus",
+        value: focusFilterLabel(focusFilter),
+        tone: focusFilter === "all" ? "success" : "warning",
+      },
+      {
+        key: "rows",
+        label: "Prikazano",
+        value: `${focusedRows.length.toLocaleString("sr-RS")} / ${decisionRows.length.toLocaleString("sr-RS")}`,
+        tone: focusedRows.length === 0 ? "warning" : "success",
+      },
+      {
+        key: "trust",
+        label: "Poverenje",
+        value: dataTrustSummary.label,
+        tone:
+          dataTrustSummary.tone === "strong"
+            ? "success"
+            : dataTrustSummary.tone === "watch"
+              ? "warning"
+              : "critical",
+      },
+    ],
+    [
+      activeFilters.fromDate,
+      activeFilters.toDate,
+      dataScope,
+      dataTrustSummary.label,
+      dataTrustSummary.tone,
+      decisionRows.length,
+      focusFilter,
+      focusedRows.length,
+    ]
+  );
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir((current) => (current === "asc" ? "desc" : "asc"));
@@ -1037,6 +1087,79 @@ const advancedSignals = useMemo(
       storeId: null,
     });
   };
+
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "periodPreset",
+        label: "Period",
+        control: (
+          <select value={periodPreset} onChange={(event) => handlePresetChange(event.target.value as PeriodPreset)}>
+            <option value="30d">Poslednjih 30 dana</option>
+            <option value="90d">Poslednjih 90 dana</option>
+            <option value="180d">Poslednjih 180 dana</option>
+            <option value="365d">Poslednjih 365 dana</option>
+            <option value="custom">Prilagođeno</option>
+          </select>
+        ),
+      },
+      {
+        key: "fromDate",
+        label: "Od",
+        control: <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />,
+      },
+      {
+        key: "toDate",
+        label: "Do",
+        control: <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />,
+      },
+      {
+        key: "vendorId",
+        label: "Dobavljač",
+        span: "wide",
+        control: (
+          <select value={vendorId ?? ""} onChange={(event) => setVendorId(event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Svi</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.naziv}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "category",
+        label: "Kategorija",
+        control: (
+          <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="">Sve</option>
+            {(data?.categories ?? []).map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "storeId",
+        label: "Objekat",
+        span: "wide",
+        control: (
+          <select value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Svi objekti</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>
+                {buildStoreLabel(store)}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+    ],
+    [category, data?.categories, fromDate, handlePresetChange, periodPreset, storeId, stores, toDate, vendorId, vendors]
+  );
 
   const openVendorDetail = (row: DecisionVendor) => {
     saveAnalyticsDetailSnapshot(
@@ -1085,6 +1208,33 @@ const advancedSignals = useMemo(
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      <AnalyticsControlBar
+        title="Kontrole i opseg"
+        description="Period, dobavljač, kategorija i objekat ostaju ovde; tabela ispod ostaje fokusirana na pre/post signal po dobavljaču."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "apply",
+          label: loading ? "Učitavanje..." : "Primeni",
+          onClick: handleApplyFilters,
+          disabled: loading || invalidRange,
+        }}
+        secondaryActions={[
+          {
+            key: "reset",
+            label: "Reset",
+            onClick: handleResetFilters,
+            disabled: loading,
+            tone: "secondary",
+          },
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+            tone: "secondary",
+          },
+        ]}
+        fields={controlBarFields}
+      />
       <header className="ppn-decision-header">
         <div>
           <h1 className="ppn-decision-title">Prodaja pre/posle nivelacije</h1>
@@ -1097,70 +1247,6 @@ const advancedSignals = useMemo(
           Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}
         </div>
       </header>
-
-      <section className="ppn-decision-filters">
-        <label className="ppn-decision-field">
-          <span>Period</span>
-          <select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}>
-            <option value="30d">Poslednjih 30 dana</option>
-            <option value="90d">Poslednjih 90 dana</option>
-            <option value="180d">Poslednjih 180 dana</option>
-            <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
-          </select>
-        </label>
-
-        <label className="ppn-decision-field">
-          <span>Od</span>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-        </label>
-
-        <label className="ppn-decision-field">
-          <span>Do</span>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-        </label>
-
-        <label className="ppn-decision-field">
-          <span>Dobavljač</span>
-          <select
-            value={vendorId ?? ""}
-            onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">Svi</option>
-            {vendors.map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="ppn-decision-field">
-          <span>Kategorija</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">Sve</option>
-            {(data?.categories ?? []).map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="ppn-decision-field">
-          <span>Objekat</span>
-          <select
-            value={storeId ?? ""}
-            onChange={(e) => setStoreId(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">Svi objekti</option>
-            {stores.map((store) => (
-              <option key={store.storeId} value={store.storeId}>{buildStoreLabel(store)}</option>
-            ))}
-          </select>
-        </label>
-
-        <div className="ppn-decision-actions">
-          <button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button>
-          <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button>
-        </div>
-      </section>
 
       {invalidRange ? <div className="ppn-decision-message error">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
       {error ? (
@@ -1379,23 +1465,29 @@ const advancedSignals = useMemo(
             </article>
 
             <article className="ppn-decision-card analytics-surface-panel">
-              <div className="ppn-decision-table-head">
-                <div>
-                  <h2>Prioritetna lista dobavljača</h2>
-                  <p>
-                    {recommendationStatusLabel("increase_focus")}: {vendorCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {vendorCounts.maintain} | {recommendationStatusLabel("review")}: {vendorCounts.review} | {recommendationStatusLabel("do_not_trust")}: {vendorCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {vendorCounts.insufficientData}
-                  </p>
-                </div>
-                <AnalyticsTableToolbar
-                  tableKey="nivelacije-pre-post"
-                  tableTitle="Decision support pre/post nivelacije"
-                  columns={decisionColumns}
-                  rows={focusedRows}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                />
-              </div>
+              <AnalyticsDataTable
+                testId="prodaja-pre-post-nivelacije-data-table"
+                rowCount={focusedRows.length}
+                toolbar={(
+                  <div className="ppn-decision-table-head">
+                    <div>
+                      <h2>Prioritetna lista dobavljača</h2>
+                      <p>
+                        {recommendationStatusLabel("increase_focus")}: {vendorCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {vendorCounts.maintain} | {recommendationStatusLabel("review")}: {vendorCounts.review} | {recommendationStatusLabel("do_not_trust")}: {vendorCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {vendorCounts.insufficientData}
+                      </p>
+                    </div>
+                    <AnalyticsTableToolbar
+                      tableKey="nivelacije-pre-post"
+                      tableTitle="Decision support pre/post nivelacije"
+                      columns={decisionColumns}
+                      rows={focusedRows}
+                      filters={toolbarFilters}
+                      metadata={toolbarMetadata}
+                      defaultOrientation="landscape"
+                    />
+                  </div>
+                )}
+              >
               <div className="ppn-chip-wrap ppn-focus-filters">
                 {(["all", "increaseFocus", "maintain", "review", "doNotTrust", "insufficientData", "lowConfidence", "volatile"] as FocusFilter[]).map((item) => (
                   <button
@@ -1514,6 +1606,7 @@ const advancedSignals = useMemo(
                   </tbody>
                 </table>
               </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 

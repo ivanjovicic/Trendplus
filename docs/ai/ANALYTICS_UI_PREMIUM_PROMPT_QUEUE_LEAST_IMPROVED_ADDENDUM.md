@@ -19,7 +19,9 @@ Use with:
 | P-UI-12 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ShoeTypeSalesStatsPage) |
 | P-UI-13 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ColorSalesStatsPage) |
 | P-UI-14 | DONE | legacy-analytics-modernization | Continue legacy page modernization (DailySalesStatsPage) |
-| P-UI-15 | READY | legacy-analytics-modernization | Continue legacy page modernization (one page per run) |
+| P-UI-15 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ProdajaPrePostNivelacijePage) |
+| P-UI-16 | DONE | pre-nivelacija-priority-signal-copy | Fix unavailable reliability shown as Nisko + empty/copy polish |
+| P-UI-17 | READY | legacy-analytics-modernization | Modernize PreNivelacijaPriorityPage chrome (ControlBar + DataTable) |
 
 ---
 
@@ -388,15 +390,15 @@ P-UI-13 modernized Color. Remaining legacy analytics pages still use page-local 
 
 ## P-UI-15 - Continue legacy analytics page modernization
 
-Status: READY
+Status: DONE
 Ready after: P-UI-14 DONE
 Priority: P2
 Type: frontend/design/tests
 Feature family: legacy-analytics-modernization
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-15-<agent>.lock.md`
-Commit suggestion: `feat(ui): modernize legacy analytics page`
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-15-codex.lock.md` (removed after DONE)
+Commit suggestion: `feat(ui): modernize ProdajaPrePostNivelacijePage chrome`
 Promotion note: 2026-08-11 — remaining candidates after DailySalesStatsPage.
 Recommended first: `ProdajaPrePostNivelacijePage.tsx`
 
@@ -428,3 +430,192 @@ P-UI-14 modernized Daily. Remaining legacy analytics pages still use page-local 
 ### Acceptance
 
 - One more legacy page matches premium analytics chrome without semantic drift.
+
+### Completion note (2026-08-11)
+
+- Modernized `ProdajaPrePostNivelacijePage.tsx`: added shared `AnalyticsControlBar` for period, dobavljač, kategorija and objekat filters; wrapped the priority table in `AnalyticsDataTable`; kept the trust header, table semantics, focus chips and decision details intact.
+- Added focused regression coverage for the shared control bar, data-table wrapper and the existing scope-lineage behavior.
+- Checks:
+  - `npm run test -- --run src/pages/ProdajaPrePostNivelacijePage.spec.tsx` - pass
+  - `npm run check:analytics-guardrails` - pass
+  - `npm run build` - pass
+- Remaining risk:
+  - React test suite still emits a pre-existing `act(...)` warning in the data-scope change case.
+- Next:
+  - Current P-UI READY: `P-UI-17`
+
+---
+
+## P-UI-16 - Pre-nivelacija priority: no fake reliability + empty/copy polish
+
+Status: DONE
+Ready after: P-UI-15 DONE
+Priority: P1
+Type: frontend/copy/ux/tests
+Feature family: pre-nivelacija-priority-signal-copy
+Parallel-safe: yes, when paths clear (`PreNivelacijaPriorityPage*`)
+Owner: Cursor
+Local lock: `.ai/task-locks/P-UI-16-cursor.lock.md` (released on DONE)
+Commit suggestion: `fix(ui): stop showing missing reliability as Nisko on pre-nivelacija priority`
+Promotion note: 2026-08-11 — defect audit of `PreNivelacijaPriorityPage` after P-UI-15 left that page unmodernized.
+
+### Problem
+
+On **Prioriteti pre-nivelacije**, missing reliability is coerced to `0` and the priority table renders the pill **"Nisko"** even when `reliabilityAvailable === false`. Detail already shows unavailable correctly. Empty-state copy talks about “prodaja u periodu” / “proširite period” on a screen without a date period. Several Serbian strings lack diacritics / mix English chrome.
+
+This is presentation of an existing availability flag — not inventing backend reliability.
+
+### Evidence
+
+- Null reliability → `0` while keeping `reliabilityAvailable`:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx` (~333–336)
+- Table pill buckets only on numeric `%` (so `0` → “Nisko”), ignores availability:
+  - same file (~827–847)
+- Detail already uses unavailable correctly:
+  - same file (~928) via `RECOMMENDATION_SIGNAL_UNAVAILABLE`
+- Empty copy wrong for this screen (`periodFrom`/`periodTo` are null on TrustHeader):
+  - same file (~640–644): “Promenite filtere ili proširite period.” / “Nije bilo prodaje u izabranom periodu.”
+- Copy/encoding leftovers:
+  - ~275 `ucitavanju`
+  - ~701 `snize`
+  - ~705 `moze`
+  - ~747 toolbar title `Pre-nivelacija decision support`
+  - ~1016 InfoTip without diacritics (`rasporedjeni`, `Pojacaj`, `Zadrzi`, `pomocnim`)
+
+### Scope
+
+In scope:
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css` only if a new unavailable pill class is required
+- `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` (or a focused premium/signal sibling)
+
+Out of scope:
+
+- backend recommendation/reliability formulas or API contracts
+- season/footwear filter catalog completeness (paginated candidates only — needs RQ/backend; do not invent catalog)
+- full ControlBar/DataTable migration (owned by `P-UI-17`)
+- chart color token cleanup (owned by `P-UI-17`)
+
+### Read first
+
+- `AGENTS.md` (no fake zero / unknown ≠ weak)
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` (missing evidence must not look trusted)
+- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
+- Existing shared helpers: `RECOMMENDATION_SIGNAL_UNAVAILABLE`, detail-panel pattern on this page
+
+### Do
+
+1. When `!row.reliabilityAvailable`, render unavailable (same semantics as detail / `RECOMMENDATION_SIGNAL_UNAVAILABLE`), not Visoko/Srednje/Nisko.
+2. Keep Visoko/Srednje/Nisko buckets only when reliability is available.
+3. Replace empty-state messages so they match SKU priority filters (supplier/focus/season/footwear), not sales period.
+4. Fix the listed Serbian diacritics / English toolbar title on this page only.
+5. Do not change recommendation status, scores, or API payloads.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
+```
+
+Add/extend a case where `recommendation.reliabilityPct` (and row `reliabilityPct` if used) is null/absent and assert the table does **not** show “Nisko”.
+
+### Acceptance
+
+- Unavailable reliability never appears as “Nisko” / weak pill in the priority table.
+- Available reliability still maps to Visoko/Srednje/Nisko unchanged.
+- Empty-state copy no longer references sales period / expanding period.
+- Listed diacritic/English chrome strings on this page are fixed (UTF-8, no mojibake).
+- No backend/API/formula changes.
+
+### Dependencies
+
+- `P-UI-15` DONE (satisfied)
+- Path-safe vs higher-priority BCI/STAB/RQ exclusive work
+
+### Completion note (2026-08-11)
+
+- Confirmed/finished `reliabilitySignalDisplay`: unavailable → “Nije dostupno” + `signal-na` (not “Nisko”).
+- Empty-state titles/messages tied to SKU priority filters (no sales-period wording).
+- Diacritic polish on KPI data-note / queue InfoTip; toolbar title already Serbian.
+- Deduped `signal-na` CSS to theme-token rule.
+- Checks:
+  - `npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` - pass (5/5)
+- Next:
+  - Current P-UI READY: `P-UI-17`
+
+---
+
+## P-UI-17 - PreNivelacijaPriorityPage chrome modernization
+
+Status: READY
+Ready after: P-UI-16 DONE
+Priority: P2
+Type: frontend/design/tests
+Feature family: legacy-analytics-modernization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-17-<agent>.lock.md`
+Commit suggestion: `feat(ui): modernize PreNivelacijaPriorityPage chrome`
+Promotion note: 2026-08-11 — promoted after P-UI-16 DONE; last remaining least-improved legacy candidate.
+
+### Problem
+
+`PreNivelacijaPriorityPage` still uses page-local filter chrome (`pnp-decision-filters`) and a page-local table wrap instead of shared `AnalyticsControlBar` / `AnalyticsDataTable`. Chart tooltip hardcodes `#ef4444` / `#16a34a` instead of theme tokens.
+
+### Evidence
+
+- Local filters: `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx` (~575 `pnp-decision-filters`)
+- No `AnalyticsControlBar` / `AnalyticsDataTable` imports on this page
+- Hardcoded tooltip colors: same file (~120–123)
+- Contrast: `ProdajaPrePostNivelacijePage` already migrated in P-UI-15
+
+### Scope
+
+In scope:
+
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css`
+- focused tests under `Klijent/clientapp/src/pages/__tests__/`
+
+Out of scope:
+
+- analytics formulas / backend endpoints / export values
+- inventing season/footwear filter catalogs (still RQ if full fix needed)
+- redoing P-UI-16 signal/copy work (must already be DONE)
+
+### Read first
+
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- Recent one-page migrations: Supplier / ShoeType / Color / Daily / ProdajaPrePostNivelacije patterns
+- `P-UI-16` completion note (signal semantics must stay)
+
+### Do
+
+1. Confirm `AnalyticsTrustHeader` remains.
+2. Migrate filters to `AnalyticsControlBar`.
+3. Migrate primary priority table to `AnalyticsDataTable` (+ existing toolbar if present).
+4. Replace hardcoded tooltip trend colors with CSS variables / theme tokens.
+5. Keep chart data contracts and recommendation semantics unchanged.
+6. Add/update focused tests for control bar + data table presence.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
+```
+
+Prefer a dedicated premium chrome assertion (control bar + data table test ids) without weakening P-UI-16 reliability coverage.
+
+### Acceptance
+
+- Page uses shared ControlBar + DataTable chrome without semantic drift.
+- Tooltip colors use theme tokens (no hardcoded red/green hex for trend).
+- P-UI-16 unavailable-reliability behavior remains green.
+
+### Dependencies
+
+- P-UI-16 DONE (satisfied)
+- Path-safe vs higher-priority BCI/STAB/RQ exclusive work

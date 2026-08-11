@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete. Current queue READY: `OBS03` (Slice-1 API/process evidence).
+OBS02 instrumentation plan complete and OBS04 latency contract complete. Current queue READY: `OBS05` (service level vocabulary for API/import/analytics/worker/report evidence).
 
 ### OBS-2 - Latency SLIs
 

@@ -13,7 +13,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | `none` (`PERF01` DONE; `PERF02` WAITING on measurements) | baseline/measurement plan |
-| OBS - Observability | `OBS03` | first instrumentation slice (API/process evidence) |
+| OBS - Observability | `OBS05` | service level vocabulary for API/import/analytics/worker/report evidence |
 | SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -296,7 +296,7 @@ OBS01 must be translated into bounded instrumentation slices without a broad tel
   - O2-1 still needs a queued runtime implementation prompt
   - queue-depth SLIs remain unknown until real queues are instrumented
 - Next:
-  - Current OBS READY: `OBS03` (Slice 1 API/process evidence)
+  - Current OBS READY: `OBS04` (latency SLI vocabulary and warm/cold measurement contract)
 
 ### Dependencies
 
@@ -306,7 +306,7 @@ OBS01 must be translated into bounded instrumentation slices without a broad tel
 
 ## OBS03 - Implement observability Slice-1 API/process evidence
 
-Status: READY
+Status: DONE
 Priority: future
 Feature family: observability-api-process-evidence
 Parallel-safe: yes, when paths do not collide with BCI/STAB auth or PERF optimization work
@@ -358,6 +358,159 @@ OBS02 ranked instrumentation slices, but no queued runtime prompt exists for the
 ### Dependencies
 
 - OBS02 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Status: DONE
+- Changed files: `Api/Program.cs`, `Api/Services/Startup/DbConnectionHelper.cs`, `Api/Services/Startup/StartupReadinessState.cs`, `Api.Tests/AnalyticsCriticalRouteMappingsTests.cs`, `Api.Tests/StartupReadinessStateTests.cs`
+- Contract/runtime behavior changed: dependency probes now preserve missing latency as null instead of fake zero; readiness state keeps unknown probe latency as null; runtime version requests continue to create performance-log evidence.
+- Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~StartupReadinessStateTests|FullyQualifiedName~AnalyticsCriticalRouteMappingsTests"` pass
+- Checks not run: governance validators, full build, full test suite
+- Remaining risk: production `/health/dependencies` behavior still depends on live connection resolution and timeout behavior outside this focused test path
+- Next: OBS04 (READY)
+- Prompt defect / scope repair: replaced flaky health-status integration assertion with direct helper-level proof of missing-probe null latency
+
+---
+
+## OBS04 - Define latency SLI vocabulary and warm/cold measurement contract
+
+Status: DONE
+Priority: future
+Feature family: observability-latency-sli-contract
+Parallel-safe: yes, when paths do not collide with OBS03 runtime evidence or PERF baseline measurement work
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS04-<agent>.lock.md`
+Promotion note: 2026-08-11 - `OBS03` DONE; next roadmap slice is OBS-2 latency SLIs
+
+### Problem
+
+Slice-1 API/process evidence can show availability and request completion, but support still lacks a shared contract for how latency is named, grouped and split between cold and warm paths.
+
+### Evidence
+
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` latency rows;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` Slice 1/2;
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-2;
+- `PERF01` baseline contract (measurement discipline only).
+
+### Scope
+
+- define the latency SLI vocabulary for API route families, import/connector phases, workers and report generation;
+- separate cold-start and warm-path measurements where they differ;
+- preserve unknown != 0 and no fake-green semantics;
+- no vendor selection, no runtime instrumentation rewrite, no broad dashboard work.
+
+### Read first
+
+- OBS03 completion note;
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md`;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`;
+- `PERF01` baseline contract.
+
+### Do
+
+1. Inventory the latency fields and route families that already exist.
+2. Define the shared p50/p95/p99 vocabulary and measurement split.
+3. Record cold/warm naming rules and unknown semantics.
+4. Add the smallest docs/governance proof that future runtime prompts can cite.
+
+### Tests
+
+- docs and queue validators pass for the touched planning files;
+- `git diff --check` passes for the touched files;
+- no runtime behavior changes.
+
+### Acceptance
+
+- the latency measurement contract is written down and citeable;
+- future OBS/PERF runtime prompts can reuse the vocabulary without redefining it;
+- no runtime code changes are made by this prompt.
+
+### Dependencies
+
+- OBS03 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - docs/queue validators pass
+- Risks:
+  - latency remains a measurement contract only until runtime prompts land
+  - cold/warm naming still depends on future instrumentation slices for concrete evidence
+- Next:
+  - `OBS05` READY (service level vocabulary for API/import/analytics/worker/report evidence)
+  - Current READY in this queue: `OBS05`
+
+---
+
+## OBS05 - Define service level vocabulary for API/import/analytics/worker/report evidence
+
+Status: READY
+Priority: future
+Feature family: observability-service-level-vocabulary
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS05-<agent>.lock.md`
+Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
+
+### Problem
+
+Latency now has a measurement contract, but support still needs a shared vocabulary for what counts as API availability, import SLA, analytics freshness SLA, worker processing SLA and report generation SLA before runtime prompts can wire it into evidence.
+
+### Evidence
+
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-3;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` service-level section;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` Slice 2-6;
+- `MASTER_ROADMAP.md` OBS current-ready routing.
+
+### Scope
+
+- define the service-level vocabulary and measurement boundaries for API/import/analytics/worker/report evidence;
+- keep SLI vs SLO vs SLA distinctions explicit and non-numeric;
+- preserve unknown != green and no fake-zero behavior;
+- no runtime instrumentation rewrite, no vendor choice, no contract numbers.
+
+### Read first
+
+- OBS04 completion note;
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md`;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`;
+- `MASTER_ROADMAP.md`.
+
+### Do
+
+1. Define the service-level words for API, import, analytics, worker and report evidence.
+2. Keep measured SLI and business commitment language separated.
+3. Document when error budgets may be discussed, and when they may not.
+4. Add the smallest governance proof future runtime prompts can cite.
+
+### Tests
+
+- docs and queue validators pass for the touched planning files;
+- `git diff --check` passes for the touched files;
+- no runtime behavior changes.
+
+### Acceptance
+
+- the service-level vocabulary is written down and citeable;
+- future OBS runtime prompts can use the words without inventing target numbers;
+- no runtime code changes are made by this prompt.
+
+### Dependencies
+
+- OBS04 DONE.
 
 ---
 

@@ -737,6 +737,11 @@
   color: #dc2626;
 }
 
+.pnp-signal-pill.signal-na {
+  background: color-mix(in srgb, var(--text-secondary, #94a3b8) 18%, transparent);
+  color: var(--text-secondary, #94a3b8);
+}
+
 /* ─── Score breakdown ────────────────────────────────────────── */
 .pnp-score-breakdown {
   margin-top: 16px;

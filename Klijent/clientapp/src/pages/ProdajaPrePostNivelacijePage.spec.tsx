@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -163,6 +163,23 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     await screen.findByText("Prioritetna lista dobavljača");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("scope: imported");
+
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    expect(within(controlBar).getByRole("heading", { name: "Kontrole i opseg" })).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Od")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Do")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Dobavljač")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Kategorija")).toBeInTheDocument();
+    expect(within(controlBar).getByLabelText("Objekat")).toBeInTheDocument();
+    expect(within(controlBar).getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute(
+      "href",
+      "/analytics/data-quality",
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("prodaja-pre-post-nivelacije-data-table")).toBeInTheDocument();
+    });
 
     expect(getVendorSalesNivelacija).toHaveBeenCalled();
     const initialCalls = vi.mocked(getVendorSalesNivelacija).mock.calls.map((call) => call[0]);

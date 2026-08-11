@@ -260,16 +260,10 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         private readonly string _trendDbName = $"trendplus-route-program-{Guid.NewGuid():N}";
         private readonly string _analyticsDbName = $"trendplus-analytics-route-program-{Guid.NewGuid():N}";
         private readonly string _trainingDbName = $"trendplus-training-route-program-{Guid.NewGuid():N}";
-        private readonly bool _useMissingConnections;
 
-        private AnalyticsProgramRouteTestFactory(bool useMissingConnections = false)
+        public static async Task<AnalyticsProgramRouteTestFactory> CreateAsync()
         {
-            _useMissingConnections = useMissingConnections;
-        }
-
-        public static async Task<AnalyticsProgramRouteTestFactory> CreateAsync(bool useMissingConnections = false)
-        {
-            var factory = new AnalyticsProgramRouteTestFactory(useMissingConnections);
+            var factory = new AnalyticsProgramRouteTestFactory();
             _ = factory.CreateClient();
             await Task.CompletedTask;
             return factory;
@@ -289,9 +283,8 @@ public sealed class AnalyticsCriticalRouteMappingsTests
                     ["PROCESS_TYPE"] = "web",
                     ["Database:AutoMigrate"] = "false",
                     ["StartupReadiness:GateApiTraffic"] = "false",
-                    ["StartupReadiness:MaxWarmupAttempts"] = _useMissingConnections ? "1" : "12",
-                    ["ConnectionStrings:DefaultConnection"] = _useMissingConnections ? string.Empty : BuildConnectionString(_trendDbName),
-                    ["ConnectionStrings:AnalyticsConnection"] = _useMissingConnections ? string.Empty : BuildConnectionString(_analyticsDbName),
+                    ["ConnectionStrings:DefaultConnection"] = BuildConnectionString(_trendDbName),
+                    ["ConnectionStrings:AnalyticsConnection"] = BuildConnectionString(_analyticsDbName),
                     ["ConnectionStrings:OpenProductTrainingConnection"] = BuildConnectionString(_trainingDbName)
                 });
             });

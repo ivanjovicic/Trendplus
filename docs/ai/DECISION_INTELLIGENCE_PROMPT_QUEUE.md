@@ -10,7 +10,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 |---|---|---|
 | DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
 | RL - Recommendation Learning | `none` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
-| DT - Decision Timeline | `DT03` | Slice-1 read-only timeline projection |
+| DT - Decision Timeline | `none` (`DT03` DONE) | Slice-1 read-only timeline projection |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -1032,12 +1032,12 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 
 ## DT03 - Implement Decision Timeline Slice-1 read-only projection
 
-Status: READY
+Status: DONE
 Priority: future
 Feature family: decision-timeline-slice1-projection
 Parallel-safe: yes, when no overlapping action/outcome RQ runtime task owns the same paths
-Owner: unassigned
-Local lock: `.ai/task-locks/DT03-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/DT03-codex.lock.md`
 Promotion note: 2026-08-11 — `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
 ### Problem
@@ -1083,5 +1083,33 @@ DT02 planned historical timeline slices, but no queued implementation exists for
 ### Dependencies
 
 - DT02 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Codex
+- Changed files:
+  - `Infrastructure/Services/Analytics/AnalyticsActionTimelineProjection.cs`
+  - `Api.Tests/AnalyticsActionItemServiceTests.cs`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed:
+  - Added a read-only timeline projection over `AnalyticsActionItem` + notes + ledger snapshot data.
+  - Preserved explicit gap reasons for missing acceptance, execution and measurement evidence.
+  - Kept `done`, `rejected`, `pending` and `not_measured` distinct in the projection state.
+- Checks run:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ProjectTimeline_"` - pass
+- Checks not run:
+  - `dotnet build`
+  - `npm run check:analytics-guardrails`
+  - `npm run build`
+  - `node scripts/check-prompt-queues.mjs`
+  - `node scripts/check-planning-architecture.mjs`
+- Remaining risk:
+  - Slice-2 API/UI surfaces are still not implemented; this helper is intentionally read-only and internal to the backend projection layer.
+- Next:
+  - Promote the first Slice-2 timeline API prompt only after the owner queue schedules it.
+- Prompt defect / scope repair:
+  - Existing metadata parser required a full creation snapshot, so the projection now uses a raw metadata fallback for partial sourceRecommendationId derivation.
+  - Outcome audit notes are ignored for workflow event duplication.
 
 ---

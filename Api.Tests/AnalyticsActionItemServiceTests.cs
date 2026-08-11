@@ -932,6 +932,130 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task ProjectTimeline_ReadsSnapshotHistory_InChronologicalOrder()
+    {
+        await using var db = CreateDbContext(nameof(ProjectTimeline_ReadsSnapshotHistory_InChronologicalOrder));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Inventory,
+                "timeline-happy-1",
+                expectedImpactRsd: 500m,
+                sourceRecommendationId: "inventory:timeline-happy-1:replenish:2026-06-01",
+                recommendationType: "REPLENISH",
+                expectedImpactBasis: "sales_velocity + stock_risk",
+                impactWindowDays: 14,
+                confidenceLevel: "medium",
+                warningCodes: new[] { "STOCK_RISK" },
+                primaryDrivers: new[] { "sales_velocity", "stock_risk" },
+                decisionReason: "Brz rast prodaje.",
+                recommendedAction: "Dopuni",
+                generatedAtUtc: new DateTime(2026, 6, 1, 10, 0, 0, DateTimeKind.Utc),
+                inputFreshnessStatus: "fresh"),
+            userId: "u1");
+
+        await service.UpdateStatusAsync(created.Id, AnalyticsActionConstants.Statuses.Accepted, "Prihvaceno", "u1", "tester");
+        await service.UpdateStatusAsync(created.Id, AnalyticsActionConstants.Statuses.Done, "Zavrseno", "u1", "tester");
+        var measuredAtUtc = DateTime.UtcNow.AddMinutes(5);
+        await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 180m,
+                OutcomeMeasuredAtUtc: measuredAtUtc,
+                OutcomeNotes: "Rezultat je potvrden.",
+                MeasuredWindowDays: 14,
+                EvidenceSource: "action_outcome_summary",
+                EvidenceReference: "summary:timeline-happy-1:measured",
+                ResolutionNote: "Prodaja je porasla nakon dopune."),
+            userId: "u1",
+            userName: "tester");
+
+        var item = await service.GetByIdAsync(created.Id, includeNotes: true);
+        Assert.NotNull(item);
+        item!.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
+
+        var projection = AnalyticsActionTimelineProjection.Project(item);
+
+        Assert.Equal(AnalyticsActionConstants.Statuses.Done, projection.ProjectionState);
+        Assert.Equal("inventory:timeline-happy-1:replenish:2026-06-01", projection.SourceRecommendationId);
+        Assert.Equal("metadata.sourceRecommendationId", projection.SourceRecommendationIdDerivation);
+        Assert.Equal(projection.SourceRecommendationId, projection.CorrelationId);
+        Assert.Equal(new[]
+        {
+            "recommendation_issued",
+            "action_accepted",
+            "action_executed",
+            "outcome_measured"
+        }, projection.Events.Select(x => x.EventType).ToArray());
+        Assert.Empty(projection.Gaps);
+        Assert.Equal("action_outcome_summary", projection.Events[3].EvidenceSource);
+        Assert.Equal("summary:timeline-happy-1:measured", projection.Events[3].EvidenceReference);
+        Assert.Equal(14, projection.Events[3].MeasurementWindowDays);
+        Assert.Equal(measuredAtUtc, projection.Events[3].OccurredAtUtc);
+    }
+
+    [Fact]
+    public async Task ProjectTimeline_LeavesMissingStagesExplicit_AndKeepsNotMeasuredDistinct()
+    {
+        await using var db = CreateDbContext(nameof(ProjectTimeline_LeavesMissingStagesExplicit_AndKeepsNotMeasuredDistinct));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            CreateRequest(
+                AnalyticsActionConstants.SourceTypes.Product,
+                "timeline-gap-1",
+                expectedImpactRsd: 300m,
+                recommendationType: "REPLENISH",
+                sourceRecommendationId: null,
+                expectedImpactBasis: "sales_velocity + stock_risk",
+                impactWindowDays: 14,
+                confidenceLevel: "low",
+                warningCodes: new[] { "STALE_REFRESH" },
+                primaryDrivers: new[] { "sales_velocity" },
+                decisionReason: "Sporiji ciklus prodaje.",
+                recommendedAction: "Dopuni",
+                generatedAtUtc: new DateTime(2026, 6, 2, 8, 30, 0, DateTimeKind.Utc),
+                inputFreshnessStatus: "stale"),
+            userId: "u1");
+
+        await service.UpdateStatusAsync(created.Id, AnalyticsActionConstants.Statuses.Accepted, "Prihvaceno bez izvrsenja", "u1", "tester");
+        await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                MeasuredImpactRsd: null,
+                OutcomeMeasuredAtUtc: null,
+                OutcomeNotes: "Nema dovoljno dokaza.",
+                EvidenceSource: null,
+                EvidenceReference: null,
+                ResolutionNote: "Nedostaje dokaz."),
+            userId: "u1",
+            userName: "tester");
+
+        var item = await service.GetByIdAsync(created.Id, includeNotes: true);
+        Assert.NotNull(item);
+        item!.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(item.MetadataJson);
+
+        var projection = AnalyticsActionTimelineProjection.Project(item);
+
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.NotMeasured, projection.ProjectionState);
+        Assert.Equal("derived.sourceType.sourceKey.recommendationType.issuedAtUtc", projection.SourceRecommendationIdDerivation);
+        Assert.Equal("product:timeline-gap-1:REPLENISH:20260602T083000Z", projection.SourceRecommendationId);
+        Assert.Equal(new[]
+        {
+            "recommendation_issued",
+            "action_accepted",
+            "outcome_not_measured"
+        }, projection.Events.Select(x => x.EventType).ToArray());
+        Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_execution_proof");
+        Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_measurement_evidence");
+        Assert.DoesNotContain(projection.Gaps, gap => gap.GapReason == "no_acceptance_record");
+        Assert.Equal("outcome_not_measured", projection.Events[2].EventType);
+    }
+
+    [Fact]
     public async Task UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction()
     {
         await using var db = CreateDbContext(nameof(UpsertAsync_SameSourceWhileOpen_ReturnsExistingAction));
