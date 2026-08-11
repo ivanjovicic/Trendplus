@@ -152,6 +152,24 @@
   padding: 14px;
 }
 
+.supplier-decision-page > .analytics-control-bar {
+  margin-bottom: 16px;
+}
+
+.supplier-decision-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplier-decision-card .analytics-data-table {
+  margin-top: 12px;
+}
+
 .supplier-decision-field {
   display: flex;
   flex-direction: column;

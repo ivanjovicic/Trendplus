@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-Instrumentation and numerical SLO adoption remain queue-gated (OBS02+).
+OBS02 instrumentation plan complete. Current queue READY: `OBS03` (Slice-1 API/process evidence).
 
 ### OBS-2 - Latency SLIs
 

@@ -126,6 +126,8 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
+Current queue READY: `DT03` (Slice-1 read-only projection).
+
 ## Decision Engine evolution
 
 Decision Engine evolution is staged and must preserve existing backend source-of-truth rules.

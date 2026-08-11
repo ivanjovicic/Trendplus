@@ -20,6 +20,11 @@ import {
 import type { StoreOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
@@ -1148,6 +1153,149 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setSearchParams(nextParams, { replace: true });
   };
 
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      {
+        key: "scope",
+        label: "Opseg",
+        value: activeDataScope,
+        tone: "info",
+      },
+      {
+        key: "period",
+        label: "Period",
+        value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
+        tone: "neutral",
+      },
+      {
+        key: "rows",
+        label: "Prikazano",
+        value: `${visibleSuppliers.length.toLocaleString("sr-RS")} / ${(data?.suppliers?.length ?? 0).toLocaleString("sr-RS")}`,
+        tone: visibleSuppliers.length < (data?.suppliers?.length ?? 0) ? "warning" : "success",
+      },
+    ],
+    [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data?.suppliers?.length, visibleSuppliers.length],
+  );
+
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "preset",
+        label: "Period",
+        control: (
+          <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
+            <option value="30d">Poslednjih 30 dana</option>
+            <option value="90d">Poslednjih 90 dana</option>
+            <option value="180d">Poslednjih 180 dana</option>
+            <option value="365d">Poslednjih 365 dana</option>
+            <option value="custom">Prilagođeno</option>
+          </select>
+        ),
+      },
+      {
+        key: "from",
+        label: "Od",
+        control: (
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => {
+              const newFrom = event.target.value;
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setFromDate(newFrom);
+              if (newFrom.length === 10) {
+                commitFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
+              }
+            }}
+          />
+        ),
+      },
+      {
+        key: "to",
+        label: "Do",
+        control: (
+          <input
+            type="date"
+            value={toDate}
+            onChange={(event) => {
+              const newTo = event.target.value;
+              setPeriodPreset("custom");
+              setSezonaId(null);
+              setToDate(newTo);
+              if (newTo.length === 10) {
+                commitFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
+              }
+            }}
+          />
+        ),
+      },
+      {
+        key: "season",
+        label: "Sezona",
+        control: (
+          <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
+            <option value="">Sve sezone</option>
+            {(data?.sezone ?? []).map((sezona) => (
+              <option key={sezona.id} value={sezona.id}>
+                {sezona.naziv}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "store",
+        label: "Objekat",
+        control: (
+          <select
+            value={storeId ?? ""}
+            onChange={(event) => {
+              const newStore = event.target.value ? Number(event.target.value) : null;
+              setStoreId(newStore);
+              commitFilters({ fromDate, toDate, sezonaId, storeId: newStore });
+            }}
+          >
+            <option value="">Svi objekti</option>
+            {stores.map((store) => (
+              <option key={store.storeId} value={store.storeId}>
+                {buildStoreLabel(store)}
+              </option>
+            ))}
+          </select>
+        ),
+      },
+      {
+        key: "unknown",
+        label: "Nepoznati",
+        control: (
+          <label className="supplier-decision-inline-check">
+            <input
+              type="checkbox"
+              checked={includeUnknown}
+              onChange={(event) => handleIncludeUnknownChange(event.target.checked)}
+            />
+            <span>Prikaži nepoznate</span>
+          </label>
+        ),
+      },
+    ],
+    [
+      commitFilters,
+      data?.sezone,
+      fromDate,
+      handleSeasonChange,
+      includeUnknown,
+      periodPreset,
+      sezonaId,
+      storeId,
+      stores,
+      toDate,
+    ],
+  );
+  const popTrendSortMarker = sortMarker("popRevenueChangePct", sortField, sortDir);
+  const popTrendTooltip = analyticsMetricDescriptions.popRevenueChangePct;
+
   return (
     <div className={`supplier-decision-page ${embedded ? "supplier-decision-page--embedded" : ""}`}>
       {!embedded ? (
@@ -1170,98 +1318,26 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       ) : null}
 
       {!embedded ? (
-      <section className="supplier-decision-filters">
-        <label className="supplier-decision-field">
-          <span>Period</span>
-          <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
-            <option value="30d">Poslednjih 30 dana</option>
-            <option value="90d">Poslednjih 90 dana</option>
-            <option value="180d">Poslednjih 180 dana</option>
-            <option value="365d">Poslednjih 365 dana</option>
-            <option value="custom">Prilagođeno</option>
-          </select>
-        </label>
-
-        <label className="supplier-decision-field">
-          <span>Od</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(event) => {
-              const newFrom = event.target.value;
-              setPeriodPreset("custom");
-              setSezonaId(null);
-              setFromDate(newFrom);
-              if (newFrom.length === 10) {
-                commitFilters({ fromDate: newFrom, toDate, sezonaId: null, storeId });
-              }
-            }}
-          />
-        </label>
-
-        <label className="supplier-decision-field">
-          <span>Do</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(event) => {
-              const newTo = event.target.value;
-              setPeriodPreset("custom");
-              setSezonaId(null);
-              setToDate(newTo);
-              if (newTo.length === 10) {
-                commitFilters({ fromDate, toDate: newTo, sezonaId: null, storeId });
-              }
-            }}
-          />
-        </label>
-
-        <label className="supplier-decision-field">
-          <span>Sezona</span>
-          <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
-            <option value="">Sve sezone</option>
-            {(data?.sezone ?? []).map((sezona) => (
-              <option key={sezona.id} value={sezona.id}>
-                {sezona.naziv}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="supplier-decision-field">
-          <span>Objekat</span>
-          <select
-            value={storeId ?? ""}
-            onChange={(event) => {
-              const newStore = event.target.value ? Number(event.target.value) : null;
-              setStoreId(newStore);
-              commitFilters({ fromDate, toDate, sezonaId, storeId: newStore });
-            }}
-          >
-            <option value="">Svi objekti</option>
-            {stores.map((store) => (
-              <option key={store.storeId} value={store.storeId}>
-                {buildStoreLabel(store)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="supplier-decision-field supplier-decision-field-checkbox">
-          <span>Prikaži nepoznate</span>
-          <input
-            type="checkbox"
-            checked={includeUnknown}
-            onChange={(event) => handleIncludeUnknownChange(event.target.checked)}
-          />
-        </label>
-
-        <div className="supplier-decision-actions">
-          <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>
-            Reset
-          </button>
-        </div>
-      </section>
+        <AnalyticsControlBar
+          title="Opseg i filteri"
+          description="Period, sezona i objekat ostaju ovde; prioritetna lista ispod ostaje fokusirana na preporuku."
+          chips={controlBarChips}
+          primaryAction={{
+            key: "reset",
+            label: loading ? "Učitavanje..." : "Reset filtera",
+            onClick: handleResetFilters,
+            disabled: loading,
+          }}
+          secondaryActions={[
+            {
+              key: "data-quality",
+              label: "Kvalitet podataka",
+              to: "/analytics/data-quality",
+              tone: "secondary",
+            },
+          ]}
+          fields={controlBarFields}
+        />
       ) : null}
 
       {invalidRange ? (
@@ -1489,19 +1565,29 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     </p>
                   ) : null}
                 </div>
-                <AnalyticsTableToolbar
-                  tableKey="supplier-sales-stats"
-                  tableTitle="Podrška odluci - dobavljači"
-                  columns={decisionColumns}
-                  rows={visibleSuppliers}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                />
               </div>
 
-              <div className="supplier-decision-table-wrap">
-                <table className="supplier-decision-table">
+              <AnalyticsDataTable
+                testId="supplier-sales-stats-data-table"
+                rowCount={visibleSuppliers.length}
+                truncationLabel={
+                  (data.suppliers?.length ?? 0) > visibleSuppliers.length
+                    ? `Ukupno u rezultatu: ${(data.suppliers?.length ?? 0).toLocaleString("sr-RS")} (deo redova je sakriven filterom ili nepoznatim dobavljačima)`
+                    : undefined
+                }
+                toolbar={(
+                  <AnalyticsTableToolbar
+                    tableKey="supplier-sales-stats"
+                    tableTitle="Podrška odluci - dobavljači"
+                    columns={decisionColumns}
+                    rows={visibleSuppliers}
+                    filters={toolbarFilters}
+                    metadata={toolbarMetadata}
+                    defaultOrientation="landscape"
+                  />
+                )}
+              >
+                <table>
                   <thead>
                     <tr>
                       <th className={isSortActive("dobavljacNaziv", sortField) ? "is-sorted" : undefined}>
@@ -1515,7 +1601,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Dobavljač <span className="sort-indicator" aria-hidden="true">{sortMarker("dobavljacNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
                         </button>
                       </th>
-                      <th className={isSortActive("ukupanPromet", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("ukupanPromet", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupanPromet", sortField) ? "is-active" : ""}`}
@@ -1526,7 +1612,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Promet <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupanPromet", sortField, sortDir)}</span> <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className={isSortActive("ukupnaKolicina", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("ukupnaKolicina", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupnaKolicina", sortField) ? "is-active" : ""}`}
@@ -1534,10 +1620,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("ukupnaKolicina", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("ukupnaKolicina")}
                         >
-                          Kolicina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
+                          Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
                         </button>
                       </th>
-                      <th className={isSortActive("totalCost", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("totalCost", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
@@ -1548,7 +1634,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("sharePct", sortField) ? "is-active" : ""}`}
@@ -1559,7 +1645,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog prometa čini ovaj dobavljač. Formula: promet dobavljača / ukupan promet svih prikazanih dobavljača x 100." />
                         </button>
                       </th>
-                      <th className={isSortActive("marginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginContribution", sortField) ? "is-active" : ""}`}
@@ -1570,7 +1656,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {canonicalTerms.marginContribution.label} <span className="sort-indicator" aria-hidden="true">{sortMarker("marginContribution", sortField, sortDir)}</span> <InfoTip text={canonicalTerms.marginContribution.desc} />
                         </button>
                       </th>
-                      <th className={isSortActive("marginPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("marginPct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginPct", sortField) ? "is-active" : ""}`}
@@ -1581,7 +1667,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {canonicalTerms.marginPct.label} <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.marginPct} />
                         </button>
                       </th>
-                      <th className={isSortActive("shareOfMarginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("shareOfMarginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("shareOfMarginContribution", sortField) ? "is-active" : ""}`}
@@ -1592,7 +1678,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {`Udeo u ${canonicalTerms.marginContribution.label}`} <span className="sort-indicator" aria-hidden="true">{sortMarker("shareOfMarginContribution", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." />
                         </button>
                       </th>
-                      <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("popRevenueChangePct", sortField) ? "is-active" : ""}`}
@@ -1600,7 +1686,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("popRevenueChangePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("popRevenueChangePct")}
                         >
-                          PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} />
+                          PoP trend <span className="sort-indicator" aria-hidden="true">{popTrendSortMarker}</span> <InfoTip text={popTrendTooltip} />
                         </button>
                       </th>
                       <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
@@ -1675,12 +1761,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                 )}
                               </div>
                             </td>
-                            <td className="align-right metric-strong">{fmtRsd(supplier.ukupanPromet)}</td>
-                            <td className="align-right">{fmtQty(supplier.ukupnaKolicina)}</td>
-                            <td className="align-right">{fmtRsd(supplier.totalCost)}</td>
-                            <td className="align-right"><span className="metric-chip metric-chip-neutral">{fmtPct(supplier.sharePct, 1)}</span></td>
-                            <td className="align-right metric-strong">{fmtRsd(supplier.marginContribution)}</td>
-                            <td className="align-right">
+                            <td className="analytics-data-table__numeric metric-strong">{fmtRsd(supplier.ukupanPromet)}</td>
+                            <td className="analytics-data-table__numeric">{fmtQty(supplier.ukupnaKolicina)}</td>
+                            <td className="analytics-data-table__numeric">{fmtRsd(supplier.totalCost)}</td>
+                            <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(supplier.sharePct, 1)}</span></td>
+                            <td className="analytics-data-table__numeric metric-strong">{fmtRsd(supplier.marginContribution)}</td>
+                            <td className="analytics-data-table__numeric">
                               <span>{fmtPct(supplier.marginPct, 1)}</span>
                               {tierNeedsWarning(supplier.marginQualityTier) ? (
                                 <span className={`quality-pill ${qualityTierClass(supplier.marginQualityTier)}`} title={supplier.marginQualityTooltip ?? supplier.marginQualityLabel ?? ""}>
@@ -1688,8 +1774,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                                 </span>
                               ) : null}
                             </td>
-                            <td className="align-right">{fmtPct(supplier.shareOfMarginContribution, 1)}</td>
-                            <td className="align-right" title={popMetric.title}>
+                            <td className="analytics-data-table__numeric">{fmtPct(supplier.shareOfMarginContribution, 1)}</td>
+                            <td className="analytics-data-table__numeric" title={popMetric.title}>
                               <span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span>
                             </td>
                             <td>
@@ -1723,7 +1809,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 
