@@ -35,6 +35,9 @@ Create one current security ownership/threat map covering:
 
 The output must link existing STAB/MT/GAI work rather than copying it.
 
+**Status:** SEC01 complete — `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`.
+Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphans (supply-chain, retention assurance, incident ownership, key-rotation runbook).
+
 ### SEC-2 - Secrets and privileged operations assurance
 
 - secret sources and rotation expectations;

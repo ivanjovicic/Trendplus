@@ -35,6 +35,9 @@ Define authoritative metrics and dimensions for:
 - cache hit/miss/invalidation;
 - report/export success/failure.
 
+**Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
+Instrumentation and numerical SLO adoption remain queue-gated (OBS02+).
+
 ### OBS-2 - Latency SLIs
 
 Define p50/p95/p99 where useful for:

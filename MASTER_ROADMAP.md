@@ -46,12 +46,12 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB01` | Must not outrank unresolved higher-priority P0 work | Yes, QDB01 docs/tests when paths are clear | Provider-neutral connector contract characterized |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | `MT01` | Shared SaaS remains forbidden until the full MT gate is complete | Yes, MT01 when paths are clear | Canonical TenantId/context seam, then staged tenant isolation |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
-| DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX01` | Runtime work waits for deterministic contract and higher-priority correctness gates | Yes, docs/contracts | Deterministic Decision Graph + evidence-chain contract |
-| RL | same queue/roadmap as DEX | `RL01` | Runtime learning waits for outcome vocabulary and durable evidence contract | Yes, docs/contracts | Recommendation outcome-learning contract |
-| DT | same queue/roadmap as DEX | `DT01` | Runtime timeline waits for canonical event model | Yes, docs/contracts | Decision Timeline event model and success metrics |
-| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF01` | Runtime optimization waits for measured baseline and correctness preservation | Yes, measurement plan | Reproducible baseline and performance budget |
-| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS01` | Runtime instrumentation waits for agreed SLI/SLA vocabulary | Yes, docs/contracts | Business + technical SLI/SLA catalog |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC01` | Must not duplicate STAB, MT, or GAI security ownership | Yes, reconciliation only | Consolidated post-STAB security evolution map |
+| DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | none | DEX planning/implementation prompts through DEX09 are DONE in owner queue; runtime remains gated | Yes, docs/contracts | Cross-family explainability reuse |
+| RL | same queue/roadmap as DEX | none | `RL01` DONE; `RL02` WAITING | Yes, docs/contracts | Deterministic statistics rollout (`RL02`) |
+| DT | same queue/roadmap as DEX | none | `DT01`/`DT02` DONE | Yes, docs/contracts | Queue Slice-1 timeline projection implementation when owner promotes |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | none | `PERF01` DONE (`docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`). `PERF02` WAITING on recorded measurements. | Yes, measurement plan | Run S-tier B1–B3/B8 pack, then PERF02 |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | none | `OBS01` DONE (`docs/architecture/OBSERVABILITY_SLI_CATALOG.md`). `OBS02` WAITING. | Yes, docs/contracts | Promote OBS02 instrumentation plan when ready |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC01` DONE (`docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`). `SEC02` WAITING. Pilot authz gaps remain STAB-owned. | Yes, reconciliation only | Post-STAB assurance backlog (`SEC02`) when handoff criteria met |
 
 ## Product and process documents
 

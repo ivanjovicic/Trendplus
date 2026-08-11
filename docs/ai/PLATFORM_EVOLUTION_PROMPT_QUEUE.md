@@ -12,9 +12,9 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF01` | baseline/measurement plan |
-| OBS - Observability | `OBS01` | SLI/SLA contract/inventory |
-| SEC - Security Evolution | `SEC01` | ownership/threat-model reconciliation |
+| PERF - Performance | `none` (`PERF01` DONE; `PERF02` WAITING on measurements) | baseline/measurement plan |
+| OBS - Observability | `none` (`OBS01` DONE; `OBS02` WAITING) | SLI/SLA contract/inventory |
+| SEC - Security Evolution | `none` (`SEC01` DONE; `SEC02` WAITING) | ownership/threat-model reconciliation |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -22,11 +22,12 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ## PERF01 - Establish performance baseline, dataset tiers and budgets
 
-Status: READY  
-Priority: future / planning  
-Feature family: performance-baseline-contract  
-Parallel-safe: yes, measurement/docs only  
-Owner: unassigned
+Status: DONE
+Priority: future / planning
+Feature family: performance-baseline-contract
+Parallel-safe: yes, measurement/docs only
+Owner: Cursor
+Local lock: none
 
 ### Problem
 
@@ -74,6 +75,25 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 - one reproducible performance-baseline plan exists;
 - benchmark priorities cover SQL, cache, large datasets, memory, workers and cold start;
 - later optimization prompts can require before/after evidence.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime optimization introduced
+- Risks:
+  - budgets remain target-only until S-tier measurement pack is recorded
+  - no BenchmarkDotNet/k6 harness yet (explicit gap)
+- Next:
+  - `PERF02` stays WAITING until usable measurements exist
+  - Current READY in this queue: `OBS01`
 
 ### Dependencies
 
@@ -133,11 +153,12 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 ## OBS01 - Define business/technical SLI, SLA and correlation catalog
 
-Status: READY  
-Priority: future / planning  
-Feature family: observability-sli-contract  
-Parallel-safe: yes, docs/contracts only  
-Owner: unassigned
+Status: DONE
+Priority: future / planning
+Feature family: observability-sli-contract
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor
+Local lock: none
 
 ### Problem
 
@@ -187,6 +208,25 @@ Health, import status, freshness, worker state and latency exist across several 
 - import, analytics and worker evidence boundaries are explicit;
 - later instrumentation can be split by component.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime instrumentation / vendor choice
+- Risks:
+  - queue-depth/DLQ and cache-hit SLIs remain gaps until OBS02 instrumentation
+  - HTTP correlation vs RequestLogContext TraceId still dual-named
+- Next:
+  - `OBS02` stays WAITING until owner promotes instrumentation rollout
+  - Current READY in this queue: `SEC01`
+
 ### Dependencies
 
 - STAB security/privacy rules;
@@ -208,7 +248,7 @@ OBS01 must be translated into bounded instrumentation slices without a broad tel
 
 ### Evidence
 
-- OBS01 will identify current signals and gaps.
+- OBS01 DONE: `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
 
 ### Scope
 
@@ -247,11 +287,12 @@ OBS01 must be translated into bounded instrumentation slices without a broad tel
 
 ## SEC01 - Reconcile security ownership and current threat model
 
-Status: READY  
-Priority: future / planning  
-Feature family: security-ownership-threat-model  
-Parallel-safe: yes, docs/audit only  
-Owner: unassigned
+Status: DONE
+Priority: future / planning
+Feature family: security-ownership-threat-model
+Parallel-safe: yes, docs/audit only
+Owner: Cursor
+Local lock: none
 
 ### Problem
 
@@ -303,6 +344,25 @@ Security planning is currently distributed across STAB pilot security work, MT t
 - SEC has only genuinely cross-cutting future work;
 - no runtime security change is made.
 
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`
+  - `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `git diff --check` - pass
+  - no runtime security changes
+- Risks:
+  - STAB03 follow-up gaps (import/logs/document-header) remain STAB-owned, not closed by this map
+  - External IdP still deferred (accepted/n/a until product decision)
+- Next:
+  - `SEC02` WAITING (post-STAB assurance backlog)
+  - Platform Evolution Current READY: none
+
 ### Dependencies
 
 - current STAB/MT/QDB/GAI documentation available;
@@ -324,7 +384,7 @@ After SEC01, only orphan/post-STAB risks should become SEC backlog items.
 
 ### Evidence
 
-- SEC01 will define primary ownership and orphans.
+- SEC01 DONE: `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`
 
 ### Scope
 
