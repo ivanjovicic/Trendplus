@@ -21,7 +21,7 @@ Use with:
 | P-UI-14 | DONE | legacy-analytics-modernization | Continue legacy page modernization (DailySalesStatsPage) |
 | P-UI-15 | DONE | legacy-analytics-modernization | Continue legacy page modernization (ProdajaPrePostNivelacijePage) |
 | P-UI-16 | DONE | pre-nivelacija-priority-signal-copy | Fix unavailable reliability shown as Nisko + empty/copy polish |
-| P-UI-17 | READY | legacy-analytics-modernization | Modernize PreNivelacijaPriorityPage chrome (ControlBar + DataTable) |
+| P-UI-17 | DONE | legacy-analytics-modernization | Modernize PreNivelacijaPriorityPage chrome (ControlBar + DataTable) |
 
 ---
 
@@ -442,7 +442,7 @@ P-UI-14 modernized Daily. Remaining legacy analytics pages still use page-local 
 - Remaining risk:
   - React test suite still emits a pre-existing `act(...)` warning in the data-scope change case.
 - Next:
-  - Current P-UI READY: `P-UI-17`
+  - Current P-UI READY: `P-UI-18`
 
 ---
 
@@ -549,14 +549,14 @@ Add/extend a case where `recommendation.reliabilityPct` (and row `reliabilityPct
 
 ## P-UI-17 - PreNivelacijaPriorityPage chrome modernization
 
-Status: READY
+Status: DONE
 Ready after: P-UI-16 DONE
 Priority: P2
 Type: frontend/design/tests
 Feature family: legacy-analytics-modernization
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-17-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-17-codex.lock.md` (released on DONE)
 Commit suggestion: `feat(ui): modernize PreNivelacijaPriorityPage chrome`
 Promotion note: 2026-08-11 — promoted after P-UI-16 DONE; last remaining least-improved legacy candidate.
 
@@ -618,4 +618,24 @@ Prefer a dedicated premium chrome assertion (control bar + data table test ids) 
 ### Dependencies
 
 - P-UI-16 DONE (satisfied)
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: codex
+- Commit: `1d0561e`
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css`
+  - `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Shared `AnalyticsControlBar` / `AnalyticsDataTable` chrome now wraps the page filters and primary table.
+  - Tooltip trend colors now use theme tokens instead of hardcoded red/green hex values.
+  - P-UI-16 unavailable-reliability behavior remains intact.
+- Remaining:
+  - none
 - Path-safe vs higher-priority BCI/STAB/RQ exclusive work

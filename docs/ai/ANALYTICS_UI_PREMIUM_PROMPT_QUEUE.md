@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-17` (see least-improved addendum; PreNivelacijaPriorityPage chrome)
+Current READY prompt: `P-UI-18` (see least-improved addendum; SupplierFootwearAnalyticsPage chrome)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -589,20 +589,20 @@ Assert null reliability does not render “Nisko”.
 ### Completion note (2026-08-11)
 
 - Unavailable reliability → “Nije dostupno” / `signal-na` (not “Nisko”); empty/copy polished; focused vitest 5/5.
-- Next READY: `P-UI-17`
+- Next READY: `P-UI-18`
 
 ---
 
 ## P-UI-17 - PreNivelacijaPriorityPage chrome modernization
 
-Status: READY
+Status: DONE
 Ready after: P-UI-16 DONE
 Priority: P2
 Type: frontend/design/tests
 Feature family: legacy-analytics-modernization
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-17-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-17-codex.lock.md` (released on DONE)
 Commit suggestion: `feat(ui): modernize PreNivelacijaPriorityPage chrome`
 Canonical detail: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md` (P-UI-17)
 
@@ -646,4 +646,24 @@ npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
 ### Dependencies
 
 - P-UI-16 DONE; promote to READY only after that (one READY per P-UI program)
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: codex
+- Commit: `1d0561e`
+- Changed files:
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+  - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.css`
+  - `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+- Checks:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+- Notes:
+  - Migrated the page to shared `AnalyticsControlBar` and `AnalyticsDataTable` chrome.
+  - Replaced tooltip hardcoded trend colors with theme tokens.
+  - Kept P-UI-16 reliability semantics intact.
+- Remaining:
+  - none
 
