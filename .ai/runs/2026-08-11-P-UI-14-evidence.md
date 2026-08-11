@@ -3,6 +3,7 @@
 Prompt: P-UI-14 - Continue legacy analytics page modernization
 Date: 2026-08-11
 Status: DONE (one page)
+Commit SHA: 5997fc0
 
 Page this run:
 - Klijent/clientapp/src/pages/DailySalesStatsPage.tsx
