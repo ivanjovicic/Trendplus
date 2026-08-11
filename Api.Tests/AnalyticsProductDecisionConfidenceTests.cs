@@ -29,6 +29,7 @@ public sealed class AnalyticsProductDecisionConfidenceTests
             LostSalesEstimate = 25000m,
             SlowStockCapital = 0m,
             RecommendationStatus = "REPLENISH",
+            RecommendationLabel = "Dopuni",
             RecommendationReason = "Brza prodaja i nizak stock cover.",
             ReasonCodes = ["high_velocity", "low_stock"],
             DataQualityStatus = "good",
@@ -50,6 +51,15 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Equal(14, profile.ImpactWindowDays);
         Assert.Equal("Brza prodaja i nizak stock cover.", profile.ExplainabilityText);
         Assert.Equal("fresh", profile.InputFreshnessStatus);
+        Assert.NotNull(profile.WhyPanel);
+        Assert.Equal("REPLENISH", profile.WhyPanel.RecommendationStatus);
+        Assert.Equal("Dopuni", profile.WhyPanel.RecommendationLabel);
+        Assert.Equal("Brza prodaja i nizak stock cover.", profile.WhyPanel.ExplainabilityText);
+        Assert.Equal("recommendation_reason", profile.WhyPanel.SummarySource);
+        Assert.False(profile.WhyPanel.SummaryFallbackUsed);
+        Assert.Null(profile.WhyPanel.SummaryFallbackReason);
+        Assert.NotEmpty(profile.WhyPanel.ConfidenceBreakdown);
+        Assert.NotEmpty(profile.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(profile.ConfidenceBreakdown);
         var scoreNode = Assert.Single(profile.ConfidenceBreakdown, node => node.Code == "confidence_score");
         Assert.Equal("Ocena pouzdanosti", scoreNode.Label);
@@ -149,5 +159,52 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "FIX_DATA");
         Assert.Contains(profile.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
         Assert.All(profile.AlternativeRecommendations, node => Assert.False(string.IsNullOrWhiteSpace(node.WhyLowerRanked)));
+        Assert.NotNull(profile.WhyPanel);
+        Assert.Equal("INSUFFICIENT_DATA", profile.WhyPanel.RecommendationStatus);
+        Assert.Equal("Nedovoljno podataka", profile.WhyPanel.RecommendationLabel);
+        Assert.Equal("Nedovoljno signala za pouzdanu preporuku.", profile.WhyPanel.ExplainabilityText);
+        Assert.Equal("recommendation_reason", profile.WhyPanel.SummarySource);
+        Assert.False(profile.WhyPanel.SummaryFallbackUsed);
+        Assert.NotEmpty(profile.WhyPanel.EvidenceChain);
+    }
+
+    [Fact]
+    public void MissingRecommendationReason_UsesBackendComposedWhyPanelSummary()
+    {
+        var row = new ProductDecisionCenterRowDto
+        {
+            ProductId = 303,
+            Sku = "SKU-303",
+            ProductName = "Model Z",
+            Revenue = 180000m,
+            UnitsSold = 52,
+            VelocityUnitsPerDay = 1.8m,
+            MarginContribution = 36000m,
+            MarginPct = 28m,
+            MarginCoveragePct = 91m,
+            CurrentStock = 3,
+            MinStock = 10,
+            StockGap = 7,
+            DaysSinceLastSale = 5,
+            TrendPct = 14m,
+            LostSalesEstimate = 25000m,
+            SlowStockCapital = 0m,
+            RecommendationStatus = "WATCH",
+            RecommendationReason = "",
+            ReasonCodes = ["positive_trend"],
+            DataQualityStatus = "good",
+            ConfidencePct = 41,
+            ReliabilityPct = 38,
+        };
+
+        var profile = CachedAnalyticsEndpoints.BuildProductDecisionConfidenceProfile(
+            row,
+            new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal("backend_composed", profile.WhyPanel.SummarySource);
+        Assert.True(profile.WhyPanel.SummaryFallbackUsed);
+        Assert.Equal("recommendation_reason_missing", profile.WhyPanel.SummaryFallbackReason);
+        Assert.False(string.IsNullOrWhiteSpace(profile.WhyPanel.ExplainabilityText));
     }
 }

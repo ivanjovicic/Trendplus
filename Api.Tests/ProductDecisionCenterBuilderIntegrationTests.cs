@@ -52,6 +52,13 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("product:101", replenish.SourceKey);
         Assert.Equal("REPLENISH", replenish.RecommendationType);
         Assert.NotNull(replenish.RecommendationId);
+        Assert.NotNull(replenish.WhyPanel);
+        Assert.Equal("REPLENISH", replenish.WhyPanel.RecommendationStatus);
+        Assert.Equal("Dopuni", replenish.WhyPanel.RecommendationLabel);
+        Assert.Equal("recommendation_reason", replenish.WhyPanel.SummarySource);
+        Assert.False(replenish.WhyPanel.SummaryFallbackUsed);
+        Assert.NotEmpty(replenish.WhyPanel.ConfidenceBreakdown);
+        Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotNull(replenish.ConfidenceScore);
         Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
@@ -97,6 +104,13 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:missing_cost");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "warning:expected_impact_denominator_missing");
         Assert.Contains(fixData.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);
+        Assert.NotNull(fixData.WhyPanel);
+        Assert.Equal("FIX_DATA", fixData.WhyPanel.RecommendationStatus);
+        Assert.Equal("Proveri podatke", fixData.WhyPanel.RecommendationLabel);
+        Assert.Equal("recommendation_reason", fixData.WhyPanel.SummarySource);
+        Assert.False(fixData.WhyPanel.SummaryFallbackUsed);
+        Assert.NotEmpty(fixData.WhyPanel.EvidenceChain);
+        Assert.NotEmpty(fixData.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(fixData.AlternativeRecommendations);
         Assert.Contains(fixData.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
         Assert.All(fixData.AlternativeRecommendations, node =>

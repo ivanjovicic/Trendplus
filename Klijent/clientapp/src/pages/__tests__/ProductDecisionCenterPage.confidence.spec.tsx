@@ -43,7 +43,7 @@ vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => n
 vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
 function makeRow(overrides: Record<string, unknown> = {}) {
-  return {
+  const row = {
     productId: 101,
     recommendationId: "product:101:REPLENISH:20260528:20260626",
     sourceType: "product",
@@ -141,6 +141,42 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     daysSinceLastSale: 12,
     ...overrides,
   };
+  const reasonCodes = Array.isArray(row.reasonCodes) ? row.reasonCodes : [];
+  const primaryDrivers = Array.isArray(row.primaryDrivers) ? row.primaryDrivers : [];
+  const warningCodes = Array.isArray(row.warningCodes) ? row.warningCodes : [];
+  const confidenceBreakdown = Array.isArray(row.confidenceBreakdown) ? row.confidenceBreakdown : [];
+  const alternativeRecommendations = Array.isArray(row.alternativeRecommendations) ? row.alternativeRecommendations : [];
+  const evidenceChain = Array.isArray(row.evidenceChain) ? row.evidenceChain : [];
+
+  return {
+    ...row,
+    whyPanel: overrides.whyPanel ?? {
+      recommendationStatus: row.recommendationStatus,
+      recommendationLabel: row.recommendationLabel,
+      recommendationReason: row.recommendationReason,
+      recommendedAction: row.recommendedAction,
+      explainabilityText: row.explainabilityText,
+      summarySource: row.recommendationReason ? "recommendation_reason" : "backend_composed",
+      summaryFallbackUsed: !row.recommendationReason,
+      summaryFallbackReason: !row.recommendationReason ? "recommendation_reason_missing" : null,
+      reasonCodes: [...reasonCodes],
+      primaryDrivers: [...primaryDrivers],
+      warningCodes: [...warningCodes],
+      confidenceLevel: row.confidenceLevel,
+      confidenceScore: row.confidenceScore,
+      confidencePct: row.confidencePct,
+      reliabilityPct: row.reliabilityPct,
+      dataQualityStatus: row.dataQualityStatus,
+      inputFreshnessStatus: row.inputFreshnessStatus,
+      recommendationAllowed: row.recommendationAllowed,
+      expectedImpactRsd: row.expectedImpactRsd,
+      impactWindowDays: row.impactWindowDays,
+      riskIfIgnored: row.riskIfIgnored,
+      confidenceBreakdown: [...confidenceBreakdown],
+      alternativeRecommendations: [...alternativeRecommendations],
+      evidenceChain: [...evidenceChain],
+    },
+  };
 }
 
 function buildResponse(rows: Array<Record<string, unknown>>, dataQualityStatus: string) {
@@ -188,6 +224,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
 
     expect(screen.getByText(/Zašto ova preporuka\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Izvor objašnjenja: direktan razlog preporuke/i)).toBeInTheDocument();
     expect(screen.getByText(/Glavni pokreta/i)).toBeInTheDocument();
     expect(screen.getByText("Brzina prodaje", { selector: ".reason-chip" })).toBeInTheDocument();
     expect(screen.getByText("Rizik zalihe", { selector: ".reason-chip" })).toBeInTheDocument();
@@ -428,6 +465,117 @@ describe("ProductDecisionCenterPage confidence contract", () => {
           && (element.textContent?.includes("Čekanje bi odložilo odgovor na postojeći manjak zalihe.") ?? false)),
       ),
     ).toBeInTheDocument();
+  });
+
+  it("uses the backend Why panel bundle when present", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 818,
+          recommendationStatus: "BOOST",
+          recommendationLabel: "Pojačaj",
+          recommendationReason: "Redovi bi i dalje nudili staru lokalnu vrednost.",
+          explainabilityText: "Panel explanation from backend bundle.",
+          recommendedAction: "Pojačaj vidljivost",
+          reasonCodes: ["positive_trend"],
+          primaryDrivers: ["trend"],
+          warningCodes: ["not_reasonable"],
+          confidenceLevel: "medium",
+          confidenceScore: 64,
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "good",
+          inputFreshnessStatus: "fresh",
+          expectedImpactRsd: 42000,
+          impactWindowDays: 7,
+          riskIfIgnored: "Panel risk from backend bundle.",
+          whyPanel: {
+            recommendationStatus: "BOOST",
+            recommendationLabel: "Pojačaj",
+            recommendationReason: "Panel reason from backend bundle.",
+            recommendedAction: "Pojačaj vidljivost",
+            explainabilityText: "Panel explanation from backend bundle.",
+            summarySource: "recommendation_reason",
+            summaryFallbackUsed: false,
+            summaryFallbackReason: null,
+            reasonCodes: ["positive_trend"],
+            primaryDrivers: ["trend"],
+            warningCodes: ["not_reasonable"],
+            confidenceLevel: "medium",
+            confidenceScore: 64,
+            confidencePct: 64,
+            reliabilityPct: 61,
+            dataQualityStatus: "good",
+            inputFreshnessStatus: "fresh",
+            recommendationAllowed: true,
+            expectedImpactRsd: 42000,
+            impactWindowDays: 7,
+            riskIfIgnored: "Panel risk from backend bundle.",
+            confidenceBreakdown: [
+              {
+                category: "confidence",
+                code: "confidence_score",
+                label: "Ocena pouzdanosti",
+                valueText: "Srednja sigurnost · 64%",
+                sourceFields: ["ConfidenceLevel", "ConfidenceScore", "ConfidencePct"],
+                isMissing: false,
+                detail: "Uzeto iz backend bundle-a.",
+              },
+            ],
+            alternativeRecommendations: [],
+            evidenceChain: [
+              {
+                category: "decision",
+                code: "selected_recommendation",
+                label: "Odabrana preporuka",
+                valueText: "Pojačaj",
+                sourceFields: ["RecommendationStatus", "RecommendationLabel", "RecommendationReason"],
+                isMissing: false,
+                detail: "Panel explanation from backend bundle.",
+              },
+            ],
+          },
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText(/Izvor objašnjenja: direktan razlog preporuke/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) =>
+        element?.tagName === "DIV"
+        && element.classList.contains("reason-block")
+        && (element.querySelector("strong")?.textContent?.includes("Zašto ova preporuka?") ?? false),
+      ),
+    ).toHaveTextContent("Panel explanation from backend bundle.");
+    expect(screen.getByText("Pojačaj vidljivost")).toBeInTheDocument();
+    expect(screen.queryByText("Redovi bi i dalje nudili staru lokalnu vrednost.")).not.toBeInTheDocument();
+  });
+
+  it("shows explicit fallback state when the recommendation reason is missing", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 909,
+          recommendationId: "product:909:REPLENISH:20260528:20260626",
+          sourceKey: "product:909",
+          recommendationReason: "",
+          explainabilityText: "Kompovano iz backend signala.",
+          riskIfIgnored: "Rizik je gubitak prodaje.",
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
+
+    expect(screen.getByText(/Izvor objašnjenja: backend kompozicija signala/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fallback: RecommendationReason nije bio dostupan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kompovano iz backend signala\./i)).toBeInTheDocument();
   });
 
   it("keeps confident recommendations honest when expected impact is missing", async () => {

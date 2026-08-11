@@ -34,6 +34,7 @@ import type {
   ProductDecisionAlternativeRecommendation,
   ProductDecisionCenterResponse,
   ProductDecisionEvidenceNode,
+  ProductDecisionWhyPanel,
   ProductDecisionRecommendationStatus,
   StoreOption,
   SupplierFilterOption,
@@ -304,12 +305,77 @@ function resolvePrimaryDrivers(row: ProductDecisionRow): string[] {
 }
 
 function resolveInputFreshnessStatus(row: ProductDecisionRow): "fresh" | "stale" | "critical" | "unknown" {
-  const normalized = (row.inputFreshnessStatus ?? "").trim().toLowerCase();
+  return normalizeInputFreshnessStatus(row.inputFreshnessStatus);
+}
+
+function normalizeInputFreshnessStatus(
+  value: string | null | undefined,
+): "fresh" | "stale" | "critical" | "unknown" {
+  const normalized = (value ?? "").trim().toLowerCase();
   if (normalized === "fresh" || normalized === "stale" || normalized === "critical" || normalized === "unknown") {
     return normalized;
   }
 
   return "unknown";
+}
+
+function whyPanelSummarySourceLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "recommendation_reason") return "Izvor objašnjenja: direktan razlog preporuke";
+  if (normalized === "backend_composed") return "Izvor objašnjenja: backend kompozicija signala";
+  if (normalized === "missing") return "Izvor objašnjenja: nije dostupno";
+  return "Izvor objašnjenja: nepoznat";
+}
+
+function whyPanelFallbackLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "recommendation_reason_missing") return "Fallback: RecommendationReason nije bio dostupan";
+  if (!normalized) return "Fallback: backend kompozicija je korišćena";
+  return `Fallback: ${value}`;
+}
+
+function buildProductDecisionWhyPanel(row: ProductDecisionRow): ProductDecisionWhyPanel {
+  if (row.whyPanel) {
+    return row.whyPanel;
+  }
+
+  const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
+  const confidenceScore = resolveConfidenceScore(row);
+  const primaryDrivers = resolvePrimaryDrivers(row);
+  const warningCodes = resolveWarningCodes(row);
+  const expectedImpactRsd = resolveExpectedImpactRsd(row);
+  const inputFreshnessStatus = resolveInputFreshnessStatus(row);
+  const confidenceBreakdown = row.confidenceBreakdown ?? [];
+  const alternativeRecommendations = row.alternativeRecommendations ?? [];
+  const evidenceChain = row.evidenceChain ?? [];
+  const summarySource = row.recommendationReason.trim() ? "recommendation_reason" : "backend_composed";
+
+  return {
+    recommendationStatus: row.recommendationStatus,
+    recommendationLabel: displayRecommendationLabel(row),
+    recommendationReason: row.recommendationReason,
+    recommendedAction: row.recommendedAction,
+    explainabilityText: row.explainabilityText,
+    summarySource,
+    summaryFallbackUsed: summarySource !== "recommendation_reason",
+    summaryFallbackReason: summarySource !== "recommendation_reason" ? "recommendation_reason_missing" : null,
+    reasonCodes: [...row.reasonCodes],
+    primaryDrivers,
+    warningCodes,
+    confidenceLevel,
+    confidenceScore,
+    confidencePct: row.confidencePct,
+    reliabilityPct: row.reliabilityPct,
+    dataQualityStatus: row.dataQualityStatus,
+    inputFreshnessStatus,
+    recommendationAllowed: row.recommendationAllowed ?? true,
+    expectedImpactRsd,
+    impactWindowDays: row.impactWindowDays ?? null,
+    riskIfIgnored: row.riskIfIgnored,
+    confidenceBreakdown,
+    alternativeRecommendations,
+    evidenceChain,
+  };
 }
 
 function confidenceLevelLabel(level: ConfidenceLevel): string {
@@ -1214,15 +1280,16 @@ export default function ProductDecisionCenterPage() {
                   const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
                   const isQueued = queuedActionKeys.has(sourceKey);
                   const isQueueBusy = queueBusyKey === sourceKey;
-                  const dataQuality = canonicalDataQualityStatus(row.dataQualityStatus);
-                  const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
-                  const confidenceScore = resolveConfidenceScore(row);
-                  const warningCodes = resolveWarningCodes(row);
-                  const primaryDrivers = resolvePrimaryDrivers(row);
-                  const expectedImpactRsd = resolveExpectedImpactRsd(row);
-                  const inputFreshnessStatus = resolveInputFreshnessStatus(row);
-                  const reasonCodeItems = row.reasonCodes.length
-                    ? row.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
+                  const whyPanel = buildProductDecisionWhyPanel(row);
+                  const dataQuality = canonicalDataQualityStatus(whyPanel.dataQualityStatus);
+                  const confidenceLevel = normalizeConfidenceLevel(whyPanel.confidenceLevel);
+                  const confidenceScore = whyPanel.confidenceScore ?? null;
+                  const warningCodes = whyPanel.warningCodes;
+                  const primaryDrivers = whyPanel.primaryDrivers;
+                  const expectedImpactRsd = whyPanel.expectedImpactRsd ?? null;
+                  const inputFreshnessStatus = normalizeInputFreshnessStatus(whyPanel.inputFreshnessStatus);
+                  const reasonCodeItems = whyPanel.reasonCodes.length
+                    ? whyPanel.reasonCodes.map((code) => ({ code, message: translateReasonCode(code) }))
                     : null;
                   const warningCodeItems = warningCodes.length
                     ? warningCodes.map((code) => ({ code, message: translateReasonCode(code) }))
@@ -1230,9 +1297,9 @@ export default function ProductDecisionCenterPage() {
                   const primaryDriverItems = primaryDrivers.length
                     ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
-                  const confidenceBreakdownItems: ProductDecisionEvidenceNode[] = row.confidenceBreakdown ?? [];
-                  const alternativeRecommendationsItems: ProductDecisionAlternativeRecommendation[] = row.alternativeRecommendations ?? [];
-                  const evidenceChainItems: ProductDecisionEvidenceNode[] = row.evidenceChain ?? [];
+                  const confidenceBreakdownItems: ProductDecisionEvidenceNode[] = whyPanel.confidenceBreakdown ?? [];
+                  const alternativeRecommendationsItems: ProductDecisionAlternativeRecommendation[] = whyPanel.alternativeRecommendations ?? [];
+                  const evidenceChainItems: ProductDecisionEvidenceNode[] = whyPanel.evidenceChain ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
 
@@ -1268,7 +1335,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span className={confidenceLevelClass(confidenceLevel)}>{confidenceScoreText(confidenceLevel, confidenceScore)}</span>
-                          <small>Pouzdanost: {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
+                           <small>Pouzdanost: {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
                         </td>
                         <td>
                           <span className={dataQualityClass(dataQuality)}>{DATA_QUALITY_LABELS[dataQuality]}</span>
@@ -1289,7 +1356,7 @@ export default function ProductDecisionCenterPage() {
                               event.stopPropagation();
                               toggleExpandedRow(row.productId);
                             }}
-                            title={row.explainabilityText ?? row.recommendationReason}
+                            title={whyPanel.explainabilityText ?? whyPanel.recommendationReason}
                           >
                             Zašto?
                           </button>
@@ -1332,11 +1399,15 @@ export default function ProductDecisionCenterPage() {
                                   </span>
                                   <span className={confidenceLevelClass(confidenceLevel)}>{confidenceScoreText(confidenceLevel, confidenceScore)}</span>
                                   <span className="confidence-badge">Svežina ulaza: {inputFreshnessLabel(inputFreshnessStatus)}</span>
+                                  <span className="confidence-badge">{whyPanelSummarySourceLabel(whyPanel.summarySource)}</span>
+                                  {whyPanel.summaryFallbackUsed ? (
+                                    <span className="confidence-badge">{whyPanelFallbackLabel(whyPanel.summaryFallbackReason)}</span>
+                                  ) : null}
                                 </div>
                               </div>
 
                               <div className="reason-block">
-                                <strong>Zašto ova preporuka?</strong> {row.explainabilityText ?? row.recommendationReason ?? "Objašnjenje nije dostupno."}
+                                <strong>Zašto ova preporuka?</strong> {whyPanel.explainabilityText ?? whyPanel.recommendationReason ?? "Objašnjenje nije dostupno."}
                               </div>
 
                               <div className="reason-block">
@@ -1459,14 +1530,14 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-block">
                                 <strong>Očekivani uticaj:</strong> {expectedImpactRsd != null ? fmtRsd(expectedImpactRsd, 0, "N/A") : "Nije dostupan"}
-                                {row.impactWindowDays != null ? <span> u prozoru od {fmtNumber(row.impactWindowDays, 0, "0")} dana</span> : null}
+                                {whyPanel.impactWindowDays != null ? <span> u prozoru od {fmtNumber(whyPanel.impactWindowDays, 0, "0")} dana</span> : null}
                                 {expectedImpactRsd == null ? (
                                   <div className="reason-warning-inline">Nema pouzdane procene uticaja jer nedostaje ulazni signal.</div>
                                 ) : null}
                               </div>
 
                               <div className="reason-block">
-                                <strong>Rizik ako se ignoriše:</strong> {row.riskIfIgnored || "Rizik nije specificiran."}
+                                <strong>Rizik ako se ignoriše:</strong> {whyPanel.riskIfIgnored || "Rizik nije specificiran."}
                               </div>
 
                               <div className="reason-block">
@@ -1524,7 +1595,7 @@ export default function ProductDecisionCenterPage() {
                                 </div>
                                 <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1)}</div>
                                 <div>
-                                  <strong>Pouzdanost:</strong> {row.reliabilityPct != null ? `${fmtNumber(row.reliabilityPct, 0, "N/A")}%` : "N/A"}
+                                  <strong>Pouzdanost:</strong> {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}
                                   <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                                 </div>
                                 <div>

@@ -5365,6 +5365,7 @@ public static class CachedAnalyticsEndpoints
             row.ExplainabilityText = confidenceProfile.ExplainabilityText;
             row.InputFreshnessStatus = confidenceProfile.InputFreshnessStatus;
             row.EvidenceChain = confidenceProfile.EvidenceChain.ToList();
+            row.WhyPanel = confidenceProfile.WhyPanel;
 
             rows.Add(row);
         }
@@ -5635,6 +5636,20 @@ public static class CachedAnalyticsEndpoints
             expectedImpactRsd,
             inputFreshnessStatus,
             explainabilityText);
+        var whyPanel = BuildProductDecisionWhyPanel(
+            row,
+            confidenceLevel,
+            confidenceScore,
+            primaryDrivers,
+            warningCodes,
+            expectedImpactRsd,
+            impactWindowDays,
+            riskIfIgnored,
+            explainabilityText,
+            inputFreshnessStatus,
+            confidenceBreakdown,
+            alternativeRecommendations,
+            evidenceChain);
 
         return new ProductDecisionConfidenceProfile(
             RecommendationId: recommendationId,
@@ -5652,7 +5667,56 @@ public static class CachedAnalyticsEndpoints
             RiskIfIgnored: riskIfIgnored,
             ExplainabilityText: explainabilityText,
             InputFreshnessStatus: inputFreshnessStatus,
-            EvidenceChain: evidenceChain);
+            EvidenceChain: evidenceChain,
+            WhyPanel: whyPanel);
+    }
+
+    private static ProductDecisionWhyPanelDto BuildProductDecisionWhyPanel(
+        ProductDecisionCenterRowDto row,
+        string confidenceLevel,
+        int? confidenceScore,
+        IReadOnlyList<string> primaryDrivers,
+        IReadOnlyCollection<string> warningCodes,
+        decimal? expectedImpactRsd,
+        int? impactWindowDays,
+        string riskIfIgnored,
+        string explainabilityText,
+        string inputFreshnessStatus,
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> confidenceBreakdown,
+        IReadOnlyList<ProductDecisionAlternativeRecommendationDto> alternativeRecommendations,
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> evidenceChain)
+    {
+        var summarySource = string.IsNullOrWhiteSpace(row.RecommendationReason)
+            ? "backend_composed"
+            : "recommendation_reason";
+
+        return new ProductDecisionWhyPanelDto
+        {
+            RecommendationStatus = row.RecommendationStatus,
+            RecommendationLabel = RecommendationLabel(row.RecommendationStatus),
+            RecommendationReason = row.RecommendationReason,
+            RecommendedAction = RecommendedAction(row.RecommendationStatus),
+            ExplainabilityText = explainabilityText,
+            SummarySource = summarySource,
+            SummaryFallbackUsed = summarySource != "recommendation_reason",
+            SummaryFallbackReason = summarySource != "recommendation_reason" ? "recommendation_reason_missing" : null,
+            ReasonCodes = [.. row.ReasonCodes],
+            PrimaryDrivers = [.. primaryDrivers],
+            WarningCodes = [.. warningCodes],
+            ConfidenceLevel = confidenceLevel,
+            ConfidenceScore = confidenceScore,
+            ConfidencePct = row.ConfidencePct,
+            ReliabilityPct = row.ReliabilityPct,
+            DataQualityStatus = row.DataQualityStatus,
+            InputFreshnessStatus = inputFreshnessStatus,
+            RecommendationAllowed = row.RecommendationAllowed,
+            ExpectedImpactRsd = expectedImpactRsd,
+            ImpactWindowDays = impactWindowDays,
+            RiskIfIgnored = riskIfIgnored,
+            ConfidenceBreakdown = [.. confidenceBreakdown],
+            AlternativeRecommendations = [.. alternativeRecommendations],
+            EvidenceChain = [.. evidenceChain]
+        };
     }
 
     private static IReadOnlyList<ProductDecisionEvidenceNodeDto> BuildProductDecisionEvidenceChain(
@@ -6749,7 +6813,8 @@ public static class CachedAnalyticsEndpoints
         string InputFreshnessStatus,
         IReadOnlyList<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown,
         IReadOnlyList<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations,
-        IReadOnlyList<ProductDecisionEvidenceNodeDto> EvidenceChain);
+        IReadOnlyList<ProductDecisionEvidenceNodeDto> EvidenceChain,
+        ProductDecisionWhyPanelDto WhyPanel);
 
     private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
     private readonly record struct InventorySignalWindowStats(int NetMovementUnits, int InboundUnits);
@@ -6953,6 +7018,7 @@ public class ProductDecisionCenterRowDto
     public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
     public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
     public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
+    public ProductDecisionWhyPanelDto WhyPanel { get; set; } = new();
     public string RecommendedAction { get; set; } = string.Empty;
 }
 
@@ -6980,6 +7046,34 @@ public class ProductDecisionAlternativeRecommendationDto
     public int ReliabilityPct { get; set; }
     public string DataQualityStatus { get; set; } = "insufficient_data";
     public string WhyLowerRanked { get; set; } = string.Empty;
+}
+
+public class ProductDecisionWhyPanelDto
+{
+    public string RecommendationStatus { get; set; } = string.Empty;
+    public string RecommendationLabel { get; set; } = string.Empty;
+    public string RecommendationReason { get; set; } = string.Empty;
+    public string RecommendedAction { get; set; } = string.Empty;
+    public string ExplainabilityText { get; set; } = string.Empty;
+    public string SummarySource { get; set; } = "missing";
+    public bool SummaryFallbackUsed { get; set; }
+    public string? SummaryFallbackReason { get; set; }
+    public List<string> ReasonCodes { get; set; } = [];
+    public List<string> PrimaryDrivers { get; set; } = [];
+    public List<string> WarningCodes { get; set; } = [];
+    public string ConfidenceLevel { get; set; } = "insufficient_data";
+    public int? ConfidenceScore { get; set; }
+    public int ConfidencePct { get; set; }
+    public int ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "warning";
+    public string InputFreshnessStatus { get; set; } = "unknown";
+    public bool RecommendationAllowed { get; set; }
+    public decimal? ExpectedImpactRsd { get; set; }
+    public int? ImpactWindowDays { get; set; }
+    public string RiskIfIgnored { get; set; } = string.Empty;
+    public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
+    public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
+    public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
 }
 
 public class ProductDecisionCenterResponseDto

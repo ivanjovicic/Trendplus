@@ -367,6 +367,33 @@ export interface ProductDecisionAlternativeRecommendation {
   whyLowerRanked: string;
 }
 
+export interface ProductDecisionWhyPanel {
+  recommendationStatus: ProductDecisionRecommendationStatus;
+  recommendationLabel: string;
+  recommendationReason: string;
+  recommendedAction: string;
+  explainabilityText?: string | null;
+  summarySource: "recommendation_reason" | "backend_composed" | "missing" | string;
+  summaryFallbackUsed: boolean;
+  summaryFallbackReason?: string | null;
+  reasonCodes: string[];
+  primaryDrivers: string[];
+  warningCodes: string[];
+  confidenceLevel: "high" | "medium" | "low" | "insufficient_data" | string;
+  confidenceScore?: number | null;
+  confidencePct: number;
+  reliabilityPct: number;
+  dataQualityStatus: string;
+  inputFreshnessStatus: "fresh" | "stale" | "critical" | "unknown" | string;
+  recommendationAllowed: boolean;
+  expectedImpactRsd?: number | null;
+  impactWindowDays?: number | null;
+  riskIfIgnored?: string | null;
+  confidenceBreakdown: ProductDecisionEvidenceNode[];
+  alternativeRecommendations: ProductDecisionAlternativeRecommendation[];
+  evidenceChain: ProductDecisionEvidenceNode[];
+}
+
 export interface ProductDecisionCenterItem {
   productId: number;
   recommendationId?: string | null;
@@ -414,6 +441,7 @@ export interface ProductDecisionCenterItem {
   confidenceBreakdown?: ProductDecisionEvidenceNode[] | null;
   alternativeRecommendations?: ProductDecisionAlternativeRecommendation[] | null;
   evidenceChain?: ProductDecisionEvidenceNode[] | null;
+  whyPanel?: ProductDecisionWhyPanel | null;
   recommendedAction: string;
 }
 
