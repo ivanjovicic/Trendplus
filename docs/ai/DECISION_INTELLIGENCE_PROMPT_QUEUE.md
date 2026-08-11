@@ -8,11 +8,72 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `none` | docs/contracts/tests-plan only |
-| RL - Recommendation Learning | `none` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
-| DT - Decision Timeline | `none` (`DT03` DONE) | Slice-1 read-only timeline projection |
+| DEX - Decision Explainability | `DEX10` | docs/contracts/tests-plan only |
+| RL - Recommendation Learning | `RL03` (`RL01`/`RL02` DONE) | docs/contracts/statistics rollout plan only |
+| DT - Decision Timeline | `DT04` (`DT03` DONE) | Slice-2 filtered timeline projection |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
+
+---
+
+## DEX10 - Implement Product Decision Center evidence snapshot contract
+
+Status: READY
+Priority: future-high-value / implementation
+Feature family: decision-explainability-product-decision-center-phase7
+Parallel-safe: no, coupled backend/frontend contract
+Owner: Codex
+Local lock: `.ai/task-locks/DEX10-codex.lock.md`
+
+### Problem
+
+The deterministic Decision Graph, evidence chain, alternatives, Why panel and decision-tree surfaces are now explicit, but acted-on recommendations still need an immutable evidence snapshot so later review does not silently drift when source data changes.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` puts decision evidence snapshots after the decision tree in the explainability sequence.
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md` already treats authoritative evidence as backend-led and versioned.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` already carries the row-level decision evidence needed to freeze a snapshot at action time.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` still lacks a first-class snapshot or evidence-history surface.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DEX09 output
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
+
+### Do
+
+1. Freeze a versioned evidence snapshot when a recommendation is acted on.
+2. Keep the snapshot immutable even if source analytics refresh later.
+3. Surface snapshot presence/absence explicitly in Product Decision Center.
+4. Preserve the existing deterministic Decision Tree and Why panel contracts.
+
+### Tests
+
+- backend coverage proves snapshot payloads are stable and versioned;
+- frontend coverage shows snapshot state without inventing history;
+- no fake replay, fake evidence or inferred timeline is introduced.
+
+### Acceptance
+
+- acted recommendations retain an immutable evidence snapshot;
+- later data changes do not rewrite historical decision evidence;
+- the UI can show whether a snapshot exists and when it was captured.
+
+### Dependencies
+
+- DEX09 DONE.
 
 ---
 
@@ -783,6 +844,66 @@ Trendplus recommendations already expose reasons, confidence and impact in multi
 
 ---
 
+## RL04 - Implement recommendation lifecycle capture and outcome eligibility runtime slice
+
+Status: READY
+Priority: future / implementation
+Feature family: recommendation-learning-lifecycle-capture
+Parallel-safe: no, coupled backend/runtime contract
+Owner: Codex
+Local lock: `.ai/task-locks/RL04-codex.lock.md`
+
+### Problem
+
+The learning contract is still only a contract: Trendplus needs the first executable runtime slice that records recommendation lifecycle states and the outcome-eligibility boundary in the backend so later statistics can count real evidence.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` keeps RL in the deterministic learning lane after DEX/DT.
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md` defines the lifecycle vocabulary that should become executable.
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md` requires a measured lifecycle before confidence calibration.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` and the existing action/outcome surfaces already expose the data that can anchor the first capture slice.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`
+- `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+- `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- RL01 output
+- RL02 output
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+
+### Do
+
+1. Record recommendation lifecycle states explicitly instead of inferring them from later outcome data.
+2. Keep accepted/rejected/ignored semantics deterministic and separate from success/failure outcomes.
+3. Define which rows are eligible for measured learning and which remain excluded.
+4. Preserve the existing deterministic recommendation semantics and no-fake-success rule.
+
+### Tests
+
+- lifecycle transitions are recorded deterministically;
+- outcome-eligibility boundaries are explicit and testable;
+- acceptance does not count as success unless outcome evidence exists.
+
+### Acceptance
+
+- the product can distinguish issued, accepted, executed, measured and ignored recommendations;
+- learning evidence cannot be faked by acceptance alone;
+- later statistics work has a trustworthy lifecycle source.
+
+### Dependencies
+
+- RL01 DONE.
+- RL02 DONE.
+
 ## RL01 - Define recommendation outcome-learning contract
 
 Status: DONE
@@ -792,14 +913,121 @@ Parallel-safe: yes, docs/contracts only
 Owner: Codex
 Local lock: removed after DONE
 
+### Problem
+
+Recommendation outcome learning needed a deterministic lifecycle contract before runtime calibration or statistics could be made trustworthy.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` keeps RL after the deterministic explainability family.
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md` is the authoritative lifecycle contract output from this prompt.
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md` depends on the contract before any runtime learning slice.
+
+### Scope
+
+- contract-only updates under `docs/Analytics/`
+- rollout plan alignment in `docs/architecture/`
+- no runtime calibration or code changes
+
+### Read first
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+
+### Do
+
+1. Define the deterministic recommendation lifecycle vocabulary.
+2. Clarify what counts as measured learning evidence vs unsupported inference.
+3. Keep acceptance, execution and success denominators separate.
+4. Align the rollout plan to the new contract.
+
+### Tests
+
+- the contract stays deterministic and AI-independent;
+- lifecycle terms remain explicit and non-overlapping;
+- no runtime calibration is introduced by the contract pass.
+
+### Acceptance
+
+- the repository has a stable recommendation outcome-learning contract;
+- later runtime slices can rely on explicit lifecycle vocabulary;
+- acceptance is not conflated with measured success.
+
+### Dependencies
+
+- existing deterministic recommendation semantics remain authoritative;
+- no dependency on GAI;
+- later statistics work must preserve the contract vocabulary.
+
 ### Completion note
 
 - Date: 2026-08-11
 - Agent: Codex
 - Commit SHA: 3c7104f
 - Changed files:
-  - `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+## RL03 - Implement recommendation lifecycle capture and outcome eligibility contract follow-up
+
+Status: WAITING
+Priority: future / implementation
+Feature family: recommendation-learning-lifecycle-capture
+Parallel-safe: no, coupled backend/runtime contract
+Owner: Codex
+Local lock: `.ai/task-locks/RL03-codex.lock.md`
+
+### Problem
+
+The outcome-learning contract and rollout plan exist, but Trendplus still needs the first runtime slice that records recommendation issued/accepted/rejected/ignored states and the outcome-eligibility boundary that decides what can count as measured learning evidence.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` keeps RL in the deterministic learning lane after DEX/DT.
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md` defines the lifecycle vocabulary that should become executable.
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md` requires a measured lifecycle before confidence calibration.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` and the existing action/outcome surfaces already expose the data that can anchor the first capture slice.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`
+- `Api.Tests/AnalyticsActionsEndpointsTests.cs`
+- `Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- RL01 output
+- RL02 output
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+
+### Do
+
+1. Record recommendation lifecycle states explicitly instead of inferring them from later outcome data.
+2. Keep accepted/rejected/ignored semantics deterministic and separate from success/failure outcomes.
+3. Define which rows are eligible for measured learning and which remain excluded.
+4. Preserve the existing deterministic recommendation semantics and no-fake-success rule.
+
+### Tests
+
+- lifecycle transitions are recorded deterministically;
+- outcome-eligibility boundaries are explicit and testable;
+- acceptance does not count as success unless outcome evidence exists.
+
+### Acceptance
+
+- the product can distinguish issued, accepted, executed, measured and ignored recommendations;
+- learning evidence cannot be faked by acceptance alone;
+- later statistics work has a trustworthy lifecycle source.
+
+### Dependencies
+
+- RL01 DONE.
+- RL02 DONE.
 - Provere:
   - `git diff --check`
 - Rizici:
@@ -886,6 +1114,64 @@ The learning contract needs a staged rollout that first measures truth before ch
 - RL01 DONE.
 
 ---
+
+## DT05 - Implement filtered Decision Timeline Slice-2 runtime projection
+
+Status: READY
+Priority: future / implementation
+Feature family: decision-timeline-slice2-filtered-projection
+Parallel-safe: no, coupled backend/frontend contract
+Owner: Codex
+Local lock: `.ai/task-locks/DT05-codex.lock.md`
+
+### Problem
+
+The Slice-2 filtered timeline still needs the first executable runtime slice that can narrow by entity, family and time period while staying read-only and evidence-led.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places filtered timeline slices after the Slice-1 projection.
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md` already defines the canonical event vocabulary.
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` describes later UI/API slices beyond the read-only projection.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` and the timeline consumers still need a first-class filter surface.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DT03 output
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Do
+
+1. Add explicit filters for entity, family and time period.
+2. Keep the projection read-only and evidence-led.
+3. Preserve explicit empty/absent states instead of manufacturing results.
+4. Maintain compatibility with the existing decision evidence and why-panel payloads.
+
+### Tests
+
+- filter combinations return deterministic timeline slices;
+- empty timeline results remain explicit;
+- no inferred history or hidden fallback is introduced.
+
+### Acceptance
+
+- users can narrow the timeline without losing deterministic evidence;
+- the projection still behaves read-only;
+- the UI can explain the chosen time window and entity scope.
+
+### Dependencies
+
+- DT03 DONE.
 
 ## DT01 - Define Decision Timeline event model and success metrics
 
@@ -1029,6 +1315,64 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 - DT01 DONE.
 
 ---
+
+## DT04 - Implement filtered Decision Timeline Slice-2 projection follow-up
+
+Status: WAITING
+Priority: future / implementation
+Feature family: decision-timeline-slice2-filtered-projection
+Parallel-safe: no, coupled backend/frontend contract
+Owner: Codex
+Local lock: `.ai/task-locks/DT04-codex.lock.md`
+
+### Problem
+
+Slice-1 proves the read-only projection, but reviewers still need a filtered historical timeline that can narrow by entity, recommendation family and time period without inventing new history semantics or mutating the read-only contract.
+
+### Evidence
+
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` places filtered timeline slices after the Slice-1 projection.
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md` already defines the canonical event vocabulary.
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` describes later UI/API slices beyond the read-only projection.
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` and the timeline consumers still need a first-class filter surface.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Read first
+
+- DT03 output
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Do
+
+1. Add explicit filters for entity, family and time period.
+2. Keep the projection read-only and evidence-led.
+3. Preserve explicit empty/absent states instead of manufacturing results.
+4. Maintain compatibility with the existing decision evidence and why-panel payloads.
+
+### Tests
+
+- filter combinations return deterministic timeline slices;
+- empty timeline results remain explicit;
+- no inferred history or hidden fallback is introduced.
+
+### Acceptance
+
+- users can narrow the timeline without losing deterministic evidence;
+- the projection still behaves read-only;
+- the UI can explain the chosen time window and entity scope.
+
+### Dependencies
+
+- DT03 DONE.
 
 ## DT03 - Implement Decision Timeline Slice-1 read-only projection
 

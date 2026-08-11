@@ -1,4 +1,4 @@
-# Trendplus Platform Evolution Planning Queue
+﻿# Trendplus Platform Evolution Planning Queue
 
 Created: 2026-08-08  
 Roadmaps:
@@ -12,11 +12,71 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `none` (`PERF01` DONE; `PERF02` WAITING on measurements) | baseline/measurement plan |
+| PERF - Performance | `PERF02` (`PERF01` DONE; `PERF03` WAITING on measurements) | baseline/measurement plan |
 | OBS - Observability | `OBS05` | service level vocabulary for API/import/analytics/worker/report evidence |
 | SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
+
+---
+
+## PERF02 - Execute the S-tier baseline measurement pack and capture evidence
+
+Status: READY
+Priority: future / measurement
+Feature family: performance-measurement-pack
+Parallel-safe: yes, measurement/docs only
+Owner: Cursor
+Local lock: `.ai/task-locks/PERF02-cursor.lock.md`
+
+### Problem
+
+PERF01 defined the baseline contract, but the queue still needs one executable measurement slice that captures the first S-tier evidence pack so later optimization planning can rely on measured facts instead of assumptions.
+
+### Evidence
+
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md` says the first S-tier measurement pack is required before the optimization backlog can move.
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md` already defines the measurement discipline and target budgets.
+- `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` and the existing benchmark-related scripts can anchor the first pack.
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` keeps the runtime correctness gates ahead of optimization work.
+
+### Scope
+
+- benchmark harnesses and scripts already in the repo;
+- representative small/medium/large dataset checks;
+- exact before/after evidence capture for the highest-value flows;
+- no query/index/cache optimization in this prompt.
+
+### Read first
+
+- PERF01 output
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+- `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+
+### Do
+
+1. Run the agreed S-tier measurement pack on the current codebase.
+2. Capture environment, dataset tier, warm/cold state and output correctness checks.
+3. Record exact commands and observed latency/throughput/memory evidence.
+4. Preserve the baseline as the source for later optimization planning.
+
+### Tests
+
+- measurement inputs are reproducible;
+- cold/warm state is explicit;
+- correctness checks run alongside the measurements;
+- no optimization claim is made without evidence.
+
+### Acceptance
+
+- a usable S-tier measurement pack exists for the current codebase;
+- later optimization prompts can cite concrete baseline evidence;
+- the pack keeps correctness and performance evidence together.
+
+### Dependencies
+
+- PERF01 DONE.
 
 ---
 
@@ -92,8 +152,8 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
   - budgets remain target-only until S-tier measurement pack is recorded
   - no BenchmarkDotNet/k6 harness yet (explicit gap)
 - Next:
-  - `PERF02` stays WAITING until usable measurements exist
-  - Current READY in this queue: `OBS01`
+  - `PERF03` stays WAITING until usable measurements exist
+  - Current READY in this queue: `PERF02`
 
 ### Dependencies
 
@@ -102,7 +162,7 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ---
 
-## PERF02 - Prepare SQL/index/cache optimization backlog from measurements
+## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
 
 Status: WAITING  
 Priority: future  
@@ -148,6 +208,65 @@ Optimization tasks should be created only after baseline evidence identifies the
 ### Dependencies
 
 - PERF01 DONE with usable measurements.
+
+---
+
+## OBS05 - Define service level vocabulary for API/import/analytics/worker/report evidence
+
+Status: READY
+Priority: future
+Feature family: observability-service-level-vocabulary
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS05-<agent>.lock.md`
+Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
+
+### Problem
+
+Support still needs one shared vocabulary for what counts as API availability, import SLA, analytics freshness SLA, worker processing SLA and report generation SLA before runtime prompts can wire those signals into evidence.
+
+### Evidence
+
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-3;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` service-level rows;
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` slices 2-6;
+- `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md` and the release evidence already rely on the vocabulary boundary.
+
+### Scope
+
+- docs/contracts only;
+- vocabulary and glossary updates;
+- no runtime instrumentation in this prompt.
+
+### Read first
+
+- OBS04 output
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+- `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
+
+### Do
+
+1. Define the service-level terms for API/import/analytics/worker/report evidence.
+2. Keep unknown, partial and stale evidence explicit instead of defaulting to green.
+3. Preserve the boundary between measured evidence and contractual targets.
+4. Make the vocabulary reusable by later runtime prompts.
+
+### Tests
+
+- terms are deterministic and non-overlapping;
+- unknown telemetry remains non-green;
+- no SLA term invents runtime evidence.
+
+### Acceptance
+
+- the queue has one clear service-level vocabulary prompt;
+- later observability slices can reuse the same terms;
+- support can name API/import/analytics/worker/report evidence without ambiguity.
+
+### Dependencies
+
+- OBS04 DONE.
 
 ---
 
@@ -453,14 +572,14 @@ Slice-1 API/process evidence can show availability and request completion, but s
 
 ---
 
-## OBS05 - Define service level vocabulary for API/import/analytics/worker/report evidence
+## OBS06 - Implement service level evidence surfaces for API/import/analytics/worker/report evidence
 
-Status: READY
+Status: WAITING
 Priority: future
 Feature family: observability-service-level-vocabulary
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
-Local lock: `.ai/task-locks/OBS05-<agent>.lock.md`
+Local lock: `.ai/task-locks/OBS06-<agent>.lock.md`
 Promotion note: 2026-08-11 - `OBS04` DONE; next roadmap slice is OBS-3 service level vocabulary
 
 ### Problem
@@ -511,6 +630,119 @@ Latency now has a measurement contract, but support still needs a shared vocabul
 ### Dependencies
 
 - OBS04 DONE.
+
+---
+
+## SEC04 - Dependency and supply-chain assurance policy (S2-2)
+
+Status: READY
+Ready after: `SEC03` is `DONE`
+Priority: future
+Feature family: security-supply-chain-policy
+Parallel-safe: yes, planning/docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC04-<agent>.lock.md`
+Promotion note: 2026-08-11 â€” `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+
+### Problem
+
+Vulnerable/abandoned package posture has no queued owner outside SEC-3.
+
+### Evidence
+
+- SEC02 slice **S2-2**
+- SEC01 orphan S14
+
+### Scope
+
+- docs/policy only;
+- scan frequency/severity fail rules for .NET and npm;
+- triage ownership (SEC + BCI for CI wiring);
+- abandoned-package handling;
+- no broad dependency upgrades in this prompt.
+
+### Read first
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+- BCI queue ownership for CI wiring
+
+### Do
+
+1. Write supply-chain policy doc with ecosystems, severity gates, and accepted-risk template.
+2. Name the reproducible scan command(s) or CI job placeholders (BCI wires later).
+3. Keep BCI as collaborator for pipeline; SEC owns policy.
+
+### Tests
+
+- no duplicate of BCI repair scope;
+- missing scan output cannot claim PASS;
+- no secrets in evidence.
+
+### Acceptance
+
+- S2-2 policy exists and points to BCI for CI integration.
+
+### Dependencies
+
+- SEC03 DONE (keeps one READY-at-a-time in SEC).
+
+## SEC06 - Dependency and supply-chain assurance policy follow-up (S2-2)
+
+Status: WAITING
+Ready after: `SEC03` is `DONE`
+Priority: future
+Feature family: security-supply-chain-policy
+Parallel-safe: yes, planning/docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC06-<agent>.lock.md`
+Promotion note: 2026-08-11 â€” `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+
+### Problem
+
+Vulnerable/abandoned package posture has no queued owner outside SEC-3.
+
+### Evidence
+
+- SEC02 slice **S2-2**
+- SEC01 orphan S14
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+- BCI queue ownership for CI wiring
+
+### Scope
+
+- dependency scanning policy and evidence;
+- reproducible scan command(s) or CI job placeholders;
+- no runtime security changes.
+
+### Read first
+
+- `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+- `docs/architecture/SECURITY_OWNERSHIP_THREAT_MAP.md`
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
+- BCI/SEC collaboration notes
+
+### Do
+
+1. Define the supply-chain assurance policy for current supported runtimes.
+2. Name the reproducible scan command(s) or CI job placeholders.
+3. Keep BCI as collaborator for pipeline wiring; SEC owns policy.
+4. Keep the output docs/policy only.
+
+### Tests
+
+- no duplicate of BCI repair scope;
+- scan/job placeholders are explicit and reproducible;
+- policy names supported runtimes without pretending they are already wired.
+
+### Acceptance
+
+- one policy exists for dependency and supply-chain assurance;
+- the policy points to BCI for CI integration;
+- later SEC follow-ups can reuse the same scan vocabulary.
+
+### Dependencies
+
+- SEC03 DONE.
 
 ---
 
@@ -748,61 +980,6 @@ Admin API-key / deployment-secret rotation and emergency-access expectations are
 ### Dependencies
 
 - SEC02 DONE.
-
----
-
-## SEC04 - Dependency and supply-chain assurance policy (S2-2)
-
-Status: READY
-Ready after: `SEC03` is `DONE`
-Priority: future
-Feature family: security-supply-chain-policy
-Parallel-safe: yes, planning/docs only
-Owner: unassigned
-Local lock: `.ai/task-locks/SEC04-<agent>.lock.md`
-Promotion note: 2026-08-11 — `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
-
-### Problem
-
-Vulnerable/abandoned package posture has no queued owner outside SEC-3.
-
-### Evidence
-
-- SEC02 slice **S2-2**
-- SEC01 orphan S14
-
-### Scope
-
-- docs/policy only;
-- scan frequency/severity fail rules for .NET and npm;
-- triage ownership (SEC + BCI for CI wiring);
-- abandoned-package handling;
-- no broad dependency upgrades in this prompt.
-
-### Read first
-
-- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md`
-- BCI queue ownership for CI wiring
-
-### Do
-
-1. Write supply-chain policy doc with ecosystems, severity gates, and accepted-risk template.
-2. Name the reproducible scan command(s) or CI job placeholders (BCI wires later).
-3. Keep BCI as collaborator for pipeline; SEC owns policy.
-
-### Tests
-
-- no duplicate of BCI repair scope;
-- missing scan output cannot claim PASS;
-- no secrets in evidence.
-
-### Acceptance
-
-- S2-2 policy exists and points to BCI for CI integration.
-
-### Dependencies
-
-- SEC03 DONE (keeps one READY-at-a-time in SEC).
 
 ---
 

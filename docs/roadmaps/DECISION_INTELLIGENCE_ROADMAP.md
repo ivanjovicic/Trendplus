@@ -126,7 +126,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
-Current queue READY: `DT03` (Slice-1 read-only projection).
+Current queue READY: `DEX10` / `RL04` / `DT05` (evidence snapshot, lifecycle capture, filtered timeline).
 
 ## Decision Engine evolution
 
