@@ -57,6 +57,39 @@ function createActionItem(overrides: Record<string, unknown> = {}) {
     actionUrl: null,
     metadataJson: null,
     ledgerSnapshot: null,
+    impactLedger: {
+      version: 1,
+      sourceRecommendationId: "inventory:7:replenish",
+      sourceRecommendationIdDerivation: "source_key",
+      capturedAtUtc: "2026-06-01T00:00:00Z",
+      snapshot: {
+        expectedImpactBasis: "sales_velocity + stock_risk",
+        primaryDrivers: ["sales_velocity", "stock_risk"],
+        decisionReason: "Artikal ima ubrzanu prodaju i nizak stock cover.",
+        recommendedAction: "Dopuni",
+        sourcePeriodStartUtc: "2026-05-18T00:00:00Z",
+        sourcePeriodEndUtc: "2026-06-01T00:00:00Z",
+        sourceModule: "inventory",
+        inputFreshnessStatus: "stale",
+        impactWindowDays: 14,
+      },
+      resolution: {
+        outcomeStatus: "success",
+        measuredImpactRsd: 3000,
+        measurementMethod: "manual_review",
+        evidenceSource: "action_outcome_summary",
+        outcomeMeasuredAtUtc: "2026-06-10T00:00:00Z",
+        resolvedAtUtc: null,
+        measuredWindowDays: 14,
+        resolutionNote: "Prodaja se ubrzala posle dopune.",
+      },
+      derived: {
+        impactDeltaRsd: -9000,
+        realizationRatio: 0.25,
+        calibrationBucket: "partial_realization",
+        hasEvidence: true,
+      },
+    },
     createdAtUtc: "2026-05-26T12:00:00Z",
     updatedAtUtc: "2026-05-26T12:00:00Z",
     resolvedAtUtc: null,
@@ -110,6 +143,7 @@ describe("AnalyticsActionsPage", () => {
         closedCount: 2,
         openCount: 1,
         measuredCount: 2,
+        measuredOutcomeCount: 2,
         pendingOutcomeCount: 1,
         successCount: 1,
         neutralCount: 0,
@@ -118,12 +152,15 @@ describe("AnalyticsActionsPage", () => {
         outcomeCoverageRate: 0.5,
         positiveOutcomeRate: 0.5,
         negativeOutcomeRate: 0.5,
+        closedOutcomeCoverageRate: 0.5,
+        measuredPositiveOutcomeRate: 0.5,
+        measuredNegativeOutcomeRate: 0.5,
       },
       impact: {
         expectedImpactRsd: 12000,
         measuredImpactRsd: 3000,
         realizationRatio: 0.25,
-        measuredImpactSampleCount: 2,
+        measuredImpactSampleCount: 1,
       },
       bySourceType: [
         {
@@ -132,6 +169,7 @@ describe("AnalyticsActionsPage", () => {
           totalCount: 2,
           closedCount: 1,
           measuredCount: 1,
+          measuredOutcomeCount: 1,
           pendingOutcomeCount: 1,
           successCount: 1,
           neutralCount: 0,
@@ -142,6 +180,9 @@ describe("AnalyticsActionsPage", () => {
           outcomeCoverageRate: 1,
           positiveOutcomeRate: 1,
           negativeOutcomeRate: 0,
+          closedOutcomeCoverageRate: 1,
+          measuredPositiveOutcomeRate: 1,
+          measuredNegativeOutcomeRate: 0,
           realizationRatio: 0.25,
           measuredImpactSampleCount: 1,
           warningCodes: [],
@@ -154,6 +195,7 @@ describe("AnalyticsActionsPage", () => {
           totalCount: 2,
           closedCount: 1,
           measuredCount: 1,
+          measuredOutcomeCount: 1,
           pendingOutcomeCount: 1,
           successCount: 1,
           neutralCount: 0,
@@ -164,6 +206,9 @@ describe("AnalyticsActionsPage", () => {
           outcomeCoverageRate: 1,
           positiveOutcomeRate: 1,
           negativeOutcomeRate: 0,
+          closedOutcomeCoverageRate: 1,
+          measuredPositiveOutcomeRate: 1,
+          measuredNegativeOutcomeRate: 0,
           realizationRatio: 0.25,
           measuredImpactSampleCount: 1,
           warningCodes: [],
@@ -198,6 +243,7 @@ describe("AnalyticsActionsPage", () => {
           totalCount: 2,
           closedCount: 1,
           measuredCount: 1,
+          measuredOutcomeCount: 1,
           pendingOutcomeCount: 1,
           successCount: 1,
           neutralCount: 0,
@@ -208,6 +254,9 @@ describe("AnalyticsActionsPage", () => {
           outcomeCoverageRate: 1,
           positiveOutcomeRate: 1,
           negativeOutcomeRate: 0,
+          closedOutcomeCoverageRate: 1,
+          measuredPositiveOutcomeRate: 1,
+          measuredNegativeOutcomeRate: 0,
           realizationRatio: 0.25,
           measuredImpactSampleCount: 1,
           warningCodes: [],
@@ -256,7 +305,7 @@ describe("AnalyticsActionsPage", () => {
       measuredImpactRsd: -500,
       outcomeStatus: "negative",
       outcomeMeasuredAtUtc: "2026-06-12T00:00:00Z",
-      outcomeNotes: "Pad marÅ¾e posle akcije.",
+      outcomeNotes: "Pad marže posle akcije.",
       updatedAtUtc: "2026-06-12T00:00:00Z",
       ledgerSnapshot: {
         schemaVersion: 1,
@@ -274,10 +323,46 @@ describe("AnalyticsActionsPage", () => {
           inputFreshnessStatus: "stale",
         },
         resolutionSnapshot: {
+          outcomeStatus: "negative",
+          measuredImpactRsd: -500,
+          outcomeMeasuredAtUtc: "2026-06-12T00:00:00Z",
           measuredWindowDays: 14,
           evidenceSource: "action_outcome_summary",
           evidenceReference: "summary:2026-06-12:inventory:7",
           resolutionNote: "Margin je pao posle dopune.",
+        },
+      },
+      impactLedger: {
+        version: 1,
+        sourceRecommendationId: "inventory:7:replenish",
+        sourceRecommendationIdDerivation: "source_key",
+        capturedAtUtc: "2026-06-12T00:00:00Z",
+        snapshot: {
+          expectedImpactBasis: "sales_velocity + stock_risk",
+          primaryDrivers: ["sales_velocity", "stock_risk"],
+          decisionReason: "Artikal ima ubrzanu prodaju i nizak stock cover.",
+          recommendedAction: "Dopuni",
+          sourcePeriodStartUtc: "2026-05-18T00:00:00Z",
+          sourcePeriodEndUtc: "2026-06-12T00:00:00Z",
+          sourceModule: "inventory",
+          inputFreshnessStatus: "stale",
+          impactWindowDays: 14,
+        },
+        resolution: {
+          outcomeStatus: "negative",
+          measuredImpactRsd: -500,
+          measurementMethod: "manual_review",
+          evidenceSource: "action_outcome_summary",
+          outcomeMeasuredAtUtc: "2026-06-12T00:00:00Z",
+          resolvedAtUtc: null,
+          measuredWindowDays: 14,
+          resolutionNote: "Margin je pao posle dopune.",
+        },
+        derived: {
+          impactDeltaRsd: -12500,
+          realizationRatio: -0.0417,
+          calibrationBucket: "negative_outcome",
+          hasEvidence: true,
         },
       },
     }));
@@ -286,13 +371,15 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
     expect(screen.getByText("Sažetak ishoda akcija")).toBeInTheDocument();
-    expect(screen.getByText("Pokrivenost ishodom")).toBeInTheDocument();
-    expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
-    expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
-    expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Read-only pregled za akcije kreirane u poslednjih 90 dana/)).toBeInTheDocument();
+    expect(screen.queryByText(/po datumu kreiranja/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Pokrivenost zatvorenih")).toBeInTheDocument();
+    expect(screen.getByText("Pozitivan od izmerenih")).toBeInTheDocument();
     expect(screen.getByText("Po kvalitetu podataka")).toBeInTheDocument();
     expect(screen.getByText("Po statusu ishoda")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj:/)).toBeInTheDocument();
+    expect(screen.getByText("Uzorak uticaja: 1 od 2 izmerenih ishoda")).toBeInTheDocument();
+    expect(screen.getByText("Realizacija pokriva samo poduzorak sa izmerenim uticajem.")).toBeInTheDocument();
     expect(screen.getByText(/Napomena: Prodaja se ubrzala posle dopune\./)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
@@ -309,6 +396,7 @@ describe("AnalyticsActionsPage", () => {
           measuredImpactRsd: -500,
           outcomeNotes: "Pad marže posle akcije.",
           outcomeMeasuredAtUtc: expect.any(String),
+          evidenceSource: "action_outcome_summary",
         }),
       );
     });
@@ -316,9 +404,104 @@ describe("AnalyticsActionsPage", () => {
     expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
     expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
-    expect(screen.getByText("action_outcome_summary")).toBeInTheDocument();
+    expect(screen.getAllByText("action_outcome_summary").length).toBeGreaterThan(0);
     expect(screen.getAllByText("14 dana").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Pad mar/i).length).toBeGreaterThan(0);
+  });
+
+  it("locks measured fields for not_measured outcomes, clears evidence input, and submits null measured payload", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /A.*uriraj ishod/ }));
+
+    const evidenceInput = screen.getByLabelText("Izvor dokaza") as HTMLInputElement;
+    const impactInput = screen.getByLabelText("Merljivi uticaj (RSD)") as HTMLInputElement;
+    const measuredAtInput = screen.getByLabelText("Datum merenja ishoda") as HTMLInputElement;
+
+    expect(evidenceInput.value).toBe("action_outcome_summary");
+    fireEvent.change(screen.getByLabelText("Ishod"), { target: { value: "not_measured" } });
+
+    expect(evidenceInput.value).toBe("");
+    expect(evidenceInput).toBeDisabled();
+    expect(impactInput).toBeDisabled();
+    expect(measuredAtInput).toBeDisabled();
+
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /A.*uriraj ishod/ }));
+
+    await waitFor(() => {
+      expect(updateAnalyticsActionOutcomeMock).toHaveBeenCalledWith(
+        7,
+        expect.objectContaining({
+          outcomeStatus: "not_measured",
+          measuredImpactRsd: null,
+          outcomeMeasuredAtUtc: null,
+          evidenceSource: null,
+        }),
+      );
+    });
+  });
+
+  it("shows qualitative outcome warning for legacy authoritative rows without evidence ledger", async () => {
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [
+        createActionItem({
+          id: 11,
+          title: "Legacy outcome bez dokaza",
+          outcomeStatus: "success",
+          measuredImpactRsd: null,
+          outcomeMeasuredAtUtc: null,
+          outcomeNotes: "Status je ručno unet bez merenja.",
+          impactLedger: null,
+          ledgerSnapshot: {
+            schemaVersion: 1,
+            creationSnapshot: null,
+            resolutionSnapshot: {
+              outcomeStatus: "success",
+              measuredImpactRsd: null,
+              outcomeMeasuredAtUtc: null,
+              measuredWindowDays: null,
+              evidenceSource: null,
+              evidenceReference: null,
+              resolutionNote: "Kvalitativna procena bez potvrđenog izvora.",
+            },
+          },
+        }),
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 25,
+      totalPages: 1,
+    });
+    getAnalyticsActionByIdMock.mockResolvedValueOnce(createActionItem({
+      id: 11,
+      title: "Legacy outcome bez dokaza",
+      outcomeStatus: "success",
+      measuredImpactRsd: null,
+      outcomeMeasuredAtUtc: null,
+      outcomeNotes: "Status je ručno unet bez merenja.",
+      impactLedger: null,
+      ledgerSnapshot: {
+        schemaVersion: 1,
+        creationSnapshot: null,
+        resolutionSnapshot: {
+          outcomeStatus: "success",
+          measuredImpactRsd: null,
+          outcomeMeasuredAtUtc: null,
+          measuredWindowDays: null,
+          evidenceSource: null,
+          evidenceReference: null,
+          resolutionNote: "Kvalitativna procena bez potvrđenog izvora.",
+        },
+      },
+    }));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Legacy outcome bez dokaza")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(await screen.findByText("Outcome pregled")).toBeInTheDocument();
+    expect(screen.getByText("Ishod je evidentiran kvalitativno, ali bez potvrđenog dokaza i merljivog traga.")).toBeInTheDocument();
   });
 
   it("shows a pending outcome state without fake measured impact", async () => {
@@ -543,6 +726,7 @@ describe("AnalyticsActionsPage", () => {
         closedCount: 0,
         openCount: 0,
         measuredCount: 0,
+        measuredOutcomeCount: 0,
         pendingOutcomeCount: 0,
         successCount: 0,
         neutralCount: 0,
@@ -551,6 +735,9 @@ describe("AnalyticsActionsPage", () => {
         outcomeCoverageRate: null,
         positiveOutcomeRate: null,
         negativeOutcomeRate: null,
+        closedOutcomeCoverageRate: null,
+        measuredPositiveOutcomeRate: null,
+        measuredNegativeOutcomeRate: null,
       },
       impact: {
         expectedImpactRsd: null,

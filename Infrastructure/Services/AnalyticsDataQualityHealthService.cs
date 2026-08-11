@@ -9,8 +9,8 @@ public sealed class AnalyticsDataQualityHealthService
 {
     /// <summary>
     /// Top-offender SQL contract (RQ06/RQ07).
-    /// Article membership is scoped by <c>Artikli.DataOrigin</c>;
-    /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>DataOrigin</c> (RQ05 sales-revenue rule).
+    /// Article membership is scoped by <c>Artikli."DataOrigin"</c>;
+    /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule).
     /// <c>missingCost</c> uses article nabavna cena (null/&lt;=0), independent of supplier/name CASE priority.
     /// </summary>
     public const string TopOffendersSql = """
@@ -23,8 +23,8 @@ public sealed class AnalyticsDataQualityHealthService
                 WHERE p.datum_prodaje >= @salesFromUtc
                   AND (
                         @dataScope = 'all'
-                     OR (@dataScope = 'imported' AND p."DataOrigin" = 'access')
-                     OR (@dataScope = 'existing' AND (p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = ''))
+                     OR (@dataScope = 'imported' AND p.data_origin = 'access')
+                     OR (@dataScope = 'existing' AND (p.data_origin = 'existing' OR p.data_origin IS NULL OR p.data_origin = ''))
                   )
                 GROUP BY ps.id_artikal
             ),

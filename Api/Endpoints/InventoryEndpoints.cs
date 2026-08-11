@@ -46,7 +46,7 @@ public static class InventoryEndpoints
                 var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
 
                 var meta = totalSku == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
                     : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
@@ -178,7 +178,11 @@ public static class InventoryEndpoints
                     signalDataQuality));
             }
 
-            return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize));
+            var meta = total == 0
+                ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.")
+                : AnalyticsResponseMetaFactory.Success();
+
+            return Results.Ok(new ArtikliPagedResponse<InventoryListItemDto>(items, total, page, pageSize, meta));
         })
         .WithName("GetInventoryList");
 

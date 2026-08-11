@@ -20,12 +20,13 @@ public sealed class DataScopeConsistencyContractTests
         Assert.True(salesCteEnd > 0);
         var salesCte = sql[..salesCteEnd];
 
-        // RQ06: sales revenue impact follows sale-header DataOrigin.
-        Assert.Contains("p.\"DataOrigin\" = 'access'", salesCte, StringComparison.Ordinal);
+        // RQ06/RQ91: sales revenue impact follows sale-header data_origin (EF snake_case mapping).
+        Assert.Contains("p.data_origin = 'access'", salesCte, StringComparison.Ordinal);
+        Assert.DoesNotContain("p.\"DataOrigin\"", salesCte, StringComparison.Ordinal);
         Assert.Contains("@dataScope = 'imported'", salesCte, StringComparison.Ordinal);
         Assert.Contains("@dataScope = 'existing'", salesCte, StringComparison.Ordinal);
 
-        // Article membership still uses article DataOrigin.
+        // Article membership still uses article "DataOrigin".
         Assert.Contains("a.\"DataOrigin\" = 'access'", sql, StringComparison.Ordinal);
         Assert.Contains("@dataScope = 'imported'", sql, StringComparison.Ordinal);
         Assert.Contains("@dataScope = 'existing'", sql, StringComparison.Ordinal);

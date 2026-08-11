@@ -198,7 +198,9 @@ public class AnalyticsActionItemServiceTests
                 OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
                 MeasuredImpactRsd: 777m,
                 OutcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-                OutcomeNotes: "Ishod potvrđen"),
+                OutcomeNotes: "Ishod potvrđen",
+                EvidenceSource: "action_outcome_summary"
+            ),
             userId: "u1",
             userName: "tester");
 
@@ -207,6 +209,26 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(777m, updated.MeasuredImpactRsd);
         Assert.Equal("Ishod potvrđen", updated.OutcomeNotes);
         Assert.Equal(new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc), updated.OutcomeMeasuredAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_RequiresEvidenceSource_ForAuthoritativeOutcomes()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_RequiresEvidenceSource_ForAuthoritativeOutcomes));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "outcome-evidence-1"), userId: "u1");
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 777m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Ishod potvrdjen"),
+            userId: "u1",
+            userName: "tester"));
+
+        Assert.Equal("EvidenceSource", ex.ParamName);
     }
 
     [Fact]
@@ -251,10 +273,106 @@ public class AnalyticsActionItemServiceTests
         Assert.NotNull(snapshot!.CreationSnapshot);
         Assert.NotNull(snapshot.ResolutionSnapshot);
         Assert.Equal("product:1001:markdown:2026-06", snapshot.CreationSnapshot!.SourceRecommendationId);
-        Assert.Equal(7, snapshot.ResolutionSnapshot!.MeasuredWindowDays);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, snapshot.ResolutionSnapshot!.OutcomeStatus);
+        Assert.Equal(777m, snapshot.ResolutionSnapshot.MeasuredImpactRsd);
+        Assert.Equal(new DateTime(2026, 6, 28, 0, 0, 0, DateTimeKind.Utc), snapshot.ResolutionSnapshot.OutcomeMeasuredAtUtc);
+        Assert.Equal(7, snapshot.ResolutionSnapshot.MeasuredWindowDays);
         Assert.Equal("action_outcome_summary", snapshot.ResolutionSnapshot.EvidenceSource);
         Assert.Equal("summary:product:1001:2026-06-28", snapshot.ResolutionSnapshot.EvidenceReference);
         Assert.Equal("Potvrđen rezultat", snapshot.ResolutionSnapshot.ResolutionNote);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_NotMeasuredClearsMeasuredFields_AndMeasuredDateFilterSkipsIt()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_NotMeasuredClearsMeasuredFields_AndMeasuredDateFilterSkipsIt));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "outcome-not-measured-1", expectedImpactRsd: 500m), userId: "u1");
+
+        await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 120m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Ishod je potvrdjen.",
+                EvidenceSource: "action_outcome_summary"),
+            userId: "u1",
+            userName: "tester");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                MeasuredImpactRsd: 999m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 22, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Vise nema dovoljnog dokaza.",
+                EvidenceSource: "manual_review"),
+            userId: "u1",
+            userName: "tester");
+
+        Assert.NotNull(updated);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.NotMeasured, updated!.OutcomeStatus);
+        Assert.Null(updated.MeasuredImpactRsd);
+        Assert.Null(updated.OutcomeMeasuredAtUtc);
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            MeasuredTo: new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(0, summary.Meta.SampleSize);
+        Assert.Equal("Nema akcija za izabrane filtere.", summary.Meta.EmptyReason);
+        Assert.Equal(0, summary.Totals.MeasuredCount);
+        Assert.Equal(0, summary.Totals.MeasuredOutcomeCount);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_NotMeasuredClearsEvidenceFieldsFromLedgerSnapshot()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_NotMeasuredClearsEvidenceFieldsFromLedgerSnapshot));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "outcome-not-measured-2", expectedImpactRsd: 500m), userId: "u1");
+
+        await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 120m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Ishod je potvrdjen.",
+                EvidenceSource: "action_outcome_summary",
+                EvidenceReference: "summary:product:1001:2026-06-18"),
+            userId: "u1",
+            userName: "tester");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                MeasuredImpactRsd: null,
+                OutcomeMeasuredAtUtc: null,
+                OutcomeNotes: "Vise nema dovoljnog dokaza.",
+                EvidenceSource: "manual_review",
+                EvidenceReference: "manual:review",
+                ResolutionNote: "Dokaz nije dovoljan."),
+            userId: "u1",
+            userName: "tester");
+
+        var clearedSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(updated!.MetadataJson);
+        Assert.NotNull(clearedSnapshot?.ResolutionSnapshot);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.NotMeasured, clearedSnapshot!.ResolutionSnapshot!.OutcomeStatus);
+        Assert.Null(clearedSnapshot.ResolutionSnapshot.MeasuredImpactRsd);
+        Assert.Null(clearedSnapshot.ResolutionSnapshot.OutcomeMeasuredAtUtc);
+        Assert.Null(clearedSnapshot.ResolutionSnapshot.EvidenceSource);
+        Assert.Null(clearedSnapshot.ResolutionSnapshot.EvidenceReference);
+        Assert.Equal("Dokaz nije dovoljan.", clearedSnapshot.ResolutionSnapshot.ResolutionNote);
     }
 
     [Fact]
@@ -277,7 +395,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 100m,
                 new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-                "pozitivno"),
+                "pozitivno",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -291,7 +411,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 50m,
                 new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
-                "negativno"),
+                "negativno",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -301,7 +423,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 30m,
                 new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc),
-                "mereno dok je otvoreno"),
+                "mereno dok je otvoreno",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -320,12 +444,16 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal(3, summary.Totals.ClosedCount);
         Assert.Equal(1, summary.Totals.OpenCount);
         Assert.Equal(3, summary.Totals.MeasuredCount);
+        Assert.Equal(3, summary.Totals.MeasuredOutcomeCount);
         Assert.Equal(1, summary.Totals.PendingOutcomeCount);
         Assert.Equal(2, summary.Totals.SuccessCount);
         Assert.Equal(1, summary.Totals.NegativeCount);
         Assert.Equal(0.6667m, summary.Totals.OutcomeCoverageRate);
+        Assert.Equal(summary.Totals.OutcomeCoverageRate, summary.Totals.ClosedOutcomeCoverageRate);
         Assert.Equal(0.6667m, summary.Totals.PositiveOutcomeRate);
+        Assert.Equal(summary.Totals.PositiveOutcomeRate, summary.Totals.MeasuredPositiveOutcomeRate);
         Assert.Equal(0.3333m, summary.Totals.NegativeOutcomeRate);
+        Assert.Equal(summary.Totals.NegativeOutcomeRate, summary.Totals.MeasuredNegativeOutcomeRate);
         Assert.Equal(360m, summary.Impact.ExpectedImpactRsd);
         Assert.Equal(180m, summary.Impact.MeasuredImpactRsd);
         Assert.Equal(0.5000m, summary.Impact.RealizationRatio);
@@ -386,7 +514,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 120m,
                 new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc),
-                "izmereno kasnije"),
+                "izmereno kasnije",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
         await SetResolvedAtUtcAsync(db, resolvedInRangeDone.Id, new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc));
@@ -406,7 +536,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 30m,
                 new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc),
-                "odbijeno sa negativnim efektom"),
+                "odbijeno sa negativnim efektom",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
         await SetResolvedAtUtcAsync(db, resolvedInRangeRejected.Id, new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc));
@@ -421,7 +553,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 60m,
                 new DateTime(2026, 6, 25, 0, 0, 0, DateTimeKind.Utc),
-                "zatvoreno pre opsega"),
+                "zatvoreno pre opsega",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
         await SetResolvedAtUtcAsync(db, resolvedBeforeRange.Id, new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc));
@@ -436,7 +570,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 10m,
                 new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
-                "zatvoreno posle opsega"),
+                "zatvoreno posle opsega",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
         await SetResolvedAtUtcAsync(db, resolvedAfterRange.Id, new DateTime(2026, 6, 24, 0, 0, 0, DateTimeKind.Utc));
@@ -450,7 +586,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 40m,
                 new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc),
-                "izmereno bez zatvaranja"),
+                "izmereno bez zatvaranja",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -501,7 +639,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 100m,
                 new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-                "uspeh"),
+                "uspeh",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -520,7 +660,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 null,
                 new DateTime(2026, 6, 11, 0, 0, 0, DateTimeKind.Utc),
-                "negativan bez iznosa"),
+                "negativan bez iznosa",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -616,7 +758,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 90m,
                 new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
-                "izmereno"),
+                "izmereno",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
         await SetResolvedAtUtcAsync(db, action.Id, new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc));
@@ -668,7 +812,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 90m,
                 new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc),
-                "pozitivno"),
+                "pozitivno",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -686,7 +832,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 null,
                 new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc),
-                "negativno bez iznosa"),
+                "negativno bez iznosa",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -738,7 +886,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Success,
                 120m,
                 new DateTime(2026, 6, 17, 0, 0, 0, DateTimeKind.Utc),
-                "izmereno bez plana"),
+                "izmereno bez plana",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 
@@ -756,7 +906,9 @@ public class AnalyticsActionItemServiceTests
                 AnalyticsActionConstants.OutcomeStatuses.Negative,
                 40m,
                 new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
-                "izmereno bez denominatora"),
+                "izmereno bez denominatora",
+                EvidenceSource: "action_outcome_summary"
+            ),
             "u1",
             "tester");
 

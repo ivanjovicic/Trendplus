@@ -231,6 +231,7 @@ public sealed class AnalyticsActionItemService
                     ClosedCount: 0,
                     OpenCount: 0,
                     MeasuredCount: 0,
+                    MeasuredOutcomeCount: 0,
                     PendingOutcomeCount: 0,
                     SuccessCount: 0,
                     NeutralCount: 0,
@@ -238,7 +239,10 @@ public sealed class AnalyticsActionItemService
                     NotMeasuredCount: 0,
                     OutcomeCoverageRate: null,
                     PositiveOutcomeRate: null,
-                    NegativeOutcomeRate: null
+                    NegativeOutcomeRate: null,
+                    ClosedOutcomeCoverageRate: null,
+                    MeasuredPositiveOutcomeRate: null,
+                    MeasuredNegativeOutcomeRate: null
                 ),
                 Impact: new AnalyticsActionOutcomeSummaryImpactDto(
                     ExpectedImpactRsd: null,
@@ -277,6 +281,7 @@ public sealed class AnalyticsActionItemService
                 ClosedCount: totals.ClosedCount,
                 OpenCount: totals.TotalCount - totals.ClosedCount,
                 MeasuredCount: totals.MeasuredCount,
+                MeasuredOutcomeCount: totals.MeasuredOutcomeCount,
                 PendingOutcomeCount: totals.PendingOutcomeCount,
                 SuccessCount: totals.SuccessCount,
                 NeutralCount: totals.NeutralCount,
@@ -284,7 +289,10 @@ public sealed class AnalyticsActionItemService
                 NotMeasuredCount: totals.NotMeasuredCount,
                 OutcomeCoverageRate: totals.OutcomeCoverageRate,
                 PositiveOutcomeRate: totals.PositiveOutcomeRate,
-                NegativeOutcomeRate: totals.NegativeOutcomeRate
+                NegativeOutcomeRate: totals.NegativeOutcomeRate,
+                ClosedOutcomeCoverageRate: totals.ClosedOutcomeCoverageRate,
+                MeasuredPositiveOutcomeRate: totals.MeasuredPositiveOutcomeRate,
+                MeasuredNegativeOutcomeRate: totals.MeasuredNegativeOutcomeRate
             ),
             Impact: new AnalyticsActionOutcomeSummaryImpactDto(
                 ExpectedImpactRsd: totals.ExpectedImpactRsd,
@@ -616,28 +624,40 @@ public sealed class AnalyticsActionItemService
         if (item is null)
             return null;
 
+        var normalizedOutcomeStatus = NormalizeOutcomeStatus(request.OutcomeStatus);
         var normalizedOutcomeNotes = NormalizeOutcomeNotes(request.OutcomeNotes);
+        var requiresEvidenceSource = normalizedOutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Success
+            or AnalyticsActionConstants.OutcomeStatuses.Neutral
+            or AnalyticsActionConstants.OutcomeStatuses.Negative;
+        if (requiresEvidenceSource && string.IsNullOrWhiteSpace(request.EvidenceSource))
+        {
+            throw new ArgumentException("evidenceSource is required for measured or authoritative outcomes", nameof(request.EvidenceSource));
+        }
+
+        var clearMeasuredOutcome = normalizedOutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Pending
+            or AnalyticsActionConstants.OutcomeStatuses.NotMeasured;
         var oldOutcomeStatus = item.OutcomeStatus;
         var oldMeasuredImpactRsd = item.MeasuredImpactRsd;
         var oldOutcomeMeasuredAtUtc = item.OutcomeMeasuredAtUtc;
         var oldOutcomeNotes = item.OutcomeNotes;
         var now = DateTime.UtcNow;
-        item.OutcomeStatus = request.OutcomeStatus;
-        item.MeasuredImpactRsd = request.MeasuredImpactRsd;
-        item.OutcomeMeasuredAtUtc = request.OutcomeMeasuredAtUtc ?? now;
+        item.OutcomeStatus = normalizedOutcomeStatus;
+        item.MeasuredImpactRsd = clearMeasuredOutcome ? null : request.MeasuredImpactRsd;
+        item.OutcomeMeasuredAtUtc = clearMeasuredOutcome ? null : request.OutcomeMeasuredAtUtc ?? now;
         item.OutcomeNotes = normalizedOutcomeNotes;
         item.UpdatedAtUtc = now;
         item.UpdatedByUserId = userId;
         item.UpdatedByUserName = userName;
 
-        if (request.OutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Pending)
-        {
-            item.MeasuredImpactRsd = null;
-            item.OutcomeMeasuredAtUtc = null;
-        }
-
         var preserveExistingResolutionSnapshot = HasExistingLedgerEnvelope(item.MetadataJson);
-        var resolutionSnapshot = BuildResolutionSnapshot(request, normalizedOutcomeNotes, preserveExistingResolutionSnapshot);
+        var resolutionSnapshot = BuildResolutionSnapshot(
+            request,
+            normalizedOutcomeStatus,
+            normalizedOutcomeNotes,
+            preserveExistingResolutionSnapshot,
+            clearMeasuredOutcome,
+            item.MeasuredImpactRsd,
+            item.OutcomeMeasuredAtUtc);
         item.MetadataJson = MergeLedgerMetadata(
             item.MetadataJson,
             creationSnapshot: null,
@@ -773,11 +793,18 @@ public sealed class AnalyticsActionItemService
 
     private static AnalyticsActionResolutionSnapshot? BuildResolutionSnapshot(
         AnalyticsActionOutcomeUpdateRequest request,
+        string normalizedOutcomeStatus,
         string? normalizedOutcomeNotes,
-        bool preserveExistingResolutionSnapshot)
+        bool preserveExistingResolutionSnapshot,
+        bool clearMeasuredOutcome,
+        decimal? measuredImpactRsd,
+        DateTime? outcomeMeasuredAtUtc)
     {
         var hasLedgerFields =
-            request.MeasuredWindowDays.HasValue
+            !string.IsNullOrWhiteSpace(normalizedOutcomeStatus)
+            || measuredImpactRsd.HasValue
+            || outcomeMeasuredAtUtc.HasValue
+            || request.MeasuredWindowDays.HasValue
             || !string.IsNullOrWhiteSpace(request.EvidenceSource)
             || !string.IsNullOrWhiteSpace(request.EvidenceReference)
             || !string.IsNullOrWhiteSpace(request.ResolutionNote);
@@ -788,9 +815,12 @@ public sealed class AnalyticsActionItemService
         }
 
         return new AnalyticsActionResolutionSnapshot(
+            OutcomeStatus: normalizedOutcomeStatus,
+            MeasuredImpactRsd: clearMeasuredOutcome ? null : measuredImpactRsd,
+            OutcomeMeasuredAtUtc: clearMeasuredOutcome ? null : outcomeMeasuredAtUtc,
             MeasuredWindowDays: request.MeasuredWindowDays,
-            EvidenceSource: NormalizeOptionalText(request.EvidenceSource),
-            EvidenceReference: NormalizeOptionalText(request.EvidenceReference),
+            EvidenceSource: clearMeasuredOutcome ? null : NormalizeOptionalText(request.EvidenceSource),
+            EvidenceReference: clearMeasuredOutcome ? null : NormalizeOptionalText(request.EvidenceReference),
             ResolutionNote: NormalizeOptionalText(request.ResolutionNote) ?? normalizedOutcomeNotes);
     }
 
@@ -922,12 +952,18 @@ public sealed class AnalyticsActionItemService
         }
 
         var snapshot = new AnalyticsActionResolutionSnapshot(
+            NormalizeOptionalText(resolutionNode["outcomeStatus"]?.GetValue<string>()),
+            resolutionNode["measuredImpactRsd"]?.GetValue<decimal?>(),
+            resolutionNode["outcomeMeasuredAtUtc"]?.GetValue<DateTime?>(),
             resolutionNode["measuredWindowDays"]?.GetValue<int?>(),
             NormalizeOptionalText(resolutionNode["evidenceSource"]?.GetValue<string>()),
             NormalizeOptionalText(resolutionNode["evidenceReference"]?.GetValue<string>()),
             NormalizeOptionalText(resolutionNode["resolutionNote"]?.GetValue<string>()));
 
-        return snapshot.MeasuredWindowDays.HasValue
+        return snapshot.OutcomeStatus is not null
+            || snapshot.MeasuredImpactRsd.HasValue
+            || snapshot.OutcomeMeasuredAtUtc.HasValue
+            || snapshot.MeasuredWindowDays.HasValue
             || snapshot.EvidenceSource is not null
             || snapshot.EvidenceReference is not null
             || snapshot.ResolutionNote is not null
@@ -1124,6 +1160,7 @@ public sealed class AnalyticsActionItemService
             .Where(x => NormalizeOutcomeStatus(x.OutcomeStatus) != AnalyticsActionConstants.OutcomeStatuses.Pending)
             .ToArray();
         var measuredCount = measuredItems.Length;
+        var measuredOutcomeCount = measuredCount;
         var pendingOutcomeCount = totalCount - measuredCount;
         var successCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Success);
         var neutralCount = normalizedOutcomes.Count(x => x == AnalyticsActionConstants.OutcomeStatuses.Neutral);
@@ -1158,6 +1195,7 @@ public sealed class AnalyticsActionItemService
             TotalCount: totalCount,
             ClosedCount: closedCount,
             MeasuredCount: measuredCount,
+            MeasuredOutcomeCount: measuredOutcomeCount,
             PendingOutcomeCount: pendingOutcomeCount,
             SuccessCount: successCount,
             NeutralCount: neutralCount,
@@ -1168,6 +1206,9 @@ public sealed class AnalyticsActionItemService
             OutcomeCoverageRate: outcomeCoverageRate,
             PositiveOutcomeRate: positiveOutcomeRate,
             NegativeOutcomeRate: negativeOutcomeRate,
+            ClosedOutcomeCoverageRate: outcomeCoverageRate,
+            MeasuredPositiveOutcomeRate: positiveOutcomeRate,
+            MeasuredNegativeOutcomeRate: negativeOutcomeRate,
             RealizationRatio: realizationRatio,
             MeasuredImpactSampleCount: measuredImpactSampleCount,
             WarningCodes: warningCodes.ToArray()
@@ -1294,6 +1335,7 @@ public sealed record AnalyticsActionOutcomeSummaryTotalsDto(
     int ClosedCount,
     int OpenCount,
     int MeasuredCount,
+    int MeasuredOutcomeCount,
     int PendingOutcomeCount,
     int SuccessCount,
     int NeutralCount,
@@ -1301,7 +1343,10 @@ public sealed record AnalyticsActionOutcomeSummaryTotalsDto(
     int NotMeasuredCount,
     decimal? OutcomeCoverageRate,
     decimal? PositiveOutcomeRate,
-    decimal? NegativeOutcomeRate
+    decimal? NegativeOutcomeRate,
+    decimal? ClosedOutcomeCoverageRate,
+    decimal? MeasuredPositiveOutcomeRate,
+    decimal? MeasuredNegativeOutcomeRate
 );
 
 public sealed record AnalyticsActionOutcomeSummaryImpactDto(
@@ -1317,6 +1362,7 @@ public sealed record AnalyticsActionOutcomeSummaryBucketDto(
     int TotalCount,
     int ClosedCount,
     int MeasuredCount,
+    int MeasuredOutcomeCount,
     int PendingOutcomeCount,
     int SuccessCount,
     int NeutralCount,
@@ -1327,6 +1373,9 @@ public sealed record AnalyticsActionOutcomeSummaryBucketDto(
     decimal? OutcomeCoverageRate,
     decimal? PositiveOutcomeRate,
     decimal? NegativeOutcomeRate,
+    decimal? ClosedOutcomeCoverageRate,
+    decimal? MeasuredPositiveOutcomeRate,
+    decimal? MeasuredNegativeOutcomeRate,
     decimal? RealizationRatio,
     int MeasuredImpactSampleCount,
     IReadOnlyList<string> WarningCodes

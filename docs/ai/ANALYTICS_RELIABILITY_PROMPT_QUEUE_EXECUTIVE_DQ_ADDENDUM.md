@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (next global per priority review: RQ39)
+Current READY prompt: none in this addendum (`RQ95` DONE; next is `BCI05` re-entry)
 Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
@@ -11,6 +11,7 @@ Use with:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/qa/ANALYTICS_EXECUTIVE_DQ_RELIABILITY_AUDIT.md`
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`
 
 Purpose: queue follow-up fixes for Executive Decision Board and Data Quality surfaces where fallback ranking, no-data health, durable reports or top-offender counts can mislead users.
 
@@ -23,10 +24,13 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
 | RQ75 | WAITING | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
 | RQ76 | WAITING | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
-| RQ77 | WAITING | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
-| RQ78 | WAITING | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
+| RQ77 | DONE | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
+| RQ78 | DONE | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
 | RQ79 | WAITING | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
 | RQ80 | WAITING | data-quality-missing-cost-workflow | Add/clarify missing-cost issue workflow |
+| RQ91 | DONE | data-quality-topoffender-dataorigin-sql | Fix TopOffenders SQL/schema so `DataOrigin` exists for scoped queries |
+| RQ92 | DONE | data-quality-issues-empty-list | Restore seeded Data Quality issues list/pagination results |
+| RQ94 | DONE | data-quality-topoffender-dataorigin-contract | Align data-scope contract test with `prodaja_zaglavlje.data_origin` |
 
 ---
 
@@ -386,3 +390,233 @@ Missing cost is tracked in health/intake and blocks margin trust, but the issue 
 ### Acceptance
 
 - Users can inspect affected missing-cost rows from the same data-quality workflow or a clearly linked equivalent surface.
+
+---
+
+## RQ91 - Data Quality top-offender `DataOrigin` SQL contract
+
+Status: DONE
+Ready after: `BCI05` PARTIAL evidence from 2026-08-10 full suite
+Priority: P0
+Type: backend-SQL/tests
+Feature family: data-quality-topoffender-dataorigin-sql
+Parallel-safe: no
+Owner: cursor
+Local lock: `.ai/task-locks/RQ91-cursor.lock.md`
+Commit suggestion: `fix(dq): align top offender DataOrigin SQL`
+
+### Problem
+
+Postgres-backed top-offender queries fail with `42703: column p.DataOrigin does not exist` inside `AnalyticsDataQualityHealthService.GetTopOffendersAsync`. Scoped imported/existing/all offender contracts cannot be proven while the SQL/schema alias is broken.
+
+### Evidence
+
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`
+- Local Docker/`CI=true` suite: 5 `DataQualityPostgresIntegrationTests.TopOffenders_*` failures with the same Postgres exception
+- RQ78 previously closed dataScope semantics, but the current SQL path still references a missing/unresolvable `DataOrigin` column on alias `p`
+
+### Scope
+
+- `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+- related EF/SQL schema or mapping only if required for `DataOrigin`
+- `Api.Tests/DataQualityPostgresIntegrationTests.cs`
+- shared Postgres test fixture only if schema bootstrap must expose `DataOrigin`
+
+### Do not touch
+
+- Data Quality issues list empty-result family (`RQ92`)
+- action-outcome ledger work (`RQ93`)
+- workflow YAML / coverage pipeline
+
+### Do
+
+1. Reproduce the five TopOffenders Postgres failures with Docker available and `CI=true`.
+2. Identify whether alias `p` points at a table/view lacking `DataOrigin`, or whether quoting/casing/bootstrap is wrong.
+3. Make the smallest SQL/schema fix that preserves imported/existing/all dataScope contracts.
+4. Re-run the five failing tests, then the full `DataQualityPostgresIntegrationTests` class.
+5. Do not weaken assertions or skip Postgres coverage.
+
+### Tests
+
+- exact five TopOffenders failures from BCI05 evidence
+- full `FullyQualifiedName~DataQualityPostgresIntegrationTests`
+- `git diff --check`
+
+### Acceptance
+
+- TopOffenders Postgres tests no longer fail on missing `DataOrigin`.
+- dataScope imported/existing/all semantics remain explicit and testable.
+- On completion, promote `RQ92` next; do not mark `BCI01`/`BCI05` DONE from this fix alone.
+
+### Dependencies
+
+- `BCI05` evidence recorded
+- Docker/Testcontainers available for Postgres proof
+
+### Notes
+
+- Date: 2026-08-10
+- Root cause: `prodaja_zaglavlje.DataOrigin` is mapped to snake-case column `data_origin`, but `TopOffendersSql` regressed to `p."DataOrigin"`.
+- Files changed:
+  - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+  - `Api.Tests/DataQualityMissingCostOffenderContractTests.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+  - `MASTER_ROADMAP.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `.ai/task-locks/RQ91-cursor.lock.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~DataQualityPostgresIntegrationTests|FullyQualifiedName~DataQualityMissingCostOffenderContractTests"` - pass (19/19)
+- Risk:
+  - other raw SQL paths (for example cached analytics endpoints) may still quote `p."DataOrigin"` against `prodaja_zaglavlje`; out of RQ91 scope
+- Next: `RQ92` READY
+
+---
+
+## RQ92 - Data Quality issues list empty-result contract
+
+Status: DONE
+Ready after: `RQ91` DONE
+Priority: P1
+Type: backend/tests
+Feature family: data-quality-issues-empty-list
+Parallel-safe: no
+Owner: cursor
+Local lock: `.ai/task-locks/RQ92-cursor.lock.md`
+Commit suggestion: `fix(dq): restore issues list seeded rows`
+
+### Problem
+
+`DataQualityIssuesHandlerTests` returns empty issue collections for seeded pagination and missing-shoe-type cases (`expected 2 / actual 0`, empty Single match). This collapses a populated DQ issues list into false empty-success.
+
+### Evidence
+
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`
+- Failing tests:
+  - `Handle_SupportsPagination_AndSorting`
+  - `Handle_ReturnsMissingShoeType_Items`
+
+### Scope
+
+- Data Quality issues handler/service/query path used by those tests
+- `Api.Tests/DataQualityIssuesHandlerTests.cs`
+- shared helpers only if required
+
+### Do not touch
+
+- TopOffenders DataOrigin SQL (`RQ91`) unless a proven shared root cause is documented first
+- frontend redesign
+
+### Do
+
+1. Reproduce both failing handler tests.
+2. Fix the smallest contract/query bug that restores seeded issue rows without inventing fake issues.
+3. Keep empty-success honest when the dataset is truly empty.
+4. Re-run the focused class after the fix.
+
+### Tests
+
+- both failing handler tests
+- full `FullyQualifiedName~DataQualityIssuesHandlerTests`
+
+### Acceptance
+
+- Seeded issues remain visible for pagination and missing-shoe-type classification.
+- Empty remains explicit only when no matching issues exist.
+- Promote `RQ93` next; return to `BCI05` after RQ93.
+
+### Dependencies
+
+- `RQ91` DONE
+
+### Notes
+
+- Date: 2026-08-10
+- Root cause: issues SQL used `sales_30d > @minSalesRsd`, so default `MinSalesRsd=0` excluded zero-sales seeded rows (`sales_30d > 0`).
+- Fix: use `sales_30d >= @minSalesRsd` so zero-sales issues remain visible unless a positive threshold is requested.
+- Files changed:
+  - `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesHandler.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`
+  - `MASTER_ROADMAP.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `.ai/task-locks/RQ92-cursor.lock.md`
+- Checks:
+  - pre-fix reproduce of the two BCI05 failures: fail (`expected 2/actual 0`, empty Single)
+  - `dotnet test ... --filter "FullyQualifiedName~DataQualityIssuesHandlerTests"` - pass (5/5)
+- Risk:
+  - TopOffenders still uses strict `>` threshold; left unchanged because it is a different contract surface
+- Next: `RQ93` READY
+
+---
+
+## RQ94 - TopOffenders data-scope contract uses `data_origin`
+
+Status: DONE
+Ready after: `BCI05` re-entry PARTIAL evidence (`808/809`)
+Priority: P0
+Type: tests/docs
+Feature family: data-quality-topoffender-dataorigin-contract
+Parallel-safe: no
+Owner: cursor
+Local lock: `.ai/task-locks/RQ94-cursor.lock.md`
+Commit suggestion: `test(dq): expect sale-header data_origin in top-offender SQL`
+
+### Problem
+
+`DataScopeConsistencyContractTests.TopOffendersSql_ScopesSales30dBySaleHeader_AndArticlesByDataOrigin` still asserts `p."DataOrigin" = 'access'` inside the sales CTE. After RQ91, sale-header scoping correctly uses EF-mapped `p.data_origin`, so the companion contract fails and keeps the full suite red.
+
+### Evidence
+
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`
+- Failure: `Assert.Contains` missing `p."DataOrigin" = 'access'`
+- RQ91 notes already warn that companion contracts/SQL may still expect the legacy quoted form
+
+### Scope
+
+- `Api.Tests/DataScopeConsistencyContractTests.cs`
+- optional comment/docs alignment only if required
+
+### Do not touch
+
+- `AnalyticsDataQualityHealthService.TopOffendersSql` runtime SQL (already fixed by RQ91)
+- unrelated cached-analytics raw SQL families unless a separate prompt owns them
+
+### Do
+
+1. Reproduce the single failing contract test.
+2. Update assertions to require sale-header `p.data_origin` while keeping article `a."DataOrigin"` membership checks.
+3. Keep imported/existing/all dataScope clauses explicit.
+4. Re-run the focused contract test class.
+
+### Tests
+
+- `FullyQualifiedName~DataScopeConsistencyContractTests`
+- optionally re-check `DataQualityMissingCostOffenderContractTests` for shared `data_origin` guardrails
+
+### Acceptance
+
+- Contract test matches the authoritative EF column mapping for `prodaja_zaglavlje.data_origin`.
+- Article-origin scoping remains quoted `"DataOrigin"` on `Artikli`.
+- On completion, promote `BCI05` READY again for green suite/GHA proof.
+
+### Dependencies
+
+- `RQ91` DONE
+- `BCI05` re-entry evidence recorded
+
+### Notes
+
+- Date: 2026-08-10
+- Root cause: companion unit contract still required legacy `p."DataOrigin"` after RQ91 mapped sale-header origin to `p.data_origin`.
+- Files changed:
+  - `Api.Tests/DataScopeConsistencyContractTests.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+  - `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+  - `MASTER_ROADMAP.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `.ai/task-locks/RQ94-cursor.lock.md`
+- Checks:
+  - `dotnet test ... --filter "FullyQualifiedName~DataScopeConsistencyContractTests|...TopOffendersSql_SupportsMissingCostIndependentOfSupplierCase"` - pass (3/3)
+- Risk:
+  - cached-analytics raw SQL may still quote sale-header `"DataOrigin"`; out of this contract-test scope
+- Next: `BCI05` READY for green suite/GHA re-entry

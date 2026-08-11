@@ -1322,6 +1322,9 @@ export interface AnalyticsActionCreationSnapshot {
 }
 
 export interface AnalyticsActionResolutionSnapshot {
+  outcomeStatus?: "pending" | "success" | "neutral" | "negative" | "not_measured" | string | null;
+  measuredImpactRsd?: number | null;
+  outcomeMeasuredAtUtc?: string | null;
   measuredWindowDays?: number | null;
   evidenceSource?: string | null;
   evidenceReference?: string | null;
@@ -1452,6 +1455,10 @@ export interface AnalyticsActionOutcomeUpdateInput {
   measuredImpactRsd?: number | null;
   outcomeMeasuredAtUtc?: string | null;
   outcomeNotes?: string | null;
+  measuredWindowDays?: number | null;
+  evidenceSource?: string | null;
+  evidenceReference?: string | null;
+  resolutionNote?: string | null;
 }
 
 export interface AnalyticsActionOutcomeSummaryFilters {
@@ -1495,6 +1502,10 @@ export interface AnalyticsActionOutcomeSummaryTotals {
   outcomeCoverageRate?: number | null;
   positiveOutcomeRate?: number | null;
   negativeOutcomeRate?: number | null;
+  closedOutcomeCoverageRate?: number | null;
+  measuredPositiveOutcomeRate?: number | null;
+  measuredNegativeOutcomeRate?: number | null;
+  measuredOutcomeCount?: number | null;
 }
 
 export interface AnalyticsActionOutcomeSummaryImpact {
@@ -1520,9 +1531,13 @@ export interface AnalyticsActionOutcomeSummaryBucket {
   outcomeCoverageRate?: number | null;
   positiveOutcomeRate?: number | null;
   negativeOutcomeRate?: number | null;
+  closedOutcomeCoverageRate?: number | null;
+  measuredPositiveOutcomeRate?: number | null;
+  measuredNegativeOutcomeRate?: number | null;
   realizationRatio?: number | null;
   measuredImpactSampleCount: number;
   warningCodes: string[];
+  measuredOutcomeCount?: number | null;
 }
 
 export interface AnalyticsActionOutcomeSummaryResponse {

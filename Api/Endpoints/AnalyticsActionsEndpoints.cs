@@ -304,6 +304,20 @@ public static class AnalyticsActionsEndpoints
             if (!string.IsNullOrWhiteSpace(body.OutcomeNotes) && body.OutcomeNotes.Trim().Length > 4000)
                 return Results.BadRequest("outcomeNotes must be 4000 characters or fewer");
 
+            // Unknown ids must stay NotFound even when body would also fail evidence/field checks.
+            var existing = await svc.GetByIdAsync(id, includeNotes: false, ct);
+            if (existing is null)
+                return Results.NotFound();
+
+            var requiresEvidenceSource = body.OutcomeStatus is AnalyticsActionConstants.OutcomeStatuses.Success
+                or AnalyticsActionConstants.OutcomeStatuses.Neutral
+                or AnalyticsActionConstants.OutcomeStatuses.Negative;
+            if (requiresEvidenceSource)
+            {
+                if (string.IsNullOrWhiteSpace(body.EvidenceSource))
+                    return Results.BadRequest("evidenceSource is required for success, neutral, and negative outcomes");
+            }
+
             var userId = httpContext.User?.FindFirst("sub")?.Value
                       ?? httpContext.User?.FindFirst("userId")?.Value;
             var userName = httpContext.User?.FindFirst("name")?.Value

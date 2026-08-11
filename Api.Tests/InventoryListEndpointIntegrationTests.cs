@@ -116,6 +116,21 @@ public sealed class InventoryListEndpointIntegrationTests
     }
 
     [Fact]
+    public async Task InventoryList_UncachedEmptyFilterReturnsExplicitEmptySuccessMeta()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/list?search=DOES-NOT-EXIST");
+
+        Assert.Empty(root.GetProperty("items").EnumerateArray());
+        Assert.Equal(0, root.GetProperty("totalCount").GetInt32());
+        var meta = root.GetProperty("meta");
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal("no_inventory_items", meta.GetProperty("emptyReason").GetString());
+        Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
+    }
+
+    [Fact]
     public async Task InventoryList_ClampsInvalidPagingArguments()
     {
         await using var factory = CreateFactory();

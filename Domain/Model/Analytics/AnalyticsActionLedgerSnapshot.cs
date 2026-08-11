@@ -21,6 +21,9 @@ public sealed record AnalyticsActionCreationSnapshot(
 );
 
 public sealed record AnalyticsActionResolutionSnapshot(
+    string? OutcomeStatus,
+    decimal? MeasuredImpactRsd,
+    DateTime? OutcomeMeasuredAtUtc,
     int? MeasuredWindowDays,
     string? EvidenceSource,
     string? EvidenceReference,

@@ -44,5 +44,8 @@ public sealed class DataQualityMissingCostOffenderContractTests
         Assert.Contains("a.\"NabavnaCena\" IS NULL OR a.\"NabavnaCena\" <= 0", sql, StringComparison.Ordinal);
         Assert.Contains("@issueType = 'missingCost' AND is_missing_cost", sql, StringComparison.Ordinal);
         Assert.Contains("@issueType <> 'missingCost' AND issue_type = @issueType", sql, StringComparison.Ordinal);
+        // Sale-header origin is mapped to snake_case data_origin; do not regress to quoted "DataOrigin".
+        Assert.Contains("p.data_origin = 'access'", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("p.\"DataOrigin\"", sql, StringComparison.Ordinal);
     }
 }

@@ -231,7 +231,6 @@ public static class CachedAnalyticsEndpoints
                                               (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
                                               (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                                         group new { ps, a } by new { ps.IdArtikal, a.Naziv, a.Velicina, a.Boja } into g
-                                        orderby g.Sum(x => x.ps.Kolicina * x.ps.Cena) descending
                                         select new TopProductDto(
                                             g.Key.IdArtikal,
                                             g.Key.Naziv,
@@ -241,15 +240,16 @@ public static class CachedAnalyticsEndpoints
                                             g.Key.Boja
                                         );
 
-                        var topRevenue = await baseQuery
+                        var all = await baseQuery.ToListAsync(ct);
+                        var topRevenue = all
                             .OrderByDescending(x => x.TotalRevenue)
                             .Take(top)
-                            .ToListAsync(ct);
+                            .ToList();
 
-                        var topUnits = await baseQuery
+                        var topUnits = all
                             .OrderByDescending(x => x.TotalUnits)
                             .Take(top)
-                            .ToListAsync(ct);
+                            .ToList();
 
                         return new TopProductsResult(topRevenue, topUnits);
                     },
@@ -440,7 +440,7 @@ public static class CachedAnalyticsEndpoints
                         var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
                         var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
                         var meta = totalSku == 0
-                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.", null)
+                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
                             : AnalyticsResponseMetaFactory.Success();
                         meta.CorrelationId = correlationId;
 
@@ -620,7 +620,7 @@ public static class CachedAnalyticsEndpoints
                         }
 
                         var meta = total == 0
-                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.", null)
+                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_items", "Nema artikala koji odgovaraju filterima.")
                             : AnalyticsResponseMetaFactory.Success();
                         meta.CorrelationId = correlationId;
 
@@ -5927,6 +5927,7 @@ public static class CachedAnalyticsEndpoints
             foreach (var movement in movementRows)
             {
                 stats.TryGetValue(movement.ArtikalId, out var current);
+                current ??= new InventorySignalWindowStats(0, 0);
 
                 var netMovement = current.NetMovementUnits + movement.Quantity;
                 var inboundUnits = current.InboundUnits;

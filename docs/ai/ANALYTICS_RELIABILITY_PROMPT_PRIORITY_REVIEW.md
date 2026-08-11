@@ -48,15 +48,14 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 
 ## Current BCI assertion-repair override (2026-08-10)
 
-The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04`.
+The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
 
-1. `RQ89` is the single current analytics-correctness READY prompt. It owns the inventory-list route/count failure (`expected totalCount=4`, observed `0`).
-2. `RQ90` remains WAITING and becomes next only after `RQ89` is DONE. It owns the analytics-actions canonical filter/search/paging failure (`expected totalCount=2`, observed `0`).
-3. `STAB09`, `RQ77`, and `RQ78`, which owned the other explicit BCI04 root-cause groups, are already DONE.
-4. After RQ90, run the full `Api.Tests` suite and GitHub Actions backend workflow. Only that evidence may move `BCI01` from PARTIAL to DONE.
-5. If the full suite exposes a new root-cause family, return to BCI triage and create/reuse one focused prompt; do not weaken tests or silently broaden RQ89/RQ90.
+1. `RQ89`–`RQ95` are DONE.
+2. `BCI05` re-entry after RQ95 is PARTIAL: local Docker suite recorded `809` total / `809` passed / `0` failed on 2026-08-11.
+3. Green GHA proof is blocked until repair worktree is committed/pushed; only that evidence may move `BCI01` from PARTIAL to DONE.
+4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 
-This override exists to close known red CI evidence before resuming lower-priority generic analytics work.
+Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`
 
 ## Global execution lanes
 

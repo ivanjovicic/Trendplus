@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -285,6 +286,8 @@ public sealed class DemoEnvironmentVerificationEndpointTests
 
     private sealed class TestHost : IAsyncDisposable
     {
+        private static readonly InMemoryDatabaseRoot DatabaseRoot = new();
+
         private TestHost(WebApplication app, RecordingAccessImportJobQueue queue, RecordingAccessImportService importService)
         {
             App = app;
@@ -307,11 +310,12 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             {
                 EnvironmentName = environmentName
             });
+            var databaseName = $"demo-verification-{Guid.NewGuid():N}";
             builder.WebHost.UseTestServer();
             builder.Services.AddRouting();
             builder.Services.AddLogging();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase($"demo-verification-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase(databaseName, DatabaseRoot));
             builder.Services.AddSingleton<WorkerHealthService>();
             builder.Services.AddSingleton(new WorkerRuntimeControlService(
                 initialEnabled: true,
@@ -337,6 +341,10 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             var app = builder.Build();
             app.UseRouting();
             app.MapAdminConfigEndpoints();
+            using (var scope = app.Services.CreateScope())
+            {
+                scope.ServiceProvider.GetRequiredService<TrendplusDbContext>().Database.EnsureCreated();
+            }
             await app.StartAsync();
 
             return new TestHost(app, queue, importService);

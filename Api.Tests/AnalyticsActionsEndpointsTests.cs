@@ -177,7 +177,8 @@ public sealed class AnalyticsActionsEndpointsTests
         using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
         {
             outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
-            measuredImpactRsd = 42m
+            measuredImpactRsd = 42m,
+            evidenceSource = "action_outcome_summary"
         }, adminKey: AdminApiKey);
 
         using var response = await host.Client.SendAsync(request);
@@ -344,6 +345,14 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("outcomeCoverageRate").GetDecimal());
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("positiveOutcomeRate").GetDecimal());
         Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("negativeOutcomeRate").GetDecimal());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("closedOutcomeCoverageRate").GetDecimal());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("measuredPositiveOutcomeRate").GetDecimal());
+        Assert.Equal(0.5000m, root.GetProperty("totals").GetProperty("measuredNegativeOutcomeRate").GetDecimal());
+        Assert.Equal(2, root.GetProperty("totals").GetProperty("measuredOutcomeCount").GetInt32());
+        Assert.Equal(1.0000m, root.GetProperty("bySourceType")[0].GetProperty("closedOutcomeCoverageRate").GetDecimal());
+        Assert.Equal(1.0000m, root.GetProperty("bySourceType")[0].GetProperty("measuredPositiveOutcomeRate").GetDecimal());
+        Assert.Equal(0.0000m, root.GetProperty("bySourceType")[0].GetProperty("measuredNegativeOutcomeRate").GetDecimal());
+        Assert.Equal(1, root.GetProperty("bySourceType")[0].GetProperty("measuredOutcomeCount").GetInt32());
         Assert.Equal(150m, root.GetProperty("impact").GetProperty("measuredImpactRsd").GetDecimal());
     }
 
@@ -370,7 +379,9 @@ public sealed class AnalyticsActionsEndpointsTests
         {
             outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
             measuredImpactRsd = 12345.67m,
-            outcomeNotes = "  Uticaj je potvrđen  "
+            outcomeMeasuredAtUtc = "2026-06-29T00:00:00Z",
+            outcomeNotes = "  Uticaj je potvrđen  ",
+            evidenceSource = "action_outcome_summary"
         }, AdminApiKey);
         using var response = await host.Client.SendAsync(request);
 
@@ -382,12 +393,38 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(12345.67m, payload.MeasuredImpactRsd);
         Assert.Equal("Uticaj je potvrđen", payload.OutcomeNotes);
         Assert.NotNull(payload.OutcomeMeasuredAtUtc);
+        Assert.NotNull(payload.LedgerSnapshot);
+        Assert.NotNull(payload.LedgerSnapshot!.ResolutionSnapshot);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Success, payload.LedgerSnapshot.ResolutionSnapshot!.OutcomeStatus);
+        Assert.Equal(12345.67m, payload.LedgerSnapshot.ResolutionSnapshot.MeasuredImpactRsd);
+        Assert.Equal(new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc), payload.LedgerSnapshot.ResolutionSnapshot.OutcomeMeasuredAtUtc);
+        Assert.Equal("action_outcome_summary", payload.LedgerSnapshot.ResolutionSnapshot!.EvidenceSource);
         Assert.NotNull(payload.Notes);
         Assert.Single(payload.Notes!);
         var auditNote = payload.Notes.Single();
         Assert.Equal(payload.Status, auditNote.StatusFrom);
         Assert.Equal(payload.Status, auditNote.StatusTo);
         Assert.Contains("Outcome: success", auditNote.Note);
+    }
+
+    [Fact]
+    public async Task PatchOutcome_MissingEvidenceSourceReturnsBadRequest()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync(withAdminKey: true);
+        var actionId = await host.SeedActionAsync();
+
+        using var request = CreateJsonRequest(HttpMethod.Patch, $"/api/analytics/actions/{actionId}/outcome", new
+        {
+            outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd = 123m,
+            outcomeMeasuredAtUtc = "2026-06-29T00:00:00Z",
+            outcomeNotes = "Bez izvora dokaza"
+        }, AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var message = await response.Content.ReadAsStringAsync();
+        Assert.Contains("evidenceSource is required for success, neutral, and negative outcomes", message);
     }
 
     [Fact]

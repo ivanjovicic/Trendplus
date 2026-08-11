@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ89`
+Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; next global repair is `RQ91`)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -573,7 +573,7 @@ Size-curve handler coalesces boolean nulls to false. Missing evidence can look l
 
 ## RQ89 - Inventory list route contract
 
-Status: READY
+Status: DONE
 Ready after: STAB09 DONE (satisfied 2026-08-06); promoted 2026-08-10 as the first remaining BCI04 assertion-repair root cause
 Priority: P1
 Type: backend/tests
@@ -641,3 +641,21 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 - Empty-success behavior stays honest and explicit.
 - Focused inventory-list tests are green without weakening assertions or hiding errors.
 - On completion, promote `RQ90` next; do not mark `BCI01` DONE until RQ90 and the full backend suite are green.
+
+### Notes
+
+- Date: 2026-08-10
+- Files changed:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api/Endpoints/InventoryEndpoints.cs`
+  - `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`
+  - `.ai/task-locks/RQ89-codex.lock.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~InventoryListEndpointIntegrationTests.InventoryList_ClampsInvalidPagingArguments"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~InventoryListEndpointIntegrationTests"` - pass
+  - `git diff --check` - pass with CRLF normalization warnings only
+- Risk:
+  - other inventory endpoints still use their own empty-success/meta conventions; this task only aligned the inventory list contract and its cached/uncached paths.
+- Next:
+  - `RQ90 - Analytics actions canonical filter/search/paging contract`

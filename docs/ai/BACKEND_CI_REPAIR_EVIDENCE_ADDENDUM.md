@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
+Current READY prompt: none (`BCI05` IN_PROGRESS on 2026-08-11; local suite green with Cobertura; final commit/push and GHA proof pending)
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -12,21 +12,21 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 
 | Task | Status | Purpose |
 |---|---|---|
-| BCI05 | WAITING | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89/RQ90 |
+| BCI05 | IN_PROGRESS | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 |
 | BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: WAITING
-Ready after: `RQ89` DONE and `RQ90` DONE
+Status: IN_PROGRESS
+Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; commit/push + green GHA proof
 Priority: P0
 Type: CI/evidence/tests
 Feature family: backend-ci-final-evidence
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI05-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/BCI05-codex.lock.md`
 Commit suggestion: `test(ci): close backend suite evidence`
 
 ### Problem
@@ -90,11 +90,75 @@ Do not change application runtime behavior in this prompt. If a new product/test
 - BCI02 live diagnostic behavior is observed or explicitly remains PARTIAL with a concrete evidence gap.
 - BCI01 is changed to DONE only if all of its original acceptance conditions are now proven.
 
+### Notes
+
+- Date: 2026-08-10 (initial pass)
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`
+- Local Docker suite (`CI=true`): 809 total / 801 passed / 8 failed
+- Latest main GHA run `31378849007` job `93424204254`: restore=success, build=success, test=failure; coverage-summary=success; artifact upload=success (`9059086207`)
+- BCI02 red-run diagnostic behavior observed; green-run annotation proof still unavailable
+- `BCI01` remains PARTIAL
+- Created follow-up assertion prompts: `RQ91` (READY), `RQ92`, `RQ93`
+- Next: `RQ91` then `RQ92` then `RQ93`, then re-enter this prompt for green suite/GHA closure
+
+### Notes (re-entry after RQ94)
+
+- Date: 2026-08-11
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`
+- Local Docker suite (`CI=true`): 809 total / 802 passed / 7 failed
+- Durable remaining failure: mojibake expected resolution note in `UpdateOutcomeAsync_MergesResolutionSnapshot_WithoutOverwritingCreationSnapshot`
+- Six `WorkerRuntimePolicyServiceTests` failures were Testcontainers Docker-pipe timeouts and did not reproduce on focused re-check
+- Created follow-up: `RQ95` READY
+- GHA on committed HEAD `9e53f2cc` still red; green GHA requires commit/push after RQ95
+- `BCI01` remains PARTIAL
+- Next: `RQ95`, then re-enter this prompt
+
+### Notes (re-entry after RQ95)
+
+- Date: 2026-08-11
+- `RQ95` DONE: mojibake assert fixed in `AnalyticsActionItemServiceTests.cs`; focused outcome tests 5/5 pass
+- `BCI05` promoted READY for full suite + GHA green proof
+- GHA on committed HEAD `9e53f2cc` still red; green GHA requires commit/push of repair worktree
+- `BCI01` remains PARTIAL until green GHA evidence
+- Next: re-enter `BCI05` full suite with Docker
+
+### Notes (re-entry after RQ95 — suite run)
+
+- Date: 2026-08-11
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`
+- Local Docker suite (`CI=true`): 809 total / 809 passed / 0 failed
+- RQ95 fix confirmed in full suite; no new failure families
+- WorkerRuntime flake did not reproduce
+- GHA on committed HEAD `9e53f2cc` still red; green GHA requires commit/push of repair worktree
+- `BCI01` remains PARTIAL until green GHA evidence on pushed commit
+- Next: commit/push repairs, then record green GHA run IDs
+
+### Notes (current execution)
+
+- Date: 2026-08-11
+- Owner switched to `Codex` for the final `BCI05` execution pass on the current `main` worktree
+- Local lock: `.ai/task-locks/BCI05-codex.lock.md`
+- Immediate plan: re-run targeted sanity checks, then execute the full local backend suite, and only then commit/push for green GitHub Actions evidence
+
+### Notes (current execution result)
+
+- Date: 2026-08-11
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_CODEX_REENTRY.md`
+- Local exact BCI05 sequence: restore=success, build=success, test=success
+- Local suite totals: 809 total / 809 passed / 0 failed
+- Coverage pipeline gap closed locally: `Api.Tests/coverage.runsettings` now emits Cobertura-only output and produced `TestResults/75b4a260-31d7-43b6-b31f-b4a2540166a7/coverage.cobertura.xml`
+- Focused corroboration on the same worktree: `AnalyticsActionItemServiceTests` 36/36, `AnalyticsActionsPage.spec.tsx` 14/14, `npm run build` success, `npm run check:analytics-guardrails` success
+- GHA proof is still pending commit/push from this worktree
+- Next: commit/push current worktree, capture green `analytics-tests` run/job IDs, then close `BCI05` and `BCI01` with remote evidence
+
 ### Dependencies
 
 - `RQ89` DONE
 - `RQ90` DONE
 - no known unassigned BCI04 root-cause family remains
+- re-entry after `RQ91`/`RQ92`/`RQ93` DONE for final green proof
+- additional re-entry after `RQ94` DONE
+- additional re-entry after `RQ95` DONE
 
 ---
 
@@ -166,6 +230,24 @@ Do not change application business logic, npm dependencies or backend test expec
 - Required Visual Studio workloads are documented.
 - Linux backend CI remains isolated from frontend project-system availability.
 - If mixed-solution Visual Studio support is not actually supported, the documentation says so explicitly and stops claiming it.
+
+### Notes (current execution)
+
+- Date: 2026-08-11
+- Owner switched to `Codex` for the final `BCI05` execution pass on the current `main` worktree
+- Local lock: `.ai/task-locks/BCI05-codex.lock.md`
+- Immediate plan: re-run targeted sanity checks, then execute the full local backend suite, and only then commit/push for green GitHub Actions evidence
+
+### Notes (current execution result)
+
+- Date: 2026-08-11
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_CODEX_REENTRY.md`
+- Local exact BCI05 sequence: restore=success, build=success, test=success
+- Local suite totals: 809 total / 809 passed / 0 failed
+- Coverage pipeline gap closed locally: `Api.Tests/coverage.runsettings` now emits Cobertura-only output and produced `TestResults/75b4a260-31d7-43b6-b31f-b4a2540166a7/coverage.cobertura.xml`
+- Focused corroboration on the same worktree: `AnalyticsActionItemServiceTests` 36/36, `AnalyticsActionsPage.spec.tsx` 14/14, `npm run build` success, `npm run check:analytics-guardrails` success
+- GHA proof is still pending commit/push from this worktree
+- Next: commit/push current worktree, capture green `analytics-tests` run/job IDs, then close `BCI05` and `BCI01` with remote evidence
 
 ### Dependencies
 

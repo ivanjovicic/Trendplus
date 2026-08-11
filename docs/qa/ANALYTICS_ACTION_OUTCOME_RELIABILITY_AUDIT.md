@@ -140,7 +140,7 @@ Files:
 Observed:
 
 - If no date filters are supplied, endpoint defaults to `createdFrom = now - 90d` and `createdTo = now`.
-- UI summary calls this `poslednjih 90 dana created` via period mode.
+- UI summary now calls this `akcije kreirane u poslednjih 90 dana` for the default created cohort.
 - This is documented in UI, but users may expect action outcomes to be resolved/measured in last 90 days.
 
 Risk:

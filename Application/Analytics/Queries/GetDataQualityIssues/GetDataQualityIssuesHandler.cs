@@ -79,7 +79,7 @@ public sealed class GetDataQualityIssuesHandler
                 COUNT(*) OVER() AS total_count
             FROM quality_source
             WHERE issue_type = @issueType
-                            AND sales_30d > @minSalesRsd
+                            AND sales_30d >= @minSalesRsd
               AND (
                     @query = ''
                     OR COALESCE(sku, '') ILIKE @queryPattern

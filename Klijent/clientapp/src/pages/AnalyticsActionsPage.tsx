@@ -94,10 +94,10 @@ const OUTCOME_CSS: Record<AnalyticsActionOutcomeUpdateInput["outcomeStatus"], st
 };
 
 const PERIOD_MODE_LABELS: Record<string, string> = {
-  created: "po datumu kreiranja",
-  resolved: "po datumu zatvaranja",
-  measured: "po datumu merenja ishoda",
-  mixed: "po kombinovanom periodu",
+  created: "akcije kreirane",
+  resolved: "akcije zatvorene",
+  measured: "ishodi mereni",
+  mixed: "akcije u kombinovanom periodu",
 };
 
 const OUTCOME_SUMMARY_WARNING_LABELS: Record<string, string> = {
@@ -205,15 +205,26 @@ function formatOutcomeNotesPreview(value: string | null | undefined): string | n
 }
 
 function formatSummaryWindow(summary: AnalyticsActionOutcomeSummaryResponse | null): string {
-  if (!summary) return "poslednjih 90 dana";
-  const periodMode = PERIOD_MODE_LABELS[summary.meta.periodMode] ?? "po izabranom periodu";
+  if (!summary) return "akcije kreirane u poslednjih 90 dana";
+
+  const periodMode = summary.meta.periodMode;
   const from = summary.meta.createdFrom ?? summary.meta.resolvedFrom ?? summary.meta.measuredFrom;
   const to = summary.meta.createdTo ?? summary.meta.resolvedTo ?? summary.meta.measuredTo;
-  if (from && to) {
-    return `${formatDateTime(from, "-")} - ${formatDateTime(to, "-")} ${periodMode}`;
+
+  if (periodMode === "created") {
+    if (from && to) {
+      return `akcije kreirane u poslednjih 90 dana (${formatDateTime(from, "-")} - ${formatDateTime(to, "-")})`;
+    }
+
+    return "akcije kreirane u poslednjih 90 dana";
   }
 
-  return `poslednjih 90 dana ${periodMode}`;
+  const periodLabel = PERIOD_MODE_LABELS[periodMode] ?? "akcije u izabranom periodu";
+  if (from && to) {
+    return `${periodLabel} (${formatDateTime(from, "-")} - ${formatDateTime(to, "-")})`;
+  }
+
+  return `${periodLabel} u poslednjih 90 dana`;
 }
 
 function getOutcomeSummaryWarningLabel(code: string): string {
@@ -222,6 +233,40 @@ function getOutcomeSummaryWarningLabel(code: string): string {
 
 function renderBucketRateLabel(rate: number | null | undefined): string {
   return fmtPctFromRatio(rate, 0, "N/A");
+}
+
+type OutcomeRateContract = {
+  outcomeCoverageRate?: number | null;
+  positiveOutcomeRate?: number | null;
+  negativeOutcomeRate?: number | null;
+  closedOutcomeCoverageRate?: number | null;
+  measuredPositiveOutcomeRate?: number | null;
+  measuredNegativeOutcomeRate?: number | null;
+};
+
+type MeasuredOutcomeContract = {
+  measuredCount: number;
+  measuredOutcomeCount?: number | null;
+};
+
+function getClosedOutcomeCoverageRate(value: OutcomeRateContract): number | null | undefined {
+  return value.closedOutcomeCoverageRate ?? value.outcomeCoverageRate;
+}
+
+function getMeasuredPositiveOutcomeRate(value: OutcomeRateContract): number | null | undefined {
+  return value.measuredPositiveOutcomeRate ?? value.positiveOutcomeRate;
+}
+
+function getMeasuredNegativeOutcomeRate(value: OutcomeRateContract): number | null | undefined {
+  return value.measuredNegativeOutcomeRate ?? value.negativeOutcomeRate;
+}
+
+function getMeasuredOutcomeCount(value: MeasuredOutcomeContract): number {
+  return value.measuredOutcomeCount ?? value.measuredCount;
+}
+
+function isMeasuredOutcomeLocked(status: AnalyticsActionOutcomeUpdateInput["outcomeStatus"]): boolean {
+  return status === "pending" || status === "not_measured";
 }
 
 function formatImpactValue(value: number | null | undefined, unavailableLabel: string): string {
@@ -269,8 +314,28 @@ function getOutcomeStatusLabel(value: string | null | undefined): string {
   return normalized ? OUTCOME_LABELS[normalized] : "Ishod nije evidentiran";
 }
 
+function hasConfirmedOutcomeEvidence(item: AnalyticsActionItem): boolean | null {
+  const ledgerEvidence = item.impactLedger?.derived.hasEvidence;
+  if (ledgerEvidence != null) {
+    return ledgerEvidence;
+  }
+
+  const resolutionSnapshot = item.ledgerSnapshot?.resolutionSnapshot;
+  const evidenceSource = resolutionSnapshot?.evidenceSource?.trim();
+  if (evidenceSource) {
+    return true;
+  }
+
+  if (item.measuredImpactRsd != null || item.outcomeMeasuredAtUtc) {
+    return true;
+  }
+
+  return null;
+}
+
 function getOutcomeStateMessage(item: AnalyticsActionItem): string {
   const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
+  const hasEvidence = hasConfirmedOutcomeEvidence(item);
 
   if (outcomeStatus === "pending") {
     return "Ishod je još u toku. Merljivi uticaj ostaje nedostupan dok merenje ne bude završeno.";
@@ -278,6 +343,15 @@ function getOutcomeStateMessage(item: AnalyticsActionItem): string {
 
   if (outcomeStatus === "not_measured") {
     return "Akcija je zatvorena bez dovoljno dokaza za merljiv ishod.";
+  }
+
+  if (
+    (outcomeStatus === "success" || outcomeStatus === "neutral" || outcomeStatus === "negative")
+    && hasEvidence !== true
+    && item.measuredImpactRsd == null
+    && !item.outcomeMeasuredAtUtc
+  ) {
+    return "Ishod je evidentiran kvalitativno, ali bez potvrđenog dokaza i merljivog traga.";
   }
 
   if (!outcomeStatus && item.measuredImpactRsd == null) {
@@ -358,6 +432,7 @@ type OutcomeModalState = {
   measuredImpactRsd: string;
   outcomeMeasuredAtLocal: string;
   outcomeNotes: string;
+  evidenceSource: string;
 };
 
 export default function AnalyticsActionsPage() {
@@ -576,6 +651,7 @@ export default function AnalyticsActionsPage() {
       measuredImpactRsd: item.measuredImpactRsd != null ? String(item.measuredImpactRsd) : "",
       outcomeMeasuredAtLocal: isoToDateTimeLocal(item.outcomeMeasuredAtUtc),
       outcomeNotes: item.outcomeNotes ?? "",
+      evidenceSource: item.impactLedger?.resolution?.evidenceSource ?? item.ledgerSnapshot?.resolutionSnapshot?.evidenceSource ?? "",
     });
   }
 
@@ -587,9 +663,12 @@ export default function AnalyticsActionsPage() {
       return;
     }
 
-    const isPending = outcomeModal.outcomeStatus === "pending";
+    const locksMeasuredState = isMeasuredOutcomeLocked(outcomeModal.outcomeStatus);
+    const authoritativeOutcome = outcomeModal.outcomeStatus === "success"
+      || outcomeModal.outcomeStatus === "neutral"
+      || outcomeModal.outcomeStatus === "negative";
     const measuredImpactRaw = outcomeModal.measuredImpactRsd.trim();
-    const parsedImpact = isPending || measuredImpactRaw.length === 0
+    const parsedImpact = locksMeasuredState || measuredImpactRaw.length === 0
       ? null
       : Number(measuredImpactRaw.replace(",", "."));
 
@@ -598,8 +677,14 @@ export default function AnalyticsActionsPage() {
       return;
     }
 
-    const measuredAtIso = isPending ? null : dateTimeLocalToIso(outcomeModal.outcomeMeasuredAtLocal);
-    if (!isPending && outcomeModal.outcomeMeasuredAtLocal.trim().length > 0 && !measuredAtIso) {
+    const evidenceSource = outcomeModal.evidenceSource.trim();
+    if (authoritativeOutcome && evidenceSource.length === 0) {
+      setOutcomeModalError("Izvor dokaza je obavezan za success, neutral i negative ishode.");
+      return;
+    }
+
+    const measuredAtIso = locksMeasuredState ? null : dateTimeLocalToIso(outcomeModal.outcomeMeasuredAtLocal);
+    if (!locksMeasuredState && outcomeModal.outcomeMeasuredAtLocal.trim().length > 0 && !measuredAtIso) {
       setOutcomeModalError("Unesite validan datum merenja ishoda.");
       return;
     }
@@ -610,9 +695,10 @@ export default function AnalyticsActionsPage() {
     try {
       const result = await updateAnalyticsActionOutcome(outcomeModal.id, {
         outcomeStatus: outcomeModal.outcomeStatus,
-        measuredImpactRsd: isPending ? null : parsedImpact,
+        measuredImpactRsd: locksMeasuredState ? null : parsedImpact,
         outcomeMeasuredAtUtc: measuredAtIso,
         outcomeNotes: outcomeModal.outcomeNotes.trim().length > 0 ? outcomeModal.outcomeNotes.trim() : null,
+        evidenceSource: authoritativeOutcome ? evidenceSource : null,
       });
       setItems((prev) => prev.map((it) => (it.id === result.id ? result : it)));
       setDetailsById((prev) => ({ ...prev, [result.id]: result }));
@@ -725,14 +811,14 @@ export default function AnalyticsActionsPage() {
                 <span className="aaq-summary-card-note">Zatvoreno: {fmtNumber(outcomeSummary.totals.closedCount, 0, "0")}</span>
               </div>
               <div className="aaq-summary-card">
-                <span className="aaq-summary-card-label">Pokrivenost ishodom</span>
-                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.totals.outcomeCoverageRate, 0, "N/A")}</strong>
+                <span className="aaq-summary-card-label">Pokrivenost zatvorenih</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getClosedOutcomeCoverageRate(outcomeSummary.totals), 0, "N/A")}</strong>
                 <span className="aaq-summary-card-note">Na osnovu zatvorenih akcija</span>
               </div>
               <div className="aaq-summary-card">
-                <span className="aaq-summary-card-label">Pozitivan ishod</span>
-                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.totals.positiveOutcomeRate, 0, "N/A")}</strong>
-                <span className="aaq-summary-card-note">Negativan: {fmtPctFromRatio(outcomeSummary.totals.negativeOutcomeRate, 0, "N/A")}</span>
+                <span className="aaq-summary-card-label">Pozitivan od izmerenih</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getMeasuredPositiveOutcomeRate(outcomeSummary.totals), 0, "N/A")}</strong>
+                <span className="aaq-summary-card-note">Negativan od izmerenih: {fmtPctFromRatio(getMeasuredNegativeOutcomeRate(outcomeSummary.totals), 0, "N/A")}</span>
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Izmereni uticaj</span>
@@ -742,7 +828,9 @@ export default function AnalyticsActionsPage() {
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Realizacija plana</span>
                 <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.impact.realizationRatio, 0, "N/A")}</strong>
-                <span className="aaq-summary-card-note">Merenja: {fmtNumber(outcomeSummary.impact.measuredImpactSampleCount, 0, "0")}</span>
+                <span className="aaq-summary-card-note">Uzorak uticaja: {fmtNumber(outcomeSummary.impact.measuredImpactSampleCount, 0, "0")} od {fmtNumber(getMeasuredOutcomeCount(outcomeSummary.totals), 0, "0")} izmerenih ishoda</span>{outcomeSummary.impact.measuredImpactSampleCount < getMeasuredOutcomeCount(outcomeSummary.totals) ? (
+                  <span className="aaq-summary-card-note">Realizacija pokriva samo poduzorak sa izmerenim uticajem.</span>
+                ) : null}
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Ishod čeka proveru</span>
@@ -769,7 +857,7 @@ export default function AnalyticsActionsPage() {
                         </div>
                       </div>
                       <div className="aaq-breakdown-values">
-                        <span>Pozitivan {renderBucketRateLabel(bucket.positiveOutcomeRate)}</span>
+                        <span>Pozitivan {renderBucketRateLabel(getMeasuredPositiveOutcomeRate(bucket))}</span>
                         <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                       </div>
                     </button>
@@ -794,7 +882,7 @@ export default function AnalyticsActionsPage() {
                         </div>
                       </div>
                       <div className="aaq-breakdown-values">
-                        <span>Merljivo {fmtNumber(bucket.measuredCount, 0, "0")}</span>
+                        <span>Merljivo {fmtNumber(getMeasuredOutcomeCount(bucket), 0, "0")}</span>
                         <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                       </div>
                     </button>
@@ -820,7 +908,7 @@ export default function AnalyticsActionsPage() {
                           </div>
                         </div>
                         <div className="aaq-breakdown-values">
-                          <span>Pokrivenost {renderBucketRateLabel(bucket.outcomeCoverageRate)}</span>
+                          <span>Pokrivenost {renderBucketRateLabel(getClosedOutcomeCoverageRate(bucket))}</span>
                           <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                         </div>
                       </button>
@@ -842,7 +930,7 @@ export default function AnalyticsActionsPage() {
                           </div>
                         </div>
                         <div className="aaq-breakdown-values">
-                          <span>Negativan {renderBucketRateLabel(bucket.negativeOutcomeRate)}</span>
+                          <span>Negativan {renderBucketRateLabel(getMeasuredNegativeOutcomeRate(bucket))}</span>
                           <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
                         </div>
                       </div>
@@ -1337,12 +1425,13 @@ export default function AnalyticsActionsPage() {
                 setOutcomeModal((current) => {
                   if (!current) return current;
                   const nextStatus = e.target.value as OutcomeModalState["outcomeStatus"];
-                  if (nextStatus === "pending") {
+                  if (isMeasuredOutcomeLocked(nextStatus)) {
                     return {
                       ...current,
                       outcomeStatus: nextStatus,
                       measuredImpactRsd: "",
                       outcomeMeasuredAtLocal: "",
+                      evidenceSource: "",
                     };
                   }
 
@@ -1366,7 +1455,7 @@ export default function AnalyticsActionsPage() {
                 setOutcomeModal((current) => current ? { ...current, measuredImpactRsd: e.target.value } : current);
               }}
               placeholder="npr. 12500"
-              disabled={outcomeModalBusy || outcomeModal.outcomeStatus === "pending"}
+              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
             />
             <label htmlFor="aaq-outcome-measured-at">Datum merenja ishoda</label>
             <input
@@ -1377,8 +1466,21 @@ export default function AnalyticsActionsPage() {
                 setOutcomeModalError(null);
                 setOutcomeModal((current) => current ? { ...current, outcomeMeasuredAtLocal: e.target.value } : current);
               }}
-              disabled={outcomeModalBusy || outcomeModal.outcomeStatus === "pending"}
+              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
             />
+            <label htmlFor="aaq-outcome-evidence-source">Izvor dokaza</label>
+            <input
+              id="aaq-outcome-evidence-source"
+              type="text"
+              value={outcomeModal.evidenceSource}
+              onChange={(e) => {
+                setOutcomeModalError(null);
+                setOutcomeModal((current) => current ? { ...current, evidenceSource: e.target.value } : current);
+              }}
+              placeholder="npr. action_outcome_summary"
+              disabled={outcomeModalBusy || isMeasuredOutcomeLocked(outcomeModal.outcomeStatus)}
+            />
+            <div className="aaq-modal-subtitle">Obavezno za success, neutral i negative ishode.</div>
             <label htmlFor="aaq-outcome-notes">Napomena</label>
             <textarea
               id="aaq-outcome-notes"
