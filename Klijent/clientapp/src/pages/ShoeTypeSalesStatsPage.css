@@ -133,6 +133,14 @@
   white-space: nowrap;
 }
 
+.shoetype-decision-page > .analytics-control-bar {
+  margin-bottom: 16px;
+}
+
+.shoetype-decision-card .analytics-data-table {
+  margin-top: 12px;
+}
+
 .shoetype-decision-filters {
   align-items: flex-end;
   background: linear-gradient(180deg, var(--dashboard-surface-panel-top), var(--dashboard-surface-panel-bottom));

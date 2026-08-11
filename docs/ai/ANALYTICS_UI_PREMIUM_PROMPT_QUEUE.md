@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-11` (see least-improved addendum)
+Current READY prompt: `P-UI-13` (see least-improved addendum; next legacy page after ShoeTypeSalesStatsPage)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:

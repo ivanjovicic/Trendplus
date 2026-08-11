@@ -18,6 +18,11 @@ import {
 } from "../services/shoeTypeSalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import AnalyticsUnknownLink from "../components/analytics/AnalyticsUnknownLink";
+import AnalyticsControlBar, {
+  type AnalyticsControlBarChip,
+  type AnalyticsControlBarField,
+} from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -785,39 +790,43 @@ export default function ShoeTypeSalesStatsPage() {
     });
   };
 
-  return (
-    <div className="shoetype-decision-page">
-      <AnalyticsTrustHeader
-        title="Prodaja po tipu obuce"
-        description="Podrska odluci sa asortimanskim fokusom po tipu obuce."
-        periodFrom={activeFilters.fromDate}
-        periodTo={activeFilters.toDate}
-        lastRefreshAt={data?.generatedAt ?? null}
-        dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
-        dataQualityStatus={headerDataQualityStatus}
-        mode="signal"
-        methodologyHref="/analytics/data-quality"
-        dataQualityHref="/analytics/data-quality"
-        refreshStatusHref="/admin/configuration?panel=workers"
-        compact
-      />
-      <header className="shoetype-decision-header">
-        <div>
-          <h1 className="shoetype-decision-title">Prodaja po tipu obuće</h1>
-          <p className="shoetype-decision-subtitle">
-            Podrška odluci sa asortimanskim fokusom po tipu obuće.
-          </p>
-        </div>
-        {data?.generatedAt ? (
-          <div className="shoetype-decision-generated">
-            Generisano: {new Date(data.generatedAt).toLocaleString("sr-RS")}
-          </div>
-        ) : null}
-      </header>
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
+    () => [
+      {
+        key: "scope",
+        label: "Opseg",
+        value: data?.dataScope ?? dataScope,
+        tone: "info",
+      },
+      {
+        key: "period",
+        label: "Period",
+        value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
+        tone: "neutral",
+      },
+      {
+        key: "rows",
+        label: "Prikazano",
+        value: `${sortedRows.length.toLocaleString("sr-RS")} / ${decisionRows.length.toLocaleString("sr-RS")}`,
+        tone: sortedRows.length < decisionRows.length ? "warning" : "success",
+      },
+    ],
+    [
+      activeFilters.fromDate,
+      activeFilters.toDate,
+      data?.dataScope,
+      dataScope,
+      decisionRows.length,
+      sortedRows.length,
+    ],
+  );
 
-      <section className="shoetype-decision-filters">
-        <label className="shoetype-decision-field">
-          <span>Period</span>
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(
+    () => [
+      {
+        key: "preset",
+        label: "Period",
+        control: (
           <select value={periodPreset} onChange={(event) => applyPreset(event.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
@@ -825,10 +834,12 @@ export default function ShoeTypeSalesStatsPage() {
             <option value="365d">Poslednjih 365 dana</option>
             <option value="custom">Prilagođeno</option>
           </select>
-        </label>
-
-        <label className="shoetype-decision-field">
-          <span>Od</span>
+        ),
+      },
+      {
+        key: "from",
+        label: "Od",
+        control: (
           <input
             type="date"
             value={fromDate}
@@ -842,10 +853,12 @@ export default function ShoeTypeSalesStatsPage() {
               }
             }}
           />
-        </label>
-
-        <label className="shoetype-decision-field">
-          <span>Do</span>
+        ),
+      },
+      {
+        key: "to",
+        label: "Do",
+        control: (
           <input
             type="date"
             value={toDate}
@@ -859,10 +872,12 @@ export default function ShoeTypeSalesStatsPage() {
               }
             }}
           />
-        </label>
-
-        <label className="shoetype-decision-field">
-          <span>Sezona</span>
+        ),
+      },
+      {
+        key: "season",
+        label: "Sezona",
+        control: (
           <select value={sezonaId ?? ""} onChange={(event) => handleSeasonChange(event.target.value)}>
             <option value="">Sve sezone</option>
             {(data?.sezone ?? []).map((sezona) => (
@@ -871,10 +886,12 @@ export default function ShoeTypeSalesStatsPage() {
               </option>
             ))}
           </select>
-        </label>
-
-        <label className="shoetype-decision-field">
-          <span>Objekat</span>
+        ),
+      },
+      {
+        key: "store",
+        label: "Objekat",
+        control: (
           <select
             value={storeId ?? ""}
             onChange={(event) => {
@@ -890,12 +907,49 @@ export default function ShoeTypeSalesStatsPage() {
               </option>
             ))}
           </select>
-        </label>
+        ),
+      },
+    ],
+    [data?.sezone, fromDate, periodPreset, sezonaId, storeId, stores, toDate],
+  );
 
-        <div className="shoetype-decision-actions">
-          <button type="button" className="secondary" onClick={resetFilters} disabled={loading}>Reset</button>
-        </div>
-      </section>
+  return (
+    <div className="shoetype-decision-page">
+      <AnalyticsTrustHeader
+        title="Prodaja po tipu obuće"
+        description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
+        periodFrom={activeFilters.fromDate}
+        periodTo={activeFilters.toDate}
+        lastRefreshAt={data?.generatedAt ?? null}
+        dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
+        dataQualityStatus={headerDataQualityStatus}
+        mode="signal"
+        methodologyHref="/analytics/data-quality"
+        dataQualityHref="/analytics/data-quality"
+        refreshStatusHref="/admin/configuration?panel=workers"
+        compact
+      />
+
+      <AnalyticsControlBar
+        title="Opseg i filteri"
+        description="Period, sezona i objekat ostaju ovde; prioritetna lista ispod ostaje fokusirana na tip obuće."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "reset",
+          label: loading ? "Učitavanje..." : "Reset filtera",
+          onClick: resetFilters,
+          disabled: loading,
+        }}
+        secondaryActions={[
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+            tone: "secondary",
+          },
+        ]}
+        fields={controlBarFields}
+      />
 
       {invalidRange ? (
         <div className="shoetype-decision-message error">Datum od ne moze biti posle datuma do.</div>
@@ -1079,18 +1133,28 @@ export default function ShoeTypeSalesStatsPage() {
                     PoP trend = promena prometa prema prethodnom uporedivom periodu. Nivelacija impact = pre/post promena unutar prometa sa poznatim prvim datumom nivelacije.
                   </p>
                 </div>
-                <AnalyticsTableToolbar
-                  tableKey="shoe-type-sales-stats"
-                  tableTitle="Podrška odluci - tipovi obuće"
-                  columns={decisionColumns}
-                  rows={sortedRows}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                />
               </div>
 
-              <div className="shoetype-decision-table-wrap">
+              <AnalyticsDataTable
+                testId="shoe-type-sales-stats-data-table"
+                rowCount={sortedRows.length}
+                truncationLabel={
+                  decisionRows.length > sortedRows.length
+                    ? `Ukupno u rezultatu: ${decisionRows.length.toLocaleString("sr-RS")} (deo redova je sakriven sort/filter kontekstom)`
+                    : undefined
+                }
+                toolbar={(
+                  <AnalyticsTableToolbar
+                    tableKey="shoe-type-sales-stats"
+                    tableTitle="Podrška odluci - tipovi obuće"
+                    columns={decisionColumns}
+                    rows={sortedRows}
+                    filters={toolbarFilters}
+                    metadata={toolbarMetadata}
+                    defaultOrientation="landscape"
+                  />
+                )}
+              >
                 <table className="shoetype-decision-table">
                   <thead>
                     <tr>
@@ -1105,7 +1169,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Tip obuće <span className="sort-indicator" aria-hidden="true">{sortMarker("tipObuceNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv tipa obuće (npr. patike, sandale)." />
                         </button>
                       </th>
-                      <th className={isSortActive("ukupanPromet", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("ukupanPromet", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupanPromet", sortField) ? "is-active" : ""}`}
@@ -1116,7 +1180,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Promet <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupanPromet", sortField, sortDir)}</span> <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className={isSortActive("ukupnaKolicina", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("ukupnaKolicina", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupnaKolicina", sortField) ? "is-active" : ""}`}
@@ -1127,7 +1191,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada u izabranom periodu." />
                         </button>
                       </th>
-                      <th className={isSortActive("totalCost", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("totalCost", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
@@ -1138,7 +1202,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className={isSortActive("sharePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("sharePct", sortField) ? "is-active" : ""}`}
@@ -1149,7 +1213,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Udeo u prometu <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Udeo ovog tipa obuće u ukupnom prometu svih prikazanih tipova. Formula: promet tipa / ukupan promet x 100." />
                         </button>
                       </th>
-                      <th className={isSortActive("marginContribution", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginContribution", sortField) ? "is-active" : ""}`}
@@ -1160,7 +1224,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Maržni doprinos <span className="sort-indicator" aria-hidden="true">{sortMarker("marginContribution", sortField, sortDir)}</span> <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za stavke ovog tipa sa dostupnim troškom. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className={isSortActive("marginPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("marginPct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginPct", sortField) ? "is-active" : ""}`}
@@ -1171,7 +1235,7 @@ export default function ShoeTypeSalesStatsPage() {
                           Marža % <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.marginPct} />
                         </button>
                       </th>
-                      <th className={isSortActive("popRevenueChangePct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("popRevenueChangePct", sortField) ? "is-active" : ""}`}
@@ -1182,7 +1246,7 @@ export default function ShoeTypeSalesStatsPage() {
                           PoP trend <span className="sort-indicator" aria-hidden="true">{sortMarker("popRevenueChangePct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.popRevenueChangePct} />
                         </button>
                       </th>
-                      <th className={isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "align-right is-sorted" : "align-right"}>
+                      <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? "is-active" : ""}`}
@@ -1240,12 +1304,12 @@ export default function ShoeTypeSalesStatsPage() {
                                 />
                               </div>
                             </td>
-                            <td className="align-right metric-strong">{fmtRsd(row.ukupanPromet)}</td>
-                            <td className="align-right">{fmtQty(row.ukupnaKolicina)}</td>
-                            <td className="align-right">{fmtRsd(row.totalCost)}</td>
-                            <td className="align-right"><span className="metric-chip metric-chip-neutral">{fmtPct(row.sharePct, 2)}</span></td>
-                            <td className="align-right metric-strong">{fmtRsd(row.marginContribution)}</td>
-                            <td className="align-right">
+                            <td className="analytics-data-table__numeric metric-strong">{fmtRsd(row.ukupanPromet)}</td>
+                            <td className="analytics-data-table__numeric">{fmtQty(row.ukupnaKolicina)}</td>
+                            <td className="analytics-data-table__numeric">{fmtRsd(row.totalCost)}</td>
+                            <td className="analytics-data-table__numeric"><span className="metric-chip metric-chip-neutral">{fmtPct(row.sharePct, 2)}</span></td>
+                            <td className="analytics-data-table__numeric metric-strong">{fmtRsd(row.marginContribution)}</td>
+                            <td className="analytics-data-table__numeric">
                               <span>{fmtPct(row.marginPct, 1)}</span>
                               {tierNeedsWarning(row.marginQualityTier) ? (
                                 <span className={`quality-pill ${qualityTierClass(row.marginQualityTier)}`} title={row.marginQualityTooltip ?? row.marginQualityLabel ?? ""}>
@@ -1253,8 +1317,8 @@ export default function ShoeTypeSalesStatsPage() {
                                 </span>
                               ) : null}
                             </td>
-                            <td className="align-right" title={popMetric.title}><span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span></td>
-                            <td className="align-right" title={nivelacijaImpactMetric.title}><span className={`metric-chip trend-pill ${nivelacijaImpactMetric.className}`}>{nivelacijaImpactMetric.label}</span></td>
+                            <td className="analytics-data-table__numeric" title={popMetric.title}><span className={`metric-chip trend-pill ${popMetric.className}`}>{popMetric.label}</span></td>
+                            <td className="analytics-data-table__numeric" title={nivelacijaImpactMetric.title}><span className={`metric-chip trend-pill ${nivelacijaImpactMetric.className}`}>{nivelacijaImpactMetric.label}</span></td>
                             <td>
                               <div className="shoetype-status-stack">
                                 <span
@@ -1284,7 +1348,7 @@ export default function ShoeTypeSalesStatsPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 
