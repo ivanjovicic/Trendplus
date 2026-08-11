@@ -180,6 +180,19 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(await screen.findByText("Nema podataka za izabrane filtere.")).toBeInTheDocument();
   });
 
+  it("renders shared control bar and data table chrome", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("analytics-control-bar")).toBeInTheDocument();
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Primeni filtere/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reset filtera/i })).toBeInTheDocument();
+  });
+
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
       makeResponse([

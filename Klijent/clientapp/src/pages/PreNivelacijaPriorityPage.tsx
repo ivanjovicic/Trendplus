@@ -9,6 +9,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -114,11 +116,11 @@ function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) 
   return (
     <div style={CHART_TOOLTIP_STYLE}>
       <p style={{ margin: 0, fontSize: "12px", fontWeight: 500 }}>{data.name}</p>
-      <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
         Udeo u akciji: {fmtPct(data.sharePct, 2)}
       </p>
       {wowPct != null ? (
-        <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "#ef4444" : "#16a34a" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "var(--error, var(--theme-color-ef4444, #ef4444))" : "var(--success, var(--theme-color-16a34a, #16a34a))" }}>
           Sedm. promena rizika: {wowPct >= 0 ? "+" : ""}{fmtPct(wowPct, 1)}
         </p>
       ) : null}
@@ -557,6 +559,95 @@ export default function PreNivelacijaPriorityPage() {
     });
   };
 
+  const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => {
+    const selectedSupplier = supplierOptions.find((item) => item.supplierId === supplierId);
+    const selectedSeason = seasonOptions.find((item) => item.id === seasonId);
+    const selectedFootwearType = footwearTypeOptions.find((item) => item.id === footwearTypeId);
+
+    return [
+      {
+        key: "supplier",
+        label: "Dobavljač",
+        value: selectedSupplier?.supplierName ?? "Svi",
+      },
+      {
+        key: "season",
+        label: "Sezona",
+        value: selectedSeason?.label ?? "Sve",
+      },
+      {
+        key: "footwear",
+        label: "Tip obuće",
+        value: selectedFootwearType?.label ?? "Svi",
+      },
+      {
+        key: "high-priority",
+        label: "Visok prioritet",
+        value: candidateCounts.highPriority.toLocaleString("sr-RS"),
+        tone: "success",
+      },
+      {
+        key: "limited-signal",
+        label: "Ograničen signal",
+        value: (candidateCounts.doNotTrust + candidateCounts.insufficientData).toLocaleString("sr-RS"),
+        tone: "warning",
+      },
+    ];
+  }, [candidateCounts.doNotTrust, candidateCounts.highPriority, candidateCounts.insufficientData, footwearTypeId, footwearTypeOptions, seasonId, seasonOptions, supplierId, supplierOptions]);
+
+  const controlBarFields = useMemo<AnalyticsControlBarField[]>(() => [
+    {
+      key: "supplierId",
+      label: "Dobavljač",
+      control: (
+        <select value={supplierId ?? ""} onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Svi</option>
+          {supplierOptions.map((item) => (
+            <option key={item.supplierId ?? item.supplierName} value={item.supplierId ?? ""}>{item.supplierName}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "seasonId",
+      label: "Sezona",
+      control: (
+        <select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Sve</option>
+          {seasonOptions.map((item) => (
+            <option key={item.id} value={item.id}>{item.label}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "footwearTypeId",
+      label: "Tip obuće",
+      control: (
+        <select value={footwearTypeId ?? ""} onChange={(e) => setFootwearTypeId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Svi</option>
+          {footwearTypeOptions.map((item) => (
+            <option key={item.id} value={item.id}>{item.label}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "minScore",
+      label: "Min. skor",
+      control: (
+        <input type="number" min={0} max={100} value={minScore} onChange={(e) => setMinScore(Number(e.target.value) || 0)} />
+      ),
+    },
+    {
+      key: "noSaleDaysMin",
+      label: "Min. dana bez prodaje",
+      control: (
+        <input type="number" min={0} value={noSaleDaysMin} onChange={(e) => setNoSaleDaysMin(Number(e.target.value) || 0)} />
+      ),
+    },
+  ], [footwearTypeId, footwearTypeOptions, minScore, noSaleDaysMin, seasonId, seasonOptions, supplierId, supplierOptions]);
+
   const openCandidateDetail = (row: DecisionCandidate) => {
     saveAnalyticsDetailSnapshot(
       buildAnalyticsDetailSnapshot({
@@ -593,6 +684,33 @@ export default function PreNivelacijaPriorityPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      <AnalyticsControlBar
+        title="Opseg i filteri"
+        description="Dobavljač, sezona, tip obuće i pragovi ostaju ovde; lista ispod ostaje fokusirana na pre-nivelaciju."
+        chips={controlBarChips}
+        primaryAction={{
+          key: "apply",
+          label: loading ? "Učitavanje..." : "Primeni filtere",
+          onClick: handleApplyFilters,
+          disabled: loading || !isDirty,
+        }}
+        secondaryActions={[
+          {
+            key: "reset",
+            label: "Reset filtera",
+            onClick: handleResetFilters,
+            disabled: loading,
+            tone: "secondary",
+          },
+          {
+            key: "data-quality",
+            label: "Kvalitet podataka",
+            to: "/analytics/data-quality",
+            tone: "secondary",
+          },
+        ]}
+        fields={controlBarFields}
+      />
       <header className="pnp-decision-header">
         <div>
           <h1 className="pnp-decision-title">Prioriteti pre-nivelacije</h1>
@@ -605,54 +723,6 @@ export default function PreNivelacijaPriorityPage() {
           Generisano: {data?.generatedAtUtc ? new Date(data.generatedAtUtc).toLocaleString("sr-RS") : "-"}
         </div>
       </header>
-
-      <section className="pnp-decision-filters">
-        <label className="pnp-decision-field">
-          <span>Dobavljač</span>
-          <select value={supplierId ?? ""} onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">Svi</option>
-            {supplierOptions.map((item) => (
-              <option key={item.supplierId ?? item.supplierName} value={item.supplierId ?? ""}>{item.supplierName}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="pnp-decision-field">
-          <span>Sezona</span>
-          <select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">Sve</option>
-            {seasonOptions.map((item) => (
-              <option key={item.id} value={item.id}>{item.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="pnp-decision-field">
-          <span>Tip obuće</span>
-          <select value={footwearTypeId ?? ""} onChange={(e) => setFootwearTypeId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">Svi</option>
-            {footwearTypeOptions.map((item) => (
-              <option key={item.id} value={item.id}>{item.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="pnp-decision-field">
-          <span>Min. skor</span>
-          <input type="number" min={0} max={100} value={minScore} onChange={(e) => setMinScore(Number(e.target.value) || 0)} />
-        </label>
-
-        <label className="pnp-decision-field">
-          <span>Min. dana bez prodaje</span>
-          <input type="number" min={0} value={noSaleDaysMin} onChange={(e) => setNoSaleDaysMin(Number(e.target.value) || 0)} />
-        </label>
-
-        <div className="pnp-decision-actions">
-          {isDirty ? <span className="pnp-dirty-indicator">Neprimenjeni filteri</span> : null}
-          <button type="button" onClick={handleApplyFilters} disabled={loading}>Primeni</button>
-          <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button>
-        </div>
-      </section>
 
       {error ? (
         <AnalyticsErrorState
@@ -766,20 +836,6 @@ export default function PreNivelacijaPriorityPage() {
                     {recommendationStatusLabel("increase_focus")}: {candidateCounts.increaseFocus} | {recommendationStatusLabel("maintain")}: {candidateCounts.maintain} | {recommendationStatusLabel("review")}: {candidateCounts.review} | {recommendationStatusLabel("do_not_trust")}: {candidateCounts.doNotTrust} | {recommendationStatusLabel("insufficient_data")}: {candidateCounts.insufficientData} | Visok prioritet: {candidateCounts.highPriority}
                   </p>
                 </div>
-                <div className="pnp-decision-table-controls">
-                  <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
-                  <span>Strana {page}</span>
-                  <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeća</button>
-                </div>
-                <AnalyticsTableToolbar
-                  tableKey="pre-nivelacija-prioriteti"
-                  tableTitle="Podrška za odluku pre nivelacije"
-                  columns={decisionColumns}
-                  rows={sortedRows}
-                  filters={toolbarFilters}
-                  metadata={toolbarMetadata}
-                  defaultOrientation="landscape"
-                />
               </div>
 
               <div className="pnp-focus-tabs" role="tablist">
@@ -808,7 +864,29 @@ export default function PreNivelacijaPriorityPage() {
                 })}
               </div>
 
-              <div className="pnp-decision-table-wrap">
+              <AnalyticsDataTable
+                testId="pre-nivelacija-prioriteti-data-table"
+                rowCount={filteredRows.length}
+                truncationLabel={focusFilter !== "all" ? `Fokus: ${FOCUS_LABELS[focusFilter]}` : undefined}
+                toolbar={(
+                  <div className="pnp-table-toolbar">
+                    <div className="pnp-decision-table-controls">
+                      <button type="button" onClick={() => canGoPrev && setPage((p) => p - 1)} disabled={!canGoPrev || loading}>Prethodna</button>
+                      <span>Strana {page}</span>
+                      <button type="button" onClick={() => canGoNext && setPage((p) => p + 1)} disabled={!canGoNext || loading}>Sledeća</button>
+                    </div>
+                    <AnalyticsTableToolbar
+                      tableKey="pre-nivelacija-prioriteti"
+                      tableTitle="Podrška za odluku pre nivelacije"
+                      columns={decisionColumns}
+                      rows={sortedRows}
+                      filters={toolbarFilters}
+                      metadata={toolbarMetadata}
+                      defaultOrientation="landscape"
+                    />
+                  </div>
+                )}
+              >
                 <table className="pnp-decision-table">
                   <thead>
                     <tr>
@@ -907,7 +985,7 @@ export default function PreNivelacijaPriorityPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AnalyticsDataTable>
             </article>
           </section>
 

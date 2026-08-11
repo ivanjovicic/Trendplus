@@ -228,6 +228,15 @@
   gap: 8px;
 }
 
+.pnp-table-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .pnp-decision-table-controls button {
   background: transparent;
   border: 1px solid var(--border-strong, var(--theme-color-374151, #374151));
