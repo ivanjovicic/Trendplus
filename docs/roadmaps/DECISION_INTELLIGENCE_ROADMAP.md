@@ -101,6 +101,10 @@ No recommendation may be labelled "learned better" merely because it was accepte
 
 Goal: provide an auditable historical record of what was recommended, what happened and what result was observed.
 
+Authoritative contract:
+
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+
 Roadmap sequence:
 
 `Recommendation -> Action -> Execution -> Outcome -> Historical timeline -> Success metrics`
