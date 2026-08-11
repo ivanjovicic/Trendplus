@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. First S-tier measurement pack is required before PERF02.
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is now recorded in `.ai/runs/2026-08-11-PERF02-evidence.md` and becomes the baseline for PERF03.
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 

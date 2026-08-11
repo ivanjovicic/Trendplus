@@ -203,7 +203,10 @@ notes:
 5. B8 API cold start first useful analytics response
 6. Attach correctness co-assertions for each
 
-Until that pack exists, PERF02 remains WAITING (needs usable measurements).
+Recorded baseline pack:
+
+- `.ai/runs/2026-08-11-PERF02-evidence.md`
+- `trendplus_test` seeded baseline with B1 sales summary, B2 dashboard bootstrap and B8 cold-start measurements
 
 ## Acceptance (PERF01)
 

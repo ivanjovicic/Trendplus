@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF02` (`PERF01` DONE; `PERF03` WAITING on measurements) | baseline/measurement plan |
+| PERF - Performance | `PERF03` (`PERF02` DONE; baseline evidence recorded) | measurement-backed backlog |
 | OBS - Observability | `OBS06` | Import SLA evidence contract (docs) |
 | SEC - Security Evolution | `SEC04` | supply-chain assurance policy (docs) |
 
@@ -22,7 +22,7 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ## PERF02 - Execute the S-tier baseline measurement pack and capture evidence
 
-Status: READY
+Status: DONE
 Priority: future / measurement
 Feature family: performance-measurement-pack
 Parallel-safe: yes, measurement/docs only
@@ -31,7 +31,7 @@ Local lock: `.ai/task-locks/PERF02-cursor.lock.md`
 
 ### Problem
 
-PERF01 defined the baseline contract, but the queue still needs one executable measurement slice that captures the first S-tier evidence pack so later optimization planning can rely on measured facts instead of assumptions.
+PERF01 defined the baseline contract, and PERF02 captured the first S-tier evidence pack so later optimization planning can rely on measured facts instead of assumptions.
 
 ### Evidence
 
@@ -39,11 +39,12 @@ PERF01 defined the baseline contract, but the queue still needs one executable m
 - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md` already defines the measurement discipline and target budgets.
 - `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` and the existing benchmark-related scripts can anchor the first pack.
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` keeps the runtime correctness gates ahead of optimization work.
+- `.ai/runs/2026-08-11-PERF02-evidence.md` records the baseline pack on `trendplus_test`.
 
 ### Scope
 
 - benchmark harnesses and scripts already in the repo;
-- representative small/medium/large dataset checks;
+- representative small dataset baseline checks;
 - exact before/after evidence capture for the highest-value flows;
 - no query/index/cache optimization in this prompt.
 
@@ -56,10 +57,10 @@ PERF01 defined the baseline contract, but the queue still needs one executable m
 
 ### Do
 
-1. Run the agreed S-tier measurement pack on the current codebase.
-2. Capture environment, dataset tier, warm/cold state and output correctness checks.
+1. Keep the recorded S-tier measurement pack as the source of truth for later optimization planning.
+2. Preserve environment, dataset tier, warm/cold state and output correctness checks in the evidence log.
 3. Record exact commands and observed latency/throughput/memory evidence.
-4. Preserve the baseline as the source for later optimization planning.
+4. Use the measured baseline to prepare the next optimization backlog.
 
 ### Tests
 
@@ -77,6 +78,27 @@ PERF01 defined the baseline contract, but the queue still needs one executable m
 ### Dependencies
 
 - PERF01 DONE.
+
+### Completion note
+
+- Date: 2026-08-11
+- Agent: Cursor
+- Changed files:
+  - `.ai/runs/2026-08-11-PERF02-evidence.md`
+  - `.ai/runs/2026-08-11-PERF02-raw.json`
+  - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf02_measure.ps1` - pass
+  - baseline data seeded with `005_CreateArtikliAndTestData.sql` and `004_SimpleTestData.sql`
+- Risks:
+  - dashboard bootstrap remains partial, but explicit `success=true`/`warningCode` keep the signal honest
+  - `004_SimpleTestData.sql` has a final top-level `RAISE NOTICE` syntax error after inserts; the inserted rows remain committed
+- Next:
+  - `PERF03` is READY and can turn the measured B1/B2/B8 pack into a candidate backlog
+  - Current READY in this queue: `PERF03`
 
 ---
 
@@ -152,8 +174,8 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
   - budgets remain target-only until S-tier measurement pack is recorded
   - no BenchmarkDotNet/k6 harness yet (explicit gap)
 - Next:
-  - `PERF03` stays WAITING until usable measurements exist
-  - Current READY in this queue: `PERF02`
+  - `PERF03` is READY from the recorded measurements
+  - Current READY in this queue: `PERF03`
 
 ### Dependencies
 
@@ -164,7 +186,7 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
 
-Status: WAITING  
+Status: READY
 Priority: future  
 Feature family: performance-measured-backlog  
 Parallel-safe: yes, planning only  
@@ -176,7 +198,8 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 ### Evidence
 
-- PERF01 will produce baseline methodology and measurements/gaps.
+- `.ai/runs/2026-08-11-PERF02-evidence.md` records the baseline methodology and measurements.
+- PERF02 now provides concrete B1/B2/B8 timings and correctness checks.
 
 ### Scope
 
@@ -185,7 +208,7 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 ### Read first
 
-- PERF01 output
+- PERF02 evidence log
 - relevant SQL/index/cache code/tests for measured candidates
 
 ### Do
@@ -207,7 +230,7 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 ### Dependencies
 
-- PERF01 DONE with usable measurements.
+- PERF02 DONE with usable measurements.
 
 ---
 

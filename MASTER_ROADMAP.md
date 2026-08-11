@@ -49,7 +49,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX11` | `DEX10` DONE = immutable evidence snapshot on action. Next is docs-only cross-family readiness. | Yes, docs/contracts | Cross-family explainability readiness |
 | RL | same queue/roadmap as DEX | `RL05` | `RL04` DONE = lifecycle + learning eligibility. Next is docs-only measurement-only statistics contract. | Yes, docs/contracts | Measurement-only statistics projection |
 | DT | same queue/roadmap as DEX | `DT06` | `DT05` DONE = Slice-2 filtered timeline. Next is docs-only export/report contract. | Yes, docs/contracts | Timeline export/retrospective contract |
-| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF02` | `PERF01` DONE; `PERF02` needs recorded S-tier measurements | Yes, measurement plan | Run B1–B3/B8 pack → PERF02 |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF03` | `PERF02` DONE; baseline evidence recorded in `.ai/runs/2026-08-11-PERF02-evidence.md` | Yes, measurement-backed backlog | Turn measured B1/B2/B8 pack into PERF03 backlog |
 | OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS06` | `OBS05` DONE = service-level vocabulary. Next is Import SLA evidence contract (docs). | Yes, docs/contracts | Import SLA evidence |
 | SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC04` | `SEC01`–`SEC03` DONE; `SEC04` READY (S2-2 supply-chain docs). `SEC05` WAITING (S2-3). | Yes, docs only | SEC04 then SEC05 when MT09/interim ready |
 
