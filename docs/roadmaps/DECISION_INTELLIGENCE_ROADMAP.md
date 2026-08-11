@@ -76,6 +76,10 @@ Desired flow:
 
 Goal: improve recommendation confidence from measured outcomes without introducing opaque learning before the evidence loop is reliable.
 
+Authoritative contract:
+
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+
 Roadmap sequence:
 
 `Recommendation issued -> Accepted -> Executed -> Measured -> Outcome -> Learning -> Statistics -> Improved confidence`
