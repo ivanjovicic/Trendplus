@@ -784,58 +784,27 @@ Trendplus recommendations already expose reasons, confidence and impact in multi
 
 ## RL01 - Define recommendation outcome-learning contract
 
-Status: READY  
-Priority: future / planning  
-Feature family: recommendation-learning-contract  
-Parallel-safe: yes, docs/contracts only  
-Owner: unassigned
+Status: DONE
+Priority: future / planning
+Feature family: recommendation-learning-contract
+Parallel-safe: yes, docs/contracts only
+Owner: Codex
+Local lock: removed after DONE
 
-### Problem
+### Completion note
 
-Trendplus can record recommendations/actions/outcomes, but a learning program would be unsafe if acceptance, execution and measured success were treated as the same thing or if historical statistics changed confidence without an explicit evidence contract.
-
-### Evidence
-
-- Existing analytics action/outcome reliability work distinguishes lifecycle/measurement states and denominators.
-- ADR-004 requires deterministic, evidence-backed recommendation principles.
-- The product vision requires `issued -> accepted -> executed -> measured -> outcome -> learning` rather than click/acceptance learning.
-
-### Scope
-
-- define lifecycle vocabulary, outcome eligibility and statistical dimensions;
-- map current action/outcome fields and gaps;
-- define confidence-calibration input/output contract at documentation level;
-- no runtime learning algorithm, ML model or automatic score change.
-
-### Read first
-
-- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-- `docs/architecture/ADRS.md`
-- action/outcome reliability queue/audits
-- current action/outcome DTOs and tests
-
-### Do
-
-1. Define issued/accepted/rejected/ignored/executed/measured/not-measured outcome states.
-2. Define eligibility rules for measured success/failure/insufficient evidence.
-3. Define denominator vocabulary for acceptance, execution, measurement and success rates.
-4. Define attribution/window metadata needed before outcome statistics are trustworthy.
-5. Define segmentation rules and minimum-evidence principles for statistics.
-6. Define a future deterministic calibration interface while explicitly leaving runtime behavior unchanged.
-
-### Tests
-
-- examples distinguish accepted from executed and executed from measured;
-- no-measurement cannot count as success/failure;
-- zero-denominator behavior is explicit;
-- low-sample statistics remain low-confidence/insufficient;
-- no acceptance-only "learning" path exists.
-
-### Acceptance
-
-- one authoritative learning lifecycle/statistics contract exists;
-- later implementations can compute statistics without changing recommendation confidence yet;
-- no ML/AI/runtime learning was added.
+- Date: 2026-08-11
+- Agent: Codex
+- Commit SHA: 3c7104f
+- Changed files:
+  - `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+- Provere:
+  - `git diff --check`
+- Rizici:
+  - contract is docs-only; runtime calibration remains intentionally deferred
+- Sledece:
+  - `DT01 - Define Decision Timeline event model and success metrics`
 
 ### Dependencies
 
