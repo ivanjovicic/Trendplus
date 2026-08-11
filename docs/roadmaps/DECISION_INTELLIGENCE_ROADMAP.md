@@ -111,14 +111,19 @@ Roadmap sequence:
 
 Phases:
 
-1. canonical timeline event model;
-2. decision/action/execution/outcome correlation identifiers;
-3. immutable/append-oriented history semantics for important events;
-4. filtered timeline by entity/recommendation family/time period;
-5. outcome window and measurement state display;
-6. success metrics that distinguish issued, accepted, executed, measured and successful denominators;
-7. evidence snapshot links for historical explainability;
-8. export/reporting for decision review and business retrospectives.
+1. canonical timeline event model — **DONE** (`docs/architecture/DECISION_TIMELINE_CONTRACT.md`);
+2. decision/action/execution/outcome correlation identifiers — covered in DT01; first-class timestamps remain a later additive slice;
+3. immutable/append-oriented history semantics for important events — projection-first via notes/snapshots (`docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`);
+4. filtered timeline by entity/recommendation family/time period — planned API/UI slices in DT02;
+5. outcome window and measurement state display — planned UI/export slices in DT02;
+6. success metrics that distinguish issued, accepted, executed, measured and successful denominators — **DONE** in DT01 (aligned with RL01);
+7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots; harden in DT02 Slice 5;
+8. export/reporting for decision review and business retrospectives — planned in DT02 Slice 5.
+
+Authoritative planning outputs:
+
+- `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
 ## Decision Engine evolution
 

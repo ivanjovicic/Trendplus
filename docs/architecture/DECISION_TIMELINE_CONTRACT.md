@@ -3,6 +3,7 @@
 Status: authoritative DT01 contract
 Date: 2026-08-11
 Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+Related rollout plan: `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 Related contracts:
 
 - `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
@@ -323,6 +324,54 @@ Interpretation:
 - the workflow happened;
 - the feedback loop did not;
 - outcome rates stay guarded by the measurement denominator.
+
+### Example 4: delayed outcome
+
+- `issuedCount = 1`
+- `acceptedCount = 1`
+- `executedCount = 1`
+- `measuredCount = 0`
+- `outcome_measurement_started` exists
+- `outcomeMeasuredAtUtc` is still null
+
+Interpretation:
+
+- measurement has begun but is not complete;
+- do not treat the row as `success`, `negative`, or `not_measured` yet;
+- keep `pending` / in-window state explicit until evidence arrives or the window closes.
+
+### Example 5: missing evidence
+
+- `issuedCount = 1`
+- `acceptedCount = 1`
+- `executedCount = 1`
+- `OutcomeStatus` attempted as `success`
+- `evidenceSource` missing
+
+Interpretation:
+
+- the result is not a measured business fact;
+- keep or coerce to `pending` / `not_measured`;
+- never invent `outcomeMeasuredAtUtc` to close the funnel.
+
+## Export, report and drill-down requirements
+
+Later timeline surfaces must support review without rewriting history.
+
+### Export / report
+
+- export must include correlation identifiers (`sourceRecommendationId`, `actionId`, `correlationId` when present);
+- export must separate lifecycle stage timestamps from `updatedAtUtc`;
+- export must preserve `outcomeStatus`, evidence fields and gap reasons;
+- export failure must be graceful and must not fabricate zeros for missing rates;
+- print/report views must show period, freshness/data-quality context and denominator labels.
+
+### Drill-down
+
+- summary row -> timeline of canonical events for one `sourceRecommendationId` / `actionId`;
+- event -> snapshot fields for that stage (recommendation creation snapshot or outcome resolution snapshot);
+- measured event -> `evidenceSource` / `evidenceReference` when present;
+- missing stages render as explicit gaps, not inferred events.
 
 ## Acceptance criteria for DT01
 
