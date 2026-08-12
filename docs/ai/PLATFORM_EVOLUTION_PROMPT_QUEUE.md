@@ -1,4 +1,4 @@
-﻿# Trendplus Platform Evolution Planning Queue
+# Trendplus Platform Evolution Planning Queue
 
 Created: 2026-08-08  
 Roadmaps:
@@ -41,7 +41,7 @@ PERF04 defined the M-tier plan and seed recipe, but pilot performance claims and
 
 ### Scope
 
-- seed `M-PERF-01` fixture and run mandatory B1–B8 families from the plan;
+- seed `M-PERF-01` fixture and run mandatory B1?B8 families from the plan;
 - capture evidence under `.ai/runs/`; no production optimization.
 
 ### Read first
@@ -83,12 +83,12 @@ Feature family: performance-m-tier-baseline
 Parallel-safe: yes, planning/measurement only
 Owner: Cursor
 Local lock: removed after DONE
-Commit: pending
+Commit: `a61e7d5`
 Completed: 2026-08-12
 
 ### Problem
 
-PERF03 ranked S-tier findings, but Decision Board, Product Decision Center, import, workers and frontend route load still have no M-tier baseline — optimization must not extrapolate from 15-product smoke data.
+PERF03 ranked S-tier findings, but Decision Board, Product Decision Center, import, workers and frontend route load still have no M-tier baseline ? optimization must not extrapolate from 15-product smoke data.
 
 ### Evidence
 
@@ -111,7 +111,7 @@ PERF03 ranked S-tier findings, but Decision Board, Product Decision Center, impo
 ### Do
 
 1. Define M-tier seed parameters and row-count targets.
-2. List which benchmark families (B1–B8) must be recorded on M-tier before pilot performance claims.
+2. List which benchmark families (B1?B8) must be recorded on M-tier before pilot performance claims.
 3. Keep cold/warm and correctness co-assertions explicit.
 4. Do not invent M-tier timings in this prompt.
 
@@ -207,7 +207,7 @@ Optimization tasks should be created only after baseline evidence identifies the
 - Deliverable: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
 - Also updated: PERFORMANCE_BASELINE_CONTRACT pointer, PERFORMANCE_ROADMAP, MASTER_ROADMAP
 - Checks: docs/queue validators; `git diff --check`
-- Risks: S-tier only — cold-start dominates; warm paths already fast
+- Risks: S-tier only ? cold-start dominates; warm paths already fast
 - Next: PERF04 M-tier baseline measurement plan
 
 ---
@@ -386,7 +386,7 @@ Feature family: observability-analytics-sla-evidence
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
 Local lock: `.ai/task-locks/OBS07-<agent>.lock.md`
-Promotion note: 2026-08-12 — `OBS06` DONE; roadmap OBS-5 Analytics SLA evidence (docs only).
+Promotion note: 2026-08-12 ? `OBS06` DONE; roadmap OBS-5 Analytics SLA evidence (docs only).
 
 ### Problem
 
@@ -396,13 +396,13 @@ Analytics freshness and refresh provenance exist across several surfaces, but th
 
 - `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-5;
 - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` analytics terms;
-- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` R1–R7;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` R1?R7;
 - `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md` import boundary precedent.
 
 ### Scope
 
 - docs/contracts only for analytics SLA evidence fields, honesty rules and unknown behavior;
-- reuse OBS05 vocabulary and R1–R7 SLI IDs;
+- reuse OBS05 vocabulary and R1?R7 SLI IDs;
 - no runtime instrumentation rewrite;
 - no numeric customer SLA hours.
 
@@ -448,7 +448,7 @@ Feature family: observability-import-sla-evidence
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
 Local lock: `.ai/task-locks/OBS06-<agent>.lock.md`
-Promotion note: 2026-08-11 — `OBS05` DONE; roadmap OBS-4 Import SLA evidence (docs only). Rewritten from a vocabulary duplicate so OBS READY stays single and non-overlapping.
+Promotion note: 2026-08-11 ? `OBS05` DONE; roadmap OBS-4 Import SLA evidence (docs only). Rewritten from a vocabulary duplicate so OBS READY stays single and non-overlapping.
 
 ### Problem
 
@@ -458,13 +458,13 @@ Import lifecycle timestamps and states exist across connectors and status surfac
 
 - `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-4;
 - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` import terms;
-- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` I1–I6;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` I1?I6;
 - `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` import slices.
 
 ### Scope
 
 - docs/contracts only for Import SLA evidence fields, honesty rules and unknown behavior;
-- reuse OBS05 vocabulary and I1–I6 SLI IDs;
+- reuse OBS05 vocabulary and I1?I6 SLI IDs;
 - no runtime instrumentation rewrite;
 - no numeric customer SLA hours.
 
@@ -587,7 +587,7 @@ Support still needs one shared vocabulary for what counts as API availability, i
   - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
   - `MASTER_ROADMAP.md`
 - Checks: docs/queue validators; `git diff --check`
-- Risks: vocabulary only — no numeric SLO/SLA; report SLI IDs remain thin until instrumented
+- Risks: vocabulary only ? no numeric SLO/SLA; report SLI IDs remain thin until instrumented
 - Next: `OBS06` Import SLA evidence contract (roadmap OBS-4)
 - Scope repair: former OBS06 vocabulary duplicate rewritten to Import SLA evidence so READY stays single and non-overlapping
 
@@ -754,7 +754,7 @@ Feature family: observability-api-process-evidence
 Parallel-safe: yes, when paths do not collide with BCI/STAB auth or PERF optimization work
 Owner: unassigned
 Local lock: `.ai/task-locks/OBS03-<agent>.lock.md`
-Promotion note: 2026-08-11 — `OBS01`/`OBS02` DONE; first slice from `OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
+Promotion note: 2026-08-11 ? `OBS01`/`OBS02` DONE; first slice from `OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
 
 ### Problem
 
@@ -768,7 +768,7 @@ OBS02 ranked instrumentation slices, but no queued runtime prompt exists for the
 ### Scope
 
 - make request/availability/latency evidence consistent from existing `/ready`, `/health`, `/health/dependencies`, runtime version and request performance logging;
-- preserve unknown ≠ green;
+- preserve unknown ? green;
 - admin/ops visibility only where privileged; do not broaden public `/health` disclosure;
 - focused tests for unknown-when-missing and no fake-zero collapse;
 - no paid APM vendor selection; no broad rewrite.
@@ -784,7 +784,7 @@ OBS02 ranked instrumentation slices, but no queued runtime prompt exists for the
 1. Inventory current fields already available from the named sources of truth.
 2. Expose or normalize the minimal Slice-1 evidence surface (prefer reuse over new store).
 3. Mark missing probes as unknown/non-green.
-4. Add focused tests for unknown and error ≠ zero.
+4. Add focused tests for unknown and error ? zero.
 
 ### Tests
 
@@ -890,7 +890,7 @@ Slice-1 API/process evidence can show availability and request completion, but s
   - latency remains a measurement contract only until runtime prompts land
   - cold/warm naming still depends on future instrumentation slices for concrete evidence
 - Next:
-  - `OBS05` DONE → `OBS06` READY (Import SLA evidence contract)
+  - `OBS05` DONE ? `OBS06` READY (Import SLA evidence contract)
   - Current READY in this queue: `OBS06`
 
 ---
@@ -963,7 +963,7 @@ Owner: unassigned
 Commit: `9ba31fee22cfcbb72343745928a1907372f5b402`
 Completed: 2026-08-11
 Local lock: removed after DONE
-Promotion note: 2026-08-11 — `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+Promotion note: 2026-08-11 ? `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
 
 ### Problem
 
@@ -1038,7 +1038,7 @@ Feature family: security-supply-chain-policy
 Parallel-safe: yes, planning/docs only
 Owner: unassigned
 Local lock: `.ai/task-locks/SEC06-<agent>.lock.md`
-Promotion note: 2026-08-11 â€” `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+Promotion note: 2026-08-11 ? `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
 
 ### Problem
 
@@ -1236,12 +1236,12 @@ After SEC01, only orphan/post-STAB risks should become SEC backlog items.
   - `git diff --check` - pass
   - no runtime security changes
 - Risks:
-  - STAB watchlist (import/logs/docs) still unqueued — must not be re-homed to SEC
+  - STAB watchlist (import/logs/docs) still unqueued ? must not be re-homed to SEC
   - SEC runtime still gated by STAB residual acceptance + MT/GAI where claimed
 - Next:
   - Platform Evolution Current READY: `SEC03` (S2-1 docs)
   - Alternate candidate remains WAITING: `SEC04` (S2-2 supply-chain) after SEC03
-  - Higher priority: BCI05 commit/push → GHA if user authorizes
+  - Higher priority: BCI05 commit/push ? GHA if user authorizes
 
 ### Dependencies
 
