@@ -1,0 +1,441 @@
+{
+    "meta":  {
+                 "packId":  "PERF11-G10-dedicated-deferred-01",
+                 "commit":  "4576836d4c64689a9dc2a2e40bd82ec8cffc4ffe",
+                 "datetimeUtc":  "2026-08-12T16:04:33.3939862Z",
+                 "milestone":  "G10",
+                 "deploymentMode":  "dedicated",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m",
+                 "machine":  "DESKTOP-V877DAD",
+                 "os":  "Microsoft Windows 11 Pro",
+                 "prewarmEnabled":  false,
+                 "workerMode":  "web-process-with-Workers__Enabled"
+             },
+    "dimensions":  {
+                       "D1":  {
+                                  "status":  "measured",
+                                  "notes":  "Observed dedicated-host envelope under warm concurrent analytics load; reserved budgets remain non-SLO placeholders",
+                                  "cpuCoresObserved":  8,
+                                  "memoryMbObservedBefore":  86.5,
+                                  "memoryMbPeakObserved":  86.53,
+                                  "memoryMbObservedAfter":  83.25,
+                                  "diskGbDatabaseObserved":  0.104,
+                                  "diskMbDatabaseObserved":  106.39,
+                                  "postgresMaxConnectionsObserved":  100,
+                                  "postgresConnectionsBudget":  null,
+                                  "cacheFootprintMbBudget":  null,
+                                  "loadProbe":  {
+                                                    "concurrentReads":  10,
+                                                    "waves":  2,
+                                                    "successSamples":  20,
+                                                    "p50Ms":  194.38,
+                                                    "p95Ms":  418.05
+                                                }
+                              },
+                       "D2":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "See PERF10 concurrent pack; not re-baselined here"
+                              },
+                       "D3":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "See PERF10 connection-pressure pack; not re-baselined here"
+                              },
+                       "D4":  {
+                                  "status":  "blocked",
+                                  "workerType":  "AnalyticsAggregationWorker",
+                                  "maxParallelJobs":  1,
+                                  "cycleElapsedMs":  303866.94,
+                                  "startRequestMs":  98.22,
+                                  "startStatusCode":  200,
+                                  "startError":  null,
+                                  "beforeRuntimeStatus":  null,
+                                  "afterRuntimeStatus":  null,
+                                  "afterLastHeartbeat":  null,
+                                  "workerRssMb":  null,
+                                  "queueDepthPeak":  null,
+                                  "retryOrPoisonCount":  null,
+                                  "polls":  [
+                                                {
+                                                    "elapsedMs":  5045.22,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  10096.83,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  15136.89,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  20180.06,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  25207.49,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  30236.91,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  35312.96,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  40356.1,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  45449.81,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  54541.42,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  0
+                                                },
+                                                {
+                                                    "elapsedMs":  61561.61,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  0
+                                                },
+                                                {
+                                                    "elapsedMs":  66924.54,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  71959.25,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  77000.21,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  82042.29,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  87083.65,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  92119.53,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  97158.03,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  106237.28,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  0
+                                                },
+                                                {
+                                                    "elapsedMs":  111527.18,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  116570.94,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  121605.08,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  126643.49,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  131674.5,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  136710.8,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  141739.34,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  146781.78,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  151815.75,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  156852.04,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  161888.86,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  166954.71,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  171993.18,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  177033.14,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  182059.56,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  187091.16,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  192129.85,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  197166.71,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  202203.32,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  207241.4,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  212277.71,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  217305.43,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  222336.07,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  228104.01,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  233310.86,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  238345.7,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  243420.18,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  248448.21,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  253476.52,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  258516.31,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  263562.11,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  268595.55,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  273640.43,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  278668.07,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  283703.04,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  288737.02,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  293782.53,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  298832.44,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                },
+                                                {
+                                                    "elapsedMs":  303866.87,
+                                                    "runtimeStatus":  null,
+                                                    "lastHeartbeat":  null,
+                                                    "configStatusCode":  200
+                                                }
+                                            ],
+                                  "notes":  "Worker cycle did not reach Healthy+heartbeat within 300s; recorded as blocked-with-reason"
+                              },
+                       "D5":  {
+                                  "status":  "blocked",
+                                  "notes":  "No cache cardinality/MB instrumentation exposed to harness; cannot invent footprint"
+                              },
+                       "D6":  {
+                                  "status":  "deferred",
+                                  "notes":  "No M-PERF Access import fixture; same gap as PERF05 B4"
+                              },
+                       "D7":  {
+                                  "status":  "deferred",
+                                  "notes":  "Report/export burst pack not in PERF11 scope"
+                              },
+                       "D8":  {
+                                  "status":  "n/a_dedicated",
+                                  "notes":  "shared_saas requires MT fixtures"
+                              }
+                   },
+    "correctnessChecks":  {
+                              "result":  "pass",
+                              "loadSuccessSamples":  20,
+                              "workerStartStatusCode":  200,
+                              "workerReachedHealthy":  false,
+                              "notes":  "D1 load samples require HTTP 200; D4 records Healthy+heartbeat when available without masking timeout"
+                          },
+    "residualRisks":  [
+                          "observed envelope is not a reserved multi-customer budget",
+                          "D5 blocked without instrumentation",
+                          "D6/D7 deferred",
+                          "single-host dedicated only"
+                      ]
+}

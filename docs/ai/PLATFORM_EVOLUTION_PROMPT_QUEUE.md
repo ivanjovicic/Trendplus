@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF11` | deferred scalability dimensions (D1/D4-D7) |
+| PERF - Performance | `PERF12` | remaining scalability gaps (D4 retry / D5-D7) |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,14 +24,67 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF11 - Capture deferred scalability dimensions (D1/D4-D7)
+## PERF12 - Close remaining scalability gaps (D4 retry / D5-D7)
 
 Status: READY
 Priority: future / measurement
-Feature family: performance-scalability-deferred-dimensions
-Parallel-safe: no ? shares API/DB/worker measurement paths
+Feature family: performance-scalability-remaining-gaps
+Parallel-safe: no - shares API/DB/worker/export paths
 Owner: unassigned
-Local lock: `.ai/task-locks/PERF11-<agent>.lock.md`
+Local lock: `.ai/task-locks/PERF12-<agent>.lock.md`
+
+### Problem
+
+PERF11 measured the D1 host envelope and recorded D4/D5 as blocked-with-reason, but worker Healthy proof, cache footprint, import overlap, and export bursts remain open for G10 dedicated completeness.
+
+### Evidence
+
+- `.ai/runs/2026-08-12-PERF11-evidence.md`;
+- `.ai/runs/2026-08-12-PERF10-evidence.md`;
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
+
+### Scope
+
+- retry D4 with stronger worker observability or document durable blocker;
+- and/or measure at least one of D5/D6/D7 when fixtures/instrumentation allow;
+- no optimization semantics; D8 stays n/a without MT.
+
+### Read first
+
+- PERF11 evidence;
+- PERF09 contract;
+- baseline B4/B5/B6 families.
+
+### Do
+
+1. Advance at least one remaining gap to measured or durable blocked-with-reason.
+2. Record `.ai/runs/` evidence against PERF09 fields.
+3. Do not invent SLOs or shared_saas claims.
+
+### Tests
+
+- evidence cites dimension ids;
+- docs/queue validators pass.
+
+### Acceptance
+
+- remaining-gap pack exists with honest status for targeted dimensions;
+- no runtime optimization shipped.
+
+### Dependencies
+
+- PERF11 DONE.
+
+---
+
+## PERF11 - Capture deferred scalability dimensions (D1/D4-D7)
+
+Status: DONE
+Priority: future / measurement
+Feature family: performance-scalability-deferred-dimensions
+Parallel-safe: no - shares API/DB/worker measurement paths
+Owner: Cursor
+Local lock: released
 
 ### Problem
 
@@ -40,6 +93,8 @@ PERF10 measured D2 concurrent warm reads and D3 connection pressure on a dedicat
 ### Evidence
 
 - `.ai/runs/2026-08-12-PERF10-evidence.md`;
+- `.ai/runs/2026-08-12-PERF11-evidence.md`;
+- `.ai/runs/2026-08-12-PERF11-raw.json`;
 - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
 
 ### Scope
@@ -73,6 +128,26 @@ PERF10 measured D2 concurrent warm reads and D3 connection pressure on a dedicat
 ### Dependencies
 
 - PERF10 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `tmp/perf11_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF11-evidence.md`
+  - `.ai/runs/2026-08-12-PERF11-raw.json`
+  - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf11_measure.ps1 -SkipSetup` - pass (D1 measured; D4/D5 blocked-with-reason)
+  - docs/queue validators - pending at commit
+- Risks:
+  - D4 Healthy proof missing despite start 200
+  - D6/D7 still deferred; observed D1 envelope is not a reserved budget
+- Next: PERF12 remaining scalability gaps
 
 ---
 
