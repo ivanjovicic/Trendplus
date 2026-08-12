@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF04` (`PERF03` DONE; measured backlog recorded) | M-tier baseline measurement plan |
+| PERF - Performance | `PERF05` (`PERF04` DONE; M-tier plan in `PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`) | M-tier baseline pack execution |
 | OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -20,14 +20,71 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF04 - Prepare M-tier baseline measurement plan
+## PERF05 - Execute M-tier baseline measurement pack and capture evidence
 
 Status: READY
 Priority: future / measurement
-Feature family: performance-m-tier-baseline
-Parallel-safe: yes, planning/measurement only
+Feature family: performance-m-tier-measurement-pack
+Parallel-safe: yes, measurement/docs only
 Owner: unassigned
 Local lock: none
+
+### Problem
+
+PERF04 defined the M-tier plan and seed recipe, but pilot performance claims and backlog promotion still lack recorded M-tier timings for Decision Board, PDC, import, workers and frontend routes.
+
+### Evidence
+
+- `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`
+- `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` item `PERF-MEASURE-01`
+- `.ai/runs/2026-08-11-PERF02-evidence.md` protocol anchor
+
+### Scope
+
+- seed `M-PERF-01` fixture and run mandatory B1–B8 families from the plan;
+- capture evidence under `.ai/runs/`; no production optimization.
+
+### Read first
+
+- `PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`
+- PERF02 evidence + raw JSON pattern
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+
+### Do
+
+1. Implement or run M-tier seed (`M-PERF-01`) in disposable DB.
+2. Record mandatory families with cold/warm matrix and correctness co-assertions.
+3. Do not invent timings in planning docs; store raw samples in JSON.
+4. Update backlog ranks only where M-tier numbers exist.
+
+### Tests
+
+- evidence file cites plan family IDs and row counts;
+- correctness co-assertions documented per family;
+- no runtime optimization in this prompt.
+
+### Acceptance
+
+- one citeable M-tier evidence pack exists;
+- `PERF-MEASURE-01` surfaces have measured baselines or explicit empty/error honesty;
+- backlog may reference M-tier numbers.
+
+### Dependencies
+
+- PERF04 DONE.
+
+---
+
+## PERF04 - Prepare M-tier baseline measurement plan
+
+Status: DONE
+Priority: future / measurement
+Feature family: performance-m-tier-baseline
+Parallel-safe: yes, planning/measurement only
+Owner: Cursor
+Local lock: removed after DONE
+Commit: pending
+Completed: 2026-08-12
 
 ### Problem
 
@@ -74,6 +131,22 @@ PERF03 ranked S-tier findings, but Decision Board, Product Decision Center, impo
 
 - PERF03 DONE.
 
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`
+  - `.ai/runs/2026-08-12-PERF04-evidence.md`
+  - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+  - `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks: docs/queue validators; `git diff --check`
+- Risks: M-PERF-01 seed script not built yet; B4 needs import fixture
+- Next: PERF05 M-tier baseline pack execution
+
 ---
 
 ## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
@@ -84,7 +157,7 @@ Feature family: performance-measured-backlog
 Parallel-safe: yes, planning only
 Owner: Cursor
 Local lock: removed after DONE
-Commit: pending
+Commit: `d843ae9`
 Completed: 2026-08-12
 
 ### Problem
@@ -218,8 +291,7 @@ PERF01 defined the baseline contract, and PERF02 captured the first S-tier evide
   - dashboard bootstrap remains partial, but explicit `success=true`/`warningCode` keep the signal honest
   - `004_SimpleTestData.sql` has a final top-level `RAISE NOTICE` syntax error after inserts; the inserted rows remain committed
 - Next:
-  - `PERF03` is READY and can turn the measured B1/B2/B8 pack into a candidate backlog
-  - Current READY in this queue: `PERF03`
+  - PERF03 backlog recorded; PERF04 M-tier plan DONE; PERF05 READY for execution
 
 ---
 ---
@@ -296,8 +368,7 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
   - budgets remain target-only until S-tier measurement pack is recorded
   - no BenchmarkDotNet/k6 harness yet (explicit gap)
 - Next:
-  - `PERF03` is READY from the recorded measurements
-  - Current READY in this queue: `PERF03`
+  - PERF02 S-tier pack recorded; PERF05 M-tier execution is next READY
 
 ### Dependencies
 

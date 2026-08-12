@@ -57,6 +57,8 @@ It does **not**:
 
 **Measured optimization backlog (PERF03):** `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` — ranked from `.ai/runs/2026-08-11-PERF02-evidence.md`. Do not optimize warm B1 read paths on S-tier without new evidence.
 
+**M-tier measurement plan (PERF04):** `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md` — execute `PERF-MEASURE-01` before pilot performance claims.
+
 ## Benchmark families (priority order)
 
 Each family maps to a future PERF phase. Measure the listed representative request/job shapes first.

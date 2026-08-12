@@ -112,7 +112,7 @@ Rank uses measured cost × business impact. Lower rank number = investigate or o
 | Family | baseline expansion (`PERF-5`) |
 | Surfaces not in S-tier pack | Decision Board aggregate, Product Decision Center, supplier scorecard, import preview/run, workers, frontend route data-ready |
 | Action | Record M-tier measurements before any optimization claims |
-| Dependency | PERF01/02 protocol; do not mix with runtime optimization |
+| Dependency | PERF01/02 protocol; **PERF04** plan: `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md` |
 
 ---
 

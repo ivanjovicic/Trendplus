@@ -49,7 +49,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX11` | `DEX10` DONE = immutable evidence snapshot on action. Next is docs-only cross-family readiness. | Yes, docs/contracts | Cross-family explainability readiness |
 | RL | same queue/roadmap as DEX | `RL05` | `RL04` DONE = lifecycle + learning eligibility. Next is docs-only measurement-only statistics contract. | Yes, docs/contracts | Measurement-only statistics projection |
 | DT | same queue/roadmap as DEX | `DT06` | `DT05` DONE = Slice-2 filtered timeline. Next is docs-only export/report contract. | Yes, docs/contracts | Timeline export/retrospective contract |
-| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF04` | `PERF03` DONE; measured backlog in `PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`. Cold-start (B8) is rank-1. | Yes, measurement plan | M-tier baseline pack |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF05` | `PERF04` DONE; M-tier plan in `PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md` | Yes, measurement execution | M-tier baseline pack |
 | OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS07` | `OBS01`-`OBS06` DONE; `OBS07` READY (OBS-5 analytics SLA evidence). | Yes, docs/contracts | OBS-5 analytics SLA evidence |
 | SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC05` | `SEC04` DONE; blocked on MT09/interim dedicated-deploy offboarding scope | Yes, docs only | Data protection/retention assurance plan |
 
