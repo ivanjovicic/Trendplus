@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF14` | D6 import-overlap blocker follow-up |
+| PERF - Performance | `PERF15` | D8 shared-saas evidence gate |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,14 +24,71 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF14 - Unblock D6 import-overlap evidence
+## PERF15 - Shared-SaaS evidence gate
 
 Status: READY
+Priority: future / measurement
+Feature family: performance-scalability-d8-shared-saas
+Parallel-safe: no - shares performance/MT contract paths
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF15-<agent>.lock.md`
+
+### Problem
+
+PERF14 finished the D6 import-overlap evidence track, but D8 tenant-isolation overhead is still MT-owned and the queue/roadmap need a docs-only gate that keeps shared-SaaS claims out of the runtime lane until MT fixtures or an owner-approved gate exist.
+
+### Evidence
+
+- `.ai/runs/2026-08-12-PERF14-evidence.md`;
+- `.ai/runs/2026-08-12-PERF14-raw.json`;
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
+
+### Scope
+
+- docs-only alignment for the D8 / shared-SaaS boundary;
+- keep PERF15 as a planning gate only;
+- no runtime optimization, harness, or measurement claims in this prompt.
+
+### Read first
+
+- PERF14 evidence;
+- PERF09 contract;
+- `docs/ai/MULTITENANCY_PROMPT_QUEUE.md`;
+- `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md`;
+- `MASTER_ROADMAP.md`.
+
+### Do
+
+1. Keep D8 explicitly MT-owned and n/a_dedicated until MT fixtures/gates exist.
+2. Preserve citeable shared-SaaS contract language without inventing measurements.
+3. Keep queue/roadmap pointers aligned on PERF15 as the current READY prompt.
+
+### Tests
+
+- queue and planning validators pass;
+- docs remain UTF-8 and free of new mojibake.
+
+### Acceptance
+
+- PERF15 is the only READY prompt in the PERF lane;
+- PERF14 is clearly DONE with completion evidence;
+- D8 shared-SaaS claims remain blocked on MT-owned evidence.
+
+### Dependencies
+
+- PERF14 DONE;
+- MT fixtures/gates or an explicit owner decision for shared-SaaS evidence.
+
+---
+
+## PERF14 - Unblock D6 import-overlap evidence
+
+Status: DONE
 Priority: future / measurement
 Feature family: performance-scalability-d6-import-overlap
 Parallel-safe: no - shares import/analytics paths
 Owner: unassigned
-Local lock: `.ai/task-locks/PERF14-<agent>.lock.md`
+Local lock: released
 
 ### Problem
 
