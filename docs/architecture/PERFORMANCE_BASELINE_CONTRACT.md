@@ -61,6 +61,8 @@ It does **not**:
 
 **Recorded M-tier pack (PERF05):** `.ai/runs/2026-08-12-PERF05-evidence.md` on `trendplus_perf_m` (seed `Database/Perf/M-PERF-01_seed.sql`).
 
+**Cold-start investigation (PERF06):** `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md` — section profiling required before PERF-COLD-01 runtime remediation.
+
 ## Benchmark families (priority order)
 
 Each family maps to a future PERF phase. Measure the listed representative request/job shapes first.

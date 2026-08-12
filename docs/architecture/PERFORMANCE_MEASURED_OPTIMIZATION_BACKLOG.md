@@ -68,8 +68,8 @@ Rank uses measured cost × business impact. Lower rank number = investigate or o
 | Measured (2026-08-12 M-tier) | cold-process/cold-cache: p50 **4.96 s**, p95 **6.37 s**, min 4.48 s, max 6.70 s (N=5) |
 | Target (engineering) | cold p95 **&lt; 5 s** (`docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`) |
 | Correctness baseline | `meta.success=true`, `meta.isPartial=true`, `warningCode=ANALYTICS_PARTIAL_DATA`, `summary.totalRevenue>0`, `inventory.totalSkuCount>0` |
-| Hypothesis (unproven) | Process startup + first analytics aggregation + partial section fan-out dominate; not yet SQL-profiled |
-| Runtime scope gate | Requires promoted PERF cold-start slice; **no index/cache change without profiling evidence** |
+| Hypothesis (unproven) | Process startup + sequential bootstrap section fan-out on outer cache miss; see `PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md` |
+| Runtime scope gate | Requires PERF06 plan + P0 section timings on M-tier; **no index/cache change without profiling evidence** |
 | Before/after proof | Repeat B8 protocol on same S-tier seed; report p50/p95, error/timeout rate, same correctness checks; do not hide `isPartial` |
 | Rollback | Feature-flag or revert startup/prewarm changes; compare cold samples side-by-side |
 

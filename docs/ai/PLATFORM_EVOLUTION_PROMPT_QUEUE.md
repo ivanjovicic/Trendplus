@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF06` (`PERF05` DONE; M-tier pack in `.ai/runs/2026-08-12-PERF05-evidence.md`) | cold-start investigation (PERF-COLD-01) |
+| PERF - Performance | `PERF07` (`PERF06` DONE; cold-start plan in `PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`) | bootstrap section timing capture |
 | OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -22,14 +22,70 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF06 - Investigate dashboard bootstrap cold-start (PERF-COLD-01)
+---
+
+## PERF07 - Capture bootstrap section timings on M-tier (PERF-COLD-01 profiling pass)
 
 Status: READY
-Priority: future / investigation
-Feature family: performance-cold-start-investigation
+Priority: future / measurement
+Feature family: performance-cold-start-section-profiling
 Parallel-safe: no ? shares bootstrap/API paths
 Owner: unassigned
 Local lock: none
+
+### Problem
+
+PERF06 identified sequential bootstrap sections as the likely cold-start cost center, but no section-level durations exist on M-tier.
+
+### Evidence
+
+- `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`
+- `.ai/runs/2026-08-12-PERF05-evidence.md`
+
+### Scope
+
+- measurement/instrumentation harness or log-derived timings for P0/P1 sections;
+- no production optimization semantics changes.
+
+### Read first
+
+- PERF06 investigation plan
+- `CachedAnalyticsEndpoints.cs` bootstrap factory
+- `tmp/perf05_measure.ps1`
+
+### Do
+
+1. Capture P0 section durations on `trendplus_perf_m` cold outer cache miss.
+2. Attach evidence JSON + summary table under `.ai/runs/`.
+3. Do not change cache TTLs, indexes, or partial semantics.
+
+### Tests
+
+- evidence cites section ids from investigation plan;
+- B8 protocol flags documented;
+- no unauthorized optimization.
+
+### Acceptance
+
+- P0 section timing table exists on M-tier;
+- PERF-COLD-01 promotion gate for runtime remediation can be evaluated.
+
+### Dependencies
+
+- PERF06 DONE.
+
+---
+
+## PERF06 - Investigate dashboard bootstrap cold-start (PERF-COLD-01)
+
+Status: DONE
+Priority: future / investigation
+Feature family: performance-cold-start-investigation
+Parallel-safe: no ? shares bootstrap/API paths
+Owner: Cursor
+Local lock: removed after DONE
+Commit: pending
+Completed: 2026-08-12
 
 ### Problem
 
@@ -70,6 +126,21 @@ M-tier PERF05 recorded B8 cold p95 ~6.4 s (borderline vs 5 s target) while S-tie
 ### Dependencies
 
 - PERF05 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`
+  - `.ai/runs/2026-08-12-PERF06-evidence.md`
+  - `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+- Checks: docs/queue validators; `git diff --check`
+- Risks: section timings still unmeasured until PERF07
+- Next: PERF07 bootstrap section timing capture
 
 ---
 
