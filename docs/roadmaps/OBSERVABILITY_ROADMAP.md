@@ -1,6 +1,6 @@
 # Trendplus Observability Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-12
 Status: roadmap only; instrumentation implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`OBS`)
 
@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is now the current queue READY.
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract is now the current queue READY.
 
 ### OBS-2 - Latency SLIs
 
@@ -81,7 +81,7 @@ Track import lifecycle timestamps and states so operations can answer:
 
 ### OBS-5 - Analytics SLA evidence
 
-**Status:** READY (`OBS07`) — `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`.
+**Status:** DONE (`OBS07`) — `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`.
 
 Track:
 
@@ -93,6 +93,24 @@ Track:
 - next retry/backoff where applicable.
 
 The UI must never infer freshness from page render time.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: codex
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
+  - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`
+  - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - docs/queue validators; `git diff --check` ? pending at commit
+- Risks:
+  - runtime wiring for analytics SLA evidence remains a later promoted slice
+- Next:
+  - OBS-6 worker SLA evidence when promoted
 
 ### OBS-6 - Worker SLA evidence
 

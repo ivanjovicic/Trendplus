@@ -6,6 +6,7 @@ Roadmap: `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
 Related:
 
 - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` (OBS05 authoritative service-level terms)
+- `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
 - `docs/qa/ANALYTICS_OBSERVABILITY_REVIEW.md`
 - `docs/qa/ANALYTICS_SQL_OBSERVABILITY_TIMEOUTS.md`

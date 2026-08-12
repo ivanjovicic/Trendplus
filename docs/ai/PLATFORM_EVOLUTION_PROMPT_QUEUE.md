@@ -12,8 +12,8 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none (`PERF07` DONE; section timings recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`) | bootstrap section timing capture |
-| OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
+| PERF - Performance | `PERF08` | cold-start evidence capture |
+| OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -21,6 +21,64 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 ---
 
 ---
+
+---
+
+## PERF08 - Capture backend and frontend cold-start evidence (PERF-COLD-01)
+
+Status: READY
+Priority: future / measurement
+Feature family: performance-cold-start-evidence
+Parallel-safe: no ? shares bootstrap/API paths
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF08-<agent>.lock.md`
+
+### Problem
+
+PERF07 recorded section timings, but the roadmap still needs distinct backend and frontend cold-start evidence so teams can tell whether startup, first request, or first useful render is the real bottleneck.
+
+### Evidence
+
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-8;
+- `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`;
+- `.ai/runs/2026-08-12-PERF07-evidence.md`;
+- `.ai/runs/2026-08-12-PERF07-raw.json`.
+
+### Scope
+
+- measurement evidence only for backend and frontend cold-start paths;
+- keep cold/warm state explicit;
+- no optimization, cache, or index semantics changes.
+
+### Read first
+
+- PERF06 investigation plan;
+- PERF07 evidence;
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-8.
+
+### Do
+
+1. Capture backend cold-start path evidence from process start to first useful API response.
+2. Capture frontend cold-start evidence from boot to first useful render.
+3. Keep separate cold/warm markers so evidence cannot be mistaken for steady-state latency.
+4. Do not mask cold-start failure with fallback data or warm-path averages.
+
+### Tests
+
+- evidence distinguishes backend and frontend cold-start paths;
+- no optimization or fallback masking is introduced;
+- docs/queue validators pass.
+
+### Acceptance
+
+- citeable cold-start evidence exists for both backend and frontend paths;
+- PERF-8 can be used as the next runtime measurement slice without guessing;
+- no semantic change is shipped in this prompt.
+
+### Dependencies
+
+- PERF07 DONE;
+- PERF06 DONE.
 
 ---
 
@@ -546,15 +604,77 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ---
 
-## OBS07 - Define Analytics SLA evidence contract
+## OBS08 - Define Worker SLA evidence contract
 
 Status: READY
+Priority: future
+Feature family: observability-worker-sla-evidence
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS08-<agent>.lock.md`
+
+### Problem
+
+Worker lifecycle evidence exists as scattered metrics, but there is still no frozen docs contract for queue age, run duration, retry/dead-letter counts, last successful run or paused/disabled state.
+
+### Evidence
+
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-6;
+- `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` worker terms;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` worker rows;
+- `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md` import precedent;
+- `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md` evidence semantics precedent.
+
+### Scope
+
+- docs/contracts only for worker SLA evidence fields, states and unknown behavior;
+- keep queue/backlog, age and retry evidence explicit;
+- no runtime wiring or alerting changes.
+
+### Read first
+
+- OBS05 vocabulary;
+- OBS01 SLI catalog worker rows;
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-6;
+- import SLA evidence contract;
+- analytics SLA evidence contract.
+
+### Do
+
+1. Define the worker SLA evidence payload: queue/backlog size, oldest work age, run duration, success/failure/retry/dead-letter counts, last successful run and disabled/paused state.
+2. Keep source-job correlation explicit where safe.
+3. Keep missing evidence unknown rather than green.
+4. Gate any numeric SLA hours behind explicit product or operations approval.
+
+### Tests
+
+- contract forbids treating missing worker evidence as healthy;
+- missing last-success stays unknown, not zero;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable worker SLA evidence contract exists;
+- support and operations can answer OBS-6 questions from the contract language;
+- runtime wiring remains a later promoted slice.
+
+### Dependencies
+
+- OBS07 DONE;
+- OBS06 DONE;
+- OBS05 DONE.
+
+---
+
+## OBS07 - Define Analytics SLA evidence contract
+
+Status: DONE
 Ready after: `OBS06` is `DONE`
 Priority: future
 Feature family: observability-analytics-sla-evidence
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
-Local lock: `.ai/task-locks/OBS07-<agent>.lock.md`
+Local lock: released
 Promotion note: 2026-08-12 ? `OBS06` DONE; roadmap OBS-5 Analytics SLA evidence (docs only).
 
 ### Problem
@@ -567,6 +687,7 @@ Analytics freshness and refresh provenance exist across several surfaces, but th
 - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` analytics terms;
 - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` R1?R7;
 - `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md` import boundary precedent.
+- `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
 
 ### Scope
 
@@ -600,6 +721,24 @@ Analytics freshness and refresh provenance exist across several surfaces, but th
 - one citeable analytics SLA evidence contract exists;
 - support can answer the OBS-5 questions from the contract language;
 - runtime wiring remains a later promoted slice.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: codex
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
+  - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`
+  - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - docs/queue validators; `git diff --check` ? pending at commit
+- Risks:
+  - runtime wiring for analytics SLA evidence remains a later slice
+- Next:
+  - OBS06 worker SLA evidence / OBS-6 roadmap slice when promoted
 
 ### Dependencies
 

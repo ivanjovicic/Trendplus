@@ -6,6 +6,7 @@ Roadmap: `docs/roadmaps/OBSERVABILITY_ROADMAP.md` (OBS-3)
 Related:
 
 - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+- `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
 - OBS04 latency measurement contract (inside SLI catalog + PERF01 discipline)
 
