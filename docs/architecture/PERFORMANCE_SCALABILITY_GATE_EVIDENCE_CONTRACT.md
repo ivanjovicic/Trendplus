@@ -74,6 +74,8 @@ Every scalability-gate evidence pack must address these dimensions. Until measur
 
 **Citeable context (not G10/G50 proof):** PERF05 M-tier warm B1/B2 paths are fast on a single host; PERF08 shows backend cold first-useful analytics ≈16 s p50 and warm second bootstrap ≈75 ms. Those are single-load markers, not concurrency envelopes.
 
+**First dedicated pack (PERF10):** `.ai/runs/2026-08-12-PERF10-evidence.md` — warm concurrent reads (10×3) p95 ≈469 ms, peak DB connections 4; D1 partial; D4–D7 deferred; D8 n/a.
+
 ### D3 — Database connection pressure
 
 | Field | Meaning |

@@ -1,93 +1,448 @@
 {
-  "meta": {
-    "packId": "PERF10-G10-dedicated-01",
-    "commit": "f026a7f9570b5f20c72fbefd2eff89424037e9f3",
-    "datetimeUtc": "2026-08-12T15:31:47.8314975Z",
-    "milestone": "G10",
-    "deploymentMode": "dedicated",
-    "machine": "DESKTOP-V877DAD",
-    "datasetTier": "M",
-    "seedRecipeId": "M-PERF-01",
-    "prewarmEnabled": false,
-    "workersEnabled": false
-  },
-  "dimensions": {
-    "D1": {
-      "status": "deferred",
-      "cpuCoresReserved": null,
-      "memoryMbReserved": null,
-      "diskGbReserved": null,
-      "postgresConnectionsBudget": null,
-      "cacheFootprintMbBudget": null
-    },
-    "D2": {
-      "status": "deferred",
-      "concurrentUsersAssumed": null,
-      "concurrentAnalyticsReadsAssumed": null,
-      "representativeRoutes": ["B1", "B2", "B7"],
-      "p50Ms": null,
-      "p95Ms": null,
-      "errorRate": null,
-      "timeoutRate": null,
-      "coldWarmMatrix": "single-load anchors only; no concurrent-user harness yet",
-      "supportingEvidenceRefs": [
-        ".ai/runs/2026-08-12-PERF05-evidence.md",
-        ".ai/runs/2026-08-12-PERF08-evidence.md"
-      ]
-    },
-    "D3": {
-      "status": "deferred",
-      "poolSizeConfigured": null,
-      "peakActiveConnections": null,
-      "waitOrTimeoutCount": null,
-      "statementTimeoutHits": null
-    },
-    "D4": {
-      "status": "deferred",
-      "workerTypesInScope": ["aggregation", "nightly refresh", "prewarm", "import claimers"],
-      "maxParallelJobs": null,
-      "queueDepthPeak": null,
-      "cycleP95Ms": null,
-      "retryOrPoisonCount": null
-    },
-    "D5": {
-      "status": "deferred",
-      "keysOrEntriesPeak": null,
-      "estimatedMbPeak": null,
-      "hitRate": null,
-      "invalidationPolicyId": null
-    },
-    "D6": {
-      "status": "deferred",
-      "importJobsOverlapping": null,
-      "overlapWithAnalyticsReads": null,
-      "overlapWithWorkers": null,
-      "failureOrBackoffObserved": null
-    },
-    "D7": {
-      "status": "deferred",
-      "burstConcurrency": null,
-      "payloadSizeBytes": null,
-      "p95Ms": null,
-      "memoryPeakMb": null
-    },
-    "D8": {
-      "status": "n/a_dedicated",
-      "tenantCountInFixture": null,
-      "crossTenantLeakChecks": null,
-      "overheadP95Ms": null,
-      "mtGateIds": []
-    }
-  },
-  "correctnessChecks": "pass",
-  "notes": [
-    "This is a dedicated-mode evidence index, not a G10 pass claim.",
-    "Existing PERF05/PERF08 evidence is cited as context for later measurement slices.",
-    "Shared SaaS claims remain MT-owned and blocked until MT fixtures/gates exist."
-  ],
-  "residualRisks": [
-    "Dedicated single-host anchors do not generalize to concurrent customer load.",
-    "The repo still lacks a reusable concurrent-load harness for a true G10 run.",
-    "D1-D7 remain unmeasured and need dedicated follow-up packs."
-  ]
+    "meta":  {
+                 "packId":  "PERF10-G10-dedicated-01",
+                 "commit":  "ece2b88bbffc7efc6058ae0b65e8c3498b93dd06",
+                 "datetimeUtc":  "2026-08-12T15:42:07.8196152Z",
+                 "milestone":  "G10",
+                 "deploymentMode":  "dedicated",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m",
+                 "apiBaseUrl":  "http://127.0.0.1:8080",
+                 "prewarmEnabled":  false,
+                 "workersEnabled":  false,
+                 "periodFrom":  "2026-02-13T06:00:00.0000000Z",
+                 "periodTo":  "2026-08-12T06:00:00.0000000Z",
+                 "concurrentAnalyticsReadsAssumed":  10,
+                 "waves":  3
+             },
+    "priming":  {
+                    "processState":  "warm",
+                    "cacheState":  "cold-then-warm",
+                    "bootstrapFirstMs":  9075.79,
+                    "bootstrapFirstStatus":  200,
+                    "salesFirstMs":  66.95,
+                    "salesFirstStatus":  200,
+                    "bootstrapWarmMs":  109.46,
+                    "salesWarmMs":  29.61
+                },
+    "dimensions":  {
+                       "D1":  {
+                                  "status":  "partial",
+                                  "notes":  "API process RSS observed only; CPU/disk/connection budgets unmeasured",
+                                  "memoryMbObservedBefore":  88.92,
+                                  "memoryMbObservedAfter":  46.21,
+                                  "cpuCoresReserved":  null,
+                                  "diskGbReserved":  null,
+                                  "postgresConnectionsBudget":  null,
+                                  "cacheFootprintMbBudget":  null
+                              },
+                       "D2":  {
+                                  "status":  "measured",
+                                  "concurrentUsersAssumed":  10,
+                                  "concurrentAnalyticsReadsAssumed":  10,
+                                  "representativeRoutes":  [
+                                                               "dashboard.bootstrap",
+                                                               "sales.summary"
+                                                           ],
+                                  "coldWarmMatrix":  "warm-process x warm-cache",
+                                  "samples":  30,
+                                  "successSamples":  30,
+                                  "p50Ms":  243.59,
+                                  "p95Ms":  468.58,
+                                  "errorRate":  0,
+                                  "timeoutRate":  0,
+                                  "samplesDetail":  [
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  1,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  386.97,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  2,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  241.58,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  3,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  248.11,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  4,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  226.62,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  5,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  250.98,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  6,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  168.97,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  7,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  236.82,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  8,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  228.44,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  9,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  469.64,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  1,
+                                                            "sample":  10,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  347.57,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  1,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  328.89,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  2,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  268.14,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  3,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  204.77,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  4,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  603.76,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  5,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  152.77,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  6,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  192.19,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  7,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  217.88,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  8,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  253.11,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  9,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  250.32,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  2,
+                                                            "sample":  10,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  200.25,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  1,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  230.72,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  2,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  245.6,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  3,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  247.09,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  4,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  116.57,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  5,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  215.25,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  6,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  199.83,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  7,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  168.93,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  8,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  381.48,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  9,
+                                                            "route":  "bootstrap",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  293.86,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        },
+                                                        {
+                                                            "wave":  3,
+                                                            "sample":  10,
+                                                            "route":  "sales.summary",
+                                                            "statusCode":  200,
+                                                            "elapsedMs":  467.28,
+                                                            "timedOut":  false,
+                                                            "error":  null
+                                                        }
+                                                    ]
+                              },
+                       "D3":  {
+                                  "status":  "measured",
+                                  "poolSizeConfigured":  null,
+                                  "notes":  "pg_stat_activity snapshots during concurrent waves; poolSizeConfigured unknown from this harness",
+                                  "before":  {
+                                                 "activeConnections":  1,
+                                                 "totalConnections":  3,
+                                                 "waitingConnections":  0,
+                                                 "maxConnections":  100,
+                                                 "queryErrors":  [
+
+                                                                 ]
+                                             },
+                                  "peakActiveConnections":  1,
+                                  "peakTotalConnections":  4,
+                                  "after":  {
+                                                "activeConnections":  1,
+                                                "totalConnections":  4,
+                                                "waitingConnections":  0,
+                                                "maxConnections":  100,
+                                                "queryErrors":  [
+
+                                                                ]
+                                            },
+                                  "waitOrTimeoutCount":  null,
+                                  "statementTimeoutHits":  null,
+                                  "snapshots":  [
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  3,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    },
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  3,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    },
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  3,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    },
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  3,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    },
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  4,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    },
+                                                    {
+                                                        "activeConnections":  1,
+                                                        "totalConnections":  4,
+                                                        "waitingConnections":  0,
+                                                        "maxConnections":  100,
+                                                        "queryErrors":  [
+
+                                                                        ]
+                                                    }
+                                                ]
+                              },
+                       "D4":  {
+                                  "status":  "deferred",
+                                  "notes":  "workers disabled for this pack"
+                              },
+                       "D5":  {
+                                  "status":  "unmeasured",
+                                  "notes":  "cache footprint instrumentation not available in harness"
+                              },
+                       "D6":  {
+                                  "status":  "deferred",
+                                  "notes":  "import overlap not in PERF10 first pack"
+                              },
+                       "D7":  {
+                                  "status":  "deferred",
+                                  "notes":  "report/export bursts not in PERF10 first pack"
+                              },
+                       "D8":  {
+                                  "status":  "n/a_dedicated",
+                                  "notes":  "shared_saas requires MT fixtures"
+                              }
+                   },
+    "correctnessChecks":  {
+                              "result":  "pass",
+                              "bootstrapStatusCode":  200,
+                              "success":  null,
+                              "isPartial":  null,
+                              "warningCode":  null,
+                              "totalRevenue":  null,
+                              "totalSkuCount":  null,
+                              "notes":  "no fake-zero check: revenue null or \u003e0; HTTP 200 required"
+                          },
+    "residualRisks":  [
+                          "single-host dedicated pack; not multi-customer proof",
+                          "D1 resource envelope incomplete",
+                          "D4-D7 deferred",
+                          "connection pool size not read from API config"
+                      ]
 }

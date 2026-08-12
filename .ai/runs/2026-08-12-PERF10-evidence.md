@@ -1,74 +1,57 @@
 # PERF10 Evidence
 
 - Date: 2026-08-12
-- Prompt: PERF10 - Capture first scalability-gate evidence pack (PERF-9)
-- Pack: G10 dedicated evidence index
-- Commit: `f026a7f9570b5f20c72fbefd2eff89424037e9f3`
+- Prompt: PERF10 — Capture first scalability-gate evidence pack (PERF-9)
+- Pack: `PERF10-G10-dedicated-01`
+- Milestone / mode: **G10** / **dedicated**
 - Dataset: `trendplus_perf_m` (M-PERF-01)
 - Raw JSON: `.ai/runs/2026-08-12-PERF10-raw.json`
+- Harness: `tmp/perf10_measure.ps1`
+- Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
 
-## Summary
+## Method
 
-This pack is the first dedicated-mode scalability-gate evidence index for the G10 milestone. It does not claim G10 pass.
+Warm API process, prewarm disabled, workers disabled. Cache primed with bootstrap + sales summary, then **10 concurrent** analytics reads × **3 waves** (30 samples) alternating `dashboard.bootstrap` and `sales.summary`. Postgres `pg_stat_activity` snapshotted during waves for D3.
 
-What it does establish:
+Cold/warm matrix: **warm-process × warm-cache** (explicit; not cold-start).
 
-- dedicated mode is the only mode in scope for this pack;
-- the contract dimensions D1-D8 are explicit and mapped to evidence or gaps;
-- single-load anchors from PERF05 and cold-start anchors from PERF08 are citeable;
-- shared SaaS claims remain out of scope and MT-owned.
+## Dimension status
 
-What it does not establish:
-
-- no concurrent multi-user proof;
-- no database connection pressure run;
-- no worker concurrency run;
-- no cache footprint run;
-- no import overlap run;
-- no report/export burst run;
-- no shared-SaaS tenant isolation proof.
-
-## Evidence anchors
-
-- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
-- `.ai/runs/2026-08-12-PERF05-evidence.md`
-- `.ai/runs/2026-08-12-PERF08-evidence.md`
-
-Existing single-load anchors used as context for later G10 measurement slices:
-
-- PERF05 warm B1/B2 markers on M-tier, including dashboard warm p95 at 52.13 ms and decision-board warm p95 at 126.26 ms.
-- PERF08 backend cold-start markers, including first useful analytics p50 at 15,992.42 ms and warm second bootstrap at 75.3 ms.
-- PERF08 frontend cold-start markers, including useful render p50 at 8,538 ms with a dev-proxy frontend path.
-
-## Dimensions
-
-| Dimension | Status | Notes |
+| Id | Status | Result |
 |---|---|---|
-| D1 Per-customer resource envelope | deferred | No reusable per-customer envelope pack exists yet. |
-| D2 Concurrent request / load assumptions | deferred | Existing anchors are single-load only; no concurrent-user harness is present. |
-| D3 Database connection pressure | deferred | No dedicated connection-pressure pack exists yet. |
-| D4 Worker concurrency | deferred | No worker throughput pack exists yet for the G10 milestone. |
-| D5 Cache footprint | deferred | No multi-customer cache footprint run exists yet. |
-| D6 Import overlap | deferred | No overlap run with analytics reads/workers exists yet. |
-| D7 Report / export bursts | deferred | No burst pack exists yet. |
-| D8 Tenant isolation overhead | n/a_dedicated | Shared SaaS remains MT-owned; not claimed by this dedicated pack. |
+| D1 resource envelope | **partial** | API RSS before/after ~89 → ~46 MB; CPU/disk/budgets unmeasured |
+| D2 concurrent reads | **measured** | N=30, p50 **243.59 ms**, p95 **468.58 ms**, errorRate **0**, timeoutRate **0** |
+| D3 DB connection pressure | **measured** | peak active **1**, peak total **4**, `max_connections=100`, waiting **0** |
+| D4 workers | deferred | workers off |
+| D5 cache footprint | unmeasured | no instrumentation |
+| D6 import overlap | deferred | out of pack |
+| D7 export bursts | deferred | out of pack |
+| D8 tenant isolation | `n/a_dedicated` | shared_saas needs MT |
+
+## Priming markers (not concurrency)
+
+| Step | ms | status |
+|---|---:|---:|
+| Bootstrap first (cold cache) | 9075.79 | 200 |
+| Sales first | 66.95 | 200 |
+| Bootstrap warm | 109.46 | 200 |
+| Sales warm | 29.61 | 200 |
+
+## Correctness
+
+- Post-burst bootstrap HTTP **200**
+- Harness meta parse still null (same casing gap as PERF08); sample accepted on HTTP success only
+- `correctnessChecks.result = pass` under that limited assertion
 
 ## Interpretation
 
-The current evidence is enough to define the next measurement slices, but not enough to claim milestone readiness.
+1. On a single-host dedicated M-tier fixture, **10 concurrent warm analytics reads stayed under ~0.5 s p95** with zero errors/timeouts.
+2. **DB connection pressure stayed low** (peak total 4) under this burst — not a connection-starvation signal at this concurrency.
+3. This is **not** a G10 multi-customer pass and **not** an SLO. D1 remains incomplete; D4–D7 deferred; D8 n/a.
+4. Do not conflate with PERF08 cold-start (~16 s first useful analytics).
 
-G10 now has a citeable dedicated evidence index that shows:
+## Files
 
-1. which dimensions are already anchored by earlier PERF evidence;
-2. which dimensions still need a real concurrency/envelope run;
-3. why shared-SaaS claims remain blocked until MT-owned fixtures and gates exist.
-
-## Residual risk
-
-- Dedicated single-host measurements do not generalize to concurrent customer load.
-- The repo still lacks a reusable concurrent-load harness for a true G10 run.
-- Shared SaaS remains blocked on MT fixtures and isolation gates.
-
-## Next
-
-- PERF10 follow-up measurement pack for D1/D2/D3 on a dedicated fixture with actual concurrency and connection pressure.
+- `tmp/perf10_measure.ps1`
+- `.ai/runs/2026-08-12-PERF10-raw.json`
+- `.ai/runs/2026-08-12-PERF10-evidence.md`
