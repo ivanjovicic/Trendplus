@@ -54,7 +54,21 @@ public interface IAnalyticsCacheService
     /// Rucno ukljuci/iskljuci Redis koriscenje.
     /// </summary>
     void SetRedisEnabled(bool enabled);
+
+    /// <summary>
+    /// Vraća trenutni cache footprint snapshot za merenje.
+    /// </summary>
+    CacheFootprintSnapshot GetFootprintSnapshot();
 }
+
+/// <summary>
+/// Minimalni snapshot cache footprint-a za merenje i evidenciju.
+/// </summary>
+public sealed record CacheFootprintSnapshot(
+    string CacheMode,
+    bool RedisEnabled,
+    bool RedisAvailable,
+    int TrackedKeyCount);
 
 /// <summary>
 /// Cache key konstante za analytics.

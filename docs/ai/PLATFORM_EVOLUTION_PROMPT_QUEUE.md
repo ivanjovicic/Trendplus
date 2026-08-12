@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF13` | D5/D6 durable blocker follow-up |
+| PERF - Performance | `PERF14` | D6 import-overlap blocker follow-up |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,14 +24,66 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF13 - Unblock D5 cache footprint or D6 import-overlap evidence
+## PERF14 - Unblock D6 import-overlap evidence
 
 Status: READY
 Priority: future / measurement
+Feature family: performance-scalability-d6-import-overlap
+Parallel-safe: no - shares import/analytics paths
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF14-<agent>.lock.md`
+
+### Problem
+
+PERF13 measured D5 cache footprint with tracked keys 0 -> 6, but D6 import overlap remains blocked because the repo still lacks a real M-PERF Access fixture or an owner-approved durable skip with replacement evidence path.
+
+### Evidence
+
+- `.ai/runs/2026-08-12-PERF13-evidence.md`;
+- `.ai/runs/2026-08-12-PERF13-raw.json`;
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
+
+### Scope
+
+- add the minimum Access import fixture or harness needed to measure D6, or record an owner-approved durable skip with replacement evidence path;
+- no production optimization semantics; D8 stays n/a without MT.
+
+### Read first
+
+- PERF13 evidence;
+- PERF09 contract;
+- baseline B4/B5 families.
+
+### Do
+
+1. Advance D6 to measured or explicit owner-gated skip.
+2. Record `.ai/runs/` evidence.
+3. Do not invent SLOs or shared_saas claims.
+
+### Tests
+
+- evidence cites dimension ids;
+- docs/queue validators pass.
+
+### Acceptance
+
+- D6 status changes with citeable reason/result;
+- no runtime optimization shipped beyond measurement enablement required for evidence.
+
+### Dependencies
+
+- PERF13 DONE.
+
+---
+
+## PERF13 - Unblock D5 cache footprint or D6 import-overlap evidence
+
+Status: DONE
+Priority: future / measurement
 Feature family: performance-scalability-d5-d6-unblock
 Parallel-safe: no - shares cache/import measurement paths
-Owner: unassigned
-Local lock: `.ai/task-locks/PERF13-<agent>.lock.md`
+Owner: Cursor
+Local lock: released
 
 ### Problem
 
@@ -40,6 +92,8 @@ PERF12 measured D4 worker health and D7 document generate bursts, but D5 cache f
 ### Evidence
 
 - `.ai/runs/2026-08-12-PERF12-evidence.md`;
+- `.ai/runs/2026-08-12-PERF13-evidence.md`;
+- `.ai/runs/2026-08-12-PERF13-raw.json`;
 - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
 
 ### Scope
@@ -66,7 +120,7 @@ PERF12 measured D4 worker health and D7 document generate bursts, but D5 cache f
 
 ### Acceptance
 
-- D5 or D6 status changes with citeable reason/result;
+- D5 measured with citeable footprint evidence; D6 blocked with citeable reason/result;
 - no runtime optimization shipped beyond measurement enablement required for evidence.
 
 ### Dependencies
@@ -131,22 +185,39 @@ PERF11 measured the D1 host envelope and recorded D4/D5 as blocked-with-reason, 
 ### Completion note
 
 - Date: 2026-08-12
-- Agent: Cursor
+- Status: DONE
 - Changed files:
-  - `tmp/perf12_measure.ps1`
-  - `.ai/runs/2026-08-12-PERF12-evidence.md`
-  - `.ai/runs/2026-08-12-PERF12-raw.json`
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+  - `Infrastructure/Services/Caching/HybridCacheService.cs`
+  - `Infrastructure/Services/Caching/InMemoryCacheService.cs`
+  - `Infrastructure/Services/Caching/DisabledAnalyticsCacheService.cs`
+  - `tmp/perf13_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF13-evidence.md`
+  - `.ai/runs/2026-08-12-PERF13-raw.json`
   - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
   - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
   - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
   - `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed:
+  - cache status now exposes tracked key count for a footprint snapshot;
+  - PERF13 records D5 cache footprint as measured and D6 import overlap as blocked.
 - Checks:
-  - `powershell -ExecutionPolicy Bypass -File tmp/perf12_measure.ps1 -SkipSetup` - pass (D4 measured Running+heartbeat; D7 3/3 completed)
-  - docs/queue validators - pending at commit
-- Risks:
-  - D5/D6 still durable blockers
-  - D7 is html preview, not PDF production burst
-- Next: PERF13 D5/D6 unblock follow-up
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf13_measure.ps1 -SkipSetup` - pass (D5 measured tracked keys 0 -> 6)
+  - `dotnet build Trendplus2.Backend.slnf -v minimal` - pass
+  - governance validators - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet test`
+  - `npm run check:analytics-guardrails`
+  - `npm run build`
+- Remaining risk:
+  - D6 import overlap still lacks a real M-PERF Access fixture;
+  - RSS delta stayed flat, so footprint is evidenced by tracked key count rather than process growth.
+- Next:
+  - PERF14 D6 import-overlap evidence
+- Prompt defect / scope repair:
+  - PERF13 had a durable blocker on D6; the smallest same-owner repair was to add a cache footprint snapshot so the prompt could complete honestly on D5 while leaving D6 blocked.
 
 ---
 

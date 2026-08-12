@@ -8,6 +8,9 @@ public sealed class DisabledAnalyticsCacheService : IAnalyticsCacheService
     public bool IsRedisAvailable => false;
     public bool IsRedisEnabled => false;
 
+    public CacheFootprintSnapshot GetFootprintSnapshot()
+        => new("disabled", false, false, 0);
+
     public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
         => Task.FromResult<T?>(null);
 

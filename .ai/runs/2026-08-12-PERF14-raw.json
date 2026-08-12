@@ -1,0 +1,2232 @@
+{
+    "meta":  {
+                 "packId":  "PERF14-G10-import-overlap-01",
+                 "commit":  "e340868f24bfbbe7a0112542f2a7a48d675add99",
+                 "datetimeUtc":  "2026-08-12T17:20:06.1697692Z",
+                 "milestone":  "G10",
+                 "deploymentMode":  "dedicated",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "importFixturePath":  "C:\\Users\\Ivan\\Downloads\\Trend plus.mdb",
+                 "importFixtureSizeBytes":  11689984,
+                 "stagedFixturePath":  "C:\\Users\\Ivan\\AppData\\Local\\Temp\\perf14-import.mdb",
+                 "webApiBaseUrl":  "http://127.0.0.1:8080",
+                 "workerApiBaseUrl":  "http://127.0.0.1:8081",
+                 "batchId":  1
+             },
+    "dimensions":  {
+                       "D1":  {
+                                  "status":  "cite_PERF11",
+                                  "notes":  "Observed envelope already measured"
+                              },
+                       "D2":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Concurrent reads already measured"
+                              },
+                       "D3":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Connection pressure already measured"
+                              },
+                       "D4":  {
+                                  "status":  "cite_PERF12",
+                                  "notes":  "Worker concurrency already measured"
+                              },
+                       "D5":  {
+                                  "status":  "cite_PERF13",
+                                  "notes":  "Cache footprint already measured"
+                              },
+                       "D6":  {
+                                  "status":  "measured",
+                                  "importBatchId":  1,
+                                  "importStatus":  "timeout",
+                                  "runningObserved":  true,
+                                  "analyticsProbeCount":  360,
+                                  "analyticsProbeDuringRunningCount":  360,
+                                  "workerSnapshots":  [
+                                                          {
+                                                              "iteration":  1,
+                                                              "elapsedMs":  2038.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  2,
+                                                              "elapsedMs":  2029.54,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  3,
+                                                              "elapsedMs":  2049.16,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  4,
+                                                              "elapsedMs":  2051.61,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  5,
+                                                              "elapsedMs":  2027.28,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  6,
+                                                              "elapsedMs":  2021.71,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  7,
+                                                              "elapsedMs":  2026.8,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  8,
+                                                              "elapsedMs":  2006.03,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  9,
+                                                              "elapsedMs":  2028.48,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  10,
+                                                              "elapsedMs":  2026.97,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  11,
+                                                              "elapsedMs":  2023.43,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  12,
+                                                              "elapsedMs":  2040.45,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  13,
+                                                              "elapsedMs":  2029.26,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  14,
+                                                              "elapsedMs":  2023.24,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  15,
+                                                              "elapsedMs":  2041.96,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  16,
+                                                              "elapsedMs":  2049.65,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  17,
+                                                              "elapsedMs":  2018.54,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  18,
+                                                              "elapsedMs":  2031.07,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  19,
+                                                              "elapsedMs":  2034.45,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  20,
+                                                              "elapsedMs":  2054.9,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  21,
+                                                              "elapsedMs":  2028.96,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  22,
+                                                              "elapsedMs":  2056.67,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  23,
+                                                              "elapsedMs":  2017.11,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  24,
+                                                              "elapsedMs":  2027.05,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  25,
+                                                              "elapsedMs":  2018.74,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  26,
+                                                              "elapsedMs":  2032.24,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  27,
+                                                              "elapsedMs":  2037.58,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  28,
+                                                              "elapsedMs":  2031.34,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  29,
+                                                              "elapsedMs":  2030.52,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  30,
+                                                              "elapsedMs":  2040.88,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  31,
+                                                              "elapsedMs":  2034.07,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  32,
+                                                              "elapsedMs":  2029.02,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  33,
+                                                              "elapsedMs":  2032.1,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  34,
+                                                              "elapsedMs":  2018.53,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  35,
+                                                              "elapsedMs":  2034.17,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  36,
+                                                              "elapsedMs":  2044.26,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  37,
+                                                              "elapsedMs":  2048.31,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  38,
+                                                              "elapsedMs":  2022.14,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  39,
+                                                              "elapsedMs":  2042.05,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  40,
+                                                              "elapsedMs":  2031.31,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  41,
+                                                              "elapsedMs":  2030.23,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  42,
+                                                              "elapsedMs":  2014.81,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  43,
+                                                              "elapsedMs":  2049.84,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  44,
+                                                              "elapsedMs":  2041.99,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  45,
+                                                              "elapsedMs":  2055.1,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  46,
+                                                              "elapsedMs":  2011.72,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  47,
+                                                              "elapsedMs":  2016.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  48,
+                                                              "elapsedMs":  2069.05,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  49,
+                                                              "elapsedMs":  2021.02,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  50,
+                                                              "elapsedMs":  2018.45,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  51,
+                                                              "elapsedMs":  2042.96,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  52,
+                                                              "elapsedMs":  2029.5,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  53,
+                                                              "elapsedMs":  2039.98,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  54,
+                                                              "elapsedMs":  2025.02,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  55,
+                                                              "elapsedMs":  2023.04,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  56,
+                                                              "elapsedMs":  2007.74,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  57,
+                                                              "elapsedMs":  2024.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  58,
+                                                              "elapsedMs":  2039.18,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  59,
+                                                              "elapsedMs":  2050.16,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  60,
+                                                              "elapsedMs":  2062.43,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  61,
+                                                              "elapsedMs":  2045.27,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  62,
+                                                              "elapsedMs":  2032.71,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  63,
+                                                              "elapsedMs":  2038.27,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  64,
+                                                              "elapsedMs":  2009.04,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  65,
+                                                              "elapsedMs":  2031.75,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  66,
+                                                              "elapsedMs":  2024.35,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  67,
+                                                              "elapsedMs":  2040.87,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  68,
+                                                              "elapsedMs":  2021.44,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  69,
+                                                              "elapsedMs":  2022.59,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  70,
+                                                              "elapsedMs":  2047.85,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  71,
+                                                              "elapsedMs":  2032.04,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  72,
+                                                              "elapsedMs":  2058.82,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  73,
+                                                              "elapsedMs":  2057.3,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  74,
+                                                              "elapsedMs":  2022.23,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  75,
+                                                              "elapsedMs":  2024.15,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  76,
+                                                              "elapsedMs":  2040.04,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  77,
+                                                              "elapsedMs":  2046.02,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  78,
+                                                              "elapsedMs":  2057.91,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  79,
+                                                              "elapsedMs":  2039.27,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  80,
+                                                              "elapsedMs":  2019.3,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  81,
+                                                              "elapsedMs":  2038.71,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  82,
+                                                              "elapsedMs":  2039.76,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  83,
+                                                              "elapsedMs":  2059.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  84,
+                                                              "elapsedMs":  2018.39,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  85,
+                                                              "elapsedMs":  2043.89,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  86,
+                                                              "elapsedMs":  2054.32,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  87,
+                                                              "elapsedMs":  2042.5,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  88,
+                                                              "elapsedMs":  2021.02,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  89,
+                                                              "elapsedMs":  2036.06,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  90,
+                                                              "elapsedMs":  2037.47,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  91,
+                                                              "elapsedMs":  2047.89,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  92,
+                                                              "elapsedMs":  2041.25,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  93,
+                                                              "elapsedMs":  2050.67,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  94,
+                                                              "elapsedMs":  2054.43,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  95,
+                                                              "elapsedMs":  2036.71,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  96,
+                                                              "elapsedMs":  2030.59,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  97,
+                                                              "elapsedMs":  2039.97,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  98,
+                                                              "elapsedMs":  2033.37,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  99,
+                                                              "elapsedMs":  2035.57,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  100,
+                                                              "elapsedMs":  2039.82,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  101,
+                                                              "elapsedMs":  2033.89,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  102,
+                                                              "elapsedMs":  2054.31,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  103,
+                                                              "elapsedMs":  2023.58,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  104,
+                                                              "elapsedMs":  2029.15,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  105,
+                                                              "elapsedMs":  2036.96,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  106,
+                                                              "elapsedMs":  2052.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  107,
+                                                              "elapsedMs":  2024.72,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  108,
+                                                              "elapsedMs":  2047.92,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  109,
+                                                              "elapsedMs":  2043.62,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  110,
+                                                              "elapsedMs":  2033.04,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  111,
+                                                              "elapsedMs":  2042.34,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  112,
+                                                              "elapsedMs":  2043.96,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  113,
+                                                              "elapsedMs":  2047.83,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  114,
+                                                              "elapsedMs":  2030.28,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  115,
+                                                              "elapsedMs":  2044.9,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  116,
+                                                              "elapsedMs":  2034.44,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  117,
+                                                              "elapsedMs":  2026.57,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  118,
+                                                              "elapsedMs":  2045.76,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  119,
+                                                              "elapsedMs":  2024.23,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          },
+                                                          {
+                                                              "iteration":  120,
+                                                              "elapsedMs":  2034.13,
+                                                              "statusCode":  0,
+                                                              "status":  null,
+                                                              "lastHeartbeat":  null,
+                                                              "isRegisteredInCurrentProcess":  null,
+                                                              "isConfiguredButNotRunning":  null
+                                                          }
+                                                      ],
+                                  "batchSnapshots":  [
+                                                         {
+                                                             "iteration":  1,
+                                                             "elapsedMs":  79.48,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  0
+                                                         },
+                                                         {
+                                                             "iteration":  2,
+                                                             "elapsedMs":  27.36,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  3,
+                                                             "elapsedMs":  27.72,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  4,
+                                                             "elapsedMs":  27.49,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  5,
+                                                             "elapsedMs":  26.77,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  6,
+                                                             "elapsedMs":  30.28,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  7,
+                                                             "elapsedMs":  28.53,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  8,
+                                                             "elapsedMs":  32.64,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  9,
+                                                             "elapsedMs":  28.01,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  10,
+                                                             "elapsedMs":  27.21,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  11,
+                                                             "elapsedMs":  26.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  12,
+                                                             "elapsedMs":  28.06,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  13,
+                                                             "elapsedMs":  29.37,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  14,
+                                                             "elapsedMs":  29.26,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  15,
+                                                             "elapsedMs":  27.86,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  16,
+                                                             "elapsedMs":  28.78,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  17,
+                                                             "elapsedMs":  30.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  18,
+                                                             "elapsedMs":  25.14,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  19,
+                                                             "elapsedMs":  30.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  20,
+                                                             "elapsedMs":  22.5,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  21,
+                                                             "elapsedMs":  25.66,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  22,
+                                                             "elapsedMs":  27.1,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  23,
+                                                             "elapsedMs":  27.49,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  24,
+                                                             "elapsedMs":  27.74,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  25,
+                                                             "elapsedMs":  28.75,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  26,
+                                                             "elapsedMs":  28.51,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  27,
+                                                             "elapsedMs":  27.64,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  28,
+                                                             "elapsedMs":  27.35,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  29,
+                                                             "elapsedMs":  25.99,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  30,
+                                                             "elapsedMs":  27.14,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  31,
+                                                             "elapsedMs":  28.5,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  32,
+                                                             "elapsedMs":  26.43,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  33,
+                                                             "elapsedMs":  27.4,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  34,
+                                                             "elapsedMs":  32.34,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  35,
+                                                             "elapsedMs":  24.2,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  36,
+                                                             "elapsedMs":  30.12,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  37,
+                                                             "elapsedMs":  21.66,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  38,
+                                                             "elapsedMs":  25.25,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  39,
+                                                             "elapsedMs":  23.21,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  40,
+                                                             "elapsedMs":  27.94,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  41,
+                                                             "elapsedMs":  30.37,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  42,
+                                                             "elapsedMs":  21.21,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  43,
+                                                             "elapsedMs":  26.6,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  44,
+                                                             "elapsedMs":  26.88,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  45,
+                                                             "elapsedMs":  23.98,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  46,
+                                                             "elapsedMs":  26.99,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  47,
+                                                             "elapsedMs":  25.34,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  48,
+                                                             "elapsedMs":  29.86,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  49,
+                                                             "elapsedMs":  27.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  50,
+                                                             "elapsedMs":  23.31,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  51,
+                                                             "elapsedMs":  103.46,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  52,
+                                                             "elapsedMs":  519.03,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  53,
+                                                             "elapsedMs":  29.72,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  54,
+                                                             "elapsedMs":  50.54,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  55,
+                                                             "elapsedMs":  28.44,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  56,
+                                                             "elapsedMs":  27.42,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  57,
+                                                             "elapsedMs":  27.63,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  58,
+                                                             "elapsedMs":  21.07,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  59,
+                                                             "elapsedMs":  24.15,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  60,
+                                                             "elapsedMs":  27.81,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  61,
+                                                             "elapsedMs":  30.38,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  62,
+                                                             "elapsedMs":  27.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  63,
+                                                             "elapsedMs":  29.27,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  64,
+                                                             "elapsedMs":  23.38,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  65,
+                                                             "elapsedMs":  24.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  66,
+                                                             "elapsedMs":  26.76,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  67,
+                                                             "elapsedMs":  25.39,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  68,
+                                                             "elapsedMs":  26.88,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  69,
+                                                             "elapsedMs":  24.79,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  70,
+                                                             "elapsedMs":  21.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  71,
+                                                             "elapsedMs":  27.71,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  72,
+                                                             "elapsedMs":  24.93,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  73,
+                                                             "elapsedMs":  30.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  74,
+                                                             "elapsedMs":  26.71,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  75,
+                                                             "elapsedMs":  26.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  76,
+                                                             "elapsedMs":  27.98,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  77,
+                                                             "elapsedMs":  27.23,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  78,
+                                                             "elapsedMs":  28.7,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  79,
+                                                             "elapsedMs":  27.59,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  80,
+                                                             "elapsedMs":  25.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  81,
+                                                             "elapsedMs":  22.1,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  82,
+                                                             "elapsedMs":  34.38,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  83,
+                                                             "elapsedMs":  27.57,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  84,
+                                                             "elapsedMs":  28.62,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  85,
+                                                             "elapsedMs":  25.11,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  86,
+                                                             "elapsedMs":  20.62,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  87,
+                                                             "elapsedMs":  29.93,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  88,
+                                                             "elapsedMs":  25.14,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  89,
+                                                             "elapsedMs":  29.12,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  90,
+                                                             "elapsedMs":  27.65,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  91,
+                                                             "elapsedMs":  25.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  92,
+                                                             "elapsedMs":  27.48,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  93,
+                                                             "elapsedMs":  25.07,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  94,
+                                                             "elapsedMs":  26.11,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  95,
+                                                             "elapsedMs":  28.17,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  96,
+                                                             "elapsedMs":  27.65,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  97,
+                                                             "elapsedMs":  27.32,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  98,
+                                                             "elapsedMs":  28.44,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  99,
+                                                             "elapsedMs":  28.97,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  100,
+                                                             "elapsedMs":  27.77,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  101,
+                                                             "elapsedMs":  27.89,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  102,
+                                                             "elapsedMs":  30.12,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  103,
+                                                             "elapsedMs":  26.3,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  104,
+                                                             "elapsedMs":  27.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  105,
+                                                             "elapsedMs":  25.75,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  106,
+                                                             "elapsedMs":  27.73,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  107,
+                                                             "elapsedMs":  33.57,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  108,
+                                                             "elapsedMs":  28.63,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  109,
+                                                             "elapsedMs":  26.72,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  110,
+                                                             "elapsedMs":  31.56,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  111,
+                                                             "elapsedMs":  27.82,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  112,
+                                                             "elapsedMs":  26.51,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  113,
+                                                             "elapsedMs":  28.88,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  114,
+                                                             "elapsedMs":  24.65,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  115,
+                                                             "elapsedMs":  27.54,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  116,
+                                                             "elapsedMs":  26,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  117,
+                                                             "elapsedMs":  25.15,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  118,
+                                                             "elapsedMs":  24.24,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  119,
+                                                             "elapsedMs":  26.76,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         },
+                                                         {
+                                                             "iteration":  120,
+                                                             "elapsedMs":  26.75,
+                                                             "statusCode":  200,
+                                                             "status":  "running",
+                                                             "completedAtUtc":  null,
+                                                             "startedAtUtc":  "2026-08-12T17:11:16.279198Z",
+                                                             "progressPercent":  15
+                                                         }
+                                                     ],
+                                  "firstRunningObservedIteration":  1,
+                                  "completedStatus":  null,
+                                  "completedAtUtc":  null,
+                                  "notes":  "Analytics probes succeeded while the import batch was running; the batch did not reach terminal state within the harness window."
+                              },
+                       "D7":  {
+                                  "status":  "n/a",
+                                  "notes":  "Not exercised in PERF14"
+                              },
+                       "D8":  {
+                                  "status":  "n/a_dedicated",
+                                  "notes":  "shared_saas requires MT fixtures"
+                              }
+                   },
+    "correctnessChecks":  {
+                              "result":  "pass",
+                              "notes":  "No fake overlap: measured status only if analytics probes overlapped a running import batch."
+                          },
+    "residualRisks":  [
+                          "single-host dedicated only",
+                          "D8 remains MT-owned",
+                          "overlap evidence depends on local worker process and fixture availability"
+                      ]
+}

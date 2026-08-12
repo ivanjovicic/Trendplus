@@ -2361,6 +2361,7 @@ public static class CachedAnalyticsEndpoints
     {
         var clearState = await cacheAdmin.GetStateAsync();
         var (cacheMode, isDistributed) = cacheAdmin.ResolveCacheMode();
+        var footprint = cache.GetFootprintSnapshot();
         var isShared = clearState.IsShared;
         var warning = clearState.Warning;
         if (env.IsProduction() && string.Equals(cacheMode, "in-memory", StringComparison.OrdinalIgnoreCase))
@@ -2382,6 +2383,7 @@ public static class CachedAnalyticsEndpoints
             cacheMode,
             environment = env.EnvironmentName,
             cacheType = isShared ? "Hybrid (In-Memory + Redis)" : "In-Memory only",
+            trackedKeyCount = footprint.TrackedKeyCount,
             message,
             warning,
             lastClearAtUtc = clearState.LastClearAtUtc,

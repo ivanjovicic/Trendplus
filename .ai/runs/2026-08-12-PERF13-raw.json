@@ -1,0 +1,90 @@
+{
+    "meta":  {
+                 "packId":  "PERF13-G10-cache-footprint-01",
+                 "commit":  "e340868f24bfbbe7a0112542f2a7a48d675add99",
+                 "datetimeUtc":  "2026-08-12T16:41:06.3951522Z",
+                 "milestone":  "G10",
+                 "deploymentMode":  "dedicated",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m"
+             },
+    "dimensions":  {
+                       "D1":  {
+                                  "status":  "cite_PERF11",
+                                  "notes":  "Observed envelope already measured"
+                              },
+                       "D2":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Concurrent reads already measured"
+                              },
+                       "D3":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Connection pressure already measured"
+                              },
+                       "D4":  {
+                                  "status":  "cite_PERF12",
+                                  "notes":  "Worker health already measured"
+                              },
+                       "D5":  {
+                                  "status":  "measured",
+                                  "cacheMode":  "in-memory",
+                                  "trackedKeyCountBefore":  0,
+                                  "trackedKeyCountPeak":  6,
+                                  "trackedKeyCountAfter":  6,
+                                  "rssMbBefore":  86.66,
+                                  "rssMbPeak":  86.66,
+                                  "rssMbAfter":  86.66,
+                                  "estimatedMbPeak":  0,
+                                  "sampleRequests":  [
+                                                         {
+                                                             "url":  "http://127.0.0.1:8080/api/analytics/cached/sales/summary?fromDate=2026-02-13T06%3A00%3A00.0000000Z\u0026toDate=2026-08-12T06%3A00%3A00.0000000Z",
+                                                             "statusCode":  200,
+                                                             "elapsedMs":  56.04,
+                                                             "trackedKeyCount":  2,
+                                                             "rssMb":  86.66,
+                                                             "error":  null
+                                                         },
+                                                         {
+                                                             "url":  "http://127.0.0.1:8080/api/analytics/cached/sales/summary?fromDate=2026-02-13T06%3A00%3A00.0000000Z\u0026toDate=2026-08-12T06%3A00%3A00.0000000Z\u0026storeId=1",
+                                                             "statusCode":  200,
+                                                             "elapsedMs":  598.29,
+                                                             "trackedKeyCount":  4,
+                                                             "rssMb":  86.66,
+                                                             "error":  null
+                                                         },
+                                                         {
+                                                             "url":  "http://127.0.0.1:8080/api/analytics/cached/sales/top-products?fromDate=2026-02-13T06%3A00%3A00.0000000Z\u0026toDate=2026-08-12T06%3A00%3A00.0000000Z\u0026top=10",
+                                                             "statusCode":  200,
+                                                             "elapsedMs":  64.31,
+                                                             "trackedKeyCount":  6,
+                                                             "rssMb":  86.66,
+                                                             "error":  null
+                                                         }
+                                                     ],
+                                  "notes":  "Cache status endpoint exposed tracked key count; warm-up requests created measurable footprint."
+                              },
+                       "D6":  {
+                                  "status":  "blocked",
+                                  "notes":  "No M-PERF Access import fixture in this repo scope; remains a durable follow-up"
+                              },
+                       "D7":  {
+                                  "status":  "n/a",
+                                  "notes":  "Not exercised in PERF13 cache footprint pack"
+                              },
+                       "D8":  {
+                                  "status":  "n/a_dedicated",
+                                  "notes":  "shared_saas requires MT fixtures"
+                              }
+                   },
+    "correctnessChecks":  {
+                              "result":  "pass",
+                              "cacheKeysObserved":  6,
+                              "requestsSucceeded":  3,
+                              "notes":  "Tracked cache keys increased after cache warm-up; no fake zero or silent fallback."
+                          },
+    "residualRisks":  [
+                          "Process RSS is an estimate of cache footprint, not a per-entry allocator breakdown",
+                          "D6 import overlap remains unmeasured without a real Access fixture"
+                      ]
+}

@@ -78,7 +78,9 @@ Every scalability-gate evidence pack must address these dimensions. Until measur
 
 **Deferred-dimension pack (PERF11):** `.ai/runs/2026-08-12-PERF11-evidence.md` — D1 observed envelope measured (8 logical CPUs, peak RSS ≈87 MB, DB ≈106 MB); D4 initially blocked on web-process harness mistake; D5 blocked (no instrumentation); D6/D7 deferred at that time.
 
-**Remaining-gap pack (PERF12):** `.ai/runs/2026-08-12-PERF12-evidence.md` — D4 measured on `PROCESS_TYPE=worker` (Running + heartbeat); D7 html generate burst 3/3 completed (~461 ms p95); D5/D6 durable blockers.
+**Remaining-gap pack (PERF12):** `.ai/runs/2026-08-12-PERF12-evidence.md` - D4 measured on `PROCESS_TYPE=worker` (Running + heartbeat); D7 html generate burst 3/3 completed (~461 ms p95); D5/D6 durable blockers.
+
+**Cache-footprint follow-up (PERF13):** `.ai/runs/2026-08-12-PERF13-evidence.md` - D5 cache footprint measured with tracked keys 0 -> 6; D6 import overlap still blocked.
 
 ### D3 — Database connection pressure
 

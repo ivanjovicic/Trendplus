@@ -80,6 +80,15 @@ public class HybridCacheService : IAnalyticsCacheService
         _logger.LogInformation("Redis cache {State} by user toggle", enabled ? "ENABLED" : "DISABLED");
     }
 
+    public CacheFootprintSnapshot GetFootprintSnapshot()
+    {
+        return new CacheFootprintSnapshot(
+            CacheMode: _redisUserEnabled && _redisAvailable ? "redis" : "in-memory",
+            RedisEnabled: _redisUserEnabled,
+            RedisAvailable: IsRedisAvailable,
+            TrackedKeyCount: _keys.Count);
+    }
+
     private void CheckRedisAvailability()
     {
         if (_distributedCache == null)
