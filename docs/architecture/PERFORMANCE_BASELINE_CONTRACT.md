@@ -59,6 +59,8 @@ It does **not**:
 
 **M-tier measurement plan (PERF04):** `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md` — execute `PERF-MEASURE-01` before pilot performance claims.
 
+**Recorded M-tier pack (PERF05):** `.ai/runs/2026-08-12-PERF05-evidence.md` on `trendplus_perf_m` (seed `Database/Perf/M-PERF-01_seed.sql`).
+
 ## Benchmark families (priority order)
 
 Each family maps to a future PERF phase. Measure the listed representative request/job shapes first.

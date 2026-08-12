@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF04** M-tier plan: `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`. Current queue READY: `PERF05` (M-tier baseline pack execution).
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF05** M-tier pack: `.ai/runs/2026-08-12-PERF05-evidence.md`. Current queue READY: `PERF06` (cold-start investigation / PERF-COLD-01).
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 

@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF05` (`PERF04` DONE; M-tier plan in `PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md`) | M-tier baseline pack execution |
+| PERF - Performance | `PERF06` (`PERF05` DONE; M-tier pack in `.ai/runs/2026-08-12-PERF05-evidence.md`) | cold-start investigation (PERF-COLD-01) |
 | OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -20,14 +20,69 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF05 - Execute M-tier baseline measurement pack and capture evidence
+---
+
+## PERF06 - Investigate dashboard bootstrap cold-start (PERF-COLD-01)
 
 Status: READY
+Priority: future / investigation
+Feature family: performance-cold-start-investigation
+Parallel-safe: no ? shares bootstrap/API paths
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+M-tier PERF05 recorded B8 cold p95 ~6.4 s (borderline vs 5 s target) while S-tier showed ~55 s. Before runtime optimization, the team needs a profiling plan that explains variance and identifies dominant cold-start sections without changing semantics.
+
+### Evidence
+
+- `.ai/runs/2026-08-12-PERF05-evidence.md` and raw JSON
+- `PERF-COLD-01` in `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+
+### Scope
+
+- investigation/plan docs and optional SQL/plan captures;
+- no production optimization in this prompt.
+
+### Read first
+
+- PERF05 evidence
+- PERF03 backlog row PERF-COLD-01
+- bootstrap endpoint implementation
+
+### Do
+
+1. Document cold-start variance hypotheses (startup protocol, partial sections, cache state).
+2. List bootstrap sub-queries/sections to profile on M-tier.
+3. Define before/after proof requirements for a future runtime slice.
+
+### Tests
+
+- plan cites PERF-COLD-01 and M-tier numbers;
+- no runtime optimization authorized.
+
+### Acceptance
+
+- investigation plan exists with profiling targets;
+- rollback/correctness gates preserved.
+
+### Dependencies
+
+- PERF05 DONE.
+
+---
+
+## PERF05 - Execute M-tier baseline measurement pack and capture evidence
+
+Status: DONE
 Priority: future / measurement
 Feature family: performance-m-tier-measurement-pack
 Parallel-safe: yes, measurement/docs only
-Owner: unassigned
-Local lock: none
+Owner: Cursor
+Local lock: removed after DONE
+Commit: pending
+Completed: 2026-08-12
 
 ### Problem
 
@@ -72,6 +127,29 @@ PERF04 defined the M-tier plan and seed recipe, but pilot performance claims and
 ### Dependencies
 
 - PERF04 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `Database/Perf/M-PERF-01_seed.sql`
+  - `tmp/perf05_setup_db.ps1`
+  - `tmp/perf05_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF05-evidence.md`
+  - `.ai/runs/2026-08-12-PERF05-raw.json`
+  - `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf05_setup_db.ps1` ? pass
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf05_measure.ps1 -SkipSetup` ? pass
+  - docs/queue validators ? pending at commit
+- Risks:
+  - supplier ranking blocked by 429 in harness
+  - B4/B7 not measured; JSON meta parsing gap in harness
+  - S-tier vs M-tier cold-start not comparable without identical startup protocol
+- Next: PERF06 cold-start investigation (PERF-COLD-01)
 
 ---
 

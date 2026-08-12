@@ -27,6 +27,22 @@ This document is **planning only**. It does not authorize runtime query/index/ca
 | Measured warm paths | **within** warm p95 targets for B1 endpoints |
 | Measured cold-start path | **far above** cold p95 target for dashboard bootstrap |
 
+## M-tier baseline (PERF05, commit `77919b4`)
+
+| Field | Value |
+|---|---|
+| Dataset tier | M (12k products, 180k sale lines, 45k headers) |
+| Database | `trendplus_perf_m` on Postgres 18.3 |
+| Evidence | `.ai/runs/2026-08-12-PERF05-evidence.md` |
+| B8 cold p95 | **6373 ms** (target 5 s — borderline breach) |
+| B8 warm p95 | **52 ms** |
+| B2 decision-board warm p95 | **126 ms** |
+| B1 sales warm p95 | **26 ms** |
+| B1 inventory warm p95 | **24 ms** |
+| Gaps | supplier ranking 429; B4/B7 skipped/deferred |
+
+S-tier cold-start severity **does not automatically transfer** to M-tier on this host; still treat cold p95 as over target until reproduced with identical startup protocol.
+
 ## Executive summary
 
 1. **Cold start (B8)** is the only measured family that clearly breaches demo/readiness targets today.
@@ -48,7 +64,8 @@ Rank uses measured cost × business impact. Lower rank number = investigate or o
 | Family | cold-start (`PERF-8`, benchmark `B8`) |
 | Surface | `GET /api/analytics/cached/dashboard/bootstrap` |
 | Business impact | Executive dashboard entry; demo blocker per ops budgets |
-| Measured (2026-08-11) | cold-process/cold-cache: p50 **12.3 s**, p95 **55.4 s**, min 10.5 s, max 55.4 s (N=5) |
+| Measured (2026-08-11 S-tier) | cold-process/cold-cache: p50 **12.3 s**, p95 **55.4 s**, min 10.5 s, max 55.4 s (N=5) |
+| Measured (2026-08-12 M-tier) | cold-process/cold-cache: p50 **4.96 s**, p95 **6.37 s**, min 4.48 s, max 6.70 s (N=5) |
 | Target (engineering) | cold p95 **&lt; 5 s** (`docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`) |
 | Correctness baseline | `meta.success=true`, `meta.isPartial=true`, `warningCode=ANALYTICS_PARTIAL_DATA`, `summary.totalRevenue>0`, `inventory.totalSkuCount>0` |
 | Hypothesis (unproven) | Process startup + first analytics aggregation + partial section fan-out dominate; not yet SQL-profiled |
@@ -111,7 +128,7 @@ Rank uses measured cost × business impact. Lower rank number = investigate or o
 | Rank | 6 |
 | Family | baseline expansion (`PERF-5`) |
 | Surfaces not in S-tier pack | Decision Board aggregate, Product Decision Center, supplier scorecard, import preview/run, workers, frontend route data-ready |
-| Action | Record M-tier measurements before any optimization claims |
+| Action | **Partial M-tier pack recorded** (`.ai/runs/2026-08-12-PERF05-evidence.md`); supplier/import/frontend gaps remain |
 | Dependency | PERF01/02 protocol; **PERF04** plan: `docs/architecture/PERFORMANCE_M_TIER_MEASUREMENT_PLAN.md` |
 
 ---

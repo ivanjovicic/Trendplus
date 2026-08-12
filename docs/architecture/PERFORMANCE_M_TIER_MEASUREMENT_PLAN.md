@@ -147,7 +147,7 @@ Reuse PERF02 protocol. A latency sample is **invalid** if correctness fails.
 
 ### Tooling
 
-- Reuse the pattern from S-tier: PowerShell harness `tmp/perf02_measure.ps1` extended for M-tier routes (new script in execution prompt, not PERF04).
+- Reuse the pattern from S-tier: `tmp/perf05_setup_db.ps1` + `tmp/perf05_measure.ps1` (PERF05 recorded pack).
 - Frontend B7: Playwright or manual timed run with HAR — document method in evidence.
 
 ---
