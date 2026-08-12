@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured; D1 partial; D4-D7 deferred). Current queue READY: `PERF11`.
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured; D1 partial; D4-D7 deferred). Current queue READY: `PERF10`.
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
@@ -161,7 +161,7 @@ Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` 
   - D1 partial; D4-D7 deferred
   - shared_saas (D8) blocked on MT fixtures
 - Next:
-  - PERF11 deferred scalability dimensions (D1/D4-D7)
+  - PERF10 follow-up pack for D1 envelope and D4-D7 coverage
 
 ## Required benchmark evidence
 
