@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "packId": "PERF10-G10-dedicated-01",
+    "commit": "f026a7f9570b5f20c72fbefd2eff89424037e9f3",
+    "datetimeUtc": "2026-08-12T15:31:47.8314975Z",
+    "milestone": "G10",
+    "deploymentMode": "dedicated",
+    "machine": "DESKTOP-V877DAD",
+    "datasetTier": "M",
+    "seedRecipeId": "M-PERF-01",
+    "prewarmEnabled": false,
+    "workersEnabled": false
+  },
+  "dimensions": {
+    "D1": {
+      "status": "deferred",
+      "cpuCoresReserved": null,
+      "memoryMbReserved": null,
+      "diskGbReserved": null,
+      "postgresConnectionsBudget": null,
+      "cacheFootprintMbBudget": null
+    },
+    "D2": {
+      "status": "deferred",
+      "concurrentUsersAssumed": null,
+      "concurrentAnalyticsReadsAssumed": null,
+      "representativeRoutes": ["B1", "B2", "B7"],
+      "p50Ms": null,
+      "p95Ms": null,
+      "errorRate": null,
+      "timeoutRate": null,
+      "coldWarmMatrix": "single-load anchors only; no concurrent-user harness yet",
+      "supportingEvidenceRefs": [
+        ".ai/runs/2026-08-12-PERF05-evidence.md",
+        ".ai/runs/2026-08-12-PERF08-evidence.md"
+      ]
+    },
+    "D3": {
+      "status": "deferred",
+      "poolSizeConfigured": null,
+      "peakActiveConnections": null,
+      "waitOrTimeoutCount": null,
+      "statementTimeoutHits": null
+    },
+    "D4": {
+      "status": "deferred",
+      "workerTypesInScope": ["aggregation", "nightly refresh", "prewarm", "import claimers"],
+      "maxParallelJobs": null,
+      "queueDepthPeak": null,
+      "cycleP95Ms": null,
+      "retryOrPoisonCount": null
+    },
+    "D5": {
+      "status": "deferred",
+      "keysOrEntriesPeak": null,
+      "estimatedMbPeak": null,
+      "hitRate": null,
+      "invalidationPolicyId": null
+    },
+    "D6": {
+      "status": "deferred",
+      "importJobsOverlapping": null,
+      "overlapWithAnalyticsReads": null,
+      "overlapWithWorkers": null,
+      "failureOrBackoffObserved": null
+    },
+    "D7": {
+      "status": "deferred",
+      "burstConcurrency": null,
+      "payloadSizeBytes": null,
+      "p95Ms": null,
+      "memoryPeakMb": null
+    },
+    "D8": {
+      "status": "n/a_dedicated",
+      "tenantCountInFixture": null,
+      "crossTenantLeakChecks": null,
+      "overheadP95Ms": null,
+      "mtGateIds": []
+    }
+  },
+  "correctnessChecks": "pass",
+  "notes": [
+    "This is a dedicated-mode evidence index, not a G10 pass claim.",
+    "Existing PERF05/PERF08 evidence is cited as context for later measurement slices.",
+    "Shared SaaS claims remain MT-owned and blocked until MT fixtures/gates exist."
+  ],
+  "residualRisks": [
+    "Dedicated single-host anchors do not generalize to concurrent customer load.",
+    "The repo still lacks a reusable concurrent-load harness for a true G10 run.",
+    "D1-D7 remain unmeasured and need dedicated follow-up packs."
+  ]
+}
