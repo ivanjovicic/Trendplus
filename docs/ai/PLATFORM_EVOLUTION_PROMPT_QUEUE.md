@@ -12,22 +12,80 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF03` (`PERF02` DONE; baseline evidence recorded) | measurement-backed backlog |
-| OBS - Observability | none (`OBS06` DONE) | Import SLA evidence contract (docs) |
+| PERF - Performance | `PERF04` (`PERF03` DONE; measured backlog recorded) | M-tier baseline measurement plan |
+| OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
 ---
 
-## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
+## PERF04 - Prepare M-tier baseline measurement plan
 
 Status: READY
+Priority: future / measurement
+Feature family: performance-m-tier-baseline
+Parallel-safe: yes, planning/measurement only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+PERF03 ranked S-tier findings, but Decision Board, Product Decision Center, import, workers and frontend route load still have no M-tier baseline — optimization must not extrapolate from 15-product smoke data.
+
+### Evidence
+
+- `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` item PERF-MEASURE-01
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md` M-tier tier definition
+- `.ai/runs/2026-08-11-PERF02-evidence.md` S-tier anchor
+
+### Scope
+
+- docs/measurement plan only for M-tier dataset recipe and benchmark family coverage;
+- no production optimization;
+- reuse PERF01/02 protocol.
+
+### Read first
+
+- PERF03 backlog
+- PERF02 evidence
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-5
+
+### Do
+
+1. Define M-tier seed parameters and row-count targets.
+2. List which benchmark families (B1–B8) must be recorded on M-tier before pilot performance claims.
+3. Keep cold/warm and correctness co-assertions explicit.
+4. Do not invent M-tier timings in this prompt.
+
+### Tests
+
+- plan cites PERF03 backlog IDs;
+- no optimization without M-tier measurements;
+- docs/queue validators pass.
+
+### Acceptance
+
+- one citeable M-tier measurement plan exists;
+- PERF-MEASURE-01 can be executed from the plan;
+- no runtime optimization authorized.
+
+### Dependencies
+
+- PERF03 DONE.
+
+---
+
+## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
+
+Status: DONE
 Priority: future
 Feature family: performance-measured-backlog
 Parallel-safe: yes, planning only
-Owner: unassigned
-Local lock: none
+Owner: Cursor
+Local lock: removed after DONE
+Commit: pending
+Completed: 2026-08-12
 
 ### Problem
 
@@ -69,7 +127,15 @@ Optimization tasks should be created only after baseline evidence identifies the
 
 - PERF02 DONE with usable measurements.
 
----
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Deliverable: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+- Also updated: PERFORMANCE_BASELINE_CONTRACT pointer, PERFORMANCE_ROADMAP, MASTER_ROADMAP
+- Checks: docs/queue validators; `git diff --check`
+- Risks: S-tier only — cold-start dominates; warm paths already fast
+- Next: PERF04 M-tier baseline measurement plan
 
 ---
 
@@ -240,6 +306,69 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ---
 
+## OBS07 - Define Analytics SLA evidence contract
+
+Status: READY
+Ready after: `OBS06` is `DONE`
+Priority: future
+Feature family: observability-analytics-sla-evidence
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS07-<agent>.lock.md`
+Promotion note: 2026-08-12 — `OBS06` DONE; roadmap OBS-5 Analytics SLA evidence (docs only).
+
+### Problem
+
+Analytics freshness and refresh provenance exist across several surfaces, but there is still no frozen docs contract for how analytics SLA evidence answers requested/started/completed/failed/partial/fallback and last-success age without inventing green or contractual hours.
+
+### Evidence
+
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-5;
+- `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` analytics terms;
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` R1–R7;
+- `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md` import boundary precedent.
+
+### Scope
+
+- docs/contracts only for analytics SLA evidence fields, honesty rules and unknown behavior;
+- reuse OBS05 vocabulary and R1–R7 SLI IDs;
+- no runtime instrumentation rewrite;
+- no numeric customer SLA hours.
+
+### Read first
+
+- OBS05 vocabulary
+- OBS01 SLI catalog analytics rows
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-5
+- import SLA evidence contract
+
+### Do
+
+1. Define the analytics SLA evidence payload: requested, started, completed, failed, partial, fallback, last successful age, source/import provenance.
+2. Keep measurement from authoritative refresh request/start to durable terminal status.
+3. Keep unknown/partial/fallback explicit and non-green.
+4. Gate any numeric SLA hours behind business/QDB approval.
+
+### Tests
+
+- contract forbids treating fallback or partial as successful freshness;
+- missing last-success stays unknown, not zero age;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable analytics SLA evidence contract exists;
+- support can answer the OBS-5 questions from the contract language;
+- runtime wiring remains a later promoted slice.
+
+### Dependencies
+
+- OBS05 DONE;
+- OBS06 DONE.
+
+---
+---
+
 ## OBS06 - Define Import SLA evidence contract
 
 Status: DONE
@@ -313,7 +442,7 @@ Import lifecycle timestamps and states exist across connectors and status surfac
   - numeric SLA hours remain out of scope until business/QDB approval
   - MT/tenant scope is still not inferred by this contract
 - Next:
-  - OBS roadmap continues with later promoted slices; current queue READY for OBS is none
+  - `OBS07` is READY (analytics SLA evidence contract)
 
 ---
 

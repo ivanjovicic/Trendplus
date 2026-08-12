@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. Current queue READY: `OBS06` (Import SLA evidence contract).
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is now the current queue READY.
 
 ### OBS-2 - Latency SLIs
 
@@ -68,6 +68,8 @@ Do not publish numerical SLA commitments until the business/customer contract re
 
 ### OBS-4 - Import SLA evidence
 
+**Status:** DONE (`OBS06`) — `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md`.
+
 Track import lifecycle timestamps and states so operations can answer:
 
 - when the job was accepted;
@@ -78,6 +80,8 @@ Track import lifecycle timestamps and states so operations can answer:
 - which customer/source scope the evidence belongs to.
 
 ### OBS-5 - Analytics SLA evidence
+
+**Status:** READY (`OBS07`) — `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`.
 
 Track:
 

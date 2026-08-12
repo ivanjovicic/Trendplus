@@ -55,6 +55,8 @@ It does **not**:
 - no worker throughput scripts (queue depth, batch latency)
 - no API/frontend cold-start first-useful-response script
 
+**Measured optimization backlog (PERF03):** `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` — ranked from `.ai/runs/2026-08-11-PERF02-evidence.md`. Do not optimize warm B1 read paths on S-tier without new evidence.
+
 ## Benchmark families (priority order)
 
 Each family maps to a future PERF phase. Measure the listed representative request/job shapes first.
