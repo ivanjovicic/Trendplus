@@ -84,7 +84,7 @@ Feature family: performance-cold-start-investigation
 Parallel-safe: no ? shares bootstrap/API paths
 Owner: Cursor
 Local lock: removed after DONE
-Commit: pending
+Commit: `b7a7dd9`
 Completed: 2026-08-12
 
 ### Problem
