@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF11` | deferred scalability dimensions (D1/D4?D7) |
+| PERF - Performance | `PERF11` | deferred scalability dimensions (D1/D4-D7) |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,7 +24,7 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF11 - Capture deferred scalability dimensions (D1/D4?D7)
+## PERF11 - Capture deferred scalability dimensions (D1/D4-D7)
 
 Status: READY
 Priority: future / measurement
@@ -35,7 +35,7 @@ Local lock: `.ai/task-locks/PERF11-<agent>.lock.md`
 
 ### Problem
 
-PERF10 measured D2 concurrent warm reads and D3 connection pressure on a dedicated G10-oriented pack, but D1 resource envelope remains partial and D4?D7 are still deferred.
+PERF10 measured D2 concurrent warm reads and D3 connection pressure on a dedicated G10-oriented pack, but D1 resource envelope remains partial and D4-D7 are still deferred.
 
 ### Evidence
 
@@ -139,17 +139,16 @@ PERF09 defined G10/G50 scalability dimensions, but no citeable evidence pack yet
   - `tmp/perf10_measure.ps1`
   - `.ai/runs/2026-08-12-PERF10-evidence.md`
   - `.ai/runs/2026-08-12-PERF10-raw.json`
-  - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
   - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
   - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
   - `MASTER_ROADMAP.md`
 - Checks:
   - `powershell -ExecutionPolicy Bypass -File tmp/perf10_measure.ps1 -SkipSetup` ? pass (D2 p95 468.58 ms; D3 peak total connections 4; error/timeout 0)
-  - docs/queue validators ? pending at commit
+  - docs/queue validators ? pass
 - Risks:
-  - single-host dedicated only; not multi-customer proof
-  - D1 partial; D4?D7 deferred; bootstrap meta JSON parse still weak
-- Next: PERF11 deferred scalability dimensions
+  - D1 partial; D4-D7 deferred
+  - shared_saas (D8) blocked on MT fixtures
+- Next: PERF10 follow-up pack for D1 envelope and D4-D7 coverage
 
 ---
 
