@@ -1,0 +1,151 @@
+{
+    "meta":  {
+                 "commit":  "e2ebd1d0311617901587184c798f08e0335a5f60",
+                 "datetimeUtc":  "2026-08-12T15:20:32.8494881Z",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m",
+                 "apiBaseUrl":  "http://127.0.0.1:8080",
+                 "frontendBaseUrl":  "http://127.0.0.1:5174",
+                 "prewarmEnabled":  false,
+                 "workersEnabled":  false,
+                 "periodFrom":  "2026-02-13T06:00:00.0000000Z",
+                 "periodTo":  "2026-08-12T06:00:00.0000000Z"
+             },
+    "backendColdStart":  [
+                             {
+                                 "sample":  1,
+                                 "path":  "backend",
+                                 "processState":  "cold",
+                                 "cacheState":  "cold",
+                                 "healthReadyMs":  10432.59,
+                                 "firstAnalyticsRequestMs":  8896.27,
+                                 "firstUsefulAnalyticsMs":  19328.86,
+                                 "statusCode":  200,
+                                 "success":  null,
+                                 "isPartial":  null,
+                                 "warningCode":  null
+                             },
+                             {
+                                 "sample":  2,
+                                 "path":  "backend",
+                                 "processState":  "cold",
+                                 "cacheState":  "cold",
+                                 "healthReadyMs":  7705.94,
+                                 "firstAnalyticsRequestMs":  7673.5,
+                                 "firstUsefulAnalyticsMs":  15379.44,
+                                 "statusCode":  200,
+                                 "success":  null,
+                                 "isPartial":  null,
+                                 "warningCode":  null
+                             },
+                             {
+                                 "sample":  3,
+                                 "path":  "backend",
+                                 "processState":  "cold",
+                                 "cacheState":  "cold",
+                                 "healthReadyMs":  8005.01,
+                                 "firstAnalyticsRequestMs":  9362.28,
+                                 "firstUsefulAnalyticsMs":  17367.29,
+                                 "statusCode":  200,
+                                 "success":  null,
+                                 "isPartial":  null,
+                                 "warningCode":  null
+                             },
+                             {
+                                 "sample":  4,
+                                 "path":  "backend",
+                                 "processState":  "cold",
+                                 "cacheState":  "cold",
+                                 "healthReadyMs":  8310.35,
+                                 "firstAnalyticsRequestMs":  7644.1,
+                                 "firstUsefulAnalyticsMs":  15954.45,
+                                 "statusCode":  200,
+                                 "success":  null,
+                                 "isPartial":  null,
+                                 "warningCode":  null
+                             },
+                             {
+                                 "sample":  5,
+                                 "path":  "backend",
+                                 "processState":  "cold",
+                                 "cacheState":  "cold",
+                                 "healthReadyMs":  8465.39,
+                                 "firstAnalyticsRequestMs":  7527.03,
+                                 "firstUsefulAnalyticsMs":  15992.42,
+                                 "statusCode":  200,
+                                 "success":  null,
+                                 "isPartial":  null,
+                                 "warningCode":  null
+                             }
+                         ],
+    "backendColdSummary":  {
+                               "samples":  5,
+                               "healthReadyP50Ms":  8310.35,
+                               "firstUsefulAnalyticsP50Ms":  15992.42,
+                               "firstUsefulAnalyticsP95Ms":  18936.55
+                           },
+    "backendWarmMarker":  {
+                              "processState":  "warm",
+                              "cacheState":  "cold-then-warm",
+                              "firstBootstrapMs":  7358.39,
+                              "secondBootstrapMs":  75.3,
+                              "statusCode":  200
+                          },
+    "frontendColdStart":  [
+                              {
+                                  "sample":  1,
+                                  "path":  "frontend",
+                                  "processState":  "cold-vite-dev",
+                                  "cacheState":  "cold-shell-warm-api",
+                                  "previewReadyMs":  2937.79,
+                                  "previewMode":  "vite-dev-proxy",
+                                  "indexHtmlMs":  249.98,
+                                  "entryAssetMs":  null,
+                                  "domContentLoadedMs":  8377,
+                                  "usefulRenderMs":  8538,
+                                  "bootstrapStatus":  200,
+                                  "bootstrapMs":  8377,
+                                  "renderTimedOut":  false,
+                                  "totalBrowserMs":  10233
+                              },
+                              {
+                                  "sample":  2,
+                                  "path":  "frontend",
+                                  "processState":  "cold-vite-dev",
+                                  "cacheState":  "cold-shell-warm-api",
+                                  "previewReadyMs":  3240.08,
+                                  "previewMode":  "vite-dev-proxy",
+                                  "indexHtmlMs":  893.39,
+                                  "entryAssetMs":  null,
+                                  "domContentLoadedMs":  3343,
+                                  "usefulRenderMs":  5000,
+                                  "bootstrapStatus":  200,
+                                  "bootstrapMs":  3343,
+                                  "renderTimedOut":  false,
+                                  "totalBrowserMs":  7427
+                              },
+                              {
+                                  "sample":  3,
+                                  "path":  "frontend",
+                                  "processState":  "cold-vite-dev",
+                                  "cacheState":  "cold-shell-warm-api",
+                                  "previewReadyMs":  3784.01,
+                                  "previewMode":  "vite-dev-proxy",
+                                  "indexHtmlMs":  583.09,
+                                  "entryAssetMs":  null,
+                                  "domContentLoadedMs":  120009,
+                                  "usefulRenderMs":  120023,
+                                  "bootstrapStatus":  null,
+                                  "bootstrapMs":  null,
+                                  "renderTimedOut":  false,
+                                  "totalBrowserMs":  121940
+                              }
+                          ],
+    "frontendColdSummary":  {
+                                "samples":  3,
+                                "previewReadyP50Ms":  3240.08,
+                                "usefulRenderP50Ms":  8538,
+                                "usefulRenderP95Ms":  108874.5
+                            }
+}

@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF08` | cold-start evidence capture |
+| PERF - Performance | `PERF09` | scalability gate planning (docs) |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,9 +24,61 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF08 - Capture backend and frontend cold-start evidence (PERF-COLD-01)
+## PERF09 - Define scalability gate evidence contract (PERF-9)
 
 Status: READY
+Priority: future / planning
+Feature family: performance-scalability-gate
+Parallel-safe: yes ? docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF09-<agent>.lock.md`
+
+### Problem
+
+PERF08 recorded distinct backend vs frontend cold-start evidence on M-tier, but the roadmap still lacks a scalability gate contract before 10/50-customer milestones (PERF-9).
+
+### Evidence
+
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-9;
+- `.ai/runs/2026-08-12-PERF08-evidence.md`;
+- `.ai/runs/2026-08-12-PERF05-evidence.md`.
+
+### Scope
+
+- docs-only contract for per-customer resource envelope, concurrency, DB pressure, worker/cache footprint, import overlap, export bursts, tenant isolation overhead;
+- no runtime optimization or load-test harness in this prompt.
+
+### Read first
+
+- PERF08 evidence;
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`;
+- `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`.
+
+### Do
+
+1. Draft scalability gate evidence contract with required dimensions and measurement placeholders.
+2. Link from PERFORMANCE_ROADMAP PERF-9 and baseline contract.
+3. Do not invent numeric SLOs without measured evidence.
+
+### Tests
+
+- contract cites PERF-8/perf evidence where relevant;
+- docs/queue validators pass.
+
+### Acceptance
+
+- PERF-9 has a citeable planning artifact for next measurement slices;
+- no semantic/runtime change shipped.
+
+### Dependencies
+
+- PERF08 DONE.
+
+---
+
+## PERF08 - Capture backend and frontend cold-start evidence (PERF-COLD-01)
+
+Status: DONE
 Priority: future / measurement
 Feature family: performance-cold-start-evidence
 Parallel-safe: no ? shares bootstrap/API paths
@@ -79,6 +131,28 @@ PERF07 recorded section timings, but the roadmap still needs distinct backend an
 
 - PERF07 DONE;
 - PERF06 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `tmp/perf08_measure.ps1`
+  - `Klijent/clientapp/scripts/perf08_frontend_render.mjs`
+  - `.ai/runs/2026-08-12-PERF08-evidence.md`
+  - `.ai/runs/2026-08-12-PERF08-raw.json`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf08_measure.ps1 -SkipSetup` ? pass (backend 5 + frontend 3 samples)
+  - `node scripts/check-prompt-queues.mjs` ? pending at commit
+  - `node scripts/check-planning-architecture.mjs` ? pending at commit
+- Risks:
+  - frontend sample 3 bootstrap timeout under rapid cold restarts
+  - dev Vite proxy path, not production preview/build
+  - harness meta JSON assertions still null
+- Next: PERF09 scalability gate evidence contract
 
 ---
 
