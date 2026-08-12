@@ -81,7 +81,7 @@ Feature family: performance-m-tier-measurement-pack
 Parallel-safe: yes, measurement/docs only
 Owner: Cursor
 Local lock: removed after DONE
-Commit: pending
+Commit: `df7d8ea`
 Completed: 2026-08-12
 
 ### Problem
