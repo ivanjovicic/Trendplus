@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF07` (`PERF06` DONE; cold-start plan in `PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`) | bootstrap section timing capture |
+| PERF - Performance | none (`PERF07` DONE; section timings recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`) | bootstrap section timing capture |
 | OBS - Observability | `OBS07` | Analytics SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -26,12 +26,12 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ## PERF07 - Capture bootstrap section timings on M-tier (PERF-COLD-01 profiling pass)
 
-Status: READY
+Status: DONE
 Priority: future / measurement
 Feature family: performance-cold-start-section-profiling
 Parallel-safe: no ? shares bootstrap/API paths
 Owner: unassigned
-Local lock: none
+Local lock: released
 
 ### Problem
 
@@ -40,7 +40,8 @@ PERF06 identified sequential bootstrap sections as the likely cold-start cost ce
 ### Evidence
 
 - `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`
-- `.ai/runs/2026-08-12-PERF05-evidence.md`
+- `.ai/runs/2026-08-12-PERF07-evidence.md`
+- `.ai/runs/2026-08-12-PERF07-raw.json`
 
 ### Scope
 
@@ -51,13 +52,32 @@ PERF06 identified sequential bootstrap sections as the likely cold-start cost ce
 
 - PERF06 investigation plan
 - `CachedAnalyticsEndpoints.cs` bootstrap factory
-- `tmp/perf05_measure.ps1`
+- `tmp/perf07_measure.ps1`
 
 ### Do
 
 1. Capture P0 section durations on `trendplus_perf_m` cold outer cache miss.
 2. Attach evidence JSON + summary table under `.ai/runs/`.
 3. Do not change cache TTLs, indexes, or partial semantics.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: codex
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `tmp/perf07_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF07-evidence.md`
+  - `.ai/runs/2026-08-12-PERF07-raw.json`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `& .\\tmp\\perf07_measure.ps1 -SkipSetup` ? pass
+- Risks:
+  - section timings show existing schema gaps in `QuickInsights`, `Advanced`, and `ProductDecisionCenter`
+- Next:
+  - OBS07 analytics SLA evidence contract
 
 ### Tests
 

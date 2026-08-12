@@ -15,6 +15,7 @@ using Domain.Model;
 using Domain.Model.Analytics;
 using Trendplus2.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Diagnostics;
 using System.Globalization;
@@ -1637,6 +1638,7 @@ public static class CachedAnalyticsEndpoints
             ITrendplusDbContext db,
             IMediator mediator,
             ILogger<Program> logger,
+            IConfiguration configuration,
             ILoggerFactory loggerFactory,
             HttpContext httpContext,
             DateTime? fromDate = null,
@@ -1657,6 +1659,15 @@ public static class CachedAnalyticsEndpoints
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
+                var profilingEnabled = configuration.GetValue<bool>("AnalyticsBootstrapSectionTiming:Enabled");
+                var profileSections = profilingEnabled
+                    || (httpContext.Request.Query.TryGetValue("profileSections", out var profileSectionsQuery)
+                        && bool.TryParse(profileSectionsQuery.ToString(), out var parsedProfileSections)
+                        && parsedProfileSections);
+                var profileSample = httpContext.Request.Query.TryGetValue("profileSample", out var profileSampleQuery)
+                    ? profileSampleQuery.ToString()
+                    : "n/a";
+
                 var cacheKey = AnalyticsCacheKeys.DashboardBootstrap(fromDate, toDate, storeId, supplierId, normalizedDataScope);
                 var cacheResult = await GetOrSetWithPolicyAsync(
                     cache,
@@ -1667,132 +1678,182 @@ public static class CachedAnalyticsEndpoints
                     {
                         var response = new AnalyticsDashboardBootstrapDto();
 
-                        response.Summary = await TrySectionAsync(
+                        async Task<T?> MeasureSectionAsync<T>(
+                            string sectionId,
+                            string priority,
+                            Func<Task<T>> factory,
+                            string fallbackMessage) where T : class
+                        {
+                            Stopwatch? stopwatch = null;
+                            if (profileSections)
+                            {
+                                stopwatch = Stopwatch.StartNew();
+                            }
+
+                            T? value = default;
+                            try
+                            {
+                                value = await TrySectionAsync(factory, response.Errors, fallbackMessage);
+                                return value;
+                            }
+                            finally
+                            {
+                                if (stopwatch is not null)
+                                {
+                                    stopwatch.Stop();
+                                    logger.LogInformation(
+                                        "dashboard.bootstrap.section sample={Sample} section={Section} priority={Priority} elapsedMs={ElapsedMs:F2} success={Success} errors={Errors}",
+                                        profileSample,
+                                        sectionId,
+                                        priority,
+                                        stopwatch.Elapsed.TotalMilliseconds,
+                                        value is not null,
+                                        response.Errors.Count);
+                                }
+                            }
+                        }
+
+                        response.Summary = await MeasureSectionAsync(
+                            "Summary",
+                            "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildSalesSummarySnapshotAsync(db, mediator, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Sažetak prodaje nije dostupan.");
 
-                        response.Inventory = await TrySectionAsync(
+                        response.Inventory = await MeasureSectionAsync(
+                            "Inventory",
+                            "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.Inventory(2),
                                 async () => await BuildInventoryStatusSnapshotAsync(db, mediator, 2, ct),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Status zaliha nije dostupan.");
 
-                        response.DailySales = await TryListSectionAsync(
+                        response.DailySales = await MeasureSectionAsync(
+                            "DailySales",
+                            "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Dnevni trend prodaje nije dostupan.");
 
-                        response.CategoryData = await TryListSectionAsync(
+                        response.CategoryData = await MeasureSectionAsync(
+                            "CategoryData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.CategoryData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po kategorijama nije dostupna.");
 
-                        response.GenderData = await TryListSectionAsync(
+                        response.GenderData = await MeasureSectionAsync(
+                            "GenderData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.GenderData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po polu nije dostupna.");
 
-                        response.SupplierData = await TryListSectionAsync(
+                        response.SupplierData = await MeasureSectionAsync(
+                            "SupplierData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SupplierData(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po dobavljačima nije dostupna.");
 
-                        response.SupplierOptions = await TryListSectionAsync(
+                        response.SupplierOptions = await MeasureSectionAsync(
+                            "SupplierOptions",
+                            "P2",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.SupplierFilters(fromDate, toDate, storeId, normalizedDataScope),
                                 async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct, normalizedDataScope),
                                 DashboardReferenceSectionTtl,
                                 ct),
-                            response.Errors,
                             "Lista dobavljača za filter nije dostupna.");
 
-                        response.WeekdayData = await TryListSectionAsync(
+                        response.WeekdayData = await MeasureSectionAsync(
+                            "WeekdayData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByWeekday(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po danima nije dostupna.");
 
-                        response.HourData = await TryListSectionAsync(
+                        response.HourData = await MeasureSectionAsync(
+                            "HourData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByHour(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po satima nije dostupna.");
 
-                        response.PaymentData = await TryListSectionAsync(
+                        response.PaymentData = await MeasureSectionAsync(
+                            "PaymentData",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ByPayment(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Prodaja po nacinu placanja nije dostupna.");
 
-                        response.QuickInsights = await TrySectionAsync(
+                        response.QuickInsights = await MeasureSectionAsync(
+                            "QuickInsights",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.QuickInsights(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildQuickInsightsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Brzi uvidi nisu dostupni.");
 
-                        response.TransactionStats = await TrySectionAsync(
+                        response.TransactionStats = await MeasureSectionAsync(
+                            "TransactionStats",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.TransactionStats(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildTransactionStatsSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            response.Errors,
                             "Statistika transakcija nije dostupna.");
 
-                        response.Advanced = await TrySectionAsync(
+                        response.Advanced = await MeasureSectionAsync(
+                            "Advanced",
+                            "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.DashboardAdvanced(fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await BuildAdvancedDashboardSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Napredne metrike nisu dostupne.");
 
-                        var productDecisionSnapshot = await TrySectionAsync(
+                        var productDecisionSnapshot = await MeasureSectionAsync(
+                            "ProductDecisionCenter",
+                            "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope),
                                 async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Product Decision Center nije dostupan.");
 
+                        var decisionActionsStopwatch = profileSections ? Stopwatch.StartNew() : null;
                         response.DecisionActions = BuildDashboardDecisionActions(
                             productDecisionSnapshot,
                             response.Advanced,
@@ -1800,7 +1861,20 @@ public static class CachedAnalyticsEndpoints
                             toDate,
                             storeId,
                             supplierId);
+                        if (decisionActionsStopwatch is not null)
+                        {
+                            decisionActionsStopwatch.Stop();
+                            logger.LogInformation(
+                                "dashboard.bootstrap.section sample={Sample} section={Section} priority={Priority} elapsedMs={ElapsedMs:F2} success={Success} errors={Errors}",
+                                profileSample,
+                                "DecisionActions",
+                                "P2",
+                                decisionActionsStopwatch.Elapsed.TotalMilliseconds,
+                                response.DecisionActions is not null,
+                                response.Errors.Count);
+                        }
 
+                        var executiveStopwatch = profileSections ? Stopwatch.StartNew() : null;
                         response.Executive = BuildExecutiveDashboardSnapshot(
                             productDecisionSnapshot,
                             response.Summary,
@@ -1809,41 +1883,57 @@ public static class CachedAnalyticsEndpoints
                             toDate,
                             storeId,
                             supplierId);
+                        if (executiveStopwatch is not null)
+                        {
+                            executiveStopwatch.Stop();
+                            logger.LogInformation(
+                                "dashboard.bootstrap.section sample={Sample} section={Section} priority={Priority} elapsedMs={ElapsedMs:F2} success={Success} errors={Errors}",
+                                profileSample,
+                                "Executive",
+                                "P2",
+                                executiveStopwatch.Elapsed.TotalMilliseconds,
+                                response.Executive is not null,
+                                response.Errors.Count);
+                        }
 
-                        response.TopAdvanced = await TrySectionAsync(
+                        response.TopAdvanced = await MeasureSectionAsync(
+                            "TopAdvanced",
+                            "P1",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.TopProductsAdvanced(10, fromDate, toDate, storeId, supplierId, normalizedDataScope),
                                 async () => await GetTopProductsAdvancedSnapshotAsync(db, 10, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Napredna tabela top proizvoda nije dostupna.");
 
-                        response.ValidationCompleteness = await TrySectionAsync(
+                        response.ValidationCompleteness = await MeasureSectionAsync(
+                            "ValidationCompleteness",
+                            "P2",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationCompleteness,
                                 async () => await BuildCompletenessValidationAsync(db, ct),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Completeness validacija nije dostupna.");
 
-                        response.ValidationFreshness = await TrySectionAsync(
+                        response.ValidationFreshness = await MeasureSectionAsync(
+                            "ValidationFreshness",
+                            "P2",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationFreshness,
                                 async () => await BuildFreshnessValidationAsync(db, ct),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Freshness validacija nije dostupna.");
 
-                        response.ValidationLostSales = await TrySectionAsync(
+                        response.ValidationLostSales = await MeasureSectionAsync(
+                            "ValidationLostSales",
+                            "P2",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ValidationLostSales,
                                 async () => await BuildLostSalesValidationAsync(db, ct),
                                 DashboardFastSectionTtl,
                                 ct),
-                            response.Errors,
                             "Lost-sales validacija nije dostupna.");
 
                         response.Meta = BuildSuccessMeta(

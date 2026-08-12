@@ -1,0 +1,186 @@
+﻿{
+    "meta":  {
+                 "machine":  "DESKTOP-V877DAD",
+                 "os":  "Microsoft Windows 11 Pro",
+                 "osVersion":  "10.0.22000",
+                 "dotnetSdk":  "10.0.201",
+                 "postgresVersion":  "psql (PostgreSQL) 18.3",
+                 "commit":  "41da5595ba6521e78f1baa4f2725362926904e20",
+                 "datetimeUtc":  "2026-08-12T07:44:49.0210069Z",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m",
+                 "port":  8080,
+                 "prewarmEnabled":  false,
+                 "workersEnabled":  false,
+                 "profileSectionsEnabled":  true,
+                 "sampleId":  "PERF07-01",
+                 "periodFrom":  "2026-02-13T06:00:00.0000000Z",
+                 "periodTo":  "2026-08-12T06:00:00.0000000Z"
+             },
+    "counts":  {
+                   "Artikli":  12000,
+                   "Dobavljaci":  8,
+                   "ProdajaStavke":  180000,
+                   "ProdajaZaglavlja":  45000
+               },
+    "coldBootstrap":  {
+                          "elapsedMs":  7236.04,
+                          "statusCode":  200,
+                          "success":  null,
+                          "isPartial":  null,
+                          "warningCode":  null,
+                          "dataQualityStatus":  null,
+                          "totalRevenue":  null,
+                          "totalSkuCount":  null,
+                          "raw":  "{\"summary\":{\"totalRevenue\":2159940000.0000,\"totalTransactions\":45000,\"totalUnits\":360000,\"avgBasketValue\":47998.666666666666666666666667,\"avgItemPrice\":5999.8333333333333333333333333},\"inventory\":{\"totalSkuCount\":12015,\"totalOnHand\":150087,\"lowStockCount\":1,\"outOfStockCount\":0},\"dailySales\":[{\"date\":\"2026-02-13\",\"totalRevenue\":4749736.0000,\"transactionCount\":177,\"totalUnits\":1416},{\"date\":\"2026-02-14\",\"totalRevenue\":8416667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-02-15\",\"totalRevenue\":10422375.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-02-16\",\"totalRevenue\":12410958.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-02-17\",\"totalRevenue\":14416667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-02-18\",\"totalRevenue\":16425375.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-02-19\",\"totalRevenue\":9905958.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-02-20\",\"totalRevenue\":8416667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-02-21\",\"totalRevenue\":10422375.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-02-22\",\"totalRevenue\":12410958.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-02-23\",\"totalRevenue\":14416667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-02-24\",\"totalRevenue\":16425375.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-02-25\",\"totalRevenue\":9905958.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-02-26\",\"totalRevenue\":8416667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-02-27\",\"totalRevenue\":10422375.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-02-28\",\"totalRevenue\":12410958.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-01\",\"totalRevenue\":14486062.0000,\"transactionCount\":251,\"totalUnits\":2009},{\"date\":\"2026-03-02\",\"totalRevenue\":16416954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-03\",\"totalRevenue\":9874667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-04\",\"totalRevenue\":8429379.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-05\",\"totalRevenue\":10419954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-06\",\"totalRevenue\":12424667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-07\",\"totalRevenue\":14432379.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-08\",\"totalRevenue\":16416954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-09\",\"totalRevenue\":9874667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-10\",\"totalRevenue\":8429379.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-11\",\"totalRevenue\":10419954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-12\",\"totalRevenue\":12424667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-13\",\"totalRevenue\":14432379.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-14\",\"totalRevenue\":16416954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-15\",\"totalRevenue\":9874667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-16\",\"totalRevenue\":8429379.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-17\",\"totalRevenue\":10419954.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-18\",\"totalRevenue\":12485098.0000,\"transactionCount\":251,\"totalUnits\":2009},{\"date\":\"2026-03-19\",\"totalRevenue\":14425950.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-20\",\"totalRevenue\":16432667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-21\",\"totalRevenue\":9838383.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-22\",\"totalRevenue\":8428950.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-23\",\"totalRevenue\":10432667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-24\",\"totalRevenue\":12439383.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-25\",\"totalRevenue\":14425950.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-26\",\"totalRevenue\":16432667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-27\",\"totalRevenue\":9838383.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-03-28\",\"totalRevenue\":8428950.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-03-29\",\"totalRevenue\":10937640.0000,\"transactionCount\":261,\"totalUnits\":2088},{\"date\":\"2026-03-30\",\"totalRevenue\":12520667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-03-31\",\"totalRevenue\":14528427.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-01\",\"totalRevenue\":16512906.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-02\",\"totalRevenue\":9394667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-03\",\"totalRevenue\":8525427.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-04\",\"totalRevenue\":10515906.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-05\",\"totalRevenue\":12520667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-06\",\"totalRevenue\":14528427.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-07\",\"totalRevenue\":16512906.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-08\",\"totalRevenue\":9394667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-09\",\"totalRevenue\":8525427.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-10\",\"totalRevenue\":10515906.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-11\",\"totalRevenue\":12520667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-12\",\"totalRevenue\":14528427.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-13\",\"totalRevenue\":16512906.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-14\",\"totalRevenue\":9428530.0000,\"transactionCount\":251,\"totalUnits\":2009},{\"date\":\"2026-04-15\",\"totalRevenue\":8524902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-16\",\"totalRevenue\":10528667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-17\",\"totalRevenue\":12535431.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-18\",\"totalRevenue\":14521902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-19\",\"totalRevenue\":16528667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-20\",\"totalRevenue\":9358431.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-21\",\"totalRevenue\":8524902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-22\",\"totalRevenue\":10528667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-23\",\"totalRevenue\":12535431.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-24\",\"totalRevenue\":14521902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-25\",\"totalRevenue\":16528667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-26\",\"totalRevenue\":9358431.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-27\",\"totalRevenue\":8524902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-04-28\",\"totalRevenue\":10528667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-04-29\",\"totalRevenue\":12535431.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-04-30\",\"totalRevenue\":14521902.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-01\",\"totalRevenue\":16607566.0000,\"transactionCount\":251,\"totalUnits\":2009},{\"date\":\"2026-05-02\",\"totalRevenue\":9305898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-03\",\"totalRevenue\":8536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-04\",\"totalRevenue\":10542435.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-05\",\"totalRevenue\":12530898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-06\",\"totalRevenue\":14536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-07\",\"totalRevenue\":16545435.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-08\",\"totalRevenue\":9305898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-09\",\"totalRevenue\":8536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-10\",\"totalRevenue\":10542435.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-11\",\"totalRevenue\":12530898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-12\",\"totalRevenue\":14536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-13\",\"totalRevenue\":16545435.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-14\",\"totalRevenue\":9305898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-15\",\"totalRevenue\":8536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-16\",\"totalRevenue\":10542435.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-17\",\"totalRevenue\":12530898.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-18\",\"totalRevenue\":14536667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-19\",\"totalRevenue\":16606829.0000,\"transactionCount\":251,\"totalUnits\":2008},{\"date\":\"2026-05-20\",\"totalRevenue\":9274667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-21\",\"totalRevenue\":8549439.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-22\",\"totalRevenue\":10539894.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-23\",\"totalRevenue\":12544667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-24\",\"totalRevenue\":14552439.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-25\",\"totalRevenue\":16536894.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-26\",\"totalRevenue\":9274667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-27\",\"totalRevenue\":8549439.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-28\",\"totalRevenue\":10539894.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-05-29\",\"totalRevenue\":12544667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-05-30\",\"totalRevenue\":14552439.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-05-31\",\"totalRevenue\":16536894.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-01\",\"totalRevenue\":9274667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-02\",\"totalRevenue\":8549439.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-03\",\"totalRevenue\":10539894.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-04\",\"totalRevenue\":12544667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-05\",\"totalRevenue\":14606861.0000,\"transactionCount\":251,\"totalUnits\":2008},{\"date\":\"2026-06-06\",\"totalRevenue\":16552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-07\",\"totalRevenue\":9238443.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-08\",\"totalRevenue\":8548890.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-09\",\"totalRevenue\":10552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-10\",\"totalRevenue\":12559443.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-11\",\"totalRevenue\":14545890.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-12\",\"totalRevenue\":16552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-13\",\"totalRevenue\":9238443.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-14\",\"totalRevenue\":8548890.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-15\",\"totalRevenue\":10552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-16\",\"totalRevenue\":12559443.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-17\",\"totalRevenue\":14545890.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-18\",\"totalRevenue\":16552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-19\",\"totalRevenue\":9238443.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-20\",\"totalRevenue\":8548890.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-21\",\"totalRevenue\":10552667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-22\",\"totalRevenue\":12606893.0000,\"transactionCount\":251,\"totalUnits\":2008},{\"date\":\"2026-06-23\",\"totalRevenue\":14560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-24\",\"totalRevenue\":16569447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-25\",\"totalRevenue\":9185886.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-26\",\"totalRevenue\":8560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-27\",\"totalRevenue\":10566447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-06-28\",\"totalRevenue\":12554886.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-06-29\",\"totalRevenue\":14560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-06-30\",\"totalRevenue\":16569447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-01\",\"totalRevenue\":9185886.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-02\",\"totalRevenue\":8560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-03\",\"totalRevenue\":10566447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-04\",\"totalRevenue\":12554886.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-05\",\"totalRevenue\":14560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-06\",\"totalRevenue\":16569447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-07\",\"totalRevenue\":9185886.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-08\",\"totalRevenue\":8560667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-09\",\"totalRevenue\":10566447.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-10\",\"totalRevenue\":12609145.0000,\"transactionCount\":251,\"totalUnits\":2007},{\"date\":\"2026-07-11\",\"totalRevenue\":14576451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-12\",\"totalRevenue\":16560882.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-13\",\"totalRevenue\":9154667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-14\",\"totalRevenue\":8573451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-15\",\"totalRevenue\":10563882.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-16\",\"totalRevenue\":12568667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-17\",\"totalRevenue\":14576451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-18\",\"totalRevenue\":16560882.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-19\",\"totalRevenue\":9154667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-20\",\"totalRevenue\":8573451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-21\",\"totalRevenue\":10563882.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-22\",\"totalRevenue\":12568667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-23\",\"totalRevenue\":14576451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-24\",\"totalRevenue\":16560882.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-25\",\"totalRevenue\":9154667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-26\",\"totalRevenue\":8573451.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-27\",\"totalRevenue\":10610173.0000,\"transactionCount\":251,\"totalUnits\":2007},{\"date\":\"2026-07-28\",\"totalRevenue\":12583455.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-07-29\",\"totalRevenue\":14569878.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-07-30\",\"totalRevenue\":16576667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-07-31\",\"totalRevenue\":9118455.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-08-01\",\"totalRevenue\":8572878.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-08-02\",\"totalRevenue\":10576667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-08-03\",\"totalRevenue\":12583455.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-08-04\",\"totalRevenue\":14569878.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-08-05\",\"totalRevenue\":16576667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-08-06\",\"totalRevenue\":9118455.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-08-07\",\"totalRevenue\":8572878.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-08-08\",\"totalRevenue\":10576667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-08-09\",\"totalRevenue\":12583455.0000,\"transactionCount\":250,\"totalUnits\":2001},{\"date\":\"2026-08-10\",\"totalRevenue\":14569878.0000,\"transactionCount\":250,\"totalUnits\":1999},{\"date\":\"2026-08-11\",\"totalRevenue\":16576667.0000,\"transactionCount\":250,\"totalUnits\":2000},{\"date\":\"2026-08-12\",\"totalRevenue\":3765197.0000,\"transactionCount\":53,\"totalUnits\":424}],\"categoryData\":[{\"kategorija\":\"Ostalo\",\"pol\":\"Neodređeno\",\"totalRevenue\":2159940000.0000,\"totalUnits\":360000,\"transactionCount\":45000}],\"genderData\":[{\"pol\":\"Neodređeno\",\"totalRevenue\":2159940000.0000,\"totalUnits\":360000}],\"supplierData\":[{\"dobavljacId\":9,\"dobavljacNaziv\":\"M-PERF Supplier 8\",\"totalRevenue\":270059565.0000,\"totalUnits\":44955,\"transactionCount\":22470},{\"dobavljacId\":8,\"dobavljacNaziv\":\"M-PERF Supplier 7\",\"totalRevenue\":269969280.0000,\"totalUnits\":44940,\"transactionCount\":22470},{\"dobavljacId\":6,\"dobavljacNaziv\":\"M-PERF Supplier 5\",\"totalRevenue\":269924700.0000,\"totalUnits\":44955,\"transactionCount\":22470},{\"dobavljacId\":5,\"dobavljacNaziv\":\"M-PERF Supplier 4\",\"totalRevenue\":269834460.0000,\"totalUnits\":44940,\"transactionCount\":22470},{\"dobavljacId\":3,\"dobavljacNaziv\":\"M-PERF Supplier 2\",\"totalRevenue\":269789835.0000,\"totalUnits\":44955,\"transactionCount\":22470},{\"dobavljacId\":2,\"dobavljacNaziv\":\"M-PERF Supplier 1\",\"totalRevenue\":269744640.0000,\"totalUnits\":44955,\"transactionCount\":22485},{\"dobavljacId\":7,\"dobavljacNaziv\":\"M-PERF Supplier 6\",\"totalRevenue\":269699385.0000,\"totalUnits\":44925,\"transactionCount\":22470},{\"dobavljacId\":4,\"dobavljacNaziv\":\"M-PERF Supplier 3\",\"totalRevenue\":269564610.0000,\"totalUnits\":44925,\"transactionCount\":22470},{\"dobavljacId\":1,\"dobavljacNaziv\":\"Default Dobavlja?\",\"totalRevenue\":1353525.0000,\"totalUnits\":450,\"transactionCount\":60}],\"supplierOptions\":[{\"supplierId\":1,\"supplierName\":\"Default Dobavlja?\"},{\"supplierId\":2,\"supplierName\":\"M-PERF Supplier 1\"},{\"supplierId\":3,\"supplierName\":\"M-PERF Supplier 2\"},{\"supplierId\":4,\"supplierName\":\"M-PERF Supplier 3\"},{\"supplierId\":5,\"supplierName\":\"M-PERF Supplier 4\"},{\"supplierId\":6,\"supplierName\":\"M-PERF Supplier 5\"},{\"supplierId\":7,\"supplierName\":\"M-PERF Supplier 6\"},{\"supplierId\":8,\"supplierName\":\"M-PERF Supplier 7\"},{\"supplierId\":9,\"supplierName\":\"M-PERF Supplier 8\"}],\"paymentData\":[{\"nacinPlacanja\":\"Gotovina\",\"totalRevenue\":1080150000.0000,\"transactionCount\":22500},{\"nacinPlacanja\":\"Kartica\",\"totalRevenue\":1079790000.0000,\"transactionCount\":22500}],\"weekdayData\":[{\"dayOfWeek\":0,\"dayName\":\"Nedelja\",\"totalRevenue\":311517806.0000,\"transactionCount\":6512},{\"dayOfWeek\":1,\"dayName\":\"Ponedeljak\",\"totalRevenue\":315178374.0000,\"transactionCount\":6502},{\"dayOfWeek\":2,\"dayName\":\"Utorak\",\"totalRevenue\":319322800.0000,\"transactionCount\":6502},{\"dayOfWeek\":3,\"dayName\":\"Sreda\",\"totalRevenue\":308500013.0000,\"transactionCount\":6304},{\"dayOfWeek\":4,\"dayName\":\"Četvrtak\",\"totalRevenue\":297269087.0000,\"transactionCount\":6250},{\"dayOfWeek\":5,\"dayName\":\"Petak\",\"totalRevenue\":301313128.0000,\"transactionCount\":6430},{\"dayOfWeek\":6,\"dayName\":\"Subota\",\"totalRevenue\":306838792.0000,\"transactionCount\":6500}],\"hourData\":[{\"hour\":0,\"totalRevenue\":94064753.0000,\"transactionCount\":1872},{\"hour\":1,\"totalRevenue\":95006249.0000,\"transactionCount\":1880},{\"hour\":2,\"totalRevenue\":95344532.0000,\"transactionCount\":1872},{\"hour\":3,\"totalRevenue\":96272468.0000,\"transactionCount\":1878},{\"hour\":4,\"totalRevenue\":96560707.0000,\"transactionCount\":1873},{\"hour\":5,\"totalRevenue\":90201624.0000,\"transactionCount\":1866},{\"hour\":6,\"totalRevenue\":86015820.0000,\"transactionCount\":1869},{\"hour\":7,\"totalRevenue\":83320634.0000,\"transactionCount\":1868},{\"hour\":8,\"totalRevenue\":84460981.0000,\"transactionCount\":1880},{\"hour\":9,\"totalRevenue\":84668651.0000,\"transactionCount\":1873},{\"hour\":10,\"totalRevenue\":85470682.0000,\"transactionCount\":1876},{\"hour\":11,\"totalRevenue\":86415736.0000,\"transactionCount\":1882},{\"hour\":12,\"totalRevenue\":86874517.0000,\"transactionCount\":1879},{\"hour\":13,\"totalRevenue\":87414504.0000,\"transactionCount\":1878},{\"hour\":14,\"totalRevenue\":87822861.0000,\"transactionCount\":1872},{\"hour\":15,\"totalRevenue\":88730791.0000,\"transactionCount\":1878},{\"hour\":16,\"totalRevenue\":89226689.0000,\"transactionCount\":1875},{\"hour\":17,\"totalRevenue\":89699736.0000,\"transactionCount\":1874},{\"hour\":18,\"totalRevenue\":90640551.0000,\"transactionCount\":1879},{\"hour\":19,\"totalRevenue\":90955157.0000,\"transactionCount\":1871},{\"hour\":20,\"totalRevenue\":91936522.0000,\"transactionCount\":1880},{\"hour\":21,\"totalRevenue\":92139960.0000,\"transactionCount\":1872},{\"hour\":22,\"totalRevenue\":92999923.0000,\"transactionCount\":1876},{\"hour\":23,\"totalRevenue\":93695952.0000,\"transactionCount\":1877}],\"quickInsights\":null,\"transactionStats\":{\"avgItemsPerTransaction\":4.00,\"avgUnitsPerTransaction\":8.00,\"avgTransactionValue\":47998.67,\"totalTransactions\":45000},\"advanced\":null,\"topAdvanced\":{\"byRevenue\":[],\"byUnits\":[],\"byVelocity\":[],\"byMarginImpact\":[],\"marginAvailable\":false,\"marginMessage\":\"Nedostaju tabele ili kolone za napredne top proizvode.\"},\"validationCompleteness\":{\"status\":\"critical\",\"message\":\"Nizak completeness: validacija podataka je prioritet.\",\"score\":0,\"totalSku\":12015,\"affectedSku\":12015,\"lastImport\":null,\"freshnessHours\":null,\"lostSalesEstimate\":null,\"sourceStatus\":null,\"negativeQtyCount\":null,\"totalRows\":null},\"validationFreshness\":{\"status\":\"good\",\"message\":\"Podaci su svezi.\",\"score\":null,\"totalSku\":null,\"affectedSku\":null,\"lastImport\":\"2026-08-12T06:00:00Z\",\"freshnessHours\":1.75,\"lostSalesEstimate\":null,\"sourceStatus\":null,\"negativeQtyCount\":null,\"totalRows\":null},\"validationLostSales\":{\"status\":\"insufficient_data\",\"message\":\"Procena izgubljene prodaje nije dostupna; OOS signal se ne sme tretirati kao nula.\",\"score\":null,\"totalSku\":null,\"affectedSku\":null,\"lastImport\":null,\"freshnessHours\":null,\"lostSalesEstimate\":null,\"sourceStatus\":\"unavailable\",\"negativeQtyCount\":null,\"totalRows\":null},\"decisionActions\":[],\"executive\":{\"totalMarginContributionRsd\":0,\"inventoryDangerValueRsd\":0,\"topSuppliers\":[],\"topMarginProducts\":[],\"topMarginCategories\":[],\"negativeSignals\":[],\"dataQualitySummary\":{\"missingSupplierCount\":0,\"missingCostCount\":0,\"insufficientSignalCount\":0,\"ignoredRowsCount\":0,\"zeroRevenueRowsCount\":0,\"freshnessStatus\":\"unknown\"}},\"errors\":[\"Brzi uvidi nisu dostupni. (42703: column a.MinimalnaKolicina does not exist\\r\\n\\r\\nPOSITION: 66)\",\"Napredne metrike nisu dostupne. (42703: column p.DataOrigin does not exist\\r\\n\\r\\nPOSITION: 419)\",\"Product Decision Center nije dostupan. (42703: column a.MinimalnaKolicina does not exist\\r\\n\\r\\nPOSITION: 325)\"],\"meta\":{\"success\":true,\"warningCode\":\"ANALYTICS_PARTIAL_DATA\",\"warningMessage\":null,\"errorCode\":null,\"errorMessage\":null,\"emptyReason\":null,\"correlationId\":\"00-44da7265d6b7c38c5953ca6feeddddd3-77936710726aede9-00\",\"message\":\"Deo dashboard sekcija nije trenutno dostupan.\",\"generatedAtUtc\":\"2026-08-12T07:44:47.9138077Z\",\"lastRefreshAtUtc\":\"2026-08-12T07:44:47.9140463Z\",\"dataQualityStatus\":\"good\",\"isPartial\":true}}"
+                      },
+    "warmBootstrap":  {
+                          "elapsedMs":  71.19,
+                          "statusCode":  200,
+                          "success":  null,
+                          "isPartial":  null
+                      },
+    "sectionTimings":  [
+                           {
+                               "section":  "Summary",
+                               "priority":  "P0",
+                               "elapsedMs":  758.23,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "Inventory",
+                               "priority":  "P0",
+                               "elapsedMs":  467.6,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "DailySales",
+                               "priority":  "P0",
+                               "elapsedMs":  669.53,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "CategoryData",
+                               "priority":  "P1",
+                               "elapsedMs":  391.18,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "GenderData",
+                               "priority":  "P1",
+                               "elapsedMs":  312.19,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "SupplierData",
+                               "priority":  "P1",
+                               "elapsedMs":  941.76,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "SupplierOptions",
+                               "priority":  "P2",
+                               "elapsedMs":  184.8,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "WeekdayData",
+                               "priority":  "P1",
+                               "elapsedMs":  554.47,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "HourData",
+                               "priority":  "P1",
+                               "elapsedMs":  629.59,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "PaymentData",
+                               "priority":  "P1",
+                               "elapsedMs":  1057.85,
+                               "success":  true,
+                               "errors":  0
+                           },
+                           {
+                               "section":  "QuickInsights",
+                               "priority":  "P1",
+                               "elapsedMs":  707.61,
+                               "success":  false,
+                               "errors":  1
+                           },
+                           {
+                               "section":  "TransactionStats",
+                               "priority":  "P1",
+                               "elapsedMs":  203.61,
+                               "success":  true,
+                               "errors":  1
+                           },
+                           {
+                               "section":  "Advanced",
+                               "priority":  "P0",
+                               "elapsedMs":  43.54,
+                               "success":  false,
+                               "errors":  2
+                           },
+                           {
+                               "section":  "ProductDecisionCenter",
+                               "priority":  "P0",
+                               "elapsedMs":  39.21,
+                               "success":  false,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "DecisionActions",
+                               "priority":  "P2",
+                               "elapsedMs":  1.9,
+                               "success":  true,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "Executive",
+                               "priority":  "P2",
+                               "elapsedMs":  2.5,
+                               "success":  true,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "TopAdvanced",
+                               "priority":  "P1",
+                               "elapsedMs":  12.99,
+                               "success":  true,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "ValidationCompleteness",
+                               "priority":  "P2",
+                               "elapsedMs":  5.74,
+                               "success":  true,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "ValidationFreshness",
+                               "priority":  "P2",
+                               "elapsedMs":  5.68,
+                               "success":  true,
+                               "errors":  3
+                           },
+                           {
+                               "section":  "ValidationLostSales",
+                               "priority":  "P2",
+                               "elapsedMs":  3.57,
+                               "success":  true,
+                               "errors":  3
+                           }
+                       ]
+}
