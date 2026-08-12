@@ -39,19 +39,19 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none (`BCI05` PARTIAL) | `BCI01` is PARTIAL. RQ89-RQ95 DONE. Local Docker suite green `809/809`; GHA proof blocked on commit/push. | Evidence/docs only | Commit/push -> green GHA -> BCI01 DONE |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none (`BCI05` IN_PROGRESS) | Local Docker evidence recorded `809/809` green, but latest inspected backend GHA run `31575771867` on `9c5fb2c` restores/builds successfully and fails at the complete backend test step. Remote truth therefore remains red and must be reconciled from the uploaded test artifact. | Evidence/docs only | Inspect current GHA failures -> focused repair/reconciliation -> green GHA -> BCI01/BCI05 close |
 | STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` DONE. Residual authz watchlist (import/logs/docs) unqueued — STAB-owned, not SEC. | Evidence/docs when paths clear | Queue STAB follow-ups or accept residual risk |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none (`RQ95` DONE) | BCI05 override active until GHA green; do not promote RQ WAITING over BCI05. | Selected docs/tests only | BCI05 commit/push/GHA |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none (`RQ95` DONE) | BCI05 override active until GHA green; do not promote RQ WAITING over BCI05. | Selected docs/tests only | BCI05 GHA reconciliation |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-16 DONE (no fake reliability + empty/copy on PreNivelacijaPriorityPage). P-UI-17 DONE (ControlBar + DataTable chrome). P-UI-18 DONE (SupplierFootwearAnalyticsPage chrome). | Yes, when paths clear | Await owner-promoted next P-UI prompt |
-| QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB01`/`QDB02` DONE) | `QDB03` WAITING until backend CI executes real tests (`BCI01` PARTIAL). | Docs/tests when paths clear | Green BCI → promote QDB03 |
-| MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision → MT02 |
+| QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB01`/`QDB02` DONE) | `QDB03` WAITING until backend CI executes real tests successfully (`BCI05`/`BCI01` still open). | Docs/tests when paths clear | Green BCI -> promote QDB03 |
+| MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision -> MT02 |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
 | DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX11` | `DEX10` DONE = immutable evidence snapshot on action. Next is docs-only cross-family readiness. | Yes, docs/contracts | Cross-family explainability readiness |
 | RL | same queue/roadmap as DEX | `RL05` | `RL04` DONE = lifecycle + learning eligibility. Next is docs-only measurement-only statistics contract. | Yes, docs/contracts | Measurement-only statistics projection |
 | DT | same queue/roadmap as DEX | `DT06` | `DT05` DONE = Slice-2 filtered timeline. Next is docs-only export/report contract. | Yes, docs/contracts | Timeline export/retrospective contract |
-| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF08` | `PERF06` DONE; plan in `PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md` | Yes, section profiling | bootstrap P0 section timings recorded |
-| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS08` | `OBS01`-`OBS06` DONE; `OBS07` DONE (OBS-5 analytics SLA evidence). | Yes, docs/contracts | analytics SLA evidence recorded |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC05` | `SEC04` DONE; blocked on MT09/interim dedicated-deploy offboarding scope | Yes, docs only | Data protection/retention assurance plan |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF08` | `PERF07` DONE = bootstrap section timings captured; next task separates backend/frontend cold-start truth. | Yes, evidence capture when paths clear | Backend/frontend cold-start evidence |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS08` | `OBS01`-`OBS07` DONE; analytics SLA evidence exists and next task is worker-SLA contract/evidence. | Yes, docs/contracts | Worker SLA evidence contract |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none (`SEC04` DONE; `SEC05` WAITING) | `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, docs only when promoted | Data protection/retention assurance plan after dependency decision |
 
 ## Product and process documents
 
@@ -61,6 +61,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 - Architecture decisions: `docs/architecture/ADRS.md`
 - Planning consolidation evidence: `docs/planning/PLANNING_CONSOLIDATION_AUDIT_2026-08-08.md`
 - Latest prompt/commit implementation audit: `docs/qa/PROMPT_IMPLEMENTATION_AUDIT_2026-08-10.md`
+- Current retail analytics market/capability gap audit: `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
 
 ## Decision Intelligence boundary
 
@@ -84,6 +85,14 @@ No AI dependency is required for DEX, RL, or DT. LLMs may later explain already-
 | AI Ready | Core pilot ready + GAI security/evaluation gate + tenant boundaries where applicable; deterministic decision evidence remains authoritative |
 
 Detailed milestone acceptance belongs in `docs/roadmaps/BUSINESS_ROADMAP.md`.
+
+## Competitive capability priority
+
+The current market-gap audit confirms that Trendplus should keep its explainable retail-decision positioning instead of chasing generic BI feature parity. Depth-first priorities after the active release gate are:
+
+`release truth -> source adaptability -> observed historical inventory -> exception/digest delivery -> validated forecasting -> controlled scenarios -> shared SaaS/AI later`
+
+The audit is planning evidence only. It does not create a competing READY queue. New work must still map to an existing owner first.
 
 ## Historical/current separation
 
