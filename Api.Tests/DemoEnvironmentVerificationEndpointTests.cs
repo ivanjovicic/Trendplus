@@ -337,11 +337,25 @@ public sealed class DemoEnvironmentVerificationEndpointTests
             builder.Services.Configure<NightlyAnalyticsRefreshOptions>(_ => { });
             builder.Services.Configure<OpenTrainingModelTrainingOptions>(_ => { });
             builder.Services.Configure<AnalyticsDataQualityHealthOptions>(_ => { });
+            // Force empty connection strings unless the caller explicitly supplies them.
+            // WebApplication.CreateBuilder still loads process env (e.g. GHA ConnectionStrings__*),
+            // so an empty caller dictionary alone would leave CI connection strings readable.
+            var effectiveConfiguration = new Dictionary<string, string?>(configuration, StringComparer.OrdinalIgnoreCase);
+            if (!effectiveConfiguration.ContainsKey("ConnectionStrings:AnalyticsConnection"))
+            {
+                effectiveConfiguration["ConnectionStrings:AnalyticsConnection"] = string.Empty;
+            }
+
+            if (!effectiveConfiguration.ContainsKey("ConnectionStrings:DefaultConnection"))
+            {
+                effectiveConfiguration["ConnectionStrings:DefaultConnection"] = string.Empty;
+            }
+
             if (withAdminKey)
             {
                 builder.Configuration["Admin:ApiKey"] = AdminApiKey;
             }
-            builder.Configuration.AddInMemoryCollection(configuration);
+            builder.Configuration.AddInMemoryCollection(effectiveConfiguration);
 
             var app = builder.Build();
             app.UseRouting();

@@ -50,9 +50,9 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 
 The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
 
-1. `RQ89`–`RQ95` are DONE.
-2. `BCI05` re-entry after RQ95 is PARTIAL: local Docker suite recorded `809` total / `809` passed / `0` failed on 2026-08-11.
-3. Green GHA proof is blocked until repair worktree is committed/pushed; only that evidence may move `BCI01` from PARTIAL to DONE.
+1. `RQ89`–`RQ95` and `BCI08` are DONE.
+2. `BCI05` is READY for re-entry after BCI08: commit/push fixes, then capture green GHA run/job IDs.
+3. Only green GHA evidence may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`

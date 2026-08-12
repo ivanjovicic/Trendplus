@@ -8,8 +8,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Trendplus2.Endpoints;
 using Xunit;
 
@@ -307,22 +309,48 @@ public sealed class InventoryListEndpointIntegrationTests
     private sealed class InventoryFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"inventory-list-screen-{Guid.NewGuid():N}";
+        private readonly string _analyticsDatabaseName = $"inventory-list-analytics-{Guid.NewGuid():N}";
         private readonly InMemoryDatabaseRoot _databaseRoot = new();
+        private readonly InMemoryDatabaseRoot _analyticsDatabaseRoot = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseEnvironment(Environments.Development);
+
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Database:AutoMigrate"] = "false",
+                    ["StartupReadiness:GateApiTraffic"] = "false",
+                    ["ConnectionStrings:DefaultConnection"] = $"Host=localhost;Database={_databaseName};Username=test;Password=test",
+                    ["ConnectionStrings:AnalyticsConnection"] = $"Host=localhost;Database={_analyticsDatabaseName};Username=test;Password=test"
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
+                services.RemoveAll<IHostedService>();
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
+                services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
+                services.RemoveAll<AnalyticsDbContext>();
+                services.RemoveAll<IDbContextFactory<AnalyticsDbContext>>();
+                services.RemoveAll<IAnalyticsDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName, _databaseRoot));
                 services.AddDbContext<TrendplusDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName, _databaseRoot));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
+
+                services.AddDbContextFactory<AnalyticsDbContext>(options =>
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                services.AddDbContext<AnalyticsDbContext>(options =>
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             });
         }
     }

@@ -206,10 +206,15 @@ public sealed class AccessImportRunEndpointTests
 
     private sealed class AccessImportRunTestHost : IAsyncDisposable
     {
-        private AccessImportRunTestHost(WebApplication app)
+        private readonly string? _previousPath;
+        private readonly string? _toolDirectory;
+
+        private AccessImportRunTestHost(WebApplication app, string? previousPath, string? toolDirectory)
         {
             App = app;
             Client = app.GetTestClient();
+            _previousPath = previousPath;
+            _toolDirectory = toolDirectory;
         }
 
         public WebApplication App { get; }
@@ -217,6 +222,12 @@ public sealed class AccessImportRunEndpointTests
 
         public static async Task<AccessImportRunTestHost> CreateAsync(IAccessImportService service, bool withAdminKey = false)
         {
+            // Linux/macOS CI gates access-import on mdb-tables/mdb-export being on PATH.
+            // Stub those commands so this isolated host can exercise StartAccessImportJobAsync
+            // without installing mdbtools or weakening the production runtime gate.
+            var previousPath = Environment.GetEnvironmentVariable("PATH");
+            var toolDirectory = EnsureAccessImportRuntimeToolsOnPath();
+
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 EnvironmentName = Environments.Production
@@ -282,13 +293,57 @@ public sealed class AccessImportRunEndpointTests
                 await AccessImportEndpoints.StartAccessImportJobAsync(request, httpContext, configuration, environment, importService, logger, ct));
             await app.StartAsync();
 
-            return new AccessImportRunTestHost(app);
+            return new AccessImportRunTestHost(app, previousPath, toolDirectory);
+        }
+
+        private static string? EnsureAccessImportRuntimeToolsOnPath()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return null;
+            }
+
+            var toolDirectory = Path.Combine(Path.GetTempPath(), $"access-import-runtime-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(toolDirectory);
+
+            foreach (var command in new[] { "mdb-tables", "mdb-export" })
+            {
+                var path = Path.Combine(toolDirectory, command);
+                File.WriteAllText(path, "#!/bin/sh\nexit 0\n");
+                if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                {
+                    File.SetUnixFileMode(
+                        path,
+                        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                }
+            }
+
+            var previousPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            Environment.SetEnvironmentVariable(
+                "PATH",
+                string.IsNullOrWhiteSpace(previousPath)
+                    ? toolDirectory
+                    : $"{toolDirectory}{Path.PathSeparator}{previousPath}");
+            return toolDirectory;
         }
 
         public async ValueTask DisposeAsync()
         {
             Client.Dispose();
             await App.DisposeAsync();
+
+            if (_toolDirectory is not null)
+            {
+                Environment.SetEnvironmentVariable("PATH", _previousPath);
+                try
+                {
+                    Directory.Delete(_toolDirectory, recursive: true);
+                }
+                catch
+                {
+                    // Best-effort cleanup for temp PATH stubs.
+                }
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI08`
+Current READY prompt: `BCI05`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -12,16 +12,16 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 
 | Task | Status | Purpose |
 |---|---|---|
-| BCI05 | PARTIAL | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 |
-| BCI08 | READY | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
+| BCI08 | DONE | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
+| BCI05 | READY | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 and BCI08 |
 | BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: PARTIAL
-Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; commit/push + green GHA proof
+Status: READY
+Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE
 Priority: P0
 Type: CI/evidence/tests
 Feature family: backend-ci-final-evidence
@@ -195,14 +195,14 @@ Do not change application runtime behavior in this prompt. If a new product/test
 
 ## BCI08 - Stabilize full-suite CI integration isolation for access-import, demo verification and inventory routes
 
-Status: READY
+Status: DONE
 Ready after: `BCI05` PARTIAL evidence on 2026-08-12
 Priority: P0
 Type: backend/tests/ci
 Feature family: backend-ci-full-suite-isolation
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI08-<agent>.lock.md`
+Owner: cursor
+Local lock: removed
 Commit suggestion: `test(ci): stabilize backend full-suite integration isolation`
 
 ### Problem
@@ -296,6 +296,15 @@ Do not weaken the GitHub Actions workflow, skip tests, add retries to hide failu
 - `BCI05` PARTIAL evidence from 2026-08-12
 - latest GHA artifact/log proof from run `31575771867`
 - no newer backend/workflow commit than `9c5fb2c6` before the next agent starts runtime work
+
+### Notes
+
+- Date: 2026-08-12
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_ISOLATION_EVIDENCE_2026-08-12.md`
+- Root cause: CI env leakage into test hosts (connection strings, analytics DB stub gap, Linux mdb-tools runtime gate)
+- Focused BCI08 family with CI env: **14/14 pass**; exact four-test filter: **4/4 pass**
+- Full suite with CI env: **826/829**; remaining 3 failures are Testcontainers Docker-pipe timeout in `AccessImportExecutionStrategyTests` (environment flake, not BCI08 family)
+- Next: commit/push, re-enter `BCI05` for green GHA proof
 
 ---
 
