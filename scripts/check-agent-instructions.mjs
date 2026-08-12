@@ -18,7 +18,8 @@ const REQUIRED_SNIPPETS = new Map([
   ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md"]],
   ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger"]],
   ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md"]],
-  ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification"]],
+  ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md"]],
+  [".ai/RUN_LOG_TEMPLATE.md", ["What was done", "What was missed", "Risks", "Next"]],
   ["docs/ai/VALIDATION_SELECTOR.md", ["React and analytics UI", ".NET API, application and infrastructure", "Workers, refresh and scheduled jobs", "Queue and planning changes"]],
 ]);
 

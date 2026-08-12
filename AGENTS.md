@@ -54,6 +54,24 @@ Ne razvijati "još jedan ekran" ako postojeći ekran ne objašnjava period, refr
 
 ### Posle rada
 
+Za svaki netrivijalan task koji menja fajlove, agent mora da ostavi i trajni run log u `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md`.
+
+Koristi `.ai/RUN_LOG_TEMPLATE.md`. Minimum koji mora da postoji u tom logu:
+
+```text
+What was done:
+- ...
+
+What was missed:
+- ...
+
+Risks:
+- ...
+
+Next:
+- ...
+```
+
 U izveštaju napiši:
 ```text
 Promenjeno:
@@ -330,6 +348,8 @@ Stop if:
 - secrets, production access or unresolved security decisions are required
 
 ### Final report
+
+For every non-trivial file-changing task, include the durable run-log path in the final report and make sure the log records what was done, what was missed, risks and next step.
 
 Agent should finish with:
 

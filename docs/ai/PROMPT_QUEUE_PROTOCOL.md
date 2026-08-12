@@ -205,6 +205,20 @@ A completed prompt records at minimum:
 
 Production/live smoke may be marked complete only from real current deployment evidence.
 
+For every non-trivial file-changing prompt run, also create a durable run log in `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md` using `.ai/RUN_LOG_TEMPLATE.md`, or record an explicit fallback reason when a durable log could not be created safely.
+
+Minimum durable run-log sections:
+
+```text
+## What was done
+## Files changed
+## Validation run
+## Validation not run
+## What was missed
+## Risks
+## Next
+```
+
 ## Validation
 
 Choose runtime/docs proof through `docs/ai/VALIDATION_SELECTOR.md`.

@@ -46,6 +46,7 @@ Useful standards:
 - `docs/ai/ANALYTICS_STANDARDS.md`
 - `docs/ai/BACKEND_STANDARDS.md`
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
+- `.ai/RUN_LOG_TEMPLATE.md`
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `docs/ai/VALIDATION_SELECTOR.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`

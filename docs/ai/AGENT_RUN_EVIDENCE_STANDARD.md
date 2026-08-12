@@ -11,6 +11,14 @@ A prompt is not complete just because code or docs changed. Future agents need d
 
 This standard applies to all non-trivial Trendplus queue work.
 
+The canonical run-log template lives in:
+
+```text
+.ai/RUN_LOG_TEMPLATE.md
+```
+
+Use it whenever a durable `.ai/runs/...` log is created.
+
 ## Default evidence location
 
 Preferred durable run log:
@@ -18,6 +26,13 @@ Preferred durable run log:
 ```text
 .ai/runs/<yyyy-mm-dd>-<prompt-id>-evidence.md
 ```
+
+Minimum required narrative in every durable run log:
+
+- what was done
+- what was missed
+- risks
+- next
 
 If a tool/session cannot safely create a `.ai/runs` file, record fallback evidence in:
 

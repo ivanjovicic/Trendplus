@@ -44,7 +44,7 @@ If a summary doc disagrees with its owner, update or ignore the summary; do not 
 - Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md` and `docs/ai/BACKEND_STANDARDS.md`
 - Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
-- Delivery evidence and honest completion: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
+- Delivery evidence and honest completion: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` and `.ai/RUN_LOG_TEMPLATE.md`
 - Validation selection by changed layer and risk: `docs/ai/VALIDATION_SELECTOR.md`
 - Commit naming and commit-body expectations: `docs/ai/COMMIT_STANDARDS.md`
 - UTF-8 and text-only repair workflow: `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
