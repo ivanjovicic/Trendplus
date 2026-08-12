@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`BCI05` IN_PROGRESS on 2026-08-11; local suite green with Cobertura; final commit/push and GHA proof pending)
+Current READY prompt: `BCI08`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -12,14 +12,15 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 
 | Task | Status | Purpose |
 |---|---|---|
-| BCI05 | IN_PROGRESS | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 |
+| BCI05 | PARTIAL | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 |
+| BCI08 | READY | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
 | BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; commit/push + green GHA proof
 Priority: P0
 Type: CI/evidence/tests
@@ -151,14 +152,150 @@ Do not change application runtime behavior in this prompt. If a new product/test
 - GHA proof is still pending commit/push from this worktree
 - Next: commit/push current worktree, capture green `analytics-tests` run/job IDs, then close `BCI05` and `BCI01` with remote evidence
 
+### Notes (current execution result - 2026-08-12)
+
+- Date: 2026-08-12
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-12.md`
+- Latest relevant GitHub Actions proof is still red:
+  - workflow run `31575771867`
+  - workflow job `94047422144`
+  - head SHA `9c5fb2c6a2254f364ad2247a133413709860bd69`
+  - restore=success, build=success, test=failure, coverage-summary=success, artifact upload=success
+- TRX totals from the uploaded artifact:
+  - `829 total / 825 passed / 4 failed`
+- Failing tests in the latest run:
+  - `Api.Tests.DemoEnvironmentVerificationEndpointTests.DemoVerification_ReturnsUnsafe_WhenNoProofInputsArePresent`
+  - `Api.Tests.InventoryListEndpointIntegrationTests.InventoryList_UncachedRouteMatchesSeededRowCountAndEmptyMeta`
+  - `Api.Tests.AccessImportRunEndpointTests.PostRun_WhenStoragePreparationTimesOut_ReturnsGatewayTimeout`
+  - `Api.Tests.AccessImportRunEndpointTests.PostRun_ReturnsAccepted_AndInvokesImportServiceOnce`
+- Focused local repro on current `HEAD` (`e2ebd1d0311617901587184c798f08e0335a5f60`) does not reproduce the failing family:
+  - targeted access-import + demo verification tests pass `3/3`
+  - `InventoryListEndpointIntegrationTests` pass `7/7`
+- Backend/workflow equivalence check:
+  - `git diff --name-only 9c5fb2c6..HEAD -- Api Api.Tests Application Domain Infrastructure .github/workflows/analytics-tests.yml` -> no differences
+- Interpretation:
+  - the current blocker is no longer "commit/push missing";
+  - the latest backend-equivalent main proof is a real full-suite CI failure;
+  - the failure family now looks like shared host/database isolation or order dependence inside the full suite, not a focused deterministic assertion regression
+- Decision:
+  - keep `BCI01` PARTIAL
+  - mark `BCI05` PARTIAL
+  - promote `BCI08` READY as the next focused repair prompt
+
 ### Dependencies
 
 - `RQ89` DONE
 - `RQ90` DONE
-- no known unassigned BCI04 root-cause family remains
+- no known unassigned BCI04 root-cause family remains before the 2026-08-12 re-entry
 - re-entry after `RQ91`/`RQ92`/`RQ93` DONE for final green proof
 - additional re-entry after `RQ94` DONE
 - additional re-entry after `RQ95` DONE
+
+---
+
+## BCI08 - Stabilize full-suite CI integration isolation for access-import, demo verification and inventory routes
+
+Status: READY
+Ready after: `BCI05` PARTIAL evidence on 2026-08-12
+Priority: P0
+Type: backend/tests/ci
+Feature family: backend-ci-full-suite-isolation
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/BCI08-<agent>.lock.md`
+Commit suggestion: `test(ci): stabilize backend full-suite integration isolation`
+
+### Problem
+
+`BCI05` can no longer close on "just push and capture green GHA." The latest backend-equivalent GitHub Actions run on `main` still fails the full suite, but the failing tests pass when executed in focused local runs on the current backend-equivalent `HEAD`. That makes this a full-suite CI isolation/order-dependence problem until proven otherwise.
+
+### Evidence
+
+- Latest relevant GitHub Actions run: `31575771867`
+- Latest relevant job: `94047422144`
+- Head SHA: `9c5fb2c6a2254f364ad2247a133413709860bd69`
+- Workflow outcomes: restore=success, build=success, test=failure, coverage-summary=success, artifact-upload=success
+- Uploaded TRX totals: `829 total / 825 passed / 4 failed`
+- Failing tests:
+  - `DemoEnvironmentVerificationEndpointTests.DemoVerification_ReturnsUnsafe_WhenNoProofInputsArePresent`
+  - `InventoryListEndpointIntegrationTests.InventoryList_UncachedRouteMatchesSeededRowCountAndEmptyMeta`
+  - `AccessImportRunEndpointTests.PostRun_WhenStoragePreparationTimesOut_ReturnsGatewayTimeout`
+  - `AccessImportRunEndpointTests.PostRun_ReturnsAccepted_AndInvokesImportServiceOnce`
+- First failure signatures from TRX/logs:
+  - demo verification: expected warning `connection_string_unavailable_or_unreadable`, actual warnings collection empty
+  - inventory uncached route: expected `200 OK`, actual `500 InternalServerError`
+  - access import timeout path: expected `504 GatewayTimeout`, actual `503 ServiceUnavailable`
+  - access import accepted path: expected `202 Accepted`, actual `503 ServiceUnavailable`
+- Local focused evidence on `e2ebd1d0311617901587184c798f08e0335a5f60`:
+  - targeted access-import + demo tests: pass `3/3`
+  - full `InventoryListEndpointIntegrationTests`: pass `7/7`
+- Backend/workflow diff from the failing GHA commit to current `HEAD` is empty:
+  - `git diff --name-only 9c5fb2c6..HEAD -- Api Api.Tests Application Domain Infrastructure .github/workflows/analytics-tests.yml`
+- The GHA job log also shows repeated missing-table noise (`PerformanceLogs`, `InventoryMovementFacts`) around the failing integration paths, which points at suite-order/shared-host state rather than a single new product contract.
+
+### Scope
+
+- `Api.Tests/AccessImportRunEndpointTests.cs`
+- `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+- any shared backend test-host helpers they actually use
+- `Api/Program.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api/Endpoints/AccessImportEndpoints.cs`, `Api/Services/Startup/*` only if the root cause is proven to be runtime/shared-startup state rather than test setup
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- one dated `docs/qa/` evidence note for the focused repair
+
+Do not weaken the GitHub Actions workflow, skip tests, add retries to hide failures, or broaden this prompt into unrelated analytics correctness work.
+
+### Read first
+
+- `MASTER_ROADMAP.md`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-12.md`
+- `docs/qa/BACKEND_CI_FAILURE_TRIAGE_2026-08-06.md`
+- `Api.Tests/AccessImportRunEndpointTests.cs`
+- `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+
+### Do
+
+1. Reproduce the four failing tests in the narrowest focused groups and in the full suite on the current backend-equivalent `HEAD`.
+2. Prove whether the failure class is:
+   - shared database/test isolation;
+   - shared host/service-registration leakage;
+   - order dependence across integration hosts;
+   - startup readiness / connection-string state pollution;
+   - or a real runtime regression that only the focused filters missed.
+3. Inspect the shared host/test setup used by the three failing classes before changing runtime code.
+4. If the root cause is test-host or suite-order isolation, make the smallest deterministic fix there first.
+5. Change production runtime code only if the exact same source-of-truth defect is proven outside the test harness.
+6. Re-run:
+   - the exact four-test filter;
+   - each affected class;
+   - the full `Api.Tests/Api.Tests.csproj` suite or the closest local equivalent available;
+   - and then inspect the next GitHub Actions run for the resulting commit.
+7. Return to `BCI05` only after the focused family is closed or truthfully reduced to a smaller residual set.
+
+### Tests
+
+- exact four-test filter from the latest red GHA artifact
+- `AccessImportRunEndpointTests`
+- `DemoEnvironmentVerificationEndpointTests`
+- `InventoryListEndpointIntegrationTests`
+- full `Api.Tests/Api.Tests.csproj` Release suite
+- GitHub Actions `analytics-tests.yml` run on the resulting commit
+
+### Acceptance
+
+- The four failing tests are either fixed or reduced to a smaller, newly evidenced root-cause family.
+- The fix is deterministic and does not rely on retries, sleep inflation or skipped assertions.
+- Full-suite local evidence and a fresh GitHub Actions run are both recorded.
+- `BCI05` is re-entered only after this isolation family is resolved or narrowed with new proof.
+
+### Dependencies
+
+- `BCI05` PARTIAL evidence from 2026-08-12
+- latest GHA artifact/log proof from run `31575771867`
+- no newer backend/workflow commit than `9c5fb2c6` before the next agent starts runtime work
 
 ---
 
