@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured). **PERF11** deferred-dimension pack: `.ai/runs/2026-08-12-PERF11-evidence.md` (D1 measured; D4/D5 blocked-with-reason; D6/D7 deferred). Current queue READY: `PERF12`.
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured). **PERF11** deferred-dimension pack: `.ai/runs/2026-08-12-PERF11-evidence.md` (D1 measured; D4/D5 initially blocked). **PERF12** remaining-gap pack: `.ai/runs/2026-08-12-PERF12-evidence.md` (D4/D7 measured; D5/D6 durable blockers). Current queue READY: `PERF13`.
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
@@ -141,28 +141,28 @@ Before 10/50-customer milestones, define evidence for:
 - report/export bursts;
 - tenant isolation overhead where shared SaaS is enabled.
 
-Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` (PERF09). First dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3). PERF11 deferred pack: `.ai/runs/2026-08-12-PERF11-evidence.md` (D1 measured; D4/D5 blocked; D6/D7 deferred). Numeric G10/G50 SLOs remain unmeasured; shared SaaS (D8) needs MT.
+Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` (PERF09). PERF10 D2/D3; PERF11 D1; PERF12 D4/D7 measured. D5/D6 remain durable blockers; D8 needs MT. Numeric G10/G50 SLOs remain unmeasured.
 
 ### Completion note
 
 - Date: 2026-08-12
 - Agent: Cursor
 - Changed files:
-  - `tmp/perf11_measure.ps1`
-  - `.ai/runs/2026-08-12-PERF11-evidence.md`
-  - `.ai/runs/2026-08-12-PERF11-raw.json`
+  - `tmp/perf12_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF12-evidence.md`
+  - `.ai/runs/2026-08-12-PERF12-raw.json`
   - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
   - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
   - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
   - `MASTER_ROADMAP.md`
 - Checks:
-  - `powershell -ExecutionPolicy Bypass -File tmp/perf11_measure.ps1 -SkipSetup` - pass
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf12_measure.ps1 -SkipSetup` - pass
   - docs/queue validators - pending at commit
 - Risks:
-  - D4 Healthy proof still missing; D5 blocked; D6/D7 deferred
-  - observed D1 envelope is not a reserved multi-customer budget
+  - D5/D6 durable blockers remain
+  - D7 html preview is not production PDF burst
 - Next:
-  - PERF12 remaining scalability gaps (D4 retry / D5-D7)
+  - PERF13 D5/D6 unblock follow-up
 
 ## Required benchmark evidence
 

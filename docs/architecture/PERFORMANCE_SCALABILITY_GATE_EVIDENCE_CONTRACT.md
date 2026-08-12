@@ -76,7 +76,9 @@ Every scalability-gate evidence pack must address these dimensions. Until measur
 
 **First dedicated pack (PERF10):** `.ai/runs/2026-08-12-PERF10-evidence.md` — warm concurrent reads (10×3) p95 ≈469 ms, peak DB connections 4; D1 partial at that time; D4–D7 deferred; D8 n/a.
 
-**Deferred-dimension pack (PERF11):** `.ai/runs/2026-08-12-PERF11-evidence.md` — D1 observed envelope measured (8 logical CPUs, peak RSS ≈87 MB, DB ≈106 MB); D4 worker Healthy proof blocked; D5 blocked (no instrumentation); D6/D7 deferred.
+**Deferred-dimension pack (PERF11):** `.ai/runs/2026-08-12-PERF11-evidence.md` — D1 observed envelope measured (8 logical CPUs, peak RSS ≈87 MB, DB ≈106 MB); D4 initially blocked on web-process harness mistake; D5 blocked (no instrumentation); D6/D7 deferred at that time.
+
+**Remaining-gap pack (PERF12):** `.ai/runs/2026-08-12-PERF12-evidence.md` — D4 measured on `PROCESS_TYPE=worker` (Running + heartbeat); D7 html generate burst 3/3 completed (~461 ms p95); D5/D6 durable blockers.
 
 ### D3 — Database connection pressure
 

@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF12` | remaining scalability gaps (D4 retry / D5-D7) |
+| PERF - Performance | `PERF13` | D5/D6 durable blocker follow-up |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,14 +24,65 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF12 - Close remaining scalability gaps (D4 retry / D5-D7)
+## PERF13 - Unblock D5 cache footprint or D6 import-overlap evidence
 
 Status: READY
 Priority: future / measurement
+Feature family: performance-scalability-d5-d6-unblock
+Parallel-safe: no - shares cache/import measurement paths
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF13-<agent>.lock.md`
+
+### Problem
+
+PERF12 measured D4 worker health and D7 document generate bursts, but D5 cache footprint and D6 import overlap remain durable blockers (no instrumentation / no M-PERF Access fixture).
+
+### Evidence
+
+- `.ai/runs/2026-08-12-PERF12-evidence.md`;
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
+
+### Scope
+
+- add the minimum harness or fixture needed to measure D5 or D6, or record an owner-approved durable skip with replacement evidence path;
+- no production optimization semantics; D8 stays n/a without MT.
+
+### Read first
+
+- PERF12 evidence;
+- PERF09 contract;
+- baseline B3/B4 families.
+
+### Do
+
+1. Advance D5 and/or D6 to measured or explicit owner-gated skip.
+2. Record `.ai/runs/` evidence.
+3. Do not invent SLOs or shared_saas claims.
+
+### Tests
+
+- evidence cites dimension ids;
+- docs/queue validators pass.
+
+### Acceptance
+
+- D5 or D6 status changes with citeable reason/result;
+- no runtime optimization shipped beyond measurement enablement required for evidence.
+
+### Dependencies
+
+- PERF12 DONE.
+
+---
+
+## PERF12 - Close remaining scalability gaps (D4 retry / D5-D7)
+
+Status: DONE
+Priority: future / measurement
 Feature family: performance-scalability-remaining-gaps
 Parallel-safe: no - shares API/DB/worker/export paths
-Owner: unassigned
-Local lock: `.ai/task-locks/PERF12-<agent>.lock.md`
+Owner: Cursor
+Local lock: released
 
 ### Problem
 
@@ -41,6 +92,8 @@ PERF11 measured the D1 host envelope and recorded D4/D5 as blocked-with-reason, 
 
 - `.ai/runs/2026-08-12-PERF11-evidence.md`;
 - `.ai/runs/2026-08-12-PERF10-evidence.md`;
+- `.ai/runs/2026-08-12-PERF12-evidence.md`;
+- `.ai/runs/2026-08-12-PERF12-raw.json`;
 - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`.
 
 ### Scope
@@ -74,6 +127,26 @@ PERF11 measured the D1 host envelope and recorded D4/D5 as blocked-with-reason, 
 ### Dependencies
 
 - PERF11 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `tmp/perf12_measure.ps1`
+  - `.ai/runs/2026-08-12-PERF12-evidence.md`
+  - `.ai/runs/2026-08-12-PERF12-raw.json`
+  - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf12_measure.ps1 -SkipSetup` - pass (D4 measured Running+heartbeat; D7 3/3 completed)
+  - docs/queue validators - pending at commit
+- Risks:
+  - D5/D6 still durable blockers
+  - D7 is html preview, not PDF production burst
+- Next: PERF13 D5/D6 unblock follow-up
 
 ---
 

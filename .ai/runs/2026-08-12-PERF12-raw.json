@@ -1,0 +1,109 @@
+{
+    "meta":  {
+                 "packId":  "PERF12-G10-remaining-gaps-01",
+                 "commit":  "e6f8c369a9be5189c2d13813de0ce992bec85eb7",
+                 "datetimeUtc":  "2026-08-12T16:19:32.1723866Z",
+                 "milestone":  "G10",
+                 "deploymentMode":  "dedicated",
+                 "datasetTier":  "M",
+                 "seedRecipeId":  "M-PERF-01",
+                 "database":  "trendplus_perf_m",
+                 "priorGapNote":  "PERF11 D4 used web process + runtimeStatus; AggregationWorker registers only in PROCESS_TYPE=worker and Status/LastHeartbeat must be parsed without ConvertFrom-Json -Depth on Windows PowerShell"
+             },
+    "dimensions":  {
+                       "D1":  {
+                                  "status":  "cite_PERF11",
+                                  "notes":  "Observed envelope already measured"
+                              },
+                       "D2":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Concurrent reads already measured"
+                              },
+                       "D3":  {
+                                  "status":  "cite_PERF10",
+                                  "notes":  "Connection pressure already measured"
+                              },
+                       "D4":  {
+                                  "status":  "measured",
+                                  "workerType":  "AnalyticsAggregationWorker",
+                                  "observabilityFix":  "PROCESS_TYPE=worker + poll Status/LastHeartbeat; avoid ConvertFrom-Json -Depth on Windows PowerShell 5.1",
+                                  "cycleElapsedMs":  3060.21,
+                                  "startStatusCode":  200,
+                                  "startError":  null,
+                                  "beforeStatus":  "Running",
+                                  "beforeLastHeartbeat":  "2026-08-12T16:19:22.024656Z",
+                                  "afterStatus":  "Running",
+                                  "afterLastHeartbeat":  "2026-08-12T16:19:22.024656Z",
+                                  "afterRegistered":  true,
+                                  "afterConfiguredButNotRunning":  false,
+                                  "workersEnabledGlobally":  true,
+                                  "polls":  [
+                                                {
+                                                    "elapsedMs":  3051.83,
+                                                    "status":  "Running",
+                                                    "lastHeartbeat":  "2026-08-12T16:19:22.024656Z",
+                                                    "isRegisteredInCurrentProcess":  true,
+                                                    "isConfiguredButNotRunning":  false,
+                                                    "workersEnabledGlobally":  true,
+                                                    "totalWorkers":  17,
+                                                    "configStatusCode":  200
+                                                }
+                                            ],
+                                  "notes":  "Worker reached Healthy (or registered non-idle status) with heartbeat after observability fix"
+                              },
+                       "D5":  {
+                                  "status":  "blocked",
+                                  "notes":  "Durable blocker: no cache cardinality/MB API or counters for harness; same as PERF11"
+                              },
+                       "D6":  {
+                                  "status":  "blocked",
+                                  "notes":  "Durable blocker: no M-PERF Access import fixture (PERF05 B4 gap remains)"
+                              },
+                       "D7":  {
+                                  "status":  "measured",
+                                  "burstConcurrency":  3,
+                                  "successSamples":  3,
+                                  "p50Ms":  460.92,
+                                  "p95Ms":  460.92,
+                                  "samples":  [
+                                                  {
+                                                      "statusCode":  200,
+                                                      "elapsedMs":  1531.12,
+                                                      "error":  null,
+                                                      "documentStatus":  "completed",
+                                                      "sizeBytes":  3622
+                                                  },
+                                                  {
+                                                      "statusCode":  200,
+                                                      "elapsedMs":  460.92,
+                                                      "error":  null,
+                                                      "documentStatus":  "completed",
+                                                      "sizeBytes":  3622
+                                                  },
+                                                  {
+                                                      "statusCode":  200,
+                                                      "elapsedMs":  88.97,
+                                                      "error":  null,
+                                                      "documentStatus":  "completed",
+                                                      "sizeBytes":  3622
+                                                  }
+                                              ],
+                                  "notes":  "Concurrent/serial document generate probe on daily-sales html preview"
+                              },
+                       "D8":  {
+                                  "status":  "n/a_dedicated",
+                                  "notes":  "shared_saas requires MT fixtures"
+                              }
+                   },
+    "correctnessChecks":  {
+                              "result":  "pass",
+                              "d4Measured":  true,
+                              "d7Measured":  true,
+                              "notes":  "Gaps advanced without inventing SLOs; blocked statuses keep explicit reasons"
+                          },
+    "residualRisks":  [
+                          "D5/D6 remain durable blockers without instrumentation/fixtures",
+                          "single-host dedicated only",
+                          "D7 html preview is not production PDF export load"
+                      ]
+}
