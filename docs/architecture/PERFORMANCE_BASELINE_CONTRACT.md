@@ -63,6 +63,8 @@ It does **not**:
 
 **Cold-start investigation (PERF06):** `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md` — section profiling required before PERF-COLD-01 runtime remediation.
 
+**Scalability gate (PERF09):** `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` — G10/G50 evidence dimensions; numeric SLOs remain unmeasured until a later pack.
+
 ## Benchmark families (priority order)
 
 Each family maps to a future PERF phase. Measure the listed representative request/job shapes first.

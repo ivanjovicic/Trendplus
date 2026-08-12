@@ -1,6 +1,6 @@
 # Trendplus Performance Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-12
 Status: roadmap only; optimization implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`PERF`)
 
@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. Current queue READY: `PERF09`.
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. Current queue READY: `PERF10`.
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
@@ -107,6 +107,27 @@ Measure backend and frontend cold-start paths separately:
 
 Do not mask cold-start failure with a misleading healthy fallback.
 
+### Completion note
+
+- Date: 2026-08-12
+- Agent: codex
+- Changed files:
+  - `.ai/runs/2026-08-12-PERF08-evidence.md`
+  - `.ai/runs/2026-08-12-PERF08-raw.json`
+  - `Klijent/clientapp/scripts/perf08_frontend_render.mjs`
+  - `tmp/perf08_measure.ps1`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `powershell -ExecutionPolicy Bypass -File tmp/perf08_measure.ps1` ? pass
+  - docs/queue validators; `git diff --check` ? pending at commit
+- Risks:
+  - frontend dev-proxy timing has some run-to-run variance
+  - local evidence is not a production SLO commitment
+- Next:
+  - PERF09 scalability gate evidence contract
+
 ### PERF-9 - Scalability gate
 
 Before 10/50-customer milestones, define evidence for:
@@ -119,6 +140,8 @@ Before 10/50-customer milestones, define evidence for:
 - import overlap;
 - report/export bursts;
 - tenant isolation overhead where shared SaaS is enabled.
+
+Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` (PERF09). Numeric G10/G50 SLOs remain unmeasured until a later evidence pack.
 
 ## Required benchmark evidence
 

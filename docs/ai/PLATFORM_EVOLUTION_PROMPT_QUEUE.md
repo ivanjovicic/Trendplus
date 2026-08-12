@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF09` | scalability gate planning (docs) |
+| PERF - Performance | `PERF10` | scalability gate first evidence pack |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
@@ -24,14 +24,69 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF09 - Define scalability gate evidence contract (PERF-9)
+## PERF10 - Capture first scalability-gate evidence pack (PERF-9)
 
 Status: READY
+Priority: future / measurement
+Feature family: performance-scalability-gate-evidence
+Parallel-safe: no ? shares API/DB measurement paths
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF10-<agent>.lock.md`
+
+### Problem
+
+PERF09 defined G10/G50 scalability dimensions, but no citeable evidence pack yet records concurrency, DB pressure, or resource-envelope markers against that contract.
+
+### Evidence
+
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`;
+- `.ai/runs/2026-08-12-PERF05-evidence.md`;
+- `.ai/runs/2026-08-12-PERF08-evidence.md`.
+
+### Scope
+
+- measurement evidence for a first dedicated-mode pack covering at least D2 concurrent reads and D3 connection pressure on M-tier (or documented deferrals);
+- keep cold/warm and correctness co-assertions explicit;
+- no optimization, index, cache TTL, or worker semantics changes;
+- shared_saas / D8 remains deferred without MT fixtures.
+
+### Read first
+
+- PERF09 scalability gate contract;
+- PERF05/PERF08 evidence;
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
+
+### Do
+
+1. Run or script a first scalability-gate pack against the PERF09 template.
+2. Record raw JSON + evidence summary under `.ai/runs/`.
+3. Mark unmeasured dimensions explicitly; do not invent SLOs.
+
+### Tests
+
+- evidence cites PERF09 dimension ids;
+- correctness co-assertions recorded;
+- docs/queue validators pass.
+
+### Acceptance
+
+- at least one citeable G10-oriented dedicated pack exists with honest gaps;
+- no semantic/runtime optimization shipped.
+
+### Dependencies
+
+- PERF09 DONE.
+
+---
+
+## PERF09 - Define scalability gate evidence contract (PERF-9)
+
+Status: DONE
 Priority: future / planning
 Feature family: performance-scalability-gate
-Parallel-safe: yes ? docs only
-Owner: unassigned
-Local lock: `.ai/task-locks/PERF09-<agent>.lock.md`
+Parallel-safe: yes, docs only
+Owner: Cursor
+Local lock: released
 
 ### Problem
 
@@ -40,8 +95,10 @@ PERF08 recorded distinct backend vs frontend cold-start evidence on M-tier, but 
 ### Evidence
 
 - `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-9;
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`;
+- `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`;
 - `.ai/runs/2026-08-12-PERF08-evidence.md`;
-- `.ai/runs/2026-08-12-PERF05-evidence.md`.
+- `.ai/runs/2026-08-12-PERF08-raw.json`.
 
 ### Scope
 
@@ -67,12 +124,31 @@ PERF08 recorded distinct backend vs frontend cold-start evidence on M-tier, but 
 
 ### Acceptance
 
-- PERF-9 has a citeable planning artifact for next measurement slices;
+- PERF-9 has a citeable planning artifact for next measurement slices: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`;
 - no semantic/runtime change shipped.
 
 ### Dependencies
 
 - PERF08 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Cursor
+- Changed files:
+  - `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`
+  - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
+  - `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` ? pending at commit
+  - `node scripts/check-planning-architecture.mjs` ? pending at commit
+  - `git diff --check` ? pending at commit
+- Risks:
+  - G10/G50 numeric envelopes remain unmeasured
+  - shared_saas (D8) blocked on MT fixtures
+- Next: PERF10 first scalability-gate evidence pack
 
 ---
 
@@ -83,7 +159,7 @@ Priority: future / measurement
 Feature family: performance-cold-start-evidence
 Parallel-safe: no ? shares bootstrap/API paths
 Owner: unassigned
-Local lock: `.ai/task-locks/PERF08-<agent>.lock.md`
+Local lock: released
 
 ### Problem
 
@@ -93,8 +169,8 @@ PERF07 recorded section timings, but the roadmap still needs distinct backend an
 
 - `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-8;
 - `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`;
-- `.ai/runs/2026-08-12-PERF07-evidence.md`;
-- `.ai/runs/2026-08-12-PERF07-raw.json`.
+- `.ai/runs/2026-08-12-PERF08-evidence.md`;
+- `.ai/runs/2026-08-12-PERF08-raw.json`.
 
 ### Scope
 
@@ -105,7 +181,7 @@ PERF07 recorded section timings, but the roadmap still needs distinct backend an
 ### Read first
 
 - PERF06 investigation plan;
-- PERF07 evidence;
+- PERF08 evidence;
 - `docs/roadmaps/PERFORMANCE_ROADMAP.md` PERF-8.
 
 ### Do
