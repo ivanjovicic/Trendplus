@@ -50,8 +50,8 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | RL | same queue/roadmap as DEX | `RL05` | `RL04` DONE = lifecycle + learning eligibility. Next is docs-only measurement-only statistics contract. | Yes, docs/contracts | Measurement-only statistics projection |
 | DT | same queue/roadmap as DEX | `DT06` | `DT05` DONE = Slice-2 filtered timeline. Next is docs-only export/report contract. | Yes, docs/contracts | Timeline export/retrospective contract |
 | PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF03` | `PERF02` DONE; baseline evidence recorded in `.ai/runs/2026-08-11-PERF02-evidence.md` | Yes, measurement-backed backlog | Turn measured B1/B2/B8 pack into PERF03 backlog |
-| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS06` | `OBS05` DONE = service-level vocabulary. Next is Import SLA evidence contract (docs). | Yes, docs/contracts | Import SLA evidence |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC01`-`SEC04` DONE; `SEC05` WAITING (S2-3) until MT09/interim scope exists. | Yes, docs only | SEC05 when MT09/interim ready |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | none | `OBS01`-`OBS06` DONE; next is OBS-5 analytics SLA evidence when promoted. | Yes, docs/contracts | OBS-5 analytics SLA evidence |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC05` | `SEC04` DONE; blocked on MT09/interim dedicated-deploy offboarding scope | Yes, docs only | Data protection/retention assurance plan |
 
 ## Product and process documents
 

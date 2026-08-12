@@ -13,21 +13,76 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | `PERF03` (`PERF02` DONE; baseline evidence recorded) | measurement-backed backlog |
-| OBS - Observability | `OBS06` | Import SLA evidence contract (docs) |
-| SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | supply-chain assurance policy (docs) |
+| OBS - Observability | none (`OBS06` DONE) | Import SLA evidence contract (docs) |
+| SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
 ---
 
-## PERF02 - Execute the S-tier baseline measurement pack and capture evidence
+## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
 
 Status: READY
+Priority: future
+Feature family: performance-measured-backlog
+Parallel-safe: yes, planning only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+Optimization tasks should be created only after baseline evidence identifies the slowest/highest-value paths.
+
+### Evidence
+
+- `.ai/runs/2026-08-11-PERF02-evidence.md` records the baseline methodology and measurements.
+- PERF02 now provides concrete B1/B2/B8 timings and correctness checks.
+
+### Scope
+
+- measured findings -> prioritized future prompt plan;
+- no production optimization in this task.
+
+### Read first
+
+- PERF02 evidence log
+- relevant SQL/index/cache code/tests for measured candidates
+
+### Do
+
+1. Rank candidates by user/business impact and measured cost.
+2. Separate SQL/index, cache, memory, worker and cold-start families.
+3. Define before/after evidence requirements for each.
+4. Exclude speculative changes without measured evidence.
+
+### Tests
+
+- every backlog item links a measurement;
+- correctness/rollback/invalidation checks are specified;
+- no item mixes unrelated performance families.
+
+### Acceptance
+
+- future runtime optimization prompts are evidence-backed and reviewable.
+
+### Dependencies
+
+- PERF02 DONE with usable measurements.
+
+---
+
+---
+
+## PERF02 - Execute the S-tier baseline measurement pack and capture evidence
+
+Status: DONE
 Priority: future / measurement
 Feature family: performance-measurement-pack
 Parallel-safe: yes, measurement/docs only
 Owner: Cursor
-Local lock: `.ai/task-locks/PERF02-cursor.lock.md`
+Commit: `8e19a7f21126c3d7eb777aa625de45eb19a8ec8d`
+Completed: 2026-08-11
+Local lock: removed after DONE
 
 ### Problem
 
@@ -100,6 +155,7 @@ PERF01 defined the baseline contract, and PERF02 captured the first S-tier evide
   - `PERF03` is READY and can turn the measured B1/B2/B8 pack into a candidate backlog
   - Current READY in this queue: `PERF03`
 
+---
 ---
 
 ## PERF01 - Establish performance baseline, dataset tiers and budgets
@@ -184,59 +240,9 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ---
 
-## PERF03 - Prepare SQL/index/cache optimization backlog from measurements
-
-Status: DONE
-Priority: future  
-Feature family: performance-measured-backlog  
-Parallel-safe: yes, planning only  
-Owner: unassigned
-
-### Problem
-
-Optimization tasks should be created only after baseline evidence identifies the slowest/highest-value paths.
-
-### Evidence
-
-- `.ai/runs/2026-08-11-PERF02-evidence.md` records the baseline methodology and measurements.
-- PERF02 now provides concrete B1/B2/B8 timings and correctness checks.
-
-### Scope
-
-- measured findings -> prioritized future prompt plan;
-- no production optimization in this task.
-
-### Read first
-
-- PERF02 evidence log
-- relevant SQL/index/cache code/tests for measured candidates
-
-### Do
-
-1. Rank candidates by user/business impact and measured cost.
-2. Separate SQL/index, cache, memory, worker and cold-start families.
-3. Define before/after evidence requirements for each.
-4. Exclude speculative changes without measured evidence.
-
-### Tests
-
-- every backlog item links a measurement;
-- correctness/rollback/invalidation checks are specified;
-- no item mixes unrelated performance families.
-
-### Acceptance
-
-- future runtime optimization prompts are evidence-backed and reviewable.
-
-### Dependencies
-
-- PERF02 DONE with usable measurements.
-
----
-
 ## OBS06 - Define Import SLA evidence contract
 
-Status: READY
+Status: DONE
 Priority: future
 Feature family: observability-import-sla-evidence
 Parallel-safe: yes, docs/contracts only
@@ -291,6 +297,23 @@ Import lifecycle timestamps and states exist across connectors and status surfac
 ### Dependencies
 
 - OBS05 DONE.
+
+### Completion note
+
+- Date: 2026-08-12
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md`
+  - `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+  - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - docs/planning update only; no runtime code changed
+- Risks:
+  - numeric SLA hours remain out of scope until business/QDB approval
+  - MT/tenant scope is still not inferred by this contract
+- Next:
+  - OBS roadmap continues with later promoted slices; current queue READY for OBS is none
 
 ---
 
@@ -672,16 +695,75 @@ Slice-1 API/process evidence can show availability and request completion, but s
 
 ---
 
-## SEC04 - Dependency and supply-chain assurance policy (S2-2)
+## SEC05 - Data protection and retention assurance plan (S2-3)
 
 Status: READY
+Priority: future
+Feature family: security-retention-assurance-plan
+Parallel-safe: yes, planning/docs only
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC05-<agent>.lock.md`
+
+### Problem
+
+Cross-cutting retention/classification/offboarding assurance remains an SEC orphan (S15 / S2-3) beyond MT09 product work.
+
+### Evidence
+
+- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md` slice **S2-3**
+- SEC01 orphan S15
+
+### Scope
+
+- docs/planning only;
+- data-class inventory and retention/deletion expectations;
+- dedicated-deploy wipe/restore checklist until MT09;
+- AI provider retention remains blocked until GAI policy;
+- no runtime delete tooling in this prompt.
+
+### Read first
+
+- SEC02 backlog plan
+- MT09 / tenant safety checklist
+- `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
+
+### Do
+
+1. Produce retention/classification assurance doc.
+2. Name owners per data class (STAB/MT/QDB/GAI collaborators).
+3. Fail closed when delete scope is unknown.
+4. Keep MT/GAI gates explicit.
+
+### Tests
+
+- no duplicate of MT09 implementation;
+- missing evidence cannot claim PASS;
+- no secrets/customer payloads in the doc.
+
+### Acceptance
+
+- S2-3 has a durable assurance plan agents can cite.
+
+### Dependencies
+
+- SEC04 DONE; MT09 contracts or accepted interim dedicated-deploy scope.
+
+---
+
+---
+
+## SEC04 - Dependency and supply-chain assurance policy (S2-2)
+
+Status: DONE
 Ready after: `SEC03` is `DONE`
 Priority: future
 Feature family: security-supply-chain-policy
 Parallel-safe: yes, planning/docs only
 Owner: unassigned
-Local lock: `.ai/task-locks/SEC04-<agent>.lock.md`
-Promotion note: 2026-08-11 â€” `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
+Commit: `9ba31fee22cfcbb72343745928a1907372f5b402`
+Completed: 2026-08-11
+Local lock: removed after DONE
+Promotion note: 2026-08-11 — `SEC03` DONE; docs/policy only; BCI collaborates on CI wiring.
 
 ### Problem
 
@@ -745,6 +827,7 @@ Vulnerable/abandoned package posture has no queued owner outside SEC-3.
 - Next:
   - `SEC05` remains WAITING until MT09 or explicit interim dedicated-deploy offboarding scope exists
   - Current READY in this queue: none
+---
 
 ## SEC06 - Dependency and supply-chain assurance policy follow-up (S2-2)
 
@@ -1044,61 +1127,5 @@ Admin API-key / deployment-secret rotation and emergency-access expectations are
 ### Dependencies
 
 - SEC02 DONE.
-
----
-
-## SEC05 - Data protection and retention assurance plan (S2-3)
-
-Status: WAITING
-Ready after: `SEC04` is `DONE` and MT09 tenant lifecycle contracts exist (or dedicated-deploy offboarding is explicitly accepted as interim scope)
-Priority: future
-Feature family: security-retention-assurance-plan
-Parallel-safe: yes, planning/docs only
-Owner: unassigned
-Local lock: `.ai/task-locks/SEC05-<agent>.lock.md`
-
-### Problem
-
-Cross-cutting retention/classification/offboarding assurance remains an SEC orphan (S15 / S2-3) beyond MT09 product work.
-
-### Evidence
-
-- `docs/architecture/SECURITY_ASSURANCE_BACKLOG_PLAN.md` slice **S2-3**
-- SEC01 orphan S15
-
-### Scope
-
-- docs/planning only;
-- data-class inventory and retention/deletion expectations;
-- dedicated-deploy wipe/restore checklist until MT09;
-- AI provider retention remains blocked until GAI policy;
-- no runtime delete tooling in this prompt.
-
-### Read first
-
-- SEC02 backlog plan
-- MT09 / tenant safety checklist
-- `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md`
-
-### Do
-
-1. Produce retention/classification assurance doc.
-2. Name owners per data class (STAB/MT/QDB/GAI collaborators).
-3. Fail closed when delete scope is unknown.
-4. Keep MT/GAI gates explicit.
-
-### Tests
-
-- no duplicate of MT09 implementation;
-- missing evidence cannot claim PASS;
-- no secrets/customer payloads in the doc.
-
-### Acceptance
-
-- S2-3 has a durable assurance plan agents can cite.
-
-### Dependencies
-
-- SEC04 DONE; MT09 contracts or accepted interim dedicated-deploy scope.
 
 ---

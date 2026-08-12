@@ -483,6 +483,7 @@ public sealed class AnalyticsActionItemService
                 x.Status,
                 x.OutcomeStatus,
                 x.UpdatedAtUtc,
+                x.MetadataJson,
                 OpenRank = IsOpenStatus(x.Status) ? 1 : 0,
             })
             .ToListAsync(ct);
@@ -517,6 +518,7 @@ public sealed class AnalyticsActionItemService
             }
 
             var existsOpen = IsOpenStatus(candidate.Status);
+            var evidenceSnapshot = GetLedgerSnapshot(candidate.MetadataJson)?.EvidenceSnapshot;
             items.Add(new AnalyticsActionSourceStatusDto(
                 SourceType: input.SourceType,
                 SourceKey: input.SourceKey,
@@ -524,7 +526,10 @@ public sealed class AnalyticsActionItemService
                 ActionId: candidate.Id,
                 Status: candidate.Status,
                 OutcomeStatus: candidate.OutcomeStatus,
-                CanCreateNew: !existsOpen));
+                CanCreateNew: !existsOpen,
+                HasEvidenceSnapshot: evidenceSnapshot is not null,
+                EvidenceSnapshotCapturedAtUtc: evidenceSnapshot?.CapturedAtUtc,
+                EvidenceSnapshotRecommendationId: evidenceSnapshot?.RecommendationId));
         }
 
         return items;
@@ -1442,7 +1447,10 @@ public sealed record AnalyticsActionSourceStatusDto(
     long? ActionId,
     string? Status,
     string? OutcomeStatus,
-    bool CanCreateNew
+    bool CanCreateNew,
+    bool HasEvidenceSnapshot = false,
+    DateTime? EvidenceSnapshotCapturedAtUtc = null,
+    string? EvidenceSnapshotRecommendationId = null
 );
 
 public sealed record AnalyticsActionSourceStatusLookupInput(

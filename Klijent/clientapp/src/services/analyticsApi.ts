@@ -1378,6 +1378,9 @@ type AnalyticsActionSourceStatusResponse = {
     status?: string | null;
     outcomeStatus?: string | null;
     canCreateNew?: boolean;
+    hasEvidenceSnapshot?: boolean;
+    evidenceSnapshotCapturedAtUtc?: string | null;
+    evidenceSnapshotRecommendationId?: string | null;
   }>;
 };
 

@@ -795,6 +795,7 @@ export default function ProductDecisionCenterPage() {
     if (lookupItems.length === 0) {
       setActionStatusWarning(null);
       setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
+      setEvidenceSnapshotByProductId((previous) => (Object.keys(previous).length === 0 ? previous : {}));
       return () => {
         cancelled = true;
       };
@@ -809,15 +810,29 @@ export default function ProductDecisionCenterPage() {
         if (cancelled) return;
 
         const keys = new Set<string>();
+        const snapshots: Record<number, { capturedAtUtc: string; recommendationId: string }> = {};
         for (const item of statuses.items) {
           if (item.exists && item.sourceKey) keys.add(item.sourceKey);
         }
+        for (const row of sortedRows) {
+          const queueSpec = buildProductQueueSpec(row);
+          const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+          const status = statuses.items.find((entry) => entry.sourceType === queueSpec.sourceType && entry.sourceKey === sourceKey);
+          if (status?.hasEvidenceSnapshot && status.evidenceSnapshotCapturedAtUtc && status.evidenceSnapshotRecommendationId) {
+            snapshots[row.productId] = {
+              capturedAtUtc: status.evidenceSnapshotCapturedAtUtc,
+              recommendationId: status.evidenceSnapshotRecommendationId,
+            };
+          }
+        }
 
         setQueuedActionKeys(keys);
+        setEvidenceSnapshotByProductId(snapshots);
         setActionStatusWarning(null);
       } catch {
         if (!cancelled) {
           setQueuedActionKeys(new Set());
+          setEvidenceSnapshotByProductId({});
           setActionStatusWarning("Status akcija trenutno nije dostupan.");
         }
       }

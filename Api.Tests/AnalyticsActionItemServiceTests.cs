@@ -1373,6 +1373,71 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetSourceStatusesAsync_ReturnsEvidenceSnapshotWhenPresent()
+    {
+        await using var db = CreateDbContext(nameof(GetSourceStatusesAsync_ReturnsEvidenceSnapshotWhenPresent));
+        var service = CreateService(db);
+
+        await service.UpsertAsync(
+            new AnalyticsActionUpsertRequest(
+                SourceType: AnalyticsActionConstants.SourceTypes.Product,
+                SourceKey: "status-evidence-1",
+                SourceId: 101,
+                Title: "Dopuni",
+                Description: "Test",
+                RecommendationStatus: "REPLENISH",
+                Priority: AnalyticsActionConstants.Priorities.P1,
+                ImpactEstimateRsd: 1000m,
+                DueAtUtc: null,
+                ExpectedImpactRsd: 1000m,
+                ConfidencePct: 80,
+                ReliabilityPct: 75,
+                DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Good,
+                ActionUrl: "/analytics/products",
+                SourceRecommendationId: "product:101:REPLENISH:20260528:20260626",
+                RecommendationType: "REPLENISH",
+                ExpectedImpactBasis: "product_decision_center",
+                ImpactWindowDays: 14,
+                ConfidenceLevel: "high",
+                WarningCodes: Array.Empty<string>(),
+                PrimaryDrivers: new[] { "sales_velocity" },
+                DecisionReason: "Brza prodaja.",
+                RecommendedAction: "Dopuni",
+                GeneratedAtUtc: new DateTime(2026, 6, 21, 9, 0, 0, DateTimeKind.Utc),
+                InputFreshnessStatus: "fresh",
+                MetadataJson: null,
+                PeriodFromUtc: "2026-05-28",
+                PeriodToUtc: "2026-06-26",
+                ConfidenceScore: 80,
+                ExplainabilityText: "Brza prodaja.",
+                ReasonCodes: new[] { "high_velocity" },
+                EvidenceChain: new[]
+                {
+                    new AnalyticsActionEvidenceNodeSnapshot(
+                        "decision",
+                        "selected_recommendation",
+                        "Odabrana preporuka",
+                        "Dopuni",
+                        new[] { "RecommendationStatus" },
+                        false,
+                        null)
+                },
+                ConfidenceBreakdown: null),
+            userId: "u1");
+
+        var statuses = await service.GetSourceStatusesAsync(new[]
+        {
+            new AnalyticsActionSourceStatusLookupInput(AnalyticsActionConstants.SourceTypes.Product, "status-evidence-1"),
+        });
+
+        var status = Assert.Single(statuses);
+        Assert.True(status.Exists);
+        Assert.True(status.HasEvidenceSnapshot);
+        Assert.NotNull(status.EvidenceSnapshotCapturedAtUtc);
+        Assert.Equal("product:101:REPLENISH:20260528:20260626", status.EvidenceSnapshotRecommendationId);
+    }
+
+    [Fact]
     public void AnalyticsAction_ModelHasUniqueOpenSourceIndex()
     {
         using var db = CreateDbContext(nameof(AnalyticsAction_ModelHasUniqueOpenSourceIndex));
