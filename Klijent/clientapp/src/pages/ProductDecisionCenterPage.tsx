@@ -19,6 +19,7 @@ import {
   fmtNumber,
   fmtPct,
   fmtRsd,
+  formatDateTime,
 } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
@@ -420,12 +421,18 @@ function lifecycleStateLabel(value: string | null | undefined): string {
   return "Nije dostupno";
 }
 
+function recommendationTypeLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "Nije dostupno";
+  return RECOMMENDATION_LABELS[normalized as ProductDecisionRecommendationStatus] ?? normalized;
+}
+
 function timelineEmptyReasonLabel(value: string | null | undefined): string {
   const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "outside_period") return "Nema događaja u izabranom periodu (outside_period).";
-  if (normalized === "no_measurement") return "Nema merenog ishoda (no_measurement).";
-  if (normalized === "no_events") return "Nema timeline događaja za izabrani entitet/porodicu (no_events).";
-  return "Timeline je prazan.";
+  if (normalized === "outside_period") return "Nema događaja u izabranom periodu.";
+  if (normalized === "no_measurement") return "Nema merenog ishoda.";
+  if (normalized === "no_events") return "Nema događaja za izabrani entitet ili porodicu.";
+  return "Istorija odluke je prazna.";
 }
 
 function primaryDriverLabel(value: string): string {
@@ -1548,23 +1555,23 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-block" data-testid="decision-evidence-snapshot">
-                                <strong>Evidence snapshot:</strong>{" "}
+                                <strong>Snimak dokaza:</strong>{" "}
                                 {evidenceSnapshotByProductId[row.productId]
-                                  ? `Snimljen ${evidenceSnapshotByProductId[row.productId]!.capturedAtUtc} (${evidenceSnapshotByProductId[row.productId]!.recommendationId})`
+                                  ? `Snimljen ${formatDateTime(evidenceSnapshotByProductId[row.productId]!.capturedAtUtc, "Nije dostupno")}`
                                   : row.evidenceSnapshotStatus === "available"
                                     ? "Dostupan"
                                     : "Nije snimljen — snapshot se zamrzava tek kada preporuka uđe u akcije"}
                                 {row.evidenceSnapshotPreview ? (
                                   <small>
-                                    Preview ugovora v{row.evidenceSnapshotPreview.schemaVersion}: {row.evidenceSnapshotPreview.recommendationType}
+                                    Pregled: {recommendationTypeLabel(row.evidenceSnapshotPreview.recommendationType)}
                                     {" · "}
-                                    {row.evidenceSnapshotPreview.periodFromUtc ?? "?"} – {row.evidenceSnapshotPreview.periodToUtc ?? "?"}
+                                    {formatDateTime(row.evidenceSnapshotPreview.periodFromUtc, "Nije dostupno")} – {formatDateTime(row.evidenceSnapshotPreview.periodToUtc, "Nije dostupno")}
                                   </small>
                                 ) : null}
                               </div>
 
                               <div className="reason-block" data-testid="decision-timeline-panel">
-                                <strong>Decision Timeline (Slice-2 filter):</strong>
+                                <strong>Istorija odluke:</strong>
                                 <div className="reason-statuses" style={{ marginTop: "0.5rem" }}>
                                   <button
                                     type="button"
@@ -1590,7 +1597,7 @@ export default function ProductDecisionCenterPage() {
                                   </button>
                                 </div>
                                 {timelineLoadingProductId === row.productId ? (
-                                  <small>Učitavanje timeline filtera…</small>
+                                  <small>Učitavanje istorije odluke…</small>
                                 ) : null}
                                 {timelineError && expandedProductId === row.productId ? (
                                   <small className="recommendation-warning-summary">{timelineError}</small>
@@ -1598,7 +1605,7 @@ export default function ProductDecisionCenterPage() {
                                 {(() => {
                                   const timeline = timelineByProductId[row.productId];
                                   if (!timeline) {
-                                    return <small>Timeline još nije učitan za ovaj entitet.</small>;
+                                    return <small>Istorija još nije učitana za ovaj entitet.</small>;
                                   }
                                   return (
                                     <>
@@ -1616,7 +1623,7 @@ export default function ProductDecisionCenterPage() {
                                             <li key={item.timelineId}>
                                               <div className="evidence-chain-headline">
                                                 <span className="evidence-chain-label">
-                                                  {item.recommendationType ?? "N/A"} · action #{item.actionId}
+                                                  {recommendationTypeLabel(item.recommendationType)}
                                                 </span>
                                               </div>
                                               <small>

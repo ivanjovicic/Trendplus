@@ -336,7 +336,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
       }),
     );
     expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: REPLENISH/i);
-    expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/no_events/i);
+    expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/Nema događaja za izabrani entitet ili porodicu/i);
   });
 
   it("renders strong recommendations with explicit estimated impact wording", async () => {
@@ -382,8 +382,8 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     const snapshotPanel = await screen.findByTestId("decision-evidence-snapshot");
     expect(snapshotPanel).toHaveTextContent(/Nije snimljen/i);
-    expect(snapshotPanel).toHaveTextContent(/Preview ugovora v1/i);
-    expect(snapshotPanel).toHaveTextContent(/REPLENISH/i);
+    expect(snapshotPanel).toHaveTextContent(/Pregled: Dopuni/i);
+    expect(snapshotPanel).not.toHaveTextContent(/REPLENISH/i);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
 
@@ -391,8 +391,9 @@ describe("ProductDecisionCenterPage confidence contract", () => {
       expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(snapshotPanel).toHaveTextContent(/Snimljen 2026-06-26T12:00:00Z/i);
-    expect(snapshotPanel).toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
+    expect(snapshotPanel).toHaveTextContent(/Snimljen/i);
+    expect(snapshotPanel).not.toHaveTextContent(/2026-06-26T12:00:00Z/i);
+    expect(snapshotPanel).not.toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
   });
 
   it("renders a structured evidence chain in the Why panel", async () => {
