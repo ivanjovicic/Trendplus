@@ -84,4 +84,4 @@ That payload can be rendered consistently in summary, scorecard and report surfa
 - Remaining risk:
   - This is a docs-only supplier reuse contract; runtime tree or evidence-snapshot behavior still needs a later prompt.
 - Next:
-  - RL05 - Prepare measurement-only recommendation statistics projection contract
+  - DEX13 - Prepare Inventory Decision Surface explainability reuse contract
