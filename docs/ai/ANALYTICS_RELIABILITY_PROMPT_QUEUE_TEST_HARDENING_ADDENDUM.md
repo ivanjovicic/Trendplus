@@ -475,8 +475,8 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Recommenda
   - full `dotnet test` solution - not required
 - Run log: .ai/runs/2026-08-13-RQ103-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: f4a797d14b0caca5df9ce1456bd22ef33f4ea360
+- Main verification: pending push to origin/main
 - Missed: none known for the named learning-eligibility and not-measured timestamp contract
 - Follow-up: `RQ104`
 - Residual risk: leftover `OutcomeMeasuredAtUtc` on a `not_measured` row still exists if written outside UpdateOutcomeAsync; Project treats it as not learning-eligible
