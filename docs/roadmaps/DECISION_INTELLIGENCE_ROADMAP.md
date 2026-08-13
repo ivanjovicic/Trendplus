@@ -126,7 +126,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
-Current queue READY: `DEX13` / `RL05` / `DT06` (DEX12 DONE; supplier explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`).
+Current queue READY: `DEX14` / `RL06` / `DT06` (DEX13 DONE = inventory explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; RL05 DONE and measurement-only statistics contract documented in `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`; supplier explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`).
 
 ## Decision Engine evolution
 

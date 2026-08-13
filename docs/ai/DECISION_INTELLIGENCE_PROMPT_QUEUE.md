@@ -38,11 +38,11 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX13` | docs/contracts only - inventory explainability reuse |
+| DEX - Decision Explainability | `DEX14` | docs/contracts only - inventory explainability reuse |
 
 
 
-| RL - Recommendation Learning | `RL05` | docs/contracts only - measurement-only statistics |
+| RL - Recommendation Learning | `RL06` | docs/contracts only - measurement-only statistics |
 
 
 
@@ -70,9 +70,72 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
+## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
 
 Status: READY
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+The inventory explainability reuse contract is frozen, but the runtime wiring still needs to reuse shared DEX vocabulary on the inventory decision surface without inventing local confidence semantics.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- backend-led explainability payload reuse for the inventory decision surface;
+- keep confidence, reliability and recommendation semantics authoritative;
+- no new decision-tree vocabulary;
+- no schema migration.
+
+### Read first
+
+- DEX13 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Wire the shared DEX explainability payload into the inventory decision surface.
+2. Keep Why / reason codes, confidence and recommendation allowance backend-led.
+3. Preserve empty and error states instead of inventing local fallbacks.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- surface shows shared DEX vocabulary rather than local duplicates;
+- missing evidence does not become a healthy-looking zero or blank default;
+- inventory explainability reuse stays aligned with the backend contract.
+
+### Acceptance
+
+- inventory decision surface reuses shared DEX explainability semantics;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX13 DONE.
+
+
+## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
+
+Status: DONE
 Priority: future / planning
 Feature family: decision-explainability-inventory-reuse
 Parallel-safe: yes, docs/contracts only
@@ -472,7 +535,7 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
-- DEX01–DEX10 closed the Product Decision Center first-family loop through evidence snapshot freeze.
+- DEX01â€“DEX10 closed the Product Decision Center first-family loop through evidence snapshot freeze.
 
 
 
@@ -692,6 +755,72 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
+## RL06 - Implement measurement-only recommendation statistics projection runtime slice
+
+Status: READY
+
+Priority: future / planning
+
+Feature family: recommendation-learning-statistics-projection
+
+Parallel-safe: yes, backend-only
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+The measurement-only statistics contract is frozen, but the runtime projection still needs a single backend slice that exposes the documented counts without mutating confidence or collapsing evidence gaps into zeroes.
+
+### Evidence
+
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Scope
+
+- backend-only runtime slice for the measurement-only statistics projection;
+- preserve explicit denominators, warnings and empty-state semantics;
+- do not add calibration or confidence mutation;
+- no schema migration and no new event store.
+
+### Read first
+
+- RL05 completion note
+- measurement statistics contract
+- outcome learning contract
+- rollout plan
+
+### Do
+
+1. Implement the smallest backend helper/service path that projects the documented measurement-only statistics.
+2. Keep `not_measured`, `pending` and empty cohorts explicit.
+3. Preserve warning codes and null denominators when evidence is missing.
+4. Wire the projection through the existing outcome summary endpoint only if it can stay read-only.
+
+### Tests
+
+- focused `dotnet test` coverage for denominator handling;
+- acceptance and execution are not success;
+- missing measured evidence stays `not_measured`;
+- empty cohorts stay empty with null rates.
+
+### Acceptance
+
+- the measurement-only statistics projection is exposed through the backend runtime path;
+- the projection remains read-only and deterministic;
+- confidence mutation and calibration remain out of scope;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL05 DONE.
+
+
 ## RL05 - Prepare measurement-only recommendation statistics projection contract
 
 
@@ -700,7 +829,7 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
-Status: READY
+Status: DONE
 
 
 
@@ -736,7 +865,7 @@ Local lock: removed after DONE
 
 
 
-Lifecycle capture and learning eligibility exist, but there is still no frozen measurement-only statistics projection contract that can count issued/accepted/executed/measured denominators without mutating confidence.
+Lifecycle capture and learning eligibility exist, but there was still no frozen measurement-only statistics projection contract that could count issued/accepted/executed/measured denominators without mutating confidence.
 
 
 
@@ -856,7 +985,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-- contract keeps acceptance ≠ success;
+- contract keeps acceptance != success;
 
 
 
@@ -932,7 +1061,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - `docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
 
 
 
@@ -956,7 +1085,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - `node scripts/check-planning-architecture.mjs` - fail (DEX and RL now have 0 READY prompts after advancing to DT06)
+  - `node scripts/check-planning-architecture.mjs` - pass
 
 
 
@@ -976,7 +1105,211 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - DT06 - Prepare Decision Timeline export and retrospective reporting contract
+  - RL06 - Implement measurement-only recommendation statistics projection runtime slice
+
+
+
+
+
+## RL08 - Measurement-only recommendation statistics follow-up
+
+
+
+
+
+Status: WAITING
+
+
+
+Priority: future / planning
+
+
+
+Feature family: recommendation-learning-statistics-projection
+
+
+
+Parallel-safe: yes, backend-only
+
+
+
+Owner: Codex
+
+
+
+Local lock: removed after DONE
+
+
+
+
+
+### Problem
+
+
+
+
+
+The measurement-only statistics contract is frozen, but the runtime projection still needs a single backend slice that exposes the documented counts without mutating confidence or collapsing evidence gaps into zeroes.
+
+
+
+
+
+### Evidence
+
+
+
+
+
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+
+
+
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+
+
+
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+
+
+
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+
+
+
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+
+
+
+
+### Scope
+
+
+
+
+
+- backend-only runtime slice for the measurement-only statistics projection;
+
+
+
+- preserve explicit denominators, warnings and empty-state semantics;
+
+
+
+- do not add calibration or confidence mutation;
+
+
+
+- no schema migration and no new event store.
+
+
+
+
+
+### Read first
+
+
+
+
+
+- RL05 completion note
+
+
+
+- measurement statistics contract
+
+
+
+- outcome learning contract
+
+
+
+- rollout plan
+
+
+
+
+
+### Do
+
+
+
+
+
+1. Implement the smallest backend helper/service path that projects the documented measurement-only statistics.
+
+
+
+2. Keep `not_measured`, `pending` and empty cohorts explicit.
+
+
+
+3. Preserve warning codes and null denominators when evidence is missing.
+
+
+
+4. Wire the projection through the existing outcome summary endpoint only if it can stay read-only.
+
+
+
+
+
+### Tests
+
+
+
+
+
+- focused `dotnet test` coverage for denominator handling;
+
+
+
+- acceptance and execution are not success;
+
+
+
+- missing measured evidence stays `not_measured`;
+
+
+
+- empty cohorts stay empty with null rates.
+
+
+
+
+
+### Acceptance
+
+
+
+
+
+- the measurement-only statistics projection is exposed through the backend runtime path;
+
+
+
+- the projection remains read-only and deterministic;
+
+
+
+- confidence mutation and calibration remain out of scope;
+
+
+
+- READY pointer remains single for RL.
+
+
+
+
+
+### Dependencies
+
+
+
+
+
+- RL05 DONE.
 
 
 
@@ -1128,7 +1461,7 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 
 
-1. Define export/report fields for recommendation → action → outcome timelines.
+1. Define export/report fields for recommendation â†’ action â†’ outcome timelines.
 
 
 
@@ -4676,7 +5009,7 @@ Local lock: removed after DONE
 
 
 
-Promotion note: 2026-08-11 — owner-promoted runtime slice after RL01/RL02; does not authorize confidence mutation or calibration.
+Promotion note: 2026-08-11 â€” owner-promoted runtime slice after RL01/RL02; does not authorize confidence mutation or calibration.
 
 
 
@@ -5604,7 +5937,7 @@ Commit suggestion: `docs(learning): add deterministic statistics rollout plan`
 
 
 
-Promotion note: 2026-08-11 — `RL01` DONE; planning-only; does not authorize runtime calibration.
+Promotion note: 2026-08-11 â€” `RL01` DONE; planning-only; does not authorize runtime calibration.
 
 
 
@@ -5888,7 +6221,7 @@ Local lock: removed after DONE
 
 
 
-Promotion note: 2026-08-11 — owner-promoted Slice-2 filtered runtime after DT03.
+Promotion note: 2026-08-11 â€” owner-promoted Slice-2 filtered runtime after DT03.
 
 
 
@@ -6708,7 +7041,7 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 
 
 
-  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md` (examples 4–5 + export/drill-down gap-fill)
+  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md` (examples 4â€“5 + export/drill-down gap-fill)
 
 
 
@@ -7036,7 +7369,7 @@ Local lock: `.ai/task-locks/DT03-codex.lock.md`
 
 
 
-Promotion note: 2026-08-11 — `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
+Promotion note: 2026-08-11 â€” `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
 
 
