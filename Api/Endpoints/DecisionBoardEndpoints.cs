@@ -482,10 +482,7 @@ public static class DecisionBoardEndpoints
                     ActionHref: "/analytics/inventory",
                     AlreadyInAction: actionState is ActionState.Open,
                     AlreadyClosed: actionState is ActionState.Closed,
-                    WarningCodes: confidence.WarningCodes
-                        .Concat([item.ActionType, item.Status])
-                        .Distinct(StringComparer.Ordinal)
-                        .ToList(),
+                    WarningCodes: confidence.WarningCodes,
                     DataQualityStatus: confidence.DataQualityStatus,
                     GeneratedAtUtc: inventoryWorkflow.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(

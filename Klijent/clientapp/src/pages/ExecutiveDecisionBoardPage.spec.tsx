@@ -333,8 +333,8 @@ describe("ExecutiveDecisionBoardPage", () => {
 
     expect(screen.getByText("Delimični signali su dostupni.")).toBeInTheDocument();
     expect(screen.getByText(/Neki izvori su upozoravajući/i)).toBeInTheDocument();
-    expect(screen.getAllByText("warning").length).toBeGreaterThan(0);
-    expect(screen.getByText("missing cost")).toBeInTheDocument();
+    expect(screen.getByText("Nedostaje nabavna cena")).toBeInTheDocument();
+    expect(screen.queryByText("missing cost")).not.toBeInTheDocument();
   });
 
   it("renders missing expected impact as unavailable, not as a fake zero", async () => {

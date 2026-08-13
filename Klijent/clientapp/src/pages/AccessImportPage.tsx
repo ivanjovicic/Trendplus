@@ -186,7 +186,10 @@ export default function AccessImportPage() {
     const isUnauthorizedError = (error: unknown): boolean => {
         if (!(error instanceof Error)) return false;
         const msg = error.message.toLowerCase();
-        return msg.includes("401") || msg.includes("unauthorized");
+        return msg.includes("401")
+            || msg.includes("403")
+            || msg.includes("unauthorized")
+            || msg.includes("forbidden");
     };
 
     const hydrateRunResultFromBatch = (batch: AccessImportBatchDto, fallbackIncludeAnalytics: boolean) => {
@@ -350,12 +353,19 @@ export default function AccessImportPage() {
 
     const handleCancelImport = async () => {
         if (runningBatchId === null) return;
+        const adminKey = adminKeyRef.current ?? promptAdminKey("Otkazivanje importa");
+        if (!adminKey) return;
+
         setError(null);
         setCancellingImport(true);
         try {
-            await cancelAccessImportBatch(runningBatchId);
-            await refreshBatches("after-cancel");
+            await cancelAccessImportBatch(runningBatchId, adminKey);
+            await refreshBatches("after-cancel", adminKey);
         } catch (e: unknown) {
+            if (isUnauthorizedError(e)) {
+                setError("Otkazivanje importa zahteva važeći admin key.");
+                return;
+            }
             setError(e instanceof Error ? e.message : "Greska pri slanju zahteva za otkazivanje importa.");
         } finally {
             setCancellingImport(false);

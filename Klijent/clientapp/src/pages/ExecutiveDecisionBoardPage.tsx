@@ -337,7 +337,26 @@ function boardCodeLabel(code: string): string {
   if (normalized === "confidence_workflow_status_only") return "Samo status toka";
   if (normalized === "inventory_recommendation_blocked") return "Preporuka nije dozvoljena";
   if (normalized === "stock_below_minimum") return "Ispod minimuma";
+  if (normalized === "missing_cost") return "Nedostaje nabavna cena";
+  if (normalized === "missing_supplier") return "Nedostaje dobavljač";
+  if (normalized === "insufficient_signal") return "Nedovoljan signal";
+  if (normalized === "freshness") return "Zastareli podaci";
+  if (normalized === "small_measured_sample") return "Mali uzorak ishoda";
   return code.replaceAll("_", " ");
+}
+
+function isRedundantBoardCode(card: BoardCard, code: string): boolean {
+  const key = code.trim().toLowerCase();
+  if (key === "warning" || key === "good" || key === "critical" || key === "error" || key === "fresh" || key === "stale" || key === "excellent") {
+    return true;
+  }
+  if (key === "confidence_workflow_status_only" && (card.confidenceSource ?? "").trim().toLowerCase() === "workflow_status_only") {
+    return true;
+  }
+  if (key === "inventory_recommendation_blocked" && card.recommendationAllowed === false) {
+    return true;
+  }
+  return false;
 }
 
 function uniqueBoardCodes(card: BoardCard): string[] {
@@ -347,7 +366,7 @@ function uniqueBoardCodes(card: BoardCard): string[] {
     const normalized = code.trim();
     if (!normalized) continue;
     const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key) || isRedundantBoardCode(card, key)) continue;
     seen.add(key);
     ordered.push(normalized);
   }

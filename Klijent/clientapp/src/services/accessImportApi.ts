@@ -356,8 +356,11 @@ export async function deleteAccessImportBatch(
     return res.json();
 }
 
-export async function cancelAccessImportBatch(batchId: number): Promise<CancelBatchResult> {
-    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/cancel`), { method: "POST" });
+export async function cancelAccessImportBatch(batchId: number, adminKey?: string): Promise<CancelBatchResult> {
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/cancel`), {
+        method: "POST",
+        headers: adminHeaders(adminKey),
+    });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
