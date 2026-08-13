@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none
-Current gate verdict: STAB08 completed, but the release gate is NOT READY and GenAI remains blocked.
+Current READY prompt: `STAB10`
+Current gate verdict: STAB09 completed, but the release gate is still NOT READY and residual authz follow-ups remain before residual-risk acceptance.
 
 ## Goal
 
@@ -1066,6 +1066,207 @@ Backend CI now reaches real tests, but access-import coverage still fails for tw
 
 ---
 
+## STAB10 - Protect access-import operational reads and cleanup inspection surfaces
+
+Status: READY
+Ready after: `STAB09` is `DONE` and the `STAB03` Phase-1 admin-key boundary remains the accepted pilot contract
+Priority: P0
+Type: backend/tests/docs
+Feature family: access-import-operational-read-auth
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB10-<agent>.lock.md`
+Commit suggestion: `fix(auth): gate access import operational reads`
+
+### Problem
+
+Access-import operational reads still expose runtime, batch, job, archive and log details without the Phase-1 admin-key boundary. This leaves import internals public even after STAB04/STAB09 tightened other admin surfaces.
+
+### Evidence
+
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md` marks access-import GET runtime-status, batches/jobs, logs, cleanup preview and archive inspection as follow-up surfaces that should move to the admin-key boundary.
+- `Api/Endpoints/AccessImportEndpoints.cs` currently leaves `GET /api/access-import/runtime-status`, `/batches`, `/jobs`, `/batches/{id}`, `/jobs/{id}`, `/batches/{id}/logs`, `/jobs/{id}/logs`, `POST /cleanup/preview`, `GET /cleanup/archive`, and `POST /cleanup/archive/export` public.
+- These endpoints reveal batch history, row counts, archive metadata, deleted-row payload export and operational diagnostics that are not required for anonymous pilot analytics reads.
+- `STAB09` proved the import test hosts can already exercise the `AdminAccessControl` contract safely with focused integration tests.
+
+### Scope
+
+- `Api/Endpoints/AccessImportEndpoints.cs`
+- `Api.Tests/AccessImportAdminAuthorizationTests.cs`
+- one new focused access-import operational-reads authorization test file under `Api.Tests/` if required
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md` only for a tiny evidence note if the landed surface differs from the audit phrasing
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
+- `Api/Endpoints/AccessImportEndpoints.cs`
+- `Api.Tests/AccessImportAdminAuthorizationTests.cs`
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+
+### Do
+
+1. Protect the operational read/inspection endpoints listed in Evidence with `AdminAccessControl`.
+2. Preserve the Phase-1 contract exactly: missing credential -> `401`, wrong key -> `403`, valid key -> existing behavior.
+3. Reuse the smallest shared helper/test-host pattern already used by STAB09; do not invent a second admin-key check path.
+4. Add only the smallest focused tests needed to prove the protected GET/preview/archive behavior.
+5. Keep import execution, batching, payload shape and fallback behavior unchanged aside from the auth gate.
+
+### Tests
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AccessImportAdminAuthorizationTests"`
+- focused new auth tests for runtime-status/batches/archive surfaces if added
+- `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release`
+
+### Acceptance
+
+- Access-import operational reads and cleanup inspection surfaces no longer respond anonymously.
+- The admin-key contract matches STAB03/STAB04 semantics exactly.
+- Existing import runtime behavior is unchanged once authorized.
+- The diff stays inside access-import auth/tests/docs rather than expanding into a broader auth redesign.
+
+### Dependencies
+
+- `STAB03` DONE and still authoritative for the pilot auth boundary.
+- `STAB09` DONE so the access-import test-host contract is already stabilized.
+- If a surface is intentionally left open, record exact evidence and finish `PARTIAL` instead of silently accepting exposure.
+
+---
+
+## STAB11 - Protect logs and errors operational read surfaces
+
+Status: WAITING
+Ready after: `STAB10` is `DONE`
+Priority: P0
+Type: backend/tests/docs
+Feature family: logs-operational-read-auth
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB11-<agent>.lock.md`
+Commit suggestion: `fix(auth): gate logs and errors reads`
+
+### Problem
+
+The app still exposes logs and error feeds as anonymous reads even though they can contain internal operational context and potentially sensitive exception material.
+
+### Evidence
+
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md` calls out `GET /api/logs`, `GET /api/logs/{id}`, and `GET /errors` as P0 info-exposure follow-ups that should move to the admin-key boundary.
+- `Api/Endpoints/AllEndpoints.cs` currently leaves `/errors`, `/api/logs`, and `/api/logs/{id}` public while only `/api/logs/clear` is already protected.
+- Existing logs UI and APIs allow detailed message/exception retrieval without the same boundary used for other admin/ops surfaces.
+
+### Scope
+
+- `Api/Endpoints/AllEndpoints.cs`
+- `Klijent/clientapp/src/pages/LogsPage.tsx` only if the existing page needs a bounded auth/error-state adjustment
+- one new focused logs authorization test file under `Api.Tests/`
+- existing observability/auth docs only for tiny completion-note updates
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
+- `Api/Endpoints/AllEndpoints.cs`
+- `Klijent/clientapp/src/pages/LogsPage.tsx`
+- `Api.Tests/AnalyticsCacheInvalidateAuthorizationTests.cs`
+
+### Do
+
+1. Apply `AdminAccessControl` to `/errors`, `/api/logs`, and `/api/logs/{id}`.
+2. Preserve existing clear-log auth semantics and do not weaken caching/rate limiting.
+3. Add focused tests for missing key, wrong key and valid key on the read surfaces.
+4. If the logs page needs an auth-state message, keep it minimal and do not redesign the page.
+
+### Tests
+
+- `git diff --check`
+- focused logs auth tests under `Api.Tests`
+- `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release`
+- frontend test only if a UI auth-state branch is added
+
+### Acceptance
+
+- Logs and errors reads are no longer public.
+- Clear-log behavior remains admin-only and unchanged.
+- Any frontend adjustment is limited to truthful auth/error handling.
+
+### Dependencies
+
+- `STAB10` DONE first so access-import ops reads are closed before the general logs surface.
+- Reuse the existing admin-key contract; do not add a separate document/log role system here.
+
+---
+
+## STAB12 - Stop trusting unauthenticated document user headers for export/generate privilege
+
+Status: WAITING
+Ready after: `STAB11` is `DONE`
+Priority: P0
+Type: backend/tests/docs
+Feature family: document-header-trust-boundary
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB12-<agent>.lock.md`
+Commit suggestion: `fix(documents): stop trusting spoofable export headers`
+
+### Problem
+
+Document/export generation and ownership decisions still trust caller-provided `X-User-*` headers and default export roles, which is not a real authentication boundary for pilot-sensitive exports.
+
+### Evidence
+
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md` documents Phase-1 follow-up work to stop trusting unauthenticated `X-User-*` headers for generate privilege.
+- `Infrastructure/Services/Documents/DocumentSecurityServices.cs` falls back to `X-User-Id`, `X-User-Name`, and `X-User-Roles`, then defaults missing roles to `AnalyticsExport`.
+- `Api/Endpoints/DocumentEndpoints.cs` and inventory export/print endpoints in `Api/Endpoints/InventoryEndpoints.cs` call document generation/status/download flows through that context.
+- The current contract can make spoofed headers look like export authorization even without ASP.NET authentication.
+
+### Scope
+
+- `Infrastructure/Services/Documents/DocumentSecurityServices.cs`
+- `Api/Endpoints/DocumentEndpoints.cs`
+- `Api/Endpoints/InventoryEndpoints.cs` only where document/export generation uses the same context
+- `Api.Tests/DocumentSecurityTests.cs`
+- one new focused document/export auth test file if needed
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
+- `Infrastructure/Services/Documents/DocumentSecurityServices.cs`
+- `Api/Endpoints/DocumentEndpoints.cs`
+- `Api/Endpoints/InventoryEndpoints.cs`
+- `Api.Tests/DocumentSecurityTests.cs`
+
+### Do
+
+1. Choose the smallest Phase-1-safe boundary that prevents unauthenticated header spoofing from granting generate/list/export privilege.
+2. Keep signed-download token validation and ownership checks intact.
+3. If authenticated principals are still unavailable in production, prefer an explicit admin/internal boundary over silent header trust.
+4. Add focused tests proving spoofed headers alone are insufficient for generate privilege.
+5. Do not redesign the entire document subsystem or invent a full RBAC model.
+
+### Tests
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DocumentSecurityTests"`
+- focused new document/export auth tests if added
+- `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release`
+
+### Acceptance
+
+- Caller-supplied `X-User-*` headers alone can no longer authorize export/document generation.
+- Download-token and ownership checks remain valid for already-created documents.
+- The chosen Phase-1 boundary is documented and bounded to document/export privilege rather than broad auth re-architecture.
+
+### Dependencies
+
+- `STAB11` DONE so the remaining residual watchlist is tackled in the audit order.
+- `STAB03` remains the authoritative pilot auth boundary until a later identity-provider task exists.
+- If a true runtime identity source is required and unavailable, finish `BLOCKED` with exact missing evidence instead of inventing claims-based auth.
+
+---
+
 ## Expected next-task transitions
 
 - After `STAB01`: set `STAB02` to `READY` unless STAB01 identifies a repository deploy fix that must be split first.
@@ -1075,3 +1276,6 @@ Backend CI now reaches real tests, but access-import coverage still fails for tw
 - `STAB07` requires a safe environment and may remain BLOCKED without provider/DB access.
 - `STAB08` is the final cross-cutting gate before declaring `GAI01` runnable.
 - If the refreshed evidence says `NOT READY`, keep `GAI01` blocked even after `STAB08` is complete.
+- After `STAB09`: keep `STAB10` as the single STAB READY prompt until access-import operational reads are gated or residual risk is explicitly accepted.
+- After `STAB10`: set `STAB11` to `READY`.
+- After `STAB11`: set `STAB12` to `READY` unless a smaller same-owner document/export split is required by evidence.

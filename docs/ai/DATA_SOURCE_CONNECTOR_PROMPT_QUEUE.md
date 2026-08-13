@@ -391,6 +391,74 @@ Expose only the proven backend flow:
 
 Do not let the frontend construct SQL, display stored secrets or hide partial/error/schema-drift states.
 
+---
+
+## QDB08 - Add onboarding mapping templates and import diagnostics pack
+
+Status: WAITING
+Ready after: `QDB07` is `DONE` and at least one end-to-end connector flow can already prove discovery, mapping, preview and sync truth
+Priority: P2
+Type: docs/backend/frontend contract/tests
+Feature family: source-onboarding-diagnostics
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/QDB08-<agent>.lock.md`
+Commit suggestion: `feat(import): add onboarding templates and diagnostics`
+
+### Problem
+
+Even with connector discovery and mapping flows in place, first-customer onboarding will still be brittle unless operators get deterministic mapping templates, import diagnostics and a safe explanation of what failed or remains unmapped.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` keeps the current QDB order, then explicitly calls out onboarding mapping templates and import diagnostics as the remaining Gate-1 work needed to make first-customer integration repeatable.
+- `QDB04`-`QDB07` cover named sources, mapping, checkpoints and admin flow, but this queue has no dedicated prompt for reusable onboarding presets or diagnostics truth.
+- Without a bounded diagnostics contract, operators can be left with raw connector errors or ambiguous “import failed” states that do not explain schema drift, rejected rows, missing required fields or safe next actions.
+
+### Scope
+
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- backend diagnostics DTO/endpoints touched by the existing connector flow
+- connector admin UI only where needed to surface truthful diagnostics/templates
+- focused tests for deterministic template/diagnostics behavior
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- current connector admin/runtime files landed by `QDB04`-`QDB07`
+
+### Do
+
+1. Add reusable mapping-template primitives for the first supported source families without introducing AI-generated mappings.
+2. Define a deterministic diagnostics contract that distinguishes connection failure, schema drift, mapping gap, row rejection, checkpoint conflict and partial-success states.
+3. Surface safe next-action guidance for operators, but do not expose secrets, raw source payloads or arbitrary SQL.
+4. Keep the first version bounded to the existing single-customer/single-deployment connector model.
+5. Add focused tests proving stable diagnostics categories and template selection inputs.
+
+### Tests
+
+- `git diff --check`
+- focused backend connector diagnostics tests
+- focused frontend/admin-flow tests only if new diagnostics UI branches are added
+- `dotnet build Api.Tests/Api.Tests.csproj --configuration Release`
+
+### Acceptance
+
+- Operators can start from a deterministic mapping template instead of an empty configuration for the first supported source families.
+- Import diagnostics distinguish the main failure classes without leaking secrets or raw payloads.
+- UI/API messaging stays truthful about partial, blocked and rejected states.
+- The prompt does not expand into generic ETL scripting, arbitrary transforms or multi-tenant connector orchestration.
+
+### Dependencies
+
+- `QDB07` DONE first so the admin flow exists before onboarding assistance is added.
+- Earlier QDB prompts remain authoritative for source/session/checkpoint behavior.
+- Any tenant-owned durable template catalog must wait for the corresponding MT authority if this prompt reaches that boundary.
+
 ## Queue completion definition
 
 The roadmap is not complete merely because multiple drivers exist. Trendplus has credible multi-source support only when it can prove:
@@ -400,6 +468,7 @@ The roadmap is not complete merely because multiple drivers exist. Trendplus has
 - safe configuration and discovery;
 - explicit mapping;
 - durable idempotent checkpoints;
+- deterministic onboarding templates and import diagnostics;
 - schema-drift behavior;
 - authorization, diagnostics and operational evidence;
 - unchanged internal PostgreSQL ownership.
