@@ -10,7 +10,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 |---|---|---|
 | DEX - Decision Explainability | none | docs/contracts only — supplier explainability reuse |
 | RL - Recommendation Learning | none | docs/contracts only — measurement-only statistics |
-| DT - Decision Timeline | `DT06` | docs/contracts only — export/report planning |
+| DT - Decision Timeline | none | docs/contracts only — export/report planning |
 
 Only one prompt per program may be READY. A READY prompt in this file does not outrank the existing BCI/STAB/RQ/QDB/MT/GAI execution priority from `MASTER_ROADMAP.md` and does not authorize broad runtime implementation.
 
@@ -236,12 +236,12 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 ## DT06 - Prepare Decision Timeline export and retrospective reporting contract
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: decision-timeline-export-report
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: none
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
@@ -289,6 +289,24 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 - DT05 DONE.
 - DEX10 DONE (snapshot vocabulary reuse).
+
+### Completion note
+
+- Date: 2026-08-13
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - fail (DEX, RL and DT now have 0 READY prompts after closing DT06)
+  - `git diff --check` - pass
+- Remaining risk:
+  - This is a docs-only timeline export/retrospective contract; runtime export still needs a later prompt.
+- Next:
+  - none
 
 ---
 
