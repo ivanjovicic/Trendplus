@@ -1094,7 +1094,7 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 - Checks not run: npm / frontend - backend-only; full dotnet test suite - focused proof only
 - Run log: .ai/runs/2026-08-13-RL06-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: b8c4e22a5844e79ebda765e9f4d329b4e93a97c5
 - Main verification: pending push to origin/main
 - Missed: frontend does not render measurementStatistics; existing totals keep prior closed/open meaning; no calibration
 - Follow-up: none
