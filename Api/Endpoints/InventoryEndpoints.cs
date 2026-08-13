@@ -9,6 +9,7 @@ using Infrastructure.Configuration;
 using Infrastructure.Services.Caching;
 using Infrastructure.Services.Inventory;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Trendplus2.Dtos;
 
@@ -135,26 +136,14 @@ public static class InventoryEndpoints
                     : hasSufficientData
                         ? "warning"
                         : "insufficient_data";
-
-                var signal = InventorySignalCalculator.Calculate(
-                    currentOnHandUnits: quantity,
-                    avgDailySalesUnits: avgDailySalesUnits,
-                    soldUnits: soldUnits30d,
-                    openingStockUnits: openingStockUnits,
-                    inboundUnits: movementWindowStats.InboundUnits,
-                    dataQualityStatus: signalDataQuality,
-                    hasSufficientData: hasSufficientData);
-
-                var reasonCodes = signal.ReasonCodes.ToList();
-                if (signal.StockCoverStatus == InventorySignalCalculator.StockCoverOutOfStockRisk)
-                {
-                    reasonCodes.Add("replenish_needed");
-                }
-
-                if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlowStock or InventorySignalCalculator.StockCoverNoVelocity)
-                {
-                    reasonCodes.Add("slow_stock");
-                }
+                var signal = ComputeInventorySignalEvidence(
+                    quantity,
+                    avgDailySalesUnits,
+                    soldUnits30d,
+                    openingStockUnits,
+                    movementWindowStats.InboundUnits,
+                    signalDataQuality,
+                    hasSufficientData);
 
                 items.Add(new InventoryListItemDto(
                     item.Id,
@@ -168,14 +157,14 @@ public static class InventoryEndpoints
                     item.IDDobavljac,
                     signal.StockCoverDays,
                     signal.StockCoverStatus,
-                        signal.StockCoverStatusLabel,
+                    signal.StockCoverStatusLabel,
                     signal.SellThroughRatio,
                     signal.SellThroughStatus,
-                        signal.SellThroughStatusLabel,
+                    signal.SellThroughStatusLabel,
                     signal.SignalConfidencePct,
-                        signal.RecommendationAllowed,
-                    reasonCodes,
-                    signalDataQuality));
+                    signal.RecommendationAllowed,
+                    signal.ReasonCodes.ToList(),
+                    signal.DataQualityStatus));
             }
 
             var meta = total == 0
@@ -331,6 +320,31 @@ public static class InventoryEndpoints
             })
             .Single();
 
+            var articleIds = new[] { singleton.Id };
+            var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, singleton.StoreId, 30, ct);
+            var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, singleton.StoreId, 30, ct);
+            var soldUnits30d = soldUnitsByArticle.TryGetValue(singleton.Id, out var soldUnitsValue) ? soldUnitsValue : 0;
+            var movementWindowStats = movementWindowStatsByArticle.TryGetValue(singleton.Id, out var movementStats)
+                ? movementStats
+                : new InventorySignalWindowStats(0, 0);
+            var openingStockUnits = Math.Max(singleton.Quantity - movementWindowStats.NetMovementUnits, 0);
+            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+            var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+            var hasSufficientData = soldUnits30d > 0 || singleton.Quantity > 0 || hasReliableSellThroughInputs;
+            var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
+                ? "good"
+                : hasSufficientData
+                    ? "warning"
+                    : "insufficient_data";
+            var signalEvidence = ComputeInventorySignalEvidence(
+                singleton.Quantity,
+                avgDailySalesUnits,
+                soldUnits30d,
+                openingStockUnits,
+                movementWindowStats.InboundUnits,
+                signalDataQuality,
+                hasSufficientData);
+
             var detail = new InventoryItemDetailDto(
                 singleton.Id,
                 singleton.Plu,
@@ -353,6 +367,16 @@ public static class InventoryEndpoints
                 singleton.AgingBucket,
                 singleton.AgingLabel,
                 singleton.AbcClass,
+                signalEvidence.StockCoverDays,
+                signalEvidence.StockCoverStatus,
+                signalEvidence.StockCoverStatusLabel,
+                signalEvidence.SellThroughRatio,
+                signalEvidence.SellThroughStatus,
+                signalEvidence.SellThroughStatusLabel,
+                signalEvidence.SignalConfidencePct,
+                signalEvidence.RecommendationAllowed,
+                signalEvidence.DataQualityStatus,
+                signalEvidence.ReasonCodes,
                 history
                     .Select(x => new InventoryHistoryItemDto(
                         x.MovementId,
@@ -377,6 +401,8 @@ public static class InventoryEndpoints
         .WithName("GetInventoryItemDetail");
 
         group.MapPost("/export", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             InventoryExportRequestDto dto,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
@@ -386,9 +412,19 @@ public static class InventoryEndpoints
             IOptions<DocumentExportOptions> options,
             CancellationToken ct) =>
         {
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct);
             var request = BuildDocumentRequest(items, dto, preview: false);
-            var result = await documentService.GenerateAsync(request, userContextAccessor.GetCurrent(), ct);
+            var result = await documentService.GenerateAsync(request, context, ct);
             var response = ToDocumentResponse(result, tokenService, options.Value);
 
             return result.IsAsync
@@ -399,19 +435,34 @@ public static class InventoryEndpoints
         .RequireRateLimiting("writes");
 
         group.MapPost("/print-preview", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             InventoryExportRequestDto dto,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
+            IDocumentDownloadTokenService tokenService,
+            IOptions<DocumentExportOptions> options,
             CancellationToken ct) =>
         {
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var items = await BuildInventoryDatasetAsync(db, analyticsDb, dto.StoreId, dto.SupplierId, dto.Search, dto.SortBy, ct);
             var result = await documentService.GenerateAsync(
                 BuildDocumentRequest(items, dto, preview: true),
-                userContextAccessor.GetCurrent(),
+                context,
                 ct);
 
+            var printToken = tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(options.Value.SignedUrlTtlMinutes));
             return Results.Ok(new DocumentOperationResponseDto
             {
                 DocumentId = result.DocumentId,
@@ -425,23 +476,38 @@ public static class InventoryEndpoints
                 CompletedAtUtc = result.CompletedAtUtc,
                 ExpiresAtUtc = result.ExpiresAtUtc,
                 StatusUrl = $"/api/exports/{result.DocumentId}/status",
-                PrintUrl = $"/api/documents/{result.DocumentId}/print"
+                PrintUrl = $"/api/documents/{result.DocumentId}/print?token={printToken}"
             });
         })
         .WithName("PreviewInventoryReport")
         .RequireRateLimiting("writes");
 
         group.MapPost("/print-blank", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             string? orientation,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
+            IDocumentDownloadTokenService tokenService,
+            IOptions<DocumentExportOptions> options,
             CancellationToken ct) =>
         {
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var result = await documentService.GenerateAsync(
                 BuildBlankDocumentRequest(orientation),
-                userContextAccessor.GetCurrent(),
+                context,
                 ct);
 
+            var printToken = tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(options.Value.SignedUrlTtlMinutes));
             return Results.Ok(new DocumentOperationResponseDto
             {
                 DocumentId = result.DocumentId,
@@ -455,7 +521,7 @@ public static class InventoryEndpoints
                 CompletedAtUtc = result.CompletedAtUtc,
                 ExpiresAtUtc = result.ExpiresAtUtc,
                 StatusUrl = $"/api/exports/{result.DocumentId}/status",
-                PrintUrl = $"/api/documents/{result.DocumentId}/print"
+                PrintUrl = $"/api/documents/{result.DocumentId}/print?token={printToken}"
             });
         })
         .WithName("PrintBlankInventoryForm")
@@ -601,18 +667,29 @@ public static class InventoryEndpoints
 
         group.MapPost("/report-schedules/{id:long}/run-now", async (
             long id,
+            HttpContext httpContext,
+            IConfiguration configuration,
             IInventoryReportScheduleService scheduleService,
             InventoryReportDeliveryService deliveryService,
             IDocumentUserContextAccessor userContextAccessor,
             CancellationToken ct) =>
         {
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var user,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var schedule = await scheduleService.GetByIdAsync(id, ct);
             if (schedule is null)
             {
                 return Results.NotFound(new { message = $"Raspored sa Id={id} nije pronadjen." });
             }
 
-            var user = userContextAccessor.GetCurrent();
             var result = await deliveryService.RunAsync(schedule, user.UserId, user.UserName, manualTrigger: true, ct);
             await scheduleService.MarkRunResultAsync(id, result, ct);
 
@@ -638,7 +715,10 @@ public static class InventoryEndpoints
         CancellationToken ct)
     {
         var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
-        return BuildInsights(items);
+        var articleIds = items.Select(item => item.Id).ToArray();
+        var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
+        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
+        return BuildInsights(items, soldUnitsByArticle, movementWindowStatsByArticle);
     }
 
     public static Task<InventoryStoreComparisonDto> GetInventoryStoreComparisonAsync(
@@ -928,7 +1008,10 @@ public static class InventoryEndpoints
         return items.Select(item => item with { AbcClass = abcById.GetValueOrDefault(item.Id, "C") }).ToList();
     }
 
-    private static InventoryInsightsDto BuildInsights(List<InventoryDatasetItem> items)
+    private static InventoryInsightsDto BuildInsights(
+        List<InventoryDatasetItem> items,
+        IReadOnlyDictionary<int, int> soldUnitsByArticle,
+        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
         var totalValue = items.Sum(x => x.EstimatedValue);
 
@@ -967,19 +1050,27 @@ public static class InventoryEndpoints
                 .OrderByDescending(x => x.DaysSinceMovement)
                 .ThenByDescending(x => x.EstimatedValue)
                 .Take(5)
-                .Select(ToInsightItem)
+                .Select(item => ToInsightItem(item, soldUnitsByArticle, movementWindowStatsByArticle))
                 .ToList(),
             items
                 .OrderByDescending(x => x.EstimatedValue)
                 .ThenByDescending(x => x.Quantity)
                 .Take(5)
-                .Select(ToInsightItem)
+                .Select(item => ToInsightItem(item, soldUnitsByArticle, movementWindowStatsByArticle))
                 .ToList());
     }
 
-    private static InventoryInsightItemDto ToInsightItem(InventoryDatasetItem item)
+    private static InventoryInsightItemDto ToInsightItem(
+        InventoryDatasetItem item,
+        IReadOnlyDictionary<int, int> soldUnitsByArticle,
+        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
         var reorderGap = Math.Max(item.Minimum - item.Quantity, 0);
+        var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
+        var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
+            ? stats
+            : new InventorySignalWindowStats(0, 0);
+        var signalEvidence = ComputeInventorySignalEvidence(item, soldUnits30d, movementWindowStats);
         return new InventoryInsightItemDto(
             item.Id,
             item.Plu,
@@ -994,7 +1085,17 @@ public static class InventoryEndpoints
             item.AgingBucket,
             item.AgingLabel,
             item.AbcClass,
-            ResolveStockState(item.Quantity, item.Minimum));
+            ResolveStockState(item.Quantity, item.Minimum),
+            signalEvidence.StockCoverDays,
+            signalEvidence.StockCoverStatus,
+            signalEvidence.StockCoverStatusLabel,
+            signalEvidence.SellThroughRatio,
+            signalEvidence.SellThroughStatus,
+            signalEvidence.SellThroughStatusLabel,
+            signalEvidence.SignalConfidencePct,
+            signalEvidence.RecommendationAllowed,
+            signalEvidence.DataQualityStatus,
+            signalEvidence.ReasonCodes);
     }
 
     private static async Task<InventoryStoreComparisonDto> BuildStoreComparisonAsync(
@@ -1261,7 +1362,11 @@ public static class InventoryEndpoints
         IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
         decisions.TryGetValue(key, out var decision);
-        var signalEvidence = ComputeSuggestionSignalEvidence(item, soldUnitsByArticle, movementWindowStatsByArticle);
+        var signalEvidence = ComputeInventorySignalEvidence(item,
+            soldUnitsByArticle.TryGetValue(item.Id, out var soldUnits30d) ? soldUnits30d : 0,
+            movementWindowStatsByArticle.TryGetValue(item.Id, out var movementWindowStats)
+                ? movementWindowStats
+                : new InventorySignalWindowStats(0, 0));
         return new InventoryActionSuggestionDto(
             key,
             actionType,
@@ -1285,21 +1390,23 @@ public static class InventoryEndpoints
             signalEvidence.ReasonCodes);
     }
 
-    private sealed record InventorySuggestionSignalEvidence(
+    private sealed record InventorySignalEvidenceSnapshot(
+        decimal? StockCoverDays,
+        string StockCoverStatus,
+        string StockCoverStatusLabel,
+        decimal? SellThroughRatio,
+        string SellThroughStatus,
+        string SellThroughStatusLabel,
         decimal SignalConfidencePct,
         bool RecommendationAllowed,
         string DataQualityStatus,
         IReadOnlyList<string> ReasonCodes);
 
-    private static InventorySuggestionSignalEvidence ComputeSuggestionSignalEvidence(
+    private static InventorySignalEvidenceSnapshot ComputeInventorySignalEvidence(
         InventoryDatasetItem item,
-        IReadOnlyDictionary<int, int> soldUnitsByArticle,
-        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
+        int soldUnits30d,
+        InventorySignalWindowStats movementWindowStats)
     {
-        var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
-        var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
-            ? stats
-            : new InventorySignalWindowStats(0, 0);
         var openingStockUnits = Math.Max(item.Quantity - movementWindowStats.NetMovementUnits, 0);
         var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
         var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
@@ -1310,13 +1417,48 @@ public static class InventoryEndpoints
                 ? "warning"
                 : "insufficient_data";
 
+        var signal = ComputeInventorySignalEvidence(
+            item.Quantity,
+            avgDailySalesUnits,
+            soldUnits30d,
+            openingStockUnits,
+            movementWindowStats.InboundUnits,
+            signalDataQuality,
+            hasSufficientData);
+
+        var reasonCodes = signal.ReasonCodes.ToList();
+        if (signal.StockCoverStatus == InventorySignalCalculator.StockCoverOutOfStockRisk)
+        {
+            reasonCodes.Add("replenish_needed");
+        }
+
+        if (signal.StockCoverStatus is InventorySignalCalculator.StockCoverSlowStock or InventorySignalCalculator.StockCoverNoVelocity)
+        {
+            reasonCodes.Add("slow_stock");
+        }
+
+        return signal with
+        {
+            ReasonCodes = reasonCodes.Distinct(StringComparer.Ordinal).ToList()
+        };
+    }
+
+    private static InventorySignalEvidenceSnapshot ComputeInventorySignalEvidence(
+        int currentOnHandUnits,
+        decimal avgDailySalesUnits,
+        int soldUnits,
+        int? openingStockUnits,
+        int? inboundUnits,
+        string dataQualityStatus,
+        bool hasSufficientData)
+    {
         var signal = InventorySignalCalculator.Calculate(
-            currentOnHandUnits: item.Quantity,
+            currentOnHandUnits: currentOnHandUnits,
             avgDailySalesUnits: avgDailySalesUnits,
-            soldUnits: soldUnits30d,
+            soldUnits: soldUnits,
             openingStockUnits: openingStockUnits,
-            inboundUnits: movementWindowStats.InboundUnits,
-            dataQualityStatus: signalDataQuality,
+            inboundUnits: inboundUnits,
+            dataQualityStatus: dataQualityStatus,
             hasSufficientData: hasSufficientData);
 
         var reasonCodes = signal.ReasonCodes.ToList();
@@ -1330,10 +1472,16 @@ public static class InventoryEndpoints
             reasonCodes.Add("slow_stock");
         }
 
-        return new InventorySuggestionSignalEvidence(
+        return new InventorySignalEvidenceSnapshot(
+            signal.StockCoverDays,
+            signal.StockCoverStatus,
+            signal.StockCoverStatusLabel,
+            signal.SellThroughRatio,
+            signal.SellThroughStatus,
+            signal.SellThroughStatusLabel,
             signal.SignalConfidencePct,
             signal.RecommendationAllowed,
-            signalDataQuality,
+            dataQualityStatus,
             reasonCodes.Distinct(StringComparer.Ordinal).ToList());
     }
 
@@ -1585,6 +1733,9 @@ public static class InventoryEndpoints
         };
     }
 
+    private static InventoryInsightsDto BuildInsights(List<InventoryDatasetItem> items) =>
+        BuildInsights(items, new Dictionary<int, int>(), new Dictionary<int, InventorySignalWindowStats>());
+
     private static DocumentGenerationRequest BuildBlankDocumentRequest(string? orientation = null)
     {
         var resolvedOrientation = string.IsNullOrWhiteSpace(orientation) ? "landscape" : orientation.Trim().ToLowerInvariant();
@@ -1656,7 +1807,7 @@ public static class InventoryEndpoints
             DownloadUrl = result.CompletedAtUtc.HasValue
                 ? $"/api/documents/{result.DocumentId}?token={tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(options.SignedUrlTtlMinutes))}"
                 : null,
-            PrintUrl = $"/api/documents/{result.DocumentId}/print"
+            PrintUrl = $"/api/documents/{result.DocumentId}/print?token={tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(options.SignedUrlTtlMinutes))}"
         };
     }
 

@@ -1185,6 +1185,16 @@ export interface InventoryItemDetail {
   agingBucket: string;
   agingLabel: string;
   abcClass: string;
+  stockCoverDays?: number | null;
+  stockCoverStatus: string;
+  stockCoverStatusLabel: string;
+  sellThroughRatio?: number | null;
+  sellThroughStatus: string;
+  sellThroughStatusLabel: string;
+  signalConfidencePct: number;
+  recommendationAllowed: boolean;
+  dataQualityStatus: string;
+  reasonCodes: string[];
   history: InventoryHistoryItem[];
 }
 
@@ -1219,6 +1229,16 @@ export interface InventoryInsightItem {
   agingLabel: string;
   abcClass: string;
   stockState: string;
+  stockCoverDays?: number | null;
+  stockCoverStatus: string;
+  stockCoverStatusLabel: string;
+  sellThroughRatio?: number | null;
+  sellThroughStatus: string;
+  sellThroughStatusLabel: string;
+  signalConfidencePct: number;
+  recommendationAllowed: boolean;
+  dataQualityStatus: string;
+  reasonCodes: string[];
 }
 
 export interface InventoryInsights {

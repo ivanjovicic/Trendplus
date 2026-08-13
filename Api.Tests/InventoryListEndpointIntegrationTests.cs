@@ -61,6 +61,46 @@ public sealed class InventoryListEndpointIntegrationTests
     }
 
     [Fact]
+    public async Task InventoryDetail_ComputesExplainabilitySnapshotFromSalesAndMovementHistory()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/101/detail");
+
+        Assert.Equal(101, root.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, root.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, root.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("sellThroughRatio").ValueKind);
+        Assert.False(root.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.InRange(root.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+        Assert.Contains("replenish_needed", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("sell_through_denominator_zero", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("stock_cover_out_of_stock_risk", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public async Task InventoryInsights_ComputesExplainabilitySnapshotForTopItems()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/insights?search=OOS-101");
+
+        var topAged = Assert.Single(root.GetProperty("topAgedItems").EnumerateArray().ToArray());
+        Assert.Equal(101, topAged.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topAged.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topAged.GetProperty("sellThroughStatus").GetString());
+        Assert.False(topAged.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, topAged.GetProperty("sellThroughRatio").ValueKind);
+        Assert.InRange(topAged.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+
+        var topCapital = Assert.Single(root.GetProperty("topCapitalLockedItems").EnumerateArray().ToArray());
+        Assert.Equal(101, topCapital.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topCapital.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topCapital.GetProperty("sellThroughStatus").GetString());
+        Assert.False(topCapital.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, topCapital.GetProperty("sellThroughRatio").ValueKind);
+        Assert.InRange(topCapital.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+    }
+
+    [Fact]
     public async Task InventoryList_AppliesStoreSupplierAndSearchFiltersTogether()
     {
         await using var factory = CreateFactory();

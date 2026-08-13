@@ -40,6 +40,16 @@ public sealed record InventoryItemDetailDto(
     string AgingBucket,
     string AgingLabel,
     string AbcClass,
+    decimal? StockCoverDays,
+    string StockCoverStatus,
+    string StockCoverStatusLabel,
+    decimal? SellThroughRatio,
+    string SellThroughStatus,
+    string SellThroughStatusLabel,
+    decimal SignalConfidencePct,
+    bool RecommendationAllowed,
+    string DataQualityStatus,
+    IReadOnlyList<string> ReasonCodes,
     IReadOnlyList<InventoryHistoryItemDto> History
 );
 
@@ -73,7 +83,17 @@ public sealed record InventoryInsightItemDto(
     string AgingBucket,
     string AgingLabel,
     string AbcClass,
-    string StockState
+    string StockState,
+    decimal? StockCoverDays,
+    string StockCoverStatus,
+    string StockCoverStatusLabel,
+    decimal? SellThroughRatio,
+    string SellThroughStatus,
+    string SellThroughStatusLabel,
+    decimal SignalConfidencePct,
+    bool RecommendationAllowed,
+    string DataQualityStatus,
+    IReadOnlyList<string> ReasonCodes
 );
 
 public sealed record InventoryInsightsDto(
