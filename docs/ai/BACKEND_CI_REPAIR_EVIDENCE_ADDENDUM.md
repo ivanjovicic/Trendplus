@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI09`
+Current READY prompt: `BCI05`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -13,16 +13,16 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 | Task | Status | Purpose |
 |---|---|---|
 | BCI08 | DONE | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
-| BCI05 | PARTIAL | Green GHA on `aed38ff` after BCI08; current main is red at build because test cache stubs omit `GetFootprintSnapshot()` |
-| BCI09 | READY | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
+| BCI09 | DONE | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
+| BCI05 | READY | Re-run the complete backend suite and prove GitHub Actions restore/build/test/coverage/artifact behavior after BCI09 |
 | BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: PARTIAL
-Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE; re-entry after `BCI09`
+Status: READY
+Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE; re-entry after `BCI09` DONE
 Priority: P0
 Type: CI/evidence/tests
 Feature family: backend-ci-final-evidence
@@ -328,7 +328,7 @@ Do not weaken the GitHub Actions workflow, skip tests, add retries to hide failu
 
 ## BCI09 - Implement GetFootprintSnapshot on IAnalyticsCacheService test stubs
 
-Status: READY
+Status: DONE
 Ready after: `BCI05` PARTIAL evidence on 2026-08-13
 Priority: P0
 Type: tests/ci
@@ -397,6 +397,33 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 - `BCI05` PARTIAL evidence from 2026-08-13
 - interface method already present on `IAnalyticsCacheService` from `2fbea01`
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Changed files:
+  - `Api.Tests/AnalyticsReportsContractTests.cs`
+  - `Api.Tests/CachedAnalyticsFailureContractTests.cs`
+  - `Api.Tests/AnalyticsCacheInvalidateAuthorizationTests.cs`
+  - `Api.Tests/AnalyticsCacheAdminServiceTests.cs`
+  - `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+  - `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
+  - `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `MASTER_ROADMAP.md`
+- Implementation SHA: `469acbf3177b7ed09e078638e23eb3151e802740`
+- Contract/runtime behavior changed: no
+- Checks run:
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - focused five-class filter - 56 passed / 0 failed
+- Checks not run:
+  - full `Api.Tests` suite
+  - GitHub Actions (owned by BCI05)
+- Remaining risk: current-main GHA is still the previous red build until BCI05 records a new run that includes `469acbf`
+- Next: `BCI05`
+- Prompt defect / scope repair: stub implementation landed in `469acbf` on local main during this session; this note records verification and queue closure rather than a second code change
 
 ---
 

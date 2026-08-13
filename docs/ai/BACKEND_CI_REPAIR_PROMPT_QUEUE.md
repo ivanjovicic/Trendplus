@@ -7,11 +7,11 @@ Current READY prompt: none
 
 ## Current diagnosis
 
-Live READY is `BCI09` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical; do not resurrect them.
+Live READY is `BCI05` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical; do not resurrect them.
 
 The bootstrap blocker is fixed. Backend workflow restore/build now succeed against `Api.Tests/Api.Tests.csproj`, and the suite reaches real assertions.
 
-BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step; real failures are owned by later repair prompts after BCI04 triage. The BCI08 isolation family has a green GHA run on `aed38ff`. Current main is red at build because test cache stubs omit `GetFootprintSnapshot()`.
+BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step on current backend-equivalent `main`. `BCI09` restored `Api.Tests` compilation after the cache-footprint interface change. Next is `BCI05` GHA proof.
 
 Canonical GHA proof that bootstrap is unblocked:
 
