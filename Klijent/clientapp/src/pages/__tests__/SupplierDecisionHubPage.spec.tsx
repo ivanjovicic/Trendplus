@@ -346,4 +346,53 @@ describe("SupplierDecisionHubPage", () => {
     expect(await screen.findAllByTestId("supplier-explainability-snapshot")).toHaveLength(1);
     expect(screen.getByText("Supplier explainability snapshot")).toBeInTheDocument();
   });
+
+  it("shows error state instead of zero KPIs when scorecard meta fails", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/summary") {
+        return jsonResponse({
+          ...summaryResponse,
+          supplierCount: 0,
+          fullPriceRevenueShare: 0,
+          fullPriceSellthrough: 0,
+          markdownRevenueShare: 0,
+          preMarkdownMarginPct: 0,
+          capitalAtRisk: 0,
+          meta: {
+            success: false,
+            errorCode: "supplier_decision_unavailable",
+            errorMessage: "Skorkarta dobavljača trenutno nije dostupna.",
+          },
+        });
+      }
+
+      if (url.pathname === "/api/analytics/suppliers/decision-hub/ranking") {
+        return jsonResponse({
+          page: 1,
+          pageSize: 100,
+          totalCount: 0,
+          items: [],
+          meta: {
+            success: false,
+            errorCode: "supplier_decision_unavailable",
+            errorMessage: "Skorkarta dobavljača trenutno nije dostupna.",
+          },
+        });
+      }
+
+      if (url.pathname === "/api/sezone") {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled test request: ${url.pathname}` }, 404);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    expect(await screen.findByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
+  });
 });

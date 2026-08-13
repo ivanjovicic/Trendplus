@@ -65,6 +65,12 @@ function groupRowsAny(grouped: Map<string, ReportRow[]>, sectionNames: string[])
   return [];
 }
 
+function scalarText(value: string | number | boolean | null | undefined): string | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
 function metaValue(payload: ResolvedAnalyticsTablePayload, key: string): string | null {
   const found = payload.metadata?.find((item) => item.key === key);
   if (!found || found.value == null) return null;
@@ -176,9 +182,9 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     .map((reason) => reason.trim())
     .filter(Boolean) ?? [];
   const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
-  const effectivePeriodLabel = effectiveDatasetRow?.secondary?.trim() || metaValue(payload, "effectivePeriodLabel");
+  const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
   const usedFallback = metaBoolean(payload, "usedFallback");
-  const fallbackRow = rowEntry(payload, "Header", "KoriÅ¡Ä‡en fallback");
+  const fallbackRow = rowEntry(payload, "Header", "Korišćen fallback");
 
   const warnings = groupRowsAny(grouped, ["Upozorenje"]);
   const kpi = grouped.get("KPI") ?? [];
@@ -247,12 +253,12 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           periodLabel={period}
           lastRefreshAt={metaValue(payload, "lastRefreshAtUtc")}
           requestedDataset={metaValue(payload, "requestedDataset")}
-          effectiveDataset={metaValue(payload, "effectiveDataset") ?? effectiveDatasetRow?.value ?? null}
+          effectiveDataset={metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value)}
           effectivePeriodLabel={effectivePeriodLabel}
           dataQualityStatus={metaDQ}
           recommendationAllowed={metaBoolean(payload, "recommendationAllowed")}
           usedFallback={usedFallback}
-          fallbackReason={metaValue(payload, "fallbackReason") ?? fallbackRow?.note ?? null}
+          fallbackReason={metaValue(payload, "fallbackReason") ?? scalarText(fallbackRow?.note)}
           fallbackReasonCode={metaValue(payload, "fallbackReasonCode")}
           confidencePct={confidencePct}
           reliabilityPct={reliabilityPct}

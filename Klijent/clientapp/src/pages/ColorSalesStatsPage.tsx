@@ -30,7 +30,7 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { getDataScope, type DataScope } from "../utils/dataScope";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, formatDate, getPresetRange } from "../utils/analyticsFormatters";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import "./ColorSalesStatsPage.css";
 
@@ -56,10 +56,10 @@ type ActiveFilters = {
 type DecisionColor = ColorSalesStat & {
   sharePct: number;
   marginContribution: number;
-  reliabilityPct: number;
+  reliabilityPct?: number;
   coveragePct: number;
   splitCoveragePct: number;
-  decisionScore: number;
+  decisionScore: number | null;
   status: DecisionStatus;
   statusReason: string;
 };
@@ -149,7 +149,7 @@ type StatusTooltipData = {
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
-  reliabilityPct: number;
+  reliabilityPct?: number;
 };
 
 const MISSING_BACKEND_RECOMMENDATION_REASON =
@@ -339,10 +339,12 @@ export default function ColorSalesStatsPage() {
           ...item,
           sharePct: item.sharePct ?? sharePct,
           marginContribution,
-          reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
+          reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct,
           coveragePct,
           splitCoveragePct,
-          decisionScore: Math.round(item.recommendation?.confidencePct ?? 0),
+          decisionScore: item.recommendation?.confidencePct == null
+            ? null
+            : Math.round(item.recommendation.confidencePct),
           status: backendStatus,
           statusReason: item.recommendation?.summary
             ?? (backendStatus === "NedovoljnoPodataka"
@@ -356,10 +358,10 @@ export default function ColorSalesStatsPage() {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         marginContribution,
-        reliabilityPct: item.reliabilityPct ?? (item.marginDataCoveragePct ?? 0),
+        reliabilityPct: item.reliabilityPct,
         coveragePct,
         splitCoveragePct,
-        decisionScore: 0,
+        decisionScore: null,
         status: "NedovoljnoPodataka" as const,
         statusReason: MISSING_BACKEND_RECOMMENDATION_REASON,
       };
@@ -387,7 +389,7 @@ export default function ColorSalesStatsPage() {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
-      if (compare === 0) compare = a.decisionScore - b.decisionScore;
+      if (compare === 0) compare = (a.decisionScore ?? -1) - (b.decisionScore ?? -1);
       if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
       return sortDir === "asc" ? compare : -compare;
     });
@@ -1062,7 +1064,7 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Decision score</span>
-                  <strong>{selectedRow.decisionScore}</strong>
+                  <strong>{selectedRow.decisionScore == null ? "N/A" : fmtNumber(selectedRow.decisionScore, 0)}</strong>
                 </article>
               </div>
 

@@ -3,6 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; post-BCI inventory foundations `RQ96`-`RQ99` remain WAITING)
+Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (WAITING; do not promote ahead of `RQ100`)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:

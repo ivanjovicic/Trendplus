@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB11`
-Current gate verdict: STAB10 completed; access-import operational reads are admin-key gated. Residual logs/docs authz remain before residual-risk acceptance.
+Current READY prompt: none (`STAB12` DONE)
+Current gate verdict: STAB12 completed; unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. Existing-execution next is owner-promoted `RQ100` or QDB06 after migration approval.
 
 ## Goal
 
@@ -1146,14 +1146,14 @@ Access-import operational reads still expose runtime, batch, job, archive and lo
 
 ## STAB11 - Protect logs and errors operational read surfaces
 
-Status: READY
+Status: DONE
 Ready after: `STAB10` is `DONE`
 Priority: P0
 Type: backend/tests/docs
 Feature family: logs-operational-read-auth
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB11-<agent>.lock.md`
+Owner: Cursor Grok 4.6
+Local lock: removed after DONE
 Commit suggestion: `fix(auth): gate logs and errors reads`
 
 ### Problem
@@ -1206,18 +1206,35 @@ The app still exposes logs and error feeds as anonymous reads even though they c
 - `STAB10` DONE first so access-import ops reads are closed before the general logs surface.
 - Reuse the existing admin-key contract; do not add a separate document/log role system here.
 
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: logs and errors GET surfaces are admin-key gated; missing key 401, wrong key 403, valid key existing behavior
+- Changed files: Api/Endpoints/AllEndpoints.cs; Api.Tests/LogsOperationalReadsAuthorizationTests.cs; Klijent/clientapp/src/services/logsApi.ts; Klijent/clientapp/src/services/__tests__/logsApi.spec.ts; Klijent/clientapp/src/pages/LogsPage.tsx; docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~LogsOperationalReadsAuthorizationTests (11 passed); npm run test -- --run src/services/__tests__/logsApi.spec.ts (4 passed); node scripts/check-prompt-queues.mjs
+- Checks not run: full Api.Tests suite; npm run build; Trendplus2/Program.cs duplicate logs routes remain out of STAB11 scope
+- Run log: .ai/runs/2026-08-13-STAB11-evidence.md
+- Delivery mode: none
+- Main commit SHA: pending
+- Main verification: skipped; user did not request commit or push
+- Missed: legacy Trendplus2/Program.cs still maps public /errors and /api/logs if that host is ever used
+- Follow-up: STAB12
+- Residual risk: operators must supply X-Admin-Key to view logs; duplicate Trendplus2 host is not gated
+- Prompt defect / scope repair: same-owner UI repair so LogsPage sends X-Admin-Key instead of treating 401 as a generic load failure
+
 ---
 
 ## STAB12 - Stop trusting unauthenticated document user headers for export/generate privilege
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB11` is `DONE`
 Priority: P0
 Type: backend/tests/docs
 Feature family: document-header-trust-boundary
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB12-<agent>.lock.md`
+Owner: Cursor Grok 4.6
+Local lock: removed after DONE
 Commit suggestion: `fix(documents): stop trusting spoofable export headers`
 
 ### Problem
@@ -1274,6 +1291,23 @@ Document/export generation and ownership decisions still trust caller-provided `
 - `STAB11` DONE so the remaining residual watchlist is tackled in the audit order.
 - `STAB03` remains the authoritative pilot auth boundary until a later identity-provider task exists.
 - If a true runtime identity source is required and unavailable, finish `BLOCKED` with exact missing evidence instead of inventing claims-based auth.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: unauthenticated X-User-* headers no longer grant generate/list/export privilege; generate uses admin-key; signed download/print tokens remain
+- Changed files: Infrastructure/Services/Documents/DocumentSecurityServices.cs; Api/Endpoints/AdminAccessControl.cs; Api/Endpoints/DocumentEndpoints.cs; Api/Endpoints/InventoryEndpoints.cs; Api.Tests/DocumentSecurityTests.cs; Api.Tests/DocumentExportAuthorizationTests.cs; Klijent/clientapp/src/services/exportApi.ts; Klijent/clientapp/src/services/analyticsApi.ts; Klijent/clientapp/src/services/__tests__/exportApi.spec.ts; docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md
+- Checks run: git diff --check; dotnet test --filter FullyQualifiedName~DocumentSecurityTests|DocumentExportAuthorizationTests (16 passed); npm run test -- --run src/services/__tests__/exportApi.spec.ts (2 passed); node scripts/check-prompt-queues.mjs
+- Checks not run: full Api.Tests suite; npm run build
+- Run log: .ai/runs/2026-08-13-STAB12-evidence.md
+- Delivery mode: none
+- Main commit SHA: pending
+- Main verification: skipped; user did not request commit or push
+- Missed: none known for the named generate/list/export privilege
+- Follow-up: none; QDB05 is DONE and QDB06 remains WAITING on owner migration approval
+- Residual risk: operators must supply X-Admin-Key for export/generate; inventory schedule create/update still records user names from anonymous context
+- Prompt defect / scope repair: same-owner UI repair so exportApi/analyticsApi send X-Admin-Key; print URLs now include signed tokens
 
 ---
 

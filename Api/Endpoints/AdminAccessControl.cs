@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Application.Documents.Interfaces;
+using Application.Documents.Models;
 
 namespace Trendplus2.Endpoints;
 
@@ -51,5 +53,28 @@ internal static class AdminAccessControl
             AdminAccessDecision.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
             _ => null
         };
+    }
+
+    public static bool TryAuthorizeDocumentPrivilege(
+        HttpContext httpContext,
+        IConfiguration configuration,
+        IDocumentUserContextAccessor accessor,
+        out DocumentExecutionContext context,
+        out IResult? rejected)
+    {
+        rejected = RejectIfUnauthorized(httpContext, configuration);
+        if (rejected is not null)
+        {
+            context = null!;
+            return false;
+        }
+
+        context = accessor.GetCurrent();
+        if (!context.Roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+        {
+            context.Roles = [.. context.Roles, "Admin"];
+        }
+
+        return true;
     }
 }

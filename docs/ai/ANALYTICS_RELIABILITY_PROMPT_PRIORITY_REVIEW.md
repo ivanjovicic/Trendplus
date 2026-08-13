@@ -28,6 +28,8 @@ Primary goals:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89 + RQ96-RQ98
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88 + RQ90
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (WAITING owner-promoted test pack)
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 - `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`
@@ -55,6 +57,7 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 5. Post-BCI inventory-foundation prompts `RQ96`-`RQ98` are queued as WAITING backlog; they must not be promoted ahead of green GHA evidence.
+6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is none. The next owner-promoted RQ pack is `RQ100`-`RQ104` WAITING in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 
@@ -258,12 +261,13 @@ Next prompt:
 
 The queues are strong enough for agent execution, but current routing is not the old generic lane order. Close the BCI04-derived assertion sequence first: `RQ89` -> `RQ90` -> full backend suite/GitHub Actions evidence. After that, return to the general lane order and owner-gated promotions.
 
-### Current next runnable pointers (2026-08-10)
+### Current next runnable pointers (2026-08-13)
 
-- Backend CI: `BCI01` remains PARTIAL; its remaining assertion repair is delegated to the analytics prompts below.
-- Analytics correctness: `RQ89` READY in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`.
-- Next after RQ89: promote `RQ90` in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`.
-- After RQ90: run the full backend suite and GitHub Actions evidence; only then reconsider `BCI01` DONE.
-- Premium UI: `P-UI-07` remains supplemental/path-safe only.
+The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
+
+- Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
+- Analytics correctness: none READY. Owner-promoted WAITING pack is `RQ100` first, then `RQ101`-`RQ104`, in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not promote `RQ100` until the owner explicitly chooses it; QDB exclusive work is currently clear (`QDB06` still needs migration approval).
+- Premium UI: `P-UI-19` READY (chrome regression). `P-UI-20` WAITING is grouped ErrorState/EmptyState/TrustHeader proof on stats pages.
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

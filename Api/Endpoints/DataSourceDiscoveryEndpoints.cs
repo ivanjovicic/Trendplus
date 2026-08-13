@@ -1,0 +1,120 @@
+using Api.Services.DataSources;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Trendplus2.Endpoints;
+
+public static class DataSourceDiscoveryEndpoints
+{
+    public static void MapDataSourceDiscoveryEndpoints(this WebApplication app)
+    {
+        var group = app.MapGroup("/api/data-sources")
+            .WithTags("Data Sources");
+
+        group.MapGet("", (
+            NamedSourceDiscoveryService discovery,
+            HttpContext httpContext,
+            IConfiguration configuration) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+                return rejected;
+
+            return Results.Ok(discovery.ListSources());
+        })
+        .WithName("ListNamedDataSources");
+
+        group.MapPost("/{name}/test-connection", async (
+            string name,
+            NamedSourceDiscoveryService discovery,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+                return rejected;
+
+            return await ExecuteAsync(name, () => discovery.TestConnectionAsync(name, ct));
+        })
+        .WithName("TestNamedDataSourceConnection")
+        .RequireRateLimiting("strict");
+
+        group.MapGet("/{name}/tables", async (
+            string name,
+            NamedSourceDiscoveryService discovery,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+                return rejected;
+
+            return await ExecuteAsync(name, () => discovery.GetTablesAsync(name, ct));
+        })
+        .WithName("ListNamedDataSourceTables");
+
+        group.MapGet("/{name}/columns", async (
+            string name,
+            string table,
+            NamedSourceDiscoveryService discovery,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+                return rejected;
+
+            return await ExecuteAsync(name, () => discovery.GetColumnsAsync(name, table, ct));
+        })
+        .WithName("ListNamedDataSourceColumns");
+
+        group.MapPost("/{name}/mapping-preview", async (
+            string name,
+            SourceMappingPreviewRequest request,
+            [FromServices] SourceMappingPreviewService preview,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+                return rejected;
+
+            return await ExecuteAsync(name, () => preview.PreviewAsync(name, request, ct));
+        })
+        .WithName("PreviewNamedDataSourceMapping")
+        .RequireRateLimiting("strict");
+    }
+
+    private static async Task<IResult> ExecuteAsync<T>(string name, Func<Task<T>> action)
+    {
+        if (!NamedSourceDiscoveryService.IsSafeSourceName(name))
+            return Results.NotFound();
+
+        try
+        {
+            return Results.Ok(await action());
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (NotSupportedException)
+        {
+            return Results.BadRequest(new { error = "Provider is not supported for discovery." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Json(
+                new { error = "Source is not configured." },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.Json(
+                new { error = "Source discovery failed." },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+}

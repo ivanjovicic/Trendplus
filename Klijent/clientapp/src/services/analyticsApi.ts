@@ -59,6 +59,7 @@ import type {
   PilotIntakeDurableReport,
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
+import { ensureExportAdminKey } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendDataScopeToParams } from "../utils/dataScope";
 import {
@@ -245,13 +246,17 @@ async function fetchJsonWithCachedFallback<T>(
   }
 }
 
-async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
+async function postJson<T>(path: string, body: unknown, errorMessage?: string, adminKey?: string): Promise<T> {
   const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
   const init: RequestInit = {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   };
 
@@ -1180,6 +1185,11 @@ export async function exportInventoryReport(options: {
   supplierId?: number | null;
   sortBy?: string | null;
 }): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("izvoz zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     "/api/analytics/inventory/export",
     {
@@ -1192,7 +1202,8 @@ export async function exportInventoryReport(options: {
       supplierId: options.supplierId,
       sortBy: options.sortBy,
     },
-    "Greska pri server-side eksportu bilansa"
+    "Greska pri server-side eksportu bilansa",
+    adminKey
   );
 }
 
@@ -1204,6 +1215,11 @@ export async function previewInventoryReport(options?: {
   supplierId?: number | null;
   sortBy?: string | null;
 }): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("pregled stampe zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     "/api/analytics/inventory/print-preview",
     {
@@ -1214,7 +1230,8 @@ export async function previewInventoryReport(options?: {
       supplierId: options?.supplierId,
       sortBy: options?.sortBy,
     },
-    "Greska pri pripremi print preview-a"
+    "Greska pri pripremi print preview-a",
+    adminKey
   );
 }
 
@@ -1224,10 +1241,16 @@ export async function printBlankInventoryForm(options?: {
   const params = new URLSearchParams();
   if (options?.orientation) params.set("orientation", options.orientation);
   const qs = params.size > 0 ? `?${params.toString()}` : "";
+  const adminKey = ensureExportAdminKey("prazan obrazac zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     `/api/analytics/inventory/print-blank${qs}`,
     {},
-    "Greska pri pripremi praznog obrasca za stampu"
+    "Greska pri pripremi praznog obrasca za stampu",
+    adminKey
   );
 }
 
@@ -1467,10 +1490,16 @@ export async function updateInventoryReportSchedule(id: number, input: Inventory
 }
 
 export async function runInventoryReportScheduleNow(id: number): Promise<InventoryScheduleRunResponse> {
+  const adminKey = ensureExportAdminKey("pokretanje rasporeda izvestaja");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     `/api/analytics/inventory/report-schedules/${id}/run-now`,
     {},
-    "Greska pri rucnom pokretanju rasporeda"
+    "Greska pri rucnom pokretanju rasporeda",
+    adminKey
   );
 }
 

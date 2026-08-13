@@ -39,12 +39,35 @@ export interface DocumentStatusResponse extends DocumentOperationResponse {
 }
 
 function parseError(body: unknown, status: number): string {
+  if (status === 401) return "Nedostaje admin key za izvoz dokumenata.";
+  if (status === 403) return "Admin key nije ispravan za izvoz dokumenata.";
   if (body && typeof body === "object") {
     const candidate = body as { detail?: string; title?: string; message?: string };
     return candidate.detail ?? candidate.message ?? candidate.title ?? `HTTP ${status}`;
   }
 
   return `HTTP ${status}`;
+}
+
+function adminHeaders(adminKey?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
+  return headers;
+}
+
+let cachedExportAdminKey: string | null = null;
+
+export function ensureExportAdminKey(actionLabel: string): string | null {
+  if (cachedExportAdminKey) return cachedExportAdminKey;
+  if (typeof window === "undefined" || typeof window.prompt !== "function") return null;
+  const key = window.prompt(`Unesite admin key za ${actionLabel}`);
+  if (!key || !key.trim()) return null;
+  cachedExportAdminKey = key.trim();
+  return cachedExportAdminKey;
 }
 
 function buildRequest(payload: ResolvedAnalyticsTablePayload, options: ExportOptions) {
@@ -82,11 +105,14 @@ export async function generateExport(
   payload: ResolvedAnalyticsTablePayload,
   options: ExportOptions
 ): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("izvoz");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   const response = await fetch(apiUrl("/api/documents/generate"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: adminHeaders(adminKey),
     body: JSON.stringify(buildRequest(payload, options)),
   });
 
@@ -102,11 +128,14 @@ export async function requestPrintPreview(
   payload: ResolvedAnalyticsTablePayload,
   options: Omit<ExportOptions, "format"> & { format?: ExportFormat }
 ): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("pregled stampe");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   const response = await fetch(apiUrl("/api/documents/print-preview"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: adminHeaders(adminKey),
     body: JSON.stringify(buildRequest(payload, {
       format: options.format ?? "pdf",
       orientation: options.orientation,
@@ -125,7 +154,14 @@ export async function requestPrintPreview(
 }
 
 export async function getExportStatus(documentId: string): Promise<DocumentStatusResponse> {
-  const response = await fetch(apiUrl(`/api/exports/${documentId}/status`));
+  const adminKey = ensureExportAdminKey("status izvoza");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
+  const response = await fetch(apiUrl(`/api/exports/${documentId}/status`), {
+    headers: adminHeaders(adminKey),
+  });
   const body = (await response.json().catch(() => null)) as DocumentStatusResponse | { detail?: string; title?: string; message?: string } | null;
 
   if (!response.ok || !body || !("documentId" in body)) {
@@ -136,7 +172,14 @@ export async function getExportStatus(documentId: string): Promise<DocumentStatu
 }
 
 export async function listExports(take = 50): Promise<DocumentStatusResponse[]> {
-  const response = await fetch(apiUrl(`/api/exports?take=${take}`));
+  const adminKey = ensureExportAdminKey("listu izvoza");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
+  const response = await fetch(apiUrl(`/api/exports?take=${take}`), {
+    headers: adminHeaders(adminKey),
+  });
   const body = (await response.json().catch(() => null)) as DocumentStatusResponse[] | { detail?: string; title?: string; message?: string } | null;
 
   if (!response.ok || !Array.isArray(body)) {

@@ -361,15 +361,17 @@ Exit gate:
 
 ## Phase 2 — SQL Server proof connector
 
+Status: delivered 2026-08-13 (`QDB03`).
+
 Goal: prove one non-Access relational source end to end in tests.
 
 Deliverables:
 
-- read-only SQL Server connection/session;
+- read-only SQL Server connection/session (`SqlServerSourceDataSession`);
 - metadata discovery;
 - safe identifier quoting;
 - parameterized bounded/full and incremental reads;
-- Testcontainers or equivalent real-engine integration tests;
+- Testcontainers or equivalent real-engine integration tests (LocalDB used when Docker is unavailable);
 - no arbitrary SQL endpoint.
 
 Exit gate:
@@ -381,11 +383,13 @@ Exit gate:
 
 ## Phase 3 — Named connection and discovery API
 
+Status: delivered 2026-08-13 (`QDB04`).
+
 Goal: allow an administrator to configure and inspect a source without importing data.
 
 Deliverables:
 
-- named provider configuration;
+- named provider configuration (environment-backed profiles);
 - test-connection endpoint;
 - list schemas/tables/columns endpoint;
 - safe diagnostics;
@@ -393,6 +397,8 @@ Deliverables:
 - no returned secrets.
 
 ## Phase 4 — Mapping preview
+
+Status: delivered 2026-08-13 (`QDB05`).
 
 Goal: configure a source-to-Trendplus mapping with no durable writes.
 

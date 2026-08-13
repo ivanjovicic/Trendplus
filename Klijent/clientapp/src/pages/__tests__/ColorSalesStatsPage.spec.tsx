@@ -472,6 +472,41 @@ describe("ColorSalesStatsPage", () => {
     expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
   });
 
+  it("does not invent decision score 0 or reliability from margin coverage", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Crvena",
+          ukupanPromet: 150000,
+          marginContribution: 50000,
+          reliabilityPct: undefined,
+          marginDataCoveragePct: 83.3,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: undefined as unknown as number,
+            reliabilityPct: undefined as unknown as number,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    const decisionScore = await screen.findByText("Decision score");
+    expect(decisionScore.closest("article")).toHaveTextContent("N/A");
+    expect(decisionScore.closest("article")).not.toHaveTextContent(/Decision score\s*0/);
+
+    const reliability = screen.getByText("Pouzdanost podataka");
+    expect(reliability.closest("article")).toHaveTextContent("N/A");
+    expect(reliability.closest("article")).not.toHaveTextContent("83,3");
+  });
+
   it("expands a color row and saves a detail snapshot before navigating to the detail route", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");

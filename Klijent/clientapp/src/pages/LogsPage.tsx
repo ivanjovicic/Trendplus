@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { clearLogs, getLogById, getLogs } from "../services/logsApi";
 import type { LogEntry } from "../types/logs";
 
@@ -112,6 +112,15 @@ export default function LogsPage() {
     const [logIdInput, setLogIdInput] = useState("");
     const [loadingLogById, setLoadingLogById] = useState(false);
     const [clearingLogs, setClearingLogs] = useState(false);
+    const adminKeyRef = useRef<string | null>(null);
+
+    const ensureAdminKey = (actionLabel: string): string | null => {
+        if (adminKeyRef.current) return adminKeyRef.current;
+        const key = window.prompt(`Unesite admin key za ${actionLabel}`);
+        if (!key || !key.trim()) return null;
+        adminKeyRef.current = key.trim();
+        return adminKeyRef.current;
+    };
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -123,6 +132,15 @@ export default function LogsPage() {
     }, [searchTerm]);
 
     const fetchLogs = async () => {
+        const adminKey = ensureAdminKey("pregled logova");
+        if (!adminKey) {
+            setLoading(false);
+            setError("Admin key je obavezan za pregled logova.");
+            setLogs([]);
+            setTotalCount(0);
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -133,7 +151,8 @@ export default function LogsPage() {
                 selectedLevel || undefined,
                 fromDate || undefined,
                 toDate || undefined,
-                debouncedSearchTerm || undefined
+                debouncedSearchTerm || undefined,
+                adminKey
             );
 
             setLogs(result.logs);
@@ -177,10 +196,16 @@ export default function LogsPage() {
             return;
         }
 
+        const adminKey = ensureAdminKey("pregled logova");
+        if (!adminKey) {
+            setError("Admin key je obavezan za pregled logova.");
+            return;
+        }
+
         setLoadingLogById(true);
         setError(null);
         try {
-            const log = await getLogById(parsedId);
+            const log = await getLogById(parsedId, adminKey);
             setSelectedLog(log);
         } catch (err) {
             const message = err instanceof Error ? err.message : "Greška pri učitavanju loga po ID.";
@@ -195,8 +220,8 @@ export default function LogsPage() {
             return;
         }
 
-        const adminKey = window.prompt("Unesite admin key za brisanje logova");
-        if (!adminKey || !adminKey.trim()) {
+        const adminKey = ensureAdminKey("brisanje logova");
+        if (!adminKey) {
             setError("Admin key je obavezan za brisanje logova.");
             return;
         }
@@ -205,7 +230,7 @@ export default function LogsPage() {
         setError(null);
         try {
             const result = await clearLogs(
-                adminKey.trim(),
+                adminKey,
                 toDate || undefined,
                 selectedLevel || undefined
             );

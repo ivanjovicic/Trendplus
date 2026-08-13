@@ -37,6 +37,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
+using Api.Services.DataSources;
 using Api.Endpoints;
 using Api.Services.Access;
 using Api.Middleware;
@@ -158,6 +159,7 @@ try
     builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
     builder.Services.Configure<AccessImportOptions>(builder.Configuration.GetSection(AccessImportOptions.Section));
+    builder.Services.Configure<DataSourceConnectorOptions>(builder.Configuration.GetSection(DataSourceConnectorOptions.SectionName));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
@@ -172,6 +174,9 @@ try
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
 
+    builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
+    builder.Services.AddSingleton<NamedSourceDiscoveryService>();
+    builder.Services.AddSingleton<SourceMappingPreviewService>();
     builder.Services.AddFileStorage(builder.Configuration);
     var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
         builder.Configuration[$"{StorageOptions.Section}:Provider"]);
@@ -1209,6 +1214,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();
     app.MapAccessImportEndpoints();
+    app.MapDataSourceDiscoveryEndpoints();
     app.MapAdminRepairEndpoints();
     app.MapAdminConfigEndpoints();
     app.MapAdminBackendRoutingEndpoints();

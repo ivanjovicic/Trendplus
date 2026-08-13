@@ -1,5 +1,6 @@
 ﻿import { makeUrl } from "./analyticsApi";
 import type { AnalyticsResponseMeta } from "../types/analytics";
+import { AnalyticsMetaError, assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 
 export type RecommendationCode =
   | "EXPAND"
@@ -331,7 +332,27 @@ async function fetchJson<T>(path: string, params: URLSearchParams, errorMessage:
       withTrust.trustMetadata = normalizeTrustMetadata(withTrust.trustMetadata);
     }
   }
-  return parsed;
+
+  try {
+    return assertAnalyticsMetaSuccess(
+      parsed,
+      (candidate) => {
+        if (!candidate || typeof candidate !== "object") return null;
+        return (candidate as { meta?: AnalyticsResponseMeta | null }).meta ?? null;
+      },
+      errorMessage
+    );
+  } catch (reason) {
+    if (reason instanceof AnalyticsMetaError) {
+      throw new SupplierDecisionApiError(
+        reason.message,
+        response.status,
+        reason.errorCode,
+        reason.correlationId
+      );
+    }
+    throw reason;
+  }
 }
 
 export async function getSupplierDecisionSummary(

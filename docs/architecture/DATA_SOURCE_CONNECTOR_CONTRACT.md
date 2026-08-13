@@ -109,13 +109,75 @@ dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceDataSes
 dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests
 ```
 
-## Remaining untested without a future seam
+## QDB03 SQL Server proof connector
 
-Recorded for provider tests (`QDB03+`):
+`SqlServerSourceDataSession` is the first non-Access `ISourceDataSession` implementation.
+
+| Fact | Behavior |
+|---|---|
+| Provider | `sqlserver`, mode `read-only` |
+| Connection | `Microsoft.Data.SqlClient` with `ApplicationIntent=ReadOnly`; no arbitrary SQL; no writes |
+| Identity | server + database only; password and user id are omitted |
+| Discovery | `INFORMATION_SCHEMA` tables/views and columns; table names are `schema.table` |
+| Quoting | `[identifier]` with `]` escaped as `]]`; `;` / control characters rejected |
+| Counts | exact `COUNT_BIG(*)` |
+| Cursors | parameterized `@pN` predicates for `id`, `timestamp`, and `timestamp_then_id` |
+| Bounds | async streaming plus optional `SourceReadQuery.MaxRows` (`SELECT TOP (@maxRows)`) |
+| Failures | safe categories: authentication, timeout, network, unavailable, canceled, unknown |
+
+Live-engine proof: `Api.Tests/SqlServerSourceDataSessionIntegrationTests.cs` (Testcontainers when Docker is available, else LocalDB / `SQLSERVER_TEST_CONNECTION_STRING`). Supplemental quoting/SQL tests do not replace that suite.
+
+Verification:
+
+```powershell
+dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SqlServerSourceDataSession
+```
+
+## QDB04 named source discovery API
+
+Environment-backed named profiles under `DataSources:Sources:{name}` (`Provider`, `DisplayName`, `ConnectionString`) are listed and inspected through admin-only endpoints. Connection strings are never returned. Failed tests return safe categories (`authentication`, `timeout`, `network`, `unavailable`, `unknown`) and a generic message.
+
+| Route | Behavior |
+|---|---|
+| `GET /api/data-sources` | named profiles, identity without credentials |
+| `POST /api/data-sources/{name}/test-connection` | connectivity probe; `strict` rate limit |
+| `GET /api/data-sources/{name}/tables` | schemas + `schema.table` names |
+| `GET /api/data-sources/{name}/columns?table=` | column names for one table |
+
+Authorization reuses `AdminAccessControl` (`X-Admin-Key` / Admin role). First supported provider is `sqlserver`. No mapping, preview write, or sync job.
+
+Verification:
+
+```powershell
+dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DataSourceDiscovery
+```
+
+## QDB05 mapping preview
+
+`POST /api/data-sources/{name}/mapping-preview` validates an explicit, request-scoped mapping and returns a bounded sample. It does not persist mappings, write Trendplus business rows, or auto-select source columns from canonical aliases.
+
+Required request facts:
+
+- `table` / `entity` (`artikli`, `prodaja_zaglavlje`, `prodaja_stavke`)
+- `externalKeyColumn`
+- `cursorMode` (`none` / `id` / `timestamp` / `timestamp_then_id`) plus named cursor columns
+- explicit `fields[]` (`target` + `source`)
+
+Field statuses are `ok` or `rejected` with reasons such as `source_column_missing`, `target_required_unmapped`, `duplicate_target`, `key_column_missing`. Schema fingerprint is `sha256:` of provider + table + sorted source column names. Preview max rows is 50. Canonical aliases may appear as suggestions on rejected required fields; they are never applied silently.
+
+Verification:
+
+```powershell
+dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceMappingPreviewTests
+```
+
+## Remaining untested without a later prompt
+
+Recorded for later prompts (`QDB06+`):
 
 - live ODBC metadata discovery and row streaming;
 - live `mdbtools` CLI metadata/streaming;
-- exact vs sampled count selection against real engines;
+- durable mapping persistence and checkpointed incremental sync;
 - end-to-end import pipeline interaction with checkpoints.
 
 ## Verification

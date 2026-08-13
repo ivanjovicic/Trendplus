@@ -366,7 +366,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const scorecardMetaMessage = getAnalyticsMetaMessage(scorecardMeta);
   const recommendationAllowed = trustMetadata?.recommendationAllowed === true;
   const hasVisibleData = Boolean(summary && ranking);
-  const showBlockingError = Boolean((error && !hasVisibleData) || (!hasVisibleData && isAnalyticsMetaError(scorecardMeta)));
+  const showBlockingError = Boolean(
+    isAnalyticsMetaError(scorecardMeta)
+    || (error && !hasVisibleData)
+  );
   const showMetaWarning = !loading && !showBlockingError && isAnalyticsMetaWarning(scorecardMeta);
   const resolvedLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? trustMetadata?.lastRefreshAtUtc ?? null;
   const hasDatasetFallback = Boolean(

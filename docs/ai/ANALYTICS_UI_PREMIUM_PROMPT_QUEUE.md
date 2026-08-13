@@ -25,7 +25,7 @@ Use with:
 | P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 | P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
-| P-UI-20 | WAITING | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
+| P-UI-20 | READY | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 
 ---
 

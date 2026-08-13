@@ -404,7 +404,8 @@ public static class CachedAnalyticsEndpoints
                                 inventoryData?.TotalSku ?? 0,
                                 inventoryData?.TotalOnHand ?? 0,
                                 inventoryData?.LowStock ?? 0,
-                                inventoryData?.OutOfStock ?? 0
+                                inventoryData?.OutOfStock ?? 0,
+                                UsedOperationalFallback: true
                             );
                         }
                     },
@@ -413,7 +414,12 @@ public static class CachedAnalyticsEndpoints
 
                 var meta = result.TotalSkuCount == 0
                     ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
-                    : AnalyticsResponseMetaFactory.Success();
+                    : result.UsedOperationalFallback
+                        ? AnalyticsResponseMetaFactory.Warning(
+                            "inventory_status_operational_fallback",
+                            "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna.",
+                            "warning")
+                        : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
                 return Results.Ok(new { result.TotalSkuCount, result.TotalOnHand, result.LowStockCount, result.OutOfStockCount, Meta = meta });
@@ -4404,7 +4410,8 @@ public static class CachedAnalyticsEndpoints
                 inventoryData?.TotalSku ?? 0,
                 inventoryData?.TotalOnHand ?? 0,
                 inventoryData?.LowStock ?? 0,
-                inventoryData?.OutOfStock ?? 0
+                inventoryData?.OutOfStock ?? 0,
+                UsedOperationalFallback: true
             );
         }
     }

@@ -30,6 +30,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using Domain.Model.TrendShoes;
 using Application.TrendShoes;
 using System.Globalization;
@@ -201,135 +202,7 @@ public static class AllEndpoints
         .WithName("CircuitBreakerStatus")
         .WithTags("System");
 
-        // ============ ERRORS ============
-        
-        app.MapGet("/errors", async (IErrorStore store) =>
-        {
-            var errors = await store.GetAllAsync();
-            return Results.Ok(errors);
-        })
-        .WithName("GetErrors")
-        .WithTags("System");
-
-        // ============ LOGS ============
-        
-        app.MapGet("/api/logs", async (
-            IErrorStore store,
-            IAnalyticsCacheService cache,
-            HttpContext httpContext,
-            ILogger<Program> logger,
-            int pageNumber = 1,
-            int pageSize = 50,
-            string? level = null,
-            DateTime? fromDate = null,
-            DateTime? toDate = null,
-            string? searchText = null,
-            CancellationToken ct = default) =>
-        {
-            try
-            {
-                var safePageNumber = pageNumber <= 0 ? 1 : pageNumber;
-                var safePageSize = pageSize <= 0 ? 50 : Math.Min(pageSize, 500);
-
-                fromDate = EnsureUtc(fromDate);
-                toDate = EnsureUtc(toDate);
-
-                var normalizedLevel = string.IsNullOrWhiteSpace(level) ? null : level.Trim();
-                var normalizedSearch = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
-
-                var cacheKey = AnalyticsCacheKeys.ObservabilityLogs(
-                    safePageNumber,
-                    safePageSize,
-                    normalizedLevel,
-                    fromDate,
-                    toDate,
-                    normalizedSearch);
-                var cachedResponse = await cache.GetAsync<LogsPageResponseDto>(cacheKey, ct);
-                if (cachedResponse is not null)
-                {
-                    return Results.Ok(cachedResponse);
-                }
-
-                var total = await store.GetCountAsync(
-                    normalizedLevel,
-                    fromDate,
-                    toDate,
-                    normalizedSearch,
-                    ct);
-
-                var paged = await store.GetPagedAsync(
-                    safePageNumber,
-                    safePageSize,
-                    normalizedLevel,
-                    fromDate,
-                    toDate,
-                    normalizedSearch,
-                    ct);
-
-                var logs = paged.Select(MapLogEntry).ToList();
-
-                var response = new LogsPageResponseDto(
-                    logs,
-                    total,
-                    safePageNumber,
-                    safePageSize);
-
-                await cache.SetAsync(cacheKey, response, CacheExpiration.ObservabilityLive, ct);
-                return Results.Ok(response);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to fetch logs");
-                await HandledErrorLogging.PersistHandledExceptionAsync(
-                    httpContext,
-                    ex,
-                    "Failed to fetch logs",
-                    ct);
-                return Results.Problem(
-                    detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
-                    statusCode: 500,
-                    title: "Database Error"
-                );
-            }
-        })
-        .WithName("GetLogs")
-        .WithTags("System")
-        .RequireRateLimiting("db-heavy");
-
-        app.MapGet("/api/logs/{id:int}", async (
-            int id,
-            IErrorStore store,
-            HttpContext httpContext,
-            ILogger<Program> logger,
-            CancellationToken ct = default) =>
-        {
-            try
-            {
-                var entry = await store.GetByIdAsync(id, ct);
-                if (entry is null)
-                {
-                    return Results.NotFound(new { error = $"Log sa ID {id} nije pronađen." });
-                }
-
-                return Results.Ok(MapLogEntry(entry));
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to fetch log by id {LogId}", id);
-                await HandledErrorLogging.PersistHandledExceptionAsync(
-                    httpContext,
-                    ex,
-                    $"Failed to fetch log by id {id}",
-                    ct);
-                return Results.Problem(
-                    detail: "Unable to fetch log details.",
-                    statusCode: 500,
-                    title: "Database Error");
-            }
-        })
-        .WithName("GetLogById")
-        .WithTags("System")
-        .RequireRateLimiting("db-heavy");
+        app.MapLogsAndErrorsReadEndpoints();
 
         app.MapDelete("/api/logs/clear", async (
             HttpContext httpContext,
@@ -7014,6 +6887,155 @@ public static class AllEndpoints
             SortBy = normalizedSortBy,
             SortDir = normalizedSortDir
         };
+    }
+
+    public static void MapLogsAndErrorsReadEndpoints(this WebApplication app)
+    {
+        app.MapGet("/errors", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IErrorStore store) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            var errors = await store.GetAllAsync();
+            return Results.Ok(errors);
+        })
+        .WithName("GetErrors")
+        .WithTags("System");
+
+        app.MapGet("/api/logs", async (
+            IErrorStore store,
+            IAnalyticsCacheService cache,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            ILogger<Program> logger,
+            int pageNumber = 1,
+            int pageSize = 50,
+            string? level = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? searchText = null,
+            CancellationToken ct = default) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            try
+            {
+                var safePageNumber = pageNumber <= 0 ? 1 : pageNumber;
+                var safePageSize = pageSize <= 0 ? 50 : Math.Min(pageSize, 500);
+
+                fromDate = EnsureUtc(fromDate);
+                toDate = EnsureUtc(toDate);
+
+                var normalizedLevel = string.IsNullOrWhiteSpace(level) ? null : level.Trim();
+                var normalizedSearch = string.IsNullOrWhiteSpace(searchText) ? null : searchText.Trim();
+
+                var cacheKey = AnalyticsCacheKeys.ObservabilityLogs(
+                    safePageNumber,
+                    safePageSize,
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch);
+                var cachedResponse = await cache.GetAsync<LogsPageResponseDto>(cacheKey, ct);
+                if (cachedResponse is not null)
+                {
+                    return Results.Ok(cachedResponse);
+                }
+
+                var total = await store.GetCountAsync(
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch,
+                    ct);
+
+                var paged = await store.GetPagedAsync(
+                    safePageNumber,
+                    safePageSize,
+                    normalizedLevel,
+                    fromDate,
+                    toDate,
+                    normalizedSearch,
+                    ct);
+
+                var logs = paged.Select(MapLogEntry).ToList();
+
+                var response = new LogsPageResponseDto(
+                    logs,
+                    total,
+                    safePageNumber,
+                    safePageSize);
+
+                await cache.SetAsync(cacheKey, response, CacheExpiration.ObservabilityLive, ct);
+                return Results.Ok(response);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to fetch logs");
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    "Failed to fetch logs",
+                    ct);
+                return Results.Problem(
+                    detail: "Unable to fetch logs. Please run migrations: dotnet ef database update",
+                    statusCode: 500,
+                    title: "Database Error"
+                );
+            }
+        })
+        .WithName("GetLogs")
+        .WithTags("System")
+        .RequireRateLimiting("db-heavy");
+
+        app.MapGet("/api/logs/{id:int}", async (
+            int id,
+            IErrorStore store,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            ILogger<Program> logger,
+            CancellationToken ct = default) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            try
+            {
+                var entry = await store.GetByIdAsync(id, ct);
+                if (entry is null)
+                {
+                    return Results.NotFound(new { error = $"Log sa ID {id} nije pronađen." });
+                }
+
+                return Results.Ok(MapLogEntry(entry));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to fetch log by id {LogId}", id);
+                await HandledErrorLogging.PersistHandledExceptionAsync(
+                    httpContext,
+                    ex,
+                    $"Failed to fetch log by id {id}",
+                    ct);
+                return Results.Problem(
+                    detail: "Unable to fetch log details.",
+                    statusCode: 500,
+                    title: "Database Error");
+            }
+        })
+        .WithName("GetLogById")
+        .WithTags("System")
+        .RequireRateLimiting("db-heavy");
     }
 
     private static LogEntryDto MapLogEntry(ErrorRecord e)

@@ -5,6 +5,8 @@ using Application.Documents.Models;
 using Infrastructure.DbContexts;
 using Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Trendplus2.Endpoints;
@@ -18,13 +20,24 @@ public static class DocumentEndpoints
             .WithTags("Documents");
 
         group.MapPost("/generate", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             DocumentGenerateRequestDto dto,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
             IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var request = dto.ToRequest();
             var result = await documentService.GenerateAsync(request, context, ct);
             var response = new DocumentOperationResponseDto
@@ -43,7 +56,7 @@ public static class DocumentEndpoints
                 DownloadUrl = result.CompletedAtUtc.HasValue
                     ? $"/api/documents/{result.DocumentId}?token={tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
                     : null,
-                PrintUrl = $"/api/documents/{result.DocumentId}/print"
+                PrintUrl = $"/api/documents/{result.DocumentId}/print?token={tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
             };
 
             return result.IsAsync
@@ -53,12 +66,23 @@ public static class DocumentEndpoints
         .RequireRateLimiting("writes");
 
         group.MapPost("/batch", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             DocumentBatchRequestDto dto,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var request = new DocumentBatchRequest
             {
                 Items = dto.Items.Select(item => item.ToRequest()).ToList()
@@ -81,11 +105,28 @@ public static class DocumentEndpoints
         group.MapGet("/{id:guid}", async (
             Guid id,
             string? token,
+            HttpContext httpContext,
+            IConfiguration configuration,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
+            IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            DocumentExecutionContext context;
+            if (!string.IsNullOrWhiteSpace(token) && tokenService.TryValidate(id, token))
+            {
+                context = userContextAccessor.GetCurrent();
+            }
+            else if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var streamResult = await documentService.OpenDownloadAsync(id, context, token, ct);
             if (streamResult is null)
             {
@@ -103,11 +144,28 @@ public static class DocumentEndpoints
         group.MapGet("/{id:guid}/print", async (
             Guid id,
             string? token,
+            HttpContext httpContext,
+            IConfiguration configuration,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
+            IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            DocumentExecutionContext context;
+            if (!string.IsNullOrWhiteSpace(token) && tokenService.TryValidate(id, token))
+            {
+                context = userContextAccessor.GetCurrent();
+            }
+            else if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var html = await documentService.GetPrintHtmlAsync(id, context, token, ct);
             return html is null
                 ? Results.NotFound()
@@ -116,21 +174,33 @@ public static class DocumentEndpoints
         .RequireRateLimiting("fixed");
 
         group.MapPost("/print-preview", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
             DocumentGenerateRequestDto dto,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
+            IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
             dto.Format = "html";
             dto.Preview = true;
             dto.ForceAsync = false;
 
-            var context = userContextAccessor.GetCurrent();
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var result = await documentService.GenerateAsync(dto.ToRequest(), context, ct);
             return Results.Ok(new
             {
                 result.DocumentId,
-                printUrl = $"/api/documents/{result.DocumentId}/print",
+                printUrl = $"/api/documents/{result.DocumentId}/print?token={tokenService.Create(result.DocumentId, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}",
                 status = result.Status
             });
         })
@@ -138,12 +208,23 @@ public static class DocumentEndpoints
 
         app.MapGet("/api/exports/{jobId:guid}/status", async (
             Guid jobId,
+            HttpContext httpContext,
+            IConfiguration configuration,
             IDocumentService documentService,
             IDocumentUserContextAccessor userContextAccessor,
             IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var status = await documentService.GetStatusAsync(jobId, context, ct);
             if (status is null)
             {
@@ -171,7 +252,7 @@ public static class DocumentEndpoints
                 DownloadUrl = status.Status == "completed"
                     ? $"/api/documents/{status.DocumentId}?token={tokenService.Create(status.DocumentId, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
                     : null,
-                PrintUrl = $"/api/documents/{status.DocumentId}/print"
+                PrintUrl = $"/api/documents/{status.DocumentId}/print?token={tokenService.Create(status.DocumentId, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
             });
         })
         .WithTags("Documents")
@@ -179,13 +260,24 @@ public static class DocumentEndpoints
 
         app.MapGet("/api/exports", async (
             int? take,
-            TrendplusDbContext db,
-            IDocumentUserContextAccessor userContextAccessor,
-            IDocumentAccessControlService accessControlService,
-            IDocumentDownloadTokenService tokenService,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            [FromServices] TrendplusDbContext db,
+            [FromServices] IDocumentUserContextAccessor userContextAccessor,
+            [FromServices] IDocumentAccessControlService accessControlService,
+            [FromServices] IDocumentDownloadTokenService tokenService,
             CancellationToken ct) =>
         {
-            var context = userContextAccessor.GetCurrent();
+            if (!AdminAccessControl.TryAuthorizeDocumentPrivilege(
+                    httpContext,
+                    configuration,
+                    userContextAccessor,
+                    out var context,
+                    out var rejected))
+            {
+                return rejected!;
+            }
+
             var requestedTake = Math.Clamp(take ?? 50, 1, 200);
             var query = db.Documents.AsNoTracking();
 
@@ -218,7 +310,7 @@ public static class DocumentEndpoints
                     DownloadUrl = x.Status == "completed"
                         ? $"/api/documents/{x.Id}?token={tokenService.Create(x.Id, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
                         : null,
-                    PrintUrl = $"/api/documents/{x.Id}/print"
+                    PrintUrl = $"/api/documents/{x.Id}/print?token={tokenService.Create(x.Id, DateTime.UtcNow.AddMinutes(documentOptions.SignedUrlTtlMinutes))}"
                 })
                 .ToListAsync(ct);
 

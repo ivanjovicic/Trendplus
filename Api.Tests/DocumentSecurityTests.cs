@@ -1,5 +1,7 @@
+using Application.Documents.Models;
 using Infrastructure.Configuration;
 using Infrastructure.Services.Documents;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -22,6 +24,51 @@ public class DocumentSecurityTests
 
         Assert.True(service.TryValidate(documentId, token));
         Assert.False(service.TryValidate(Guid.NewGuid(), token));
+    }
+
+    [Fact]
+    public void UserContextAccessor_DoesNotGrantRolesFromSpoofedHeaders()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["X-User-Id"] = "attacker";
+        httpContext.Request.Headers["X-User-Name"] = "Attacker";
+        httpContext.Request.Headers["X-User-Roles"] = "Admin,AnalyticsExport";
+
+        var accessor = new DocumentUserContextAccessor(new StaticHttpContextAccessor { HttpContext = httpContext });
+        var context = accessor.GetCurrent();
+
+        Assert.Equal("anonymous", context.UserId);
+        Assert.Equal("anonymous", context.UserName);
+        Assert.Empty(context.Roles);
+        Assert.Throws<UnauthorizedAccessException>(() => new DocumentAccessControlService().EnsureCanGenerate(context));
+    }
+
+    [Fact]
+    public void AccessControl_RejectsAnonymousWithoutRoles()
+    {
+        var service = new DocumentAccessControlService();
+        var context = new DocumentExecutionContext
+        {
+            UserId = "anonymous",
+            UserName = "anonymous",
+            Roles = Array.Empty<string>()
+        };
+
+        Assert.Throws<UnauthorizedAccessException>(() => service.EnsureCanGenerate(context));
+    }
+
+    [Fact]
+    public void AccessControl_AllowsAdminRole()
+    {
+        var service = new DocumentAccessControlService();
+        var context = new DocumentExecutionContext
+        {
+            UserId = "admin-key",
+            UserName = "admin-key",
+            Roles = ["Admin"]
+        };
+
+        service.EnsureCanGenerate(context);
     }
 
     [Fact]
@@ -82,6 +129,11 @@ public class DocumentSecurityTests
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
             new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
+
+    private sealed class StaticHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; }
     }
 
     private static string Base64UrlEncode(byte[] bytes)
