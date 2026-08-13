@@ -184,6 +184,36 @@ public sealed class InventorySnapshotContractTests
         Assert.DoesNotContain("coalesce(curve_confidence, 0)", commandText, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact(DisplayName = "Forecast snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task ForecastHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("forecast_7d", typeof(decimal)),
+            ("forecast_14d", typeof(decimal)),
+            ("forecast_28d", typeof(decimal)),
+            ("probability_of_oos_in_7d", typeof(decimal)),
+            ("overstock_risk", typeof(decimal)),
+            ("confidence_score", typeof(decimal)),
+            ("explanation", typeof(string)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Forecast snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+    }
+
     private static RecordingAnalyticsDbContext CreateContext(DataTable table) => new(new RecordingDbConnection(table));
 
     private static DataTable CreateTable(params (string Name, Type Type)[] columns)
@@ -324,10 +354,106 @@ public sealed class InventorySnapshotContractTests
 
         protected override DbParameter CreateDbParameter() => new NpgsqlParameter();
 
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => _table.CreateDataReader();
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) =>
+            new EofStrictDbDataReader(_table.CreateDataReader());
 
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
-            Task.FromResult<DbDataReader>(_table.CreateDataReader());
+            Task.FromResult<DbDataReader>(new EofStrictDbDataReader(_table.CreateDataReader()));
+    }
+
+    /// <summary>
+    /// DataTable readers keep the last row after EOF; Npgsql does not. Guard GetInt64 so post-loop count reads fail.
+    /// </summary>
+    private sealed class EofStrictDbDataReader : DbDataReader
+    {
+        private readonly DbDataReader _inner;
+        private bool _onRow;
+
+        public EofStrictDbDataReader(DbDataReader inner)
+        {
+            _inner = inner;
+        }
+
+        public override int Depth => _inner.Depth;
+        public override int FieldCount => _inner.FieldCount;
+        public override bool HasRows => _inner.HasRows;
+        public override bool IsClosed => _inner.IsClosed;
+        public override int RecordsAffected => _inner.RecordsAffected;
+        public override object this[int ordinal] => OnRowValue(() => _inner[ordinal]);
+        public override object this[string name] => OnRowValue(() => _inner[name]);
+
+        public override bool Read()
+        {
+            _onRow = _inner.Read();
+            return _onRow;
+        }
+
+        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            _onRow = await _inner.ReadAsync(cancellationToken);
+            return _onRow;
+        }
+
+        public override long GetInt64(int ordinal)
+        {
+            EnsureOnRow();
+            return _inner.GetInt64(ordinal);
+        }
+
+        public override bool GetBoolean(int ordinal) => OnRowValue(() => _inner.GetBoolean(ordinal));
+        public override byte GetByte(int ordinal) => OnRowValue(() => _inner.GetByte(ordinal));
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) =>
+            OnRowValue(() => _inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length));
+        public override char GetChar(int ordinal) => OnRowValue(() => _inner.GetChar(ordinal));
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) =>
+            OnRowValue(() => _inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length));
+        public override string GetDataTypeName(int ordinal) => _inner.GetDataTypeName(ordinal);
+        public override DateTime GetDateTime(int ordinal) => OnRowValue(() => _inner.GetDateTime(ordinal));
+        public override decimal GetDecimal(int ordinal) => OnRowValue(() => _inner.GetDecimal(ordinal));
+        public override double GetDouble(int ordinal) => OnRowValue(() => _inner.GetDouble(ordinal));
+        public override IEnumerator GetEnumerator() => _inner.GetEnumerator();
+        public override Type GetFieldType(int ordinal) => _inner.GetFieldType(ordinal);
+        public override float GetFloat(int ordinal) => OnRowValue(() => _inner.GetFloat(ordinal));
+        public override Guid GetGuid(int ordinal) => OnRowValue(() => _inner.GetGuid(ordinal));
+        public override short GetInt16(int ordinal) => OnRowValue(() => _inner.GetInt16(ordinal));
+        public override int GetInt32(int ordinal) => OnRowValue(() => _inner.GetInt32(ordinal));
+        public override string GetName(int ordinal) => _inner.GetName(ordinal);
+        public override int GetOrdinal(string name) => _inner.GetOrdinal(name);
+        public override string GetString(int ordinal) => OnRowValue(() => _inner.GetString(ordinal));
+        public override object GetValue(int ordinal) => OnRowValue(() => _inner.GetValue(ordinal));
+        public override int GetValues(object[] values) => OnRowValue(() => _inner.GetValues(values));
+        public override bool IsDBNull(int ordinal) => OnRowValue(() => _inner.IsDBNull(ordinal));
+        public override bool NextResult() => _inner.NextResult();
+
+        public override void Close()
+        {
+            _onRow = false;
+            _inner.Close();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        private void EnsureOnRow()
+        {
+            if (!_onRow)
+            {
+                throw new InvalidOperationException("No data exists for the row/column.");
+            }
+        }
+
+        private T OnRowValue<T>(Func<T> read)
+        {
+            EnsureOnRow();
+            return read();
+        }
     }
 
     private sealed class RecordingDbParameterCollection : DbParameterCollection
