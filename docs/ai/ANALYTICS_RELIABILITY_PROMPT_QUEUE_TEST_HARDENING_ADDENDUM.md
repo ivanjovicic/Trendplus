@@ -143,7 +143,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~DecisionBo
 - Run log: .ai/runs/2026-08-13-RQ100-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 31f338f735da9558c3064a07837a8c9e9cc8a2ab
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> df1cfd61a9bda335bafb7c448aaae1b8b0e7ddde; work SHA 31f338f735da9558c3064a07837a8c9e9cc8a2ab is an ancestor
 - Missed: BOOST expected impact is locked at Decision Board mapping; the PDC in-memory seed still produces REPLENISH + FIX_DATA, not a BOOST row
 - Follow-up: `RQ101`
 - Residual risk: none known for the named PDC/board impact contract
