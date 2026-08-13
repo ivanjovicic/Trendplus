@@ -72,6 +72,20 @@ Next:
 - ...
 ```
 
+Ako se prompt status u queue fajlu zatvara kao `DONE`, `PARTIAL`, `BLOCKED` ili `NEEDS_EVIDENCE_SYNC`, completion note mora eksplicitno da sadrži:
+
+```text
+Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
+```
+
+ili:
+
+```text
+Run log: fallback <reason>
+```
+
+Za completion note-ove sa datumom `2026-08-13` ili novijim koristi strogi šablon iz `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
+
 U izveštaju napiši:
 ```text
 Promenjeno:

@@ -402,6 +402,7 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 - Date: 2026-08-13
 - Status: DONE
+- Completion: 90%
 - Changed files:
   - `Api.Tests/AnalyticsReportsContractTests.cs`
   - `Api.Tests/CachedAnalyticsFailureContractTests.cs`
@@ -413,7 +414,6 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
   - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
   - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
   - `MASTER_ROADMAP.md`
-- Implementation SHA: `469acbf3177b7ed09e078638e23eb3151e802740`
 - Contract/runtime behavior changed: no
 - Checks run:
   - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
@@ -421,7 +421,13 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 - Checks not run:
   - full `Api.Tests` suite
   - GitHub Actions (owned by BCI05)
-- Remaining risk: current-main GHA is still the previous red build until BCI05 records a new run that includes `469acbf`
+- Run log: `.ai/runs/2026-08-13-BCI09-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `469acbf3177b7ed09e078638e23eb3151e802740`
+- Main verification: historical BCI09 close recorded `469acbf3177b7ed09e078638e23eb3151e802740` as the landed main SHA at closure time; current main may advance later.
+- Missed: green GitHub Actions proof is not part of BCI09 and remains owned by `BCI05`
+- Follow-up: `BCI05`
+- Residual risk: current-main GHA is still the previous red build until BCI05 records a new run that includes `469acbf`
 - Next: `BCI05`
 - Prompt defect / scope repair: stub implementation landed in `469acbf` on local main during this session; this note records verification and queue closure rather than a second code change
 
