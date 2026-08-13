@@ -268,6 +268,6 @@ The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
 - Analytics correctness: none READY. Owner-promoted WAITING pack is `RQ100` first, then `RQ101`-`RQ104`, in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
 - Do not promote `RQ100` until the owner explicitly chooses it; QDB exclusive work is currently clear (`QDB06` still needs migration approval).
-- Premium UI: `P-UI-19` READY (chrome regression). `P-UI-20` WAITING is grouped ErrorState/EmptyState/TrustHeader proof on stats pages.
+- Premium UI: none READY (`P-UI-20` DONE = grouped ErrorState/EmptyState/TrustHeader proof on stats pages).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

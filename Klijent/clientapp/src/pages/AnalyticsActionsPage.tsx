@@ -1132,12 +1132,12 @@ export default function AnalyticsActionsPage() {
         />
       </div>
 
-      {error && <div className="aaq-error">{error}</div>}
+      {error ? <div className="aaq-error" role="alert">{error}</div> : null}
       {writeAccessMessage ? <div className="aaq-error" role="status">{writeAccessMessage}</div> : null}
 
       {loading ? (
         <div className="aaq-loading">Učitavanje...</div>
-      ) : items.length === 0 ? (
+      ) : error ? null : items.length === 0 ? (
         <div className="aaq-empty">
           <p>Nema akcija.</p>
           <p className="aaq-empty-hint">

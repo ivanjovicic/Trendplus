@@ -29,7 +29,7 @@ Current queue truth on 2026-08-13:
 - `P-UI-17` is DONE: PreNivelacijaPriorityPage chrome modernization.
 - `P-UI-18` is DONE: SupplierFootwearAnalyticsPage chrome modernization.
 - `P-UI-19` is DONE: grouped React chrome regression hardening.
-- `P-UI-20` is READY: grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages. Do not invent business truth.
+- `P-UI-20` is DONE: grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages. No remaining P-UI READY.
 
 The queue remains authoritative for exact task status and acceptance.
 

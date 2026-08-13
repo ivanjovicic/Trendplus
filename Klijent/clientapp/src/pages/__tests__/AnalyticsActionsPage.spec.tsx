@@ -830,6 +830,19 @@ describe("AnalyticsActionsPage", () => {
     expect(await screen.findByText("Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.")).toBeInTheDocument();
   });
 
+  it("list error hides empty and fake measured impact", async () => {
+    getAnalyticsActionsMock.mockRejectedValue(new Error("list down"));
+    getAnalyticsActionOutcomeSummaryMock.mockRejectedValue(new Error("summary down"));
+    getAnalyticsActionCountsMock.mockRejectedValue(new Error("counts down"));
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("list down");
+    expect(screen.queryByText("Nema akcija.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Izmereni uticaj")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dopuni artikal A")).not.toBeInTheDocument();
+  });
+
   it("reloads summary only for source, priority and data quality filters", async () => {
     render(<AnalyticsActionsPage />);
 

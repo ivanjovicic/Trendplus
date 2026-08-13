@@ -472,6 +472,46 @@ describe("ColorSalesStatsPage", () => {
     expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
   });
 
+  it("error hides KPI zeros when color sales fails", async () => {
+    vi.mocked(getColorSalesStats).mockRejectedValue(new Error("backend down"));
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Boje trenutno nisu dostupne/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
+  });
+
+  it("empty is not error when color sales returns no rows", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [],
+      dataQuality: {
+        missingCostRevenue: 0,
+        missingCostRevenueSharePct: 0,
+        estimatedCostRevenue: 0,
+        estimatedCostRevenueSharePct: 0,
+        unknownColorRevenue: 0,
+        unknownColorRevenueSharePct: 0,
+        revenueWithNivelacijaSplit: 0,
+        revenueWithNivelacijaSplitSharePct: 0,
+      },
+    }));
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("mounts the real AnalyticsTrustHeader, not a mocked placeholder", async () => {
+    renderPage();
+
+    expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
+    await screen.findByText("Crna");
+  });
+
   it("does not invent decision score 0 or reliability from margin coverage", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       colors: [

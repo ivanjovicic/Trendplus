@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-20`
+Current READY prompt: none (`P-UI-20` DONE)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -25,7 +25,7 @@ Use with:
 | P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 | P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
-| P-UI-20 | READY | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
+| P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 
 ---
 
@@ -864,14 +864,14 @@ npm run build
 
 ## P-UI-20 - Grouped analytics trust-state proof
 
-Status: READY
+Status: DONE
 Ready after: P-UI-19 DONE
 Priority: P2
 Type: frontend/tests
 Feature family: analytics-ui-trust-state-proof
 Parallel-safe: yes
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-20-<agent>.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `test(ui): lock error empty and trust states on stats pages`
 
 ### Problem
@@ -943,3 +943,38 @@ npm run check:analytics-guardrails
 - `P-UI-19` DONE or owner explicitly serializes this first
 - Path-safe vs `RQ104`; P-UI-20 owns stats-page trust chrome, RQ104 owns decision-page backend-field display
 - Do not displace a higher-priority exclusive READY task; `QDB06` is WAITING on owner migration approval
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: grouped error-without-KPI-zeros, empty-is-not-error, and real TrustHeader proofs landed for Daily/Color/ShoeType/Supplier/Actions; Actions list error no longer looks like empty
+- Changed files:
+  - Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx
+  - Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx
+  - docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - .ai/runs/2026-08-13-P-UI-20-evidence.md
+- Contract/runtime behavior changed:
+  - Analytics Actions list failure is `role=alert` and does not render the "Nema akcija" empty copy
+- Checks run:
+  - `cd Klijent/clientapp && npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx src/pages/__tests__/ColorSalesStatsPage.spec.tsx src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx` - pass (46)
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+- Checks not run:
+  - npm run build - typecheck already ran via guardrails
+  - full Vitest suite - pre-existing failures outside this prompt
+- Run log: .ai/runs/2026-08-13-P-UI-20-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending origin/main push
+- Missed: empty success on Color/Shoe/Supplier can still show KPI totals beside EmptyState
+- Follow-up: none; no remaining P-UI READY
+- Residual risk: Actions list error uses a local alert banner instead of shared AnalyticsErrorState
+- Next: owner may promote RQ100 or approve QDB06
+- Prompt defect / scope repair: dedicated `analyticsTrustStateProof.spec.tsx` added because premium/Actions specs mock TrustHeader
