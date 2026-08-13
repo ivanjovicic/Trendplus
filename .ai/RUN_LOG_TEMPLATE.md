@@ -44,6 +44,17 @@ Use each exactly once:
 - `What was missed` records unfinished scope, known omissions, or `- none known`.
 - `Risks` records residual correctness, CI, security, tenant, perf or delivery risk, or `- none known`.
 - `Next` records the next prompt/task/follow-up owner, or `- none`.
+- The owning queue completion note should reference this file through an exact `Run log:` line.
+
+## Queue completion-note backlink
+
+When a queue prompt is moved to `DONE`, `PARTIAL`, `BLOCKED`, or `NEEDS_EVIDENCE_SYNC`, the queue completion note should include:
+
+```text
+Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
+```
+
+If a durable run log could not be created safely, the queue completion note must still include the same `Run log:` key with `fallback <reason>`.
 
 ## Minimal example
 

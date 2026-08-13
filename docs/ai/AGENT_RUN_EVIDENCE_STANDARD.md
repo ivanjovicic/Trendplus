@@ -1,6 +1,6 @@
 # Trendplus Agent Run Evidence Standard
 
-Date: 2026-07-01
+Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
 Status: completion evidence standard
 Adapted from: MathLearning prompt evidence template and AgentsWatch run evidence rules
@@ -59,18 +59,28 @@ Rules:
 
 ## Minimum completion note
 
-Use this format in queue notes or run log:
+Use this format in queue notes:
 
 ```text
-Done <percent>% (YYYY-MM-DD, commit <short-sha> on main)
-Model: <provider/model or unknown-not-exposed> via <client/tool>
-Validation: <exact command(s), test files, or skipped reason>
-Run log: .ai/runs/<yyyy-mm-dd>-<prompt-id>-evidence.md OR fallback <reason>
-Waste: <categories or none recorded>
-Missed: <what was not completed or none known>
-Follow-up: <prompt ID or none>
-Residual risk: <one sentence or none known>
+### Completion note
+
+- Date: YYYY-MM-DD
+- Status: DONE | PARTIAL | BLOCKED | NEEDS_EVIDENCE_SYNC
+- Completion: <percent or concise score note>
+- Changed files:
+- Checks run:
+- Checks not run:
+- Run log: .ai/runs/<yyyy-mm-dd>-<prompt-id>-evidence.md OR fallback <reason>
+- Delivery mode: direct-main | pull-request | connector-write | none
+- Main commit SHA: <full sha or pending>
+- Main verification: <exact git/GitHub evidence or skipped reason>
+- Missed: <what was not completed or none known>
+- Follow-up: <prompt ID or none>
+- Residual risk: <one sentence or none known>
+- Prompt defect / scope repair: <note or none>
 ```
+
+For any completion note dated `2026-08-13` or later, the `Run log:` line is mandatory even when the value is a fallback reason rather than a durable file.
 
 Use `NEEDS_EVIDENCE_SYNC` instead of `DONE` when commit SHA, validation, missed work, model/client metadata or run evidence cannot be verified.
 

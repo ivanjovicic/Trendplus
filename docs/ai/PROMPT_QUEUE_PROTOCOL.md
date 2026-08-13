@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-11
+Updated: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -194,16 +194,29 @@ A completed prompt records at minimum:
 
 - Date:
 - Status:
+- Completion:
 - Changed files:
 - Contract/runtime behavior changed:
 - Checks run:
 - Checks not run:
-- Remaining risk:
+- Run log:
+- Delivery mode:
+- Main commit SHA:
+- Main verification:
+- Missed:
+- Follow-up:
+- Residual risk:
 - Next:
 - Prompt defect / scope repair:
 ```
 
 Production/live smoke may be marked complete only from real current deployment evidence.
+
+Strict template rule:
+
+- For any completion note dated `2026-08-13` or later, the queue note must include the exact `Run log:` field and point to the durable `.ai/runs/...` evidence file or an explicit `fallback <reason>`.
+- The same dated completion note must also include `Delivery mode:`, `Main commit SHA:` and `Main verification:` so the queue note can be reconciled to shipped `main`, not just a local commit.
+- Older completion notes remain historical evidence and are not retroactively normalized unless a task is being actively refreshed.
 
 For every non-trivial file-changing prompt run, also create a durable run log in `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md` using `.ai/RUN_LOG_TEMPLATE.md`, or record an explicit fallback reason when a durable log could not be created safely.
 
