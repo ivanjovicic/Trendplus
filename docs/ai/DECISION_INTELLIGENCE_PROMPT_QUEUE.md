@@ -42,7 +42,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | `RL06` | docs/contracts only - measurement-only statistics |
+| RL - Recommendation Learning | none (`RL06` DONE) | no remaining RL READY |
 
 
 
@@ -1021,7 +1021,7 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 ## RL06 - Implement measurement-only recommendation statistics projection runtime slice
 
-Status: READY
+Status: DONE
 
 Priority: future / planning
 
@@ -1084,6 +1084,22 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 
 - RL05 DONE.
 
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 92%
+- Changed files: Application/Analytics/RecommendationMeasurementStatisticsProjection.cs; Application/Analytics/RecommendationMeasurementStatisticsDto.cs; Infrastructure/Services/Analytics/AnalyticsActionItemService.cs; Api.Tests/RecommendationMeasurementStatisticsProjectionTests.cs; Api.Tests/AnalyticsActionItemServiceTests.cs; docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; MASTER_ROADMAP.md; .ai/runs/2026-08-13-RL06-evidence.md
+- Checks run: dotnet test Api.Tests --filter RecommendationMeasurementStatisticsProjectionTests|GetOutcomeSummaryAsync_ReturnsNullRates|GetOutcomeSummaryAsync_UsesClosedDenominator pass (8); node scripts/check-prompt-queues.mjs --self-test pass; node scripts/check-prompt-queues.mjs pass; node scripts/check-planning-architecture.mjs --self-test pass; node scripts/check-planning-architecture.mjs fail (DEX/RL/DT 0 READY); node scripts/check-agent-instructions.mjs pass; git diff --check pass
+- Checks not run: npm / frontend - backend-only; full dotnet test suite - focused proof only
+- Run log: .ai/runs/2026-08-13-RL06-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: frontend does not render measurementStatistics; existing totals keep prior closed/open meaning; no calibration
+- Follow-up: none
+- Residual risk: planning validator will report 0 READY for DEX/RL/DT after this close. Duplicate RL08 is marked OBSOLETE.
+- Prompt defect / scope repair: queue header said docs/contracts only while the prompt body was a backend runtime slice; executed the prompt body because higher-priority execution programs had no READY and DEX/DT already shipped similar runtime slices. Marked RL08 OBSOLETE as a duplicate of RL06.
 
 ## RL05 - Prepare measurement-only recommendation statistics projection contract
 
@@ -1381,7 +1397,7 @@ Lifecycle capture and learning eligibility exist, but there was still no frozen 
 
 
 
-Status: WAITING
+Status: OBSOLETE
 
 
 

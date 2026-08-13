@@ -222,6 +222,12 @@ The stable read-only summary endpoint is:
 
 - `GET /api/analytics/actions/outcomes/summary`
 
+The RL06 runtime helper that projects lifecycle and measured-evidence counts from existing action rows is:
+
+- `Application/Analytics/RecommendationMeasurementStatisticsProjection.cs`
+
+That helper is attached to the outcome summary as `measurementStatistics`. Existing `totals` keep their prior closed/open meaning; measurement-only funnel counts live on the new object so acceptance and execution cannot be mistaken for success.
+
 ## Acceptance rules
 
 - acceptance is not counted as success

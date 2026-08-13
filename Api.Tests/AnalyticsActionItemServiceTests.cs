@@ -472,6 +472,10 @@ public class AnalyticsActionItemServiceTests
         Assert.Equal("Nema akcija za izabrane filtere.", summary.Meta.EmptyReason);
         Assert.Equal(0, summary.Totals.MeasuredCount);
         Assert.Equal(0, summary.Totals.MeasuredOutcomeCount);
+        Assert.NotNull(summary.MeasurementStatistics);
+        Assert.True(summary.MeasurementStatistics.Success);
+        Assert.Equal("no_rows", summary.MeasurementStatistics.EmptyReason);
+        Assert.Null(summary.MeasurementStatistics.PositiveOutcomeRate);
     }
 
     [Fact]
@@ -632,6 +636,12 @@ public class AnalyticsActionItemServiceTests
         Assert.Null(summary.Totals.PositiveOutcomeRate);
         Assert.Null(summary.Totals.NegativeOutcomeRate);
         Assert.Null(summary.Impact.RealizationRatio);
+        Assert.NotNull(summary.MeasurementStatistics);
+        Assert.True(summary.MeasurementStatistics.Success);
+        Assert.Equal(1, summary.MeasurementStatistics.IssuedCount);
+        Assert.Equal(0, summary.MeasurementStatistics.ExecutedCount);
+        Assert.Null(summary.MeasurementStatistics.PositiveOutcomeRate);
+        Assert.Null(summary.MeasurementStatistics.EmptyReason);
     }
 
     [Fact]
