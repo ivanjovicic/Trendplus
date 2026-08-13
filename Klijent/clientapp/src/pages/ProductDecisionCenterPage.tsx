@@ -435,6 +435,26 @@ function timelineEmptyReasonLabel(value: string | null | undefined): string {
   return "Istorija odluke je prazna.";
 }
 
+function timelineEventTypeLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "recommendation_issued") return "Preporuka izdata";
+  if (normalized === "action_accepted") return "Akcija prihvaćena";
+  if (normalized === "action_rejected") return "Akcija odbijena";
+  if (normalized === "action_executed") return "Akcija izvršena";
+  if (normalized === "outcome_measured") return "Ishod izmeren";
+  if (normalized === "outcome_not_measured") return "Ishod nije izmeren";
+  return value?.trim() ? value.replaceAll("_", " ") : "Nije dostupno";
+}
+
+function timelineGapReasonLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "no_acceptance_record") return "Nema zapisa o prihvatanju";
+  if (normalized === "no_execution_proof") return "Nema dokaza o izvršenju";
+  if (normalized === "no_measurement_evidence") return "Nema merenog dokaza";
+  if (normalized === "legacy_partial_history") return "Nepotpun stariji istorijat";
+  return value?.trim() ? value.replaceAll("_", " ") : "Nije dostupno";
+}
+
 function primaryDriverLabel(value: string): string {
   return DRIVER_LABELS[value] ?? value;
 }
@@ -1627,11 +1647,11 @@ export default function ProductDecisionCenterPage() {
                                                 </span>
                                               </div>
                                               <small>
-                                                Događaji: {item.events.map((eventItem) => eventItem.eventType).join(" → ") || "nema"}
+                                                Događaji: {item.events.map((eventItem) => timelineEventTypeLabel(eventItem.eventType)).join(" → ") || "nema"}
                                               </small>
                                               {item.gaps.length ? (
                                                 <small className="recommendation-warning-summary">
-                                                  Praznine: {item.gaps.map((gap) => gap.gapReason).join(", ")}
+                                                  Praznine: {item.gaps.map((gap) => timelineGapReasonLabel(gap.gapReason)).join(", ")}
                                                 </small>
                                               ) : null}
                                             </li>

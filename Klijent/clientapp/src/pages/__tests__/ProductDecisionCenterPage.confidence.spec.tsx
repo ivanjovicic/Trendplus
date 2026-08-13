@@ -339,6 +339,68 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/Nema događaja za izabrani entitet ili porodicu/i);
   });
 
+  it("shows human-readable timeline events instead of raw backend codes", async () => {
+    getProductDecisionTimelineMock.mockResolvedValue({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-27",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: REPLENISH · Period: 2026-04-27 – 2026-05-26",
+      },
+      emptyReason: null,
+      timelines: [
+        {
+          timelineId: "timeline-101",
+          actionId: 11,
+          sourceRecommendationId: "product:101:REPLENISH:20260528:20260626",
+          correlationId: "corr-101",
+          sourceType: "product",
+          sourceKey: "product:101",
+          recommendationType: "REPLENISH",
+          projectionState: "issued",
+          issuedAtUtc: "2026-05-28T12:00:00Z",
+          currentStatus: "new",
+          currentOutcomeStatus: "pending",
+          events: [
+            {
+              eventType: "recommendation_issued",
+              stage: "recommendation",
+              occurredAtUtc: "2026-05-28T12:00:00Z",
+            },
+          ],
+          gaps: [
+            {
+              stage: "workflow",
+              gapReason: "no_acceptance_record",
+              message: "No acceptance note was captured.",
+            },
+          ],
+        },
+      ],
+      matchedActionCount: 1,
+      matchedEventCount: 1,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "warning" },
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    const timelinePanel = await screen.findByTestId("decision-timeline-panel");
+    await waitFor(() => {
+      expect(timelinePanel).toHaveTextContent(/Preporuka izdata/i);
+    });
+    expect(timelinePanel).toHaveTextContent(/Nema zapisa o prihvatanju/i);
+    expect(timelinePanel).not.toHaveTextContent("recommendation_issued");
+    expect(timelinePanel).not.toHaveTextContent("no_acceptance_record");
+    expect(timelinePanel).not.toHaveTextContent("No acceptance note was captured.");
+  });
+
   it("renders strong recommendations with explicit estimated impact wording", async () => {
     render(<ProductDecisionCenterPage />);
 
