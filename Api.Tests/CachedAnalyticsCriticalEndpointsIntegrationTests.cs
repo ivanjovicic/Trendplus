@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -126,12 +127,15 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
 
         Assert.Equal(0, root.GetProperty("totalSku").GetInt32());
         Assert.Equal(0, root.GetProperty("totalOnHand").GetInt32());
+        Assert.Equal(0, root.GetProperty("lowStockCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
         Assert.Equal(0m, root.GetProperty("estimatedInventoryValue").GetDecimal());
 
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());
         Assert.Equal("no_inventory_data", meta.GetProperty("emptyReason").GetString());
         Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
     }
 
     [Fact]
@@ -281,9 +285,11 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                 services.RemoveAll<ITrendplusDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp =>
                     sp.GetRequiredService<TrendplusDbContext>());
             });

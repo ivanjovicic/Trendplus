@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; post-BCI inventory foundations `RQ96`-`RQ99` remain WAITING)
-Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (READY after `RQ100` DONE)
+Current READY prompt: none in this addendum (`RQ89`/`RQ90`/`RQ99` DONE; post-BCI inventory foundations `RQ96`-`RQ98` remain WAITING)
+Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -31,7 +31,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ96 | WAITING | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
 | RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
-| RQ99 | WAITING | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
+| RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
 
 ---
 
@@ -605,8 +605,7 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 
 ## RQ99 - Inventory signal total-count reader-position regression
 
-Status: WAITING
-Ready after: owner promotes an inventory signal backend hardening pass, or one of the inventory signal handlers is next touched for runtime work
+Status: DONE
 Priority: P2
 Type: backend-tests/test-infrastructure
 Feature family: inventory-signal-reader-regression
@@ -665,6 +664,25 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 
 - This is a hardening follow-up, not a release blocker if the 2026-08-13 hotfix is already present and focused contract tests pass.
 - Promote only after higher-priority BCI/STAB/QDB work is not being displaced.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: EOF-strict reader already existed; RQ101 added empty-result TotalMatchingCount proofs for forecast, rebalance, alerts and size-curve and ran them
+- Changed files: see RQ101 completion note
+- Contract/runtime behavior changed: no
+- Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventorySnapshotContractTests"` as part of the RQ101 combined filter - pass
+- Checks not run: `--configuration Release` named in this prompt; Debug configuration was used by the RQ101 command
+- Run log: .ai/runs/2026-08-13-RQ101-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: none known for the four-family empty EOF proofs
+- Follow-up: none
+- Residual risk: none known for reader-position on these handlers
+- Prompt defect / scope repair: closed from RQ101 because that prompt required the EOF-strict assertions to be present and run
+- Next: `RQ102`
 
 ---
 

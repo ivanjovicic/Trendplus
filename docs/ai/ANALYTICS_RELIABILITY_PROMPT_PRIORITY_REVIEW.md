@@ -28,7 +28,7 @@ Primary goals:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89 + RQ96-RQ98
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88 + RQ90
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (`RQ101` READY; `RQ100` DONE)
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (`RQ102` READY; `RQ100`/`RQ101` DONE)
 - `docs/ai/ANALYTICS_TEST_STRATEGY.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
@@ -57,7 +57,7 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 5. Post-BCI inventory-foundation prompts `RQ96`-`RQ98` are queued as WAITING backlog; they must not be promoted ahead of green GHA evidence.
-6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is `RQ101` after `RQ100` DONE. Follow-up pack `RQ102`-`RQ104` stays WAITING. `RQ105` is WAITING operational-fallback honesty. Do not revive `RQ89`/`RQ90` as READY.
+6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is `RQ102` after `RQ101` DONE. Follow-up pack `RQ103`-`RQ104` stays WAITING. `RQ105` is WAITING operational-fallback honesty. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 
@@ -266,8 +266,8 @@ The queues are strong enough for agent execution, but current routing is not the
 The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
 
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: `RQ101` READY after `RQ100` DONE. Follow-up pack `RQ102`-`RQ104` stays WAITING in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
-- Do not revive `RQ100`; QDB exclusive work remains clear (`QDB06` still needs migration approval).
+- Analytics correctness: `RQ102` READY after `RQ101` DONE. Follow-up pack `RQ103`-`RQ104` stays WAITING in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not revive `RQ100`/`RQ101`; QDB exclusive work remains clear (`QDB06` still needs migration approval).
 - Premium UI: `P-UI-21` READY (empty-success without KPI totals / Actions ErrorState).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

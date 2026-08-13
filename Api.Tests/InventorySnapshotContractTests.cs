@@ -214,6 +214,158 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal("Forecast snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
     }
 
+    [Fact(DisplayName = "Rebalance snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task RebalanceHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("from_store_id", typeof(int)),
+            ("to_store_id", typeof(int)),
+            ("sku_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("recommended_qty", typeof(int)),
+            ("urgency", typeof(string)),
+            ("confidence", typeof(decimal)),
+            ("reason", typeof(string)),
+            ("expected_saved_sales", typeof(decimal)),
+            ("expected_capital_release", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetRebalanceSuggestionsHandler(context, NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Rebalance snapshot postoji, ali nema predloga za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Alert snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task AlertsHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Size curve snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task SizeCurveHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("actual_size_share", typeof(decimal)),
+            ("ideal_size_share", typeof(decimal)),
+            ("deviation_pct", typeof(decimal)),
+            ("is_core_size_missing", typeof(bool)),
+            ("is_dead_size", typeof(bool)),
+            ("broken_run", typeof(bool)),
+            ("curve_confidence", typeof(decimal)),
+            ("reason_codes", typeof(string)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Size curve snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Alert null severity stays null and is not coerced to info")]
+    public async Task AlertsHandler_NullSeverityIsNotInfo()
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add("inventory_missing", 101, 7, "42", DBNull.Value, "Alert", "Message", DBNull.Value, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Null(item.Severity);
+        Assert.NotEqual("info", item.Severity);
+        Assert.Null(item.ConfidenceScore);
+        Assert.NotEqual(0m, item.ConfidenceScore);
+        Assert.Equal("Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Size-curve null boolean stays null with missing evidence, not healthy false")]
+    public async Task SizeCurveHandler_NullBooleanIsNotHealthyFalse()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("actual_size_share", typeof(decimal)),
+            ("ideal_size_share", typeof(decimal)),
+            ("deviation_pct", typeof(decimal)),
+            ("is_core_size_missing", typeof(bool)),
+            ("is_dead_size", typeof(bool)),
+            ("broken_run", typeof(bool)),
+            ("curve_confidence", typeof(decimal)),
+            ("reason_codes", typeof(string)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(101, 7, "42", DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, "", 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Null(item.ActualSizeShare);
+        Assert.Null(item.IsCoreSizeMissing);
+        Assert.Null(item.IsDeadSize);
+        Assert.Null(item.BrokenRun);
+        Assert.Null(item.CurveConfidence);
+        Assert.NotEqual(false, item.IsDeadSize);
+        Assert.NotEqual(0m, item.CurveConfidence);
+        Assert.Equal("missing", item.EvidenceStatus);
+        Assert.Equal("Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+    }
+
     private static RecordingAnalyticsDbContext CreateContext(DataTable table) => new(new RecordingDbConnection(table));
 
     private static DataTable CreateTable(params (string Name, Type Type)[] columns)

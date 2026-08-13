@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +59,10 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal("insufficient_data", item.GetProperty("dataQualityStatus").GetString());
         Assert.Equal(35m, item.GetProperty("signalConfidencePct").GetDecimal());
         Assert.Contains("stock_cover_insufficient_data", item.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Equal(0, item.GetProperty("kolicina").GetInt32());
+        Assert.Equal(0m, item.GetProperty("estimatedValue").GetDecimal());
+        Assert.NotEqual("good", item.GetProperty("dataQualityStatus").GetString());
+        Assert.NotEqual(InventorySignalCalculator.StockCoverHealthy, item.GetProperty("stockCoverStatus").GetString());
     }
 
     [Fact]
@@ -381,15 +386,19 @@ public sealed class InventoryListEndpointIntegrationTests
                 services.RemoveAll<IAnalyticsDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
 
                 services.AddDbContextFactory<AnalyticsDbContext>(options =>
-                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<AnalyticsDbContext>(options =>
-                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             });
         }

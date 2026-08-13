@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ101`
-Status: owner-promoted READY pack; `RQ100` DONE
+Current READY prompt: `RQ102`
+Status: owner-promoted READY pack; `RQ100`/`RQ101` DONE
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -20,7 +20,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ101` is the current READY prompt. Promote `RQ102` only after `RQ101` is DONE.
+2. `RQ102` is the current READY prompt. Promote `RQ103` only after `RQ102` is DONE.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -30,8 +30,8 @@ Use with:
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | RQ100 | DONE | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
-| RQ101 | READY | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
-| RQ102 | WAITING | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
+| RQ101 | DONE | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
+| RQ102 | READY | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | WAITING | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
 | RQ104 | WAITING | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
 
@@ -154,7 +154,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~DecisionBo
 
 ## RQ101 - Inventory null-evidence and decision-count contract tests
 
-Status: READY
+Status: DONE
 Ready after: `RQ100` DONE
 Priority: P1
 Type: backend-tests/integration
@@ -222,12 +222,52 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventoryS
 - `RQ100` preferred predecessor
 - Do not promote ahead of `RQ96` if this task starts rewriting snapshot SQL
 
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: locked empty inventory list/balance meta, null signal evidence vs trusted zero/info/false, and EOF-strict TotalMatchingCount for all four signal families
+- Changed files:
+  - Api.Tests/InventorySnapshotContractTests.cs
+  - Api.Tests/InventoryListEndpointIntegrationTests.cs
+  - Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-13-RQ101-evidence.md
+- Contract/runtime behavior changed: no; tests and in-memory test-host warning suppression only
+- Checks run:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventorySnapshotContractTests|FullyQualifiedName~InventoryListEndpointIntegrationTests|FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests"` - pass (28)
+  - first combined run failed on EF `ManyServiceProvidersCreatedWarning` harness noise; retry after factory `ConfigureWarnings` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - frontend / npm - out of scope
+  - full `dotnet test` solution - not required
+- Run log: .ai/runs/2026-08-13-RQ101-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: none known for the named inventory empty/null/EOF contract
+- Follow-up: `RQ102`
+- Residual risk: other WebApplicationFactory hosts can still trip the EF provider-count warning if run together without the same suppression
+- Prompt defect / scope repair: combined named filter required ignoring `ManyServiceProvidersCreatedWarning` in the two in-scope WAF factories
+- Next: `RQ102` - Sales period, empty-success and scope-isolation tests
+
 ---
 
 ## RQ102 - Sales period, empty-success and scope-isolation tests
 
-Status: WAITING
-Ready after: `RQ101` DONE, or owner promotes this first when sales endpoints are already open
+Status: READY
+Ready after: `RQ101` DONE
 Priority: P1
 Type: backend-tests/integration
 Feature family: analytics-sales-period-empty-scope
