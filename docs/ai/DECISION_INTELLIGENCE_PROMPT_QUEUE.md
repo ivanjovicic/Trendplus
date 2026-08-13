@@ -72,7 +72,7 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ## DEX17 - Implement Supplier Decision Hub explainability snapshot runtime slice
 
-Status: READY
+Status: DONE
 
 Priority: future / planning
 
@@ -82,7 +82,7 @@ Parallel-safe: yes, backend and surface wiring
 
 Owner: Codex
 
-Local lock: not yet created
+Local lock: removed after DONE
 
 ### Problem
 
@@ -132,6 +132,39 @@ Supplier Decision Hub already exposes backend-led trust, fallback, confidence an
 
 - DEX12 DONE.
 - DEX11 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 96%
+- Changed files:
+  - Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx
+  - Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx
+  - Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx
+  - Klijent/clientapp/src/services/supplierDecisionReport.ts
+  - Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts
+  - Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx
+  - Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - .ai/runs/2026-08-13-DEX17-evidence.md
+- Checks run:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp; npm run test -- --run src/services/__tests__/supplierDecisionReport.spec.ts src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx src/pages/__tests__/SupplierDecisionHubPage.spec.tsx` - pass
+- Checks not run:
+  - `dotnet build` - not run; no backend files changed.
+  - `dotnet test` - not run; no backend files changed.
+  - `npm run check:analytics-guardrails` - not run; targeted UI/test validation covered the touched surfaces.
+  - `npm run build` - not run; no build-only regression signal surfaced in the exercised surfaces.
+- Run log: .ai/runs/2026-08-13-DEX17-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: ffc76554f0d9b1fe3c6f7fdc8eb8edbf4b9ecf19
+- Main verification: `git rev-parse origin/main -> ffc76554f0d9b1fe3c6f7fdc8eb8edbf4b9ecf19`
+- Missed: full repository build was intentionally skipped in favor of targeted validation.
+- Follow-up: none
+- Residual risk: snapshot semantics still depend on payload metadata staying in sync with the backend contract.
+- Prompt defect / scope repair: DEX17 now renders the shared supplier explainability snapshot in hub and report surfaces with backend-led metadata reuse.
 
 ## DEX16 - Implement Inventory Detail and Insight explainability snapshot runtime slice
 
