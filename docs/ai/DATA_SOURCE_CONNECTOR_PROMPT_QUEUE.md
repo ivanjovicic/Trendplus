@@ -292,7 +292,7 @@ Implement the first non-Access provider against the provider-neutral contract.
 - Run log: .ai/runs/2026-08-13-QDB03-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
-- Main verification: skipped; user did not request commit or push
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: Docker Testcontainers was not executed in this session; named discovery API is QDB04
 - Follow-up: QDB04
 - Residual risk: CI without LocalDB must use Docker Testcontainers or SQLSERVER_TEST_CONNECTION_STRING; ApplicationIntent=ReadOnly is requested but standalone LocalDB ignores Always On routing
@@ -336,7 +336,7 @@ Allow an authorized administrator to select a named source, test connectivity an
 - Run log: .ai/runs/2026-08-13-QDB04-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
-- Main verification: skipped; user did not request commit or push
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: no admin UI; Access named profiles are not discovery-backed yet; connection strings stay env/config-only
 - Follow-up: QDB05
 - Residual risk: operators must set DataSources__Sources__{name}__ConnectionString via environment; test-connection uses the existing strict rate-limit policy
@@ -381,7 +381,7 @@ Map source streams to canonical Trendplus entities and preview a small sample wi
 - Run log: .ai/runs/2026-08-13-QDB05-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
-- Main verification: skipped; user did not request commit or push
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: mapping is request-scoped only; QDB06 durable checkpoints need an owner-approved migration
 - Follow-up: QDB06 after owner approves a database migration
 - Residual risk: preview returns a bounded mapped sample to authorized admins; rows are not logged or stored; full Api rebuild is currently blocked by unrelated InventoryEndpoints dirty-tree errors

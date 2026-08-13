@@ -1217,7 +1217,7 @@ The app still exposes logs and error feeds as anonymous reads even though they c
 - Run log: .ai/runs/2026-08-13-STAB11-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
-- Main verification: skipped; user did not request commit or push
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: legacy Trendplus2/Program.cs still maps public /errors and /api/logs if that host is ever used
 - Follow-up: STAB12
 - Residual risk: operators must supply X-Admin-Key to view logs; duplicate Trendplus2 host is not gated
@@ -1303,7 +1303,7 @@ Document/export generation and ownership decisions still trust caller-provided `
 - Run log: .ai/runs/2026-08-13-STAB12-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
-- Main verification: skipped; user did not request commit or push
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: none known for the named generate/list/export privilege
 - Follow-up: none; QDB05 is DONE and QDB06 remains WAITING on owner migration approval
 - Residual risk: operators must supply X-Admin-Key for export/generate; inventory schedule create/update still records user names from anonymous context
