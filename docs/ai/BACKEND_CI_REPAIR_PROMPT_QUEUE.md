@@ -231,6 +231,24 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 - Current `origin/main` `ed0d752` is backend-equivalent
 - Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`
 - Next: `BCI06`
+- Completion: 100%
+- Changed files:
+  - `.github/workflows/analytics-tests.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Checks run:
+  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - pass
+- Checks not run:
+  - `none`
+- Run log: `.ai/runs/2026-08-13-BCI05-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+- Main verification: `git rev-parse origin/main -> f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+- Missed: `none known`
+- Follow-up: `BCI06`
+- Residual risk: `none known`
 
 ---
 
