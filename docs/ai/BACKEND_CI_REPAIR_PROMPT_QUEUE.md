@@ -7,11 +7,11 @@ Current READY prompt: none
 
 ## Current diagnosis
 
-Live READY is `BCI05` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical; do not resurrect them.
+Live READY is `none` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which is DONE.
 
-The bootstrap blocker is fixed. Backend workflow restore/build now succeed against `Api.Tests/Api.Tests.csproj`, and the suite reaches real assertions.
+The bootstrap blocker is fixed. Backend workflow restore/build/test now succeed against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
 
-BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step on current backend-equivalent `main`. `BCI09` restored `Api.Tests` compilation after the cache-footprint interface change. Next is `BCI05` GHA proof.
+BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. `BCI06` mixed-solution Windows proof is DONE. This program has no remaining READY prompt.
 
 Canonical GHA proof that bootstrap is unblocked:
 
@@ -81,7 +81,7 @@ Three additional observations must not be confused with the root cause:
 
 ## BCI01 - Restore and build the backend project graph instead of the mixed solution
 
-Status: PARTIAL
+Status: DONE
 Priority: P0
 Type: CI/workflow
 Feature family: backend-ci-bootstrap
@@ -219,6 +219,18 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 - Next:
   - `BCI02` READY
   - `BCI04` already DONE with triage + follow-up prompts
+
+### Completion note (2026-08-13)
+
+- Date: 2026-08-13
+- Agent: cursor
+- Status: DONE
+- Closing GHA:
+  - run `31674533356` / job `94366108914` on `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+  - restore=success, build=success, test=success, coverage-summary=success, artifact=`9171046754`
+- Current `origin/main` `ed0d752` is backend-equivalent
+- Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`
+- Next: `BCI06`
 
 ---
 
