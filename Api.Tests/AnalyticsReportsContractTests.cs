@@ -815,6 +815,9 @@ public sealed class AnalyticsReportsContractTests
         public bool IsRedisAvailable => false;
         public bool IsRedisEnabled => false;
 
+        public CacheFootprintSnapshot GetFootprintSnapshot()
+            => new("disabled", false, false, 0);
+
         public void SetRedisEnabled(bool enabled)
         {
         }

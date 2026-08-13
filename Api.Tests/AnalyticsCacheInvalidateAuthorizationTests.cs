@@ -166,6 +166,9 @@ public sealed class AnalyticsCacheInvalidateAuthorizationTests
         public bool IsRedisAvailable { get; set; }
         public bool IsRedisEnabled { get; set; }
 
+        public CacheFootprintSnapshot GetFootprintSnapshot()
+            => new("disabled", false, false, 0);
+
         public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
             => Task.FromResult<T?>(null);
 
