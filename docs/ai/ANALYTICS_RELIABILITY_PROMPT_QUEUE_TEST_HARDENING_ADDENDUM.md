@@ -592,7 +592,7 @@ npm run check:analytics-guardrails
   - full `npm run build` - named Vitest + guardrails/typecheck already run
 - Run log: .ai/runs/2026-08-13-RQ104-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 94c87dcb87c11add6437de5f541bfeb5db281c2a
 - Main verification: pending push to origin/main
 - Missed: none known for the named display-contract and error-without-KPI proofs
 - Follow-up: `RQ105`
