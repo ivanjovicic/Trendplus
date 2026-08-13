@@ -366,8 +366,8 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~CachedAnal
   - full `dotnet test` solution - not required
 - Run log: .ai/runs/2026-08-13-RQ102-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 54b317c1589c634372c02d41205894a58e1cedc7
+- Main verification: pending push to origin/main
 - Missed: shoe/supplier live-DB empty/isolation proofs remain env-gated; sales-summary still uses inclusive `<= toDate` midnight (no RQ13/RQ26 rewrite; adjacent windows were asserted on that contract); previous-period helper stays a local function in AllEndpoints
 - Follow-up: `RQ103`
 - Residual risk: frontend Daily Sales TypeScript types do not yet declare `meta`; extra JSON field is ignored until `RQ104`/`P-UI-21`
