@@ -972,7 +972,7 @@ npm run check:analytics-guardrails
 - Run log: .ai/runs/2026-08-13-P-UI-20-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: acc8943e5b91f2b4a97c7f947b81648406bd0f53
-- Main verification: pending origin/main push
+- Main verification: git rev-parse origin/main -> 405d27b46f054dad94ba150ff33fe21cfc8e5ea5; work SHA acc8943e5b91f2b4a97c7f947b81648406bd0f53 is an ancestor
 - Missed: empty success on Color/Shoe/Supplier can still show KPI totals beside EmptyState
 - Follow-up: none; no remaining P-UI READY
 - Residual risk: Actions list error uses a local alert banner instead of shared AnalyticsErrorState
