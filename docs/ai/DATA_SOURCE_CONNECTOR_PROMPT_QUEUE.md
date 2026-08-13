@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: none
+Current READY prompt: `QDB03`
 
 ## Global routing
 
@@ -247,7 +247,7 @@ Expected new area:
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
-Status: WAITING
+Status: READY
 Ready after: `QDB02` is `DONE` and backend CI executes real tests without an open BCI `PARTIAL`/`BLOCKED` gate (`BCI01`/`BCI05`)
 Priority: P1
 Type: backend/integration tests

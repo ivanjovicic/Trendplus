@@ -50,12 +50,12 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 
 The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
 
-1. `RQ89`–`RQ95`, `BCI08`, and `BCI09` are DONE.
-2. `BCI05` is READY: local `Api.Tests` Release build is restored on `469acbf`. Capture green GHA on a commit that includes that stub fix.
-3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
-4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
+1. `RQ89`–`RQ95`, `BCI08`, `BCI09`, `BCI05`, and `BCI01` are DONE.
+2. Green GHA run `31674533356` / job `94366108914` on `f1f5a17` closed the backend suite gate.
+3. Remaining RQ WAITING prompts stay owner-gated; they are not auto-promoted.
+4. If a later backend commit turns `analytics-tests` red, create/reuse one focused prompt; do not weaken tests.
 
-Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
+Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`, `.ai/runs/2026-08-13-BCI05-evidence.md`
 
 ## Global execution lanes
 

@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI05`
+Current READY prompt: `BCI06`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -14,14 +14,15 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 |---|---|---|
 | BCI08 | DONE | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
 | BCI09 | DONE | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
-| BCI05 | READY | Re-run the complete backend suite and prove GitHub Actions restore/build/test/coverage/artifact behavior after BCI09 |
-| BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
+| BCI05 | DONE | Green GHA restore/build/test/coverage/artifact on `f1f5a17` after BCI09 |
+| BCI01 | DONE | Backend workflow restore/build/test step green on current backend-equivalent main |
+| BCI06 | READY | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: READY
+Status: DONE
 Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE; re-entry after `BCI09` DONE
 Priority: P0
 Type: CI/evidence/tests
@@ -199,6 +200,21 @@ Do not change application runtime behavior in this prompt. If a new product/test
 - BCI02 green-run coverage/artifact proof now exists on `31598948469`; the later red run still attributes the primary failure to build rather than coverage/artifacts
 - `BCI01` remains PARTIAL
 - Next: `BCI09`, then re-enter this prompt
+
+### Notes (re-entry after BCI09 — 2026-08-13)
+
+- Date: 2026-08-13
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`
+- Run log: `.ai/runs/2026-08-13-BCI05-evidence.md`
+- Green GHA on `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`:
+  - run `31674533356` / job `94366108914`
+  - restore=success, build=success, test=success, coverage-summary=success, artifact upload=success (`9171046754`)
+  - no failed-test annotations
+  - exact TRX totals unknown without authenticated artifact download
+- Current `origin/main` `ead9f2a` is backend-equivalent (empty Api/Api.Tests/Application/Domain/Infrastructure/workflow diff)
+- Local Windows `CI=true` suite: 829 total / 797 passed / 32 failed; all 32 are Testcontainers Docker-not-running, not a product family
+- `BCI01` DONE
+- Next: `BCI06`
 
 ### Dependencies
 
@@ -429,7 +445,7 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 ## BCI06 - Verify Windows and Visual Studio mixed-solution compatibility
 
-Status: WAITING
+Status: READY
 Ready after: `BCI01` DONE, or earlier only when a Windows/Visual Studio-capable environment is explicitly available without delaying P0 backend assertion repair
 Priority: P2
 Type: build-system/evidence
