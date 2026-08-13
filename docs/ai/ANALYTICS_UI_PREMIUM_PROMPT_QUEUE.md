@@ -971,7 +971,7 @@ npm run check:analytics-guardrails
   - full Vitest suite - pre-existing failures outside this prompt
 - Run log: .ai/runs/2026-08-13-P-UI-20-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: acc8943e5b91f2b4a97c7f947b81648406bd0f53
 - Main verification: pending origin/main push
 - Missed: empty success on Color/Shoe/Supplier can still show KPI totals beside EmptyState
 - Follow-up: none; no remaining P-UI READY
