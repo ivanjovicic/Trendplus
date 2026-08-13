@@ -124,6 +124,16 @@ const CONFIDENCE_LEVEL_LABELS: Record<string, string> = {
   insufficient_data: "Nedovoljno podataka",
 };
 
+const RECOMMENDATION_TYPE_LABELS: Record<string, string> = {
+  BOOST: "Pojačaj",
+  REPLENISH: "Dopuni",
+  WATCH: "Prati",
+  MARKDOWN: "Snizi cenu",
+  DO_NOT_ORDER: "Ne naručivati",
+  FIX_DATA: "Proveriti podatke",
+  INSUFFICIENT_DATA: "Nedovoljno podataka",
+};
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -314,6 +324,12 @@ function formatFreshnessLabel(value: string | null | undefined): string {
 function formatConfidenceLevelLabel(value: string | null | undefined): string {
   if (!value) return "Nije evidentirano";
   return CONFIDENCE_LEVEL_LABELS[value] ?? value;
+}
+
+function formatRecommendationTypeLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "Nije evidentirano";
+  return RECOMMENDATION_TYPE_LABELS[normalized.toUpperCase()] ?? normalized.replaceAll("_", " ");
 }
 
 function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
@@ -1135,7 +1151,7 @@ export default function AnalyticsActionsPage() {
                             <div className="td-desc">{item.description}</div>
                           )}
                         </td>
-                        <td className="td-rec">{item.recommendationStatus ?? "-"}</td>
+                        <td className="td-rec">{formatRecommendationTypeLabel(item.recommendationStatus)}</td>
                         <td>{formatTimestamp(item.dueAtUtc)}</td>
                         <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "-")}</td>
                         <td className="td-num">{fmtRsd(item.expectedImpactRsd, 0, "-")}</td>
@@ -1252,7 +1268,7 @@ export default function AnalyticsActionsPage() {
                                 <h3 className="aaq-detail-card-title">Kontekst preporuke</h3>
                                 <div className="aaq-details-grid">
                                   <div><strong>Verzija ledger šeme:</strong> {getLedgerSchemaLabel(detailsItem.ledgerSnapshot)}</div>
-                                  <div><strong>Tip preporuke:</strong> {creationSnapshot?.recommendationType?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Tip preporuke:</strong> {formatRecommendationTypeLabel(creationSnapshot?.recommendationType)}</div>
                                   <div><strong>Nivo pouzdanosti:</strong> {formatConfidenceLevelLabel(creationSnapshot?.confidenceLevel)}</div>
                                   <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(creationSnapshot?.inputFreshnessStatus)}</div>
                                   <div><strong>Prozor uticaja:</strong> {formatWindowDays(creationSnapshot?.impactWindowDays, "Nije evidentirano")}</div>

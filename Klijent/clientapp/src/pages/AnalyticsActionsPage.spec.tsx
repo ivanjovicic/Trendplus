@@ -261,7 +261,8 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
     expect(screen.getByText("Akcije u uzorku")).toBeInTheDocument();
     expect(screen.getAllByText("Zalihe").length).toBeGreaterThan(0);
-    expect(screen.getByText("REPLENISH")).toBeInTheDocument();
+    expect(screen.getByText("Dopuni")).toBeInTheDocument();
+    expect(screen.queryByText("REPLENISH")).not.toBeInTheDocument();
     expect(screen.getAllByText("Upozorenje").length).toBeGreaterThan(0);
     expect(screen.getByText("Čeka proveru")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj: Još nije izmereno/i)).toBeInTheDocument();
@@ -301,6 +302,8 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText(/Ishod je još u toku/i)).toBeInTheDocument();
     expect(screen.getByText("Ledger uticaja")).toBeInTheDocument();
     expect(screen.getByText("Prihvatio menadžer.")).toBeInTheDocument();
+    expect(screen.getByText(/Tip preporuke:/i).parentElement).toHaveTextContent(/Dopuni/i);
+    expect(screen.queryByText(/^replenish$/i)).not.toBeInTheDocument();
   });
 
   it("updates action status directly for accept action", async () => {
