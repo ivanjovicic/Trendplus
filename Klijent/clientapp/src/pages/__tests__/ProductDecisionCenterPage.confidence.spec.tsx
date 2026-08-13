@@ -335,7 +335,8 @@ describe("ProductDecisionCenterPage confidence contract", () => {
         recommendationType: "REPLENISH",
       }),
     );
-    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: REPLENISH/i);
+    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/Porodica: REPLENISH/i);
     expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/Nema događaja za izabrani entitet ili porodicu/i);
   });
 
@@ -399,6 +400,8 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(timelinePanel).not.toHaveTextContent("recommendation_issued");
     expect(timelinePanel).not.toHaveTextContent("no_acceptance_record");
     expect(timelinePanel).not.toHaveTextContent("No acceptance note was captured.");
+    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/REPLENISH/);
   });
 
   it("renders strong recommendations with explicit estimated impact wording", async () => {

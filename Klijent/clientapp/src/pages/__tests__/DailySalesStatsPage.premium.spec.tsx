@@ -125,4 +125,21 @@ describe("DailySalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
   });
+
+  it("shows shared error state instead of KPI zeros when daily sales fails", async () => {
+    vi.mocked(getDailySalesStats).mockRejectedValue(new Error("backend down"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("daily-sales-stats-data-table")).not.toBeInTheDocument();
+  });
 });

@@ -19,6 +19,7 @@ import AnalyticsControlBar, {
 } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
@@ -1299,15 +1300,24 @@ export default function DailySalesStatsPage() {
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {error ? <div className="daily-sales-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Dnevna prodaja trenutno nije dostupna"
+          message={error}
+          onRetry={() => {
+            void load(activeFilters);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {loading ? (
         <div className="daily-sales-message loading">
-          <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />
+          <UltraSpinner size="sm" label="Učitavam dnevne podatke" className="daily-sales-inline-spinner" />
           <span>Učitavam dnevne podatke...</span>
         </div>
       ) : null}
 
-      {!loading && data ? (
+      {!loading && !error && data ? (
         <>
           <section className="daily-sales-kpis">
             <article>

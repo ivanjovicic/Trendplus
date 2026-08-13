@@ -228,4 +228,31 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });
+
+  it("does not treat missing reliability as a weak Nisko signal", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({
+            reliabilityPct: null as unknown as number,
+            recommendation: {
+              status: "review",
+              label: "Pregled",
+              summary: "Reliability signal nije dostupan.",
+              confidencePct: 61,
+              reliabilityPct: null as unknown as number,
+              dataQualityStatus: "warning",
+              reasonCodes: ["missing_cost"],
+            },
+          }),
+        ],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+  });
 });

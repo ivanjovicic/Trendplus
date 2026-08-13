@@ -193,6 +193,20 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByRole("button", { name: /Reset filtera/i })).toBeInTheDocument();
   });
 
+  it("shows backend reliability as a percent instead of local Visoko/Srednje/Nisko bands", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("28%")).toBeInTheDocument();
+    expect(screen.getByText("61%")).toBeInTheDocument();
+    expect(screen.queryByText("Visoko")).not.toBeInTheDocument();
+    expect(screen.queryByText("Srednje")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
       makeResponse([

@@ -19,6 +19,7 @@ import {
   fmtNumber,
   fmtPct,
   fmtRsd,
+  formatDate,
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
@@ -40,6 +41,7 @@ import type {
   ProductDecisionWhyPanel,
   ProductDecisionRecommendationStatus,
   ProductDecisionTimelineFilterResponse,
+  DecisionTimelineFilterScope,
   StoreOption,
   SupplierFilterOption,
 } from "../types/analytics";
@@ -422,9 +424,22 @@ function lifecycleStateLabel(value: string | null | undefined): string {
 }
 
 function recommendationTypeLabel(value: string | null | undefined): string {
-  const normalized = (value ?? "").trim();
+  const normalized = (value ?? "").trim().toUpperCase();
   if (!normalized) return "Nije dostupno";
-  return RECOMMENDATION_LABELS[normalized as ProductDecisionRecommendationStatus] ?? normalized;
+  return RECOMMENDATION_LABELS[normalized as ProductDecisionRecommendationStatus] ?? value!.trim();
+}
+
+function timelineScopeLabel(
+  scope: DecisionTimelineFilterScope | null | undefined,
+  fallbackSourceKey: string,
+  fallbackFrom: string,
+  fallbackTo: string,
+): string {
+  const sourceKey = scope?.sourceKey?.trim() || fallbackSourceKey;
+  const family = recommendationTypeLabel(scope?.recommendationType);
+  const from = formatDate(scope?.periodFromUtc ?? fallbackFrom, fallbackFrom);
+  const to = formatDate(scope?.periodToUtc ?? fallbackTo, fallbackTo);
+  return `Entitet: ${sourceKey} · Porodica: ${family} · Period: ${from} – ${to}`;
 }
 
 function timelineEmptyReasonLabel(value: string | null | undefined): string {
@@ -1630,8 +1645,12 @@ export default function ProductDecisionCenterPage() {
                                   return (
                                     <>
                                       <small data-testid="decision-timeline-scope">
-                                        {timeline.scope?.scopeExplanation
-                                          ?? `Entitet: ${row.sourceKey ?? `product:${row.productId}`} · Period: ${fromDate} – ${toDate}`}
+                                        {timelineScopeLabel(
+                                          timeline.scope,
+                                          row.sourceKey ?? `product:${row.productId}`,
+                                          fromDate,
+                                          toDate,
+                                        )}
                                       </small>
                                       {timeline.emptyReason ? (
                                         <small data-testid="decision-timeline-empty">
