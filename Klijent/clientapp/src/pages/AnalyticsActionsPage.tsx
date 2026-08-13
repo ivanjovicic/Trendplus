@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   getAnalyticsActionById,
@@ -538,20 +538,31 @@ export default function AnalyticsActionsPage() {
   const [outcomeModalBusy, setOutcomeModalBusy] = useState(false);
   const [outcomeModalError, setOutcomeModalError] = useState<string | null>(null);
   const [writeAccessMessage, setWriteAccessMessage] = useState<string | null>(null);
+  const itemsRequestSeqRef = useRef(0);
+  const outcomeSummaryRequestSeqRef = useRef(0);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
+    const requestSeq = ++itemsRequestSeqRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await getAnalyticsActions(f);
+      if (itemsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setItems(res.items);
       setTotalCount(res.totalCount);
       setPage(res.page);
       setTotalPages(res.totalPages);
     } catch (e) {
+      if (itemsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setError(e instanceof Error ? e.message : "Greška pri učitavanju");
     } finally {
-      setLoading(false);
+      if (itemsRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -565,6 +576,7 @@ export default function AnalyticsActionsPage() {
   }, []);
 
   const loadOutcomeSummary = useCallback(async (f: AnalyticsActionFilters) => {
+    const requestSeq = ++outcomeSummaryRequestSeqRef.current;
     setOutcomeSummaryLoading(true);
     setOutcomeSummaryError(null);
     try {
@@ -573,12 +585,20 @@ export default function AnalyticsActionsPage() {
         priority: f.priority,
         dataQualityStatus: f.dataQualityStatus,
       });
+      if (outcomeSummaryRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setOutcomeSummary(summary);
     } catch (e) {
+      if (outcomeSummaryRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setOutcomeSummary(null);
       setOutcomeSummaryError(e instanceof Error ? e.message : "Sažetak ishoda trenutno nije dostupan.");
     } finally {
-      setOutcomeSummaryLoading(false);
+      if (outcomeSummaryRequestSeqRef.current === requestSeq) {
+        setOutcomeSummaryLoading(false);
+      }
     }
   }, []);
 

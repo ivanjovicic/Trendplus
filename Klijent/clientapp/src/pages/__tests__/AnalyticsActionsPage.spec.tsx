@@ -101,6 +101,74 @@ function createActionItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+function buildResponse(rows: Array<Record<string, unknown>>, totalCount = rows.length) {
+  return {
+    items: rows,
+    totalCount,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+  };
+}
+
+function buildOutcomeSummaryResponse(createdCount: number, measuredImpactSampleCount: number) {
+  return {
+    meta: {
+      success: true,
+      periodMode: "created",
+      createdFrom: "2026-03-17T00:00:00Z",
+      createdTo: "2026-06-15T00:00:00Z",
+      resolvedFrom: null,
+      resolvedTo: null,
+      measuredFrom: null,
+      measuredTo: null,
+      generatedAtUtc: "2026-06-15T00:00:00Z",
+      sampleSize: createdCount,
+      measuredSampleSize: measuredImpactSampleCount,
+      warnings: [],
+      emptyReason: null,
+    },
+    totals: {
+      createdCount,
+      closedCount: 0,
+      openCount: 0,
+      measuredCount: 0,
+      measuredOutcomeCount: 0,
+      pendingOutcomeCount: 0,
+      successCount: 0,
+      neutralCount: 0,
+      negativeCount: 0,
+      notMeasuredCount: 0,
+      outcomeCoverageRate: null,
+      positiveOutcomeRate: null,
+      negativeOutcomeRate: null,
+      closedOutcomeCoverageRate: null,
+      measuredPositiveOutcomeRate: null,
+      measuredNegativeOutcomeRate: null,
+    },
+    impact: {
+      expectedImpactRsd: null,
+      measuredImpactRsd: null,
+      realizationRatio: null,
+      measuredImpactSampleCount,
+    },
+    bySourceType: [],
+    byPriority: [],
+    byOutcomeStatus: [],
+    byDataQuality: [],
+    byConfidenceBucket: [],
+    byReliabilityBucket: [],
+  };
+}
+
 describe("AnalyticsActionsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -793,6 +861,39 @@ describe("AnalyticsActionsPage", () => {
         priority: "P2",
         dataQualityStatus: "warning",
       });
+    });
+  });
+
+  it("keeps the newest summary results when filter changes overlap", async () => {
+    const firstSummary = createDeferred<ReturnType<typeof buildOutcomeSummaryResponse>>();
+    const secondSummary = createDeferred<ReturnType<typeof buildOutcomeSummaryResponse>>();
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    getAnalyticsActionOutcomeSummaryMock
+      .mockImplementationOnce(() => firstSummary.promise)
+      .mockImplementationOnce(() => secondSummary.promise);
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P2" } });
+
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenCalledTimes(3);
+    });
+
+    secondSummary.resolve(buildOutcomeSummaryResponse(321, 321));
+
+    const summaryLabel = await screen.findByText("Akcije u uzorku");
+    const summaryCard = summaryLabel.closest(".aaq-summary-card");
+    expect(summaryCard).not.toBeNull();
+    expect(within(summaryCard as HTMLElement).getByText("321")).toBeInTheDocument();
+
+    firstSummary.resolve(buildOutcomeSummaryResponse(7, 7));
+
+    await waitFor(() => {
+      expect(within(summaryCard as HTMLElement).getByText("321")).toBeInTheDocument();
     });
   });
 
