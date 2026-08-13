@@ -337,4 +337,13 @@ describe("SupplierDecisionHubPage", () => {
     expect(within(table).getByRole("columnheader", { name: /Prihod/i })).toHaveClass("analytics-data-table__numeric");
     expect(within(table).getByText(/100.000/).closest("td")).toHaveClass("analytics-data-table__numeric");
   });
+
+  it("renders the supplier explainability snapshot on the hub", async () => {
+    installFetchMock();
+
+    renderPage();
+
+    expect(await screen.findAllByTestId("supplier-explainability-snapshot")).toHaveLength(1);
+    expect(screen.getByText("Supplier explainability snapshot")).toBeInTheDocument();
+  });
 });

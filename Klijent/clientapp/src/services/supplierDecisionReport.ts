@@ -106,10 +106,15 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const weightedMarkdownDependencyPct = input.totalRevenue > 0
     ? input.rows.reduce((sum, row) => sum + ((row.markdownRevenueShare ?? 0) * row.revenue), 0) / input.totalRevenue
     : 0;
+  const confidenceRows = input.rows.filter((row) => row.confidenceAvailable);
+  const avgConfidencePct = confidenceRows.length > 0
+    ? confidenceRows.reduce((sum, row) => sum + row.normalizedConfidence, 0) / confidenceRows.length
+    : null;
   const reliabilityRows = input.rows.filter((row) => row.reliabilityAvailable);
   const avgReliabilityPct = reliabilityRows.length > 0
     ? reliabilityRows.reduce((sum, row) => sum + row.reliabilityPct, 0) / reliabilityRows.length
     : null;
+  const reasonCodePreview = Array.from(new Set(input.rows.flatMap((row) => row.reasonCodes ?? []).filter((code) => Boolean(String(code).trim())))).slice(0, 8);
   const topRevenueRows = [...input.rows].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   const riskRows = [...input.rows]
     .sort((a, b) => (b.unsoldStockValue + b.deadStockRate * 1000) - (a.unsoldStockValue + a.deadStockRate * 1000))
@@ -135,6 +140,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "", ""),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
     buildSectionRow("KPI", "Zavisnost od nivelacija", fmtPct(weightedMarkdownDependencyPct * 100, 1), "", ""),
+    buildSectionRow("KPI", "Sigurnost signala", avgConfidencePct == null ? "nije dostupno" : fmtPct(avgConfidencePct, 1), "", ""),
     buildSectionRow("KPI", "Pouzdanost signala", avgReliabilityPct == null ? "nije dostupno" : fmtPct(avgReliabilityPct, 1), "", ""),
     buildSectionRow("KPI", "Top 5 udeo", fmtPct(input.top5SharePct, 1), "", ""),
     buildSectionRow(
@@ -345,11 +351,14 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "lastRefreshAtUtc", label: "Poslednje osveženje", value: input.lastRefreshAtUtc ?? trust?.lastRefreshAtUtc ?? null },
     { key: "dataFreshness", label: "Svežina podataka", value: normalizeFreshnessLabel(input.freshnessStatus) },
     { key: "dataQualityStatus", label: "Kvalitet podataka", value: dataQualityStatusLabel(meta?.dataQualityStatus) },
+    { key: "confidencePct", label: "Sigurnost signala", value: avgConfidencePct },
+    { key: "reliabilityPct", label: "Pouzdanost signala", value: avgReliabilityPct },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
     { key: "usedFallback", label: "Korišćen fallback", value: trust?.usedFallback ?? false },
     { key: "fallbackReason", label: "Razlog fallback-a", value: trust?.fallbackReason ?? null },
     { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: trust?.recommendationAllowed ?? false },
+    { key: "reasonCodesPreview", label: "Šifarnici razloga", value: reasonCodePreview.join(" | ") || null },
   ];
 
   return resolveAnalyticsTablePayload({

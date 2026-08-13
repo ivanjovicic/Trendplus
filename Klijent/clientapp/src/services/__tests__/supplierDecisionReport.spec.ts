@@ -91,10 +91,14 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.documentType).toBe("supplier-decision-report");
     expect(payload.rows.some((row) => row.section === "Header" && (row.item === "Dobavljač" || row.item === "Dobavljac"))).toBe(true);
     expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Prihod")).toBe(true);
+    expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Sigurnost signala")).toBe(true);
     expect(payload.rows.some((row) => row.section === "Kvalitet podataka")).toBe(true);
     expect(payload.rows.some((row) => row.section === "supplier_negotiation_pack" && row.item === "Pojačaj saradnju")).toBe(true);
     expect(payload.rows.some((row) => row.section === "Header" && row.item === "Efektivni dataset")).toBe(true);
     expect(payload.metadata.some((item) => item.key === "effectiveDataset" && item.value === "90d")).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "confidencePct" && item.value === 83)).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "reliabilityPct" && item.value === 79)).toBe(true);
+    expect(payload.metadata.some((item) => item.key === "reasonCodesPreview" && String(item.value).includes("high_share"))).toBe(true);
     expect(payload.metadata.some((item) => item.key === "dataFreshness" && String(item.value).toLowerCase().includes("sve"))).toBe(true);
   });
 
