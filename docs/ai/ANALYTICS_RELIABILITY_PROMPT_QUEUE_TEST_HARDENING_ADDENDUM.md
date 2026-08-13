@@ -593,7 +593,7 @@ npm run check:analytics-guardrails
 - Run log: .ai/runs/2026-08-13-RQ104-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 94c87dcb87c11add6437de5f541bfeb5db281c2a
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> a089695d63df6ecf12f21fedd5aac301e75c9873; work SHA 94c87dcb87c11add6437de5f541bfeb5db281c2a is an ancestor
 - Missed: none known for the named display-contract and error-without-KPI proofs
 - Follow-up: `RQ105`
 - Residual risk: other analytics pages can still dump unknown codes via replaceAll("_"," ") if they reuse the old board helper pattern
