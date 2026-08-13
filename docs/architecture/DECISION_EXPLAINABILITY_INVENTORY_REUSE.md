@@ -1,6 +1,6 @@
 # Decision Explainability Inventory Reuse Contract
 
-Status: planning contract for DEX13
+Status: frozen contract for DEX15
 Date: 2026-08-13
 Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Reference contracts: `docs/architecture/DECISION_GRAPH_CONTRACT.md`, `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`, `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
@@ -8,6 +8,16 @@ Reference contracts: `docs/architecture/DECISION_GRAPH_CONTRACT.md`, `docs/archi
 ## Purpose
 
 This contract freezes how inventory decision surfaces reuse the shared DEX vocabulary without inventing local tree, Why or workflow semantics.
+
+## Detail and insight snapshot contract
+
+Inventory detail and insight surfaces use a backend-led snapshot summary rather than a locally invented explanation tree.
+
+- `InventoryItemDetailDto` keeps the item-level facts and history visible; any explanation text on the detail surface must come from backend-led inventory evidence, not from age or quantity heuristics.
+- `InventoryInsightsDto` stays an aggregate view; top items and totals remain factual rollups, while any explanation framing must still come from backend-led signal fields.
+- `InventoryInsightItemDto` may surface the same snapshot vocabulary as the list and workflow surfaces, but it must not invent a local decision score, Why panel or recommendation rule.
+- If a backend-led field is absent, the gap stays explicit instead of being synthesized into a confident or green default.
+- This snapshot is a presentation contract only; it does not authorize a new API shape by itself.
 
 ## Inventory surfaces in scope
 
@@ -34,11 +44,11 @@ This contract freezes how inventory decision surfaces reuse the shared DEX vocab
 | Inventory list rows | Signal confidence, recommendation allowed, status labels and data quality | No frozen inventory Why payload or tree | Partial |
 | Workflow suggestions | Backend-led signal evidence and explicit reason codes | No canonical inventory decision-tree contract | Partial |
 | Decision Board cards | Board can read signal evidence or fall back on workflow status | Fallback-only behavior still needs clear surface language | Partial |
-| Detail/insight surfaces | Inventory facts and rollups | Consumer-facing only, no explained decision snapshot | Consumer only |
+| Detail/insight surfaces | Inventory facts and rollups | Frozen snapshot contract still needs runtime rendering on the detail and insight surfaces | Snapshot contract frozen |
 
 ## Smallest next rollout
 
-The smallest safe inventory rollout is a frozen explainability payload that reuses only backend-led fields:
+The smallest safe inventory rollout is a runtime slice that renders the frozen explainability snapshot using only backend-led fields:
 
 - `SignalConfidencePct`
 - `RecommendationAllowed`
@@ -50,6 +60,8 @@ The smallest safe inventory rollout is a frozen explainability payload that reus
 - `ReasonCodes`
 - `Status`
 - `Note`
+
+The list above is the allowed vocabulary for the snapshot. It should be rendered as evidence-backed inventory context, not as a synthetic tree or locally derived recommendation.
 
 ## Compatibility notes
 

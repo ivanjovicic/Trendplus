@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX15` | docs/contracts only - inventory explainability reuse, detail/insight snapshot next |
+| DEX - Decision Explainability | `DEX16` | runtime slice - inventory detail/insight snapshot wiring |
 
 
 
@@ -70,9 +70,72 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX15 - Prepare Inventory Detail and Insight explainability snapshot contract
+## DEX16 - Implement Inventory Detail and Insight explainability snapshot runtime slice
 
 Status: READY
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+Inventory detail and insight surfaces now have a frozen snapshot contract, but the runtime pages still do not render the backend-led explainability snapshot or its explicit missing-evidence gaps.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- wire the frozen inventory explainability snapshot into the detail and insight surfaces;
+- reuse confidence, recommendation allowance, reason codes and data quality from backend-led inventory fields;
+- preserve empty, error and fallback states and keep missing evidence explicit;
+- no invented local tree or schema migration.
+
+### Read first
+
+- DEX15 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Surface the frozen inventory explainability snapshot on detail and insight views.
+2. Keep confidence, reason codes and recommendation allowance backend-led.
+3. Preserve empty, error and insufficient-data states rather than synthesizing a green default.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- detail/insight surfaces show missing evidence explicitly;
+- no local confidence model or invented tree semantics are added;
+- inventory explainability reuse stays aligned with the backend contract.
+
+### Acceptance
+
+- inventory detail and insight surfaces render the shared snapshot semantics;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX15 DONE.
+
+
+## DEX15 - Prepare Inventory Detail and Insight explainability snapshot contract
+
+Status: DONE
 
 Priority: future / planning
 
@@ -131,6 +194,32 @@ Inventory detail and insight surfaces still expose consumer facts and rollups, b
 ### Dependencies
 
 - DEX14 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Agent: Codex
+- Status: DONE
+- Changed files:
+  - `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+  - `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Remaining risk:
+  - DEX16 runtime wiring still needs to surface the frozen snapshot on detail/insight pages.
+- Next:
+  - `DEX16`
+- Prompt defect / scope repair:
+  - inventory explainability snapshot was frozen for the detail/insight surfaces and the queue router was advanced to the runtime slice.
 
 
 ## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
@@ -195,26 +284,7 @@ The inventory explainability reuse contract is frozen, but the runtime wiring st
 
 - DEX13 DONE.
 
-### Completion note
 
-- Date: 2026-08-13
-- Agent: Codex
-- Status: DONE
-- Changed files:
-  - `Api/Dtos/DecisionBoardDtos.cs`
-  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`
-  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-  - `MASTER_ROADMAP.md`
-- Checks:
-  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DecisionBoardEndpointsTests` - pass
-  - `npm run test -- --run src/pages/ExecutiveDecisionBoardPage.spec.tsx` - pass
-- Remaining risk:
-  - DEX planning pointers still need router sync in the master roadmap.
-- Next:
-  - `RL06`
-- Prompt defect / scope repair:
-  - inventory explainability was already present in the runtime board path; this run fixed the backend DTO ordering, refreshed the DEX inventory spec, and closed the stale READY pointer.
 ## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
 
 Status: DONE
