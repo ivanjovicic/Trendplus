@@ -67,3 +67,21 @@ That payload can be rendered consistently in summary, scorecard and report surfa
 - `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
 - `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
 - `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+
+## Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Changed files:
+  - `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Remaining risk:
+  - This is a docs-only supplier reuse contract; runtime tree or evidence-snapshot behavior still needs a later prompt.
+- Next:
+  - RL05 - Prepare measurement-only recommendation statistics projection contract
