@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB10`
-Current gate verdict: STAB09 completed, but the release gate is still NOT READY and residual authz follow-ups remain before residual-risk acceptance.
+Current READY prompt: `STAB11`
+Current gate verdict: STAB10 completed; access-import operational reads are admin-key gated. Residual logs/docs authz remain before residual-risk acceptance.
 
 ## Goal
 
@@ -1068,14 +1068,14 @@ Backend CI now reaches real tests, but access-import coverage still fails for tw
 
 ## STAB10 - Protect access-import operational reads and cleanup inspection surfaces
 
-Status: READY
+Status: DONE
 Ready after: `STAB09` is `DONE` and the `STAB03` Phase-1 admin-key boundary remains the accepted pilot contract
 Priority: P0
 Type: backend/tests/docs
 Feature family: access-import-operational-read-auth
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/STAB10-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `fix(auth): gate access import operational reads`
 
 ### Problem
@@ -1132,11 +1132,21 @@ Access-import operational reads still expose runtime, batch, job, archive and lo
 - `STAB09` DONE so the access-import test-host contract is already stabilized.
 - If a surface is intentionally left open, record exact evidence and finish `PARTIAL` instead of silently accepting exposure.
 
+### Notes (2026-08-13)
+
+- Date: 2026-08-13
+- Agent: Cursor
+- Status: DONE
+- Gated `runtime-status`, batches/jobs list and detail, logs, cleanup preview, archive list and archive export with `AdminAccessControl.RejectIfUnauthorized`.
+- Same-owner UI repair: Access Import page no longer silently treats 401 as empty batch history; operational reads send `X-Admin-Key` after the existing prompt.
+- Evidence: `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md` section 3.5
+- Next: `STAB11`
+
 ---
 
 ## STAB11 - Protect logs and errors operational read surfaces
 
-Status: WAITING
+Status: READY
 Ready after: `STAB10` is `DONE`
 Priority: P0
 Type: backend/tests/docs

@@ -101,8 +101,8 @@ Evidence: `Infrastructure/Services/Documents/DocumentSecurityServices.cs` (`Docu
 
 | Surface | Current | Phase 1 target | Tests |
 |---|---|---|---|
-| GET runtime-status, batches/jobs, logs | None | **Admin-key** (sensitive ops reads) → STAB04-adjacent / import follow-up | limited |
-| `POST cleanup/preview`, `GET cleanup/archive`, archive export | None | **Admin-key** | none |
+| GET runtime-status, batches/jobs, logs | **Admin-key** (STAB10) | **Admin-key** | `AccessImportAdminAuthorizationTests` |
+| `POST cleanup/preview`, `GET cleanup/archive`, archive export | **Admin-key** (STAB10) | **Admin-key** | `AccessImportAdminAuthorizationTests` |
 | cancel, enqueue, delete, cleanup execute, restore, `/run`, jobs start | `AdminAccessControl` | Keep | `AccessImportAdminAuthorizationTests`, `AccessImportRunEndpointTests` |
 
 ### 3.6 Workers / admin / config / logs / redis

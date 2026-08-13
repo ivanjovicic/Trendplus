@@ -42,4 +42,14 @@ internal static class AdminAccessControl
             ? AdminAccessDecision.Authorized
             : AdminAccessDecision.Forbidden;
     }
+
+    public static IResult? RejectIfUnauthorized(HttpContext context, IConfiguration configuration)
+    {
+        return GetDecision(context, configuration) switch
+        {
+            AdminAccessDecision.MissingCredential => Results.Unauthorized(),
+            AdminAccessDecision.Forbidden => Results.StatusCode(StatusCodes.Status403Forbidden),
+            _ => null
+        };
+    }
 }

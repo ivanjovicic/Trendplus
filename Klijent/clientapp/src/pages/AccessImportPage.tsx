@@ -129,15 +129,28 @@ export default function AccessImportPage() {
     const [restoreScript, setRestoreScript] = useState<string | null>(null);
     const batchPollInFlightRef = useRef(false);
     const lastPollWarningAtRef = useRef(0);
+    const adminKeyRef = useRef<string | null>(null);
 
     // --- data loading ---
 
-    const refreshBatches = async (reason: string) => {
+    const refreshBatches = async (reason: string, adminKey?: string) => {
+        const key = adminKey ?? adminKeyRef.current ?? undefined;
         try {
-            const rows = await getAccessImportBatches(50, reason);
+            const rows = await getAccessImportBatches(50, reason, key);
             setBatches(rows);
+            if (key) {
+                try {
+                    setRuntimeStatus(await getAccessImportRuntimeStatus(key));
+                } catch {
+                    setRuntimeStatus(null);
+                }
+            }
             return rows;
         } catch (error) {
+            if (isUnauthorizedError(error)) {
+                setError("Pregled import istorije zahteva važeći admin key.");
+                return [] as AccessImportBatchDto[];
+            }
             if (!isAccessImportRequestCanceledError(error)) {
                 console.debug("[access-import][batches] refresh failed", {
                     reason,
@@ -162,7 +175,12 @@ export default function AccessImportPage() {
             return null;
         }
 
+        rememberAdminKey(key.trim());
         return key.trim();
+    };
+
+    const rememberAdminKey = (key: string) => {
+        adminKeyRef.current = key;
     };
 
     const isUnauthorizedError = (error: unknown): boolean => {
@@ -208,21 +226,6 @@ export default function AccessImportPage() {
             batch.errorMessage ? [batch.errorMessage] : [],
         );
     };
-
-    useEffect(() => { void refreshBatches("initial-load"); }, []);
-
-    useEffect(() => {
-        const loadRuntimeStatus = async () => {
-            try {
-                const status = await getAccessImportRuntimeStatus();
-                setRuntimeStatus(status);
-            } catch {
-                setRuntimeStatus(null);
-            }
-        };
-
-        void loadRuntimeStatus();
-    }, []);
 
     // Keep "root file" and "manual file" mutually exclusive (reduces confusion).
     useEffect(() => {
@@ -379,10 +382,13 @@ export default function AccessImportPage() {
     };
 
     const handleCleanupPreview = async () => {
+        const adminKey = promptAdminKey("Pregled cleanup ne-Access zapisa");
+        if (!adminKey) return;
+
         setError(null);
         setCleanupLoadingPreview(true);
         try {
-            const data = await previewCleanupNonAccess();
+            const data = await previewCleanupNonAccess(adminKey);
             setCleanupPreview(data);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Greska pri pregledanju podataka za brisanje.");
@@ -1120,7 +1126,14 @@ export default function AccessImportPage() {
                             </label>
                         </div>
                         <div className="accimport-field" style={{ alignItems: "flex-end" }}>
-                            <button className="accimport-btn accimport-btn-secondary" onClick={() => void refreshBatches("manual-refresh")}>
+                            <button
+                                className="accimport-btn accimport-btn-secondary"
+                                onClick={() => {
+                                    const key = adminKeyRef.current ?? promptAdminKey("Pregled import istorije");
+                                    if (!key) return;
+                                    void refreshBatches("manual-refresh", key);
+                                }}
+                            >
                                 Osvezi
                             </button>
                         </div>

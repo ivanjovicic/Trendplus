@@ -184,6 +184,82 @@ public sealed class AccessImportAdminAuthorizationTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    public static TheoryData<string, string> OperationalReadRoutes => new()
+    {
+        { "GET", "/api/access-import/runtime-status" },
+        { "GET", "/api/access-import/batches" },
+        { "GET", "/api/access-import/jobs" },
+        { "GET", "/api/access-import/batches/42" },
+        { "GET", "/api/access-import/jobs/42" },
+        { "GET", "/api/access-import/batches/42/logs" },
+        { "GET", "/api/access-import/jobs/42/logs" },
+        { "GET", "/api/access-import/cleanup/archive" },
+        { "POST", "/api/access-import/cleanup/preview" },
+        { "POST", "/api/access-import/cleanup/archive/export" },
+    };
+
+    [Theory]
+    [MemberData(nameof(OperationalReadRoutes))]
+    public async Task OperationalRead_RejectsRequestWithoutAdminKey(string method, string route)
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        using var response = await host.Client.SendAsync(new HttpRequestMessage(new HttpMethod(method), route));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, host.Service.GetRecentBatchStatusesCallCount);
+    }
+
+    [Theory]
+    [MemberData(nameof(OperationalReadRoutes))]
+    public async Task OperationalRead_RejectsRequestWithWrongAdminKey(string method, string route)
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(new HttpMethod(method), route);
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, host.Service.GetRecentBatchStatusesCallCount);
+    }
+
+    [Fact]
+    public async Task RuntimeStatus_AllowsRequestWithAdminKey()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/access-import/runtime-status");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<RuntimeStatusResponse>();
+        Assert.NotNull(payload);
+        Assert.False(string.IsNullOrWhiteSpace(payload!.Platform));
+    }
+
+    [Fact]
+    public async Task BatchList_AllowsRequestWithAdminKey_AndPreservesEmptyPayload()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/access-import/batches?take=20");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<List<AccessImportBatchDto>>();
+        Assert.NotNull(payload);
+        Assert.Empty(payload);
+        Assert.Equal(1, host.Service.GetRecentBatchStatusesCallCount);
+    }
+
+    private sealed record RuntimeStatusResponse(bool Available, string Platform, string[] MissingDependencies, string? Detail);
+
     private sealed class TestHost : IAsyncDisposable
     {
         private TestHost(WebApplication app, RecordingAccessImportService service, RecordingAccessImportJobQueue queue)
@@ -211,6 +287,8 @@ public sealed class AccessImportAdminAuthorizationTests
             builder.Services.AddMemoryCache();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
                 options.UseInMemoryDatabase($"access-import-admin-auth-{Guid.NewGuid():N}"));
+            builder.Services.AddDbContext<AnalyticsDbContext>(options =>
+                options.UseInMemoryDatabase($"access-import-admin-auth-analytics-{Guid.NewGuid():N}"));
             builder.Services.AddRateLimiter(options =>
             {
                 foreach (var policyName in new[] { "writes", "fixed", "db-heavy" })
@@ -261,6 +339,7 @@ public sealed class AccessImportAdminAuthorizationTests
     {
         public int RequestCancellationCallCount { get; private set; }
         public int DeleteBatchCallCount { get; private set; }
+        public int GetRecentBatchStatusesCallCount { get; private set; }
 
         public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
             => throw new NotSupportedException();
@@ -278,7 +357,10 @@ public sealed class AccessImportAdminAuthorizationTests
             => Task.CompletedTask;
 
         public Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default)
-            => Task.FromResult(new List<AccessImportBatchDto>());
+        {
+            GetRecentBatchStatusesCallCount++;
+            return Task.FromResult(new List<AccessImportBatchDto>());
+        }
 
         public Task<List<AccessImportBatchDto>> GetRecentBatchesAsync(int take = 20, CancellationToken ct = default)
             => Task.FromResult(new List<AccessImportBatchDto>());
