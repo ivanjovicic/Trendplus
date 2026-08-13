@@ -644,6 +644,9 @@ export interface DecisionBoardCard {
   alreadyInAction: boolean;
   alreadyClosed: boolean;
   warningCodes: string[];
+  confidenceSource?: string | null;
+  reasonCodes?: string[] | null;
+  recommendationAllowed?: boolean | null;
   dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
   generatedAtUtc?: string | null;
   priorityScore: number;

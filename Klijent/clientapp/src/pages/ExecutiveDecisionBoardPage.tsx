@@ -4,7 +4,7 @@ import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
-import { buildRowFromInsightItem } from "../components/inventory/inventoryUtils";
+import { buildRowFromInsightItem, stockCoverStatusLabel } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { buildInventorySignalActionSpec } from "./InventoryPage";
 import {
@@ -46,6 +46,7 @@ import type {
 import { getRecommendationMeta } from "../components/supplierDecisionHub/utils";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient } from "../utils/analyticsResponseMeta";
+import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { normalizeRecommendationPct } from "../utils/canonicalRecommendationSemantics";
 import "./ExecutiveDecisionBoardPage.css";
 
@@ -92,6 +93,9 @@ type BoardCard = {
   alreadyClosed: boolean;
   actionStateLabel: string;
   warningCodes: string[];
+  confidenceSource?: string | null;
+  reasonCodes?: string[];
+  recommendationAllowed?: boolean | null;
   dataQualityStatus: string;
   generatedAtUtc?: string | null;
   priorityScore: number;
@@ -299,6 +303,55 @@ function sourceScreenLink(kind: BoardCardKind, extra?: string | null): string {
   if (kind === "supplier") return "/analytics/supplier?tab=overview";
   if (kind === "blocker") return extra?.trim() === "pilot_readiness" ? "/analytics/pilot-readiness" : "/analytics/data-quality";
   return "/analytics/actions";
+}
+
+function formatConfidenceSourceLabel(source?: string | null): string | null {
+  const normalized = (source ?? "").trim().toLowerCase();
+  if (normalized === "signal") return "Signal zaliha";
+  if (normalized === "workflow_status_only") return "Samo status toka";
+  return null;
+}
+
+function isKnownStockCoverStatus(code: string): boolean {
+  switch (code) {
+    case "low_cover":
+    case "low":
+    case "healthy":
+    case "overstock":
+    case "high":
+    case "slow_stock":
+    case "slow":
+    case "no_velocity":
+    case "out_of_stock_risk":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function boardCodeLabel(code: string): string {
+  const normalized = code.trim().toLowerCase();
+  if (isKnownStockCoverStatus(normalized)) {
+    return stockCoverStatusLabel(normalized);
+  }
+  if (normalized === "confidence_workflow_status_only") return "Samo status toka";
+  if (normalized === "inventory_recommendation_blocked") return "Preporuka nije dozvoljena";
+  if (normalized === "stock_below_minimum") return "Ispod minimuma";
+  return code.replaceAll("_", " ");
+}
+
+function uniqueBoardCodes(card: BoardCard): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const code of [...card.warningCodes, ...(card.reasonCodes ?? [])]) {
+    const normalized = code.trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(normalized);
+  }
+  return ordered;
 }
 
 /** Legacy/fallback product cards — trusts PDC expectedImpactRsd only (RQ72 / RQ01 parity). */
@@ -967,6 +1020,9 @@ function mapDecisionBoardCard(
     alreadyClosed: card.alreadyClosed,
     actionStateLabel: openActionStateLabel(actionState),
     warningCodes: card.warningCodes ?? [],
+    confidenceSource: card.confidenceSource ?? null,
+    reasonCodes: card.reasonCodes ?? [],
+    recommendationAllowed: card.recommendationAllowed ?? null,
     dataQualityStatus: card.dataQualityStatus,
     generatedAtUtc: card.generatedAtUtc ?? null,
     priorityScore: card.priorityScore,
@@ -1025,6 +1081,9 @@ function deriveWorstStatus(values: Array<string | null | undefined>): string | n
 }
 
 function renderSectionCard(card: BoardCard) {
+  const confidenceSourceLabel = formatConfidenceSourceLabel(card.confidenceSource);
+  const boardCodes = uniqueBoardCodes(card);
+
   return (
     <article key={card.id} className={`decision-board-card decision-board-card-${card.kind} decision-board-card-${card.confidenceTone}`}>
       <div className="decision-board-card-head">
@@ -1064,13 +1123,25 @@ function renderSectionCard(card: BoardCard) {
           <dt>Sledeći korak</dt>
           <dd>{card.recommendedNextAction}</dd>
         </div>
+        {card.recommendationAllowed != null ? (
+          <div>
+            <dt>Preporuka</dt>
+            <dd>{card.recommendationAllowed ? "Dozvoljena" : "Blokirana"}</dd>
+          </div>
+        ) : null}
+        {confidenceSourceLabel ? (
+          <div>
+            <dt>Izvor pouzdanosti</dt>
+            <dd>{confidenceSourceLabel}</dd>
+          </div>
+        ) : null}
       </dl>
 
-      {card.warningCodes.length > 0 ? (
-        <div className="decision-board-warning-codes" aria-label="Warning codes">
-          {card.warningCodes.slice(0, 4).map((code) => (
+      {boardCodes.length > 0 ? (
+        <div className="decision-board-warning-codes" aria-label="Razlozi i upozorenja">
+          {boardCodes.slice(0, 4).map((code) => (
             <span key={code} className="decision-board-chip">
-              {code.replaceAll("_", " ")}
+              {boardCodeLabel(code)}
             </span>
           ))}
         </div>
@@ -1087,7 +1158,7 @@ function renderSectionCard(card: BoardCard) {
 
       <div className="decision-board-card-footer">
         <span>{card.actionStateLabel}</span>
-        <span>{card.dataQualityStatus}</span>
+        <span>{dataQualityStatusLabel(card.dataQualityStatus)}</span>
         {card.generatedAtUtc ? <span>{formatDateTime(card.generatedAtUtc, "Nije dostupno")}</span> : null}
       </div>
     </article>
@@ -1201,7 +1272,7 @@ export default function ExecutiveDecisionBoardPage() {
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
         methodologyHref="/analytics/actions"
-        methodologyLabel="Kako se cita board"
+        methodologyLabel="Kako se čita board"
         recommendationNote={model.recommendationNote}
         emptyStateReason={model.emptyReason}
         compact
@@ -1238,7 +1309,7 @@ export default function ExecutiveDecisionBoardPage() {
           reasons={[
             "Proveri pilot readiness i kvalitet podataka.",
             "Proveri da li su Product, Supplier i Inventory signali osveženi.",
-            "Ponovo ucitaj board nakon sledeceg refresh ciklusa.",
+            "Ponovo učitaj board nakon sledećeg refresh ciklusa.",
           ]}
           actions={[
             { label: "Ponovo proveri", onClick: () => setReloadTick((value) => value + 1) },
@@ -1253,9 +1324,9 @@ export default function ExecutiveDecisionBoardPage() {
 
       {!loading && !globalError && model.isPartial ? (
         <section className="decision-board-partial-note" role="status">
-          <strong>Delimicni signali su dostupni.</strong>
+          <strong>Delimični signali su dostupni.</strong>
           <span>
-            {analyticsMetaMessage ?? "Board kombinuje samo potvrdene izvore i jasno oznacava blokirane ili zastarele signale."}
+            {analyticsMetaMessage ?? "Board kombinuje samo potvrđene izvore i jasno označava blokirane ili zastarele signale."}
           </span>
         </section>
       ) : null}

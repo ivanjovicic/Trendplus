@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExecutiveDecisionBoardPage from "./ExecutiveDecisionBoardPage";
@@ -168,6 +168,30 @@ function aggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}): Dec
     impactScore: 120000,
   });
 
+  const inventory = card({
+    id: "inventory:sku-201",
+    kind: "inventory",
+    sectionKey: "stockRisk",
+    sourceModule: "Zalihe",
+    sourceType: "inventory",
+    sourceKey: "inventory:sku-201",
+    title: "Dopuni: Crna kožna sandala",
+    summary: "Signal ukazuje na rizičan stock cover.",
+    confidenceLevel: "high",
+    confidenceScore: 84,
+    expectedImpactRsd: 98000,
+    riskIfIgnored: "Moguća je propuštena prodaja i ubrzani stockout.",
+    recommendedNextAction: "Dopuni veličine 38-40 i proveri raspoloživost.",
+    actionHref: "/analytics/inventory",
+    dataQualityStatus: "warning",
+    priorityScore: 205,
+    impactScore: 98000,
+    confidenceSource: "signal",
+    recommendationAllowed: false,
+    reasonCodes: ["slow_stock", "out_of_stock_risk"],
+    warningCodes: ["slow_stock", "out_of_stock_risk"],
+  });
+
   const outcome = card({
     id: "outcome:summary",
     kind: "outcome",
@@ -212,7 +236,7 @@ function aggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}): Dec
     sections: [
       section("urgent", [urgentProduct], { title: "Top 5 urgentnih odluka", sourceLink: "/analytics/products" }),
       section("impact", [urgentProduct], { title: "Najveći očekivani uticaj", sourceLink: "/analytics/products" }),
-      section("stockRisk", [], { title: "Odluke o riziku zaliha", sourceLink: "/analytics/inventory" }),
+      section("stockRisk", [inventory], { title: "Odluke o riziku zaliha", sourceLink: "/analytics/inventory" }),
       section("supplierRisk", [], { title: "Odluke o riziku i prilici kod dobavljača", sourceLink: "/analytics/supplier?tab=overview" }),
       section("blockers", [blocker], { title: "Blokatori kvaliteta podataka", sourceLink: "/analytics/data-quality" }),
       section("actionsDecision", [action], { title: "Akcije koje čekaju odluku", sourceLink: "/analytics/actions" }),
@@ -263,6 +287,7 @@ function renderPage() {
 
 describe("ExecutiveDecisionBoardPage", () => {
   beforeEach(() => {
+    vi.mocked(getDecisionBoardAggregate).mockReset();
     vi.mocked(getDecisionBoardAggregate).mockResolvedValue(aggregate());
   });
 
@@ -279,9 +304,23 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.getAllByText("120.000 RSD").length).toBeGreaterThan(0);
     expect(screen.getByText("Top 5 urgentnih odluka")).toBeInTheDocument();
     expect(screen.getByText("Blokatori kvaliteta podataka")).toBeInTheDocument();
+    expect(screen.getByText("Odluke o riziku zaliha")).toBeInTheDocument();
     expect(screen.getByText("Akcije koje čekaju odluku")).toBeInTheDocument();
     expect(screen.getByText("Akcije koje čekaju ishod")).toBeInTheDocument();
     expect(screen.getByText("Dopuni nabavnu cenu")).toBeInTheDocument();
+    const inventoryTitles = await screen.findAllByText("Dopuni: Crna kožna sandala");
+    expect(inventoryTitles.length).toBeGreaterThan(0);
+    const inventoryCard = inventoryTitles[0].closest("article");
+    expect(inventoryCard).not.toBeNull();
+    expect(within(inventoryCard as HTMLElement).getByText("Preporuka")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Blokirana")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Izvor pouzdanosti")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Signal zaliha")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Oprez")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Spor obrt")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Rizik rasprodaje")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).queryAllByText("slow stock")).toHaveLength(0);
+    expect(within(inventoryCard as HTMLElement).queryAllByText("out of stock risk")).toHaveLength(0);
     expect(screen.getByText("Realizacija očekivanog uticaja")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Otvori izvor" }).some((link) => link.getAttribute("href") === "/analytics/data-quality")).toBe(true);
     expect(screen.getAllByRole("link", { name: "Dodaj u akcije" }).some((link) => link.getAttribute("href") === "/analytics/actions?sourceType=product")).toBe(true);
@@ -292,7 +331,7 @@ describe("ExecutiveDecisionBoardPage", () => {
 
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
-    expect(screen.getByText("Delimicni signali su dostupni.")).toBeInTheDocument();
+    expect(screen.getByText("Delimični signali su dostupni.")).toBeInTheDocument();
     expect(screen.getByText(/Neki izvori su upozoravajući/i)).toBeInTheDocument();
     expect(screen.getAllByText("warning").length).toBeGreaterThan(0);
     expect(screen.getByText("missing cost")).toBeInTheDocument();
@@ -317,7 +356,7 @@ describe("ExecutiveDecisionBoardPage", () => {
 
     const emptyState = await screen.findByTestId("analytics-empty-state");
     expect(emptyState).toHaveTextContent("Nema dovoljno signala za izvršni board");
-    expect(emptyState).toHaveTextContent("Nema dovoljno kvalitetnih izvora za board.");
+    expect(emptyState).toHaveTextContent("Board je uspešno učitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane.");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("empty: Nema dovoljno kvalitetnih izvora za board.");
   });
 

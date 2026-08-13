@@ -505,6 +505,9 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal("low", inventoryCard.ConfidenceLevel);
         Assert.Null(inventoryCard.ConfidenceScore);
         Assert.Equal("warning", inventoryCard.DataQualityStatus);
+        Assert.Equal("workflow_status_only", inventoryCard.ConfidenceSource);
+        Assert.Empty(inventoryCard.ReasonCodes ?? []);
+        Assert.Null(inventoryCard.RecommendationAllowed);
         Assert.Contains("confidence_workflow_status_only", inventoryCard.WarningCodes);
         Assert.NotEqual("medium", inventoryCard.ConfidenceLevel);
     }
@@ -573,6 +576,11 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal(85m, inventoryCard.ConfidenceScore);
         Assert.Equal(85, inventoryCard.ReliabilityPct);
         Assert.Equal("good", inventoryCard.DataQualityStatus);
+        Assert.Equal("signal", inventoryCard.ConfidenceSource);
+        Assert.Equal(["stock_below_minimum"], inventoryCard.ReasonCodes);
+        Assert.True(inventoryCard.RecommendationAllowed);
+        Assert.DoesNotContain("dopuna", inventoryCard.ReasonCodes ?? []);
+        Assert.DoesNotContain("approved", inventoryCard.ReasonCodes ?? []);
         Assert.DoesNotContain("confidence_workflow_status_only", inventoryCard.WarningCodes);
         Assert.Contains("stock_below_minimum", inventoryCard.WarningCodes);
     }

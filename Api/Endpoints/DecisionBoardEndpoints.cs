@@ -450,6 +450,8 @@ public static class DecisionBoardEndpoints
                 var sourceKey = $"inventory:{item.SuggestionKey}";
                 var actionState = ResolveActionState("inventory", sourceKey, actionStates);
                 var confidence = ResolveInventoryBoardConfidence(item);
+                var confidenceSource = item.SignalConfidencePct.HasValue ? "signal" : "workflow_status_only";
+                var reasonCodes = item.SignalReasonCodes ?? [];
                 var priorityScore = item.Priority switch
                 {
                     "critical" => 250m,
@@ -490,7 +492,10 @@ public static class DecisionBoardEndpoints
                         priorityScore,
                         confidence.Level,
                         confidence.DataQualityStatus),
-                    ImpactScore: item.EstimatedValue);
+                    ImpactScore: item.EstimatedValue,
+                    ConfidenceSource: confidenceSource,
+                    ReasonCodes: reasonCodes,
+                    RecommendationAllowed: item.RecommendationAllowed);
             })
             .OrderByDescending(card => card.PriorityScore)
             .Take(10)

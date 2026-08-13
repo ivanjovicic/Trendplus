@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX14` | docs/contracts only - inventory explainability reuse |
+| DEX - Decision Explainability | `DEX15` | docs/contracts only - inventory explainability reuse, detail/insight snapshot next |
 
 
 
@@ -70,9 +70,72 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
+## DEX15 - Prepare Inventory Detail and Insight explainability snapshot contract
 
 Status: READY
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, docs/contracts only
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+Inventory detail and insight surfaces still expose consumer facts and rollups, but the family lacks a frozen explainability snapshot that shows how backend-led DEX vocabulary should appear without a synthetic decision tree.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- frozen inventory explainability snapshot for detail and insight surfaces;
+- reuse confidence, recommendation allowance, reason codes and data quality from backend-led inventory fields;
+- no invented local tree, Why panel or workflow truth;
+- no schema migration.
+
+### Read first
+
+- DEX14 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Define the smallest detail/insight explainability snapshot contract for inventory surfaces.
+2. Keep confidence, reason codes and recommendation allowance backend-led.
+3. Preserve empty and error states and avoid synthetic defaults.
+4. Keep the smallest possible docs-only surface change.
+
+### Tests
+
+- contract distinguishes evidence-backed signals from workflow-only state;
+- missing evidence stays explicit;
+- detail/insight surfaces remain consumer surfaces, not synthetic decision trees.
+
+### Acceptance
+
+- inventory detail and insight surfaces have a frozen explainability snapshot contract;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX14 DONE.
+
+
+## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
+
+Status: DONE
 
 Priority: future / planning
 
@@ -132,7 +195,26 @@ The inventory explainability reuse contract is frozen, but the runtime wiring st
 
 - DEX13 DONE.
 
+### Completion note
 
+- Date: 2026-08-13
+- Agent: Codex
+- Status: DONE
+- Changed files:
+  - `Api/Dtos/DecisionBoardDtos.cs`
+  - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DecisionBoardEndpointsTests` - pass
+  - `npm run test -- --run src/pages/ExecutiveDecisionBoardPage.spec.tsx` - pass
+- Remaining risk:
+  - DEX planning pointers still need router sync in the master roadmap.
+- Next:
+  - `RL06`
+- Prompt defect / scope repair:
+  - inventory explainability was already present in the runtime board path; this run fixed the backend DTO ordering, refreshed the DEX inventory spec, and closed the stale READY pointer.
 ## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
 
 Status: DONE
