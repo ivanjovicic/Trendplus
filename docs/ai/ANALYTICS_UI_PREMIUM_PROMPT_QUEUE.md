@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-18 DONE; see least-improved addendum completion note)
+Current READY prompt: `P-UI-19`
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -24,6 +24,7 @@ Use with:
 | P-UI-08 | DONE | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
 | P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
+| P-UI-19 | READY | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
 
 ---
 
@@ -748,3 +749,74 @@ npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx
 - Remaining:
   - none
 
+---
+
+## P-UI-19 - Analytics React chrome regression hardening
+
+Status: READY
+Ready after: P-UI-18 DONE
+Priority: P2
+Type: frontend/tests/ux-regression
+Feature family: analytics-ui-regression-hardening
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-19-<agent>.lock.md`
+Commit suggestion: `test(ui): harden analytics chrome regression coverage`
+
+### Problem
+
+Recent React commits modernized legacy analytics pages and shared chrome, but the queue has no follow-up that proves the migrated pages still behave consistently as a group. The risk is not a known broken page; it is silent drift across `AnalyticsTrustHeader`, `AnalyticsControlBar`, `AnalyticsDataTable`, embedded supplier flows, and older analytics routes.
+
+### Evidence
+
+- Recent React commits include `P-UI-16`/`P-UI-17`/`P-UI-18` work on `PreNivelacijaPriorityPage` and `SupplierFootwearAnalyticsPage`.
+- Shared chrome tests exist for `AnalyticsControlBar`, `AnalyticsDataTable`, `AnalyticsTrustHeader`, `HeaderStatus`, `Sidebar`, and the modernized page specs.
+- `P-UI-18` completion notes only the focused supplier footwear page test, guardrails and build. It does not record a grouped regression pass across the shared chrome and both recently migrated page families.
+
+### Scope
+
+- `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx`
+- `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx`
+- `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`
+- `Klijent/clientapp/src/layout/components/__tests__/HeaderStatus.spec.tsx`
+- `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/SupplierConsolidatedPage.spec.tsx`
+- affected page/component files only if a real regression is reproduced
+
+### Do Not Touch
+
+- analytics formulas, score semantics or API payloads
+- backend routes
+- broad visual redesign beyond fixing reproduced regressions
+- unrelated premium UI pages that are already covered by their own prompts
+
+### Do
+
+1. Run the grouped React regression suite for the shared analytics chrome and the two latest migrated page families.
+2. Record whether existing `act(...)` warnings still appear and whether they are harmless, newly introduced or actionable.
+3. If a test fails or a reproducible UI regression is found, make the smallest page/component fix and add/adjust focused assertions.
+4. Verify embedded `SupplierConsolidatedPage` still preserves shared filter behavior after `SupplierFootwearAnalyticsPage` modernization.
+5. Keep the completion note tied to a durable run log under `.ai/runs/`.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx src/layout/components/__tests__/HeaderStatus.spec.tsx src/layout/components/__tests__/Sidebar.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx src/pages/__tests__/SupplierConsolidatedPage.spec.tsx
+npm run check:analytics-guardrails
+npm run build
+```
+
+### Acceptance
+
+- The latest React chrome migrations have a grouped regression evidence note.
+- No shared chrome regression is left untriaged.
+- Any remaining warnings are explicitly classified with risk and follow-up owner.
+- Completion note references the exact run log path.
+
+### Dependencies
+
+- Path-safe vs higher-priority BCI/STAB/RQ/QDB runtime work.
+- Do not promote another P-UI prompt until this one is DONE or explicitly demoted by the owner.

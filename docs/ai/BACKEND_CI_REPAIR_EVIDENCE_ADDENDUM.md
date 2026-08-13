@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI05`
+Current READY prompt: `BCI06`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -14,14 +14,14 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 |---|---|---|
 | BCI08 | DONE | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
 | BCI09 | DONE | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
-| BCI05 | READY | Re-run the complete backend suite and prove GitHub Actions restore/build/test/coverage/artifact behavior after BCI09 |
-| BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
+| BCI05 | DONE | Re-run the complete backend suite and prove GitHub Actions restore/build/test/coverage/artifact behavior after BCI09 |
+| BCI06 | READY | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: READY
+Status: DONE
 Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE; re-entry after `BCI09` DONE
 Priority: P0
 Type: CI/evidence/tests
@@ -435,8 +435,8 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 ## BCI06 - Verify Windows and Visual Studio mixed-solution compatibility
 
-Status: WAITING
-Ready after: `BCI01` DONE, or earlier only when a Windows/Visual Studio-capable environment is explicitly available without delaying P0 backend assertion repair
+Status: READY
+Ready after: `BCI01`/`BCI05` DONE, with a Windows/Visual Studio-capable environment available for real proof
 Priority: P2
 Type: build-system/evidence
 Feature family: mixed-solution-windows-compatibility

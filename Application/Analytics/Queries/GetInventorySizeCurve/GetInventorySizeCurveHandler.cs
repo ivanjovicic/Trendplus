@@ -62,8 +62,10 @@ public sealed class GetInventorySizeCurveHandler
         try
         {
             await using var reader = await command.ExecuteReaderAsync(ct);
+            var totalMatchingCount = 0;
             while (await reader.ReadAsync(ct))
             {
+                totalMatchingCount = Convert.ToInt32(reader.GetInt64(11));
                 var reasonsRaw = reader.GetString(10);
                 var reasons = string.IsNullOrWhiteSpace(reasonsRaw)
                     ? Array.Empty<string>()
@@ -86,9 +88,6 @@ public sealed class GetInventorySizeCurveHandler
                     ReasonCodes: reasons));
             }
 
-            var totalMatchingCount = items.Count == 0
-                ? 0
-                : Convert.ToInt32(reader.GetInt64(11));
             var returnedCount = items.Count;
 
             var hasMissingEvidence = items.Any(item =>

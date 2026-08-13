@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; post-BCI inventory foundations `RQ96`-`RQ98` remain WAITING)
+Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; post-BCI inventory foundations `RQ96`-`RQ99` remain WAITING)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -30,6 +30,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ96 | WAITING | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
 | RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
+| RQ99 | WAITING | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
 
 ---
 
@@ -598,6 +599,71 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 - The uncached inventory list route lives in `Api/Endpoints/InventoryEndpoints.cs`.
 - `BCI04` grouped this as a real assertion failure after backend restore/build became healthy.
 - `STAB09`, `RQ77`, and `RQ78` are already DONE, leaving RQ89/RQ90 as the explicit unresolved BCI04 repair prompts.
+
+---
+
+## RQ99 - Inventory signal total-count reader-position regression
+
+Status: WAITING
+Ready after: owner promotes an inventory signal backend hardening pass, or one of the inventory signal handlers is next touched for runtime work
+Priority: P2
+Type: backend-tests/test-infrastructure
+Feature family: inventory-signal-reader-regression
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ99-<agent>.lock.md`
+Commit suggestion: `test(inventory): harden signal reader total count regressions`
+
+### Problem
+
+The inventory forecast, rebalance, alert and size-curve handlers expose `TotalMatchingCount` from `count(*) over()`. A direct 2026-08-13 hotfix moved the count read inside the `ReadAsync` loop so runtime code no longer depends on reading the data reader after EOF, but the existing `InventorySnapshotContractTests` use a permissive reader path and did not prove that failure mode before the fix.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`
+- `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`
+- `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+- `Api.Tests/InventorySnapshotContractTests.cs`
+- Existing focused tests passed even when the handlers still read `total_matching_count` after the `while (ReadAsync)` loop, so they are not strict enough to protect the provider-position contract.
+
+### Scope
+
+- `Api.Tests/InventorySnapshotContractTests.cs`
+- shared analytics test reader/helper only if needed
+- the four inventory signal handlers only if the stricter tests expose a real regression
+
+### Do Not Touch
+
+- snapshot SQL/materializers
+- DTO shape or API response semantics unless the stricter regression proves a contract bug
+- React inventory panels
+- unrelated inventory list/action route tests
+
+### Do
+
+1. Add the smallest reusable test double or provider-backed test path that throws when a column is read after EOF.
+2. Prove forecast, rebalance, alert and size-curve handlers read `total_matching_count` only while the reader is positioned on a row.
+3. Cover at least one empty-result case where `TotalMatchingCount` remains `0` without attempting an EOF read.
+4. Keep existing `ReturnedCount`, `TotalMatchingCount` and `IsTruncated` semantics unchanged.
+5. If the stricter test helper is too large for one pass, finish `PARTIAL` with the exact helper design and one implemented handler proof.
+
+### Tests
+
+```powershell
+dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~InventorySnapshotContractTests"
+```
+
+### Acceptance
+
+- The inventory signal total-count contract is protected against permissive reader-test false positives.
+- Each signal family proves no post-EOF column access.
+- Completion note references the exact durable run log path.
+
+### Dependencies
+
+- This is a hardening follow-up, not a release blocker if the 2026-08-13 hotfix is already present and focused contract tests pass.
+- Promote only after higher-priority BCI/STAB/QDB work is not being displaced.
 
 ---
 

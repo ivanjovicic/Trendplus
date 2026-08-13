@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: none
+Current READY prompt: `QDB03`
 
 ## Global routing
 
@@ -241,14 +241,14 @@ Expected new area:
   - `dotnet test --filter FullyQualifiedName~SourceDataSessionAdapterTests|FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests` - pass (16/16)
   - `git diff --check` - pass (queued files)
   - no Access ODBC/CLI runtime rewrite; import consumers still use `IAccessDataReaderSession`
-- Next: `QDB03` stays WAITING until backend CI executes real tests and the open BCI gate clears
+- Next: `QDB03` is READY because `QDB02` is DONE and `BCI01`/`BCI05` have green GitHub Actions evidence.
 
 ---
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
-Status: WAITING
-Ready after: `QDB02` is `DONE` and backend CI executes real tests without an open BCI `PARTIAL`/`BLOCKED` gate (`BCI01`/`BCI05`)
+Status: READY
+Ready after: `QDB02` is `DONE` and `BCI01`/`BCI05` have green GitHub Actions evidence
 Priority: P1
 Type: backend/integration tests
 Feature family: sqlserver-source-connector
@@ -256,7 +256,7 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/QDB03-<agent>.lock.md`
 Commit suggestion: `feat(import): add sql server source connector`
-Demotion note: 2026-08-11 — not READY while `BCI05`/`BCI01` remain PARTIAL (GHA proof pending), despite local Docker suite green.
+Promotion note: 2026-08-13 - `BCI01`/`BCI05` are DONE per `MASTER_ROADMAP.md` with green GHA `31674533356` on `f1f5a17`, so the read-only SQL Server proof connector is unblocked.
 
 ### Goal
 
