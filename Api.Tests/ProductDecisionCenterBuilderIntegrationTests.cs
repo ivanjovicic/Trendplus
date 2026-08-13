@@ -76,7 +76,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
                 PeriodToUtc: toDate));
         Assert.Equal(AnalyticsActionTimelineFilterProjection.EmptyReasonNoEvents, timelineFilter.EmptyReason);
         Assert.Contains(replenish.SourceKey!, timelineFilter.Scope.ScopeExplanation);
-        Assert.Contains(replenish.RecommendationType!, timelineFilter.Scope.ScopeExplanation);
+        Assert.Equal(replenish.RecommendationType, timelineFilter.Scope.RecommendationType);
+        Assert.Contains(ProductDecisionReasoningHelper.RecommendationLabel(replenish.RecommendationType), timelineFilter.Scope.ScopeExplanation);
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
         Assert.Contains(replenish.WhyPanel.DecisionTree, node => node.Code == "selected_branch" && node.IsSelected);

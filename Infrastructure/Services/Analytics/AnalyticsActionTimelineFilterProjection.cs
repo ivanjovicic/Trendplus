@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Domain.Model.Analytics;
 
 namespace Infrastructure.Services.Analytics;
@@ -201,7 +202,7 @@ public static class AnalyticsActionTimelineFilterProjection
             : productId.HasValue
                 ? $"product:{productId.Value}"
                 : sourceType ?? "svi entiteti";
-        var family = string.IsNullOrWhiteSpace(recommendationType) ? "sve porodice" : recommendationType;
+        var family = ProductDecisionReasoningHelper.RecommendationLabel(recommendationType);
         return $"Entitet: {entity} · Porodica: {family} · Period: {periodFromUtc:yyyy-MM-dd} – {periodToUtc:yyyy-MM-dd}";
     }
 

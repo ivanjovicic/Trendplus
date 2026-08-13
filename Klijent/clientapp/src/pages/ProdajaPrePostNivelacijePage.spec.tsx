@@ -255,4 +255,13 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
   });
+
+  it("shows backend reliability percent instead of a local Visoko band", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByText(/80% signal/)).toBeInTheDocument();
+    expect(screen.queryByText(/Visoko signal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
+  });
 });

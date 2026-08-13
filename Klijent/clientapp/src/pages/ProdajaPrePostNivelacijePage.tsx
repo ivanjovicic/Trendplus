@@ -356,9 +356,14 @@ function buildConfidenceMeta(
   if (!reliabilityAvailable || reliabilityPct == null) {
     return { label: "Nije dostupno", tone: "watch" };
   }
-  if (reliabilityPct >= 70) return { label: "Visoko", tone: "strong" };
-  if (reliabilityPct >= MEDIUM_SIGNAL_RELIABILITY_PCT) return { label: "Srednje", tone: "watch" };
-  return { label: "Nisko", tone: "weak" };
+
+  const tone: ConfidenceTone =
+    reliabilityPct >= 70
+      ? "strong"
+      : reliabilityPct >= MEDIUM_SIGNAL_RELIABILITY_PCT
+        ? "watch"
+        : "weak";
+  return { label: fmtPct(reliabilityPct, 0), tone };
 }
 
 function buildVolatilityMeta(currentRevenue: number, previousRevenue: number | null): {

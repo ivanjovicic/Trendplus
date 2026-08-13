@@ -98,4 +98,13 @@ public class ProductDecisionReasoningHelperTests
         Assert.True(result.RecommendationStatus is "WATCH" or "INSUFFICIENT_DATA");
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
+
+    [Fact]
+    public void RecommendationLabel_MapsFamilyCodesForOperatorFacingScope()
+    {
+        Assert.Equal("Dopuni", ProductDecisionReasoningHelper.RecommendationLabel("REPLENISH"));
+        Assert.Equal("Pojačaj", ProductDecisionReasoningHelper.RecommendationLabel("boost"));
+        Assert.Equal("sve porodice", ProductDecisionReasoningHelper.RecommendationLabel(null));
+        Assert.Equal("CUSTOM", ProductDecisionReasoningHelper.RecommendationLabel("CUSTOM"));
+    }
 }
