@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ100`
-Status: owner-promoted READY pack; QDB exclusive work is currently clear
+Current READY prompt: `RQ101`
+Status: owner-promoted READY pack; `RQ100` DONE
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -20,7 +20,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ100` is the current READY prompt. Promote `RQ101` only after `RQ100` is DONE.
+2. `RQ101` is the current READY prompt. Promote `RQ102` only after `RQ101` is DONE.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -29,8 +29,8 @@ Use with:
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ100 | READY | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
-| RQ101 | WAITING | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
+| RQ100 | DONE | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
+| RQ101 | READY | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
 | RQ102 | WAITING | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | WAITING | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
 | RQ104 | WAITING | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
@@ -39,7 +39,7 @@ Use with:
 
 ## RQ100 - Product Decision and Decision Board critical-path contract tests
 
-Status: READY
+Status: DONE
 Ready after: owner-promoted 2026-08-13; QDB exclusive work is currently clear (`QDB06` still needs migration approval)
 Priority: P1
 Type: backend-tests/integration
@@ -111,12 +111,51 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~DecisionBo
 - Path-clear vs current exclusive API work; QDB06 remains WAITING on owner migration approval
 - `RQ01`/`RQ12` remain historical contracts, not reopened formula work
 
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: locked PDC + Decision Board counterexamples for lost-sales-off-blocked-impact, REPLENISH/BOOST impact only from PDC, empty success meta, and machine status vs operator label
+- Changed files:
+  - Api.Tests/DecisionBoardEndpointsTests.cs
+  - Api.Tests/DecisionBoardAggregationContractTests.cs
+  - Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-13-RQ100-evidence.md
+- Contract/runtime behavior changed: no; tests only. Existing board/PDC contracts already matched the named failures.
+- Checks run:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~DecisionBoardEndpointsTests|FullyQualifiedName~DecisionBoardAggregationContractTests|FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests"` - pass (45)
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` - test project build already compiled as part of `dotnet test`
+  - frontend / npm - out of scope
+- Run log: .ai/runs/2026-08-13-RQ100-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: BOOST expected impact is locked at Decision Board mapping; the PDC in-memory seed still produces REPLENISH + FIX_DATA, not a BOOST row
+- Follow-up: `RQ101`
+- Residual risk: none known for the named PDC/board impact contract
+- Prompt defect / scope repair: none
+- Next: `RQ101` - Inventory null-evidence and decision-count contract tests
+
 ---
 
 ## RQ101 - Inventory null-evidence and decision-count contract tests
 
-Status: WAITING
-Ready after: `RQ100` DONE or owner explicitly serializes this first because inventory files are already open
+Status: READY
+Ready after: `RQ100` DONE
 Priority: P1
 Type: backend-tests/integration
 Feature family: analytics-inventory-null-evidence

@@ -38,6 +38,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
 
         var replenish = Assert.Single(response.Rows.Where(row => row.ProductId == 101));
         Assert.Equal("REPLENISH", replenish.RecommendationStatus);
+        Assert.Equal("Dopuni", replenish.RecommendationLabel);
+        Assert.NotEqual(replenish.RecommendationStatus, replenish.RecommendationLabel);
+        Assert.Equal("Aktiviraj dopunu prema minimalnoj zalihi.", replenish.RecommendedAction);
+        Assert.DoesNotContain("REPLENISH", replenish.RecommendedAction, StringComparison.Ordinal);
         Assert.Equal(3_000m, replenish.Revenue);
         Assert.Equal(30, replenish.UnitsSold);
         Assert.Equal(1m, replenish.VelocityUnitsPerDay);
@@ -78,6 +82,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(replenish.SourceKey!, timelineFilter.Scope.ScopeExplanation);
         Assert.Equal(replenish.RecommendationType, timelineFilter.Scope.RecommendationType);
         Assert.Contains(ProductDecisionReasoningHelper.RecommendationLabel(replenish.RecommendationType), timelineFilter.Scope.ScopeExplanation);
+        Assert.DoesNotContain("Porodica: REPLENISH", timelineFilter.Scope.ScopeExplanation, StringComparison.Ordinal);
+        Assert.NotEqual(replenish.RecommendationStatus, timelineFilter.Scope.ScopeExplanation);
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
         Assert.Contains(replenish.WhyPanel.DecisionTree, node => node.Code == "selected_branch" && node.IsSelected);
@@ -125,7 +131,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, fixData.ReasonCodes);
         Assert.Contains("missing_cost", fixData.WarningCodes);
         Assert.Equal("critical", fixData.InputFreshnessStatus);
+        Assert.Equal(400m, fixData.LostSalesEstimate);
         Assert.Null(fixData.ExpectedImpactRsd);
+        Assert.Equal("Proveri podatke", fixData.RecommendationLabel);
+        Assert.NotEqual(fixData.RecommendationStatus, fixData.RecommendationLabel);
+        Assert.DoesNotContain("FIX_DATA", fixData.RecommendedAction, StringComparison.Ordinal);
         Assert.NotEmpty(fixData.ConfidenceBreakdown);
         Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "confidence_score" && node.IsMissing);
         Assert.Contains(fixData.ConfidenceBreakdown, node => node.Code == "evidence_coverage" && node.ValueText == "Nedovoljna");
@@ -224,6 +234,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
         Assert.Equal("no_rows_for_period", response.Meta.EmptyReason);
         Assert.Null(response.Meta.ErrorCode);
+        Assert.Equal(0, response.Summary.ReplenishCount);
+        Assert.Equal(0m, response.Summary.LostSalesEstimate);
+        Assert.DoesNotContain(response.Rows, row => row.RecommendationStatus == "REPLENISH");
+        Assert.DoesNotContain(response.Rows, row => row.ExpectedImpactRsd == 0m);
     }
 
     [Fact]
