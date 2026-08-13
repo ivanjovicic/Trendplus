@@ -142,7 +142,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~DecisionBo
   - frontend / npm - out of scope
 - Run log: .ai/runs/2026-08-13-RQ100-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 31f338f735da9558c3064a07837a8c9e9cc8a2ab
 - Main verification: pending push to origin/main
 - Missed: BOOST expected impact is locked at Decision Board mapping; the PDC in-memory seed still produces REPLENISH + FIX_DATA, not a BOOST row
 - Follow-up: `RQ101`
