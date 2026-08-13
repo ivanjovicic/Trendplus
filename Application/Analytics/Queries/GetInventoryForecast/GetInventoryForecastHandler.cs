@@ -63,8 +63,10 @@ public sealed class GetInventoryForecastHandler
         try
         {
             await using var reader = await command.ExecuteReaderAsync(ct);
+            var totalMatchingCount = 0;
             while (await reader.ReadAsync(ct))
             {
+                totalMatchingCount = Convert.ToInt32(reader.GetInt64(10));
                 items.Add(new InventoryForecastDto(
                     SkuId: reader.GetInt32(0),
                     StoreId: reader.GetInt32(1),
@@ -78,9 +80,6 @@ public sealed class GetInventoryForecastHandler
                     Explanation: reader.GetString(9)));
             }
 
-            var totalMatchingCount = items.Count == 0
-                ? 0
-                : Convert.ToInt32(reader.GetInt64(10));
             var returnedCount = items.Count;
 
             var hasMissingEvidence = items.Any(item =>

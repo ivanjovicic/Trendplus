@@ -14,7 +14,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 |---|---|---|
 | PERF - Performance | `PERF15` | D8 shared-saas evidence gate |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
-| SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
+| SEC - Security Evolution | `SEC07` | frontend production dependency vulnerability triage |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -1701,9 +1701,97 @@ Slice-1 API/process evidence can show availability and request completion, but s
 
 ---
 
-## SEC05 - Data protection and retention assurance plan (S2-3)
+## SEC07 - Frontend production dependency vulnerability triage
 
 Status: READY
+Ready after: `SEC04` DONE and current `Klijent/clientapp` production dependency audit evidence exists
+Priority: security / release-hardening
+Feature family: frontend-supply-chain-vulnerability-triage
+Parallel-safe: no - shares frontend dependency lockfile and build/test paths
+Owner: unassigned
+Local lock: `.ai/task-locks/SEC07-<agent>.lock.md`
+Commit suggestion: `fix(security): triage frontend dependency vulnerabilities`
+
+### Problem
+
+`Klijent/clientapp` currently reports high-severity production dependency vulnerabilities. The risk should not be closed by a blind `npm audit fix --force`, because the audit indicates at least one breaking transitive upgrade path and `xlsx` has no fixed version available.
+
+### Evidence
+
+- `npm audit --omit=dev --audit-level=low` on 2026-08-13 reported `11 high severity vulnerabilities`.
+- Production dependency findings include:
+  - `react-router` / `react-router-dom` high-severity advisories.
+  - `xlsx` high-severity advisories with no fix available.
+  - `puppeteer` / `puppeteer-core` / `@puppeteer/browsers` / `extract-zip` where the audit suggests a breaking upgrade path.
+  - `basic-ftp`, `ip-address`, `js-yaml`, and `ws` high-severity findings.
+- `SEC04` already documents supply-chain assurance policy, but it does not remediate this concrete frontend audit result.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md`
+- `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+- `Klijent/clientapp/package.json`
+- `Klijent/clientapp/package-lock.json`
+- frontend import/export code paths that currently import `xlsx`
+- route/navigation tests listed below
+
+### Scope
+
+- `Klijent/clientapp/package.json`
+- `Klijent/clientapp/package-lock.json`
+- frontend import/export code paths that use `xlsx`
+- frontend tests/build only as needed to prove safe remediation
+- optional short QA note under `docs/qa/` if a vulnerability must remain accepted with a bounded reason
+
+### Do Not Touch
+
+- backend NuGet packages unless a separate backend audit finding is reproduced
+- broad React page redesign
+- API contracts
+- unrelated dependency churn
+- `npm audit fix --force` without first documenting the exact breaking changes and proving the app still builds/tests
+
+### Do
+
+1. Re-run `npm audit --omit=dev --json` and save a summarized, non-secret evidence note.
+2. Build a dependency tree for each production finding and classify: direct upgrade, safe transitive upgrade, breaking upgrade requiring tests, no-fixed-version replacement, or accepted residual risk.
+3. Upgrade `react-router-dom`/`react-router` and other fixable production dependencies only within compatible ranges when tests prove routing remains stable.
+4. For `xlsx`, either replace usage with a safer maintained package or record an explicit temporary exception with affected features, mitigation and owner-approved replacement plan.
+5. For Puppeteer-related findings, confirm whether Puppeteer is needed in production dependencies; if it is test/tooling only, move it out of production dependency surface without breaking build/test scripts.
+6. Run focused route/export tests plus build and guardrails.
+7. Leave a durable run log and completion note with remaining vulnerabilities, if any.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm audit --omit=dev --audit-level=low
+npm run test -- --run src/layout/__tests__/navConfig.spec.ts src/layout/components/__tests__/headerNavigation.spec.ts src/pages/__tests__/AnalyticsDashboard.integration.spec.tsx
+npm run check:analytics-guardrails
+npm run build
+```
+
+### Acceptance
+
+- No high-severity production dependency finding is left unclassified.
+- Fixable production findings are remediated with lockfile evidence.
+- Any residual vulnerability has a documented bounded exception, affected feature surface, mitigation and follow-up owner.
+- Frontend routing, guardrails and production build remain green.
+- Completion note references the exact durable run log path.
+
+### Dependencies
+
+- `SEC04` DONE.
+- This prompt may run before `SEC05` because it is supply-chain remediation, not tenant/offboarding assurance.
+- Do not displace active BCI/STAB/QDB runtime gates unless the owner explicitly prioritizes release security hardening.
+
+---
+
+## SEC05 - Data protection and retention assurance plan (S2-3)
+
+Status: WAITING
+Ready after: MT09 contracts exist or the owner explicitly approves an interim dedicated-deploy offboarding scope
 Priority: future
 Feature family: security-retention-assurance-plan
 Parallel-safe: yes, planning/docs only

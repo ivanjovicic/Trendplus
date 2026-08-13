@@ -67,8 +67,10 @@ public sealed class GetInventoryAlertsHandler
         try
         {
             await using var reader = await command.ExecuteReaderAsync(ct);
+            var totalMatchingCount = 0;
             while (await reader.ReadAsync(ct))
             {
+                totalMatchingCount = Convert.ToInt32(reader.GetInt64(8));
                 items.Add(new InventoryAlertDto(
                     AlertType: reader.GetString(0),
                     SkuId: reader.GetInt32(1),
@@ -80,9 +82,6 @@ public sealed class GetInventoryAlertsHandler
                     ConfidenceScore: reader.GetNullableDecimal(7)));
             }
 
-            var totalMatchingCount = items.Count == 0
-                ? 0
-                : Convert.ToInt32(reader.GetInt64(8));
             var returnedCount = items.Count;
 
             var hasMissingEvidence = items.Any(item => item.Severity is null || item.ConfidenceScore is null);

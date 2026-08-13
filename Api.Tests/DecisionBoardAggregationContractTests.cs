@@ -209,6 +209,55 @@ public sealed class DecisionBoardAggregationContractTests
         Assert.Empty(impact.Cards);
     }
 
+    [Fact]
+    public void BuildResponse_DoesNotSurfaceStatusFieldsAsWarningCodes()
+    {
+        var actions = new List<AnalyticsActionItem>
+        {
+            Action(
+                id: 21,
+                sourceType: "product",
+                sourceKey: "product:201",
+                status: AnalyticsActionConstants.Statuses.Accepted,
+                expectedImpactRsd: 12_000m,
+                dataQualityStatus: "warning",
+                outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending)
+        };
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc: GeneratedAtUtc,
+            periodFromUtc: PeriodFromUtc,
+            periodToUtc: PeriodToUtc,
+            lastRefreshAtUtc: GeneratedAtUtc,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: null,
+            supplierSummary: null,
+            actions,
+            outcomeSummary: null,
+            refreshStatus: new AnalyticsRefreshStatusDto
+            {
+                DataFreshnessStatus = "stale",
+                GeneratedAtUtc = GeneratedAtUtc
+            },
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var actionCard = Assert.Single(response.Sections.Single(section => section.Key == "actionsDecision").Cards);
+        Assert.Equal("warning", actionCard.DataQualityStatus);
+        Assert.DoesNotContain("warning", actionCard.WarningCodes);
+
+        var outcomeCard = Assert.Single(response.Sections.Single(section => section.Key == "actionsOutcome").Cards);
+        Assert.DoesNotContain(AnalyticsActionConstants.OutcomeStatuses.Pending, outcomeCard.WarningCodes);
+
+        var refreshCard = Assert.Single(response.Sections.Single(section => section.Key == "blockers").Cards.Where(card => card.Id == "blocker-refresh"));
+        Assert.Equal("stale", refreshCard.DataQualityStatus);
+        Assert.DoesNotContain("stale", refreshCard.WarningCodes);
+    }
+
     private static DecisionBoardAggregateResponseDto Build(
         ProductDecisionCenterResponseDto? productDecisionCenter,
         IReadOnlyList<AnalyticsActionItem>? actions = null,
@@ -321,7 +370,9 @@ public sealed class DecisionBoardAggregationContractTests
         string sourceType,
         string sourceKey,
         string status,
-        decimal? expectedImpactRsd = null)
+        decimal? expectedImpactRsd = null,
+        string? dataQualityStatus = null,
+        string? outcomeStatus = null)
     {
         return new AnalyticsActionItem
         {
@@ -335,6 +386,8 @@ public sealed class DecisionBoardAggregationContractTests
             Priority = AnalyticsActionConstants.Priorities.P1,
             Status = status,
             ExpectedImpactRsd = expectedImpactRsd,
+            DataQualityStatus = dataQualityStatus,
+            OutcomeStatus = outcomeStatus,
             CreatedAtUtc = GeneratedAtUtc.AddDays(-2),
             UpdatedAtUtc = GeneratedAtUtc.AddDays(-1),
             DueAtUtc = GeneratedAtUtc.AddDays(3)

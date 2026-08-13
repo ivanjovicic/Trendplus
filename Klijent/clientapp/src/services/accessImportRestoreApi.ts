@@ -9,10 +9,15 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
-export async function getRestoreScript(ids: number[]): Promise<string> {
+export async function getRestoreScript(ids: number[], adminKey?: string): Promise<string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
+
   const res = await fetch(apiUrl("/api/access-import/cleanup/archive/restore-script"), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers,
     body: JSON.stringify({ ids }),
   });
 

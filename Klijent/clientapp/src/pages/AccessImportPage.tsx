@@ -1074,12 +1074,18 @@ export default function AccessImportPage() {
                                     setRestoreScript(null);
                                     const raw = archiveIdsInput.split(',').map(s => s.trim()).filter(Boolean).map(s => Number(s)).filter(n => !Number.isNaN(n));
                                     if (raw.length === 0) { setError('Unesi bar jedan validan archive id.'); return; }
+                                    const adminKey = adminKeyRef.current ?? promptAdminKey("Generisanje restore skripte");
+                                    if (!adminKey) return;
                                     setError(null);
                                     setGeneratingRestoreScript(true);
                                     try {
-                                        const script = await getRestoreScript(raw);
+                                        const script = await getRestoreScript(raw, adminKey);
                                         setRestoreScript(script);
                                     } catch (e: unknown) {
+                                        if (isUnauthorizedError(e)) {
+                                            setError("Generisanje restore skripte zahteva važeći admin key.");
+                                            return;
+                                        }
                                         setError(e instanceof Error ? e.message : 'Greska pri generisanju restore skripte.');
                                     } finally {
                                         setGeneratingRestoreScript(false);
