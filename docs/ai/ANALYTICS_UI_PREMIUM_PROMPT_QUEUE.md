@@ -864,7 +864,7 @@ npm run build
 
 ## P-UI-20 - Grouped analytics trust-state proof
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-19 DONE
 Priority: P2
 Type: frontend/tests

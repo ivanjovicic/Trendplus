@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX16` | runtime slice - inventory detail/insight snapshot wiring |
+| DEX - Decision Explainability | `DEX17` | supplier runtime slice - ready |
 
 
 
@@ -70,9 +70,72 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX16 - Implement Inventory Detail and Insight explainability snapshot runtime slice
+## DEX17 - Implement Supplier Decision Hub explainability snapshot runtime slice
 
 Status: READY
+
+Priority: future / planning
+
+Feature family: decision-explainability-supplier-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: not yet created
+
+### Problem
+
+Supplier Decision Hub already exposes backend-led trust, fallback, confidence and report semantics, but the runtime page and report surfaces still do not render the shared explainability snapshot that makes those semantics explicit end to end.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- render the frozen supplier explainability snapshot on supplier decision hub surfaces;
+- reuse backend-led confidence, reliability, recommendation allowance, fallback and reason codes only;
+- keep helper/signal labeling explicit when recommendationAllowed=false or fallback is used;
+- no new API shape, local scoring or invented decision tree.
+
+### Read first
+
+- supplier explainability reuse contract
+- cross-family readiness contract
+- supplier confidence contract audit
+- Decision Intelligence roadmap
+
+### Do
+
+1. Surface the frozen supplier explainability snapshot in summary, ranking, detail and report views.
+2. Keep confidence, reliability, recommendationAllowed, fallback and reason codes backend-led.
+3. Preserve helper/signal labeling when the surface is fallback-based or recommendationAllowed=false.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- snapshot rendering uses backend-led supplier fields only;
+- missing confidence or fallback stays explicit;
+- no local tree or synthetic recommendation truth is introduced.
+
+### Acceptance
+
+- supplier runtime surfaces render shared snapshot semantics;
+- no local tree or synthetic recommendation truth is added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX12 DONE.
+- DEX11 DONE.
+
+## DEX16 - Implement Inventory Detail and Insight explainability snapshot runtime slice
+
+Status: DONE
 
 Priority: future / planning
 
@@ -131,6 +194,49 @@ Inventory detail and insight surfaces now have a frozen snapshot contract, but t
 ### Dependencies
 
 - DEX15 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 98%
+- Changed files:
+  - Api/Dtos/InventoryExperienceDtos.cs
+  - Api/Endpoints/InventoryEndpoints.cs
+  - Api.Tests/InventoryListEndpointIntegrationTests.cs
+  - Klijent/clientapp/src/components/inventory/InventoryExplainabilitySnapshot.tsx
+  - Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx
+  - Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx
+  - Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx
+  - Klijent/clientapp/src/components/inventory/SKUDetailModal.spec.tsx
+  - Klijent/clientapp/src/components/inventory/inventoryUtils.ts
+  - Klijent/clientapp/src/types/analytics.ts
+  - .ai/runs/2026-08-13-DEX16-evidence.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+- Checks run:
+  - `git diff --cached --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter InventoryListEndpointIntegrationTests` - pass
+- `cd Klijent/clientapp; npm run test -- --run src/components/inventory/SKUDetailModal.spec.tsx` - pass
+- `cd Klijent/clientapp; npm run test -- --run src/components/inventory/InventoryInsightPanels.spec.tsx` - pass
+- `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+- `cd Klijent/clientapp; npm run build` - pass
+- `node scripts/check-agent-instructions.mjs` - pass
+- `node scripts/check-prompt-queues.mjs` - pass
+- `node scripts/check-planning-architecture.mjs` - pass
+- Checks not run:
+  - `node scripts/check-agent-instructions.mjs --self-test` - not run.
+  - `node scripts/check-prompt-queues.mjs --self-test` - not run.
+  - `node scripts/check-planning-architecture.mjs --self-test` - not run.
+- Run log: .ai/runs/2026-08-13-DEX16-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 345b7e692b4b5c0eefea768746bb1020c08b10e0
+- Main verification: `git rev-parse origin/main -> 345b7e692b4b5c0eefea768746bb1020c08b10e0`
+- Missed: no broader inventory report/export follow-up was taken beyond the runtime snapshot surfaces.
+- Follow-up: DEX17 supplier explainability snapshot runtime slice
+- Residual risk: detail and insight sell-through evidence can still surface insufficient-data reasons when denominator evidence is missing.
+- Prompt defect / scope repair: DEX16 needed backend-led snapshot wiring plus frontend reuse; the queue/router now reflects the completed runtime slice.
 
 
 ## DEX15 - Prepare Inventory Detail and Insight explainability snapshot contract
@@ -194,33 +300,6 @@ Inventory detail and insight surfaces still expose consumer facts and rollups, b
 ### Dependencies
 
 - DEX14 DONE.
-
-### Completion note
-
-- Date: 2026-08-13
-- Agent: Codex
-- Status: DONE
-- Changed files:
-  - `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
-  - `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
-  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-  - `MASTER_ROADMAP.md`
-- Checks:
-  - `node scripts/check-agent-instructions.mjs --self-test` - pass
-  - `node scripts/check-agent-instructions.mjs` - pass
-  - `node scripts/check-prompt-queues.mjs --self-test` - pass
-  - `node scripts/check-prompt-queues.mjs` - pass
-  - `node scripts/check-planning-architecture.mjs --self-test` - pass
-  - `node scripts/check-planning-architecture.mjs` - pass
-  - `git diff --check` - pass
-- Remaining risk:
-  - DEX16 runtime wiring still needs to surface the frozen snapshot on detail/insight pages.
-- Next:
-  - `DEX16`
-- Prompt defect / scope repair:
-  - inventory explainability snapshot was frozen for the detail/insight surfaces and the queue router was advanced to the runtime slice.
-
 
 ## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
 
