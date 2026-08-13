@@ -51,11 +51,11 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
 
 1. `RQ89`–`RQ95` and `BCI08` are DONE.
-2. `BCI05` is READY for re-entry after BCI08: commit/push fixes, then capture green GHA run/job IDs.
-3. Only green GHA evidence may move `BCI01` from PARTIAL to DONE.
+2. `BCI05` is PARTIAL: green GHA exists on `aed38ff` (run `31598948469`). Current main is red at build (`2fbea01`); next is `BCI09`.
+3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 
-Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`
+Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`
 
 ## Global execution lanes
 

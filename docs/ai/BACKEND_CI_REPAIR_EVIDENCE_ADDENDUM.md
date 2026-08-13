@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI05`
+Current READY prompt: `BCI09`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -13,15 +13,16 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 | Task | Status | Purpose |
 |---|---|---|
 | BCI08 | DONE | Isolate the current full-suite CI-only integration failures that do not reproduce in focused local runs |
-| BCI05 | READY | Re-run the complete backend suite and prove final GitHub Actions restore/build/test/coverage/artifact behavior after RQ89-RQ95 and BCI08 |
+| BCI05 | PARTIAL | Green GHA on `aed38ff` after BCI08; current main is red at build because test cache stubs omit `GetFootprintSnapshot()` |
+| BCI09 | READY | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
 | BCI06 | WAITING | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
 ## BCI05 - Close full backend suite and GitHub Actions evidence
 
-Status: READY
-Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE
+Status: PARTIAL
+Ready after: `RQ89`/`RQ90` DONE; re-entry after `RQ91`/`RQ92`/`RQ93` DONE; re-entry after `RQ94` DONE; re-entry after `RQ95` DONE; re-entry after `BCI08` DONE; re-entry after `BCI09`
 Priority: P0
 Type: CI/evidence/tests
 Feature family: backend-ci-final-evidence
@@ -182,6 +183,23 @@ Do not change application runtime behavior in this prompt. If a new product/test
   - mark `BCI05` PARTIAL
   - promote `BCI08` READY as the next focused repair prompt
 
+### Notes (re-entry after BCI08 — 2026-08-13)
+
+- Date: 2026-08-13
+- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`
+- Green GHA on BCI08 commit `aed38ff133068388db9175e8e09ddd427d37337e`:
+  - run `31598948469` / job `94121251668`
+  - restore=success, build=success, test=success, coverage-summary=success, artifact upload=success (`9142326802`)
+  - exact TRX totals unknown without authenticated artifact download
+- Current main is backend-equivalent to `2fbea01fe15ef38eb00e5c0219ae3675976c6848` and is red:
+  - run `31622706051` / job `94201257231`
+  - restore=success, build=failure, test=skipped
+  - five `IAnalyticsCacheService` test stubs missing `GetFootprintSnapshot()`
+- Local `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` reproduces the same five `CS0535` errors
+- BCI02 green-run coverage/artifact proof now exists on `31598948469`; the later red run still attributes the primary failure to build rather than coverage/artifacts
+- `BCI01` remains PARTIAL
+- Next: `BCI09`, then re-enter this prompt
+
 ### Dependencies
 
 - `RQ89` DONE
@@ -305,6 +323,80 @@ Do not weaken the GitHub Actions workflow, skip tests, add retries to hide failu
 - Focused BCI08 family with CI env: **14/14 pass**; exact four-test filter: **4/4 pass**
 - Full suite with CI env: **826/829**; remaining 3 failures are Testcontainers Docker-pipe timeout in `AccessImportExecutionStrategyTests` (environment flake, not BCI08 family)
 - Next: commit/push, re-enter `BCI05` for green GHA proof
+
+---
+
+## BCI09 - Implement GetFootprintSnapshot on IAnalyticsCacheService test stubs
+
+Status: READY
+Ready after: `BCI05` PARTIAL evidence on 2026-08-13
+Priority: P0
+Type: tests/ci
+Feature family: backend-ci-cache-footprint-stubs
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/BCI09-<agent>.lock.md`
+Commit suggestion: `test(ci): implement cache footprint snapshot on test stubs`
+
+### Problem
+
+PERF13 added `IAnalyticsCacheService.GetFootprintSnapshot()` and production implementations, but five `Api.Tests` cache stubs were not updated. Current `main` therefore fails the GitHub Actions **build** step, so the test step never runs. BCI08's green suite on `aed38ff` is no longer the current-main proof.
+
+### Evidence
+
+- Green GHA after BCI08: run `31598948469` / job `94121251668` on `aed38ff133068388db9175e8e09ddd427d37337e`
+- Red current-main GHA: run `31622706051` / job `94201257231` on `2fbea01fe15ef38eb00e5c0219ae3675976c6848`
+- Local `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` reproduces `CS0535` on the same five stubs
+- Dated report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`
+- Production implementations already exist in `DisabledAnalyticsCacheService`, `InMemoryCacheService`, and `HybridCacheService`
+
+### Scope
+
+- `Api.Tests/AnalyticsReportsContractTests.cs` (`StubAnalyticsCacheService`)
+- `Api.Tests/CachedAnalyticsFailureContractTests.cs` (`ThrowingAnalyticsCacheService`)
+- `Api.Tests/AnalyticsCacheInvalidateAuthorizationTests.cs` (`RecordingAnalyticsCacheService`)
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs` (`RecordingAnalyticsCacheService`)
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs` (`RecordingAnalyticsCacheService`)
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- one dated `docs/qa/` evidence note
+
+Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow YAML, or PERF measurement scripts. Do not invent cache-hit counts in stubs.
+
+### Read first
+
+- `MASTER_ROADMAP.md`
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+- `Infrastructure/Services/Caching/DisabledAnalyticsCacheService.cs`
+- the five test stub classes listed in Scope
+
+### Do
+
+1. Add `GetFootprintSnapshot()` to each of the five test stubs.
+2. Return a non-throwing empty/disabled snapshot, matching `DisabledAnalyticsCacheService` (`new("disabled", false, false, 0)` or equivalent), unless a focused test proves a throw is required.
+3. Do not change throw/recording behavior of existing Get/Set/Remove methods.
+4. Prove `dotnet build Api.Tests/Api.Tests.csproj --configuration Release`.
+5. Re-run the five affected test classes, or the nearest focused filters.
+6. Return to `BCI05` after a green local build; do not mark `BCI01` DONE from this prompt.
+
+### Tests
+
+- `dotnet build Api.Tests/Api.Tests.csproj --configuration Release`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~AnalyticsReportsContractTests|FullyQualifiedName~CachedAnalyticsFailureContractTests|FullyQualifiedName~AnalyticsCacheInvalidateAuthorizationTests|FullyQualifiedName~AnalyticsCacheAdminServiceTests|FullyQualifiedName~AnalyticsAggregationWorkerTests"`
+- no production cache files in the diff
+
+### Acceptance
+
+- `Api.Tests` Release build succeeds.
+- All five stubs implement `GetFootprintSnapshot()` without weakening existing assertions.
+- Production cache/runtime behavior is unchanged.
+- `BCI05` is re-entered for green GHA proof; `BCI01` stays PARTIAL until that later run.
+
+### Dependencies
+
+- `BCI05` PARTIAL evidence from 2026-08-13
+- interface method already present on `IAnalyticsCacheService` from `2fbea01`
 
 ---
 

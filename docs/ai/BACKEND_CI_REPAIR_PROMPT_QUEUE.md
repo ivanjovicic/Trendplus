@@ -3,13 +3,15 @@
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
 Purpose: restore truthful execution of the backend analytics test suite and separate real test failures from workflow/bootstrap failures.
-Current READY prompt: `none`
+Current READY prompt: none
 
 ## Current diagnosis
 
+Live READY is `BCI09` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical; do not resurrect them.
+
 The bootstrap blocker is fixed. Backend workflow restore/build now succeed against `Api.Tests/Api.Tests.csproj`, and the suite reaches real assertions.
 
-BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step; real failures are owned by later repair prompts after BCI04 triage.
+BCI01 remains `PARTIAL` (not `DONE`) because acceptance requires a green test step; real failures are owned by later repair prompts after BCI04 triage. The BCI08 isolation family has a green GHA run on `aed38ff`. Current main is red at build because test cache stubs omit `GetFootprintSnapshot()`.
 
 Canonical GHA proof that bootstrap is unblocked:
 

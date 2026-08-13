@@ -1,6 +1,6 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-13
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
@@ -39,7 +39,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | `BCI05` | `BCI01` is PARTIAL. `BCI08` DONE (CI env isolation). `BCI05` READY for green GHA re-entry after commit/push. | Evidence/docs only | BCI05 green GHA -> BCI01 DONE |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | `BCI09` | `BCI01` PARTIAL. `BCI08` DONE. `BCI05` PARTIAL: green GHA on `aed38ff`; current main (`2fbea01`+) fails build because test cache stubs omit `GetFootprintSnapshot()`. | Evidence/docs only | BCI09 stub compile fix -> BCI05 re-entry -> BCI01 DONE |
 | STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` DONE. Residual authz watchlist (import/logs/docs) unqueued — STAB-owned, not SEC. | Evidence/docs when paths clear | Queue STAB follow-ups or accept residual risk |
 | RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none (`RQ95` DONE) | BCI05 override active until GHA green; do not promote RQ WAITING over BCI05. | Selected docs/tests only | BCI05 GHA reconciliation |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-16 DONE (no fake reliability + empty/copy on PreNivelacijaPriorityPage). P-UI-17 DONE (ControlBar + DataTable chrome). P-UI-18 DONE (SupplierFootwearAnalyticsPage chrome). | Yes, when paths clear | Await owner-promoted next P-UI prompt |
