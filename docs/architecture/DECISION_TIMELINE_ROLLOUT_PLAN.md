@@ -164,6 +164,9 @@ UI stop condition:
 
 Goal: keep export/report consumers aligned with the same timeline semantics.
 
+Authoritative DT06 contract: `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`.
+This slice remains planning until a later prompt authorizes runtime export.
+
 Export/report requirements:
 
 - include correlation identifiers when available;

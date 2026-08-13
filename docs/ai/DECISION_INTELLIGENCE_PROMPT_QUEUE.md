@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX17` | supplier runtime slice - ready |
+| DEX - Decision Explainability | none (`DEX17` DONE) | no remaining DEX READY |
 
 
 
@@ -46,7 +46,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DT - Decision Timeline | `DT06` | docs/contracts only - export/report planning |
+| DT - Decision Timeline | none (`DT06` DONE) | no remaining DT READY |
 
 
 
@@ -1597,7 +1597,7 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 
 
 
-Status: READY
+Status: DONE
 
 
 
@@ -1725,7 +1725,7 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 
 
-1. Define export/report fields for recommendation â†’ action â†’ outcome timelines.
+1. Define export/report fields for recommendation -> action -> outcome timelines.
 
 
 
@@ -1815,81 +1815,20 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 ### Completion note
 
-
-
-
-
-
-
 - Date: 2026-08-13
-
-
-
-- Agent: Codex
-
-
-
-- Changed files:
-
-
-
-  - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
-
-
-
-  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
-
-
-
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-
-
-
-  - `MASTER_ROADMAP.md`
-
-
-
-- Checks:
-
-
-
-  - `node scripts/check-prompt-queues.mjs` - pass
-
-
-
-  - `node scripts/check-planning-architecture.mjs` - fail (DEX, RL and DT now have 0 READY prompts after closing DT06)
-
-
-
-  - `git diff --check` - pass
-
-
-
-- Remaining risk:
-
-
-
-  - This is a docs-only timeline export/retrospective contract; runtime export still needs a later prompt.
-
-
-
-- Next:
-
-
-
-  - none
-
-
-
-
-
-
-
----
-
-
-
-
+- Status: DONE
+- Completion: 92%
+- Changed files: docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md; docs/architecture/DECISION_TIMELINE_CONTRACT.md; docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; MASTER_ROADMAP.md; .ai/runs/2026-08-13-DT06-evidence.md
+- Checks run: node scripts/check-prompt-queues.mjs --self-test pass; node scripts/check-prompt-queues.mjs pass; node scripts/check-planning-architecture.mjs --self-test pass; node scripts/check-planning-architecture.mjs fail (DEX 0 READY, DT 0 READY after close; RL06 still READY); node scripts/check-agent-instructions.mjs --self-test pass; node scripts/check-agent-instructions.mjs pass; git diff --check pass
+- Checks not run: dotnet build/test and npm - docs-only, no runtime
+- Run log: .ai/runs/2026-08-13-DT06-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: no runtime export endpoint or print CSS; no DT07 invented
+- Follow-up: none
+- Residual risk: planning validator still requires exactly one READY per DEX/DT; those lanes are empty by design until an owner creates a successor. Runtime export remains unauthorized.
+- Prompt defect / scope repair: corrected stale DEX17 READY pointer in the Decision Intelligence header, roadmap current-READY sentence, and MASTER because DEX17 Status is DONE; no DEX18 invented. Did not start RL06 runtime from a planning READY.
 
 
 

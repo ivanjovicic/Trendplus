@@ -6,6 +6,7 @@ Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Related rollout plan: `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 Related contracts:
 
+- `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 - `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
 - `docs/Analytics/ACTION_OUTCOME_ANALYTICS_PLAN.md`
 - `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
@@ -360,11 +361,15 @@ Later timeline surfaces must support review without rewriting history.
 
 ### Export / report
 
+The frozen DT06 field and honesty contract is `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`.
+
 - export must include correlation identifiers (`sourceRecommendationId`, `actionId`, `correlationId` when present);
 - export must separate lifecycle stage timestamps from `updatedAtUtc`;
 - export must preserve `outcomeStatus`, evidence fields and gap reasons;
+- snapshot presence/absence must stay explicit; live lookup must not be labelled as a snapshot;
 - export failure must be graceful and must not fabricate zeros for missing rates;
-- print/report views must show period, freshness/data-quality context and denominator labels.
+- print/report views must show period, freshness/data-quality context and denominator labels;
+- the requested period must not be silently widened to avoid an empty report.
 
 ### Drill-down
 

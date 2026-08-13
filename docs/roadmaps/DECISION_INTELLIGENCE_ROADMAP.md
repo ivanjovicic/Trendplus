@@ -105,6 +105,7 @@ Goal: provide an auditable historical record of what was recommended, what happe
 Authoritative contract:
 
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
 Roadmap sequence:
 
@@ -115,18 +116,19 @@ Phases:
 1. canonical timeline event model — **DONE** (`docs/architecture/DECISION_TIMELINE_CONTRACT.md`);
 2. decision/action/execution/outcome correlation identifiers — covered in DT01; first-class timestamps remain a later additive slice;
 3. immutable/append-oriented history semantics for important events — projection-first via notes/snapshots (`docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`);
-4. filtered timeline by entity/recommendation family/time period — planned API/UI slices in DT02;
-5. outcome window and measurement state display — planned UI/export slices in DT02;
+4. filtered timeline by entity/recommendation family/time period — **DONE** Slice-2 runtime in DT05; Product Decision Center remains the live filter surface;
+5. outcome window and measurement state display — planned UI/export slices in DT02; honesty rules frozen in DT06;
 6. success metrics that distinguish issued, accepted, executed, measured and successful denominators — **DONE** in DT01 (aligned with RL01);
-7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots; harden in DT02 Slice 5;
-8. export/reporting for decision review and business retrospectives — planned in DT02 Slice 5.
+7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots and DEX10 evidence snapshots; presence/absence frozen in DT06;
+8. export/reporting for decision review and business retrospectives — **DONE** as docs-only DT06 contract (`docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`); runtime export is a later prompt.
 
 Authoritative planning outputs:
 
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
+- `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: `DEX17` (supplier decision hub explainability snapshot runtime slice; DEX16 DONE = inventory detail and insight explainability snapshot runtime slice pushed to main; DEX15 DONE = inventory detail and insight explainability snapshot contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; DEX14 DONE = inventory explainability reuse runtime slice validated in `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`; DEX13 DONE = inventory explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; RL05 DONE and measurement-only statistics contract documented in `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`; supplier explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`).
+Current queue READY: none in DT (`DT06` DONE = timeline export/retrospective contract). DEX has no remaining READY (`DEX17` DONE). RL current READY is `RL06` (measurement-only statistics; planning READY does not authorize runtime). DEX16 DONE = inventory detail and insight explainability snapshot runtime slice pushed to main; RL05 DONE and measurement-only statistics contract documented in `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`.
 
 ## Decision Engine evolution
 
