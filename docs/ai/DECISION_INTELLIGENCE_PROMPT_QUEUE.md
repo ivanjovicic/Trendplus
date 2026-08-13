@@ -1824,7 +1824,7 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 - Run log: .ai/runs/2026-08-13-DT06-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 9c82d0745656a2905ace3424605d6caa0dd498ad
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> e8d178538c2e9134bf5761ede9729838ab198d4a
 - Missed: no runtime export endpoint or print CSS; no DT07 invented
 - Follow-up: none
 - Residual risk: planning validator still requires exactly one READY per DEX/DT; those lanes are empty by design until an owner creates a successor. Runtime export remains unauthorized.
