@@ -255,7 +255,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventoryS
 - Run log: .ai/runs/2026-08-13-RQ101-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 3244723ecc05e09718088e2d4df59de050b1f634
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> 8c667c3b52af0af4b0c2bbf271b305d6713cb397; work SHA 3244723ecc05e09718088e2d4df59de050b1f634 is an ancestor
 - Missed: none known for the named inventory empty/null/EOF contract
 - Follow-up: `RQ102`
 - Residual risk: other WebApplicationFactory hosts can still trip the EF provider-count warning if run together without the same suppression
