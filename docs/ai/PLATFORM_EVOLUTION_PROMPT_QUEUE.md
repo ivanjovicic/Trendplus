@@ -1164,6 +1164,61 @@ Worker lifecycle evidence exists as scattered metrics, but there is still no fro
 
 ---
 
+## OBS09 - Capture worker SLA evidence without fake-green defaults
+
+Status: WAITING
+Ready after: OBS08 DONE
+Priority: future / measurement
+Feature family: observability-worker-sla-evidence
+Parallel-safe: yes, docs/contracts or later runtime wiring after OBS08
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS09-<agent>.lock.md`
+
+### Problem
+
+After the worker SLA evidence contract exists, the repo still needs a bounded evidence capture path so queue age, last-success and paused/disabled state cannot be presented as healthy zeros.
+
+### Evidence
+
+- OBS08 worker SLA contract (when DONE)
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` worker rows
+- worker classes under `Workers/`
+
+### Scope
+
+- measurement/evidence capture only after OBS08;
+- no invented SLA hours;
+- missing last-success stays unknown.
+
+### Read first
+
+- OBS08
+- OBS07 analytics SLA evidence contract
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-6
+
+### Do
+
+1. Follow the OBS08 contract fields exactly.
+2. Record unknown/missing worker evidence as unknown, not zero or green.
+3. Do not add alerting rules in this prompt.
+
+### Tests
+
+- evidence cites contract field ids;
+- docs/queue validators pass if only docs change;
+- focused worker tests if runtime capture is in scope after OBS08.
+
+### Acceptance
+
+- worker SLA evidence can be cited without fake-green defaults;
+- OBS08 remains the contract source of truth.
+
+### Dependencies
+
+- OBS08 DONE.
+
+---
+
 ## OBS07 - Define Analytics SLA evidence contract
 
 Status: DONE

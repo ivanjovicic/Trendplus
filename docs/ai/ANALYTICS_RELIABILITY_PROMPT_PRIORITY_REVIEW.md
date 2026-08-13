@@ -28,7 +28,7 @@ Primary goals:
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89 + RQ96-RQ98
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88 + RQ90
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (WAITING owner-promoted test pack)
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (`RQ100` READY)
 - `docs/ai/ANALYTICS_TEST_STRATEGY.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
@@ -57,7 +57,7 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 5. Post-BCI inventory-foundation prompts `RQ96`-`RQ98` are queued as WAITING backlog; they must not be promoted ahead of green GHA evidence.
-6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is none. The next owner-promoted RQ pack is `RQ100`-`RQ104` WAITING in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`. Do not revive `RQ89`/`RQ90` as READY.
+6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is `RQ100`. Follow-up pack `RQ101`-`RQ104` stays WAITING. `RQ105` is WAITING operational-fallback honesty. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 

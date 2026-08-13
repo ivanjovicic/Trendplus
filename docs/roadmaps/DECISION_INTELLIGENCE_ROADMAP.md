@@ -128,7 +128,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: none in DT (`DT06` DONE). DEX has no remaining READY (`DEX17` DONE). RL has no remaining READY (`RL06` DONE = measurement-only statistics projection on the outcome summary endpoint; `RL08` OBSOLETE as duplicate). RL05 DONE and measurement-only statistics contract documented in `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`.
+Current queue READY: `DEX18` (Executive Board explainability reuse contract), `RL07` (measurement-statistics review surface contract), `DT07` (timeline export runtime). `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 

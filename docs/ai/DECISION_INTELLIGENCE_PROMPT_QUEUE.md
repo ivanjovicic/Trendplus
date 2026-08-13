@@ -38,15 +38,15 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | none (`DEX17` DONE) | no remaining DEX READY |
+| DEX - Decision Explainability | `DEX18` | docs/contracts only - Executive Board explainability reuse |
 
 
 
-| RL - Recommendation Learning | none (`RL06` DONE) | no remaining RL READY |
+| RL - Recommendation Learning | `RL07` | docs/contracts only - measurement statistics review surface |
 
 
 
-| DT - Decision Timeline | none (`DT06` DONE) | no remaining DT READY |
+| DT - Decision Timeline | `DT07` | backend/frontend - timeline export runtime slice |
 
 
 
@@ -68,6 +68,62 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
+
+
+## DEX18 - Prepare Executive Decision Board explainability reuse contract
+
+Status: READY
+Priority: future / planning
+Feature family: decision-explainability-executive-reuse
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: .ai/task-locks/DEX18-<agent>.lock.md
+
+### Problem
+
+Product, supplier and inventory explainability snapshots exist, but Executive Decision Board still lacks a frozen reuse contract that maps board cards to the shared DEX vocabulary without local scoring or invented Why/tree semantics.
+
+### Evidence
+
+- docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+- docs/architecture/DECISION_GRAPH_CONTRACT.md
+- Api/Endpoints/DecisionBoardEndpoints.cs
+- Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+
+### Scope
+
+- docs/contracts only for Executive Decision Board explainability reuse;
+- no new API shape, local scoring or invented decision tree;
+- reuse backend-led recommendation, confidence, fallback and reason codes only.
+
+### Read first
+
+- DEX11 cross-family readiness
+- DEX12 / DEX13 reuse contract style
+- Decision Board aggregation contract tests
+
+### Do
+
+1. Map which board card fields already expose recommendation, confidence, reason, fallback and snapshot identity.
+2. Mark gaps that block reuse of the shared DEX vocabulary.
+3. Keep helper/signal labeling explicit when recommendationAllowed=false or fallback is used.
+4. Do not authorize runtime work in this prompt.
+
+### Tests
+
+- contract forbids frontend-invented confidence or Why text;
+- missing snapshot/tree stays explicit;
+- docs remain UTF-8; no runtime code lands.
+
+### Acceptance
+
+- a docs-only Executive Board explainability reuse contract exists;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX17 DONE;
+- DEX11 DONE.
 
 
 ## DEX17 - Implement Supplier Decision Hub explainability snapshot runtime slice
@@ -1019,6 +1075,62 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
+## RL07 - Prepare measurement-statistics review surface contract
+
+Status: READY
+Priority: future / planning
+Feature family: recommendation-learning-review-surface
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: .ai/task-locks/RL07-<agent>.lock.md
+
+### Problem
+
+RL06 exposed measurementStatistics on the outcome summary endpoint, but there is still no frozen contract for an operator review surface that shows lifecycle funnel counts, measured coverage and outcome distribution without hiding gaps or mutating confidence.
+
+### Evidence
+
+- docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+- docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 3
+- Application/Analytics/RecommendationMeasurementStatisticsProjection.cs
+- GET /api/analytics/actions/outcomes/summary
+
+### Scope
+
+- docs/contracts only for the review/dashboard/export presentation of measurement-only statistics;
+- no confidence calibration;
+- no schema migration;
+- no frontend-local rates.
+
+### Read first
+
+- RL06 completion note
+- measurement statistics contract
+- RL02 rollout plan Slice 3
+
+### Do
+
+1. Define the review-surface fields, empty/insufficient states and warning placement.
+2. Require the same denominators as measurementStatistics; do not reuse legacy 	otals rates as success.
+3. Keep print/export failure graceful and gap-visible.
+4. Do not authorize runtime UI work in this prompt.
+
+### Tests
+
+- contract keeps acceptance != success and execution != success;
+- missing measured evidence stays not_measured;
+- zero denominators stay null, not 0%.
+
+### Acceptance
+
+- a docs-only review-surface contract exists;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL06 DONE.
+
+
 ## RL06 - Implement measurement-only recommendation statistics projection runtime slice
 
 Status: DONE
@@ -1603,6 +1715,62 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 
 
 
+
+
+## DT07 - Implement Decision Timeline export and retrospective report runtime slice
+
+Status: READY
+Priority: future / planning
+Feature family: decision-timeline-export-report
+Parallel-safe: yes, backend/frontend report paths when RQ100 is not touching the same files
+Owner: unassigned
+Local lock: .ai/task-locks/DT07-<agent>.lock.md
+
+### Problem
+
+DT06 froze the export/retrospective contract, but there is still no runtime export or print/report document that reuses the Slice-2 filtered timeline without inventing events or silently widening the period.
+
+### Evidence
+
+- docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md Slice 4
+- DT05 Slice-2 filtered timeline
+
+### Scope
+
+- smallest runtime export/report path over the existing DT05 projection;
+- honesty header, snapshot presence/absence and graceful export failure;
+- no new event store and no invented replay history.
+
+### Read first
+
+- DT06 contract
+- DT05 filtered timeline
+- DEX10 snapshot vocabulary
+
+### Do
+
+1. Reuse the Slice-2 projection for export/report rows; do not rebuild history from live product rows.
+2. Keep requested vs effective period equal; empty period stays empty with emptyReason.
+3. Mark snapshots present or absent explicitly; live lookup must not be labelled snapshot.
+4. Failed print/export must not fabricate zero rates.
+
+### Tests
+
+- focused backend or frontend proof that export/report failure is graceful;
+- empty period does not silently widen;
+- no fake events for missing stages.
+
+### Acceptance
+
+- a runtime timeline export or print/report path exists over Slice-2;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT06 DONE;
+- DT05 DONE.
 
 
 ## DT06 - Prepare Decision Timeline export and retrospective reporting contract

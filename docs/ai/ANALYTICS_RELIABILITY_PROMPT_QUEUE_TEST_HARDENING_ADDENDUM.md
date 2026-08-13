@@ -2,8 +2,10 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Status: owner-promoted WAITING pack; QDB exclusive work is currently clear
+Current READY prompt: `RQ100`
+Status: owner-promoted READY pack; QDB exclusive work is currently clear
+
+Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -17,8 +19,8 @@ Use with:
 
 ## Queue rules
 
-1. Keep all prompts `WAITING` until the owner promotes exactly one to `READY`.
-2. Promote `RQ100` first.
+1. Keep later prompts `WAITING` until the current READY prompt is DONE.
+2. `RQ100` is the current READY prompt. Promote `RQ101` only after `RQ100` is DONE.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -27,7 +29,7 @@ Use with:
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ100 | WAITING | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
+| RQ100 | READY | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
 | RQ101 | WAITING | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
 | RQ102 | WAITING | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | WAITING | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
@@ -37,8 +39,8 @@ Use with:
 
 ## RQ100 - Product Decision and Decision Board critical-path contract tests
 
-Status: WAITING
-Ready after: owner promotes this pack; QDB exclusive work is currently clear (`QDB06` still needs migration approval)
+Status: READY
+Ready after: owner-promoted 2026-08-13; QDB exclusive work is currently clear (`QDB06` still needs migration approval)
 Priority: P1
 Type: backend-tests/integration
 Feature family: analytics-critical-decision-contract

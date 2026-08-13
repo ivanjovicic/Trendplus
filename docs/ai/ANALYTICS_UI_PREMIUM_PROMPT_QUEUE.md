@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`P-UI-20` DONE)
+Current READY prompt: `P-UI-21`
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -26,6 +26,8 @@ Use with:
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 | P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
+| P-UI-21 | READY | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
+| P-UI-22 | WAITING | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 
 ---
 
@@ -974,7 +976,126 @@ npm run check:analytics-guardrails
 - Main commit SHA: acc8943e5b91f2b4a97c7f947b81648406bd0f53
 - Main verification: git rev-parse origin/main -> 405d27b46f054dad94ba150ff33fe21cfc8e5ea5; work SHA acc8943e5b91f2b4a97c7f947b81648406bd0f53 is an ancestor
 - Missed: empty success on Color/Shoe/Supplier can still show KPI totals beside EmptyState
-- Follow-up: none; no remaining P-UI READY
+- Follow-up: `P-UI-21`
 - Residual risk: Actions list error uses a local alert banner instead of shared AnalyticsErrorState
-- Next: owner may promote RQ100 or approve QDB06
+- Next: `P-UI-21`
 - Prompt defect / scope repair: dedicated `analyticsTrustStateProof.spec.tsx` added because premium/Actions specs mock TrustHeader
+
+---
+
+## P-UI-21 - Empty success without KPI totals and shared Actions error state
+
+Status: READY
+Ready after: P-UI-20 DONE
+Priority: P2
+Type: frontend/tests
+Feature family: analytics-ui-empty-kpi-honesty
+Parallel-safe: yes, when RQ100 is not touching the same TSX files
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-21-<agent>.lock.md`
+Commit suggestion: `fix(ui): hide empty-success KPIs and share Actions error state`
+
+### Problem
+
+P-UI-20 locked error-without-KPI-zeros, but Color, Shoe Type and Supplier empty success can still render KPI totals beside EmptyState. Analytics Actions list failure still uses a local `role=alert` banner instead of shared `AnalyticsErrorState`.
+
+### Evidence
+
+- `.ai/runs/2026-08-13-P-UI-20-evidence.md`
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
+
+### Scope
+
+- the pages listed in Evidence;
+- their focused specs;
+- reuse `AnalyticsErrorState` / `AnalyticsEmptyState` only; no new recommendation logic.
+
+### Read first
+
+- P-UI-20 completion note
+- `docs/ai/FRONTEND_UX_STANDARDS.md`
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
+
+### Do
+
+1. Hide the main KPI block on successful empty Color/Shoe/Supplier payloads.
+2. Route Analytics Actions list failure through shared `AnalyticsErrorState` if the page host allows it without breaking routing tests.
+3. Keep empty as `role=status` and error as `role=alert`.
+4. Do not invent backend emptyReason or confidence.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/analyticsTrustStateProof.spec.tsx src/pages/__tests__/ColorSalesStatsPage.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx
+npm run check:analytics-guardrails
+```
+
+### Acceptance
+
+- empty success no longer shows trusted KPI totals beside EmptyState on the named pages;
+- Actions list error does not fall through to "Nema akcija";
+- no frontend-invented recommendation or confidence.
+
+### Dependencies
+
+- P-UI-20 DONE.
+
+---
+
+## P-UI-22 - Remaining decision-page empty and error chrome
+
+Status: WAITING
+Ready after: P-UI-21 DONE
+Priority: P2
+Type: frontend/tests
+Feature family: analytics-ui-remaining-trust-chrome
+Parallel-safe: yes, when RQ104 is not rewriting the same pages
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-22-<agent>.lock.md`
+Commit suggestion: `test(ui): lock remaining decision page empty error chrome`
+
+### Problem
+
+After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and Pre-nivelacija may still mix empty success with KPI-like numbers or skip shared ErrorState/EmptyState.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
+
+### Scope
+
+- the pages listed in Evidence and their nearest specs;
+- presentation of backend trust states only.
+
+### Read first
+
+- P-UI-21
+- `docs/ai/FRONTEND_UX_STANDARDS.md`
+
+### Do
+
+1. Prove error hides KPI zeros and empty uses EmptyState on the remaining high-value decision pages.
+2. Reuse shared trust components; do not add page-local formatters.
+3. Stop if a missing emptyReason requires a backend contract change; hand that to RQ.
+
+### Tests
+
+- focused non-watch Vitest for the touched pages;
+- `npm run check:analytics-guardrails` if analytics pages change.
+
+### Acceptance
+
+- remaining named decision pages have error/empty proofs;
+- no backend scoring is invented in the client.
+
+### Dependencies
+
+- P-UI-21 DONE.

@@ -4,7 +4,7 @@ Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
 Current READY prompt: none (`STAB12` DONE)
-Current gate verdict: STAB12 completed; unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. Existing-execution next is owner-promoted `RQ100` or QDB06 after migration approval.
+Current gate verdict: STAB12 completed. Existing-execution READY is `RQ100`. `QDB06` remains WAITING on owner migration approval.
 
 ## Goal
 
