@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-19`
+Current READY prompt: `P-UI-20`
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -24,7 +24,8 @@ Use with:
 | P-UI-08 | DONE | inventory-control-surface | Consolidate inventory page filters/export/scheduler controls |
 | P-UI-04 | DONE | analytics-command-center | Redesign analytics dashboard above-the-fold command center |
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
-| P-UI-19 | READY | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
+| P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
+| P-UI-20 | WAITING | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 
 ---
 
@@ -753,7 +754,7 @@ npm run test -- --run src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx
 
 ## P-UI-19 - Analytics React chrome regression hardening
 
-Status: READY
+Status: DONE
 Ready after: P-UI-18 DONE
 Priority: P2
 Type: frontend/tests/ux-regression
@@ -820,3 +821,125 @@ npm run build
 
 - Path-safe vs higher-priority BCI/STAB/RQ/QDB runtime work.
 - Do not promote another P-UI prompt until this one is DONE or explicitly demoted by the owner.
+
+### Completion note
+
+- Date: 2026-08-13
+- Agent: Codex
+- Status: DONE
+- Completion: Ran the grouped React regression suite for shared analytics chrome and the latest migrated page families, then verified analytics guardrails, production build, and queue/planning governance checks.
+- Changed files:
+  - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-13-P-UI-19-evidence.md`
+- Contract/runtime behavior changed:
+  - none
+- Checks run:
+  - `cd Klijent/clientapp && npm run test -- --run src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx src/layout/components/__tests__/HeaderStatus.spec.tsx src/layout/components/__tests__/Sidebar.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx src/pages/__tests__/SupplierConsolidatedPage.spec.tsx` - pass
+  - `cd Klijent/clientapp && npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Checks not run:
+  - none
+- Run log: `.ai/runs/2026-08-13-P-UI-19-evidence.md`
+- Delivery mode: main
+- Main commit SHA: `8dc3dbdfb9b344b93df7e1919c8598e9c40a0f27`
+- Main verification: `git ls-remote origin refs/heads/main -> 8dc3dbdfb9b344b93df7e1919c8598e9c40a0f27`
+- Missed:
+  - no reproducible UI regression was found, so no component/page fix was needed
+- Follow-up:
+  - `P-UI-20`
+- Residual risk:
+  - existing `act(...)` warnings remain in `HeaderStatus.spec.tsx` for `RedisToggleFlag` and `WorkerControlFlag`
+- Next:
+  - `P-UI-20`
+- Prompt defect / scope repair:
+  - none; the grouped regression prompt executed as written and produced evidence-only completion
+
+---
+
+## P-UI-20 - Grouped analytics trust-state proof
+
+Status: WAITING
+Ready after: P-UI-19 DONE
+Priority: P2
+Type: frontend/tests
+Feature family: analytics-ui-trust-state-proof
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/P-UI-20-<agent>.lock.md`
+Commit suggestion: `test(ui): lock error empty and trust states on stats pages`
+
+### Problem
+
+Daily Sales, Color, Shoe Type, Supplier sales and Actions already use `AnalyticsErrorState`, `AnalyticsEmptyState` and `AnalyticsTrustHeader`, but the page specs mostly cover happy-path chrome. An error that still shows KPI zeros, or an empty period that looks like a crash, is a trust failure, not a visual polish issue. P-UI may prove presentation of backend trust states; it must not invent recommendation or confidence truth.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+
+### Scope
+
+- the spec files listed in Evidence
+- the five pages only if a spec reproduces a trust-state display bug
+- shared `AnalyticsErrorState` / `AnalyticsEmptyState` / `AnalyticsTrustHeader` only if a reproduced bug is in the shared component
+
+### Do Not Touch
+
+- analytics formulas, score semantics or API payloads
+- backend routes
+- local Visoko/Srednje/Nisko scoring bands
+- P-UI-19 chrome regression files unless a shared component bug is reproduced
+- converting lazy routes to eager imports
+
+### Read first
+
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `docs/ai/FRONTEND_UX_STANDARDS.md`
+- `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md` only if a route smoke assertion is required
+- the existing specs listed in Evidence
+
+### Do
+
+1. For Daily Sales, Color, Shoe Type and Supplier sales: add or keep a proof that API error renders `AnalyticsErrorState` / `role=alert` and does not render the main KPI block as trusted zeros.
+2. For the same four pages: add or keep a proof that successful empty (`success=true`, `emptyReason` / no rows) renders `AnalyticsEmptyState`, not `AnalyticsErrorState`.
+3. Prove `AnalyticsTrustHeader` is actually mounted on those pages. If a premium spec currently mocks the header to `null`, add a sibling assertion with the real header or a dedicated trust-state spec; do not leave TrustHeader coverage as a mock-only pass.
+4. For Analytics Actions: prove list/summary error is a user-facing error state without fake measured impact, and empty measured summary is empty rather than error.
+5. Do not snapshot entire pages. Name the failure mode in the test title (`error hides KPI`, `empty is not error`).
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx src/pages/__tests__/ColorSalesStatsPage.spec.tsx src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx
+npm run check:analytics-guardrails
+```
+
+### Acceptance
+
+- Each named page family has error-without-KPI-zeros and empty-is-not-error coverage, or an explicit proof the existing spec already locks it.
+- TrustHeader is proven as a real mount, not only a mocked import.
+- No new frontend scoring threshold is introduced.
+- Completion note references `.ai/runs/<date>-P-UI-20-evidence.md`.
+
+### Dependencies
+
+- `P-UI-19` DONE or owner explicitly serializes this first
+- Path-safe vs `RQ104`; P-UI-20 owns stats-page trust chrome, RQ104 owns decision-page backend-field display
+- Do not displace a higher-priority exclusive READY task; `QDB06` is WAITING on owner migration approval
