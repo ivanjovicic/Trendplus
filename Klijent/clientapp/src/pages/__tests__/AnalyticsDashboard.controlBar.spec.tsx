@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { rest } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,71 @@ import AnalyticsDashboard from "../AnalyticsDashboard";
 vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
   default: () => <div data-testid="charts-stub" />,
 }));
+
+function buildBootstrapResponse(actionTitle: string) {
+  return {
+    summary: {
+      totalRevenue: 12345,
+      totalTransactions: 12,
+      totalUnits: 8,
+    },
+    inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+    dailySales: [],
+    categoryData: [],
+    genderData: [],
+    supplierData: [],
+    supplierOptions: [{ supplierId: 77, supplierName: "Alfa Shoes" }],
+    weekdayData: [],
+    hourData: [],
+    paymentData: [],
+    quickInsights: null,
+    transactionStats: null,
+    advanced: null,
+    topAdvanced: null,
+    validationCompleteness: null,
+    validationFreshness: null,
+    validationLostSales: null,
+    executive: {
+      dataQualitySummary: {
+        missingSupplierCount: 0,
+        missingCostCount: 0,
+        insufficientSignalCount: 0,
+        ignoredRowsCount: 0,
+        zeroRevenueRowsCount: 0,
+        freshnessStatus: "good",
+      },
+      inventoryDangerValueRsd: 0,
+      totalMarginContributionRsd: 0,
+      topMarginCategories: [],
+      topMarginProducts: [],
+      topSuppliers: [],
+      negativeSignals: [],
+    },
+    decisionActions: [
+      {
+        sourceType: "dashboard",
+        priority: "P1",
+        title: actionTitle,
+        description: actionTitle,
+        reason: actionTitle,
+        statusReason: "Signal ready.",
+        recommendationStatus: "READY",
+        expectedImpact: "1 RSD",
+        impactEstimateRsd: 1000,
+        confidencePct: 0.9,
+        reliabilityPct: 0.8,
+        recommendationAllowed: true,
+        dataQualityStatus: "good",
+        actionUrl: "/analytics/inventory",
+        metadata: {},
+        link: "/analytics/inventory",
+        linkLabel: "Otvori inventar",
+      },
+    ],
+    errors: [],
+    meta: { success: true, dataQualityStatus: "good" },
+  } as never;
+}
 
 describe("AnalyticsDashboard control bar", () => {
   beforeEach(() => {
@@ -200,5 +265,61 @@ describe("AnalyticsDashboard control bar", () => {
     expect(within(commandCenter).getByRole("heading", { name: "Kvalitet podataka i svežina" })).toBeInTheDocument();
     expect(within(commandCenter).getByRole("heading", { name: "Gde gubimo novac?" })).toBeInTheDocument();
     expect(within(commandCenter).getByText(/Kapital blokiran u rizičnoj i sporoj zalihi\./i)).toBeInTheDocument();
+  });
+
+  it("keeps the newest dashboard bootstrap when filter changes trigger overlapping requests", async () => {
+    const bootstrapResolvers: Array<(value: never) => void> = [];
+
+    vi.spyOn(analyticsApi, "getDashboardBootstrap").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          bootstrapResolvers.push(resolve as (value: never) => void);
+        }),
+    );
+    vi.spyOn(analyticsApi, "getStores").mockResolvedValue([
+      { storeId: 5, storeName: "Delta" },
+      { storeId: 6, storeName: "Epsilon" },
+    ] as never);
+    vi.spyOn(analyticsApi, "getAnalyticsRefreshStatus").mockResolvedValue({
+      isRunning: false,
+      currentStep: null,
+      dataFreshnessStatus: "good",
+      lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
+      jobs: [],
+    } as never);
+    vi.spyOn(analyticsApi, "checkAnalyticsHealth").mockResolvedValue({
+      status: "ok",
+      tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
+      message: "ok",
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("option", { name: "Epsilon" });
+    await waitFor(() => expect(bootstrapResolvers).toHaveLength(1));
+
+    fireEvent.change(screen.getByLabelText("Prodavnica"), {
+      target: { value: "6" },
+    });
+
+    await waitFor(() => expect(bootstrapResolvers).toHaveLength(2));
+
+    await act(async () => {
+      bootstrapResolvers[1](buildBootstrapResponse("Novi signal"));
+    });
+    expect(await screen.findByText("Novi signal", { selector: "strong" })).toBeInTheDocument();
+
+    await act(async () => {
+      bootstrapResolvers[0](buildBootstrapResponse("Stari signal"));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Stari signal", { selector: "strong" })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Novi signal", { selector: "strong" })).toBeInTheDocument();
   });
 });

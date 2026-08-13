@@ -4,6 +4,7 @@
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -549,6 +550,8 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(false);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [showOverviewHelp, setShowOverviewHelp] = useState(false);
+  const storesRequestSeqRef = useRef(0);
+  const dashboardRequestSeqRef = useRef(0);
 
   const isInvalidFilterRange = useMemo(
     () => parseInputDate(fromDate) > parseInputDate(toDate),
@@ -578,20 +581,33 @@ export default function AnalyticsDashboard() {
   }, []);
 
   const loadStores = useCallback(async () => {
+    const requestSeq = ++storesRequestSeqRef.current;
     try {
-      setStores(await getStores(true));
+      const nextStores = await getStores(true);
+      if (storesRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      setStores(nextStores);
     } catch {
-      setStores([]);
+      if (storesRequestSeqRef.current !== requestSeq) {
+        return;
+      }
     }
   }, []);
 
-  const loadHealth = useCallback(async () => {
+  const loadHealth = useCallback(async (requestSeq: number) => {
     try {
       const health = await checkAnalyticsHealth();
+      if (dashboardRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setHealthText(
         `Analytics baza: ${health.tables.salesFacts} prodaja, ${health.tables.salesLineFacts} stavki, ${health.tables.productsDim} proizvoda`,
       );
     } catch (error) {
+      if (dashboardRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setHealthText("");
       setErrors((current) =>
         compactErrorMessages([
@@ -606,6 +622,7 @@ export default function AnalyticsDashboard() {
   }, []);
 
   const load = useCallback(async () => {
+    const requestSeq = ++dashboardRequestSeqRef.current;
     if (isInvalidFilterRange) {
       setErrors(["Proverite filtere: datum od ne može biti posle datuma do."]);
       return;
@@ -619,6 +636,10 @@ export default function AnalyticsDashboard() {
       getDashboardBootstrap(fromDate, toDate, true, storeId, supplierId),
       getAnalyticsRefreshStatus(),
     ]);
+
+    if (dashboardRequestSeqRef.current !== requestSeq) {
+      return;
+    }
 
     const nextErrors: string[] = [];
     if (bootstrapR.status === "fulfilled") {
@@ -691,7 +712,7 @@ export default function AnalyticsDashboard() {
 
     setErrors(compactErrorMessages(nextErrors));
     setLoading(false);
-    window.setTimeout(() => void loadHealth(), 0);
+    void loadHealth(requestSeq);
   }, [fromDate, isInvalidFilterRange, loadHealth, storeId, supplierId, toDate]);
 
   useEffect(() => {
