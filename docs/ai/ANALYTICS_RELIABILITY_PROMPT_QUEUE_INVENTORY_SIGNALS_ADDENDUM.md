@@ -682,7 +682,7 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 - Follow-up: none
 - Residual risk: none known for reader-position on these handlers
 - Prompt defect / scope repair: closed from RQ101 because that prompt required the EOF-strict assertions to be present and run
-- Next: `RQ102`
+- Next: `RQ103`
 
 ---
 

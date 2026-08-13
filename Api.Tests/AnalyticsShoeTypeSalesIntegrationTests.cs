@@ -4,7 +4,14 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Application.Artikli.Common.Interfaces;
+using Infrastructure.DbContexts;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Trendplus2.Tests;
@@ -82,6 +89,24 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
         var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-06-01");
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact(DisplayName = "Invalid date range returns bad request on in-memory host")]
+    public async Task ShoeTypeSalesStats_InvalidPeriod_ReturnsBadRequest_InMemory()
+    {
+        await using var factory = new ShoeTypeSalesInMemoryFactory();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-06-01");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(body));
+        using var doc = JsonDocument.Parse(body);
+        Assert.False(
+            doc.RootElement.TryGetProperty("meta", out var meta)
+            && meta.ValueKind == JsonValueKind.Object
+            && meta.TryGetProperty("success", out var success)
+            && success.ValueKind == JsonValueKind.True);
     }
 
     [Fact(DisplayName = "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types")]
@@ -245,5 +270,30 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
                 unknownTypeRevenueSharePct = Math.Round(dataQuality.GetProperty("unknownTypeRevenueSharePct").GetDouble(), 2)
             }
         };
+    }
+
+    private sealed class ShoeTypeSalesInMemoryFactory : WebApplicationFactory<global::Program>
+    {
+        private readonly string _databaseName = $"shoe-type-sales-invalid-period-{Guid.NewGuid():N}";
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
+                services.RemoveAll<TrendplusDbContext>();
+                services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
+                services.RemoveAll<ITrendplusDbContext>();
+
+                services.AddDbContextFactory<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddScoped<ITrendplusDbContext>(sp =>
+                    sp.GetRequiredService<TrendplusDbContext>());
+            });
+        }
     }
 }

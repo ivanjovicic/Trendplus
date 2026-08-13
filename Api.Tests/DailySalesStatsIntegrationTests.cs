@@ -10,6 +10,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trendplus2.Tests;
@@ -36,6 +37,9 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.True(root.TryGetProperty("topSuppliersOrder", out _));
         Assert.True(root.TryGetProperty("dateRows", out _));
         Assert.True(root.TryGetProperty("metadata", out _));
+        Assert.True(root.TryGetProperty("meta", out var meta));
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("emptyReason").ValueKind);
 
         Assert.Equal(JsonValueKind.Array, root.GetProperty("topSuppliers").ValueKind);
         Assert.Equal(JsonValueKind.Array, root.GetProperty("dateRows").ValueKind);
@@ -60,6 +64,7 @@ public sealed class DailySalesStatsIntegrationTests
         var response = await client.GetAsync("/api/analytics/daily-sales?fromDate=2026-01-03&toDate=2026-01-01");
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        AssertInvalidRangeIsNotEmptySuccess(await response.Content.ReadAsStringAsync());
     }
 
     [Fact(DisplayName = "Daily sales dataScope filters imported rows")]
@@ -97,6 +102,67 @@ public sealed class DailySalesStatsIntegrationTests
             Assert.Equal(0m, row.GetProperty("totalRevenue").GetDecimal());
         });
         Assert.Contains(root.GetProperty("metadata").GetProperty("warnings").EnumerateArray(), x => x.GetString()!.Contains("Podaci su dostupni od", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact(DisplayName = "Daily sales empty period is successful empty, not an error")]
+    public async Task DailySalesStats_EmptyPeriodIsSuccessfulEmptyNotError()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03&storeId=1&topN=3&dataScope=all");
+
+        Assert.Equal(0, root.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(0, root.GetProperty("topSuppliers").GetArrayLength());
+        Assert.All(root.GetProperty("dateRows").EnumerateArray(), row =>
+        {
+            Assert.Equal(0, row.GetProperty("totalItemsSold").GetInt32());
+            Assert.Equal(0m, row.GetProperty("totalRevenue").GetDecimal());
+        });
+
+        var meta = root.GetProperty("meta");
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal("no_data_in_period", meta.GetProperty("emptyReason").GetString());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
+        Assert.Contains(
+            root.GetProperty("metadata").GetProperty("warnings").EnumerateArray(),
+            x => x.GetString()!.Contains("Podaci su dostupni od", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact(DisplayName = "Daily sales store filter does not leak another store")]
+    public async Task DailySalesStats_StoreFilterDoesNotLeakOtherStoreItems()
+    {
+        await using var factory = CreateFactory();
+        var store1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=10&dataScope=all");
+        var store2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=2&topN=10&dataScope=all");
+
+        var store1SupplierA = store1.GetProperty("topSuppliers").EnumerateArray()
+            .Single(item => item.GetProperty("supplierName").GetString() == "Dobavljac A");
+        var store2SupplierA = store2.GetProperty("topSuppliers").EnumerateArray()
+            .Single(item => item.GetProperty("supplierName").GetString() == "Dobavljac A");
+
+        Assert.Equal(1, store1.GetProperty("storeId").GetInt32());
+        Assert.Equal(2, store2.GetProperty("storeId").GetInt32());
+        Assert.Equal(7, store1SupplierA.GetProperty("totalQty").GetInt32());
+        Assert.Equal(99, store2SupplierA.GetProperty("totalQty").GetInt32());
+        Assert.Equal(22, store1.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(99, store2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+    }
+
+    [Fact(DisplayName = "Daily sales adjacent day windows do not overlap")]
+    public async Task DailySalesStats_AdjacentDayWindowsDoNotOverlap()
+    {
+        await using var factory = CreateFactory();
+        var jan1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-01&storeId=1&topN=3&dataScope=all");
+        var jan2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-02&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+        var both = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+
+        Assert.Equal(10, jan1.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(12, jan2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(22, both.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(
+            both.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32(),
+            jan1.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32()
+            + jan2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
     }
 
     [Fact(DisplayName = "Daily sales topN parameter limits supplier count")]
@@ -235,14 +301,16 @@ public sealed class DailySalesStatsIntegrationTests
             new ProdajaZaglavlje { Id = 2, DatumProdaje = new DateTime(2026, 1, 1, 15, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
             new ProdajaZaglavlje { Id = 3, DatumProdaje = new DateTime(2026, 1, 1, 23, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
             new ProdajaZaglavlje { Id = 4, DatumProdaje = new DateTime(2026, 1, 2, 8, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
-            new ProdajaZaglavlje { Id = 5, DatumProdaje = new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "access" });
+            new ProdajaZaglavlje { Id = 5, DatumProdaje = new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "access" },
+            new ProdajaZaglavlje { Id = 6, DatumProdaje = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 2, DataOrigin = "existing" });
 
         db.ProdajaStavke.AddRange(
             new ProdajaStavka { Id = 11, IdProdaja = 1, IdArtikal = 101, Kolicina = 5, Cena = 100m },
             new ProdajaStavka { Id = 12, IdProdaja = 2, IdArtikal = 102, Kolicina = 3, Cena = 200m },
             new ProdajaStavka { Id = 13, IdProdaja = 3, IdArtikal = 101, Kolicina = 2, Cena = 100m },
             new ProdajaStavka { Id = 14, IdProdaja = 4, IdArtikal = 103, Kolicina = 5, Cena = 150m },
-            new ProdajaStavka { Id = 15, IdProdaja = 5, IdArtikal = 104, Kolicina = 7, Cena = 50m });
+            new ProdajaStavka { Id = 15, IdProdaja = 5, IdArtikal = 104, Kolicina = 7, Cena = 50m },
+            new ProdajaStavka { Id = 16, IdProdaja = 6, IdArtikal = 101, Kolicina = 99, Cena = 1000m });
 
         db.SaveChanges();
     }
@@ -257,6 +325,20 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.False(string.IsNullOrWhiteSpace(content));
 
         return JsonDocument.Parse(content).RootElement;
+    }
+
+    private static void AssertInvalidRangeIsNotEmptySuccess(string body)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(body));
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+        var looksLikeEmptySuccess = root.TryGetProperty("meta", out var meta)
+            && meta.ValueKind == JsonValueKind.Object
+            && meta.TryGetProperty("success", out var success)
+            && success.ValueKind == JsonValueKind.True
+            && meta.TryGetProperty("emptyReason", out var emptyReason)
+            && emptyReason.ValueKind == JsonValueKind.String;
+        Assert.False(looksLikeEmptySuccess);
     }
 
     private static string CanonicalizeJson(string json)
@@ -348,8 +430,12 @@ public sealed class DailySalesStatsIntegrationTests
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<Application.Artikli.Common.Interfaces.ITrendplusDbContext>();
 
-                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseInMemoryDatabase(_dbName));
-                services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(_dbName));
+                services.AddDbContextFactory<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_dbName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_dbName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<Application.Artikli.Common.Interfaces.ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             });
         }

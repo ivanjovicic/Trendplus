@@ -69,6 +69,16 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                    fromDate = fromDate.Value,
+                    toDate = toDate.Value
+                });
+            }
+
             var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId);
 
             try
@@ -205,6 +215,16 @@ public static class CachedAnalyticsEndpoints
 
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                    fromDate = fromDate.Value,
+                    toDate = toDate.Value
+                });
+            }
 
             var cacheKey = AnalyticsCacheKeys.TopProducts(top, fromDate, toDate, storeId, supplierId);
 

@@ -1,3 +1,5 @@
+using Trendplus2.Dtos;
+
 namespace Api.Models;
 
 public sealed class DailySalesTableResponse
@@ -11,6 +13,7 @@ public sealed class DailySalesTableResponse
     public List<string> TopSuppliersOrder { get; set; } = [];
     public List<DailySalesRowDto> DateRows { get; set; } = [];
     public DailySalesMetadata Metadata { get; set; } = new();
+    public AnalyticsResponseMetaDto Meta { get; set; } = AnalyticsResponseMetaFactory.Success();
 }
 
 public sealed class DailySalesSupplierHeaderDto
