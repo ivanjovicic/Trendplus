@@ -242,6 +242,14 @@ function makeRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 function buildResponse(rows: Array<Record<string, unknown>>, dataQualityStatus: string) {
   return {
     rows,
@@ -402,6 +410,137 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(timelinePanel).not.toHaveTextContent("No acceptance note was captured.");
     expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
     expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/REPLENISH/);
+  });
+
+  it("reloads an open timeline when the period changes and ignores stale responses", async () => {
+    const firstTimeline = createDeferred<{
+      scope: {
+        sourceType: string;
+        sourceKey: string;
+        productId: number;
+        recommendationType: string;
+        periodFromUtc: string;
+        periodToUtc: string;
+        scopeExplanation: string;
+      };
+      emptyReason: string | null;
+      timelines: Array<Record<string, unknown>>;
+      matchedActionCount: number;
+      matchedEventCount: number;
+      warningCodes: string[];
+      meta: { success: boolean; dataQualityStatus: string };
+    }>();
+    const secondTimeline = createDeferred<{
+      scope: {
+        sourceType: string;
+        sourceKey: string;
+        productId: number;
+        recommendationType: string;
+        periodFromUtc: string;
+        periodToUtc: string;
+        scopeExplanation: string;
+      };
+      emptyReason: string | null;
+      timelines: Array<Record<string, unknown>>;
+      matchedActionCount: number;
+      matchedEventCount: number;
+      warningCodes: string[];
+      meta: { success: boolean; dataQualityStatus: string };
+    }>();
+
+    getProductDecisionTimelineMock
+      .mockImplementationOnce(() => firstTimeline.promise)
+      .mockImplementationOnce(() => secondTimeline.promise);
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    await waitFor(() => {
+      expect(getProductDecisionTimelineMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText("Od datuma"), { target: { value: "2026-04-01" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionTimelineMock).toHaveBeenCalledTimes(2);
+    });
+
+    secondTimeline.resolve({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-01",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: Dopuni · Period: 2026-04-01 – 2026-05-26",
+      },
+      emptyReason: "no_events",
+      timelines: [],
+      matchedActionCount: 0,
+      matchedEventCount: 0,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
+    });
+
+    expect(await screen.findByTestId("decision-timeline-scope")).toHaveTextContent(/1\. 4\. 2026/);
+
+    firstTimeline.resolve({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-27",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: Dopuni · Period: 2026-04-27 – 2026-05-26",
+      },
+      emptyReason: "no_events",
+      timelines: [],
+      matchedActionCount: 0,
+      matchedEventCount: 0,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/1\. 4\. 2026/);
+    });
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/27\. 4\. 2026/);
+  });
+
+  it("keeps the newest product data when a stale response arrives late", async () => {
+    const firstPayload = createDeferred<ReturnType<typeof buildResponse>>();
+    const secondPayload = createDeferred<ReturnType<typeof buildResponse>>();
+
+    getProductDecisionCenterMock
+      .mockImplementationOnce(() => firstPayload.promise)
+      .mockImplementationOnce(() => secondPayload.promise);
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText("Od datuma"), { target: { value: "2026-04-01" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledTimes(2);
+    });
+
+    secondPayload.resolve(buildResponse([makeRow({ productId: 202, productName: "New Model", sourceKey: "product:202", recommendationId: "product:202:REPLENISH:20260401:20260526" })], "good"));
+
+    expect(await screen.findByText("New Model")).toBeInTheDocument();
+
+    firstPayload.resolve(buildResponse([makeRow({ productId: 101, productName: "Old Model", sourceKey: "product:101", recommendationId: "product:101:REPLENISH:20260427:20260526" })], "good"));
+
+    await waitFor(() => {
+      expect(screen.getByText("New Model")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Old Model")).not.toBeInTheDocument();
   });
 
   it("renders strong recommendations with explicit estimated impact wording", async () => {

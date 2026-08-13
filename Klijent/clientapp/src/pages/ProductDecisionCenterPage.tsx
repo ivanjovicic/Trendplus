@@ -678,6 +678,8 @@ export default function ProductDecisionCenterPage() {
   const [timelineFamilyFilter, setTimelineFamilyFilter] = useState<"row" | "all">("row");
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
+  const timelineRequestSeqRef = useRef(0);
+  const dataRequestSeqRef = useRef(0);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -739,6 +741,7 @@ export default function ProductDecisionCenterPage() {
   }, [fromDate, toDate, storeId]);
 
   const loadData = useCallback(async () => {
+    const requestSeq = ++dataRequestSeqRef.current;
     setLoading(true);
     setError(null);
     setStaleWarning(null);
@@ -750,9 +753,15 @@ export default function ProductDecisionCenterPage() {
         supplierId,
         top: 1200,
       });
+      if (dataRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setPayload(response);
       payloadRef.current = response;
     } catch (reason) {
+      if (dataRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       const hasPreviousPayload = payloadRef.current != null;
       if (reason instanceof AnalyticsMetaError) {
         setError({
@@ -770,7 +779,9 @@ export default function ProductDecisionCenterPage() {
         setPayload(null);
       }
     } finally {
-      setLoading(false);
+      if (dataRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, [fromDate, supplierId, storeId, toDate]);
 
@@ -970,6 +981,7 @@ export default function ProductDecisionCenterPage() {
   };
 
   const loadDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
+    const requestSeq = ++timelineRequestSeqRef.current;
     setTimelineLoadingProductId(row.productId);
     setTimelineError(null);
     try {
@@ -978,29 +990,55 @@ export default function ProductDecisionCenterPage() {
         toDate,
         sourceType: row.sourceType ?? "product",
         sourceKey: row.sourceKey ?? `product:${row.productId}`,
-        productId: row.productId,
-        recommendationType: familyMode === "row"
+          productId: row.productId,
+          recommendationType: familyMode === "row"
           ? (row.recommendationType ?? row.recommendationStatus)
           : null,
       });
+      if (timelineRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setTimelineByProductId((current) => ({ ...current, [row.productId]: timeline }));
     } catch (err) {
+      if (timelineRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setTimelineByProductId((current) => ({ ...current, [row.productId]: null }));
       setTimelineError(err instanceof Error ? err.message : "Decision Timeline nije dostupan.");
     } finally {
-      setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
+      if (timelineRequestSeqRef.current === requestSeq) {
+        setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
+      }
     }
   }, [fromDate, toDate]);
 
-  const toggleExpandedRow = useCallback((productId: number, row?: ProductDecisionRow) => {
-    setExpandedProductId((current) => {
-      const next = current === productId ? null : productId;
-      if (next != null && row) {
-        void loadDecisionTimeline(row, timelineFamilyFilter);
-      }
-      return next;
-    });
-  }, [loadDecisionTimeline, timelineFamilyFilter]);
+  const expandedTimelineRow = useMemo(() => {
+    if (expandedProductId == null) {
+      return null;
+    }
+
+    return sortedRows.find((row) => row.productId === expandedProductId) ?? null;
+  }, [expandedProductId, sortedRows]);
+
+  useEffect(() => {
+    if (!expandedTimelineRow) {
+      return;
+    }
+
+    void loadDecisionTimeline(expandedTimelineRow, timelineFamilyFilter);
+  }, [
+    expandedTimelineRow?.productId,
+    expandedTimelineRow?.sourceType,
+    expandedTimelineRow?.sourceKey,
+    expandedTimelineRow?.recommendationType,
+    expandedTimelineRow?.recommendationStatus,
+    loadDecisionTimeline,
+    timelineFamilyFilter,
+  ]);
+
+  const toggleExpandedRow = useCallback((productId: number) => {
+    setExpandedProductId((current) => (current === productId ? null : productId));
+  }, []);
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
@@ -1473,7 +1511,7 @@ export default function ProductDecisionCenterPage() {
 
                   return (
                     <Fragment key={`${row.productId}:${row.recommendationStatus}`}>
-                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId, row)} title="Klik za detalje preporuke.">
+                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId)} title="Klik za detalje preporuke.">
                         <td>
                           <strong>{row.productName}</strong>
                           <small>{row.sku || "N/A"} | {row.category ?? row.tipObuce ?? "N/A"}</small>
@@ -1522,7 +1560,7 @@ export default function ProductDecisionCenterPage() {
                             className="why-button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              toggleExpandedRow(row.productId, row);
+                              toggleExpandedRow(row.productId);
                             }}
                             title={whyPanel.explainabilityText ?? whyPanel.recommendationReason}
                           >
@@ -1614,7 +1652,6 @@ export default function ProductDecisionCenterPage() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setTimelineFamilyFilter("row");
-                                      void loadDecisionTimeline(row, "row");
                                     }}
                                   >
                                     Porodica reda
@@ -1625,7 +1662,6 @@ export default function ProductDecisionCenterPage() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setTimelineFamilyFilter("all");
-                                      void loadDecisionTimeline(row, "all");
                                     }}
                                   >
                                     Sve porodice
