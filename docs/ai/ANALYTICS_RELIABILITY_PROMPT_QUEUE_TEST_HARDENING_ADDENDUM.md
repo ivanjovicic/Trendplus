@@ -254,7 +254,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventoryS
   - full `dotnet test` solution - not required
 - Run log: .ai/runs/2026-08-13-RQ101-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 3244723ecc05e09718088e2d4df59de050b1f634
 - Main verification: pending push to origin/main
 - Missed: none known for the named inventory empty/null/EOF contract
 - Follow-up: `RQ102`

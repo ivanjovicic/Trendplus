@@ -676,7 +676,7 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 - Checks not run: `--configuration Release` named in this prompt; Debug configuration was used by the RQ101 command
 - Run log: .ai/runs/2026-08-13-RQ101-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 3244723ecc05e09718088e2d4df59de050b1f634
 - Main verification: pending push to origin/main
 - Missed: none known for the four-family empty EOF proofs
 - Follow-up: none
