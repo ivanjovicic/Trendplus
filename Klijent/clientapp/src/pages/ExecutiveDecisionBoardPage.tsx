@@ -356,7 +356,31 @@ function isRedundantBoardCode(card: BoardCard, code: string): boolean {
   if (key === "inventory_recommendation_blocked" && card.recommendationAllowed === false) {
     return true;
   }
-  return false;
+  switch (key) {
+    case "new":
+    case "accepted":
+    case "deferred":
+    case "done":
+    case "rejected":
+    case "pending":
+    case "not_measured":
+    case "measured":
+    case "success":
+    case "negative":
+    case "neutral":
+    case "replenish":
+    case "boost":
+    case "markdown":
+    case "do_not_order":
+    case "fix_data":
+    case "watch":
+    case "expand":
+    case "actiontype":
+    case "status":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function uniqueBoardCodes(card: BoardCard): string[] {
@@ -1350,19 +1374,23 @@ export default function ExecutiveDecisionBoardPage() {
         </section>
       ) : null}
 
-      <section className="decision-board-summary-grid" aria-label="Sažetak board-a">
-        {model.metrics.map((metric) => (
-          <article key={metric.label} className={`decision-board-summary-card tone-${metric.tone}`}>
-            <span className="decision-board-summary-label">{metric.label}</span>
-            <strong className="decision-board-summary-value">{metric.value}</strong>
-            {metric.note ? <span className="decision-board-summary-note">{metric.note}</span> : null}
-          </article>
-        ))}
-      </section>
+      {!globalError ? (
+        <>
+          <section className="decision-board-summary-grid" aria-label="Sažetak board-a">
+            {model.metrics.map((metric) => (
+              <article key={metric.label} className={`decision-board-summary-card tone-${metric.tone}`}>
+                <span className="decision-board-summary-label">{metric.label}</span>
+                <strong className="decision-board-summary-value">{metric.value}</strong>
+                {metric.note ? <span className="decision-board-summary-note">{metric.note}</span> : null}
+              </article>
+            ))}
+          </section>
 
-      <div className="decision-board-sections">
-        {model.sections.map((section) => renderSection(section))}
-      </div>
+          <div className="decision-board-sections">
+            {model.sections.map((section) => renderSection(section))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

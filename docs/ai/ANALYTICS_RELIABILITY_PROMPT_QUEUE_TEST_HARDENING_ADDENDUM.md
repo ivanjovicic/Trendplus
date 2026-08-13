@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ104`
-Status: owner-promoted READY pack; `RQ100`/`RQ101`/`RQ102`/`RQ103` DONE
+Current READY prompt: none (`RQ100`-`RQ104` DONE)
+Status: owner-promoted READY pack complete; next RQ READY is `RQ105`
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -18,7 +18,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ104` is the current READY prompt. Promote `RQ105` only after `RQ104` is DONE, or when that prompt is independently READY.
+2. `RQ104` is DONE. Current RQ READY is `RQ105` in the cross-surface addendum.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -31,7 +31,7 @@ Use with:
 | RQ101 | DONE | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
 | RQ102 | DONE | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | DONE | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
-| RQ104 | READY | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
+| RQ104 | DONE | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
 
 ---
 
@@ -487,14 +487,14 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Recommenda
 
 ## RQ104 - Core decision pages display backend truth
 
-Status: READY
+Status: DONE
 Ready after: `RQ100` DONE so backend fields are stable; path-safe vs `P-UI-19`
 Priority: P2
 Type: frontend-tests
 Feature family: analytics-frontend-backend-truth
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ104-<agent>.lock.md`
+Owner: cursor
+Local lock: `.ai/task-locks/RQ104-<agent>.lock.md` (removed after DONE)
 Commit suggestion: `test(ui): lock backend-owned decision fields on core pages`
 
 ### Problem
@@ -556,3 +556,46 @@ npm run check:analytics-guardrails
 
 - `RQ100` preferred so backend field names stay stable
 - Path-safe vs `P-UI-19`; do not rewrite TrustHeader/ControlBar while that prompt is `READY`
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: locked operator labels on PDC Why/timeline/evidence; Decision Board chips no longer dump workflow ActionType/Status; missing reliability stays Nije dostupno; error paths hide KPI blocks
+- Changed files:
+  - Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+  - Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
+  - Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_TEST_STRATEGY.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-13-RQ104-evidence.md
+- Contract/runtime behavior changed: yes; Decision Board filters workflow ActionType/Status codes from warning chips and hides the summary KPI grid on load error
+- Checks run:
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx src/pages/ExecutiveDecisionBoardPage.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx src/pages/ProdajaPrePostNivelacijePage.spec.tsx` - pass (37)
+  - `npm run check:analytics-guardrails` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - frontend display-contract prompt
+  - full `npm run build` - named Vitest + guardrails/typecheck already run
+- Run log: .ai/runs/2026-08-13-RQ104-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: none known for the named display-contract and error-without-KPI proofs
+- Follow-up: `RQ105`
+- Residual risk: other analytics pages can still dump unknown codes via replaceAll("_"," ") if they reuse the old board helper pattern
+- Prompt defect / scope repair: none
+- Next: `RQ105` - Operational fallback must not look like trusted analytics meta

@@ -553,6 +553,10 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
 
     expect(screen.getByText(/Zašto ova preporuka\?/i)).toBeInTheDocument();
+    const whyBlock = screen.getByText(/Zašto ova preporuka\?/i).closest(".reason-block");
+    expect(whyBlock).not.toBeNull();
+    expect(whyBlock).not.toHaveTextContent("REPLENISH");
+    expect(whyBlock).not.toHaveTextContent("recommendation_issued");
     expect(screen.getByText(/Izvor objašnjenja: direktan razlog preporuke/i)).toBeInTheDocument();
     expect(screen.getByText(/Glavni pokreta/i)).toBeInTheDocument();
     expect(screen.getByText("Brzina prodaje", { selector: ".reason-chip" })).toBeInTheDocument();
@@ -1189,5 +1193,17 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
     expect(screen.getByText(/Svežina ulaza: Zastarelo/i)).toBeInTheDocument();
+  });
+
+  it("shows an error alert and hides KPI cards when the product decision load fails", async () => {
+    getProductDecisionCenterMock.mockRejectedValueOnce(new Error("Product decision API timeout"));
+
+    render(<ProductDecisionCenterPage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Product decision API timeout");
+    expect(screen.queryByLabelText("KPI kartice")).not.toBeInTheDocument();
+    expect(screen.queryByText("Za dopunu")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
   });
 });

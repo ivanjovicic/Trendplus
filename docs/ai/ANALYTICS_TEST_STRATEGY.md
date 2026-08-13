@@ -95,7 +95,8 @@ Record skipped checks with a real reason. A compiling test is not passing runtim
 | Inventory null evidence / dead stock / replenish counts | RQ | `RQ101` |
 | Sales period, empty, scope leak | RQ | `RQ102` |
 | Action outcome / learning eligibility | RQ | `RQ103` |
-| Frontend displays backend truth, no invented scores | RQ | `RQ104` |
+| Frontend displays backend truth, no invented scores | RQ | `RQ104` DONE |
+| Operational fallback must not look trusted | RQ | `RQ105` |
 | Shared ErrorState/EmptyState/TrustHeader on stats pages | P-UI | `P-UI-20` |
 
 Do not start these while a higher-priority READY task (`P-UI-19`) owns overlapping paths, unless the prompt is explicitly marked parallel-safe and path-clear. `QDB06` is WAITING on owner migration approval and is not currently READY.

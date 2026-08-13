@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (RQ51-RQ62 DONE; RQ55/RQ56/RQ63 WAITING)
-Main queue READY prompt: none (RQ01–RQ13 DONE)
+Current READY prompt: `RQ105`
+Main queue READY prompt: none (RQ01–RQ13 DONE; owner pack RQ100-RQ104 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -26,7 +26,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ61 | DONE | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
-| RQ105 | WAITING | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
+| RQ105 | READY | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
 
 ---
 
@@ -700,7 +700,7 @@ Vendor pre/post `sharePct` is share of absolute revenue change, not normal reven
 
 ## RQ105 - Operational fallback must not look like trusted analytics meta
 
-Status: WAITING
+Status: READY
 Ready after: `RQ100` DONE; path-safe vs cached sales/inventory endpoints
 Priority: P1
 Type: backend/frontend-contract/tests

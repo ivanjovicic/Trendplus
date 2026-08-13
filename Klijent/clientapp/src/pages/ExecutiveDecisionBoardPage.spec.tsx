@@ -45,7 +45,7 @@ vi.mock("../components/analytics/AnalyticsEmptyState", () => ({
 
 vi.mock("../components/analytics/AnalyticsErrorState", () => ({
   default: ({ title, message, onRetry }: { title: string; message: string; onRetry?: () => void }) => (
-    <div data-testid="analytics-error-state">
+    <div data-testid="analytics-error-state" role="alert">
       <strong>{title}</strong>
       <span>{message}</span>
       <button type="button" onClick={onRetry}>Ponovo proveri</button>
@@ -368,9 +368,53 @@ describe("ExecutiveDecisionBoardPage", () => {
     renderPage();
 
     expect(await screen.findByTestId("analytics-error-state")).toHaveTextContent("Decision board API timeout");
+    expect(screen.getByRole("alert")).toHaveTextContent("Decision board API timeout");
+    expect(screen.queryByLabelText("Sažetak board-a")).not.toBeInTheDocument();
+    expect(screen.queryByText("Urgentne odluke")).not.toBeInTheDocument();
+    expect(screen.queryByText("120.000 RSD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ponovo proveri" }));
 
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
     await waitFor(() => expect(getDecisionBoardAggregate).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not dump workflow ActionType or Status as data-quality warning chips", async () => {
+    const workflowCard = card({
+      id: "product:sku-workflow",
+      kind: "product",
+      sectionKey: "urgent",
+      sourceModule: "Odluke o proizvodima",
+      title: "Workflow dump kartica",
+      riskIfIgnored: "Ne sme da izgleda kao DQ upozorenje.",
+      recommendedNextAction: "Prikaži samo data-quality razlog.",
+      actionHref: "/analytics/actions?sourceType=product",
+      dataQualityStatus: "warning",
+      priorityScore: 200,
+      impactScore: 50000,
+      warningCodes: ["accepted", "pending", "REPLENISH", "missing_cost"],
+      reasonCodes: ["done", "Status", "ActionType"],
+    });
+
+    vi.mocked(getDecisionBoardAggregate).mockResolvedValue(
+      aggregate({
+        sections: [
+          section("urgent", [workflowCard], { title: "Top 5 urgentnih odluka", sourceLink: "/analytics/products" }),
+        ],
+      }),
+    );
+
+    renderPage();
+
+    const workflowTitle = await screen.findByText("Workflow dump kartica");
+    const workflowCardEl = workflowTitle.closest("article");
+    expect(workflowCardEl).not.toBeNull();
+
+    expect(within(workflowCardEl as HTMLElement).getByText("Nedostaje nabavna cena")).toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("accepted")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("pending")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("REPLENISH")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("done")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("Status")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("ActionType")).not.toBeInTheDocument();
   });
 });

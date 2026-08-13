@@ -264,4 +264,16 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText(/Visoko signal/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
   });
+
+  it("shows an error alert and hides KPI cards when the vendor sales load fails", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockRejectedValue(new Error("Vendor sales API timeout"));
+
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Vendor sales API timeout");
+    expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
+    expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
+  });
 });
