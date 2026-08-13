@@ -1194,6 +1194,37 @@ public class AnalyticsActionItemServiceTests
         Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_measurement_evidence");
         Assert.DoesNotContain(projection.Gaps, gap => gap.GapReason == "no_acceptance_record");
         Assert.Equal("outcome_not_measured", projection.Events[2].EventType);
+        Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_execution_proof" && gap.Message.Contains("dokaza o izvršenju", StringComparison.Ordinal));
+        Assert.DoesNotContain(projection.Gaps, gap => gap.Message.Contains("execution proof", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(projection.Gaps, gap => gap.Message.StartsWith("The ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ProjectTimeline_UsesOperatorFacingSerbianGapMessages()
+    {
+        var item = new AnalyticsActionItem
+        {
+            SourceType = AnalyticsActionConstants.SourceTypes.Product,
+            SourceKey = "gap-message-1",
+            Title = "Dopuni",
+            Priority = AnalyticsActionConstants.Priorities.P2,
+            Status = AnalyticsActionConstants.Statuses.New,
+            OutcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Pending,
+            CreatedAtUtc = new DateTime(2026, 6, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAtUtc = new DateTime(2026, 6, 1, 8, 0, 0, DateTimeKind.Utc),
+            Notes = Array.Empty<AnalyticsActionNote>(),
+        };
+
+        var projection = AnalyticsActionTimelineProjection.Project(item);
+
+        Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_acceptance_record");
+        Assert.Contains(projection.Gaps, gap => gap.Message == "Nema zapisa o prihvatanju.");
+        Assert.All(projection.Gaps, gap =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(gap.Message));
+            Assert.DoesNotContain("The ", gap.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("No acceptance", gap.Message, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]

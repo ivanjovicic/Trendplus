@@ -134,6 +134,21 @@ const RECOMMENDATION_TYPE_LABELS: Record<string, string> = {
   INSUFFICIENT_DATA: "Nedovoljno podataka",
 };
 
+const ACTION_CODE_LABELS: Record<string, string> = {
+  stock_cover_days: "Pokrivenost zalihe",
+  sell_through: "Obrt zalihe",
+  sales_velocity: "Brzina prodaje",
+  stock_risk: "Rizik zalihe",
+  margin: "Marža",
+  trend: "Trend",
+  supplier_reliability: "Pouzdanost dobavljača",
+  missing_cost: "Nedostaje nabavna cena",
+  sparse_sales: "Malo prodaje",
+  low_cover: "Niska pokrivenost",
+  low: "Niska pokrivenost",
+  out_of_stock_risk: "Rizik rasprodaje",
+};
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -198,7 +213,7 @@ function formatMetadataJson(value: string | null | undefined): string | null {
 
 function formatList(values: string[] | null | undefined): string {
   if (!values || values.length === 0) return "-";
-  return values.join(", ");
+  return values.map(formatActionCodeLabel).join(", ");
 }
 
 function formatImpactLedgerPeriod(startUtc: string | null | undefined, endUtc: string | null | undefined): string {
@@ -313,7 +328,22 @@ function formatWindowDays(value: number | null | undefined, unavailableLabel: st
 }
 
 function formatLedgerList(values: string[] | null | undefined, unavailableLabel: string): string {
-  return values && values.length > 0 ? values.join(", ") : unavailableLabel;
+  return values && values.length > 0 ? values.map(formatActionCodeLabel).join(", ") : unavailableLabel;
+}
+
+function formatActionCodeLabel(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return value;
+  return ACTION_CODE_LABELS[normalized.toLowerCase()] ?? normalized.replaceAll("_", " ");
+}
+
+function formatSourceModuleLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "-";
+  if (normalized in SOURCE_LABELS) {
+    return SOURCE_LABELS[normalized as AnalyticsActionSourceType];
+  }
+  return normalized.replaceAll("_", " ");
 }
 
 function formatFreshnessLabel(value: string | null | undefined): string {
@@ -1308,8 +1338,8 @@ export default function AnalyticsActionsPage() {
                                   <div><strong>Razlog odluke:</strong> {impactLedger.snapshot.decisionReason}</div>
                                   <div><strong>Preporučena akcija:</strong> {impactLedger.snapshot.recommendedAction}</div>
                                   <div><strong>Period izvora:</strong> {formatImpactLedgerPeriod(impactLedger.snapshot.sourcePeriodStartUtc, impactLedger.snapshot.sourcePeriodEndUtc)}</div>
-                                  <div><strong>Izvorni modul:</strong> {impactLedger.snapshot.sourceModule ?? "-"}</div>
-                                  <div><strong>Freshness ulaza:</strong> {impactLedger.snapshot.inputFreshnessStatus}</div>
+                                  <div><strong>Izvorni modul:</strong> {formatSourceModuleLabel(impactLedger.snapshot.sourceModule)}</div>
+                                  <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(impactLedger.snapshot.inputFreshnessStatus)}</div>
                                   <div><strong>Opseg signala:</strong> {impactLedger.snapshot.impactWindowDays != null ? `${impactLedger.snapshot.impactWindowDays} dana` : "-"}</div>
                                   <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus)!] : impactLedger.resolution.outcomeStatus}</div>
                                   <div><strong>Izmeren uticaj:</strong> {fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")}</div>

@@ -304,6 +304,13 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText("Prihvatio menadžer.")).toBeInTheDocument();
     expect(screen.getByText(/Tip preporuke:/i).parentElement).toHaveTextContent(/Dopuni/i);
     expect(screen.queryByText(/^replenish$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Kodovi upozorenja:/i).parentElement).toHaveTextContent(/Niska pokrivenost/i);
+    expect(screen.queryByText("low_cover")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Primarni signali:/i).some((node) => node.parentElement?.textContent?.includes("Pokrivenost zalihe"))).toBe(true);
+    expect(screen.queryByText("stock_cover_days")).not.toBeInTheDocument();
+    expect(screen.queryByText("Freshness ulaza")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Svežina ulaza:/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sveže").length).toBeGreaterThan(0);
   });
 
   it("updates action status directly for accept action", async () => {
