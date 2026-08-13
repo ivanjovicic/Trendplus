@@ -290,8 +290,8 @@ Implement the first non-Access provider against the provider-neutral contract.
 - Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~SqlServerSourceDataSession (15 passed, live LocalDB); Access characterization 16 passed; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: Testcontainers.MsSql path (Docker daemon was not running); full Api.Tests suite; npm frontend checks
 - Run log: .ai/runs/2026-08-13-QDB03-evidence.md
-- Delivery mode: none
-- Main commit SHA: pending
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: skipped; user did not request commit or push
 - Missed: Docker Testcontainers was not executed in this session; named discovery API is QDB04
 - Follow-up: QDB04
@@ -334,8 +334,8 @@ Allow an authorized administrator to select a named source, test connectivity an
 - Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~DataSourceDiscovery|FullyQualifiedName~SourceDataSessionAdapterTests (12 passed); node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: full Api.Tests suite; npm frontend checks; durable secret storage; mapping/sync
 - Run log: .ai/runs/2026-08-13-QDB04-evidence.md
-- Delivery mode: none
-- Main commit SHA: pending
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: skipped; user did not request commit or push
 - Missed: no admin UI; Access named profiles are not discovery-backed yet; connection strings stay env/config-only
 - Follow-up: QDB05
@@ -379,8 +379,8 @@ Map source streams to canonical Trendplus entities and preview a small sample wi
 - Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~SourceMappingPreviewTests --no-build (6 passed); node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: full Api.Tests rebuild (blocked by unrelated InventoryEndpoints dirty-tree compile errors); npm frontend checks; durable mapping persistence; sync/checkpoints
 - Run log: .ai/runs/2026-08-13-QDB05-evidence.md
-- Delivery mode: none
-- Main commit SHA: pending
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: skipped; user did not request commit or push
 - Missed: mapping is request-scoped only; QDB06 durable checkpoints need an owner-approved migration
 - Follow-up: QDB06 after owner approves a database migration

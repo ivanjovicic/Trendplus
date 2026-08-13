@@ -1215,8 +1215,8 @@ The app still exposes logs and error feeds as anonymous reads even though they c
 - Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~LogsOperationalReadsAuthorizationTests (11 passed); npm run test -- --run src/services/__tests__/logsApi.spec.ts (4 passed); node scripts/check-prompt-queues.mjs
 - Checks not run: full Api.Tests suite; npm run build; Trendplus2/Program.cs duplicate logs routes remain out of STAB11 scope
 - Run log: .ai/runs/2026-08-13-STAB11-evidence.md
-- Delivery mode: none
-- Main commit SHA: pending
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: skipped; user did not request commit or push
 - Missed: legacy Trendplus2/Program.cs still maps public /errors and /api/logs if that host is ever used
 - Follow-up: STAB12
@@ -1301,8 +1301,8 @@ Document/export generation and ownership decisions still trust caller-provided `
 - Checks run: git diff --check; dotnet test --filter FullyQualifiedName~DocumentSecurityTests|DocumentExportAuthorizationTests (16 passed); npm run test -- --run src/services/__tests__/exportApi.spec.ts (2 passed); node scripts/check-prompt-queues.mjs
 - Checks not run: full Api.Tests suite; npm run build
 - Run log: .ai/runs/2026-08-13-STAB12-evidence.md
-- Delivery mode: none
-- Main commit SHA: pending
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: skipped; user did not request commit or push
 - Missed: none known for the named generate/list/export privilege
 - Follow-up: none; QDB05 is DONE and QDB06 remains WAITING on owner migration approval
