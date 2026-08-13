@@ -1823,7 +1823,7 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 - Checks not run: dotnet build/test and npm - docs-only, no runtime
 - Run log: .ai/runs/2026-08-13-DT06-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 9c82d0745656a2905ace3424605d6caa0dd498ad
 - Main verification: pending push to origin/main
 - Missed: no runtime export endpoint or print CSS; no DT07 invented
 - Follow-up: none
