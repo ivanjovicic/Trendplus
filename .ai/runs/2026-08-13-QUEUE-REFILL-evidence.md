@@ -4,7 +4,7 @@ Date: 2026-08-13
 Agent/tool: Cursor Grok 4.6
 Model: Cursor Grok 4.6
 Delivery target: main
-Main commit SHA: pending
+Main commit SHA: c58fa1e6a8bd4e6bed7888b39a52ce8668a2008f
 Main verification: pending push to origin/main
 
 ## What was done
