@@ -139,6 +139,16 @@ public class AnalyticsActionItemServiceTests
 
         Assert.Equal(new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc), created.DueAtUtc);
         Assert.Equal(1234.56m, created.ExpectedImpactRsd);
+        Assert.True(
+            string.IsNullOrWhiteSpace(created.OutcomeStatus)
+            || string.Equals(created.OutcomeStatus, AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.OrdinalIgnoreCase));
+        Assert.Null(created.OutcomeMeasuredAtUtc);
+        Assert.Null(created.MeasuredImpactRsd);
+
+        var capture = RecommendationLifecycleSemantics.Project(created);
+        Assert.False(capture.LearningEligible);
+        Assert.False(capture.CountsTowardMeasured);
+        Assert.NotEqual(RecommendationLifecycleSemantics.LifecycleStates.Executed, capture.LifecycleState);
     }
 
     [Fact]
@@ -476,6 +486,101 @@ public class AnalyticsActionItemServiceTests
         Assert.True(summary.MeasurementStatistics.Success);
         Assert.Equal("no_rows", summary.MeasurementStatistics.EmptyReason);
         Assert.Null(summary.MeasurementStatistics.PositiveOutcomeRate);
+    }
+
+    [Fact]
+    public async Task UpdateOutcomeAsync_PendingClearsMeasuredTimestamp_EvenWhenRequestSendsNow()
+    {
+        await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PendingClearsMeasuredTimestamp_EvenWhenRequestSendsNow));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "outcome-pending-clear-1", expectedImpactRsd: 500m), userId: "u1");
+
+        await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 120m,
+                OutcomeMeasuredAtUtc: new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc),
+                OutcomeNotes: "Ishod je potvrdjen.",
+                EvidenceSource: "action_outcome_summary"),
+            userId: "u1",
+            userName: "tester");
+
+        var updated = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending,
+                MeasuredImpactRsd: 999m,
+                OutcomeMeasuredAtUtc: DateTime.UtcNow,
+                OutcomeNotes: "Jos uvek ceka merenje.",
+                EvidenceSource: "manual_review"),
+            userId: "u1",
+            userName: "tester");
+
+        Assert.NotNull(updated);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.Pending, updated!.OutcomeStatus);
+        Assert.Null(updated.OutcomeMeasuredAtUtc);
+        Assert.Null(updated.MeasuredImpactRsd);
+
+        var capture = RecommendationLifecycleSemantics.Project(updated);
+        Assert.False(capture.LearningEligible);
+        Assert.Equal(RecommendationLifecycleSemantics.OutcomeEvidenceStates.Pending, capture.OutcomeEvidenceState);
+    }
+
+    [Fact]
+    public async Task UpdateStatusAndOutcome_ExecutedMeasuredIsLearningEligible_AcceptedAndNotMeasuredAreNot()
+    {
+        await using var db = CreateDbContext(nameof(UpdateStatusAndOutcome_ExecutedMeasuredIsLearningEligible_AcceptedAndNotMeasuredAreNot));
+        var service = CreateService(db);
+        var created = await service.UpsertAsync(CreateRequest("product", "learning-eligible-1", expectedImpactRsd: 800m), userId: "u1");
+
+        var accepted = await service.UpdateStatusAsync(created.Id, AnalyticsActionConstants.Statuses.Accepted, "Prihvaceno", "u1", "tester");
+        Assert.NotNull(accepted);
+        var acceptedCapture = RecommendationLifecycleSemantics.Project(accepted!);
+        Assert.False(acceptedCapture.LearningEligible);
+        Assert.Contains("acceptance_is_not_success", acceptedCapture.LearningEligibilityReasonCodes);
+
+        var executed = await service.UpdateStatusAsync(created.Id, AnalyticsActionConstants.Statuses.Done, "Izvrseno", "u1", "tester");
+        Assert.NotNull(executed);
+        var executedPendingCapture = RecommendationLifecycleSemantics.Project(executed!);
+        Assert.False(executedPendingCapture.LearningEligible);
+        Assert.Null(executed.OutcomeMeasuredAtUtc);
+
+        var notMeasured = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                MeasuredImpactRsd: 111m,
+                OutcomeMeasuredAtUtc: DateTime.UtcNow,
+                OutcomeNotes: "Nema dokaza.",
+                EvidenceSource: "manual_review"),
+            userId: "u1",
+            userName: "tester");
+        Assert.NotNull(notMeasured);
+        Assert.Null(notMeasured!.OutcomeMeasuredAtUtc);
+        var notMeasuredCapture = RecommendationLifecycleSemantics.Project(notMeasured);
+        Assert.False(notMeasuredCapture.LearningEligible);
+        Assert.Equal(RecommendationLifecycleSemantics.OutcomeEvidenceStates.NotMeasured, notMeasuredCapture.OutcomeEvidenceState);
+
+        var measuredAtUtc = new DateTime(2026, 8, 10, 9, 0, 0, DateTimeKind.Utc);
+        var measured = await service.UpdateOutcomeAsync(
+            created.Id,
+            new AnalyticsActionOutcomeUpdateRequest(
+                OutcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+                MeasuredImpactRsd: 220m,
+                OutcomeMeasuredAtUtc: measuredAtUtc,
+                OutcomeNotes: "Rezultat je potvrden.",
+                EvidenceSource: "action_outcome_summary",
+                EvidenceReference: "summary:learning-eligible-1"),
+            userId: "u1",
+            userName: "tester");
+        Assert.NotNull(measured);
+        Assert.Equal(measuredAtUtc, measured!.OutcomeMeasuredAtUtc);
+        measured.LedgerSnapshot = AnalyticsActionItemService.GetLedgerSnapshot(measured.MetadataJson);
+        var measuredCapture = RecommendationLifecycleSemantics.Project(measured);
+        Assert.True(measuredCapture.LearningEligible);
+        Assert.True(measuredCapture.CountsTowardMeasured);
+        Assert.Contains("measured_learning_eligible", measuredCapture.LearningEligibilityReasonCodes);
     }
 
     [Fact]
@@ -1207,6 +1312,11 @@ public class AnalyticsActionItemServiceTests
         Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_execution_proof" && gap.Message.Contains("dokaza o izvršenju", StringComparison.Ordinal));
         Assert.DoesNotContain(projection.Gaps, gap => gap.Message.Contains("execution proof", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(projection.Gaps, gap => gap.Message.StartsWith("The ", StringComparison.Ordinal));
+
+        var capture = RecommendationLifecycleSemantics.Project(item);
+        Assert.False(capture.LearningEligible);
+        Assert.Null(item.OutcomeMeasuredAtUtc);
+        Assert.Contains("acceptance_is_not_success", capture.LearningEligibilityReasonCodes);
     }
 
     [Fact]
@@ -1228,6 +1338,8 @@ public class AnalyticsActionItemServiceTests
         var projection = AnalyticsActionTimelineProjection.Project(item);
 
         Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_acceptance_record");
+        Assert.Contains(projection.Gaps, gap => gap.GapReason == "no_measurement_evidence");
+        Assert.DoesNotContain(projection.Gaps, gap => gap.GapReason == "no_execution_proof");
         Assert.Contains(projection.Gaps, gap => gap.Message == "Nema zapisa o prihvatanju.");
         Assert.All(projection.Gaps, gap =>
         {

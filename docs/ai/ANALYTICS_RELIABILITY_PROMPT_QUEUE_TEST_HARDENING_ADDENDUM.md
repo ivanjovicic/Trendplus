@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ103`
-Status: owner-promoted READY pack; `RQ100`/`RQ101`/`RQ102` DONE
+Current READY prompt: `RQ104`
+Status: owner-promoted READY pack; `RQ100`/`RQ101`/`RQ102`/`RQ103` DONE
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -18,7 +18,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ103` is the current READY prompt. Promote `RQ104` only after `RQ103` is DONE.
+2. `RQ104` is the current READY prompt. Promote `RQ105` only after `RQ104` is DONE, or when that prompt is independently READY.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -30,8 +30,8 @@ Use with:
 | RQ100 | DONE | analytics-critical-decision-contract | PDC + Decision Board recommendation/impact/meta counterexamples |
 | RQ101 | DONE | analytics-inventory-null-evidence | Inventory signal/list fake-zero and empty-meta lock-in |
 | RQ102 | DONE | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
-| RQ103 | READY | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
-| RQ104 | WAITING | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
+| RQ103 | DONE | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
+| RQ104 | READY | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
 
 ---
 
@@ -378,7 +378,7 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~CachedAnal
 
 ## RQ103 - Action outcome, not-measured and learning-eligibility tests
 
-Status: READY
+Status: DONE
 Ready after: `RQ102` DONE, or owner promotes this first when action/timeline files are already open
 Priority: P1
 Type: backend-tests
@@ -444,11 +444,50 @@ dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Recommenda
 
 - Do not displace `RL06` contract/runtime work; this prompt only hardens tests around already-landed semantics
 
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: locked LearningEligible=false for issued/accepted/rejected/ignored even with expected impact; LearningEligible=true only for executed+measured; pending/not_measured do not stamp OutcomeMeasuredAtUtc; gapReason codes stay stable
+- Changed files:
+  - Api.Tests/RecommendationLifecycleSemanticsTests.cs
+  - Api.Tests/AnalyticsActionItemServiceTests.cs
+  - Api.Tests/AnalyticsActionsCriticalWorkflowTests.cs
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-13-RQ103-evidence.md
+- Contract/runtime behavior changed: no; tests only
+- Checks run:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~RecommendationLifecycleSemanticsTests|FullyQualifiedName~AnalyticsActionItemServiceTests|FullyQualifiedName~AnalyticsActionsCriticalWorkflowTests"` - pass (71)
+  - first named run failed on upsert asserting stored `pending`/`issued`; retry after matching actual null-outcome + past-due ignored projection - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - frontend / npm - out of scope (`RQ104` / `P-UI-21`)
+  - full `dotnet test` solution - not required
+- Run log: .ai/runs/2026-08-13-RQ103-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known for the named learning-eligibility and not-measured timestamp contract
+- Follow-up: `RQ104`
+- Residual risk: leftover `OutcomeMeasuredAtUtc` on a `not_measured` row still exists if written outside UpdateOutcomeAsync; Project treats it as not learning-eligible
+- Prompt defect / scope repair: none
+- Next: `RQ104` - Core decision pages display backend truth
+
 ---
 
 ## RQ104 - Core decision pages display backend truth
 
-Status: WAITING
+Status: READY
 Ready after: `RQ100` DONE so backend fields are stable; path-safe vs `P-UI-19`
 Priority: P2
 Type: frontend-tests
