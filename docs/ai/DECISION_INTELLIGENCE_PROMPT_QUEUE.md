@@ -22,7 +22,7 @@ Status: READY
 Priority: future / planning
 Feature family: decision-explainability-supplier-reuse
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
+Owner: Codex
 Local lock: none
 
 ### Problem
@@ -72,8 +72,21 @@ Supplier Decision Hub already exposes explicit confidence, reliability, recommen
 
 - DEX11 DONE.
 
----
+### Completion note
 
+- Date: 2026-08-13
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Remaining risk:
+  - This is a docs-only supplier reuse contract; runtime tree or evidence-snapshot behavior still needs a later prompt.
+- Next:
+  - RL05 - Prepare measurement-only recommendation statistics projection contract
 ## DEX11 - Prepare cross-family Decision Explainability readiness contract
 
 Status: DONE
