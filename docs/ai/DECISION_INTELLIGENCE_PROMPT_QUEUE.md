@@ -8,7 +8,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| DEX - Decision Explainability | `DEX11` | docs/contracts only — cross-family readiness |
+| DEX - Decision Explainability | `DEX12` | docs/contracts only — supplier explainability reuse |
 | RL - Recommendation Learning | `RL05` | docs/contracts only — measurement-only statistics |
 | DT - Decision Timeline | `DT06` | docs/contracts only — export/report planning |
 
@@ -16,14 +16,72 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ---
 
-## DEX11 - Prepare cross-family Decision Explainability readiness contract
+## DEX12 - Prepare Supplier Decision Hub explainability reuse contract
 
 Status: READY
+Priority: future / planning
+Feature family: decision-explainability-supplier-reuse
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: none
+
+### Problem
+
+Supplier Decision Hub already exposes explicit confidence, reliability, recommendation allowance and report semantics, but the repo still lacks a frozen supplier-specific explainability reuse contract that shows how the DEX vocabulary should map without inventing local tree or Why semantics.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md` identifies Supplier Decision Hub as the smallest cross-family explainability rollout candidate.
+- `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md` documents the current supplier confidence safety gaps.
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` DI-4 keeps cross-family rollout in docs-only mode until a family-specific contract exists.
+
+### Scope
+
+- docs/contracts only: supplier explainability reuse readiness checklist and gap matrix;
+- no runtime implementation;
+- no new confidence or decision-tree semantics.
+
+### Read first
+
+- DEX11 completion note
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
+- `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `MASTER_ROADMAP.md`
+
+### Do
+
+1. Map which explainability fields Supplier Decision Hub already exposes.
+2. Mark any gaps that would block reuse of the shared DEX vocabulary.
+3. Keep backend-led confidence/reliability/recommendation semantics authoritative.
+4. Propose the smallest next supplier rollout without authorizing runtime work.
+
+### Tests
+
+- checklist distinguishes present vs missing vs invented fields;
+- no runtime code or fake evidence is introduced;
+- governance READY pointer remains single for DEX.
+
+### Acceptance
+
+- a docs-only supplier explainability reuse contract exists;
+- no supplier surface is marked ready without an explicit gap list;
+- runtime remains gated.
+
+### Dependencies
+
+- DEX11 DONE.
+
+---
+
+## DEX11 - Prepare cross-family Decision Explainability readiness contract
+
+Status: DONE
 Priority: future / planning
 Feature family: decision-explainability-cross-family
 Parallel-safe: yes, docs/contracts only
 Owner: unassigned
-Local lock: none
+Local lock: removed after DONE
 
 ### Problem
 
@@ -70,7 +128,23 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 - DEX10 DONE.
 
----
+### Completion note
+
+- Date: 2026-08-13
+- Agent: Codex
+- Changed files:
+  - `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Remaining risk:
+  - This is a docs-only readiness contract; runtime reuse still needs later owner-promoted implementation.
+- Next:
+  - `DEX12 - Prepare Supplier Decision Hub explainability reuse contract`
 
 ## RL05 - Prepare measurement-only recommendation statistics projection contract
 
