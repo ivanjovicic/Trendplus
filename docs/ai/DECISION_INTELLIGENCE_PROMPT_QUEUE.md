@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX19` | backend/frontend - Executive Board explainability runtime |
+| DEX - Decision Explainability | none | backend/frontend - Executive Board explainability runtime |
 
 
 
@@ -74,7 +74,7 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ## DEX19 - Implement Executive Decision Board explainability reuse runtime slice
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: decision-explainability-executive-reuse
 Parallel-safe: yes, when path-safe vs current execution
@@ -128,6 +128,36 @@ The Executive Board explainability reuse contract is frozen, but the board runti
 ### Dependencies
 
 - DEX18 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 100%
+- Changed files:
+  - Api/Endpoints/DecisionBoardEndpoints.cs
+  - Api.Tests/DecisionBoardEndpointsTests.cs
+  - Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+  - Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-14-DEX19-evidence.md
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter FullyQualifiedName~DecisionBoardEndpointsTests` - pass
+  - `npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` - not run; focused backend test compiled the touched project
+  - `npm run build` - not run; focused frontend tests were sufficient
+- Run log: .ai/runs/2026-08-14-DEX19-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: a7c642e3c7c7e2597e6b478765157525ddfcbb4c
+- Main verification: git rev-parse HEAD -> a7c642e3c7c7e2597e6b478765157525ddfcbb4c
+- Missed: no broader queue item was opened; DEX19 only
+- Follow-up: none
+- Residual risk: fallback product cards now reuse recommendationAllowed/confidenceSource, but other legacy surfaces should still be audited for the same vocabulary if they consume product DTOs directly
 
 ## DEX18 - Prepare Executive Decision Board explainability reuse contract
 
