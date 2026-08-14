@@ -24,14 +24,15 @@ P-UI must not:
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
-Current queue truth on 2026-08-13:
+Current queue truth on 2026-08-14:
 
 - `P-UI-17` is DONE: PreNivelacijaPriorityPage chrome modernization.
 - `P-UI-18` is DONE: SupplierFootwearAnalyticsPage chrome modernization.
 - `P-UI-19` is DONE: grouped React chrome regression hardening.
 - `P-UI-20` is DONE: grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages.
-- `P-UI-21` is READY: empty success without KPI totals and shared Actions ErrorState.
-- `P-UI-22` is WAITING after P-UI-21.
+- `P-UI-21` is DONE: empty success without KPI totals and shared Actions ErrorState.
+- `P-UI-22` is DONE: remaining decision-page empty/error chrome.
+- No remaining P-UI READY prompts.
 
 The queue remains authoritative for exact task status and acceptance.
 
