@@ -1057,14 +1057,14 @@ npm run check:analytics-guardrails
 
 ## P-UI-22 - Remaining decision-page empty and error chrome
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-21 DONE
 Priority: P2
 Type: frontend/tests
 Feature family: analytics-ui-remaining-trust-chrome
 Parallel-safe: yes, when RQ104 is not rewriting the same pages
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-22-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-22-codex.lock.md` (removed after DONE)
 Commit suggestion: `test(ui): lock remaining decision page empty error chrome`
 
 ### Problem
@@ -1107,3 +1107,14 @@ After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and 
 ### Dependencies
 
 - P-UI-21 DONE.
+
+### Completion
+
+- Run log: .ai/runs/2026-08-14-P-UI-22-evidence.md
+- Checks run:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+- Main commit SHA: 0a703f78f159acf8904f77876294f91b2cf55338
+- Main verification: git rev-parse HEAD -> 0a703f78f159acf8904f77876294f91b2cf55338
+- Next: none
