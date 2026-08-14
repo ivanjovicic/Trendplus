@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `BCI06`
+Current READY prompt: `none`
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -16,7 +16,7 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 | BCI09 | DONE | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
 | BCI05 | DONE | Green GHA restore/build/test/coverage/artifact on `f1f5a17` after BCI09 |
 | BCI01 | DONE | Backend workflow restore/build/test step green on current backend-equivalent main |
-| BCI06 | READY | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
+| BCI06 | DONE | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
 
 ---
 
@@ -445,8 +445,8 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 ## BCI06 - Verify Windows and Visual Studio mixed-solution compatibility
 
-Status: READY
-Ready after: `BCI01` DONE, or earlier only when a Windows/Visual Studio-capable environment is explicitly available without delaying P0 backend assertion repair
+Status: DONE
+Completed after: `BCI01` DONE and verified again on 2026-08-14 in the current Windows agent
 Priority: P2
 Type: build-system/evidence
 Feature family: mixed-solution-windows-compatibility
@@ -534,3 +534,26 @@ Do not change application business logic, npm dependencies or backend test expec
 
 - BCI03 implementation already present
 - Windows/Visual Studio-capable verification environment
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Changed files:
+  - `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-14-BCI06-evidence.md`
+- Contract/runtime behavior changed: no
+- Checks run:
+  - `node scripts/check-javascript-sdk-pins.mjs` - pass
+  - `dotnet restore Trendplus2.sln --force` - pass
+  - `dotnet build Klijent/Klijent.esproj` - pass
+  - `dotnet build Trendplus.POS.Ui/Trendplus.POS.Ui.esproj` - pass
+  - `cd Klijent/clientapp && npm run build` - pass
+  - `cd Trendplus.POS.Ui && npm run build` - pass
+- Checks not run:
+  - Visual Studio GUI open - not run; the documented `dotnet build` equivalent exercised the JavaScript SDK project system
+- Remaining risk: none known on this verification path; Linux backend CI stays isolated from `.esproj` loading
+- Next: `QDB03` in `MASTER_ROADMAP.md`
+- Prompt defect / scope repair: live queue text still pointed at BCI06 after the proof already existed; this pass reconciles the live status to DONE

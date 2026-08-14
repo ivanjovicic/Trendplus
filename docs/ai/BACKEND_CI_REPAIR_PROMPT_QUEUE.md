@@ -7,11 +7,11 @@ Current READY prompt: none
 
 ## Current diagnosis
 
-Live READY is `BCI06` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which is DONE.
+Live READY is none. `BCI06` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` is DONE. Parent-queue tasks remain historical except `BCI01`, which is DONE.
 
 The bootstrap blocker is fixed. Backend workflow restore/build/test now succeed against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
 
-BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. Next BCI prompt is `BCI06`.
+BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. `BCI06` is DONE, so no BCI prompt is currently READY.
 
 Canonical GHA proof that bootstrap is unblocked:
 
