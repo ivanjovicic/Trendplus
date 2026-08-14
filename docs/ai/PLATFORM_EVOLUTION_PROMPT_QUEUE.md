@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF15` | D8 shared-saas evidence gate |
+| PERF - Performance | `PERF16` | D8 reopen after MT fixtures |
 | OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
 | SEC - Security Evolution | `SEC07` | frontend production dependency vulnerability triage |
 
@@ -24,14 +24,70 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF15 - Shared-SaaS evidence gate
+## PERF16 - Reopen D8 shared-SaaS measurement when MT isolation fixtures exist
 
 Status: READY
 Priority: future / measurement
+Feature family: performance-scalability-d8-reopen
+Parallel-safe: yes, docs/contracts until MT fixtures exist
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF16-<agent>.lock.md`
+
+### Problem
+
+PERF15 froze D8 as MT-owned and `n/a_dedicated`, but there is still no authorized shared-SaaS measurement pack. A later PERF slice must wait for MT fixtures or an owner-recorded gate instead of inventing isolation overhead.
+
+### Evidence
+
+- docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md
+- docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md
+- docs/ai/MULTITENANCY_PROMPT_QUEUE.md (`MT02` WAITING, `MT10` WAITING)
+- .ai/runs/2026-08-12-PERF14-evidence.md
+
+### Scope
+
+- docs/contracts or later measurement only after MT fixtures/`MT10` or an owner-recorded gate;
+- no invented `shared_saas` claims from dedicated PERF10–PERF14 packs;
+- no runtime optimization in this prompt.
+
+### Read first
+
+- PERF15 completion note
+- PERF15 shared-SaaS evidence gate
+- MT current READY / `MT10` release gate
+- PERF09 D8 fields
+
+### Do
+
+1. Keep D8 `n/a_dedicated` on dedicated packs until MT fixtures exist.
+2. Reopen measurement only when `MT10` is DONE or `MASTER_ROADMAP.md` records an explicit shared-SaaS gate.
+3. If measuring, cite `mtGateIds`, keep leak checks MT-owned, and leave missing overhead null.
+4. Do not start OBS08 in this prompt if this slice is not current execution.
+
+### Tests
+
+- docs forbid dedicated-to-shared_saas promotion;
+- missing overhead stays null, not `0 ms`;
+- queue and planning validators pass.
+
+### Acceptance
+
+- D8 reopen conditions stay citeable;
+- READY pointer remains single for PERF.
+
+### Dependencies
+
+- PERF15 DONE;
+- `MT10` DONE or an owner-recorded shared-SaaS evidence gate.
+
+## PERF15 - Shared-SaaS evidence gate
+
+Status: DONE
+Priority: future / measurement
 Feature family: performance-scalability-d8-shared-saas
 Parallel-safe: no - shares performance/MT contract paths
-Owner: unassigned
-Local lock: `.ai/task-locks/PERF15-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: removed after DONE
 
 ### Problem
 
@@ -78,6 +134,43 @@ PERF14 finished the D6 import-overlap evidence track, but D8 tenant-isolation ov
 
 - PERF14 DONE;
 - MT fixtures/gates or an explicit owner decision for shared-SaaS evidence.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 94%
+- Changed files:
+  - docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md
+  - docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md
+  - docs/roadmaps/PERFORMANCE_ROADMAP.md
+  - docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-PERF15-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (68 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only
+- Run log: .ai/runs/2026-08-14-PERF15-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no D8 measurement pack; no MT promotion; shared-SaaS remains unclaimed
+- Follow-up: `OBS08` (current execution); PERF program READY is `PERF16`
+- Residual risk: a later pack could still relabel dedicated evidence as `shared_saas` if it ignores the gate
+- Prompt defect / scope repair: Do-line 3 kept PERF15 READY during the slice; after close the validator needs a successor READY, so `PERF16` was inserted. The Dependencies MT line is the D8 claim gate, not a start blocker.
+- Next: `OBS08` - Define Worker SLA evidence contract
 
 ---
 
