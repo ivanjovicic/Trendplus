@@ -1594,6 +1594,93 @@ public static class CachedAnalyticsEndpoints
             }
         });
 
+        // ========== PRODUCT DECISION TIMELINE EXPORT (DT07, read-only over Slice-2) ==========
+        group.MapGet("/products/decision-center/timeline/export", async (
+            IAnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
+            HttpContext httpContext,
+            string? sourceType = null,
+            string? sourceKey = null,
+            int? productId = null,
+            string? recommendationType = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? format = null,
+            CancellationToken ct = default) =>
+        {
+            var nowUtc = DateTime.UtcNow.Date;
+            var periodToUtc = toDate?.Date ?? nowUtc;
+            var periodFromUtc = fromDate?.Date ?? periodToUtc.AddDays(-29);
+            if (periodFromUtc > periodToUtc)
+            {
+                (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
+            }
+
+            var generatedAtUtc = DateTime.UtcNow;
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var filtered = await BuildProductDecisionTimelineFilterAsync(
+                    analyticsDb,
+                    sourceType,
+                    sourceKey,
+                    productId,
+                    recommendationType,
+                    fromDate,
+                    toDate,
+                    ct);
+
+                DecisionTimelineExportDto export;
+                if (filtered.Meta is { Success: false } || filtered.Scope is null)
+                {
+                    export = DecisionTimelineExportProjection.Error(
+                        periodFromUtc,
+                        periodToUtc,
+                        generatedAtUtc,
+                        filtered.Meta?.ErrorCode ?? "ANALYTICS_UNEXPECTED_ERROR",
+                        filtered.Meta?.ErrorMessage ?? "Decision Timeline export trenutno nije dostupan.",
+                        filtered.WarningCodes);
+                }
+                else
+                {
+                    export = DecisionTimelineExportProjection.FromFilter(
+                        new DecisionTimelineFilterResponseDto(
+                            Scope: filtered.Scope,
+                            EmptyReason: filtered.EmptyReason,
+                            Timelines: filtered.Timelines,
+                            MatchedActionCount: filtered.MatchedActionCount,
+                            MatchedEventCount: filtered.MatchedEventCount,
+                            WarningCodes: filtered.WarningCodes),
+                        generatedAtUtc,
+                        filtered.Meta?.DataQualityStatus);
+                }
+
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Product decision timeline export fallback due to timeout.");
+                var export = DecisionTimelineExportProjection.Error(
+                    periodFromUtc,
+                    periodToUtc,
+                    generatedAtUtc,
+                    "ANALYTICS_TIMEOUT",
+                    "Decision Timeline export trenutno nije dostupan zbog isteka vremena.");
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Product decision timeline export fallback due to unexpected issue.");
+                var export = DecisionTimelineExportProjection.Error(
+                    periodFromUtc,
+                    periodToUtc,
+                    generatedAtUtc,
+                    "ANALYTICS_UNEXPECTED_ERROR",
+                    "Decision Timeline export trenutno nije dostupan.");
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+        });
+
         // ========== CATEGORY TRENDS (CACHED) ==========
         group.MapGet("/sales/category-trends", async (
             IAnalyticsCacheService cache,
@@ -5312,6 +5399,43 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
+    private static IResult FormatDecisionTimelineExport(
+        DecisionTimelineExportDto export,
+        string? format,
+        string? correlationId)
+    {
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase) && export.Success)
+        {
+            var csv = DecisionTimelineExportProjection.ToCsv(export);
+            return Results.File(
+                System.Text.Encoding.UTF8.GetBytes(csv),
+                "text/csv; charset=utf-8",
+                "decision-timeline-export.csv");
+        }
+
+        var meta = export.Success
+            ? BuildSuccessMeta(
+                dataQualityStatus: export.Header.DataQualityStatus ?? "insufficient_data",
+                lastRefreshAtUtc: export.Header.GeneratedAtUtc)
+            : BuildErrorMeta(
+                export.ErrorCode ?? "ANALYTICS_UNEXPECTED_ERROR",
+                export.ErrorMessage ?? "Decision Timeline export trenutno nije dostupan.",
+                correlationId);
+        meta.CorrelationId = correlationId;
+        meta.GeneratedAtUtc = export.Header.GeneratedAtUtc;
+
+        return Results.Ok(new ProductDecisionTimelineExportResponseDto
+        {
+            Success = export.Success,
+            Header = export.Header,
+            Funnel = export.Funnel,
+            Rows = export.Rows.ToList(),
+            ErrorCode = export.ErrorCode,
+            ErrorMessage = export.ErrorMessage,
+            Meta = meta
+        });
+    }
+
     internal static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
@@ -7668,6 +7792,21 @@ public class ProductDecisionTimelineFilterResponseDto
     public int MatchedActionCount { get; set; }
     public int MatchedEventCount { get; set; }
     public List<string> WarningCodes { get; set; } = [];
+    public AnalyticsResponseMetaDto Meta { get; set; } = new()
+    {
+        Success = true,
+        GeneratedAtUtc = DateTime.UtcNow
+    };
+}
+
+public class ProductDecisionTimelineExportResponseDto
+{
+    public bool Success { get; set; }
+    public DecisionTimelineExportHonestyHeaderDto Header { get; set; } = null!;
+    public DecisionTimelineExportFunnelDto? Funnel { get; set; }
+    public List<DecisionTimelineExportRowDto> Rows { get; set; } = [];
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
     {
         Success = true,

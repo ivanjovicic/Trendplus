@@ -19,6 +19,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getStores: (...args: unknown[]) => getStoresMock(...args),
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
+  getProductDecisionTimelineExportCsv: vi.fn(),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: vi.fn(),
 }));

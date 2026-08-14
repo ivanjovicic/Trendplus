@@ -11,6 +11,7 @@ import {
   getAnalyticsActionSourceStatuses,
   getProductDecisionCenter,
   getProductDecisionTimeline,
+  getProductDecisionTimelineExportCsv,
   getStores,
   getSupplierFilters,
   upsertAnalyticsActionWithResult,
@@ -23,6 +24,7 @@ import {
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
+import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -677,6 +679,8 @@ export default function ProductDecisionCenterPage() {
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
   const [timelineFamilyFilter, setTimelineFamilyFilter] = useState<"row" | "all">("row");
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineExportError, setTimelineExportError] = useState<string | null>(null);
+  const [timelineExportingProductId, setTimelineExportingProductId] = useState<number | null>(null);
   const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
   const timelineRequestSeqRef = useRef(0);
   const dataRequestSeqRef = useRef(0);
@@ -985,6 +989,7 @@ export default function ProductDecisionCenterPage() {
     const requestSeq = ++timelineRequestSeqRef.current;
     setTimelineLoadingProductId(row.productId);
     setTimelineError(null);
+    setTimelineExportError(null);
     try {
       const timeline = await getProductDecisionTimeline({
         fromDate,
@@ -1010,6 +1015,31 @@ export default function ProductDecisionCenterPage() {
       if (timelineRequestSeqRef.current === requestSeq) {
         setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
       }
+    }
+  }, [fromDate, toDate]);
+
+  const exportDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
+    setTimelineExportingProductId(row.productId);
+    setTimelineExportError(null);
+    try {
+      const csv = await getProductDecisionTimelineExportCsv({
+        fromDate,
+        toDate,
+        sourceType: row.sourceType ?? "product",
+        sourceKey: row.sourceKey ?? `product:${row.productId}`,
+        productId: row.productId,
+        recommendationType: familyMode === "row"
+          ? (row.recommendationType ?? row.recommendationStatus)
+          : null,
+      });
+      downloadDecisionTimelineExportCsv(
+        `decision-timeline-${row.productId}.csv`,
+        csv,
+      );
+    } catch (err) {
+      setTimelineExportError(err instanceof Error ? err.message : "Decision Timeline export trenutno nije dostupan.");
+    } finally {
+      setTimelineExportingProductId((current) => (current === row.productId ? null : current));
     }
   }, [fromDate, toDate]);
 
@@ -1667,12 +1697,29 @@ export default function ProductDecisionCenterPage() {
                                   >
                                     Sve porodice
                                   </button>
+                                  <button
+                                    type="button"
+                                    className="why-button"
+                                    data-testid="decision-timeline-export"
+                                    disabled={timelineExportingProductId === row.productId}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void exportDecisionTimeline(row, timelineFamilyFilter);
+                                    }}
+                                  >
+                                    {timelineExportingProductId === row.productId ? "Export…" : "Preuzmi CSV"}
+                                  </button>
                                 </div>
                                 {timelineLoadingProductId === row.productId ? (
                                   <small>Učitavanje istorije odluke…</small>
                                 ) : null}
                                 {timelineError && expandedProductId === row.productId ? (
                                   <small className="recommendation-warning-summary">{timelineError}</small>
+                                ) : null}
+                                {timelineExportError && expandedProductId === row.productId ? (
+                                  <small className="recommendation-warning-summary" data-testid="decision-timeline-export-error">
+                                    {timelineExportError}
+                                  </small>
                                 ) : null}
                                 {(() => {
                                   const timeline = timelineByProductId[row.productId];

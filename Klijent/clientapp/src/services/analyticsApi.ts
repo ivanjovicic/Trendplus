@@ -27,6 +27,7 @@ import type {
   QuickInsights,
   ProductDecisionCenterResponse,
   ProductDecisionTimelineFilterResponse,
+  ProductDecisionTimelineExportResponse,
   RebalanceListDto,
   ReorderSuggestion,
   InventoryStoreComparison,
@@ -820,6 +821,44 @@ export async function getProductDecisionTimeline(options?: {
     params,
     "Greska pri ucitavanju Decision Timeline pregleda"
   );
+}
+
+export async function getProductDecisionTimelineExportCsv(options?: {
+  fromDate?: string;
+  toDate?: string;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  productId?: number | null;
+  recommendationType?: string | null;
+}): Promise<string> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.sourceType) params.append("sourceType", options.sourceType);
+  if (options?.sourceKey) params.append("sourceKey", options.sourceKey);
+  if (options?.productId != null) params.append("productId", String(options.productId));
+  if (options?.recommendationType) params.append("recommendationType", options.recommendationType);
+  params.append("format", "csv");
+
+  const url = makeUrl("/api/analytics/cached/products/decision-center/timeline/export", params);
+  const response = await fetchAnalyticsResponse(url, undefined, DEFAULT_ANALYTICS_GET_TIMEOUT_MS);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json()) as ProductDecisionTimelineExportResponse;
+    assertAnalyticsMetaSuccess(payload, "Decision Timeline export trenutno nije dostupan.");
+    throw new Error("Decision Timeline export nije vratio CSV dokument.");
+  }
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Decision Timeline export trenutno nije dostupan."));
+  }
+
+  const csv = await response.text();
+  if (/^# success=false/m.test(csv)) {
+    throw new AnalyticsMetaError("Decision Timeline export trenutno nije dostupan.");
+  }
+
+  return csv;
 }
 
 function readFilterFallbackMeta(response: Response): AnalyticsResponseMeta | null {

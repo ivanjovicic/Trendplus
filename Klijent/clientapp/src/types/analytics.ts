@@ -463,6 +463,63 @@ export interface ProductDecisionTimelineFilterResponse {
   meta?: AnalyticsResponseMeta | null;
 }
 
+export interface DecisionTimelineExportHonestyHeader {
+  requestedPeriodFromUtc: string;
+  requestedPeriodToUtc: string;
+  effectivePeriodFromUtc: string;
+  effectivePeriodToUtc: string;
+  periodMode: string;
+  generatedAtUtc: string;
+  freshnessStatus?: string | null;
+  dataQualityStatus?: string | null;
+  emptyReason?: string | null;
+  warningCodes?: string[] | null;
+  snapshotCoverage: string;
+  scopeExplanation?: string | null;
+  matchedActionCount?: number | null;
+  matchedEventCount?: number | null;
+}
+
+export interface DecisionTimelineExportFunnel {
+  issuedCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  ignoredCount: number;
+  executedCount: number;
+  measuredCount: number;
+  notMeasuredCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  acceptanceRate?: number | null;
+  executionRate?: number | null;
+  measuredRate?: number | null;
+  successRate?: number | null;
+}
+
+export interface DecisionTimelineExportRow {
+  timelineId: string;
+  actionId: number;
+  sourceRecommendationId: string;
+  currentStatus: string;
+  currentOutcomeStatus: string;
+  workflowStatusSource: string;
+  creationSnapshotPresent: boolean;
+  resolutionSnapshotPresent: boolean;
+  evidenceSnapshotPresent: boolean;
+  snapshotAbsenceReason?: string | null;
+}
+
+export interface ProductDecisionTimelineExportResponse {
+  success: boolean;
+  header: DecisionTimelineExportHonestyHeader;
+  funnel?: DecisionTimelineExportFunnel | null;
+  rows: DecisionTimelineExportRow[];
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  meta?: AnalyticsResponseMeta | null;
+}
+
 export interface ProductDecisionWhyPanel {
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;

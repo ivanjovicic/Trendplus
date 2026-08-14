@@ -11,6 +11,7 @@ const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
 const getProductDecisionCenterMock = vi.fn();
 const getProductDecisionTimelineMock = vi.fn();
+const getProductDecisionTimelineExportCsvMock = vi.fn();
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const upsertAnalyticsActionWithResultMock = vi.fn();
 
@@ -20,6 +21,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
   getProductDecisionTimeline: (...args: unknown[]) => getProductDecisionTimelineMock(...args),
+  getProductDecisionTimelineExportCsv: (...args: unknown[]) => getProductDecisionTimelineExportCsvMock(...args),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
 }));
@@ -322,6 +324,9 @@ beforeEach(() => {
     warningCodes: [],
     meta: { success: true, dataQualityStatus: "insufficient_data" },
   });
+  getProductDecisionTimelineExportCsvMock.mockResolvedValue(
+    "# success=true\n# emptyReason=no_events\n# successRate=\ntimelineId,actionId\n",
+  );
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
@@ -346,6 +351,28 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
     expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/Porodica: REPLENISH/i);
     expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/Nema događaja za izabrani entitet ili porodicu/i);
+  });
+
+  it("keeps the timeline visible when CSV export fails and does not show fake zero rates", async () => {
+    getProductDecisionTimelineExportCsvMock.mockRejectedValue(new Error("Decision Timeline export trenutno nije dostupan."));
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    const timelinePanel = await screen.findByTestId("decision-timeline-panel");
+    await waitFor(() => {
+      expect(screen.getByTestId("decision-timeline-empty")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("decision-timeline-export"));
+
+    expect(await screen.findByTestId("decision-timeline-export-error")).toHaveTextContent(/nije dostupan/i);
+    expect(timelinePanel).toBeInTheDocument();
+    expect(screen.getByTestId("decision-timeline-empty")).toBeInTheDocument();
+    expect(timelinePanel).not.toHaveTextContent("0%");
+    expect(timelinePanel).not.toHaveTextContent("0 RSD");
   });
 
   it("shows human-readable timeline events instead of raw backend codes", async () => {

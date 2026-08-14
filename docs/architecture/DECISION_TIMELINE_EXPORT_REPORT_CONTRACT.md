@@ -5,7 +5,7 @@ Date: 2026-08-13
 Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Related event contract: `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 Related rollout plan: `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` Slice 4
-Related live runtime: DT05 Slice-2 filtered timeline on Product Decision Center
+Related live runtime: DT05 Slice-2 filtered timeline plus DT07 export on Product Decision Center
 Related snapshot vocabulary: DEX10 `AnalyticsActionDecisionEvidenceSnapshot` plus ledger creation/resolution snapshots
 
 ## Purpose
@@ -14,13 +14,11 @@ This contract freezes the meaning of a later Decision Timeline export and retros
 
 It exists so a future runtime slice can print or download recommendation -> action -> outcome history without inventing events, silently widening the requested period, or presenting missing snapshots as if they were present.
 
-The live runtime baseline remains the DT05 Slice-2 filtered timeline. This document does not authorize an export endpoint, file download, print CSS, or report page.
+The live runtime baseline remains the DT05 Slice-2 filtered timeline. DT07 added JSON/CSV export over that projection. Print CSS, Excel and PDF remain out of scope.
 
 ## Non-goals
 
-- no runtime export, CSV, Excel, PDF, or print implementation
-- no new API shape
-- no schema migration
+- no Excel, PDF, or print-CSS implementation in DT07
 - no new event store
 - no invented replay history
 - no frontend-local reconstruction of missing stages
@@ -35,7 +33,15 @@ The current executable timeline is the DT05 filtered projection:
 - DTO: `DecisionTimelineItemDto` / `ProductDecisionTimelineFilterResponseDto`
 - UI: Product Decision Center timeline panel
 
+DT07 added a read-only export over that same projection:
+
+- backend: `DecisionTimelineExportProjection` wrapping the Slice-2 filter
+- endpoint: `GET /api/analytics/cached/products/decision-center/timeline/export` (`format=json|csv`)
+- UI: Product Decision Center `Preuzmi CSV` on the timeline panel
+
 Export/report consumers must reuse that projection's stage names, gap reasons, empty reasons and snapshot objects. They must not build a second history from live product rows, notes text, or current catalog state.
+
+Print CSS, Excel and PDF remain out of scope. Honesty rules in this document stay authoritative.
 
 ## Canonical export story
 
@@ -292,12 +298,12 @@ Still later, and not authorized here:
 7. Do not count `not_measured` as success or failure.
 8. Do not count `rejected` as `done`.
 9. Do not use identity fields as authorization.
-10. Do not implement runtime export under this contract.
+10. Do not implement Excel, PDF, or print CSS under this contract; JSON/CSV runtime is DT07.
 
 ## Acceptance rules
 
-- a docs-only timeline export/retrospective contract exists;
-- filtered Slice-2 remains the live runtime baseline;
+- a timeline export/retrospective contract exists;
+- filtered Slice-2 remains the live timeline baseline;
 - snapshot presence/absence is explicit;
 - empty-period and export-failure honesty are explicit;
-- this document does not authorize runtime work.
+- JSON/CSV runtime is DT07; Excel/PDF/print CSS remain out of scope.

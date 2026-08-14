@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX19` | backend/frontend - Executive Board explainability reuse runtime |
+| DEX - Decision Explainability | `DEX19` | backend/frontend - Executive Board explainability runtime |
 
 
 
@@ -46,7 +46,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DT - Decision Timeline | `DT07` | backend/frontend - timeline export runtime slice |
+| DT - Decision Timeline | `DT08` | backend/frontend - timeline export/report hardening |
 
 
 
@@ -1907,14 +1907,70 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 
 
 
-## DT07 - Implement Decision Timeline export and retrospective report runtime slice
+## DT08 - Harden Decision Timeline export and retrospective report regression coverage
 
 Status: READY
 Priority: future / planning
+Feature family: decision-timeline-hardening
+Parallel-safe: yes, when path-safe vs current execution
+Owner: unassigned
+Local lock: .ai/task-locks/DT08-<agent>.lock.md
+
+### Problem
+
+DT07 added a Slice-2 timeline export path, but Slice-5 hardening still needs regression coverage so rejected is not collapsed into done, not_measured is not counted as success or failure, and the export/report stays in parity with the live timeline.
+
+### Evidence
+
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md Slice 5
+- docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+- Infrastructure/Services/Analytics/DecisionTimelineExportProjection.cs
+- GET /api/analytics/cached/products/decision-center/timeline/export
+- Api.Tests/DecisionTimelineExportProjectionTests.cs
+
+### Scope
+
+- hardening and parity tests over the existing DT07 export and DT05 timeline;
+- keep requested vs effective period equal;
+- no new event store, schema migration, or second history builder.
+
+### Read first
+
+- DT07 completion note
+- DT06 export/retrospective contract
+- DT02 rollout plan Slice 5
+
+### Do
+
+1. Add the remaining Slice-5 cases: rejected vs done, executed but not measured, missing evidence, and export/UI parity.
+2. Keep zero denominators null and failed export free of KPI zeros.
+3. Do not invent missing stages to complete the funnel.
+4. Do not start PERF15 in this prompt.
+
+### Tests
+
+- rejected is not done;
+- not_measured is not success or failure;
+- export rows stay aligned with Slice-2 events/gaps;
+- empty and error paths still do not emit fake zero rates.
+
+### Acceptance
+
+- timeline and export surfaces stay in parity with Slice-5 hardening tests;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT07 DONE.
+
+## DT07 - Implement Decision Timeline export and retrospective report runtime slice
+
+Status: DONE
+Priority: future / planning
 Feature family: decision-timeline-export-report
 Parallel-safe: yes, backend/frontend report paths when RQ100 is not touching the same files
-Owner: unassigned
-Local lock: .ai/task-locks/DT07-<agent>.lock.md
+Owner: Cursor Auto
+Local lock: removed after DONE
 
 ### Problem
 
@@ -1961,6 +2017,57 @@ DT06 froze the export/retrospective contract, but there is still no runtime expo
 
 - DT06 DONE;
 - DT05 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 92%
+- Changed files:
+  - Infrastructure/Services/Analytics/DecisionTimelineExportProjection.cs
+  - Api/Endpoints/CachedAnalyticsEndpoints.cs
+  - Api.Tests/DecisionTimelineExportProjectionTests.cs
+  - Klijent/clientapp/src/utils/decisionTimelineExport.ts
+  - Klijent/clientapp/src/utils/__tests__/decisionTimelineExport.spec.ts
+  - Klijent/clientapp/src/services/analyticsApi.ts
+  - Klijent/clientapp/src/types/analytics.ts
+  - Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx
+  - docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-DT07-evidence.md
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DecisionTimelineExportProjectionTests` - pass (3)
+  - `npm run test -- --run src/utils/__tests__/decisionTimelineExport.spec.ts src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass (20)
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx` - pass (9)
+  - `npm run check:analytics-guardrails` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (67 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - full `dotnet test` - focused Api.Tests filter passed after project compile
+  - `npm run build` - typecheck ran via analytics-guardrails
+- Run log: .ai/runs/2026-08-14-DT07-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no print CSS / Excel / PDF; funnel rates stay null when denominators are empty; Slice-5 hardening is `DT08`
+- Follow-up: `PERF15` (current execution); DT program READY is `DT08`
+- Residual risk: default last-30-day window when dates are omitted is labeled as both requested and effective; SQL candidate fetch is still wider than the filter window
+- Prompt defect / scope repair: inserted `DT08` so DT keeps exactly one READY after this close
+- Next: `PERF15` - Shared-SaaS evidence gate
 
 
 ## DT06 - Prepare Decision Timeline export and retrospective reporting contract
