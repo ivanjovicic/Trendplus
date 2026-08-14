@@ -2062,7 +2062,7 @@ DT06 froze the export/retrospective contract, but there is still no runtime expo
 - Run log: .ai/runs/2026-08-14-DT07-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 1b1f7ec6c4dd7acd419803b9c5727a4427e42c8e
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> 4749c5ce2ee9d2d73956a986ea84bb3446ecd50a; work SHA 1b1f7ec6c4dd7acd419803b9c5727a4427e42c8e is an ancestor
 - Missed: no print CSS / Excel / PDF; funnel rates stay null when denominators are empty; Slice-5 hardening is `DT08`
 - Follow-up: `PERF15` (current execution); DT program READY is `DT08`
 - Residual risk: default last-30-day window when dates are omitted is labeled as both requested and effective; SQL candidate fetch is still wider than the filter window
