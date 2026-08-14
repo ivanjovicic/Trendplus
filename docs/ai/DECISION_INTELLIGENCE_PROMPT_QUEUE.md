@@ -1313,7 +1313,7 @@ RL06 exposed measurementStatistics on the outcome summary endpoint, but there is
   - `npm run build` / frontend tests - docs/contracts only; runtime UI is `RL09`
 - Run log: .ai/runs/2026-08-14-RL07-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 393e73b7df92e9d255fe595699bce8b33928f2d4
 - Main verification: pending push to origin/main
 - Missed: no runtime review surface; operators still cannot see the funnel until `RL09`
 - Follow-up: `DT07` (current execution); RL program READY is `RL09`
