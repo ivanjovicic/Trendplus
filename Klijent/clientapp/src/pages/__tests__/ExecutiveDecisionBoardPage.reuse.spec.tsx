@@ -57,7 +57,7 @@ function buildAggregate(): DecisionBoardAggregateResponse {
             alreadyClosed: false,
             warningCodes: ["missing_cost"],
             reasonCodes: ["replenish_needed"],
-            recommendationAllowed: null,
+            recommendationAllowed: false,
             dataQualityStatus: "good",
             generatedAtUtc: "2026-08-14T08:25:00Z",
             priorityScore: 240,
@@ -88,6 +88,8 @@ describe("ExecutiveDecisionBoardPage reuse runtime", () => {
     expect(screen.getByText("Razlozi")).toBeInTheDocument();
     expect(screen.getByText("Nedostaje nabavna cena")).toBeInTheDocument();
     expect(screen.getByText("replenish needed")).toBeInTheDocument();
+    expect(screen.getByText("Preporuka")).toBeInTheDocument();
+    expect(screen.getByText("Blokirana")).toBeInTheDocument();
     expect(screen.getByText("Izvor pouzdanosti")).toBeInTheDocument();
     expect(screen.getByText("Signal zaliha")).toBeInTheDocument();
   });

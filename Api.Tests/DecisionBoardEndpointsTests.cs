@@ -70,6 +70,7 @@ public sealed class DecisionBoardEndpointsTests
         Assert.NotEqual("REPLENISH", productCard.Title);
         Assert.NotEqual(recommendationStatus, productCard.RecommendedNextAction);
         Assert.Equal("signal", productCard.ConfidenceSource);
+        Assert.True(productCard.RecommendationAllowed);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
         Assert.Contains(impactSection.Cards, card => card.Id == productCard.Id);
@@ -187,6 +188,7 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Null(productCard.ExpectedImpactRsd);
         Assert.Equal(0m, productCard.ImpactScore);
         Assert.Equal("workflow_status_only", productCard.ConfidenceSource);
+        Assert.False(productCard.RecommendationAllowed);
         Assert.DoesNotContain(recommendationStatus, productCard.Title, StringComparison.Ordinal);
         Assert.DoesNotContain(recommendationStatus, productCard.RecommendedNextAction, StringComparison.Ordinal);
         Assert.NotEqual(recommendationLabel, productCard.Title);

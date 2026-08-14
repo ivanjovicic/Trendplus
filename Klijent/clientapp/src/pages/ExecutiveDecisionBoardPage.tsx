@@ -381,6 +381,13 @@ export function buildExecutiveFallbackProductCards(
       // Do not promote lostSalesEstimate into expected impact — PDC is source of truth.
       const expectedImpact = row.expectedImpactRsd ?? null;
       const warnings = recommendationWarningCodes(row);
+      const confidenceSource =
+        row.recommendationStatus === "FIX_DATA"
+        || row.recommendationStatus === "INSUFFICIENT_DATA"
+        || row.confidenceLevel === "insufficient_data"
+        || row.dataQualityStatus === "insufficient_data"
+          ? "workflow_status_only"
+          : "signal";
 
       return {
         id: `product:${row.productId}:${index}`,
@@ -406,6 +413,7 @@ export function buildExecutiveFallbackProductCards(
         alreadyClosed: actionState === "closed",
         actionStateLabel: openActionStateLabel(actionState),
         warningCodes: warnings,
+        confidenceSource,
         dataQualityStatus: row.dataQualityStatus,
         generatedAtUtc: product.generatedAtUtc,
         priorityScore: capInsufficientDataPriority(
@@ -414,6 +422,7 @@ export function buildExecutiveFallbackProductCards(
           row.dataQualityStatus,
         ),
         impactScore: expectedImpact ?? 0,
+        recommendationAllowed: row.recommendationAllowed ?? null,
       };
     });
 }

@@ -424,6 +424,7 @@ public static class DecisionBoardEndpoints
                     WarningCodes: warnings,
                     ConfidenceSource: ResolveProductConfidenceSource(row),
                     ReasonCodes: row.ReasonCodes,
+                    RecommendationAllowed: row.RecommendationAllowed,
                     DataQualityStatus: NormalizeDataQualityStatus(row.DataQualityStatus),
                     GeneratedAtUtc: productDecisionCenter.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(
