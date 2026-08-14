@@ -5,7 +5,7 @@ Agent/tool: Cursor Auto
 Model: Cursor Grok 4.6
 Delivery target: main
 Main commit SHA: 42a7f8826eed6ac8a5926aceacb2a96937b35534
-Main verification: pending push to origin/main
+Main verification: git rev-parse origin/main -> f73b6fdd98b274f2afd62667a28da70cf386fc4c; work SHA 42a7f8826eed6ac8a5926aceacb2a96937b35534 is an ancestor
 
 ## What was done
 - Froze a docs-only D8 / shared-SaaS evidence gate so dedicated PERF packs cannot be promoted to `shared_saas`.
