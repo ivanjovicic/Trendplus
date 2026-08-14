@@ -1314,7 +1314,7 @@ RL06 exposed measurementStatistics on the outcome summary endpoint, but there is
 - Run log: .ai/runs/2026-08-14-RL07-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 393e73b7df92e9d255fe595699bce8b33928f2d4
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> 3b61b57997c959e74534691e1a883b22b97cabf2; work SHA 393e73b7df92e9d255fe595699bce8b33928f2d4 is an ancestor
 - Missed: no runtime review surface; operators still cannot see the funnel until `RL09`
 - Follow-up: `DT07` (current execution); RL program READY is `RL09`
 - Residual risk: existing outcome-summary UI can still show legacy `totals` rates if a later runtime prompt binds the wrong object
