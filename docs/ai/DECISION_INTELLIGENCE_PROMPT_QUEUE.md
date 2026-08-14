@@ -213,7 +213,7 @@ Product, supplier and inventory explainability snapshots exist, but Executive De
   - `npm run build` / frontend tests - docs/contracts only
 - Run log: .ai/runs/2026-08-14-DEX18-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 731131fd198ab9390bb3cc158887456dc041e738
 - Main verification: pending push to origin/main
 - Missed: Executive Board runtime wiring is out of scope and is not a live DEX READY prompt
 - Follow-up: `RL07` (current execution); DEX program READY is `DEX19`
