@@ -793,7 +793,7 @@ Cached `/sales/daily` can still silently use an operational fallback as a bare a
   - full `npm run build` - named Vitest + guardrails/typecheck already run
 - Run log: .ai/runs/2026-08-14-RQ105-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
+- Main commit SHA: 68ba893027e4ebaf48945e84fa3d64eb1d3653e8
 - Main verification: pending push to origin/main
 - Missed: `getDailySales()` still unwraps to an array, so Analytics Details does not render daily-sales warning meta
 - Follow-up: `P-UI-22`
