@@ -4,8 +4,8 @@ Date: 2026-08-14
 Agent/tool: Cursor Auto
 Model: Cursor Grok 4.6
 Delivery target: main
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 42a7f8826eed6ac8a5926aceacb2a96937b35534
+Main verification: pending push to origin/main
 
 ## What was done
 - Froze a docs-only D8 / shared-SaaS evidence gate so dedicated PERF packs cannot be promoted to `shared_saas`.

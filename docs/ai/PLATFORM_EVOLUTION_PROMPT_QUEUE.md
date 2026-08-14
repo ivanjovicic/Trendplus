@@ -164,8 +164,8 @@ PERF14 finished the D6 import-overlap evidence track, but D8 tenant-isolation ov
   - `npm run build` / frontend tests - docs/contracts only
 - Run log: .ai/runs/2026-08-14-PERF15-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 42a7f8826eed6ac8a5926aceacb2a96937b35534
+- Main verification: pending push to origin/main
 - Missed: no D8 measurement pack; no MT promotion; shared-SaaS remains unclaimed
 - Follow-up: `OBS08` (current execution); PERF program READY is `PERF16`
 - Residual risk: a later pack could still relabel dedicated evidence as `shared_saas` if it ignores the gate
