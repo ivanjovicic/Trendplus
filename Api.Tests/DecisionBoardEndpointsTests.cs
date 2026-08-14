@@ -312,6 +312,9 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(blockedCard.PriorityScore <= 40m);
         Assert.Equal(0m, blockedCard.ImpactScore);
         Assert.Contains("supplier_recommendation_blocked", blockedCard.WarningCodes);
+        Assert.Contains("test", blockedCard.ReasonCodes);
+        Assert.DoesNotContain("test", blockedCard.WarningCodes);
+        Assert.False(blockedCard.RecommendationAllowed);
         Assert.Contains("signal_check", blockedCard.SourceKey, StringComparison.Ordinal);
         Assert.Contains("Signal check", blockedCard.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Proveri pouzdanost", blockedCard.RecommendedNextAction, StringComparison.OrdinalIgnoreCase);
@@ -361,6 +364,8 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(supplierCard.PriorityScore > 40m);
         Assert.Equal(900_000m, supplierCard.ImpactScore);
         Assert.DoesNotContain("supplier_recommendation_blocked", supplierCard.WarningCodes);
+        Assert.Contains("test", supplierCard.ReasonCodes);
+        Assert.True(supplierCard.RecommendationAllowed);
         Assert.Contains("negotiation", supplierCard.SourceKey, StringComparison.Ordinal);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
@@ -368,6 +373,29 @@ public sealed class DecisionBoardEndpointsTests
 
         var blockers = Assert.Single(response.Sections.Where(section => section.Key == "blockers"));
         Assert.DoesNotContain(blockers.Cards, card => card.Id == "blocker-supplier-trust");
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_PreservesReasonCodesSeparateFromWarningCodes()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 701,
+                recommendationStatus: "REPLENISH",
+                dataQualityStatus: "good",
+                confidenceLevel: "high",
+                confidenceScore: 82,
+                expectedImpactRsd: 18_000m,
+                warningCodes: ["freshness"],
+                reasonCodes: ["replenish_needed"]));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.Equal(["freshness"], productCard.WarningCodes);
+        Assert.Equal(["replenish_needed"], productCard.ReasonCodes);
     }
 
     [Fact]

@@ -345,52 +345,14 @@ function boardCodeLabel(code: string): string {
   return code.replaceAll("_", " ");
 }
 
-function isRedundantBoardCode(card: BoardCard, code: string): boolean {
-  const key = code.trim().toLowerCase();
-  if (key === "warning" || key === "good" || key === "critical" || key === "error" || key === "fresh" || key === "stale" || key === "excellent") {
-    return true;
-  }
-  if (key === "confidence_workflow_status_only" && (card.confidenceSource ?? "").trim().toLowerCase() === "workflow_status_only") {
-    return true;
-  }
-  if (key === "inventory_recommendation_blocked" && card.recommendationAllowed === false) {
-    return true;
-  }
-  switch (key) {
-    case "new":
-    case "accepted":
-    case "deferred":
-    case "done":
-    case "rejected":
-    case "pending":
-    case "not_measured":
-    case "measured":
-    case "success":
-    case "negative":
-    case "neutral":
-    case "replenish":
-    case "boost":
-    case "markdown":
-    case "do_not_order":
-    case "fix_data":
-    case "watch":
-    case "expand":
-    case "actiontype":
-    case "status":
-      return true;
-    default:
-      return false;
-  }
-}
-
-function uniqueBoardCodes(card: BoardCard): string[] {
+function normalizeBoardCodes(codes: string[] | null | undefined): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
-  for (const code of [...card.warningCodes, ...(card.reasonCodes ?? [])]) {
+  for (const code of codes ?? []) {
     const normalized = code.trim();
     if (!normalized) continue;
     const key = normalized.toLowerCase();
-    if (seen.has(key) || isRedundantBoardCode(card, key)) continue;
+    if (seen.has(key)) continue;
     seen.add(key);
     ordered.push(normalized);
   }
@@ -1008,15 +970,27 @@ function confidencePresentationFromBoardCard(
     return { label: confidenceLabelFromValue(normalizedScore, "Nedovoljno podataka"), tone: "insufficient", score: normalizedScore };
   }
 
-  if (level === "high" || (normalizedScore != null && normalizedScore >= 75)) {
+  if (level === "high") {
     return { label: confidenceLabelFromValue(normalizedScore, "Visoka"), tone: "good", score: normalizedScore };
   }
 
-  if (level === "medium" || (normalizedScore != null && normalizedScore >= 55)) {
+  if (level === "medium") {
     return { label: confidenceLabelFromValue(normalizedScore, "Srednja"), tone: "neutral", score: normalizedScore };
   }
 
-  if (level === "low" || normalizedScore != null) {
+  if (level === "low") {
+    return { label: confidenceLabelFromValue(normalizedScore, "Niska"), tone: "warning", score: normalizedScore };
+  }
+
+  if (normalizedScore != null) {
+    if (normalizedScore >= 75) {
+      return { label: confidenceLabelFromValue(normalizedScore, "Visoka"), tone: "good", score: normalizedScore };
+    }
+
+    if (normalizedScore >= 55) {
+      return { label: confidenceLabelFromValue(normalizedScore, "Srednja"), tone: "neutral", score: normalizedScore };
+    }
+
     return { label: confidenceLabelFromValue(normalizedScore, "Niska"), tone: "warning", score: normalizedScore };
   }
 
@@ -1038,6 +1012,8 @@ function mapDecisionBoardCard(
 ): BoardCard {
   const confidence = confidencePresentationFromBoardCard(card);
   const actionState = boardActionState(card);
+  const warningCodes = normalizeBoardCodes(card.warningCodes);
+  const reasonCodes = normalizeBoardCodes(card.reasonCodes);
 
   return {
     id: card.id,
@@ -1062,9 +1038,9 @@ function mapDecisionBoardCard(
     alreadyInAction: card.alreadyInAction,
     alreadyClosed: card.alreadyClosed,
     actionStateLabel: openActionStateLabel(actionState),
-    warningCodes: card.warningCodes ?? [],
+    warningCodes,
     confidenceSource: card.confidenceSource ?? null,
-    reasonCodes: card.reasonCodes ?? [],
+    reasonCodes,
     recommendationAllowed: card.recommendationAllowed ?? null,
     dataQualityStatus: card.dataQualityStatus,
     generatedAtUtc: card.generatedAtUtc ?? null,
@@ -1125,7 +1101,8 @@ function deriveWorstStatus(values: Array<string | null | undefined>): string | n
 
 function renderSectionCard(card: BoardCard) {
   const confidenceSourceLabel = formatConfidenceSourceLabel(card.confidenceSource);
-  const boardCodes = uniqueBoardCodes(card);
+  const warningCodes = normalizeBoardCodes(card.warningCodes);
+  const reasonCodes = normalizeBoardCodes(card.reasonCodes);
 
   return (
     <article key={card.id} className={`decision-board-card decision-board-card-${card.kind} decision-board-card-${card.confidenceTone}`}>
@@ -1180,13 +1157,29 @@ function renderSectionCard(card: BoardCard) {
         ) : null}
       </dl>
 
-      {boardCodes.length > 0 ? (
-        <div className="decision-board-warning-codes" aria-label="Razlozi i upozorenja">
-          {boardCodes.slice(0, 4).map((code) => (
-            <span key={code} className="decision-board-chip">
-              {boardCodeLabel(code)}
-            </span>
-          ))}
+      {warningCodes.length > 0 ? (
+        <div className="decision-board-code-group" aria-label="Upozorenja">
+          <span className="decision-board-code-group-label">Upozorenja</span>
+          <div className="decision-board-warning-codes">
+            {warningCodes.slice(0, 4).map((code) => (
+              <span key={code} className="decision-board-chip">
+                {boardCodeLabel(code)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {reasonCodes.length > 0 ? (
+        <div className="decision-board-code-group" aria-label="Razlozi">
+          <span className="decision-board-code-group-label">Razlozi</span>
+          <div className="decision-board-warning-codes">
+            {reasonCodes.slice(0, 4).map((code) => (
+              <span key={code} className="decision-board-chip">
+                {boardCodeLabel(code)}
+              </span>
+            ))}
+          </div>
         </div>
       ) : null}
 

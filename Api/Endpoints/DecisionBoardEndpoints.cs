@@ -398,7 +398,7 @@ public static class DecisionBoardEndpoints
                 var confidence = ResolveProductConfidence(row);
                 // Trust PDC: do not reattach LostSalesEstimate when ExpectedImpactRsd is intentionally null.
                 var expectedImpact = row.ExpectedImpactRsd;
-                var warnings = NormalizeWarningCodes(row.WarningCodes, row.ReasonCodes);
+                var warnings = NormalizeWarningCodes(row.WarningCodes);
                 var actionState = ResolveActionState(row.SourceType ?? "product", row.SourceKey ?? $"product:{row.ProductId}", actionStates);
 
                 return new DecisionBoardCardDto(
@@ -422,6 +422,7 @@ public static class DecisionBoardEndpoints
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: warnings,
+                    ReasonCodes: row.ReasonCodes,
                     DataQualityStatus: NormalizeDataQualityStatus(row.DataQualityStatus),
                     GeneratedAtUtc: productDecisionCenter.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(
@@ -623,13 +624,15 @@ public static class DecisionBoardEndpoints
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: BuildSupplierWarningCodes(trust),
+                    ReasonCodes: item.ReasonCodes,
                     DataQualityStatus: dataQualityStatus,
                     GeneratedAtUtc: trust?.LastRefreshAtUtc ?? supplierSummary.From,
                     PriorityScore: CapInsufficientDataPriority(
                         ComputeSupplierPriority(item, trust, recommendationAllowed),
                         confidenceLevel,
                         dataQualityStatus),
-                    ImpactScore: recommendationAllowed ? item.Revenue : 0m));
+                    ImpactScore: recommendationAllowed ? item.Revenue : 0m,
+                    RecommendationAllowed: recommendationAllowed));
             }
         }
 
