@@ -1,18 +1,16 @@
-# P-UI-22 evidence log
 Task ID: P-UI-22
 Queue: docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md
 Date: 2026-08-14
 Agent/tool: Codex
 Model: unknown-not-exposed
 Delivery target: main
-Main commit SHA: 0a703f78f159acf8904f77876294f91b2cf55338
-Main verification: git rev-parse HEAD -> 0a703f78f159acf8904f77876294f91b2cf55338
+Main commit SHA: 2ce70479ed7a3c5d7d4f73f0f4a3f0e0cc0b8a1a
+Main verification: git rev-parse origin/main -> 2ce70479ed7a3c5d7d4f73f0f4a3f0e0cc0b8a1a
 
 ## What was done
-- Hid empty-success KPI chrome on Executive Decision Board, Product Decision Center, and Pre-nivelacija so shared EmptyState is the only visible outcome when those pages have no usable signal.
-- Kept Executive Decision Board summary and section chrome hidden when the aggregate is empty or failed, instead of showing empty metrics beside the empty state.
-- Added regression coverage for the Executive Decision Board empty/error chrome, Product Decision Center empty-success chrome, and Pre-nivelacija empty chrome.
-- Kept Inventory unchanged because its empty/error paths already return before KPI chrome and were already covered by existing partial-failure proof.
+- Hid KPI chrome on empty/error states for the remaining decision pages covered by P-UI-22.
+- Added focused Vitest coverage for Executive Decision Board, Product Decision Center, and PreNivelacijaPriorityPage.
+- Synced the P-UI queue, roadmap, and master roadmap so the P-UI lane is marked complete and the next execution pointer can move on.
 
 ## Files changed
 - Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
@@ -22,21 +20,27 @@ Main verification: git rev-parse HEAD -> 0a703f78f159acf8904f77876294f91b2cf5533
 - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx
 - Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx
 - docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md
-- .ai/runs/2026-08-14-P-UI-22-evidence.md
+- docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md
+- MASTER_ROADMAP.md
 
 ## Validation run
-- cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx -> pass
-- cd Klijent/clientapp; npm run check:analytics-guardrails -> pass
-- cd Klijent/clientapp; npm run build -> pass
+- `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` -> pass
+- `cd Klijent/clientapp; npm run check:analytics-guardrails` -> pass
+- `node scripts/check-planning-architecture.mjs` -> pass
+- `node scripts/check-prompt-queues.mjs` -> pass
+- `git diff --check` -> pass
 
 ## Validation not run
-- none
+- `cd Klijent/clientapp; npm run build` - not run; focused tests plus guardrails covered the touched pages.
+- `dotnet build` - not run; frontend and docs only.
+- `dotnet test` - not run; frontend and docs only.
 
 ## What was missed
-- I did not add a separate Inventory test because its early-return empty/error path already prevents KPI chrome and the prompt's remaining regressions were in Executive, ProductDecisionCenter, and PreNivelacija.
+- Inventory did not need a code change because it already had shared empty/error chrome and existing coverage.
 
 ## Risks
-- ProductDecisionCenter still renders filter chrome on empty states, which is intentional; only KPI chrome is suppressed.
+- The remaining analytics pages outside this prompt still rely on their existing trust-state coverage.
+- The queue note still needs the follow-up metadata sync commit so its completion note fields are fully filled in main.
 
 ## Next
-- none
+- DEX18 - Prepare Executive Decision Board explainability reuse contract

@@ -1114,12 +1114,12 @@ After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and 
 - Status: DONE
 - Completion: 100%
 - Changed files: Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx; Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx; Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx; Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx; Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx; Klijent/clientapp/src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx; docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md; docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md; MASTER_ROADMAP.md
-- Checks run: `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` pass; `cd Klijent/clientapp; npm run check:analytics-guardrails` pass
-- Checks not run: dotnet build/test - frontend-only change; `cd Klijent/clientapp; npm run build` not run because focused tests plus guardrails covered the touched pages
+- Checks run: `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.emptyState.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx` pass; `cd Klijent/clientapp; npm run check:analytics-guardrails` pass; `node scripts/check-planning-architecture.mjs` pass; `node scripts/check-prompt-queues.mjs` pass; `git diff --check` pass
+- Checks not run: `cd Klijent/clientapp; npm run build` not run because focused tests plus guardrails covered the touched pages; dotnet build/test - frontend-only change
 - Run log: .ai/runs/2026-08-14-P-UI-22-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 2ce7047ca16cd4629fa059df8b93458b6c739eb1
+- Main verification: git rev-parse origin/main -> 2ce7047ca16cd4629fa059df8b93458b6c739eb1
 - Missed: Inventory did not need code changes because it already had shared empty/error chrome and existing tests
 - Follow-up: DEX18 Executive Board explainability reuse contract
 - Residual risk: Remaining analytics pages outside this prompt still rely on their existing trust-state coverage
