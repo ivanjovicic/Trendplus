@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX18` | docs/contracts only - Executive Board explainability reuse |
+| DEX - Decision Explainability | `DEX19` | backend/frontend - Executive Board explainability reuse runtime |
 
 
 
@@ -70,14 +70,73 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX18 - Prepare Executive Decision Board explainability reuse contract
+---
+
+## DEX19 - Implement Executive Decision Board explainability reuse runtime slice
 
 Status: READY
 Priority: future / planning
 Feature family: decision-explainability-executive-reuse
-Parallel-safe: yes, docs/contracts only
+Parallel-safe: yes, when path-safe vs current execution
 Owner: unassigned
-Local lock: .ai/task-locks/DEX18-<agent>.lock.md
+Local lock: .ai/task-locks/DEX19-<agent>.lock.md
+
+### Problem
+
+The Executive Board explainability reuse contract is frozen, but the board runtime still needs to reuse that backend-led vocabulary without inventing local scoring, local Why text or a synthetic decision tree.
+
+### Evidence
+
+- docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md
+- docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+- Api/Endpoints/DecisionBoardEndpoints.cs
+- Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+
+### Scope
+
+- backend-led explainability payload reuse on Executive Decision Board;
+- keep confidence, reliability, recommendation allowance, reason codes and fallback labels authoritative;
+- no new API shape unless a named gap blocks reuse of the frozen contract;
+- no schema migration.
+
+### Read first
+
+- DEX18 completion note
+- Executive Board explainability reuse contract
+- DEX11 cross-family readiness
+- Decision Board aggregation contract tests
+
+### Do
+
+1. Wire the frozen board reuse vocabulary into the executive aggregate/card payload and board UI.
+2. Keep `recommendationAllowed=false` and `confidenceSource=workflow_status_only` explicit.
+3. Preserve empty and error states; missing snapshot or Why evidence stays visible.
+4. Do not invent local confidence, Why prose or a decision tree from section placement.
+
+### Tests
+
+- board cards reuse backend-led confidence/reason/fallback fields instead of local duplicates;
+- missing evidence does not become a healthy-looking zero or complete Why tree;
+- no frontend-invented scoring is added.
+
+### Acceptance
+
+- Executive Decision Board reuses the frozen DEX18 vocabulary at runtime;
+- the board remains a consumer, not a second source of truth;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX18 DONE.
+
+## DEX18 - Prepare Executive Decision Board explainability reuse contract
+
+Status: DONE
+Priority: future / planning
+Feature family: decision-explainability-executive-reuse
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: .ai/task-locks/DEX18-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -129,18 +188,38 @@ Product, supplier and inventory explainability snapshots exist, but Executive De
 
 - Date: 2026-08-14
 - Status: DONE
-- Completion: 100%
-- Changed files: docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md; docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
-- Checks run: node scripts/check-planning-architecture.mjs pass; git diff --check pass
-- Checks not run: dotnet build/test; npm run build; docs/contracts only
+- Completion: 95%
+- Changed files:
+  - docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md
+  - docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-DEX18-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only
 - Run log: .ai/runs/2026-08-14-DEX18-evidence.md
 - Delivery mode: direct-main
-- Main commit SHA: 5a9e05e317542c582ed38474b75d70604183684a
-- Main verification: git rev-parse origin/main -> 5a9e05e317542c582ed38474b75d70604183684a
-- Missed: none known
-- Follow-up: Executive Board runtime wiring later
-- Residual risk: Executive Board runtime wiring still needs a later prompt, but the reuse contract is frozen
-- Prompt defect / scope repair: froze the board-specific explainability reuse contract and kept Executive Board in consumer role only
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: Executive Board runtime wiring is out of scope and is not a live DEX READY prompt
+- Follow-up: `RL07` (current execution); DEX program READY is `DEX19`
+- Residual risk: board cards can still omit a frozen field at runtime; the contract requires the gap to stay visible rather than be synthesized
+- Prompt defect / scope repair: previous close left DEX18 Status READY after the contract landed; this run closes DEX18 and inserts DEX19 as the required single DEX READY
+- Next: `RL07` - Prepare measurement-statistics review surface contract
 
 
 ## DEX17 - Implement Supplier Decision Hub explainability snapshot runtime slice
