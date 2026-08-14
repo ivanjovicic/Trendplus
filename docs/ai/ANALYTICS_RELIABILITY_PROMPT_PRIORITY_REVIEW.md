@@ -57,7 +57,7 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
 5. Post-BCI inventory-foundation prompts `RQ96`-`RQ98` are queued as WAITING backlog; they must not be promoted ahead of green GHA evidence.
-6. Routing update 2026-08-13: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. Current RQ READY is `RQ105` after `RQ104` DONE. Do not revive `RQ89`/`RQ90` as READY.
+6. Routing update 2026-08-14: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. `RQ105` is DONE. No remaining RQ READY in the owner-promoted pack. Current execution is `P-UI-22`. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 
@@ -266,8 +266,8 @@ The queues are strong enough for agent execution, but current routing is not the
 The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
 
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: `RQ105` READY after `RQ104` DONE. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
-- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`; QDB exclusive work remains clear (`QDB06` still needs migration approval).
-- Premium UI: `P-UI-21` READY (empty-success without KPI totals / Actions ErrorState).
+- Analytics correctness: `RQ105` DONE. No remaining RQ READY in the owner-promoted pack. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`; QDB exclusive work remains clear (`QDB06` still needs migration approval). Current execution is `P-UI-22`.
+- Premium UI: `P-UI-22` READY (remaining decision-page empty/error chrome).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

@@ -506,14 +506,34 @@ export async function getDailySales(
   storeId?: number | null,
   supplierId?: number | null
 ): Promise<DailySale[]> {
+  const payload = await getDailySalesPayload(fromDate, toDate, useCached, storeId, supplierId);
+  return payload.items;
+}
+
+export async function getDailySalesPayload(
+  fromDate?: string,
+  toDate?: string,
+  useCached = true,
+  storeId?: number | null,
+  supplierId?: number | null
+): Promise<{ items: DailySale[]; meta: AnalyticsResponseMeta | null }> {
   const params = new URLSearchParams();
   appendFilterParams(params, fromDate, toDate, storeId, supplierId);
 
-  return fetchJson(
+  const payload = await fetchJson<DailySale[] | { items?: DailySale[]; meta?: AnalyticsResponseMeta | null }>(
     useCached ? "/api/analytics/cached/sales/daily" : "/api/analytics/sales/daily",
     params,
     "Greska pri ucitavanju dnevne prodaje"
   );
+
+  if (Array.isArray(payload)) {
+    return { items: payload, meta: null };
+  }
+
+  return {
+    items: Array.isArray(payload.items) ? payload.items : [],
+    meta: payload.meta ?? null,
+  };
 }
 
 export async function getByCategory(

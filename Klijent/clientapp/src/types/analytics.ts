@@ -136,6 +136,8 @@ export interface InventoryStatus {
   totalOnHand: number;
   lowStockCount: number;
   outOfStockCount: number;
+  usedOperationalFallback?: boolean;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface DailySale {

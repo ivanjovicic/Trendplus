@@ -1378,6 +1378,7 @@ export default function AnalyticsDashboard() {
             ? validFreshness.status
             : null)
         }
+        isPartial={Boolean(dashboardMeta?.isPartial) || showMetaWarning}
         dataQualitySummary={{
           missingSupplierCount:
             executive?.dataQualitySummary?.missingSupplierCount ?? null,
@@ -2490,6 +2491,11 @@ export default function AnalyticsDashboard() {
                   <span>Brzi pregled zaliha</span>
                   <InfoTip text="Ukupno stanje i signal rizika od rasprodatosti." />
                 </h3>
+                {inventory.usedOperationalFallback ? (
+                  <div className="analytics-empty warning" role="status">
+                    Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna.
+                  </div>
+                ) : null}
                 <div className="stock-grid">
                   <article className="stock-card">
                     <span className="metric-label">

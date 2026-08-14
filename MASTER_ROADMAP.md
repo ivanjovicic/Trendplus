@@ -39,10 +39,10 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Current execution READY is `P-UI-21` |
-| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Current execution READY is `P-UI-21`; `QDB06` still needs migration approval |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none | `RQ105` DONE = operational fallback on daily sales and dashboard inventory stays visible. Owner-promoted pack: `RQ100`-`RQ105` DONE. QDB exclusive work is no longer in progress. | Selected docs/tests only | `P-UI-21` |
-| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | `P-UI-21` | P-UI-20 DONE. Next is empty-success without KPI totals and shared Actions ErrorState. `P-UI-22` WAITING. | Yes | `P-UI-22` |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Current execution READY is `P-UI-22` |
+| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Current execution READY is `P-UI-22`; `QDB06` still needs migration approval |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none | `RQ105` DONE = operational fallback on daily sales and dashboard inventory stays visible. Owner-promoted pack: `RQ100`-`RQ105` DONE. QDB exclusive work is no longer in progress. | Selected docs/tests only | `P-UI-22` |
+| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | `P-UI-22` | P-UI-21 DONE. Next is remaining decision-page empty/error chrome. | Yes | remaining P-UI backlog |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB05` DONE) | `QDB01`-`QDB05` DONE. Mapping preview is request-scoped and secret-safe. `QDB06` WAITING until the owner approves a database migration. | Docs/tests when paths clear | Owner migration approval -> QDB06 |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision -> MT02 |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
@@ -53,7 +53,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS08` | `OBS01`-`OBS07` DONE; next is worker-SLA contract. `OBS09` WAITING after OBS08. | Yes, docs/contracts | Worker SLA evidence contract |
 | SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC07` | `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. `SEC07` is a frontend dependency vulnerability triage prompted by current `npm audit --omit=dev` evidence. | Yes, scoped dependency/security work when paths clear | Frontend dependency vulnerability triage |
 
-Owner refill 2026-08-13 keeps a live sequential backlog of 15 prompts. Current execution starts at `P-UI-21`. Do not promote `QDB06`, `MT02` or `GAI01` without the named migration, tenant-identity or pilot-ready decision.
+Owner refill 2026-08-13 keeps a live sequential backlog of 15 prompts. Current execution starts at `P-UI-22`. Do not promote `QDB06`, `MT02` or `GAI01` without the named migration, tenant-identity or pilot-ready decision.
 
 | # | ID | Status | Program |
 |---|---|---|---|
@@ -63,8 +63,8 @@ Owner refill 2026-08-13 keeps a live sequential backlog of 15 prompts. Current e
 | 4 | `RQ103` | DONE | RQ |
 | 5 | `RQ104` | DONE | RQ |
 | 6 | `RQ105` | DONE | RQ |
-| 7 | `P-UI-21` | READY | P-UI |
-| 8 | `P-UI-22` | WAITING | P-UI |
+| 7 | `P-UI-21` | DONE | P-UI |
+| 8 | `P-UI-22` | READY | P-UI |
 | 9 | `DEX18` | READY | DEX |
 | 10 | `RL07` | READY | RL |
 | 11 | `DT07` | READY | DT |

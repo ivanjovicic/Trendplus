@@ -442,7 +442,15 @@ public static class CachedAnalyticsEndpoints
                         : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
-                return Results.Ok(new { result.TotalSkuCount, result.TotalOnHand, result.LowStockCount, result.OutOfStockCount, Meta = meta });
+                return Results.Ok(new
+                {
+                    result.TotalSkuCount,
+                    result.TotalOnHand,
+                    result.LowStockCount,
+                    result.OutOfStockCount,
+                    result.UsedOperationalFallback,
+                    Meta = meta
+                });
             }
             catch (Exception ex)
             {
@@ -877,6 +885,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             IAnalyticsDbContext db,
             ITrendplusDbContext trendDb,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -889,9 +898,8 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId);
-
-            var result = await cache.GetOrSetAsync(
+            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId) + ":meta-v1";
+            var snapshot = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
@@ -900,10 +908,11 @@ public static class CachedAnalyticsEndpoints
                         var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
                         if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
                         {
-                            return aggregatedDaily;
+                            return new DailySalesCachedSnapshot { Items = aggregatedDaily };
                         }
                     }
 
+                    var usedOperationalFallback = false;
                     try
                     {
                         if (!supplierId.HasValue)
@@ -931,17 +940,21 @@ public static class CachedAnalyticsEndpoints
                                 .OrderBy(x => x.Date)
                                 .ToListAsync(ct);
 
-                            return dailySalesRaw.Select(x => new DailySaleDto
+                            return new DailySalesCachedSnapshot
                             {
-                                Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                                TotalRevenue = x.TotalRevenue,
-                                TransactionCount = x.TransactionCount,
-                                TotalUnits = x.TotalUnits
-                            }).ToList();
+                                Items = dailySalesRaw.Select(x => new DailySaleDto
+                                {
+                                    Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                    TotalRevenue = x.TotalRevenue,
+                                    TransactionCount = x.TransactionCount,
+                                    TotalUnits = x.TotalUnits
+                                }).ToList()
+                            };
                         }
                     }
                     catch (Exception ex) when (IsMissingRelation(ex))
                     {
+                        usedOperationalFallback = true;
                     }
 
                     var fallbackRaw = await (
@@ -963,18 +976,24 @@ public static class CachedAnalyticsEndpoints
                         .OrderBy(x => x.Date)
                         .ToListAsync(ct);
 
-                    return fallbackRaw.Select(x => new DailySaleDto
+                    return new DailySalesCachedSnapshot
                     {
-                        Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                        TotalRevenue = x.TotalRevenue,
-                        TransactionCount = x.TransactionCount,
-                        TotalUnits = x.TotalUnits
-                    }).ToList();
+                        UsedOperationalFallback = usedOperationalFallback,
+                        Items = fallbackRaw.Select(x => new DailySaleDto
+                        {
+                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                            TotalRevenue = x.TotalRevenue,
+                            TransactionCount = x.TransactionCount,
+                            TotalUnits = x.TotalUnits
+                        }).ToList()
+                    };
                 },
                 CacheExpiration.Medium,
                 ct);
 
-            return Results.Ok(result);
+            var meta = ResolveCachedDailySalesMeta(snapshot.UsedOperationalFallback, snapshot.Items.Count);
+            meta.CorrelationId = ResolveCorrelationId(httpContext);
+            return Results.Ok(new { items = snapshot.Items, meta });
         });
 
         // ========== CATEGORY DATA (CACHED) ==========
@@ -1962,11 +1981,22 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             "Lost-sales validacija nije dostupna.");
 
+                        var inventoryFallback = response.Inventory?.UsedOperationalFallback == true;
+                        var hasSectionErrors = response.Errors.Count > 0;
                         response.Meta = BuildSuccessMeta(
-                            dataQualityStatus: ResolveDashboardDataQualityStatus(response),
-                            isPartial: response.Errors.Count > 0,
-                            warningCode: response.Errors.Count > 0 ? "ANALYTICS_PARTIAL_DATA" : null,
-                            message: response.Errors.Count > 0 ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+                            dataQualityStatus: inventoryFallback
+                                ? "warning"
+                                : ResolveDashboardDataQualityStatus(response),
+                            isPartial: hasSectionErrors || inventoryFallback,
+                            warningCode: inventoryFallback
+                                ? "inventory_status_operational_fallback"
+                                : hasSectionErrors ? "ANALYTICS_PARTIAL_DATA" : null,
+                            warningMessage: inventoryFallback
+                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+                            message: inventoryFallback
+                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
                             lastRefreshAtUtc: response.Advanced?.GeneratedAtUtc ?? response.ValidationFreshness?.LastImport);
 
                         return response;
@@ -5712,6 +5742,24 @@ public static class CachedAnalyticsEndpoints
             IgnoredRowsCount: Math.Max(0, analyzedRowCount - returnedRowCount),
             IgnoredRowsMeaning: ProductDecisionDenominatorScope.HiddenByTopLimit);
 
+    private static AnalyticsResponseMetaDto ResolveCachedDailySalesMeta(bool usedOperationalFallback, int itemCount)
+    {
+        if (usedOperationalFallback)
+        {
+            return AnalyticsResponseMetaFactory.Warning(
+                "daily_sales_operational_fallback",
+                "Dnevna prodaja je učitana iz operativnih tabela jer analytics relacija nije dostupna.",
+                "warning");
+        }
+
+        if (itemCount == 0)
+        {
+            return AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.");
+        }
+
+        return AnalyticsResponseMetaFactory.Success();
+    }
+
     private static AnalyticsResponseMetaDto BuildSuccessMeta(
         string? dataQualityStatus = null,
         bool isPartial = false,
@@ -7286,6 +7334,12 @@ public class DailySaleDto
     public decimal TotalRevenue { get; set; }
     public int TransactionCount { get; set; }
     public int TotalUnits { get; set; }
+}
+
+public class DailySalesCachedSnapshot
+{
+    public List<DailySaleDto> Items { get; set; } = [];
+    public bool UsedOperationalFallback { get; set; }
 }
 
 public class CategoryDataDto
