@@ -42,7 +42,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | `RL07` | docs/contracts only - measurement statistics review surface |
+| RL - Recommendation Learning | `RL09` | backend/frontend - measurement statistics review surface runtime |
 
 
 
@@ -1171,14 +1171,70 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
-## RL07 - Prepare measurement-statistics review surface contract
+## RL09 - Implement measurement-statistics review surface runtime slice
 
 Status: READY
 Priority: future / planning
 Feature family: recommendation-learning-review-surface
-Parallel-safe: yes, docs/contracts only
+Parallel-safe: yes, when path-safe vs current execution
 Owner: unassigned
-Local lock: .ai/task-locks/RL07-<agent>.lock.md
+Local lock: .ai/task-locks/RL09-<agent>.lock.md
+
+### Problem
+
+The review-surface contract is frozen, but operators still cannot see lifecycle funnel, measurement coverage and outcome distribution without mixing those numbers into legacy outcome-summary totals.
+
+### Evidence
+
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+- docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+- Application/Analytics/RecommendationMeasurementStatisticsDto.cs
+- GET /api/analytics/actions/outcomes/summary
+
+### Scope
+
+- runtime presentation of `measurementStatistics` on a review/dashboard/export surface;
+- reuse shared ErrorState/EmptyState/TrustHeader;
+- no frontend-local rates;
+- no confidence calibration.
+
+### Read first
+
+- RL07 completion note
+- review-surface contract
+- measurement statistics contract
+- rollout plan Slice 3
+
+### Do
+
+1. Bind the review surface to `measurementStatistics` only for funnel, coverage and outcome rates.
+2. Keep acceptance and execution visually distinct from success.
+3. Hide rates on error; keep null rates as unavailable, not `0%`.
+4. Keep print/export aligned with the same denominators and fail gracefully.
+
+### Tests
+
+- focused non-watch Vitest or backend display-contract proof that totals rates are not shown as success;
+- empty `no_rows` uses EmptyState without KPI zeros;
+- missing `measurementStatistics` does not compute local percentages.
+
+### Acceptance
+
+- operators can review measurement-only statistics without fake-green rates;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL07 DONE.
+
+## RL07 - Prepare measurement-statistics review surface contract
+
+Status: DONE
+Priority: future / planning
+Feature family: recommendation-learning-review-surface
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: .ai/task-locks/RL07-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1188,6 +1244,7 @@ RL06 exposed measurementStatistics on the outcome summary endpoint, but there is
 
 - docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
 - docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 3
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
 - Application/Analytics/RecommendationMeasurementStatisticsProjection.cs
 - GET /api/analytics/actions/outcomes/summary
 
@@ -1207,7 +1264,7 @@ RL06 exposed measurementStatistics on the outcome summary endpoint, but there is
 ### Do
 
 1. Define the review-surface fields, empty/insufficient states and warning placement.
-2. Require the same denominators as measurementStatistics; do not reuse legacy 	otals rates as success.
+2. Require the same denominators as measurementStatistics; do not reuse legacy totals rates as success.
 3. Keep print/export failure graceful and gap-visible.
 4. Do not authorize runtime UI work in this prompt.
 
@@ -1226,6 +1283,43 @@ RL06 exposed measurementStatistics on the outcome summary endpoint, but there is
 
 - RL06 DONE.
 
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 94%
+- Changed files:
+  - docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+  - docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+  - docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-RL07-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (66 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only; runtime UI is `RL09`
+- Run log: .ai/runs/2026-08-14-RL07-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push to origin/main
+- Missed: no runtime review surface; operators still cannot see the funnel until `RL09`
+- Follow-up: `DT07` (current execution); RL program READY is `RL09`
+- Residual risk: existing outcome-summary UI can still show legacy `totals` rates if a later runtime prompt binds the wrong object
+- Prompt defect / scope repair: corrected the RL07 Do-line typo `legacy totals`; inserted `RL09` so RL keeps exactly one READY after this close
+- Next: `DT07` - Implement Decision Timeline export and retrospective report runtime slice
 
 ## RL06 - Implement measurement-only recommendation statistics projection runtime slice
 

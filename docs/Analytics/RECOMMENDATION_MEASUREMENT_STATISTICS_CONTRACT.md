@@ -6,6 +6,7 @@ Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Related source contract: `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
 Related rollout plan: `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
 Related runtime projection: `GET /api/analytics/actions/outcomes/summary`
+Related review-surface contract: `docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md`
 Related service: `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
 
 ## Purpose

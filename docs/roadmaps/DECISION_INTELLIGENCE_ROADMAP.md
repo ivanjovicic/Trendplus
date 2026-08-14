@@ -128,7 +128,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: `RL07` (measurement-statistics review surface contract), `DT07` (timeline export runtime), `DEX19` (Executive Board explainability runtime). `DEX18` DONE. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
+Current queue READY: `DT07` (timeline export runtime), `RL09` (measurement statistics review surface runtime), `DEX19` (Executive Board explainability runtime). `DEX18`/`RL07` DONE. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 
