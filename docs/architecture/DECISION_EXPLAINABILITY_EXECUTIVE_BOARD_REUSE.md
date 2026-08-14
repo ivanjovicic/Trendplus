@@ -142,3 +142,20 @@ That vocabulary is enough to render executive cards consistently without authori
 - `Api/Endpoints/DecisionBoardEndpoints.cs`
 - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
 
+## Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 100%
+- Changed files: docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md; docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+- Checks run: node scripts/check-planning-architecture.mjs pass; git diff --check pass
+- Checks not run: dotnet build/test; npm run build; docs/contracts only
+- Run log: .ai/runs/2026-08-14-DEX18-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 5a9e05e317542c582ed38474b75d70604183684a
+- Main verification: git rev-parse origin/main -> 5a9e05e317542c582ed38474b75d70604183684a
+- Missed: none known
+- Follow-up: DEX19 Executive Board explainability runtime slice
+- Residual risk: Executive Board runtime wiring still needs a later prompt, but the reuse contract is frozen
+- Prompt defect / scope repair: froze the board-specific explainability reuse contract and kept Executive Board in consumer role only
+
