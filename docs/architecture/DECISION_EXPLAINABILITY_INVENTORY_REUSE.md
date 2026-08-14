@@ -9,6 +9,8 @@ Reference contracts: `docs/architecture/DECISION_GRAPH_CONTRACT.md`, `docs/archi
 
 This contract freezes how inventory decision surfaces reuse the shared DEX vocabulary without inventing local tree, Why or workflow semantics.
 
+DEX13 is the inventory-specific frozen reuse contract for the current DEX planning lane. Later runtime prompts may wire these fields through inventory surfaces, but they must not invent a local tree or reinterpret workflow state as evidence.
+
 ## Inventory surfaces in scope
 
 | Surface | Already present | Reuse meaning |
@@ -50,6 +52,8 @@ The smallest safe inventory rollout is a frozen explainability payload that reus
 - `ReasonCodes`
 - `Status`
 - `Note`
+
+That payload is the smallest next runtime slice only after a later prompt authorizes implementation; this document itself stays docs/contracts only.
 
 ## Compatibility notes
 

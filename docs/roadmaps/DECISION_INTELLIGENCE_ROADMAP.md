@@ -126,7 +126,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
-Current queue READY: `DEX13` / `RL05` / `DT06` (DEX12 DONE; supplier explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`).
+Current queue READY: `DEX13` / `RL05` / `DT06` (inventory explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; DEX13 remains the live READY pointer until a successor DEX prompt is promoted).
 
 ## Decision Engine evolution
 

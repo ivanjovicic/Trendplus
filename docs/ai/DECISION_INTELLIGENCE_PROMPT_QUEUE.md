@@ -121,6 +121,29 @@ Inventory Decision Board still lacks a frozen explainability reuse contract that
 
 - DEX12 DONE.
 
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: froze the inventory reuse contract wording, marked the inventory family as the next explainability rollout candidate in the cross-family readiness doc, and kept the DEX13 queue slot as the live READY pointer until a successor DEX prompt is promoted.
+- Changed files:
+  - `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+  - `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
+  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-14-DEX13-evidence.md`
+- Checks:
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `git diff --check` - pass
+- Remaining risk:
+  - This remains a docs-only planning contract; runtime inventory explainability wiring still requires later owner-promoted implementation.
+- Next:
+  - `RL05 - Prepare measurement-only recommendation statistics projection contract`
+- Prompt defect / scope repair:
+  - DEX13 is the only DEX prompt in this queue, so the current READY pointer is retained to satisfy the one-READY-per-program rule until a successor DEX prompt is introduced.
+
 
 ## DEX12 - Prepare Supplier Decision Hub explainability reuse contract
 
