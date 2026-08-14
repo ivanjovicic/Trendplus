@@ -214,7 +214,7 @@ Product, supplier and inventory explainability snapshots exist, but Executive De
 - Run log: .ai/runs/2026-08-14-DEX18-evidence.md
 - Delivery mode: direct-main
 - Main commit SHA: 731131fd198ab9390bb3cc158887456dc041e738
-- Main verification: pending push to origin/main
+- Main verification: git rev-parse origin/main -> b8f79c99fcc40b69ea6dac42c35085bc5fbb8bc8; work SHA 731131fd198ab9390bb3cc158887456dc041e738 is an ancestor
 - Missed: Executive Board runtime wiring is out of scope and is not a live DEX READY prompt
 - Follow-up: `RL07` (current execution); DEX program READY is `DEX19`
 - Residual risk: board cards can still omit a frozen field at runtime; the contract requires the gap to stay visible rather than be synthesized
