@@ -845,24 +845,26 @@ export default function ColorSalesStatsPage() {
 
       {!loading && data ? (
         <>
-          <section className="color-decision-kpis">
-            <article className="color-decision-kpi">
-              <span>Ukupan promet</span>
-              <strong>{fmtRsd(totalRevenue)}</strong>
-            </article>
-            <article className="color-decision-kpi">
-              <span>Udeo top 5 boja</span>
-              <strong>{fmtPct(top5SharePct)}</strong>
-            </article>
-            <article className="color-decision-kpi">
-              <span>Ukupan marzni doprinos</span>
-              <strong>{fmtRsd(totalMarginContribution)}</strong>
-            </article>
-            <article className="color-decision-kpi">
-              <span>Rast/PAD vs prethodni period</span>
-              <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
-            </article>
-          </section>
+          {!emptyStateHint ? (
+            <section className="color-decision-kpis">
+              <article className="color-decision-kpi">
+                <span>Ukupan promet</span>
+                <strong>{fmtRsd(totalRevenue)}</strong>
+              </article>
+              <article className="color-decision-kpi">
+                <span>Udeo top 5 boja</span>
+                <strong>{fmtPct(top5SharePct)}</strong>
+              </article>
+              <article className="color-decision-kpi">
+                <span>Ukupan marzni doprinos</span>
+                <strong>{fmtRsd(totalMarginContribution)}</strong>
+              </article>
+              <article className="color-decision-kpi">
+                <span>Rast/PAD vs prethodni period</span>
+                <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
+              </article>
+            </section>
+          ) : null}
 
           <section className="color-decision-panels">
             <article className="color-decision-card">

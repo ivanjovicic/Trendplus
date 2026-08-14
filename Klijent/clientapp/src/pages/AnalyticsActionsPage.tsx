@@ -10,6 +10,7 @@ import {
 } from "../services/analyticsApi";
 import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import type {
   AnalyticsActionItem,
@@ -1132,7 +1133,16 @@ export default function AnalyticsActionsPage() {
         />
       </div>
 
-      {error ? <div className="aaq-error" role="alert">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Akcije trenutno nisu dostupne"
+          message={error}
+          onRetry={() => {
+            void loadItems(filters);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {writeAccessMessage ? <div className="aaq-error" role="status">{writeAccessMessage}</div> : null}
 
       {loading ? (

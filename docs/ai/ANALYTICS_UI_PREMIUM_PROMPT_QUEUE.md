@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-21`
+Current READY prompt: `P-UI-22`
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -26,8 +26,8 @@ Use with:
 | P-UI-18 | DONE | legacy-analytics-modernization | Modernize SupplierFootwearAnalyticsPage chrome (TrustHeader + ControlBar + DataTable) |
 | P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
-| P-UI-21 | READY | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
-| P-UI-22 | WAITING | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
+| P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
+| P-UI-22 | READY | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 
 ---
 
@@ -985,14 +985,14 @@ npm run check:analytics-guardrails
 
 ## P-UI-21 - Empty success without KPI totals and shared Actions error state
 
-Status: READY
+Status: DONE
 Ready after: P-UI-20 DONE
 Priority: P2
 Type: frontend/tests
 Feature family: analytics-ui-empty-kpi-honesty
 Parallel-safe: yes, when RQ100 is not touching the same TSX files
 Owner: unassigned
-Local lock: `.ai/task-locks/P-UI-21-<agent>.lock.md`
+Local lock: `.ai/task-locks/P-UI-21-codex.lock.md` (removed after DONE)
 Commit suggestion: `fix(ui): hide empty-success KPIs and share Actions error state`
 
 ### Problem
@@ -1045,11 +1045,19 @@ npm run check:analytics-guardrails
 
 - P-UI-20 DONE.
 
+### Completion
+
+- Run log: .ai/runs/2026-08-14-P-UI-21-evidence.md
+- Checks run:
+  - `cd Klijent/clientapp; npm run test -- --run src/pages/__tests__/analyticsTrustStateProof.spec.tsx src/pages/__tests__/ColorSalesStatsPage.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/AnalyticsActionsPage.spec.tsx` - pass
+  - `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+  - `cd Klijent/clientapp; npm run build` - pass
+
 ---
 
 ## P-UI-22 - Remaining decision-page empty and error chrome
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-21 DONE
 Priority: P2
 Type: frontend/tests

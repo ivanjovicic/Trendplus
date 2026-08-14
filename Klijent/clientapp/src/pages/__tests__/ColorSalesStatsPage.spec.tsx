@@ -502,6 +502,8 @@ describe("ColorSalesStatsPage", () => {
 
     expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan marzni doprinos")).not.toBeInTheDocument();
   });
 
   it("mounts the real AnalyticsTrustHeader, not a mocked placeholder", async () => {

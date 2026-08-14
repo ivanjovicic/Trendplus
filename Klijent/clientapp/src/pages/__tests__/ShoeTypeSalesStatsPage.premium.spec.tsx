@@ -199,5 +199,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
     expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
   });
 });

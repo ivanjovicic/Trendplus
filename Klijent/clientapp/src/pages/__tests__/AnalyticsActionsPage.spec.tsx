@@ -6,6 +6,9 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
+    Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (
+      <a href={to} {...props}>{children}</a>
+    ),
     useLocation: () => ({
       search: "",
       pathname: "/analytics/actions",
@@ -773,6 +776,17 @@ describe("AnalyticsActionsPage", () => {
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
     expect(await screen.findByText("Sažetak ishoda trenutno nije dostupan. Lista akcija i dalje radi.")).toBeInTheDocument();
     expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
+  });
+
+  it("shows the shared error state and does not fall through to the empty list copy when list loading fails", async () => {
+    getAnalyticsActionsMock.mockRejectedValueOnce(new Error("list down"));
+
+    render(<AnalyticsActionsPage />);
+
+    const errorState = await screen.findByRole("alert");
+    expect(errorState).toHaveTextContent("Akcije trenutno nisu dostupne");
+    expect(errorState).toHaveTextContent("list down");
+    expect(screen.queryByText("Nema akcija.")).not.toBeInTheDocument();
   });
 
   it("shows an empty summary state when there are no measured closed outcomes", async () => {
