@@ -422,6 +422,7 @@ public static class DecisionBoardEndpoints
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: warnings,
+                    ConfidenceSource: ResolveProductConfidenceSource(row),
                     ReasonCodes: row.ReasonCodes,
                     DataQualityStatus: NormalizeDataQualityStatus(row.DataQualityStatus),
                     GeneratedAtUtc: productDecisionCenter.GeneratedAtUtc,
@@ -1352,6 +1353,19 @@ public static class DecisionBoardEndpoints
         var score = row.ConfidenceScore ?? row.ConfidencePct;
         var level = ResolveConfidenceLevel(score);
         return (level, score);
+    }
+
+    private static string ResolveProductConfidenceSource(ProductDecisionCenterRowDto row)
+    {
+        if (string.Equals(row.RecommendationStatus, "FIX_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "INSUFFICIENT_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "workflow_status_only";
+        }
+
+        return "signal";
     }
 
     private static decimal ComputePriorityScore(

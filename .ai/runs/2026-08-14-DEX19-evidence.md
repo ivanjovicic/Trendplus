@@ -4,33 +4,34 @@ Date: 2026-08-14
 Agent/tool: Codex
 Model: unknown-not-exposed
 Delivery target: main
-Main commit SHA: b50f8f7889f56d38dfd8b32d044eb4fc95b9a9ee
-Main verification: git rev-parse origin/main -> b50f8f7889f56d38dfd8b32d044eb4fc95b9a9ee
+Main commit SHA: pending
+Main verification: pending
 
 ## What was done
-- Reviewed the current DEX19 runtime and the frozen board reuse contract.
-- Confirmed the Executive Decision Board already renders backend-led confidence, recommendationAllowed, reason codes, fallback labels, and confidence source from the aggregate.
-- Validated prompt-queue and planning-architecture governance after reverting a mistaken DEX19 closure attempt so the single READY pointer remains intact.
+- Added backend-led `confidenceSource` to Executive Decision Board product cards.
+- Kept the source label authoritative by mapping blocked / insufficient-data product recommendations to `workflow_status_only` and the rest to `signal`.
+- Added backend and frontend regressions so the product explainability source label is visible and tested end-to-end.
 
 ## Files changed
+- Api/Endpoints/DecisionBoardEndpoints.cs
+- Api.Tests/DecisionBoardEndpointsTests.cs
+- Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx
 - `.ai/runs/2026-08-14-DEX19-evidence.md`
 
 ## Validation run
+- `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter FullyQualifiedName~DecisionBoardEndpointsTests` -> pass (33)
 - `npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx` -> pass
-- `node scripts/check-prompt-queues.mjs` -> pass
-- `node scripts/check-planning-architecture.mjs` -> pass
 - `git diff --check` -> pass
 
 ## Validation not run
-- `dotnet build` -> not run, no backend code delta
-- `dotnet test` -> not run, no backend code delta
+- `dotnet build` -> not run, focused backend test already compiled the touched project
 - `npm run build` -> not run, focused validation was sufficient
 
 ## What was missed
-- No runtime code delta was needed in this pass; DEX19 remains a live READY prompt.
+- No broader board-contract audit was needed beyond the product `confidenceSource` gap.
 
 ## Risks
-- The prompt remains open until a future pass identifies an actual runtime gap or the queue policy changes.
+- `confidenceSource` is now explicit on product cards, but the board still relies on existing backend confidence-level semantics for the label mapping.
 
 ## Next
-- DEX19 remains current READY in `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`.
+- DEX19 remains current READY in `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` until the queue owner closes or replaces it.
