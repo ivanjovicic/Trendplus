@@ -751,7 +751,7 @@ export default function PreNivelacijaPriorityPage() {
       ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
 
-      {!loading && data ? (
+      {!loading && data && !showEmptyState ? (
         <>
           {data.alerts && data.alerts.length > 0 ? (
             <section className="pnp-alerts">

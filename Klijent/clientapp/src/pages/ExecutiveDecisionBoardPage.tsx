@@ -1295,6 +1295,7 @@ export default function ExecutiveDecisionBoardPage() {
   const analyticsMetaMessage = getAnalyticsMetaMessage(responseMeta);
   const globalError = !loading && !model.hasData ? loadError : null;
   const isEmpty = !loading && !model.hasData && !globalError;
+  const showBoardContent = !globalError && !isEmpty;
 
   return (
     <div className="decision-board-page">
@@ -1365,7 +1366,7 @@ export default function ExecutiveDecisionBoardPage() {
         />
       ) : null}
 
-      {!loading && !globalError && model.isPartial ? (
+      {!loading && !globalError && !isEmpty && model.isPartial ? (
         <section className="decision-board-partial-note" role="status">
           <strong>Delimični signali su dostupni.</strong>
           <span>
@@ -1374,7 +1375,7 @@ export default function ExecutiveDecisionBoardPage() {
         </section>
       ) : null}
 
-      {!globalError ? (
+      {showBoardContent ? (
         <>
           <section className="decision-board-summary-grid" aria-label="Sažetak board-a">
             {model.metrics.map((metric) => (

@@ -329,6 +329,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByText("Promenite filtere dobavljača, sezone ili tipa obuće.")).toBeInTheDocument();
     expect(screen.getByText("Proverite kvalitet podataka.")).toBeInTheDocument();
     expect(screen.queryByText(/period/i)).not.toBeInTheDocument();
+    expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
   });
 
   it("shows an error alert and hides KPI cards when the priority load fails", async () => {

@@ -25,7 +25,19 @@ vi.mock("../../services/analyticsApi", () => ({
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({
+  default: ({
+    message,
+    variant,
+  }: {
+    message?: string;
+    variant?: string;
+  }) => (
+    <div data-testid="analytics-empty-state" data-variant={variant}>
+      {message ? <span>{message}</span> : null}
+    </div>
+  ),
+}));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
   default: ({
     title,
@@ -132,5 +144,35 @@ describe("ProductDecisionCenterPage action status fallback", () => {
     expect(screen.getByText("Product Decision Center podaci trenutno nisu dostupni.")).toBeInTheDocument();
     expect(screen.queryByText("Status akcija trenutno nije dostupan.")).not.toBeInTheDocument();
     expect(screen.queryByText("Model X")).not.toBeInTheDocument();
+  });
+
+  it("renders the shared empty state and hides KPI cards when no candidates are returned", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce({
+      rows: [],
+      summary: {
+        replenishCount: 0,
+        markdownCount: 0,
+        highPotentialCount: 0,
+        badDataCount: 0,
+        lostSalesEstimate: 0,
+        slowStockCapital: 0,
+      },
+      totalRows: 0,
+      generatedAtUtc: "2026-05-26T12:00:00Z",
+      periodFromUtc: "2026-04-27",
+      periodToUtc: "2026-05-26",
+      meta: {
+        success: true,
+        emptyReason: "no_candidates",
+        dataQualityStatus: "insufficient_data",
+      },
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByTestId("analytics-empty-state")).toHaveAttribute("data-variant", "insufficient_data");
+    expect(screen.getByTestId("analytics-empty-state")).toHaveTextContent("Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak.");
+    expect(document.querySelector(".product-decision-kpis")).toBeNull();
+    expect(document.querySelector(".product-decision-table-wrap")).toBeNull();
   });
 });

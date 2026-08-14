@@ -27,7 +27,7 @@ Use with:
 | P-UI-19 | DONE | analytics-ui-regression-hardening | Verify recent React chrome migrations across shared analytics components and modernized pages |
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
-| P-UI-22 | READY | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
+| P-UI-22 | IN_PROGRESS | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 
 ---
 
@@ -1057,7 +1057,7 @@ npm run check:analytics-guardrails
 
 ## P-UI-22 - Remaining decision-page empty and error chrome
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: P-UI-21 DONE
 Priority: P2
 Type: frontend/tests

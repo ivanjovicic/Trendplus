@@ -903,6 +903,7 @@ export default function ProductDecisionCenterPage() {
     && isAnalyticsMetaInsufficient(responseMeta);
   const showNoDataState = !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
   const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
+  const hideKpiChrome = hasBlockingError || showInsufficientState || showNoDataState || showFilteredOutState;
 
   const kpis = useMemo(() => ({
     replenishCount: rows.filter((x) => x["recommendationStatus"] === "REPLENISH").length,
@@ -1212,7 +1213,7 @@ export default function ProductDecisionCenterPage() {
         />
       </header>
 
-      {!hasBlockingError ? (
+      {!hideKpiChrome ? (
       <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>
