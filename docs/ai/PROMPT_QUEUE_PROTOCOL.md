@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-13
+Updated: 2026-08-15
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -43,12 +43,20 @@ Use these statuses exactly:
 | READY | Current runnable prompt in its program. | Yes, subject to master priority/dependencies |
 | WAITING | Valid later prompt. | No |
 | IN_PROGRESS | Claimed by current owner/workspace. | Only same owner continues |
-| BLOCKED | Missing dependency/decision/evidence. | No |
-| PARTIAL | Some acceptance landed but incomplete. | No unless an explicit follow-up says so |
-| DONE | Acceptance met with evidence. | No |
+| BLOCKED | Missing dependency/decision/evidence that prevents safe progress. | No |
+| PARTIAL | Useful work exists but acceptance/proof/delivery is incomplete. | No unless an explicit follow-up says so |
+| DONE | Acceptance met with synchronized evidence and delivery truth. | No |
 | OBSOLETE | Replaced by current evidence/prompt. | No |
 
-`TODO`, `OPEN`, `COMPLETE`, and free-form live statuses are invalid.
+`TODO`, `OPEN`, `COMPLETE`, `NEEDS_EVIDENCE_SYNC`, and other free-form live statuses are invalid.
+
+Evidence synchronization is not a queue status. Use the separate evidence field defined by `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`:
+
+```text
+Evidence state: synchronized | pending | fallback <reason>
+```
+
+If implementation is useful but evidence/delivery verification is incomplete, use `PARTIAL`; use `BLOCKED` only when a real blocker prevents safe completion.
 
 ## READY invariants
 
@@ -187,19 +195,20 @@ Mark BLOCKED/PARTIAL rather than guessing when:
 
 ## Completion note
 
-A completed prompt records at minimum:
+A completed or partially completed prompt records at minimum:
 
 ```md
 ### Completion note
 
 - Date:
-- Status:
+- Status: DONE | PARTIAL | BLOCKED
 - Completion:
 - Changed files:
 - Contract/runtime behavior changed:
 - Checks run:
 - Checks not run:
 - Run log:
+- Evidence state: synchronized | pending | fallback <reason>
 - Delivery mode:
 - Main commit SHA:
 - Main verification:
@@ -212,31 +221,22 @@ A completed prompt records at minimum:
 
 Production/live smoke may be marked complete only from real current deployment evidence.
 
-Strict template rule:
+All new or actively refreshed completion notes use the current evidence contract:
 
-- For any completion note dated `2026-08-13` or later, the queue note must include the exact `Run log:` field and point to the durable `.ai/runs/...` evidence file or an explicit `fallback <reason>`.
-- The same dated completion note must also include `Delivery mode:`, `Main commit SHA:` and `Main verification:` so the queue note can be reconciled to shipped `main`, not just a local commit.
-- Older completion notes remain historical evidence and are not retroactively normalized unless a task is being actively refreshed.
+- `Run log:` is mandatory and points to durable `.ai/runs/...` evidence or `fallback <reason>`;
+- `Evidence state:` is mandatory and is separate from queue status;
+- `Delivery mode:`, `Main commit SHA:` and `Main verification:` are mandatory for file-changing work;
+- older completion notes remain historical evidence and are not retroactively normalized unless a task is actively refreshing them.
 
 For every non-trivial file-changing prompt run, also create a durable run log in `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md` using `.ai/RUN_LOG_TEMPLATE.md`, or record an explicit fallback reason when a durable log could not be created safely.
 
-Minimum durable run-log sections:
-
-```text
-## What was done
-## Files changed
-## Validation run
-## Validation not run
-## What was missed
-## Risks
-## Next
-```
+Minimum durable run-log sections are owned by `.ai/RUN_LOG_TEMPLATE.md`; do not maintain a second copied section list here.
 
 ## Validation
 
 Choose runtime/docs proof through `docs/ai/VALIDATION_SELECTOR.md`.
 
-Run both governance layers:
+Run both governance layers when queue/planning governance is changed and the commands are available:
 
 ```text
 node scripts/check-agent-instructions.mjs --self-test
