@@ -89,7 +89,7 @@ Local diff, local commit, pushed branch, open PR or green branch CI are transpor
 
 File-changing work is a `DONE` candidate only after:
 - required proof is honest;
-- the exact delivered implementation SHA is known;
+- the exact delivered SHA is known;
 - fresh current `main` is verified to contain that SHA;
 - queue/evidence state is synchronized when the task uses formal queue routing.
 
@@ -140,7 +140,7 @@ Do not imply runtime behavior changed when the task only changed documentation/g
 When work is performed through the GitHub connector:
 - record connector-returned commit/PR/merge identifiers;
 - inspect current branch/PR state before claiming delivery;
-- verify the delivered implementation SHA against a fresh current-`main` lookup before `DONE`;
+- verify the exact delivered SHA against a fresh current-`main` lookup before `DONE`;
 - mark local shell/build/test commands `not run` unless they actually executed in a repository checkout;
 - inspect relevant GitHub checks once when they are part of acceptance;
 - `queued` is not passing proof;
