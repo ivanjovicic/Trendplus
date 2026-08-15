@@ -1,308 +1,175 @@
 # AGENTS.md — Trendplus AI Agent Standard
 
-Ovaj fajl je za Codex, Copilot agent mode i druge AI agente koji menjaju repo.
+Owner: `agent-system`
 
-Pre rada obavezno pogledaj i kanonske AI vodiče:
-- `docs/ai/AGENT_START_HERE.md`
-- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
-- `docs/ai/COMMON_FAILURES_AND_FIXES.md`
-- `docs/ai/VALIDATION_SELECTOR.md`
+This is the repository-level rulebook for Codex, Copilot agent mode and other AI agents that inspect or change Trendplus.
 
-## Misija
+Current code, focused tests and executable tooling override stale prose. When agent documents disagree, use the canonical owner table below instead of combining conflicting rules.
 
-Trendplus treba da postane pouzdan pilot/prodajni proizvod za maloprodaju obuće/odeće.
+## 1. Mission and non-negotiable product outcome
 
-Analytics mora da pokaže:
-- šta se prodaje
-- gde je stvarna marža
-- gde je mrtav lager
-- koji dobavljači zaslužuju fokus
-- koje podatke ne treba verovati
-- koje akcije treba uraditi ove nedelje
+Trendplus should become a reliable pilot/sales product for footwear/apparel retail.
 
-Ne razvijati "još jedan ekran" ako postojeći ekran ne objašnjava period, refresh, data quality i razlog preporuke.
+Analytics must help a user understand:
+- what is selling;
+- where real margin exists;
+- where dead stock is accumulating;
+- which suppliers deserve focus;
+- which data should not be trusted;
+- which concrete action should be taken next.
 
----
+Do not add another screen when an existing decision surface still fails to explain its period, freshness, data quality, fallback state or recommendation rationale.
 
-## Agent operating mode
+## 2. Start here, then read narrowly
 
-### Pre rada
+Do not preload every AI document.
 
-1. Pročitaj task.
-2. Identifikuj tačno koje fajlove diraš.
-3. Pronađi shared helper/component pre pisanja novog.
-4. Proveri da li postoje guardrails/testovi.
-5. Planiraj mali commit.
+Before editing:
+1. classify the request;
+2. identify one owning subsystem and the exact expected files;
+3. inspect the target source and nearest focused test/guardrail;
+4. read only the canonical guidance that can change the implementation decision;
+5. define the narrowest credible completion proof.
 
-### Tokom rada
+Use these guides only when relevant:
+- agent entrypoint: `docs/ai/AGENT_START_HERE.md`;
+- architecture ownership: `docs/ai/ARCHITECTURE_BOUNDARIES.md`;
+- validation selection: `docs/ai/VALIDATION_SELECTOR.md`;
+- queue semantics: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`;
+- text/encoding safety: `docs/ai/ENCODING_AND_TEXT_SAFETY.md`;
+- known failure patterns: `docs/ai/COMMON_FAILURES_AND_FIXES.md`;
+- evidence/run-log standard: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` and `.ai/RUN_LOG_TEMPLATE.md`.
 
-- Ne refaktoriši nepovezane oblasti.
-- Ne uvodi novi pattern ako postoji stari standard.
-- Ne ponavljaj istu neuspešnu komandu više puta.
-- Ako build/test traje predugo ili zapne, prekini i probaj uži scope.
-- Ako nisi siguran da li je broj 0 ili greška, tretiraj kao unknown/error.
-- Ako task pređe u drugi owner/program ili dobije drugi nezavisan cilj, stani i prijavi gap. Mali isti-owner scope repair potreban za acceptance zabeleži i nastavi.
+If a referenced canonical owner is missing, duplicated or contradictory, do not invent a replacement rule. Record the authority gap and use current code/tests plus the safest reversible same-owner behavior until the gap becomes material.
 
-### Autonomy and questions
+## 3. Request classification and autonomy
 
-- Assume the user may be offline after assigning the task.
-- A direct repository request authorizes normal, reversible work in this repo.
-- Do not stop for routine choices like whether to inspect source, add a focused test, update the mapped doc, commit, or verify `main`.
-- Ask only when the remaining decision has material business/product impact, tenant/privacy/security/secret implications, destructive data/schema consequences, production impact, external cost, or irreversible effects outside this repo.
-- If two same-owner options are both safe, choose the smaller reversible one and record the assumption.
+Treat questions as exceptional. Assume the user may be offline after assigning work.
 
-### Posle rada
+Classify the request before touching queue state:
+- **formal queue prompt assigned** → follow the queue protocol and claim it automatically;
+- **`next` / `continue` / queue work** → use the canonical selector/router and claim the first safe candidate automatically;
+- **direct repository task** → do not invent or steal a queue claim; record `Queue: direct-user-request` and continue in a scoped delivery path;
+- **read-only review/audit** → inspect only unless repair is explicitly authorized;
+- **existing active claim** → resume it, complete it, block it or explicitly hand it off.
 
-Za svaki netrivijalan task koji menja fajlove, agent mora da ostavi i trajni run log u `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md`.
+A direct repository request authorizes normal, reversible repository-scoped work, including inspection, editing, focused tests, formatting, documentation updates, branch/worktree use, commits, pushes, PR creation and permitted merge.
 
-Koristi `.ai/RUN_LOG_TEMPLATE.md`. Minimum koji mora da postoji u tom logu:
+Do not ask routine questions such as whether to inspect source, add a focused regression test, update the owning documentation, choose between two equivalent reversible implementations, commit, push, open a PR or verify `main`.
 
-```text
-What was done:
-- ...
+Ask only when the remaining choice has material product/business impact, tenant/privacy/security/secret implications, destructive data/schema consequences, production impact, external cost, licensing/legal consequences, irreversible effects outside the repository, or unresolved ownership that cannot be safely bounded.
 
-What was missed:
-- ...
+When two safe same-owner choices remain, choose the smaller reversible one and record the assumption.
 
-Risks:
-- ...
+## 4. No-wandering execution model
 
-Next:
-- ...
-```
-
-Ako se prompt status u queue fajlu zatvara kao `DONE`, `PARTIAL`, `BLOCKED` ili `NEEDS_EVIDENCE_SYNC`, completion note mora eksplicitno da sadrži:
+Use this state model:
 
 ```text
-Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
+CLASSIFY → CLAIM(if needed) → INTERPRET → PROVE OWNER → PATCH → VALIDATE → DELIVER → CLOSE/HANDOFF
 ```
 
-ili:
+Before the first edit, know:
+- intended outcome;
+- owning subsystem/source of truth;
+- working hypothesis;
+- expected changed files;
+- focused proof;
+- stop/handoff trigger.
+
+Rules:
+- do not refactor unrelated areas;
+- prefer an existing helper/component/pattern over a new abstraction;
+- do not add a second owner for an existing contract;
+- do not expand into a second independent outcome silently;
+- one invalidated implementation hypothesis permits one classified replacement; repeated unchanged failure stops the run;
+- do not move from validation back into broad repository discovery without new evidence;
+- do not patch product code to compensate for an environment, test-harness or CI failure;
+- a small, reversible same-owner scope repair required by executable acceptance is allowed when recorded;
+- a second subsystem or genuine owner boundary becomes a split/handoff, not hidden scope expansion.
+
+For large files, use targeted search and relevant slices. Do not load the whole repository or rewrite large files when a focused patch is sufficient.
+
+## 5. Canonical workflow ownership
+
+Keep mechanics in one owner. This root file states policy and links to mechanics; it should not duplicate selector, queue-lock or delivery algorithms.
+
+| Area | Canonical owner |
+|---|---|
+| Repository entry/orientation | `docs/ai/AGENT_START_HERE.md` |
+| Architecture and subsystem boundaries | `docs/ai/ARCHITECTURE_BOUNDARIES.md` |
+| Queue selection, claim, statuses, lock/takeover and close semantics | `docs/ai/PROMPT_QUEUE_PROTOCOL.md` |
+| Validation choice | `docs/ai/VALIDATION_SELECTOR.md` |
+| Evidence/run-log contract | `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` + `.ai/RUN_LOG_TEMPLATE.md` |
+| Encoding/text safety | `docs/ai/ENCODING_AND_TEXT_SAFETY.md` |
+| Repeated failure guidance | `docs/ai/COMMON_FAILURES_AND_FIXES.md` |
+
+`MASTER_ROADMAP.md` resolves cross-program priority when the queue protocol requires it. `docs/ai/NEXT_PROMPT_QUEUE.md` is historical unless the queue protocol explicitly promotes it to an active routing role.
+
+Do not introduce a new status, claim mechanism, local lock format or selector fallback in this file. Use exactly the statuses and ownership semantics defined by the queue protocol.
+
+## 6. Queue work
+
+For formal queue work:
+- resolve the owner/program using the canonical router/roadmap rules;
+- select/claim through the supported queue mechanism instead of manually grepping and repeatedly attempting direct claims;
+- use the ownership/lock semantics defined by the queue protocol rather than inventing a second coordination layer;
+- work one claimed prompt at a time unless the prompt explicitly authorizes a bounded consolidation;
+- update status/evidence only through the canonical protocol;
+- do not stop merely because one queue is exhausted if the canonical router defines another safe route;
+- stop or hand off when required proof cannot be produced, authority is materially unclear, or the work crosses a genuine program boundary.
+
+A queue prompt that contains a mechanical defect may be repaired without asking the user when the acceptance outcome and authoritative owner are clear, the repair stays in the same subsystem, and the exception is recorded in evidence.
+
+Direct user work is not required to become a queue prompt before implementation.
+
+## 7. Delivery truth
+
+For file-changing work:
 
 ```text
-Run log: fallback <reason>
+local diff / local commit / pushed branch / open PR != Done
 ```
 
-Za completion note-ove sa datumom `2026-08-13` ili novijim koristi strogi šablon iz `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
+`Done` requires the repository's permitted delivery path plus honest proof that the delivered change is on the intended target branch. When the target is `main`, record the exact delivered SHA and verify current `main` contains it.
 
-U izveštaju napiši:
+If delivery cannot be completed safely, preserve useful work using the permitted branch/PR path, record the blocker and use the canonical non-Done status. Do not claim success from local state alone.
+
+Do not force-push, reset/clean unrelated user work, bypass branch protections, expose secrets, mutate production data or perform destructive actions outside the assigned scope unless an explicit authoritative workflow permits the exact action.
+
+## 8. Validation discipline
+
+Choose the narrowest proof through `docs/ai/VALIDATION_SELECTOR.md`.
+
+Evidence order:
+
 ```text
-Promenjeno:
-- ...
-
-Provere:
-- dotnet build: pass/fail/not run
-- dotnet test: pass/fail/not run
-- npm run check:analytics-guardrails: pass/fail/not run
-- npm run build: pass/fail/not run
-
-Rizici:
-- ...
-
-Sledeće:
-- ...
+reproducer/current-contract check
+→ smallest changed-file/static check
+→ nearest focused behavior + counterexample/regression test
+→ mapped guardrail/documentation checks
+→ wider build/test only for a named wider risk
 ```
 
-Local diff, local commit, pushed branch or open PR are transport states. File-changing work is closed only after the exact delivered SHA is verified on current `main`.
+Rules:
+- add the smallest regression test that would fail before a runtime fix when practical;
+- test failure/empty/stale/retry/fallback semantics where relevant, not only success;
+- do not run full suites first by habit;
+- do not repeat an unchanged failing or timed-out command without new evidence;
+- classify failures as product, test, environment/tooling, prompt/contract or evidence failure before editing again;
+- a skipped command is `not run` with a reason, never inferred as passing;
+- CI that is queued has not proved anything yet;
+- do not claim GitHub/remote validation without inspecting the relevant result.
 
----
-
-## Token / scope discipline
-
-Za velike fajlove:
-- koristi targeted search
-- čitaj relevantne delove
-- ne učitavaj ceo repo
-- ne radi masovni rewrite
-- ne generiši ogromne komponente ako može patch
-
-Ako se izgubiš:
-1. stani
-2. napiši šta je potvrđeno
-3. napiši šta nije potvrđeno
-4. predloži najmanji sledeći korak
-
-Ne nastavljaj naslepo.
-
----
-
-## Obavezni standardi
-
-### 1. No fake zero
-
-Backend greška nikad ne sme izgledati kao validan `0 RSD`.
-
-Backend:
-- `AnalyticsResponseMetaFactory.Error(...)`
-- ili `Results.Problem(...)`
-
-Frontend:
-- `AnalyticsErrorState`
-- bez KPI nula na error
-
-### 2. Empty nije error
-
-Prazan uspešan dataset:
-- `AnalyticsEmptyState`
-- `meta.success=true`
-- `emptyReason`
-- `dataQualityStatus=insufficient_data` ako nema signala
-
-### 3. Backend je source of truth
-
-Backend vraća:
-- recommendationStatus
-- confidence
-- reliability
-- reasonCodes
-- dataQualityStatus
-- decision score ako postoji
-
-Frontend prikazuje.
-
-### 4. Shared formatteri
-
-Koristi:
-- `fmtRsd`
-- `fmtPct`
-- `fmtNumber`
-- `fmtSignedPct` ako postoji
-
-Ne pravi lokalne formattere.
-
-### 5. Theme tokens
-
-Koristi CSS variables. Ne hardkoduj boje.
-
-### 6. UTF-8
-
-Nema mojibake. Ako vidiš `Ä`, `Å`, `â`, `�`, popravi.
-
----
-
-## Backend rules
-
-Core analytics endpointi treba da imaju meta contract:
-
-```csharp
-AnalyticsResponseMetaDto
-```
-
-Standard:
-- success with data -> `Success`
-- success empty -> `Empty`
-- fallback/partial/stale -> `Warning`
-- error -> `Error` ili Problem
-
-Ako response shape mora ostati isti, `Meta` neka bude optional dodatak.
-
-### Error logging
-
-Error logging ne sme izazvati novi 500.
-- trim dugačke poruke
-- correlationId
-- full stack u log sink, safe summary u DB
-
----
-
-## Frontend rules
-
-Core analytics page treba:
-- TrustHeader
-- ErrorState
-- EmptyState
-- refresh/freshness
-- data quality link
-- methodology/help panel
-- export/report ako ima smisla
-
-Ne prikazuj raw backend code korisniku ako postoji mapping.
-
-### Frontend routing guardrails
-
-- Ne menjaj App.tsx iz lazy/Suspense u direktne import-e radi testa.
-- Ako route smoke test ne radi sa lazy importima, popravi test/mocks, ne runtime routing.
-- Ne uklanjaj legacy/admin compatibility rute bez replacement + redirect plana.
-- Ne menjaj `ThemeProvider defaultTheme` u taskovima koji nisu theme/design-system.
-- Za detaljna pravila koristi `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`.
-
----
-
-## Supplier Scorecard rules
-
-Scorecard je često izvor regresija.
-
-Obavezno:
-- requested/effective period/dataset
-- no silent fallback
-- recommendationAllowed
-- fallback warning
-- pomoćni signal ako nije finalna preporuka
-- no fake zero
-- empty state sa razlozima
-
----
-
-## Product Decision rules
-
-Svaki product decision mora imati:
-- status
-- label
-- action
-- reason
-- reasonCodes
-- confidence/reliability
-- data quality
-- "Zašto?"
-
-Ne prikazuj preporuku bez razloga.
-
----
-
-## Inventory rules
-
-Inventory ekran treba da vodi odluku:
-- dopuni
-- OOS rizik
-- mrtav lager
-- transfer/rebalans
-- workflow/action queue
-
-Export/scheduler ne sme dominirati iznad decision sekcija.
-
----
-
-## Reports rules
-
-Report je sales artefakt:
-- izgleda kao dokument
-- ima period/freshness/data quality
-- methodology
-- warnings
-- print CSS
-- graceful export failure
-
----
-
-## Commands
-
-Choose the narrowest applicable proof through `docs/ai/VALIDATION_SELECTOR.md`; do not run every command below for every change.
+Typical commands are examples, not mandatory checklists:
 
 Frontend:
 ```powershell
 cd Klijent/clientapp
 npm run check:analytics-guardrails
 npm run build
+npm run test -- --run <path-to-spec>
 ```
-
-Za ciljane frontend testove koristi non-watch režim da se terminal ne zaglavi na `Waiting for file changes`:
-```powershell
-cd Klijent/clientapp
-npm run test -- --run src/components/__tests__/WorkersPanel.spec.tsx
-```
-
-Ako menjaš drugi spec, zadrži isti obrazac: `npm run test -- --run <putanja-do-spec-fajla>`.
 
 Backend:
 ```powershell
@@ -310,7 +177,7 @@ dotnet build
 dotnet test
 ```
 
-Analytics migrations:
+Analytics migration inspection when the change touches that surface:
 ```powershell
 dotnet ef migrations list `
   --project .\Infrastructure\Infrastructure.csproj `
@@ -318,74 +185,126 @@ dotnet ef migrations list `
   --context AnalyticsDbContext
 ```
 
-Ako komanda ne može zbog okruženja, napiši razlog. Ne izmišljaj da je prošla.
+Use non-watch test mode for agent runs.
 
----
+## 9. Evidence and completion
 
-## Kada napraviti test
-
-Dodaj test kada menjaš:
-- period/fallback
-- fake-zero behavior
-- recommendation semantics
-- action queue status/resolved/note
-- worker refresh behavior
-- report export fallback
-- formatter/guardrail helper
-
-Ako nema lako dostupne test infrastrukture, dodaj najmanji testable helper ili dokumentovan TODO, ali ne preskači regresiju bez objašnjenja.
-
----
-
-## Prompt queue workflow
-
-If the task comes from a live queue, follow `MASTER_ROADMAP.md`, `docs/ai/AGENT_START_HERE.md` and `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
-
-### Rules
-
-1. Resolve the owner program from `MASTER_ROADMAP.md`.
-2. Start only the current `READY` prompt in that owner queue after checking dependencies and global priority.
-3. Treat `docs/ai/NEXT_PROMPT_QUEUE.md` as a historical ledger, not a live router.
-4. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
-5. Work one prompt per session/commit unless the prompt explicitly allows a bounded docs consolidation.
-6. Before implementation, set the prompt to `IN_PROGRESS` or create the local lock from `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
-7. After work, record status, commit SHA, changed files, checks, remaining risk and next step.
-8. If scope crosses into another program, the same failure repeats twice, or required proof cannot be produced, stop as `PARTIAL` or `BLOCKED` instead of guessing.
-
-### Stop rules
-
-Stop if:
-- the prompt is not the current `READY` item for its owner program
-- source of truth, tenant authority or business contract is unclear
-- build/test fails twice without new evidence
-- the fix needs unrelated files/programs or a broad rewrite
-- secrets, production access or unresolved security decisions are required
-
-### Final report
-
-For every non-trivial file-changing task, include the durable run-log path in the final report and make sure the log records what was done, what was missed, risks and next step.
-
-Agent should finish with:
+Every non-trivial file-changing task needs a durable run log under:
 
 ```text
-Queue task:
-- Qxx title
-
-Status:
-- DONE/PARTIAL/BLOCKED
-
-Promenjeno:
-- ...
-
-Provere:
-- ...
-
-Rizici:
-- ...
-
-Sledeće:
-- Qyy title
-
-Main verification:
-- pass/fail/not run
+.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
 ```
+
+Use `.ai/RUN_LOG_TEMPLATE.md` and the current `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`. Do not maintain a second dated completion schema in this file.
+
+At minimum record:
+- interpreted outcome and exact owner;
+- files read and changed;
+- assumptions, prompt defects and scope repairs;
+- validation executed, failed, skipped and why;
+- what was not completed;
+- documentation impact;
+- branch/PR/merge or direct-delivery evidence when applicable;
+- exact target-branch/main verification;
+- residual risks and next owner/step.
+
+Final reports must be concise and truthful. Use the status vocabulary owned by the queue/delivery protocol; never invent a root-file-only status.
+
+## 10. Core analytics invariants
+
+These are product invariants. A narrower owning document or executable contract may define more detail, but agents must not violate these semantics silently.
+
+### 10.1 No fake zero
+
+A backend error or unknown value must never appear as a valid `0 RSD` KPI.
+
+Backend: use the established error/meta contract such as `AnalyticsResponseMetaFactory.Error(...)` or `Results.Problem(...)`.
+
+Frontend: render the established analytics error state and do not substitute zero-valued KPIs for failures.
+
+### 10.2 Empty is not error
+
+A successful empty dataset is a distinct state:
+- success remains true;
+- an empty reason is available;
+- data quality reflects insufficient evidence when appropriate;
+- the frontend renders the established empty state, not an error and not fake values.
+
+### 10.3 Backend is decision source of truth
+
+Decision semantics belong on the backend when the contract already owns them. Typical fields include:
+- recommendation/status;
+- confidence and/or reliability;
+- reason codes;
+- data quality status;
+- decision score when part of the contract.
+
+The frontend maps and explains these values; it should not silently recreate business scoring logic.
+
+### 10.4 Formatting, theme and text safety
+
+- Reuse shared formatters such as `fmtRsd`, `fmtPct`, `fmtNumber` and `fmtSignedPct` when present.
+- Do not create local duplicate formatters for the same semantics.
+- Use established theme tokens/CSS variables; do not hardcode replacement colors without a design-system reason.
+- Preserve UTF-8 and Serbian diacritics. Fix confirmed mojibake only in the owned scope; do not turn an unrelated task into a repository-wide encoding rewrite.
+
+## 11. Backend and API rules
+
+Core analytics endpoints should use the established meta contract (`AnalyticsResponseMetaDto` or its current replacement) consistently:
+- success with data → success;
+- successful empty result → empty;
+- fallback/partial/stale → warning/degraded state;
+- true failure → error/problem response.
+
+When compatibility requires preserving an existing response shape, prefer a backward-compatible optional meta extension rather than a breaking rewrite unless the owning contract explicitly says otherwise.
+
+Error logging must not cause a second failure:
+- cap/trim unsafe or oversized persisted summaries;
+- include a correlation identifier where the existing infrastructure supports it;
+- keep full technical details in the proper log sink and a safe summary in user/queryable storage.
+
+## 12. Frontend decision-surface rules
+
+A core analytics page should make trust visible where relevant:
+- requested/effective period;
+- freshness/refresh state;
+- data quality;
+- warning/fallback state;
+- error vs empty distinction;
+- methodology/help;
+- explanation of recommendation/action;
+- export/report only when useful to the decision.
+
+Do not expose raw backend codes to users when an established mapping exists.
+
+Routing guardrails:
+- keep lazy/Suspense runtime routing intact when a smoke test can be fixed instead;
+- do not remove compatibility routes without a replacement/redirect plan;
+- do not change global theme defaults from an unrelated task;
+- use `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md` for detailed routing ownership.
+
+## 13. Decision-specific invariants
+
+### Supplier Scorecard
+Must distinguish requested/effective period and dataset, avoid silent fallback, expose whether recommendation is allowed, warn on degraded/fallback evidence, avoid fake zero and explain empty/insufficient states.
+
+### Product Decision
+A real recommendation should expose the established equivalents of status, label/action, reason/reason codes, confidence/reliability and data quality. Do not present an actionable recommendation without an understandable “why”.
+
+### Inventory
+The primary surface should support inventory decisions such as replenishment, OOS risk, dead stock, transfer/rebalance and workflow/action handling. Export/scheduling must not displace the core decision surface.
+
+### Reports
+A report is a sales/decision artifact. Preserve period, freshness, data quality, methodology, warnings, printable presentation and graceful export failure handling.
+
+## 14. Stop / handoff conditions
+
+Stop implementation and record a precise blocker/handoff when:
+- material source-of-truth, tenant authority or business contract remains unclear;
+- the fix requires a second independent subsystem/owner that cannot be safely split;
+- the same classified failure repeats without new evidence;
+- required proof is unavailable and no narrower valid proof exists;
+- secrets, production access, destructive schema/data operations or unresolved security/legal decisions are required;
+- the canonical queue/router/delivery workflow has no safe action left.
+
+Do not stop for a routine reversible engineering decision that the existing code, tests or canonical owner can resolve.
