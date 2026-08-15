@@ -104,7 +104,7 @@ Keep mechanics in one owner. This root file states policy and links to mechanics
 | Encoding/text safety | `docs/ai/ENCODING_AND_TEXT_SAFETY.md` |
 | Repeated failure guidance | `docs/ai/COMMON_FAILURES_AND_FIXES.md` |
 
-`MASTER_ROADMAP.md` resolves cross-program priority when the queue protocol requires it. `docs/ai/NEXT_PROMPT_QUEUE.md` is historical unless the queue protocol explicitly promotes it to an active routing role.
+`MASTER_ROADMAP.md` resolves cross-program priority when the queue protocol requires it. `docs/ai/NEXT_PROMPT_QUEUE.md` is a historical ledger and is not an active router unless the queue protocol explicitly promotes it.
 
 Do not introduce a new status, claim mechanism, local lock format or selector fallback in this file. Use exactly the statuses and ownership semantics defined by the queue protocol.
 
