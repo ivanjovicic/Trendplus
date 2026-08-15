@@ -1,174 +1,160 @@
 # Trendplus Agent Run Evidence Standard
 
-Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Status: completion evidence standard
-Adapted from: MathLearning prompt evidence template and AgentsWatch run evidence rules
+Status: canonical completion-evidence standard
 
 ## Purpose
 
-A prompt is not complete just because code or docs changed. Future agents need durable evidence: what changed, what was validated, what was skipped, and what remains risky.
+A task is not complete merely because code or documentation changed. Future agents need durable, truthful evidence of what changed, what was validated, what was skipped, what reached `main`, and what remains risky.
 
-This standard applies to all non-trivial Trendplus queue work.
+This document owns completion-evidence semantics. Queue execution statuses remain owned by `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-The canonical run-log template lives in:
+The canonical durable run-log template is:
 
 ```text
 .ai/RUN_LOG_TEMPLATE.md
 ```
 
-Use it whenever a durable `.ai/runs/...` log is created.
-
-## Default evidence location
-
-Preferred durable run log:
+Preferred run-log location:
 
 ```text
-.ai/runs/<yyyy-mm-dd>-<prompt-id>-evidence.md
+.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
 ```
 
-Minimum required narrative in every durable run log:
+## Status and evidence are separate
 
-- what was done
-- what was missed
-- risks
-- next
+Do not create an extra queue status for missing evidence.
 
-If a tool/session cannot safely create a `.ai/runs` file, record fallback evidence in:
-
-- the queue prompt `Notes` section, or
-- the final response, and
-- any relevant audit/status document.
-
-Do not mark a prompt high-confidence `DONE` if there is no run log and no explicit fallback reason.
-
-## Minimum local claim note
-
-Before implementation files are edited, the prompt should be locally claimed by status or lock:
+Queue statuses are exactly those defined by `PROMPT_QUEUE_PROTOCOL.md`:
 
 ```text
-IN_PROGRESS (YYYY-MM-DD, <agent/lane>, local claim)
+READY | WAITING | IN_PROGRESS | BLOCKED | PARTIAL | DONE | OBSOLETE
+```
+
+Evidence synchronization is a separate field:
+
+```text
+Evidence state: synchronized | pending | fallback <reason>
 ```
 
 Rules:
+- use `DONE` only when required proof and delivery evidence are synchronized;
+- use `PARTIAL` when useful work exists but validation, delivery verification, run evidence or another completion requirement is still missing;
+- use `BLOCKED` when an external dependency/authority prevents safe completion;
+- never use `NEEDS_EVIDENCE_SYNC` as a live queue status;
+- old historical notes containing retired/free-form statuses may remain historical unless the task explicitly refreshes them.
 
-- Use the existing `.ai/task-locks/<task-id>-<agent>.lock.md` local lock workflow from `PROMPT_QUEUE_PROTOCOL.md`.
-- Do not commit lock files.
-- Do not push claim-only commits.
-- If a prompt is visibly `IN_PROGRESS` on main, another agent must not work on it unless reassigned.
+## Durable evidence requirement
 
-## Minimum completion note
+For every non-trivial file-changing run, create a durable run log using `.ai/RUN_LOG_TEMPLATE.md` whenever the repository can safely be changed.
 
-Use this format in queue notes:
+If a tool/session genuinely cannot create a durable log, record:
+
+```text
+Evidence state: fallback <reason>
+Run log: fallback <reason>
+```
+
+in the queue completion note when applicable and in the final response. Do not claim high-confidence completion while required evidence is unavailable.
+
+## Completion note
+
+For a queue task, use this minimum shape:
 
 ```text
 ### Completion note
 
 - Date: YYYY-MM-DD
-- Status: DONE | PARTIAL | BLOCKED | NEEDS_EVIDENCE_SYNC
-- Completion: <percent or concise score note>
+- Status: DONE | PARTIAL | BLOCKED
+- Completion: <concise outcome or percentage when useful>
 - Changed files:
 - Checks run:
 - Checks not run:
-- Run log: .ai/runs/<yyyy-mm-dd>-<prompt-id>-evidence.md OR fallback <reason>
-- Delivery mode: direct-main | pull-request | connector-write | none
+- Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md OR fallback <reason>
+- Evidence state: synchronized | pending | fallback <reason>
+- Delivery mode: pull-request | direct-main | connector-write | none
 - Main commit SHA: <full sha or pending>
-- Main verification: <exact git/GitHub evidence or skipped reason>
-- Missed: <what was not completed or none known>
-- Follow-up: <prompt ID or none>
+- Main verification: <exact evidence or skipped reason>
+- Missed: <unfinished work or none known>
+- Follow-up: <prompt/task/owner or none>
 - Residual risk: <one sentence or none known>
 - Prompt defect / scope repair: <note or none>
 ```
 
-For any completion note dated `2026-08-13` or later, the `Run log:` line is mandatory even when the value is a fallback reason rather than a durable file.
-
-Use `NEEDS_EVIDENCE_SYNC` instead of `DONE` when commit SHA, validation, missed work, model/client metadata or run evidence cannot be verified.
+All new or actively refreshed completion notes use the current template. Do not rely on a date gate to decide which evidence schema applies.
 
 ## Delivery truth
 
-Local diff, local commit, pushed branch, open PR or green branch CI are transport states. File-changing work becomes a `DONE` candidate only after the exact delivered SHA is verified on current `main`, whether delivery used direct-main or a pull request.
+Local diff, local commit, pushed branch, open PR or green branch CI are transport states.
 
-Minimum delivery fields for file-changing work:
+File-changing work is a `DONE` candidate only after:
+- required proof is honest;
+- the exact delivered SHA is known;
+- fresh current `main` is verified to contain that SHA;
+- queue/evidence state is synchronized when the task uses formal queue routing.
+
+Minimum delivery fields:
 
 ```text
-Delivery mode: direct-main | pull-request | connector-write | none
+Delivery mode: pull-request | direct-main | connector-write | none
 Main commit SHA: <full sha or pending>
 Main verification: <exact git/GitHub evidence or skipped reason>
 ```
 
-## Hard completion gate
+If the implementation reached a branch/PR but not `main`, use `PARTIAL` unless a more specific blocker applies.
 
-Before marking `DONE`, evidence must include:
+## Completion gate
 
-- completion percentage
-- changed files
-- commit SHA or explicit no-commit reason
-- main verification evidence or explicit no-delivery reason
-- validation command(s) or skipped-validation reason
-- validation selected through `docs/ai/VALIDATION_SELECTOR.md` or a task-specific stricter owner
-- model/client metadata or `unknown-not-exposed`
-- missed work or `none known`
-- follow-up prompt or `none`
-- residual risk or `none known`
-- token/waste note
+Before `DONE`, evidence must identify:
+- actual files changed;
+- validation that executed, with pass/fail outcome;
+- validation intentionally not run, with reason;
+- run log or explicit fallback reason;
+- delivery mode;
+- exact implementation SHA delivered to `main`;
+- fresh verification that current `main` contains it;
+- missed work or `none known`;
+- residual risk or `none known`;
+- next task/owner or `none`;
+- prompt defect/scope repair when one occurred.
 
-If any are missing, use `PARTIAL`, `BLOCKED`, or `NEEDS_EVIDENCE_SYNC`.
+Missing required completion evidence means `PARTIAL` or `BLOCKED`, not a new status.
 
-## Completion percentage guide
+Do not claim 100% when residual risk says required tests, CI, delivery verification or target evidence are missing.
 
-| Score | Meaning |
-|---|---|
-| 95-100% | Prompt completed, targeted tests/evidence strong, no meaningful follow-up needed. |
-| 80-94% | Useful completion with minor gaps or residual risk. |
-| 60-79% | Runtime/docs landed, but verification, CI, evidence or parity is incomplete. |
-| 40-59% | Partial implementation; important scope moved to follow-up. |
-| <40% | Mostly analysis/docs or blocked attempt; not complete. |
+## Docs-only runs
 
-Score caps:
+Docs-only work does not require runtime build/test proof, but it still requires honest documentation/governance validation appropriate to the changed paths.
 
-| Situation | Maximum score |
-|---|---:|
-| Docs-only change, no `git diff --check` or path verification run | 85% |
-| Runtime change but targeted tests not run | 79% |
-| Queue status updated but no commit SHA/run evidence | 70% |
-| Model/timing metadata missing and not marked `unknown-*` | 65% |
-| Prompt asked for validation but only reports it is missing | 60% |
-| Production/live smoke claimed from local-only checks | 50% |
-
-Do not claim 100% if residual risk says tests, CI, deploy smoke or target evidence are missing.
-
-## Prompt retrospective checklist
-
-Before closing a prompt, answer:
-
-- Did completion % match actual validation strength?
-- Were diagnostics/temp logs/probe code removed?
-- Were checks run in dependency order?
-- Are skipped checks named with reason and risk?
-- Did the run stay within token/file budget?
-- Did any repeated mistake require a docs/rule update?
-- Is there a follow-up prompt for missed work?
-- Does residual risk contradict the score?
-
-## Evidence for docs-only runs
-
-Docs-only runs may use:
+If local commands are unavailable, state that clearly, for example:
 
 ```text
-Validation: none (docs-only); path references reviewed; git diff --check not run because <reason>
+Validation not run:
+- local repository scripts/build/tests -> not run - connector-only session
 ```
 
-But they must not claim runtime behavior changed or tests passed.
+Do not imply runtime behavior changed when the task only changed documentation/governance.
 
-## Evidence for GitHub connector runs
+## GitHub connector runs
 
-When work is done through the GitHub connector:
+When work is performed through the GitHub connector:
+- record connector-returned commit/PR/merge identifiers;
+- inspect current branch/PR state before claiming delivery;
+- verify the exact delivered SHA against a fresh current-`main` lookup before `DONE`;
+- mark local shell/build/test commands `not run` unless they actually executed in a repository checkout;
+- inspect relevant GitHub checks once when they are part of acceptance;
+- `queued` is not passing proof;
+- preserve a PR and report `PARTIAL`/`BLOCKED` when required proof cannot complete safely.
 
-- record commit SHA returned by the connector;
-- still verify that SHA on fresh current `main` before claiming `DONE`;
-- say tests/checks were not run unless another tool actually ran them;
-- cite changed docs/files in the final response when possible;
-- do not claim local build/test success.
+## Retrospective check
+
+Before closure, verify:
+- evidence describes what actually landed, not the plan;
+- no diagnostics/temp files or local locks were committed accidentally;
+- skipped checks name a reason and residual risk;
+- scope repairs/prompt defects are recorded;
+- final status matches validation and delivery strength;
+- the reported next step does not contradict the status.
 
 ## Final response compact format
 
@@ -179,11 +165,11 @@ Changed:
 Validation:
 - ...
 
-Not done:
+Delivery:
 - ...
 
-Completion:
-- ...%
+Not done:
+- ...
 
 Risk:
 - ...

@@ -3,7 +3,7 @@
  * Trendplus planning architecture validator.
  *
  * Complements scripts/check-prompt-queues.mjs by validating the consolidated
- * master roadmap, roadmap/queue ownership, and the new DEX/RL/DT/PERF/OBS/SEC
+ * master roadmap, roadmap/queue ownership, and the DEX/RL/DT/PERF/OBS/SEC
  * planning families.
  *
  * Usage:
@@ -118,6 +118,40 @@ function parseNewTasks(content, file) {
   return tasks;
 }
 
+function tableCells(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
+  return trimmed.split("|").slice(1, -1).map((cell) => cell.trim());
+}
+
+function normalizePointer(value) {
+  return value == null ? null : value.replaceAll("`", "").trim();
+}
+
+function isNonePointer(value) {
+  const normalized = normalizePointer(value);
+  return normalized != null && /^none(?:\s*\(.*\))?$/i.test(normalized);
+}
+
+function ownerQueueCurrentReady(content, program) {
+  for (const line of content.split(/\r?\n/)) {
+    const cells = tableCells(line);
+    if (!cells || cells.length < 2) continue;
+    const label = cells[0];
+    if (label === program || label.startsWith(`${program} -`)) return normalizePointer(cells[1]);
+  }
+  return null;
+}
+
+function masterCurrentReady(content, program) {
+  for (const line of content.split(/\r?\n/)) {
+    const cells = tableCells(line);
+    if (!cells || cells.length < 3 || cells[0] !== program) continue;
+    return normalizePointer(cells[2]);
+  }
+  return null;
+}
+
 function validate(root) {
   const errors = [];
 
@@ -153,24 +187,38 @@ function validate(root) {
     }
   }
 
+  const master = exists(root, "MASTER_ROADMAP.md") ? read(root, "MASTER_ROADMAP.md") : null;
+
   for (const program of NEW_PROGRAMS) {
     const programTasks = tasks.filter((task) => task.program === program);
     if (programTasks.length === 0) {
       errors.push(`${program}: no prompt found in new planning queues`);
       continue;
     }
+
     const ready = programTasks.filter((task) => task.status === "READY");
-    if (ready.length !== 1) {
-      errors.push(`${program}: expected exactly one READY prompt, found ${ready.length}`);
+    if (ready.length > 1) {
+      errors.push(`${program}: expected at most one READY prompt, found ${ready.length}`);
+      continue;
     }
-    const laterReady = programTasks.slice(1).filter((task) => task.status === "READY");
-    if (laterReady.length > 0) {
-      errors.push(`${program}: later prompt(s) unexpectedly READY: ${laterReady.map((task) => task.id).join(", ")}`);
+
+    if (ready.length === 0) {
+      const mapping = PROGRAM_OWNERSHIP.find((entry) => entry.program === program);
+      const queuePointer = mapping && exists(root, mapping.queue)
+        ? ownerQueueCurrentReady(read(root, mapping.queue), program)
+        : null;
+      const masterPointer = master == null ? null : masterCurrentReady(master, program);
+
+      if (!isNonePointer(queuePointer) || !isNonePointer(masterPointer)) {
+        errors.push(
+          `${program}: no READY prompt requires explicit Current READY 'none' in both owner queue and MASTER_ROADMAP.md ` +
+          `(queue=${queuePointer ?? "missing"}, master=${masterPointer ?? "missing"})`,
+        );
+      }
     }
   }
 
-  if (exists(root, "MASTER_ROADMAP.md")) {
-    const master = read(root, "MASTER_ROADMAP.md");
+  if (master != null) {
     for (const mapping of PROGRAM_OWNERSHIP) {
       if (!master.includes(`| ${mapping.program} |`)) {
         errors.push(`MASTER_ROADMAP.md: missing routing row for ${mapping.program}`);
@@ -209,20 +257,40 @@ function runSelfTest() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "trendplus-planning-validator-"));
   try {
     for (const relative of REQUIRED_CANONICAL_PATHS) write(root, relative);
-    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", fixtureQueue(["DEX", "RL", "DT"]));
+    const decisionFixture = fixtureQueue(["DEX", "RL", "DT"]);
+    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", decisionFixture);
     write(root, "docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", fixtureQueue(["PERF", "OBS", "SEC"]));
 
     const masterRows = PROGRAM_OWNERSHIP.map((mapping) => `| ${mapping.program} | ${mapping.queue} | ${mapping.roadmap} |`).join("\n");
-    write(root, "MASTER_ROADMAP.md", `# Master\n${masterRows}\n${PROGRAM_OWNERSHIP.map((mapping) => `${mapping.queue}\n${mapping.roadmap}`).join("\n")}\n`);
+    const validMaster = `# Master\n${masterRows}\n${PROGRAM_OWNERSHIP.map((mapping) => `${mapping.queue}\n${mapping.roadmap}`).join("\n")}\n`;
+    write(root, "MASTER_ROADMAP.md", validMaster);
     write(root, "docs/ai/AGENT_START_HERE.md", "MASTER_ROADMAP.md\nANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md\nDECISION_INTELLIGENCE_PROMPT_QUEUE.md\nPLATFORM_EVOLUTION_PROMPT_QUEUE.md\n");
 
     const valid = validate(root);
     if (valid.errors.length > 0) throw new Error(`valid fixture failed:\n${valid.errors.join("\n")}`);
 
+    const zeroReadyQueue = `## Current READY by program\n\n| Program | Current READY | Execution class |\n|---|---|---|\n| DEX - Decision Explainability | none | planning |\n\n${decisionFixture.replace("## DEX01 - First\n\nStatus: READY", "## DEX01 - First\n\nStatus: DONE")}`;
+    write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", zeroReadyQueue);
+    write(root, "MASTER_ROADMAP.md", validMaster.replace(
+      `| DEX | docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md | docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md |`,
+      `| DEX | docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md | none | docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md |`,
+    ));
+    const explicitZero = validate(root);
+    if (explicitZero.errors.length > 0) {
+      throw new Error(`explicit zero-READY fixture failed:\n${explicitZero.errors.join("\n")}`);
+    }
+
+    write(root, "MASTER_ROADMAP.md", validMaster);
+    const missingZeroDeclaration = validate(root);
+    if (!missingZeroDeclaration.errors.some((error) => error.includes("no READY prompt requires explicit Current READY 'none'"))) {
+      throw new Error("expected missing explicit zero-READY declaration failure");
+    }
+
+    write(root, "MASTER_ROADMAP.md", validMaster);
     const badQueue = fixtureQueue(["DEX", "RL", "DT"]).replace("Status: WAITING", "Status: READY");
     write(root, "docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", badQueue);
     const duplicateReady = validate(root);
-    if (!duplicateReady.errors.some((error) => error.includes("DEX: expected exactly one READY"))) {
+    if (!duplicateReady.errors.some((error) => error.includes("DEX: expected at most one READY"))) {
       throw new Error("expected duplicate READY failure");
     }
 
