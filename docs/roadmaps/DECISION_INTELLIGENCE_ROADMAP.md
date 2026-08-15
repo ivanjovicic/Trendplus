@@ -1,6 +1,6 @@
 # Trendplus Decision Intelligence Roadmap
 
-Updated: 2026-08-11
+Updated: 2026-08-15
 Status: approved future product direction; runtime implementation remains queue-gated  
 Owner queue: `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
 
@@ -20,6 +20,20 @@ The first Decision Intelligence phases are deterministic and require no AI/LLM d
 - evidence links reference real inputs and source states;
 - missing evidence remains missing;
 - AI may later summarize authoritative evidence, but may not invent decision truth.
+
+## Decision eligibility contract
+
+A signal becomes an actionable decision only when the contract can state all of the following:
+
+- the decision grain and population, such as SKU/store/day or category/supplier/period;
+- the canonical product, variant, location and time context used by the rule;
+- whether inventory, availability, price, cost and demand inputs are observed, estimated or unavailable;
+- the metric units, denominator and exclusions that support expected impact;
+- the operational constraint, including whether lead time, minimum order, transfer capacity or source-data coverage is unknown;
+- the eligible action, alternatives and explicit reason an action is blocked or lower ranked;
+- the outcome window and what can be measured without claiming causal proof.
+
+If any required field is unavailable, the result may remain an insight, data-quality issue or insufficient-evidence state. It must not be promoted to a confident replenish, transfer, markdown or price decision merely because a score exists. This rule extends existing no-fake-zero/no-fake-green behavior; it does not replace RQ ownership of the underlying metric contracts.
 
 ## Workstreams
 
@@ -144,6 +158,9 @@ Decision Engine evolution is staged and must preserve existing backend source-of
 - alternatives;
 - constraints/blockers;
 - data freshness/quality state.
+- decision grain, population and product/location/time context;
+- observed-versus-proxy input provenance;
+- outcome window and measurement eligibility.
 
 ### Stage 2 - Decision graph composition
 
@@ -175,6 +192,8 @@ Each alternative should eventually state:
 - evidence IDs must be stable enough to correlate API/detail/action/timeline surfaces;
 - units and denominator scope must be explicit;
 - evidence timestamp/freshness must be visible;
+- decision grain, population and excluded rows must be visible or retrievable from the evidence contract;
+- observed, reconstructed, estimated and unavailable inputs must remain distinguishable;
 - missing/partial/fallback evidence must not be coerced into a trusted score;
 - reason codes are stable machine-readable vocabulary;
 - user-facing explanations are derived from authoritative fields;

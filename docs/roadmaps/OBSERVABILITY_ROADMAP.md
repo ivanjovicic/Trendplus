@@ -1,6 +1,6 @@
 # Trendplus Observability Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-15
 Status: roadmap only; instrumentation implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`OBS`)
 
@@ -34,6 +34,9 @@ Define authoritative metrics and dimensions for:
 - worker queue depth/failure/retry;
 - cache hit/miss/invalidation;
 - report/export success/failure.
+- source-to-analytics coverage: mapped versus excluded products, stores, suppliers and time periods;
+- fact provenance: observed versus reconstructed/proxy inventory and other high-impact derived inputs;
+- decision eligibility: actionable, blocked and insufficient-evidence outcomes by family and reason.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
 OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract is now the current queue READY.
@@ -93,6 +96,19 @@ Track:
 - next retry/backoff where applicable.
 
 The UI must never infer freshness from page render time.
+
+### OBS-5a - Analytics data truth coverage
+
+For high-impact retail analytics, operational telemetry must make it possible to tell whether a result is both fresh and sufficiently representative. Extend the existing catalog and contracts when owner-gated to record:
+
+- source extraction and mapping coverage by entity family, without raw customer payloads;
+- late-arriving, rejected, deduplicated and schema-drifted records;
+- observed-versus-proxy fact coverage, especially for SKU/store/day inventory history;
+- product, store, supplier and period exclusions that reduce the eligible population;
+- stale/missing materialization or forecast ownership states;
+- recommendations suppressed, downgraded or blocked because the evidence contract was incomplete.
+
+Coverage telemetry is not a customer ranking metric and must not leak product names, credentials or row values into logs. It exists to distinguish a quiet business condition from an incomplete analytical population.
 
 ### Completion note
 
@@ -177,6 +193,7 @@ Correlation IDs identify a flow; they are not authorization or tenant identity.
 | Analytics | refresh duration, freshness age, failed refresh rate | OBS/RQ |
 | Worker | queue age, duration, retry/dead-letter rate | OBS/STAB |
 | Decision | explainability coverage, outcome measurement coverage | OBS/DEX/RL/DT |
+| Data truth | mapped/excluded coverage, observed/proxy share, late-arrival and drift rate | OBS/RQ/QDB |
 | Tenant | cross-tenant negative-test/incident evidence | MT/SEC |
 
 ## Dependencies

@@ -1,6 +1,6 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-08-13
+Updated: 2026-08-15
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
@@ -113,6 +113,26 @@ The current market-gap audit confirms that Trendplus should keep its explainable
 `release truth -> source adaptability -> observed historical inventory -> exception/digest delivery -> validated forecasting -> controlled scenarios -> shared SaaS/AI later`
 
 The audit is planning evidence only. It does not create a competing READY queue. New work must still map to an existing owner first.
+
+## Retail analytics product architecture
+
+Trendplus should be judged by the quality of a retail decision at a declared grain, not by the number of charts. The durable product path is:
+
+`source event -> canonical product context -> observed business fact -> trustworthy metric -> prioritized decision -> action -> measured outcome`
+
+The following capability layers are sequential. A later layer may use an earlier one, but must not silently compensate for its absence.
+
+| Layer | Current direction | Owner when work is proposed | Boundary |
+|---|---|---|---|
+| Product context | Stable SKU/product identity, variant, hierarchy, supplier, store, season and unit semantics across a source mapping | QDB + RQ | Do not create a second product-master system or guess a hierarchy from labels. |
+| Observed retail facts | Sales, returns, price events and observed SKU/store/day inventory with source/proxy provenance | RQ + QDB | Reconstructed stock and missing history remain explicitly distinct from observed facts. |
+| Decision-ready metrics | Availability, margin, sell-through, stock age, demand variability and forecast measures with declared denominators | RQ | A metric is not decision-ready until its scope, units, freshness and exclusions are visible. |
+| Operational decisions | Replenish, transfer, hold, markdown or investigate with eligibility, feasibility, confidence and alternatives | DEX + RQ | A recommendation is not an ERP command and must not write back to a customer source by default. |
+| Learning and planning | Outcome measurement, forecast scorecards, controlled scenarios and calibration | RL + DT + RQ | No adaptive policy, elasticity claim or scenario result without measured baseline and uncertainty. |
+
+Product identity/hierarchy, observed inventory history, forecast provenance/backtesting and exception delivery are not parallel "dashboard ideas". They are the data and operating foundations that make the existing product, inventory, supplier and decision surfaces more useful.
+
+Before a future prompt makes a retail metric or recommendation customer-facing, it must declare: decision grain (for example SKU/store/day), source and transformation provenance, population/denominator, known exclusions, freshness/coverage, action constraints, and the outcome that could validate value. The concrete prompt stays in its existing owner queue.
 
 ## Historical/current separation
 

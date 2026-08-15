@@ -1,6 +1,6 @@
 # Trendplus Feature Lifecycle
 
-Updated: 2026-08-08  
+Updated: 2026-08-15
 Status: canonical planning lifecycle
 
 Every meaningful Trendplus feature follows this lifecycle:
@@ -19,6 +19,7 @@ Required questions:
 - What decision, workflow or operational pain improves?
 - Which existing program most likely owns it?
 - Is this genuinely new, or already represented by a roadmap/queue?
+- For an analytics idea, what is the decision grain, source fact, user action and outcome that would prove value?
 
 Exit condition: an owner program is identified or a clear reason exists to create a new program.
 
@@ -34,6 +35,14 @@ A roadmap must state:
 - dependencies and release gates;
 - owning queue;
 - explicit non-goals.
+
+For analytics, forecasting, optimization or decision-support work, the roadmap must additionally state:
+
+- canonical entity and grain (for example SKU/store/day) plus any hierarchy assumptions;
+- source/proxy/derived provenance and freshness/coverage boundary;
+- metric units, denominators and excluded population;
+- whether the output is an insight, recommendation, simulation or measured outcome;
+- operational constraints and the condition under which the product must show insufficient evidence instead of advice.
 
 No roadmap may exist without an owner queue. No queue family may exist without a roadmap or an explicitly named existing roadmap.
 
@@ -51,6 +60,7 @@ Rules:
 - do not duplicate another queue's feature family;
 - do not make a task READY just because it is high priority;
 - current READY must be explicitly declared near the queue top.
+- analytics prompts must name the authoritative data contract and prove that observed, reconstructed, estimated and unavailable inputs cannot be confused.
 
 Exit condition: the first safe, evidence-backed task is READY and the queue validator passes.
 
@@ -65,6 +75,7 @@ Before coding:
 - apply tenant and analytics safety gates where relevant;
 - identify the source of truth and downstream consumers;
 - preserve true-zero vs unknown, freshness, confidence, authorization and tenant boundaries.
+- preserve the declared decision grain, units, denominator, product/location/time context and source/proxy provenance end to end.
 
 Exit condition: scoped behavior and tests satisfy the prompt acceptance criteria.
 
@@ -82,6 +93,9 @@ Typical hardening includes:
 - performance under representative data volume;
 - logging/tracing/metrics;
 - rollback and compatibility behavior.
+- metric reconciliation across summary, drill-down, export, action and outcome surfaces;
+- availability, promotions, returns, stockouts and other stated confounders where they can materially change an interpretation;
+- backtesting/calibration population and uncertainty when a feature makes predictive or optimization claims.
 
 Hardening belongs to the feature's existing program unless the gap clearly belongs to STAB, PERF, OBS or SEC.
 
@@ -101,6 +115,7 @@ Required evidence depends on the feature but can include:
 - import/freshness provenance;
 - performance/SLA checks;
 - customer-visible documentation where needed.
+- proof that customer-facing wording does not overstate a proxy, forecast, optimization result or causal outcome.
 
 Historical smoke or old readiness documents cannot prove a new release.
 

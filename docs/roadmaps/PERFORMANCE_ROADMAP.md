@@ -1,6 +1,6 @@
 # Trendplus Performance Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-15
 Status: roadmap only; optimization implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`PERF`)
 
@@ -45,6 +45,8 @@ No runtime optimization is accepted without a baseline and a before/after compar
 - identify repeated scans, N+1 patterns, materialized-view refresh cost and unnecessary cross-database work;
 - document query cardinality assumptions;
 - separate source connector query cost from Trendplus internal analytics cost.
+- measure the cost of daily/period fact materialization separately from interactive query cost.
+- retain the declared product/location/time grain in benchmark fixtures so a fast aggregate does not hide an incorrect join or duplicate fact.
 
 ### PERF-3 - Index strategy
 
@@ -71,6 +73,7 @@ Benchmark representative workloads using increasing row counts and realistic dat
 - action/outcome history;
 - connector imports;
 - decision evidence/timeline when implemented.
+- observed inventory history and forecast/backtest facts when owner-gated.
 
 Record degradation curves rather than one maximum-size result.
 
@@ -92,6 +95,7 @@ Measure and tune:
 - outbox processing;
 - sync/redrive jobs;
 - future outcome-learning/statistics jobs.
+- future observed inventory snapshot, forecast materialization and exception-digest jobs, each with independent backlog/freshness evidence.
 
 Track queue depth, processing latency, retry cost and poison/dead-letter behavior.
 
@@ -221,6 +225,7 @@ Each future optimization should record:
 - warm/cold state;
 - before/after p50/p95 where applicable;
 - correctness checks proving output did not change unexpectedly;
+- fact grain, source/proxy provenance and population coverage of the fixture;
 - residual risk.
 
 ## Dependencies
@@ -233,3 +238,5 @@ Each future optimization should record:
 ## Non-goals
 
 This roadmap does not justify broad rewrites, speculative micro-optimizations, weakening tests, hiding errors behind cache, or introducing distributed infrastructure before measured need exists.
+
+It also does not authorize collapsing raw SKU/store/day facts into only a fast aggregate when downstream inventory, availability, forecast or outcome contracts require the lower-grain evidence.
