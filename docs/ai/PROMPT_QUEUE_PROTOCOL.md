@@ -60,11 +60,12 @@ If implementation is useful but evidence/delivery verification is incomplete, us
 
 ## READY invariants
 
-- Exactly one READY prompt per program unless the master roadmap explicitly documents a temporary migration state.
+- A program may have zero or one READY prompt; more than one READY in the same program is invalid.
+- Zero READY is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` (or the equivalent named blocked/complete current truth). Do not infer a valid zero merely because no task happens to be marked READY.
 - Multiple programs may each have one READY prompt; global execution priority still comes from `MASTER_ROADMAP.md`.
 - Parallel-safe means path/feature-family parallelism is allowed; it never means dependency gates can be skipped.
-- Current READY must be declared near the queue top or in the queue's per-program current-READY table.
-- All later prompts remain WAITING until dependencies are met.
+- Current READY (or explicit `none`) must be declared near the queue top or in the queue's per-program current-READY table.
+- All later prompts remain WAITING until dependencies are met or the current pointer is explicitly advanced.
 - A follow-up/evidence addendum belongs to the same program as its parent queue; it does not create a second READY allowance.
 
 ## Required prompt sections
@@ -247,7 +248,7 @@ node scripts/check-planning-architecture.mjs --self-test
 node scripts/check-planning-architecture.mjs
 ```
 
-`check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.
+`check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues, including explicit zero-READY declarations.
 
 ## Commit hygiene
 
