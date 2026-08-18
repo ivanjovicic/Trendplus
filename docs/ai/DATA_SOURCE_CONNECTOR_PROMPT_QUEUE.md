@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: none (`QDB05` DONE; `QDB06` WAITING on owner migration approval)
+Current READY prompt: none (`QDB06` DONE; `QDB07` WAITING on authorization/release gates)
 
 ## Global routing
 
@@ -391,28 +391,95 @@ Map source streams to canonical Trendplus entities and preview a small sample wi
 
 ## QDB06 - Add idempotent checkpointed incremental synchronization
 
-Status: WAITING  
-Ready after: `QDB05` is `DONE` and the owner approves a database migration  
-Priority: P1  
-Type: backend/persistence/workers/integration tests  
-Feature family: source-checkpoint-idempotency  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB06-<agent>.lock.md`  
+Status: DONE
+Ready after: `QDB05` is `DONE` and the owner approves a database migration
+Priority: P1
+Type: backend/persistence/workers/integration tests
+Feature family: source-checkpoint-idempotency
+Parallel-safe: no
+Owner: Cursor Auto
+Local lock: removed after DONE
 Commit suggestion: `feat(import): add durable source checkpoints`
+Promotion note: 2026-08-18 - owner approved the database migration and ran QDB06 before RQ96.
 
-### Goal
+### Problem
 
-Persist checkpoints only after destination effects are durably committed and make retry/restart idempotent.
+Mapped source batches cannot yet retry or restart safely. Access cursors are keyed only by `TableKey`, so connection/mapping identities would collide, and a crash between destination write and cursor advance can duplicate or skip rows.
 
-### Required proof
+### Evidence
 
-- crash before destination commit leaves checkpoint unchanged;
-- crash after destination commit is recoverable without duplicates;
-- timestamp overlap plus external-key deduplication works;
-- account/source/mapping identities cannot collide;
-- schema-key/cursor drift blocks the affected mapping;
-- metrics distinguish read, inserted, updated, skipped and rejected rows.
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` defines checkpoint identity as `ConnectionId + MappingProfileId + SourceStream` and requires the checkpoint to be the last source position whose destination effects were committed.
+- `AccessImportCursors` is keyed only by `TableKey` and must not be reused as the QDB06 identity.
+- QDB05 mapping is request-scoped; there is no durable mapping store. `MappingProfileId` is a hash of the mapping document.
+
+### Scope
+
+- durable `SourceSyncCheckpoints` / `SourceSyncAppliedRows` model and migration
+- checkpoint engine with crash, overlap, identity, schema-drift and metrics proofs
+- EF store that commits destination rows and checkpoint in one transaction
+- dedicated tenant scope `n/a_dedicated`; no caller-header tenant authority
+- do not upsert Artikli/Prodaja in this slice; staging rows are the destination
+- do not write back to customer sources; internal DB stays PostgreSQL
+
+### Read first
+
+- `docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `Api/Services/DataSources/SourceMappingPreviewService.cs`
+- `Api/Services/Access/AccessImportCursorRepository.cs`
+
+### Do
+
+1. Persist checkpoints only after destination effects are staged for the same commit.
+2. Make retry/restart idempotent via external-key payload hash (insert/update/skip).
+3. Block the mapping when schema fingerprint drifts; do not apply new rows.
+4. Keep connection and mapping identities from colliding.
+5. Record read/inserted/updated/skipped/rejected metrics; rejected rows never become fake zeros.
+
+### Tests
+
+- crash before destination commit leaves checkpoint unchanged
+- crash after destination commit is recoverable without duplicates
+- timestamp overlap plus external-key deduplication works
+- connection/mapping identities cannot collide
+- schema fingerprint drift blocks the affected mapping
+- metrics distinguish read, inserted, updated, skipped and rejected rows
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceCheckpointSyncEngineTests`
+
+### Acceptance
+
+- All six required proofs pass.
+- Checkpoint identity is `ConnectionId + MappingProfileId + SourceStream`.
+- Dedicated deployments persist `TenantScope = n/a_dedicated`.
+- Access `TableKey` cursors remain unchanged compatibility.
+
+### Dependencies
+
+- `QDB05` DONE
+- Owner migration approval 2026-08-18
+- Do not start MT02 or invent `shared_saas`; MT07 owns shared tenant ownership later
+- SQL Server end-to-end through this engine remains a later commercial gate, not this slice
+
+### Completion note
+
+- Date: 2026-08-18
+- Status: DONE
+- Completion: durable checkpoint identity, EF tables, and idempotent apply engine landed; required crash/overlap/identity/drift/metrics proofs pass against an in-memory store; destination is `SourceSyncAppliedRows` staging rather than Artikli/Prodaja upsert
+- Changed files: Domain/Model/SourceSyncCheckpoint.cs; Domain/Model/SourceSyncAppliedRow.cs; Api/Services/DataSources/SourceCheckpointSyncContracts.cs; Api/Services/DataSources/SourceCheckpointSyncEngine.cs; Api/Services/DataSources/InMemorySourceSyncStore.cs; Api/Services/DataSources/EfSourceSyncStore.cs; Api/Services/DataSources/SourceCheckpointSyncService.cs; Api/Services/DataSources/SourceMappingProfileId.cs; Api.Tests/SourceCheckpointSyncEngineTests.cs; Infrastructure/Migrations/20260818120000_AddSourceSyncCheckpoints.cs; Infrastructure/Migrations/TrendplusDbContextModelSnapshot.cs; Infrastructure/DbContexts/TrendplusDbContext.cs; Api/Program.cs; docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md; docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md; docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md; MASTER_ROADMAP.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md; docs/ai/ANALYTICS_TEST_STRATEGY.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; .ai/runs/2026-08-18-QDB06-evidence.md
+- Contract/runtime behavior changed: yes; new checkpoint tables and apply API. Access import cursors are unchanged. Canonical Artikli/Prodaja upsert is not in this slice.
+- Checks run: git diff --check; dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceCheckpointSyncEngineTests --no-restore (8 passed); node scripts/check-agent-instructions.mjs --self-test; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs --self-test; node scripts/check-prompt-queues.mjs (261 tasks); node scripts/check-planning-architecture.mjs --self-test; node scripts/check-planning-architecture.mjs (71 planning tasks)
+- Checks not run: full Api.Tests suite; live SQL Server e2e through the checkpoint engine; npm frontend checks; EF in-memory crash-split (production EF store uses one transaction)
+- Run log: .ai/runs/2026-08-18-QDB06-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: SQL Server end-to-end through this engine; Artikli/Prodaja destination upsert; admin UI (QDB07)
+- Follow-up: RQ96 current execution READY; RQ106 Decision Pulse WAITING after RQ96; QDB07 after authorization/release gates
+- Residual risk: production workers must call `SourceCheckpointSyncService`; unused tables until a worker/e2e path applies batches. Split-commit crash proof is in-memory; EF store uses one transaction so that failure mode does not occur on the PostgreSQL path.
+- Prompt defect / scope repair: expanded legacy Goal/Required proof into the eight required sections; destination bounded to staging rows to avoid a second owner (Access unique indexes are `DataOrigin='access'` only)
+- Next: `RQ96`
 
 ---
 

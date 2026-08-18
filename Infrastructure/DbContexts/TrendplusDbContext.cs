@@ -426,6 +426,39 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.LeaseExpiresAtUtc);
             });
 
+            modelBuilder.Entity<SourceSyncCheckpoint>(eb =>
+            {
+                eb.ToTable("SourceSyncCheckpoints");
+                eb.HasKey(e => new { e.ConnectionId, e.MappingProfileId, e.SourceStream });
+                eb.Property(e => e.ConnectionId).HasMaxLength(128);
+                eb.Property(e => e.MappingProfileId).HasMaxLength(64);
+                eb.Property(e => e.SourceStream).HasMaxLength(128);
+                eb.Property(e => e.CursorMode).IsRequired().HasMaxLength(32).HasDefaultValue("id");
+                eb.Property(e => e.ExternalKeyTieBreaker).HasMaxLength(256);
+                eb.Property(e => e.OverlapSeconds).HasDefaultValue(60);
+                eb.Property(e => e.SchemaFingerprint).HasMaxLength(80);
+                eb.Property(e => e.FailureCategory).HasMaxLength(64);
+                eb.Property(e => e.LastError).HasMaxLength(2000);
+                eb.Property(e => e.TenantScope).IsRequired().HasMaxLength(32).HasDefaultValue("n/a_dedicated");
+                eb.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("NOW()");
+                eb.HasIndex(e => e.FailureCategory);
+            });
+
+            modelBuilder.Entity<SourceSyncAppliedRow>(eb =>
+            {
+                eb.ToTable("SourceSyncAppliedRows");
+                eb.HasKey(e => new { e.ConnectionId, e.MappingProfileId, e.SourceStream, e.ExternalKey });
+                eb.Property(e => e.ConnectionId).HasMaxLength(128);
+                eb.Property(e => e.MappingProfileId).HasMaxLength(64);
+                eb.Property(e => e.SourceStream).HasMaxLength(128);
+                eb.Property(e => e.ExternalKey).HasMaxLength(256);
+                eb.Property(e => e.PayloadHash).IsRequired().HasMaxLength(80);
+                eb.Property(e => e.ApplyStatus).IsRequired().HasMaxLength(16);
+                eb.Property(e => e.RejectionReason).HasMaxLength(64);
+                eb.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("NOW()");
+                eb.HasIndex(e => e.LastBatchId);
+            });
+
             // Transfers
             modelBuilder.Entity<Domain.Transfers.Transfer>(eb =>
             {
@@ -600,6 +633,8 @@ namespace Infrastructure.DbContexts
         public DbSet<DataImportBatch> DataImportBatches { get; set; } = null!;
         public DbSet<AccessImportCursor> AccessImportCursors { get; set; } = null!;
         public DbSet<AccessImportLog> AccessImportLogs { get; set; } = null!;
+        public DbSet<SourceSyncCheckpoint> SourceSyncCheckpoints { get; set; } = null!;
+        public DbSet<SourceSyncAppliedRow> SourceSyncAppliedRows { get; set; } = null!;
         public DbSet<Domain.Transfers.Transfer> Transfers { get; set; } = null!;
         public DbSet<Domain.Transfers.TransferItem> TransferItems { get; set; } = null!;
         public DbSet<Infrastructure.Model.StockReservation> StockReservations { get; set; } = null!;

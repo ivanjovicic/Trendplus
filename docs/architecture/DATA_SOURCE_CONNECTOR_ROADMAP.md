@@ -1,7 +1,7 @@
 # Trendplus Data Source Connector Roadmap
 
-Updated: 2026-08-05  
-Status: approved architecture direction; implementation remains gated by the prompt queue  
+Updated: 2026-08-18
+Status: approved architecture direction; implementation remains gated by the prompt queue
 Repository: `ivanjovicic/Trendplus`
 
 ## Decision
@@ -412,6 +412,8 @@ Deliverables:
 - no automatic guessing that changes data silently.
 
 ## Phase 5 — Durable incremental sync
+
+Status: delivered 2026-08-18 (`QDB06`). Destination for this slice is `SourceSyncAppliedRows` staging, not Artikli/Prodaja upsert.
 
 Goal: run idempotent imports with recoverable checkpoints.
 

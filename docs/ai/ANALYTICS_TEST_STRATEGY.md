@@ -99,6 +99,6 @@ Record skipped checks with a real reason. A compiling test is not passing runtim
 | Operational fallback must not look trusted | RQ | `RQ105` DONE |
 | Shared ErrorState/EmptyState/TrustHeader on stats pages | P-UI | `P-UI-20` |
 
-Do not start these while a higher-priority READY task (`P-UI-19`) owns overlapping paths, unless the prompt is explicitly marked parallel-safe and path-clear. `QDB06` is WAITING on owner migration approval and is not currently READY.
+Do not start these while a higher-priority READY task owns overlapping paths, unless the prompt is explicitly marked parallel-safe and path-clear. Current execution is `RQ96`. `QDB06` is DONE.
 
 Live prompt text: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` and `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`.

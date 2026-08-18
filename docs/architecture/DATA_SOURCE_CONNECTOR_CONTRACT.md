@@ -173,12 +173,14 @@ dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceMapping
 
 ## Remaining untested without a later prompt
 
-Recorded for later prompts (`QDB06+`):
+Recorded for later prompts (`QDB07+` / SQL Server e2e):
 
 - live ODBC metadata discovery and row streaming;
 - live `mdbtools` CLI metadata/streaming;
-- durable mapping persistence and checkpointed incremental sync;
-- end-to-end import pipeline interaction with checkpoints.
+- end-to-end import pipeline from SQL Server through `SourceCheckpointSyncEngine` into Artikli/Prodaja;
+- durable mapping-profile store (current `MappingProfileId` is a hash of the request mapping document).
+
+QDB06 delivered 2026-08-18: checkpoint identity `ConnectionId + MappingProfileId + SourceStream`, idempotent `SourceSyncAppliedRows` staging, schema-drift block, and read/inserted/updated/skipped/rejected metrics. Access `TableKey` cursors remain compatibility-only.
 
 ## Verification
 

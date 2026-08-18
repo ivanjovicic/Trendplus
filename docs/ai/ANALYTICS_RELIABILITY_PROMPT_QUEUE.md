@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none (owner-promoted current is `RQ96` in the inventory-signals addendum)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); current RQ READY is `RQ96`; current execution is `RQ96`
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); current RQ READY is `RQ96`; current execution is `RQ96`. `RQ106` Decision Pulse is WAITING after `RQ96`.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -36,6 +36,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ11 | DONE | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
 | RQ12 | DONE | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
 | RQ13 | DONE | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
+| RQ106 | WAITING | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
 
 ---
 
@@ -888,3 +889,69 @@ RQ10 capped board confidence because `InventoryActionSuggestionDto` lacks eviden
   - Approved inventory cards with signal evidence may now show `medium`/`high` (intentional when evidence supports it).
 - Next:
   - Queue complete; new reliability work requires a new queue entry.
+
+---
+
+## RQ106 - Decision Pulse exception digest
+
+Status: WAITING
+Ready after: `QDB06` is `DONE` and `RQ96` is `DONE`
+Priority: P1
+Type: backend/frontend-contract/tests
+Feature family: decision-pulse-digest
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ106-<agent>.lock.md`
+Commit suggestion: `feat(analytics): add decision pulse digest`
+
+### Problem
+
+Operators still have to open analytics screens to learn that a decision, data-quality failure or stale evidence needs action. There is no first-party exception digest that follows an existing decision/metric family with a Why and a deep link.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` ranks exception/digest delivery immediately after source adaptability and observed historical inventory.
+- Owner decision 2026-08-18: queue Decision Pulse as WAITING after QDB06 and RQ96; first version is email + in-app feed; no generic DSL or Slack.
+
+### Scope
+
+- in-app Decision Pulse feed plus email for the same events
+- events must follow an existing decision or metric family (inventory, product decision, supplier, data quality)
+- each item must expose Why, freshness/data-quality, and a deep link to the owning surface
+- suppress items whose evidence is stale, empty, or an error-as-zero
+- do not add Slack, a generic rule DSL, or a new recommendation scorer
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- current Decision Board / Product Decision / inventory action contracts
+
+### Do
+
+1. Define a bounded event vocabulary owned by existing backend decision/metric families.
+2. Persist or project an in-app feed that does not invent recommendations or rates.
+3. Send the same events by email without logging row payloads or secrets.
+4. Hide or suppress items when evidence is stale, missing, or in error; empty is not an alert.
+5. Keep MT dedicated (`n/a_dedicated`); do not use caller headers as tenant authority.
+
+### Tests
+
+- `git diff --check`
+- focused backend tests that Pulse items preserve backend status/reason/freshness and do not substitute zero KPIs for errors
+- focused UI or contract test that empty/error/stale items are not shown as actionable
+- email path does not include secrets or raw customer row payloads
+
+### Acceptance
+
+- An operator can receive a Pulse item with Why + deep link for one existing decision/metric family.
+- Stale or failed evidence cannot look like a trusted alert.
+- Slack and generic DSL remain out of scope.
+
+### Dependencies
+
+- `QDB06` DONE (owner 2026-08-18)
+- `RQ96` DONE so historical inventory evidence can back inventory Pulse items without reconstructed-as-observed confusion
+- Do not displace current execution `RQ96`
+- Do not start MT02 or shared-SaaS notification routing

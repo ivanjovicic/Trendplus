@@ -177,6 +177,9 @@ try
     builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
     builder.Services.AddSingleton<NamedSourceDiscoveryService>();
     builder.Services.AddSingleton<SourceMappingPreviewService>();
+    builder.Services.AddSingleton<SourceCheckpointSyncEngine>();
+    builder.Services.AddScoped<EfSourceSyncStore>();
+    builder.Services.AddScoped<SourceCheckpointSyncService>();
     builder.Services.AddFileStorage(builder.Configuration);
     var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
         builder.Configuration[$"{StorageOptions.Section}:Provider"]);

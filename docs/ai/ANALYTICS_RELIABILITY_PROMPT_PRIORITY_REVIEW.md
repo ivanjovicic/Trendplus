@@ -19,7 +19,7 @@ Primary goals:
 
 ## Reviewed queues
 
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ12
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ13 + RQ106 + RQ106
 - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` - Q69-Q82
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md` - RQ13-RQ24
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` - RQ25-RQ38
@@ -266,8 +266,8 @@ The queues are strong enough for agent execution, but current routing is not the
 The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
 
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: `RQ105` DONE. No remaining RQ READY in the owner-promoted pack. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
-- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`; QDB exclusive work remains clear (`QDB06` still needs migration approval). Current execution is `OBS08`.
+- Analytics correctness: current RQ READY is `RQ96`. `RQ105` DONE. `RQ106` Decision Pulse is WAITING after `RQ96`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution is `RQ96`.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

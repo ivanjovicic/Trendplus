@@ -18,7 +18,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ105` is DONE. No remaining RQ READY in this pack or the cross-surface addendum. Current execution is `OBS08`.
+2. `RQ105` is DONE. No remaining RQ READY in this pack or the cross-surface addendum. Current execution is `RQ96`. `RQ106` is WAITING in the main RQ queue after `RQ96`.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.

@@ -28,7 +28,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ70 | DONE | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
 | RQ71 | DONE | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
 | RQ89 | DONE | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
-| RQ96 | WAITING | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
+| RQ96 | READY | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
 | RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
@@ -747,6 +747,7 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 
 - `BCI05`/`BCI01` green first; do not bypass the current backend-CI override.
 - Owner promotion 2026-08-18: Gate-1 connector work is no longer the higher-priority blocker; this prompt is the current RQ execution READY.
+- Owner 2026-08-18 later approved and completed `QDB06` first; after that close this prompt is restored as current execution READY.
 - If source capture cannot yet produce observed snapshots reliably, finish `PARTIAL` with the exact missing source/runtime dependency.
 
 ---
