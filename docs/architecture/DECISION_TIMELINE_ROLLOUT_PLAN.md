@@ -196,6 +196,8 @@ Hardening requirements:
 - authorization checks stay on the backend, not in the UI copy;
 - timeline and export surfaces stay in parity.
 
+Runtime (DT08): `Api.Tests/DecisionTimelineExportProjectionTests.cs` covers full lifecycle, rejected vs done, executed-but-not-measured, delayed pending outcome, missing measurement evidence, export failure and outside-period empty CSV. UI labels for the same Slice-2 event/gap codes live in `Klijent/clientapp/src/utils/decisionTimelineLabels.ts`.
+
 Suggested tests for the future implementation prompt:
 
 - full lifecycle example

@@ -1,6 +1,6 @@
 # Trendplus Master Roadmap
 
-Updated: 2026-08-13
+Updated: 2026-08-17
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
@@ -39,21 +39,21 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Current execution READY is `OBS08` |
-| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Current execution READY is `OBS08`; `QDB06` still needs migration approval |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none | `RQ105` DONE = operational fallback on daily sales and dashboard inventory stays visible. Owner-promoted pack: `RQ100`-`RQ105` DONE. QDB exclusive work is no longer in progress. | Selected docs/tests only | `OBS08` |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Sequential refill complete; remaining program READY is `PERF16` (blocked on `MT10`) |
+| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Sequential refill complete; `QDB06` still needs migration approval |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none | `RQ105` DONE = operational fallback on daily sales and dashboard inventory stays visible. Owner-promoted pack: `RQ100`-`RQ105` DONE. QDB exclusive work is no longer in progress. | Selected docs/tests only | Sequential refill complete |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-21 DONE. P-UI-22 DONE. Queue complete. | Yes | queue complete |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB05` DONE) | `QDB01`-`QDB05` DONE. Mapping preview is request-scoped and secret-safe. `QDB06` WAITING until the owner approves a database migration. | Docs/tests when paths clear | Owner migration approval -> QDB06 |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision -> MT02 |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
 | DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | none | `DEX18` DONE = Executive Board explainability reuse contract frozen. `DEX19` DONE = runtime reuse of that vocabulary landed. | Yes, when path-safe vs current execution | Executive Board explainability runtime |
-| RL | same queue/roadmap as DEX | `RL09` | `RL07` DONE = measurement-statistics review surface contract frozen. Next is runtime presentation of `measurementStatistics`. Duplicate `RL08` remains OBSOLETE. | Yes, when path-safe vs current execution | Measurement statistics review surface runtime |
-| DT | same queue/roadmap as DEX | `DT08` | `DT07` DONE = Slice-2 timeline export/report runtime over the filtered projection. Next is Slice-5 hardening. | Yes, backend/frontend report paths when path-safe | Timeline export/report hardening |
+| RL | same queue/roadmap as DEX | none | `RL09` DONE = operators can review measurement-only statistics without fake-green rates. No RL10; Slice 4 calibration remains unqueued. Duplicate `RL08` remains OBSOLETE. | Yes, when path-safe vs current execution | Slice 4 calibration remains unqueued |
+| DT | same queue/roadmap as DEX | none | `DT08` DONE = Slice-5 hardening: rejected is not done, not_measured is not success/failure, export stays in parity with Slice-2. No DT09. | Yes, backend/frontend report paths when path-safe | Timeline export/report hardening complete |
 | PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF16` | PERF15 DONE = D8 shared-SaaS claims stay MT-owned and `n/a_dedicated` until MT fixtures/`MT10`. | Yes, docs/contracts when paths clear | D8 reopen after MT fixtures |
-| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS08` | `OBS01`-`OBS07` DONE; next is worker-SLA contract. `OBS09` WAITING after OBS08. | Yes, docs/contracts | Worker SLA evidence contract |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | `SEC07` | `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. `SEC07` is a frontend dependency vulnerability triage prompted by current `npm audit --omit=dev` evidence. | Yes, scoped dependency/security work when paths clear | Frontend dependency vulnerability triage |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | none | `OBS01`-`OBS09` DONE. Worker SLA contract and fake-green-safe capture exist. | Yes, docs/contracts | OBS dashboards remain later / unqueued |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC07` DONE = clientapp production npm audit is 0. `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, scoped dependency/security work when paths clear | SEC05 after MT09 / remaining program READYs |
 
-Owner refill 2026-08-13 keeps a live sequential backlog of 15 prompts. Current execution starts at `OBS08`. Do not promote `QDB06`, `MT02` or `GAI01` without the named migration, tenant-identity or pilot-ready decision.
+Owner refill 2026-08-13 sequential backlog of 15 prompts is complete (`SEC07` DONE). No remaining sequential execution pointer. Remaining program READY is `PERF16` only and must not start until `MT10` or an owner-recorded shared-SaaS gate. Do not promote `QDB06`, `MT02` or `GAI01` without the named migration, tenant-identity or pilot-ready decision.
 
 | # | ID | Status | Program |
 |---|---|---|---|
@@ -69,9 +69,9 @@ Owner refill 2026-08-13 keeps a live sequential backlog of 15 prompts. Current e
 | 10 | `RL07` | DONE | RL |
 | 11 | `DT07` | DONE | DT |
 | 12 | `PERF15` | DONE | PERF |
-| 13 | `OBS08` | READY | OBS |
-| 14 | `OBS09` | WAITING | OBS |
-| 15 | `SEC07` | READY | SEC |
+| 13 | `OBS08` | DONE | OBS |
+| 14 | `OBS09` | DONE | OBS |
+| 15 | `SEC07` | DONE | SEC |
 
 ## Product and process documents
 

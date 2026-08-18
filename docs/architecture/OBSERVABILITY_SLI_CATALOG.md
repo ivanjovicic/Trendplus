@@ -6,7 +6,9 @@ Roadmap: `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
 Related:
 
 - `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md` (OBS05 authoritative service-level terms)
+- `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
+- `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
 - `docs/qa/ANALYTICS_OBSERVABILITY_REVIEW.md`
 - `docs/qa/ANALYTICS_SQL_OBSERVABILITY_TIMEOUTS.md`
@@ -108,7 +110,7 @@ Analytics SLA boundary: evidence that analytics read models are refreshed from k
 | W5 | Queue depth / oldest work age | count / seconds | gap - not first-class today | OBS/STAB | workerName | unknown until instrumented |
 | W6 | Retry / dead-letter rate | rate | gap for most workers | OBS/STAB | workerName | unknown is not zero |
 
-Worker SLA boundary: evidence that required background processors are enabled, heartbeating and completing work without silent backlog growth. Disabled-by-policy is explicit, not green.
+Worker SLA boundary: evidence that required background processors are enabled, heartbeating and completing work without silent backlog growth. Disabled-by-policy is explicit, not green. Missing queue depth, last-success or heartbeat stays unknown, not a healthy zero — see `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`.
 
 ### E. Cache
 

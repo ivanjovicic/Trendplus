@@ -1,12 +1,13 @@
 # Recommendation Measurement Statistics Review Surface Contract
 
-Status: frozen contract for RL07
+Status: frozen contract for RL07; runtime consumer landed in RL09
 Date: 2026-08-14
 Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Related source contract: `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
 Related rollout plan: `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md` Slice 3
 Related runtime projection: `GET /api/analytics/actions/outcomes/summary` field `measurementStatistics`
 Related helper: `Application/Analytics/RecommendationMeasurementStatisticsProjection.cs`
+Related runtime UI: `Klijent/clientapp/src/components/analytics/RecommendationMeasurementStatisticsReview.tsx` on Centralne akcije
 
 ## Purpose
 
@@ -142,7 +143,7 @@ Unknown codes stay visible as backend warnings, not as a healthy default.
 
 ## Compatibility notes
 
-- This document does not change runtime behavior.
+- RL09 consumed this contract on Centralne akcije without changing field meaning or API shape.
 - This document does not authorize a new API shape.
 - This document does not authorize confidence calibration (Slice 4).
 - If a later UI cannot bind a frozen field, the gap stays visible instead of being synthesized from `totals`.

@@ -42,11 +42,11 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | `RL09` | backend/frontend - measurement statistics review surface runtime |
+| RL - Recommendation Learning | none | backend/frontend - measurement statistics review surface runtime |
 
 
 
-| DT - Decision Timeline | `DT08` | backend/frontend - timeline export/report hardening |
+| DT - Decision Timeline | none | backend/frontend - timeline export/report hardening |
 
 
 
@@ -1203,12 +1203,12 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 ## RL09 - Implement measurement-statistics review surface runtime slice
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: recommendation-learning-review-surface
 Parallel-safe: yes, when path-safe vs current execution
-Owner: unassigned
-Local lock: .ai/task-locks/RL09-<agent>.lock.md
+Owner: Cursor Auto
+Local lock: .ai/task-locks/RL09-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1256,6 +1256,26 @@ The review-surface contract is frozen, but operators still cannot see lifecycle 
 ### Dependencies
 
 - RL07 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/components/analytics/RecommendationMeasurementStatisticsReview.tsx, Klijent/clientapp/src/utils/recommendationMeasurementStatistics.ts, Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx, Klijent/clientapp/src/types/analytics.ts, docs/qa/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE_2026-08-17.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, .ai/runs/2026-08-17-RL09-evidence.md
+- Contract/runtime behavior changed: review/export surface binds funnel, coverage and outcome rates to measurementStatistics only; null rates stay Nije dostupno; missing stats do not recompute from totals
+- Checks run: npx vitest run focused RL09 display-contract and Analytics Actions specs - 41/41 pass; npm run typecheck - pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
+- Checks not run: npm run build (typecheck covered the TS surface); dotnet test (no backend change)
+- Run log: .ai/runs/2026-08-17-RL09-evidence.md
+- Evidence state: pending
+- Delivery mode: local-uncommitted
+- Main commit SHA: pending
+- Main verification: pending - local implementation awaiting owner commit
+- Missed: Pilot Readiness and Executive Board still show legacy totals coverage copy outside this panel
+- Follow-up: DT08 when path-safe; do not start PERF16 until MT10 or an owner-recorded shared-SaaS gate; RL Slice 4 calibration remains unqueued
+- Residual risk: legacy outcome-summary cards on the same page still show closed/measured totals rates as workflow coverage
+- Next: DT08 - Harden Decision Timeline export and retrospective report regression coverage
+- Prompt defect / scope repair: none
 
 ## RL07 - Prepare measurement-statistics review surface contract
 
@@ -1939,12 +1959,12 @@ The measurement-only statistics contract is frozen, but the runtime projection s
 
 ## DT08 - Harden Decision Timeline export and retrospective report regression coverage
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: decision-timeline-hardening
 Parallel-safe: yes, when path-safe vs current execution
-Owner: unassigned
-Local lock: .ai/task-locks/DT08-<agent>.lock.md
+Owner: Cursor Auto
+Local lock: .ai/task-locks/DT08-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1992,6 +2012,26 @@ DT07 added a Slice-2 timeline export path, but Slice-5 hardening still needs reg
 ### Dependencies
 
 - DT07 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Api.Tests/DecisionTimelineExportProjectionTests.cs, Klijent/clientapp/src/utils/decisionTimelineLabels.ts, Klijent/clientapp/src/utils/__tests__/decisionTimelineExport.spec.ts, Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx, docs/qa/DECISION_TIMELINE_SLICE5_HARDENING_2026-08-17.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, .ai/runs/2026-08-17-DT08-evidence.md
+- Contract/runtime behavior changed: Slice-5 regression coverage now proves rejected is not done, not_measured is not success/failure, export rows stay aligned with Slice-2 events/gaps, and empty/error CSV still omit fake zero rates. No new event store.
+- Checks run: dotnet test Api.Tests --filter DecisionTimelineExportProjectionTests - 8/8 pass; npx vitest run decisionTimelineExport.spec.ts + ProductDecisionCenterPage.confidence.spec.tsx - 22/22 pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
+- Checks not run: full dotnet test (Testcontainers); npm run build (focused page/label specs plus existing confidence suite)
+- Run log: .ai/runs/2026-08-17-DT08-evidence.md
+- Evidence state: pending
+- Delivery mode: local-uncommitted
+- Main commit SHA: pending
+- Main verification: pending - local implementation awaiting owner commit
+- Missed: print CSS / Excel / PDF remain out of scope; delayed-outcome does not invent outcome_measurement_started because Slice-2 does not emit that event
+- Follow-up: remaining program READY is PERF16 only; do not start until MT10 or an owner-recorded shared-SaaS gate. No DT09.
+- Residual risk: attempted success without OutcomeMeasuredAtUtc still keeps CurrentOutcomeStatus=success on the live row, but funnel/export do not count it as measured success
+- Next: PERF16 remains READY but blocked on MT10
+- Prompt defect / scope repair: none
 
 ## DT07 - Implement Decision Timeline export and retrospective report runtime slice
 

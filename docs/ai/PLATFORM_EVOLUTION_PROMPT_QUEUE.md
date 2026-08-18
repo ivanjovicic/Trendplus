@@ -13,8 +13,8 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | `PERF16` | D8 reopen after MT fixtures |
-| OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
-| SEC - Security Evolution | `SEC07` | frontend production dependency vulnerability triage |
+| OBS - Observability | none | worker SLA contract + capture complete; next OBS dashboards remain unqueued |
+| SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -1197,12 +1197,12 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ## OBS08 - Define Worker SLA evidence contract
 
-Status: READY
+Status: DONE
 Priority: future
 Feature family: observability-worker-sla-evidence
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/OBS08-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: .ai/task-locks/OBS08-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1255,17 +1255,36 @@ Worker lifecycle evidence exists as scattered metrics, but there is still no fro
 - OBS06 DONE;
 - OBS05 DONE.
 
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md, docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md, docs/architecture/OBSERVABILITY_SLI_CATALOG.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-OBS08-evidence.md
+- Contract/runtime behavior changed: docs-only worker SLA evidence fields, states and unknown-vs-green rules; no runtime wiring
+- Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
+- Checks not run: npm run build / dotnet test - docs/contracts only
+- Run log: .ai/runs/2026-08-17-OBS08-evidence.md
+- Evidence state: pending
+- Delivery mode: local-uncommitted
+- Main commit SHA: pending
+- Main verification: pending - local implementation awaiting owner commit
+- Missed: runtime capture remains OBS09
+- Follow-up: OBS09 READY
+- Residual risk: current /api/workers/health can still look green until OBS09 capture lands
+- Next: OBS09 - Capture worker SLA evidence without fake-green defaults
+- Prompt defect / scope repair: none
+
 ---
 
 ## OBS09 - Capture worker SLA evidence without fake-green defaults
 
-Status: WAITING
-Ready after: OBS08 DONE
+Status: DONE
 Priority: future / measurement
 Feature family: observability-worker-sla-evidence
 Parallel-safe: yes, docs/contracts or later runtime wiring after OBS08
-Owner: unassigned
-Local lock: `.ai/task-locks/OBS09-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: .ai/task-locks/OBS09-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1309,6 +1328,26 @@ After the worker SLA evidence contract exists, the repo still needs a bounded ev
 ### Dependencies
 
 - OBS08 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Infrastructure/Services/WorkerSlaEvidenceMapper.cs, Api/Endpoints/AllEndpoints.cs, Api.Tests/WorkerSlaEvidenceMapperTests.cs, docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-OBS09-evidence.md
+- Contract/runtime behavior changed: additive SlaEvidence on GET /api/workers/health; uninstrumented fields stay null/unknown; existing health counts unchanged
+- Checks run: focused WorkerSlaEvidenceMapperTests; governance validators; git diff --check
+- Checks not run: full dotnet test suite; npm frontend checks
+- Run log: .ai/runs/2026-08-17-OBS09-evidence.md
+- Evidence state: pending
+- Delivery mode: local-uncommitted
+- Main commit SHA: pending
+- Main verification: pending - local implementation awaiting owner commit
+- Missed: per-worker runtime policy pause not on snapshot; W5/W6 remain uninstrumented
+- Follow-up: SEC07 sequential next; OBS dashboards remain unqueued
+- Residual risk: legacy health counts can still look green; operators must read SlaEvidence
+- Next: SEC07 - Frontend production dependency vulnerability triage
+- Prompt defect / scope repair: none
 
 ---
 
@@ -1851,13 +1890,13 @@ Slice-1 API/process evidence can show availability and request completion, but s
 
 ## SEC07 - Frontend production dependency vulnerability triage
 
-Status: READY
+Status: DONE
 Ready after: `SEC04` DONE and current `Klijent/clientapp` production dependency audit evidence exists
 Priority: security / release-hardening
 Feature family: frontend-supply-chain-vulnerability-triage
 Parallel-safe: no - shares frontend dependency lockfile and build/test paths
-Owner: unassigned
-Local lock: `.ai/task-locks/SEC07-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: .ai/task-locks/SEC07-cursor.lock.md (removed after DONE)
 Commit suggestion: `fix(security): triage frontend dependency vulnerabilities`
 
 ### Problem
@@ -1933,6 +1972,26 @@ npm run build
 - `SEC04` DONE.
 - This prompt may run before `SEC05` because it is supply-chain remediation, not tenant/offboarding assurance.
 - Do not displace active BCI/STAB/QDB runtime gates unless the owner explicitly prioritizes release security hardening.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/package.json, Klijent/clientapp/package-lock.json, Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.integration.spec.tsx, docs/qa/FRONTEND_DEPENDENCY_VULNERABILITY_TRIAGE_2026-08-17.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-SEC07-evidence.md
+- Contract/runtime behavior changed: production npm graph no longer ships vulnerable react-router/xlsx/puppeteer; server xlsx export format strings unchanged
+- Checks run: npm audit --omit=dev after = 0; focused routes 9/9; npm run check:analytics-guardrails; npm run build
+- Checks not run: full frontend suite; npm audit fix --force (forbidden)
+- Run log: .ai/runs/2026-08-17-SEC07-evidence.md
+- Evidence state: pending
+- Delivery mode: local-uncommitted
+- Main commit SHA: pending
+- Main verification: pending - local implementation awaiting owner commit
+- Missed: Puppeteer extract-zip highs remain in the dev tree only
+- Follow-up: sequential refill complete; remaining program READY is PERF16 (blocked on MT10)
+- Residual risk: reintroducing Puppeteer as a production dependency would reopen the audit
+- Next: PERF16 after MT10 or an owner-recorded shared-SaaS gate
+- Prompt defect / scope repair: dashboard integration copy aligned to Pregled poslovanja so routing proof stays green
 
 ---
 

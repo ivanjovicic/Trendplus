@@ -107,6 +107,8 @@ Expose the same statistics in operator and product review surfaces without hidin
 
 Frozen presentation contract: `docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md`.
 
+Runtime (RL09): Centralne akcije panel `RecommendationMeasurementStatisticsReview` binds funnel, coverage and outcome rates to `measurementStatistics` only.
+
 ### Scope
 
 - add a review surface that shows lifecycle funnel counts, measured coverage and outcome distribution;

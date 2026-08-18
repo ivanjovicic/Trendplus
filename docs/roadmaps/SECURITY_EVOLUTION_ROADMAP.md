@@ -58,7 +58,7 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 - signed/reproducible release evidence where practical;
 - handling of abandoned/unavailable packages.
 
-**Planning:** slice **S2-2**; CI wiring collaborates with BCI. `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md` now records the supported runtimes, severity gates, exception handling and reproducible scan commands. Current queue prompt: `SEC04` DONE; `SEC05` remains WAITING until MT09/interim scope exists.
+**Planning:** slice **S2-2**; CI wiring collaborates with BCI. `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md` now records the supported runtimes, severity gates, exception handling and reproducible scan commands. Current queue: `SEC04`/`SEC07` DONE; `SEC05` remains WAITING until MT09/interim scope exists.
 
 ### SEC-4 - Data protection and retention
 

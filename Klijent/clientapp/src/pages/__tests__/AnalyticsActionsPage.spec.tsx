@@ -104,6 +104,35 @@ function createActionItem(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildMeasurementStatistics(overrides: Record<string, unknown> = {}) {
+  return {
+    success: true,
+    issuedCount: 3,
+    acceptedCount: 2,
+    rejectedCount: 0,
+    ignoredCount: 0,
+    executedCount: 2,
+    measuredCount: 2,
+    notMeasuredCount: 0,
+    successCount: 1,
+    neutralCount: 0,
+    negativeCount: 1,
+    pendingCount: 1,
+    acceptanceRate: 0.67,
+    rejectionRate: 0,
+    ignoredRate: 0,
+    executionRate: 1,
+    measurementCoverageRate: 1,
+    notMeasuredShare: 0,
+    positiveOutcomeRate: 0.25,
+    neutralOutcomeRate: 0,
+    negativeOutcomeRate: 0.5,
+    warningCodes: [],
+    emptyReason: null,
+    ...overrides,
+  };
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -169,6 +198,10 @@ function buildOutcomeSummaryResponse(createdCount: number, measuredImpactSampleC
     byDataQuality: [],
     byConfidenceBucket: [],
     byReliabilityBucket: [],
+    measurementStatistics: buildMeasurementStatistics({
+      issuedCount: createdCount,
+      measuredCount: measuredImpactSampleCount,
+    }),
   };
 }
 
@@ -335,6 +368,9 @@ describe("AnalyticsActionsPage", () => {
       ],
       byConfidenceBucket: [],
       byReliabilityBucket: [],
+      measurementStatistics: buildMeasurementStatistics({
+        warningCodes: ["small_measured_sample"],
+      }),
     });
     getAnalyticsActionByIdMock.mockResolvedValue(item);
     updateAnalyticsActionStatusMock.mockResolvedValue(item);
@@ -472,7 +508,7 @@ describe("AnalyticsActionsPage", () => {
       );
     });
 
-    expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
+    expect((await screen.findAllByText("Negativan ishod")).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
     expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(screen.getAllByText("action_outcome_summary").length).toBeGreaterThan(0);
@@ -836,6 +872,29 @@ describe("AnalyticsActionsPage", () => {
       byDataQuality: [],
       byConfidenceBucket: [],
       byReliabilityBucket: [],
+      measurementStatistics: buildMeasurementStatistics({
+        issuedCount: 0,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        ignoredCount: 0,
+        executedCount: 0,
+        measuredCount: 0,
+        notMeasuredCount: 0,
+        successCount: 0,
+        neutralCount: 0,
+        negativeCount: 0,
+        pendingCount: 0,
+        acceptanceRate: null,
+        rejectionRate: null,
+        ignoredRate: null,
+        executionRate: null,
+        measurementCoverageRate: null,
+        notMeasuredShare: null,
+        positiveOutcomeRate: null,
+        neutralOutcomeRate: null,
+        negativeOutcomeRate: null,
+        emptyReason: "no_rows",
+      }),
     });
 
     render(<AnalyticsActionsPage />);
@@ -851,7 +910,8 @@ describe("AnalyticsActionsPage", () => {
 
     render(<AnalyticsActionsPage />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("list down");
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((alert) => alert.textContent?.includes("list down"))).toBe(true);
     expect(screen.queryByText("Nema akcija.")).not.toBeInTheDocument();
     expect(screen.queryByText("Izmereni uticaj")).not.toBeInTheDocument();
     expect(screen.queryByText("Dopuni artikal A")).not.toBeInTheDocument();

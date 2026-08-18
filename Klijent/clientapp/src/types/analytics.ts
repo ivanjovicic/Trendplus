@@ -608,6 +608,7 @@ export interface ProductDecisionCenterItem {
   recommendationLifecycle?: RecommendationLifecycleCapture | null;
   evidenceSnapshotStatus?: "absent" | "available" | string | null;
   evidenceSnapshotPreview?: ProductDecisionEvidenceSnapshotPreview | null;
+  recommendationAllowed?: boolean | null;
 }
 
 export interface ProductDecisionEvidenceSnapshotPreview {
@@ -1854,6 +1855,32 @@ export interface AnalyticsActionOutcomeSummaryBucket {
   measuredOutcomeCount?: number | null;
 }
 
+export interface RecommendationMeasurementStatistics {
+  success: boolean;
+  issuedCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  ignoredCount: number;
+  executedCount: number;
+  measuredCount: number;
+  notMeasuredCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  pendingCount: number;
+  acceptanceRate?: number | null;
+  rejectionRate?: number | null;
+  ignoredRate?: number | null;
+  executionRate?: number | null;
+  measurementCoverageRate?: number | null;
+  notMeasuredShare?: number | null;
+  positiveOutcomeRate?: number | null;
+  neutralOutcomeRate?: number | null;
+  negativeOutcomeRate?: number | null;
+  warningCodes: string[];
+  emptyReason?: string | null;
+}
+
 export interface AnalyticsActionOutcomeSummaryResponse {
   meta: AnalyticsActionOutcomeSummaryMeta;
   totals: AnalyticsActionOutcomeSummaryTotals;
@@ -1864,6 +1891,7 @@ export interface AnalyticsActionOutcomeSummaryResponse {
   byDataQuality: AnalyticsActionOutcomeSummaryBucket[];
   byConfidenceBucket: AnalyticsActionOutcomeSummaryBucket[];
   byReliabilityBucket: AnalyticsActionOutcomeSummaryBucket[];
+  measurementStatistics?: RecommendationMeasurementStatistics | null;
 }
 
 export interface AnalyticsActionFilters {

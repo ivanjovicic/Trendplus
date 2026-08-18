@@ -120,7 +120,7 @@ Phases:
 5. outcome window and measurement state display — planned UI/export slices in DT02; honesty rules frozen in DT06;
 6. success metrics that distinguish issued, accepted, executed, measured and successful denominators — **DONE** in DT01 (aligned with RL01);
 7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots and DEX10 evidence snapshots; presence/absence frozen in DT06;
-8. export/reporting for decision review and business retrospectives — **DONE** as DT06 contract plus DT07 runtime export (`GET /api/analytics/cached/products/decision-center/timeline/export`) over Slice-2; Slice-5 hardening is `DT08`.
+8. export/reporting for decision review and business retrospectives — **DONE** as DT06 contract plus DT07 runtime export (`GET /api/analytics/cached/products/decision-center/timeline/export`) over Slice-2; Slice-5 hardening is **DONE** in `DT08`.
 
 Authoritative planning outputs:
 
@@ -128,7 +128,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: `DT08` (timeline export/report hardening), `RL09` (measurement statistics review surface runtime). `DT07`/`DEX18`/`RL07` DONE. `DEX19` DONE = Executive Board explainability runtime. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
+Current queue READY: none for DT/DEX/RL. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DT07`/`DEX18`/`RL07` DONE. `DEX19` DONE = Executive Board explainability runtime. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE. Slice 4 calibration remains unqueued.
 
 ## Decision Engine evolution
 

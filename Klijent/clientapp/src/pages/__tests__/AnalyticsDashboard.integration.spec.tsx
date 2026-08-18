@@ -60,7 +60,7 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByText("Pregled analitike");
+    const title = screen.getByText("Pregled poslovanja");
     expect(title).toBeInTheDocument();
   });
 
@@ -71,8 +71,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const periodLabel = screen.getByText("Period");
-    expect(periodLabel).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-control-bar")).toBeInTheDocument();
+    expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
   });
 
   it("shows overview dashboard section", () => {
@@ -82,8 +82,8 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    const dashboardHeader = screen.getByText("Pregledni dashboard");
-    expect(dashboardHeader).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-control-bar")).toBeInTheDocument();
+    expect(screen.getByText("Pregled poslovanja")).toBeInTheDocument();
   });
 
   it("shows detailed analysis section", () => {

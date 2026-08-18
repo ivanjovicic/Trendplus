@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract is now the current queue READY.
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. OBS dashboards remain later / unqueued.
 
 ### OBS-2 - Latency SLIs
 
@@ -113,6 +113,8 @@ The UI must never infer freshness from page render time.
   - OBS-6 worker SLA evidence when promoted
 
 ### OBS-6 - Worker SLA evidence
+
+**Status:** DONE (`OBS08`) — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. Runtime capture is DONE (`OBS09`) — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`.
 
 For each important worker:
 

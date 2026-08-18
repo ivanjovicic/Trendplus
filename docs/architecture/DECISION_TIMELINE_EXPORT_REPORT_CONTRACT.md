@@ -5,7 +5,7 @@ Date: 2026-08-13
 Related roadmap: `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
 Related event contract: `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 Related rollout plan: `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md` Slice 4
-Related live runtime: DT05 Slice-2 filtered timeline plus DT07 export on Product Decision Center
+Related live runtime: DT05 Slice-2 filtered timeline plus DT07 export on Product Decision Center; DT08 Slice-5 hardening tests
 Related snapshot vocabulary: DEX10 `AnalyticsActionDecisionEvidenceSnapshot` plus ledger creation/resolution snapshots
 
 ## Purpose

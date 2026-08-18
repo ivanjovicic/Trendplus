@@ -6,7 +6,9 @@ Roadmap: `docs/roadmaps/OBSERVABILITY_ROADMAP.md` (OBS-3)
 Related:
 
 - `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`
+- `docs/architecture/OBSERVABILITY_IMPORT_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/OBSERVABILITY_ANALYTICS_SLA_EVIDENCE_CONTRACT.md`
+- `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`
 - `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md`
 - OBS04 latency measurement contract (inside SLI catalog + PERF01 discipline)
 
@@ -128,7 +130,7 @@ Each area defines: **what the word means**, **measurement boundary**, **primary 
 - Processing: enqueue/oldest work → successful completion or explicit retry/DLQ.
 - Disabled-by-policy must be labeled disabled, not “healthy silence”.
 
-**Cite these SLIs first:** W1–W6.
+**Cite these SLIs first:** W1–W6. Honesty rules for queue age, last-success and paused/disabled state: `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`.
 
 **Out of bounds**
 

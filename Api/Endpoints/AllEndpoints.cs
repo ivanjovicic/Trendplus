@@ -85,6 +85,10 @@ public static class AllEndpoints
         app.MapGet("/api/workers/health", (WorkerHealthService workerHealth, WorkerRuntimeControlService workerControl, IHostEnvironment env) =>
         {
             var summary = workerHealth.GetHealthSummary();
+            var slaEvidence = WorkerSlaEvidenceMapper.Capture(
+                summary,
+                workerControl.IsEnabled,
+                DateTime.UtcNow);
             return Results.Ok(new
             {
                 TotalWorkers = summary.TotalWorkers,
@@ -99,7 +103,8 @@ public static class AllEndpoints
                 RuntimeToggleAllowed = workerControl.IsRuntimeToggleAllowed,
                 Environment = env.EnvironmentName,
                 LastSwitchAtUtc = workerControl.LastChangedUtc,
-                LastSwitchBy = workerControl.LastChangedBy
+                LastSwitchBy = workerControl.LastChangedBy,
+                SlaEvidence = slaEvidence
             });
         })
         .WithName("WorkerHealthCheck")

@@ -12,6 +12,7 @@ import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/ana
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import RecommendationMeasurementStatisticsReview from "../components/analytics/RecommendationMeasurementStatisticsReview";
 import type {
   AnalyticsActionItem,
   AnalyticsActionImpactLedger,
@@ -861,6 +862,13 @@ export default function AnalyticsActionsPage() {
           </div>
         </div>
       )}
+
+      <RecommendationMeasurementStatisticsReview
+        loading={outcomeSummaryLoading}
+        loadError={outcomeSummaryError}
+        summary={outcomeSummary}
+        onRetry={() => { void loadOutcomeSummary(filters); }}
+      />
 
       <section className="aaq-summary-panel" aria-labelledby="aaq-summary-title">
         <div className="aaq-summary-header">
