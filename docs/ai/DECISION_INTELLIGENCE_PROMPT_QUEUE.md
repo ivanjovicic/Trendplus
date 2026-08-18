@@ -1390,14 +1390,14 @@ The review-surface contract is frozen, but operators still cannot see lifecycle 
 - Checks run: npx vitest run focused RL09 display-contract and Analytics Actions specs - 41/41 pass; npm run typecheck - pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
 - Checks not run: npm run build (typecheck covered the TS surface); dotnet test (no backend change)
 - Run log: .ai/runs/2026-08-17-RL09-evidence.md
-- Evidence state: pending
-- Delivery mode: local-uncommitted
-- Main commit SHA: pending
-- Main verification: pending - local implementation awaiting owner commit
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
 - Missed: Pilot Readiness and Executive Board still show legacy totals coverage copy outside this panel
-- Follow-up: DT08 when path-safe; do not start PERF16 until MT10 or an owner-recorded shared-SaaS gate; RL Slice 4 calibration remains unqueued
+- Follow-up: DT08 when path-safe; RL10 is the current RL READY; do not start PERF16 until MT10
 - Residual risk: legacy outcome-summary cards on the same page still show closed/measured totals rates as workflow coverage
-- Next: DT08 - Harden Decision Timeline export and retrospective report regression coverage
+- Next: RQ96 is current execution READY; RL10 is parallel-safe planning
 - Prompt defect / scope repair: none
 
 ## RL07 - Prepare measurement-statistics review surface contract
@@ -2146,14 +2146,14 @@ DT07 added a Slice-2 timeline export path, but Slice-5 hardening still needs reg
 - Checks run: dotnet test Api.Tests --filter DecisionTimelineExportProjectionTests - 8/8 pass; npx vitest run decisionTimelineExport.spec.ts + ProductDecisionCenterPage.confidence.spec.tsx - 22/22 pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
 - Checks not run: full dotnet test (Testcontainers); npm run build (focused page/label specs plus existing confidence suite)
 - Run log: .ai/runs/2026-08-17-DT08-evidence.md
-- Evidence state: pending
-- Delivery mode: local-uncommitted
-- Main commit SHA: pending
-- Main verification: pending - local implementation awaiting owner commit
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
 - Missed: print CSS / Excel / PDF remain out of scope; delayed-outcome does not invent outcome_measurement_started because Slice-2 does not emit that event
-- Follow-up: remaining program READY is PERF16 only; do not start until MT10 or an owner-recorded shared-SaaS gate. No DT09.
+- Follow-up: current execution READY is RQ96. DT09 remains WAITING. PERF16 is BLOCKED on MT10.
 - Residual risk: attempted success without OutcomeMeasuredAtUtc still keeps CurrentOutcomeStatus=success on the live row, but funnel/export do not count it as measured success
-- Next: PERF16 remains READY but blocked on MT10
+- Next: RQ96 - Canonical observed daily inventory snapshot foundation
 - Prompt defect / scope repair: none
 
 ## DT07 - Implement Decision Timeline export and retrospective report runtime slice

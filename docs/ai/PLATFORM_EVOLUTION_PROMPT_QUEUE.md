@@ -153,10 +153,10 @@ PERF15 froze D8 as MT-owned and `n/a_dedicated`, but there is still no authorize
 - Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
 - Checks not run: npm/dotnet tests - docs/routing only
 - Run log: .ai/runs/2026-08-18-queue-promote-ready-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending - promotion commit awaiting push
+- Main commit SHA: 51550ec833985a79149de9215adee38c7696ceab
+- Main verification: passed - origin/main contains 51550ec833985a79149de9215adee38c7696ceab
 - Missed: no D8 measurement pack
 - Follow-up: reopen PERF16 only after MT10 or an explicit shared-SaaS gate
 - Residual risk: a later agent could still infer shared_saas from dedicated PERF10-PERF14 packs
@@ -1348,10 +1348,10 @@ Worker lifecycle evidence exists as scattered metrics, but there is still no fro
 - Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
 - Checks not run: npm run build / dotnet test - docs/contracts only
 - Run log: .ai/runs/2026-08-17-OBS08-evidence.md
-- Evidence state: pending
-- Delivery mode: local-uncommitted
-- Main commit SHA: pending
-- Main verification: pending - local implementation awaiting owner commit
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
 - Missed: runtime capture remains OBS09
 - Follow-up: OBS09 READY
 - Residual risk: current /api/workers/health can still look green until OBS09 capture lands
@@ -1422,12 +1422,12 @@ After the worker SLA evidence contract exists, the repo still needs a bounded ev
 - Checks run: focused WorkerSlaEvidenceMapperTests; governance validators; git diff --check
 - Checks not run: full dotnet test suite; npm frontend checks
 - Run log: .ai/runs/2026-08-17-OBS09-evidence.md
-- Evidence state: pending
-- Delivery mode: local-uncommitted
-- Main commit SHA: pending
-- Main verification: pending - local implementation awaiting owner commit
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
 - Missed: per-worker runtime policy pause not on snapshot; W5/W6 remain uninstrumented
-- Follow-up: SEC07 sequential next; OBS dashboards remain unqueued
+- Follow-up: SEC07 sequential next; OBS10 is the current OBS READY
 - Residual risk: legacy health counts can still look green; operators must read SlaEvidence
 - Next: SEC07 - Frontend production dependency vulnerability triage
 - Prompt defect / scope repair: none
@@ -2066,14 +2066,14 @@ npm run build
 - Checks run: npm audit --omit=dev after = 0; focused routes 9/9; npm run check:analytics-guardrails; npm run build
 - Checks not run: full frontend suite; npm audit fix --force (forbidden)
 - Run log: .ai/runs/2026-08-17-SEC07-evidence.md
-- Evidence state: pending
-- Delivery mode: local-uncommitted
-- Main commit SHA: pending
-- Main verification: pending - local implementation awaiting owner commit
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
 - Missed: Puppeteer extract-zip highs remain in the dev tree only
-- Follow-up: sequential refill complete; remaining program READY is PERF16 (blocked on MT10)
+- Follow-up: sequential refill complete; current execution READY is RQ96; OBS10 and RL10 are parallel-safe planning READYs; PERF16 is BLOCKED on MT10
 - Residual risk: reintroducing Puppeteer as a production dependency would reopen the audit
-- Next: PERF16 after MT10 or an owner-recorded shared-SaaS gate
+- Next: RQ96 - Canonical observed daily inventory snapshot foundation
 - Prompt defect / scope repair: dashboard integration copy aligned to Pregled poslovanja so routing proof stays green
 
 ---
