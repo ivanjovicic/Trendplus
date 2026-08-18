@@ -33,7 +33,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q76 | DONE | supplier-decision-query-parity | Compare precomputed and live supplier-decision SQL contracts |
 | Q77 | DONE | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
 | Q78 | DONE | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
-| Q79 | READY | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
+| Q79 | DONE | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
 | Q80 | WAITING | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | WAITING | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | WAITING | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |

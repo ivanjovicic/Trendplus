@@ -1,6 +1,6 @@
 # Trendplus Observability Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-18
 Status: roadmap only; instrumentation implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`OBS`)
 
@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. OBS dashboards remain later / unqueued.
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. Current queue READY: `OBS10` operational dashboard honesty contract.
 
 ### OBS-2 - Latency SLIs
 

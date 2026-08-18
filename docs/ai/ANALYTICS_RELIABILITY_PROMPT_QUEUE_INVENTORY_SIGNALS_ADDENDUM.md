@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ89`/`RQ90`/`RQ99` DONE; post-BCI inventory foundations `RQ96`-`RQ98` remain WAITING)
+Current READY prompt: `RQ96`
 Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
@@ -688,7 +688,7 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 
 ## RQ96 - Canonical observed daily inventory snapshot foundation
 
-Status: WAITING
+Status: READY
 Ready after: `BCI05` is green in GitHub Actions and Gate-1 connector work is no longer the higher-priority blocker
 Priority: P1
 Type: sql/backend-contract/tests/docs
@@ -746,7 +746,7 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 ### Dependencies
 
 - `BCI05`/`BCI01` green first; do not bypass the current backend-CI override.
-- Gate-1 connector work remains higher priority until the owner explicitly promotes this foundation step.
+- Owner promotion 2026-08-18: Gate-1 connector work is no longer the higher-priority blocker; this prompt is the current RQ execution READY.
 - If source capture cannot yet produce observed snapshots reliably, finish `PARTIAL` with the exact missing source/runtime dependency.
 
 ---

@@ -3,7 +3,7 @@
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none (`RQ100`-`RQ105` DONE)
-Status: owner-promoted READY pack complete; current execution is `OBS08`
+Status: owner-promoted READY pack complete; current execution is `RQ96`
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 

@@ -42,11 +42,11 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | none | backend/frontend - measurement statistics review surface runtime |
+| RL - Recommendation Learning | `RL10` | docs/contracts - Slice 4 advisory calibration |
 
 
 
-| DT - Decision Timeline | none | backend/frontend - timeline export/report hardening |
+| DT - Decision Timeline | none | Slice-5 hardening complete; `DT09` WAITING |
 
 
 
@@ -69,6 +69,129 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
+
+---
+
+---
+
+## RL10 - Prepare Slice 4 advisory calibration contract
+
+Status: READY
+Priority: future / planning
+Feature family: recommendation-learning-calibration-contract
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/RL10-<agent>.lock.md`
+
+### Problem
+
+Operators can now review measurement-only statistics, but there is still no frozen contract for a later advisory calibration job. Without that contract, a later slice could mutate live confidence, treat acceptance as calibration evidence, or invent scores from missing outcome coverage.
+
+### Evidence
+
+- docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 4
+- docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md
+- docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+- Application/Analytics/RecommendationMeasurementStatisticsDto.cs
+
+### Scope
+
+- docs/contracts only for advisory calibration inputs, outputs, eligibility and ignore-safely rules;
+- keep live confidence, ranking and recommendation text unchanged;
+- no runtime calibration job, ML, or schema migration.
+
+### Read first
+
+- RL09 completion note
+- RL02 rollout plan Slice 4
+- confidence calibration audit
+- decision confidence contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze a citeable Slice 4 contract: cohort inputs, eligibility, advisory direction, reason codes and bounded hint fields.
+2. Require explicit later approval before any score mutation.
+3. Keep missing/insufficient measurement coverage as ineligible, not a fake-green calibrated rate.
+4. Do not change live confidence or start `RQ96` in this prompt.
+
+### Tests
+
+- contract forbids automatic confidence mutation;
+- insufficient coverage stays ineligible, not `0%` or a healthy calibrated rate;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable advisory calibration contract exists;
+- the contract can be ignored without changing product behavior;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL09 DONE;
+- RL07 DONE;
+- measurement-statistics review surface exists.
+
+---
+
+## DT09 - Prepare first-class timeline timestamp contract
+
+Status: WAITING
+Ready after: `DT08` is `DONE` and the current execution READY `RQ96` is no longer the higher-priority exclusive path, or the owner explicitly promotes this additive slice
+Priority: future / planning
+Feature family: decision-timeline-timestamps
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/DT09-<agent>.lock.md`
+
+### Problem
+
+DT correlation identifiers exist, but first-class timestamps remain an unqueued additive slice. A later timeline change could invent missing stage times, collapse rejected into done, or treat `not_measured` as a completed timestamped outcome.
+
+### Evidence
+
+- docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md DT phase 2
+- docs/architecture/DECISION_TIMELINE_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md
+- docs/qa/DECISION_TIMELINE_SLICE5_HARDENING_2026-08-17.md
+
+### Scope
+
+- docs/contracts only for which timestamps are first-class vs derived vs absent;
+- preserve Slice-5 honesty: rejected is not done, not_measured is not success/failure;
+- no new event store or schema migration.
+
+### Read first
+
+- DT08 completion note
+- DT01 event model
+- DT06 export/retrospective contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Name the first-class timestamp fields the timeline may expose without inventing missing stages.
+2. Keep absent timestamps explicit rather than backfilling a complete funnel.
+3. Keep export/report parity rules aligned with Slice-2/Slice-5.
+4. Do not implement runtime timestamp persistence in this prompt.
+
+### Tests
+
+- missing timestamps stay absent, not a synthetic completion time;
+- rejected/not_measured honesty from DT08 remains binding;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable first-class timestamp contract exists when this prompt is promoted;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT08 DONE;
+- do not outrank `RQ96` while that exclusive inventory foundation is READY.
 
 ---
 

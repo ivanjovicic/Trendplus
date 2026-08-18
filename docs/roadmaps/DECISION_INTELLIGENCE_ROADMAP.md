@@ -1,6 +1,6 @@
 # Trendplus Decision Intelligence Roadmap
 
-Updated: 2026-08-11
+Updated: 2026-08-18
 Status: approved future product direction; runtime implementation remains queue-gated  
 Owner queue: `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
 
@@ -128,7 +128,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
 - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: none for DT/DEX/RL. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DT07`/`DEX18`/`RL07` DONE. `DEX19` DONE = Executive Board explainability runtime. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE. Slice 4 calibration remains unqueued.
+Current queue READY: `RL10` for RL (Slice 4 advisory calibration contract). DEX none. DT none (`DT09` WAITING = first-class timestamps). `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DT07`/`DEX18`/`RL07` DONE. `DEX19` DONE = Executive Board explainability runtime. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 

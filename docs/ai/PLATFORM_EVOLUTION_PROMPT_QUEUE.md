@@ -12,8 +12,8 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF16` | D8 reopen after MT fixtures |
-| OBS - Observability | none | worker SLA contract + capture complete; next OBS dashboards remain unqueued |
+| PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
+| OBS - Observability | `OBS10` | docs/contracts - operational dashboard honesty |
 | SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -24,9 +24,72 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF16 - Reopen D8 shared-SaaS measurement when MT isolation fixtures exist
+## OBS10 - Prepare operational dashboard honesty contract
 
 Status: READY
+Priority: future / planning
+Feature family: observability-dashboard-honesty
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS10-<agent>.lock.md`
+
+### Problem
+
+Worker, import and analytics SLA contracts exist, but there is still no frozen honesty contract for operational dashboard layers. A later dashboard slice could default missing panels to green, invent healthy metrics, or mix business analytics into operational telemetry.
+
+### Evidence
+
+- docs/roadmaps/OBSERVABILITY_ROADMAP.md OBS-7
+- docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md Slice 5 / O2-6
+- docs/architecture/OBSERVABILITY_SLI_CATALOG.md proposed dashboard layers
+- docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md
+- docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md
+
+### Scope
+
+- docs/contracts only for dashboard layers, unknown/WARN rules and source-of-truth pointers;
+- keep business readiness, API, import, worker and database/cache layers distinct;
+- no runtime dashboard product, vendor choice, alerting or SLA numbers.
+
+### Read first
+
+- OBS09 capture note
+- OBS08 worker SLA contract
+- OBS02 instrumentation rollout plan Slice 5
+- OBS01 catalog dashboard layers
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze a citeable operational dashboard honesty contract that maps each layer to existing OBS evidence, not a new metric catalog.
+2. Keep missing panel data as unknown/WARN, never green or `0`.
+3. Keep tenant dimensions blocked until MT authorizes them.
+4. Do not implement a dashboard UI or start `PERF16` in this prompt.
+
+### Tests
+
+- contract forbids treating missing panel data as healthy;
+- last-success age stays unknown, not `0 seconds`;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable dashboard honesty contract exists;
+- operators can tell which layers are defined vs still unknown;
+- READY pointer remains single for OBS.
+
+### Dependencies
+
+- OBS09 DONE;
+- OBS08 DONE;
+- OBS01/OBS02 dashboard language already exists.
+
+---
+
+## PERF16 - Reopen D8 shared-SaaS measurement when MT isolation fixtures exist
+
+Status: BLOCKED
+Ready after: `MT10` is `DONE` or `MASTER_ROADMAP.md` records an explicit shared-SaaS evidence gate
 Priority: future / measurement
 Feature family: performance-scalability-d8-reopen
 Parallel-safe: yes, docs/contracts until MT fixtures exist
@@ -79,6 +142,26 @@ PERF15 froze D8 as MT-owned and `n/a_dedicated`, but there is still no authorize
 
 - PERF15 DONE;
 - `MT10` DONE or an owner-recorded shared-SaaS evidence gate.
+
+### Completion note
+
+- Date: 2026-08-18
+- Status: BLOCKED
+- Completion: 0% - D8 measurement cannot reopen without `MT10` or an owner-recorded shared-SaaS gate
+- Changed files: docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/PERFORMANCE_ROADMAP.md
+- Contract/runtime behavior changed: no; status corrected from READY to BLOCKED so agents do not claim a non-startable prompt
+- Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
+- Checks not run: npm/dotnet tests - docs/routing only
+- Run log: .ai/runs/2026-08-18-queue-promote-ready-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending - promotion commit awaiting push
+- Missed: no D8 measurement pack
+- Follow-up: reopen PERF16 only after MT10 or an explicit shared-SaaS gate
+- Residual risk: a later agent could still infer shared_saas from dedicated PERF10-PERF14 packs
+- Next: RQ96 is current execution READY; OBS10 and RL10 are parallel-safe planning READYs
+- Prompt defect / scope repair: PERF16 was left READY after the sequential refill even though its MT dependency forbids a start
 
 ## PERF15 - Shared-SaaS evidence gate
 

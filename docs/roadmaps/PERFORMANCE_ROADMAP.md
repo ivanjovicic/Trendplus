@@ -1,6 +1,6 @@
 # Trendplus Performance Roadmap
 
-Updated: 2026-08-12
+Updated: 2026-08-18
 Status: roadmap only; optimization implementation is queue-gated  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`PERF`)
 
@@ -34,7 +34,7 @@ Establish a repeatable benchmark plan for representative small, medium and large
 - API cold start and first useful response.
 
 **Status:** PERF01 contract complete — `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
-Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured). **PERF11** deferred-dimension pack: `.ai/runs/2026-08-12-PERF11-evidence.md` (D1 measured; D4/D5 initially blocked). **PERF12** remaining-gap pack: `.ai/runs/2026-08-12-PERF12-evidence.md` (D4/D7 measured; D5/D6 durable blockers). **PERF13** cache-footprint follow-up: `.ai/runs/2026-08-12-PERF13-evidence.md` (D5 measured; D6 blocked). **PERF14** import-overlap evidence: `.ai/runs/2026-08-12-PERF14-evidence.md` (D6 measured). **PERF15** shared-saas evidence gate: `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md` (D8 remains MT-owned / `n/a_dedicated`). Current queue READY: `PERF16`.
+Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain **targets until measured**. The first S-tier measurement pack is recorded in `.ai/runs/2026-08-11-PERF02-evidence.md`. **PERF03** measured backlog: `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md` (cold-start B8 is rank-1; warm B1 paths defer on S-tier). **PERF06** cold-start investigation: `docs/architecture/PERFORMANCE_COLD_START_INVESTIGATION_PLAN.md`. **PERF07** captured bootstrap section timings on M-tier and is recorded in `.ai/runs/2026-08-12-PERF07-evidence.md`. **PERF08** recorded distinct backend/frontend cold-start evidence in `.ai/runs/2026-08-12-PERF08-evidence.md`. **PERF09** scalability gate contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md`. **PERF10** first G10 dedicated pack: `.ai/runs/2026-08-12-PERF10-evidence.md` (D2/D3 measured). **PERF11** deferred-dimension pack: `.ai/runs/2026-08-12-PERF11-evidence.md` (D1 measured; D4/D5 initially blocked). **PERF12** remaining-gap pack: `.ai/runs/2026-08-12-PERF12-evidence.md` (D4/D7 measured; D5/D6 durable blockers). **PERF13** cache-footprint follow-up: `.ai/runs/2026-08-12-PERF13-evidence.md` (D5 measured; D6 blocked). **PERF14** import-overlap evidence: `.ai/runs/2026-08-12-PERF14-evidence.md` (D6 measured). **PERF15** shared-saas evidence gate: `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md` (D8 remains MT-owned / `n/a_dedicated`). Current queue READY: none. `PERF16` is BLOCKED on `MT10`.
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
@@ -208,7 +208,7 @@ Contract: `docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md` 
   - worker/import overlap evidence is local-host only
   - D8 remains MT-owned and n/a_dedicated
 - Next:
-  - PERF16 D8 reopen after MT fixtures; current execution is OBS08
+  - PERF16 BLOCKED on MT10 / shared-SaaS gate; current execution is RQ96
 
 ## Required benchmark evidence
 

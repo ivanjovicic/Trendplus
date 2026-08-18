@@ -56,8 +56,8 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 2. `BCI05` is READY: local `Api.Tests` Release build is restored on `469acbf`. Capture green GHA on a commit that includes that stub fix.
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
-5. Post-BCI inventory-foundation prompts `RQ96`-`RQ98` are queued as WAITING backlog; they must not be promoted ahead of green GHA evidence.
-6. Routing update 2026-08-14: `MASTER_ROADMAP.md` is authoritative. `BCI01`/`BCI05`/`BCI06` are DONE. `RQ105` is DONE. `P-UI-22` is DONE. `DEX18` is DONE. `RL07` is DONE. `DT07` is DONE. `PERF15` is DONE. Current execution is `OBS08`. Do not revive `RQ89`/`RQ90` as READY.
+5. Post-BCI inventory-foundation prompt `RQ96` is READY after owner promotion 2026-08-18. `RQ97`-`RQ98` remain WAITING.
+6. Routing update 2026-08-18: `MASTER_ROADMAP.md` is authoritative. Sequential refill is complete. Current execution is `RQ96`. Parallel-safe planning READYs are `OBS10` and `RL10`. `PERF16` is BLOCKED on `MT10`. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 
