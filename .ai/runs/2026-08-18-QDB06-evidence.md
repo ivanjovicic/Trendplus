@@ -4,9 +4,9 @@ Date: 2026-08-18
 Agent/tool: Cursor Auto
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: dcda7e21eb0d8f367481418d446083e47df2a820
+Main verification: passed - origin/main contains dcda7e21eb0d8f367481418d446083e47df2a820
+Evidence state: synchronized
 
 ## What was done
 - Owner 2026-08-18 approved the QDB06 database migration and ran it before RQ96.

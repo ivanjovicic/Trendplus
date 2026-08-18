@@ -471,10 +471,10 @@ Mapped source batches cannot yet retry or restart safely. Access cursors are key
 - Checks run: git diff --check; dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceCheckpointSyncEngineTests --no-restore (8 passed); node scripts/check-agent-instructions.mjs --self-test; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs --self-test; node scripts/check-prompt-queues.mjs (261 tasks); node scripts/check-planning-architecture.mjs --self-test; node scripts/check-planning-architecture.mjs (71 planning tasks)
 - Checks not run: full Api.Tests suite; live SQL Server e2e through the checkpoint engine; npm frontend checks; EF in-memory crash-split (production EF store uses one transaction)
 - Run log: .ai/runs/2026-08-18-QDB06-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: dcda7e21eb0d8f367481418d446083e47df2a820
+- Main verification: git rev-parse origin/main -> dcda7e21eb0d8f367481418d446083e47df2a820; work SHA dcda7e21eb0d8f367481418d446083e47df2a820 is an ancestor
 - Missed: SQL Server end-to-end through this engine; Artikli/Prodaja destination upsert; admin UI (QDB07)
 - Follow-up: RQ96 current execution READY; RQ106 Decision Pulse WAITING after RQ96; QDB07 after authorization/release gates
 - Residual risk: production workers must call `SourceCheckpointSyncService`; unused tables until a worker/e2e path applies batches. Split-commit crash proof is in-memory; EF store uses one transaction so that failure mode does not occur on the PostgreSQL path.
