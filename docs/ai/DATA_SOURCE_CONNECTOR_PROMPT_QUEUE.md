@@ -18,6 +18,7 @@ Before claiming from this queue, confirm:
 5. Current Access import behavior is treated as shipped compatibility, not as disposable prototype code.
 
 `QDB01` is docs/tests-only and may run in parallel with unrelated runtime work. Later prompts are sequential unless their own section explicitly says otherwise.
+If this header says `Current READY prompt: none`, do not claim a later `WAITING` prompt. Treat the queue as parked until the blocker clears, or repair only the canonical routing metadata when that is the documented same-owner fix.
 
 ## Queue rules
 
