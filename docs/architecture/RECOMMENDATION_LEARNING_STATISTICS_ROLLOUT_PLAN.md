@@ -130,6 +130,9 @@ Runtime (RL09): Centralne akcije panel `RecommendationMeasurementStatisticsRevie
 
 Define the future input/output shape for a deterministic calibration job without changing live confidence yet.
 
+The citeable Slice 4 advisory contract is frozen in
+`docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md`.
+
 ### Scope
 
 - define the cohort inputs needed for a future calibration service;

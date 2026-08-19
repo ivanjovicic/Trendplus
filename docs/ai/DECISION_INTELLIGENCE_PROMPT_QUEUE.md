@@ -42,7 +42,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | `RL10` | docs/contracts - Slice 4 advisory calibration |
+| RL - Recommendation Learning | none | docs/contracts - Slice 4 advisory calibration |
 
 
 
@@ -76,12 +76,12 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 ## RL10 - Prepare Slice 4 advisory calibration contract
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: recommendation-learning-calibration-contract
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/RL10-<agent>.lock.md`
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
@@ -133,6 +133,25 @@ Operators can now review measurement-only statistics, but there is still no froz
 - RL09 DONE;
 - RL07 DONE;
 - measurement-statistics review surface exists.
+
+### Completion note
+
+- Date: 2026-08-19
+- Status: DONE
+- Completion: 100%
+- Changed files: docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md, docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md, docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, .ai/runs/2026-08-19-RL10-evidence.md
+- Contract/runtime behavior changed: froze the Slice 4 advisory calibration contract as a citeable docs-only contract with explicit advisory-only outputs, bounded hint semantics, approval gating and ignore-safely rules; live confidence and ranking remain unchanged
+- Checks run: node scripts/check-agent-instructions.mjs --self-test; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs --self-test; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs --self-test; node scripts/check-planning-architecture.mjs; git diff --check
+- Checks not run: dotnet build; dotnet test; npm run check:analytics-guardrails; npm run build
+- Run log: .ai/runs/2026-08-19-RL10-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: OBS10 - Prepare operational dashboard honesty contract
+- Residual risk: the advisory contract is frozen before any runtime consumer exists, so implementation still needs a later backend prompt
+- Prompt defect / scope repair: none
 
 ---
 

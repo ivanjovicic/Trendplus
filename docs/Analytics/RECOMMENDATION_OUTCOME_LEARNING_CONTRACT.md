@@ -204,6 +204,9 @@ These thresholds are intentionally conservative and can only be changed by a lat
 
 This contract allows a future calibration layer to read stable statistics without changing runtime recommendation confidence yet.
 
+The canonical citeable Slice 4 advisory version of this interface is frozen in
+`docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md`.
+
 ### Input contract
 
 A future calibration job should receive:
