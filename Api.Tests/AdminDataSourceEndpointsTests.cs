@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using Api.Config;
 using Api.Endpoints;
+using Api.Models;
 using Api.Services;
+using Api.Services.DataSources;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
@@ -167,6 +169,107 @@ public sealed class AdminDataSourceEndpointsTests
         Assert.Equal(["Id", "Name", "Quantity"], columns.Columns);
     }
 
+    [Fact]
+    public async Task MappingPreview_ReturnsBoundedRowsAndStableFingerprint()
+    {
+        var emptyProfileName = $"empty-{Guid.NewGuid():N}";
+        await PrepareDiscoveryDataAsync();
+        await using var host = await CreateHostAsync(_fixture.ConnectionString, emptyProfileName);
+
+        var firstRequest = new SourceMappingPreviewRequest
+        {
+            CanonicalEntity = "source_items",
+            SourceTable = "dbo.SourceItems",
+            ExternalKeyColumns = ["Id"],
+            Cursor = new SourceReadQuery
+            {
+                CursorMode = "id",
+                CursorId = 0,
+                IdAliases = ["Id"]
+            },
+            FieldMappings =
+            [
+                new SourceMappingFieldRequest { TargetField = "Id", Aliases = ["Id"] },
+                new SourceMappingFieldRequest { TargetField = "Name", Aliases = ["Name"] },
+                new SourceMappingFieldRequest { TargetField = "Quantity", Aliases = ["Quantity"] }
+            ],
+            Take = 50
+        };
+
+        using var firstResponse = await SendMappingPreviewAsync(host.Client, firstRequest);
+        firstResponse.EnsureSuccessStatusCode();
+
+        var firstPreview = await firstResponse.Content.ReadFromJsonAsync<SourceMappingPreviewResponse>();
+        Assert.NotNull(firstPreview);
+        Assert.Equal("live-sql", firstPreview!.ProfileName);
+        Assert.Equal(50, firstPreview.RequestedTake);
+        Assert.Equal(25, firstPreview.ReturnedRows);
+        Assert.True(firstPreview.Truncated);
+        Assert.Equal(25, firstPreview.Rows.Count);
+        Assert.All(firstPreview.FieldMappings, mapping => Assert.Equal("matched", mapping.Status));
+        Assert.DoesNotContain(firstPreview.Issues, issue => string.Equals(issue.Scope, "field", StringComparison.OrdinalIgnoreCase));
+
+        var secondRequest = new SourceMappingPreviewRequest
+        {
+            CanonicalEntity = firstRequest.CanonicalEntity,
+            SourceTable = firstRequest.SourceTable,
+            ExternalKeyColumns = ["Id"],
+            Cursor = new SourceReadQuery
+            {
+                CursorMode = "id",
+                CursorId = 0,
+                IdAliases = ["Id"]
+            },
+            FieldMappings =
+            [
+                new SourceMappingFieldRequest { TargetField = "Id", Aliases = ["Id"] },
+                new SourceMappingFieldRequest { TargetField = "Name", Aliases = ["Name"] },
+                new SourceMappingFieldRequest { TargetField = "Quantity", Aliases = ["Quantity"] }
+            ],
+            Take = 5
+        };
+
+        using var secondResponse = await SendMappingPreviewAsync(host.Client, secondRequest);
+        secondResponse.EnsureSuccessStatusCode();
+
+        var secondPreview = await secondResponse.Content.ReadFromJsonAsync<SourceMappingPreviewResponse>();
+        Assert.NotNull(secondPreview);
+        Assert.Equal(firstPreview.SchemaFingerprint, secondPreview!.SchemaFingerprint);
+        Assert.Equal(5, secondPreview.RequestedTake);
+    }
+
+    [Fact]
+    public async Task MappingPreview_RejectsWithoutAdminKey()
+    {
+        var emptyProfileName = $"empty-{Guid.NewGuid():N}";
+        await PrepareDiscoveryDataAsync();
+        await using var host = await CreateHostAsync(_fixture.ConnectionString, emptyProfileName);
+
+        using var response = await host.Client.PostAsync(
+            "/api/admin/data-sources/live-sql/mapping-preview",
+            JsonContent.Create(CreateMappingPreviewRequest(50)));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MappingPreview_RejectsWithWrongAdminKey()
+    {
+        var emptyProfileName = $"empty-{Guid.NewGuid():N}";
+        await PrepareDiscoveryDataAsync();
+        await using var host = await CreateHostAsync(_fixture.ConnectionString, emptyProfileName);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/data-sources/live-sql/mapping-preview")
+        {
+            Content = JsonContent.Create(CreateMappingPreviewRequest(50))
+        };
+        request.Headers.Add("X-Admin-Key", "wrong-admin-key");
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private async Task PrepareDiscoveryDataAsync()
     {
         await using var connection = new SqlConnection(_fixture.ConnectionString);
@@ -189,6 +292,18 @@ public sealed class AdminDataSourceEndpointsTests
                 [Quantity] INT NOT NULL
             );
 
+            ;WITH Numbers AS (
+                SELECT 1 AS n
+                UNION ALL
+                SELECT n + 1
+                FROM Numbers
+                WHERE n < 30
+            )
+            INSERT INTO [dbo].[SourceItems] ([Id], [Name], [Quantity])
+            SELECT n, CONCAT(N'Item ', n), n * 10
+            FROM Numbers
+            OPTION (MAXRECURSION 30);
+
             CREATE TABLE [reporting].[SourceItemsArchive] (
                 [Id] INT NOT NULL PRIMARY KEY,
                 [ArchivedAt] DATETIME2(0) NOT NULL
@@ -197,6 +312,38 @@ public sealed class AdminDataSourceEndpointsTests
 
         await command.ExecuteNonQueryAsync();
     }
+
+    private static async Task<HttpResponseMessage> SendMappingPreviewAsync(HttpClient client, SourceMappingPreviewRequest request)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/admin/data-sources/live-sql/mapping-preview")
+        {
+            Content = JsonContent.Create(request)
+        };
+        httpRequest.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        return await client.SendAsync(httpRequest);
+    }
+
+    private static SourceMappingPreviewRequest CreateMappingPreviewRequest(int take)
+        => new()
+        {
+            CanonicalEntity = "source_items",
+            SourceTable = "dbo.SourceItems",
+            ExternalKeyColumns = ["Id"],
+            Cursor = new SourceReadQuery
+            {
+                CursorMode = "id",
+                CursorId = 0,
+                IdAliases = ["Id"]
+            },
+            FieldMappings =
+            [
+                new SourceMappingFieldRequest { TargetField = "Id", Aliases = ["Id"] },
+                new SourceMappingFieldRequest { TargetField = "Name", Aliases = ["Name"] },
+                new SourceMappingFieldRequest { TargetField = "Quantity", Aliases = ["Quantity"] }
+            ],
+            Take = take
+        };
 
     private static async Task<TestHost> CreateHostAsync(string connectionString, string emptyProfileName)
     {

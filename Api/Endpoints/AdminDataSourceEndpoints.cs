@@ -1,3 +1,4 @@
+using Api.Models;
 using Api.Services.DataSources;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
@@ -56,6 +57,16 @@ public static class AdminDataSourceEndpoints
             .WithSummary("List columns for a named source table")
             .RequireRateLimiting("db-heavy")
             .Produces<DataSourceColumnsResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/{profileName}/mapping-preview", PreviewMapping)
+            .WithName("PreviewDataSourceMapping")
+            .WithSummary("Preview a bounded mapping from a named source to a canonical entity")
+            .RequireRateLimiting("db-heavy")
+            .Produces<SourceMappingPreviewResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
@@ -257,12 +268,196 @@ public static class AdminDataSourceEndpoints
         }
     }
 
+    private static async Task<IResult> PreviewMapping(
+        string profileName,
+        HttpContext context,
+        IConfiguration configuration,
+        [FromBody] SourceMappingPreviewRequest request,
+        CancellationToken ct = default)
+    {
+        var denial = Authorize(context, configuration);
+        if (denial is not null)
+            return denial;
+
+        if (!TryResolveProfile(configuration, profileName, out var profile, out var notFound))
+            return notFound;
+
+        var validationError = ValidateMappingPreviewRequest(request);
+        if (validationError is not null)
+            return TypedResults.BadRequest(validationError);
+
+        if (!profile.IsConfigured)
+        {
+            return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
+                profile,
+                request,
+                "invalid_configuration",
+                "Connection string is missing or blank."));
+        }
+
+        if (!string.Equals(profile.Provider, "sqlserver", StringComparison.OrdinalIgnoreCase))
+        {
+            return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
+                profile,
+                request,
+                "unsupported_provider",
+                $"Provider '{profile.Provider}' is not supported by this preview path."));
+        }
+
+        var session = CreateSession(profile);
+        if (session is null)
+        {
+            return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
+                profile,
+                request,
+                "unsupported_provider",
+                $"Provider '{profile.Provider}' is not supported by this preview path."));
+        }
+
+        await using (session)
+        {
+            try
+            {
+                var sourceColumns = await session.GetColumnsAsync(request.SourceTable, ct);
+                if (sourceColumns.Count == 0)
+                {
+                    return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
+                        profile,
+                        request,
+                        "source_table_not_found",
+                        $"Table '{request.SourceTable}' was not found or has no readable columns."));
+                }
+
+                var take = SourceMappingPreviewService.BoundTake(request.Take);
+                var (rows, truncated) = await ReadBoundedRowsAsync(session, request.SourceTable, request.Cursor!, take, ct);
+                var preview = SourceMappingPreviewService.BuildPreview(
+                    profile.Name,
+                    profile.Provider,
+                    request,
+                    sourceColumns,
+                    rows,
+                    truncated);
+
+                return TypedResults.Ok(preview);
+            }
+            catch (Exception ex)
+            {
+                return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
+                    profile,
+                    request,
+                    MapConnectionTestFailure(profile, ex).Category,
+                    "Unable to read a mapping preview for this source."));
+            }
+        }
+    }
+
     private static ISourceDataSession? CreateSession(NamedDataSourceProfile profile)
     {
         if (string.Equals(profile.Provider, "sqlserver", StringComparison.OrdinalIgnoreCase))
             return new SqlServerSourceDataSession(profile.ConnectionString ?? string.Empty);
 
         return null;
+    }
+
+    private static IResult? ValidateMappingPreviewRequest(SourceMappingPreviewRequest request)
+    {
+        if (request is null)
+            return TypedResults.BadRequest(new { error = "request body is required." });
+
+        if (string.IsNullOrWhiteSpace(request.SourceTable))
+            return TypedResults.BadRequest(new { error = "sourceTable is required." });
+
+        if (string.IsNullOrWhiteSpace(request.CanonicalEntity))
+            return TypedResults.BadRequest(new { error = "canonicalEntity is required." });
+
+        if (request.ExternalKeyColumns.Count == 0)
+            return TypedResults.BadRequest(new { error = "externalKeyColumns is required." });
+
+        if (request.FieldMappings.Count == 0)
+            return TypedResults.BadRequest(new { error = "fieldMappings is required." });
+
+        if (request.Cursor is null || string.IsNullOrWhiteSpace(request.Cursor.CursorMode))
+            return TypedResults.BadRequest(new { error = "cursor with a cursorMode is required." });
+
+        return null;
+    }
+
+    private static async Task<(List<SourceDataRow> Rows, bool Truncated)> ReadBoundedRowsAsync(
+        ISourceDataSession session,
+        string sourceTable,
+        SourceReadQuery cursor,
+        int take,
+        CancellationToken ct)
+    {
+        var rows = new List<SourceDataRow>(take);
+        await using var enumerator = session.ReadRowsAsync(sourceTable, cursor, ct).GetAsyncEnumerator(ct);
+
+        while (rows.Count < take && await enumerator.MoveNextAsync())
+            rows.Add(enumerator.Current);
+
+        var truncated = await enumerator.MoveNextAsync();
+        return (rows, truncated);
+    }
+
+    private static SourceMappingPreviewResponse CreateUnavailableMappingPreviewResponse(
+        NamedDataSourceProfile profile,
+        SourceMappingPreviewRequest request,
+        string reasonCode,
+        string message)
+    {
+        var preview = new SourceMappingPreviewResponse
+        {
+            ProfileName = profile.Name,
+            Provider = profile.Provider,
+            CanonicalEntity = request.CanonicalEntity.Trim(),
+            SourceTable = request.SourceTable.Trim(),
+            ExternalKeyColumns = request.ExternalKeyColumns
+                .Where(column => !string.IsNullOrWhiteSpace(column))
+                .Select(column => column.Trim())
+                .ToList(),
+            Cursor = request.Cursor is null
+                ? null
+                : new SourceReadQuery
+                {
+                    CursorMode = request.Cursor.CursorMode,
+                    CursorTimestampUtc = request.Cursor.CursorTimestampUtc,
+                    CursorId = request.Cursor.CursorId,
+                    CursorTieBreakerId = request.Cursor.CursorTieBreakerId,
+                    OverlapSeconds = request.Cursor.OverlapSeconds,
+                    TimestampAliases = request.Cursor.TimestampAliases.ToArray(),
+                    IdAliases = request.Cursor.IdAliases.ToArray()
+                },
+            SchemaFingerprint = SourceMappingPreviewService.ComputeSchemaFingerprint(
+                profile.Name,
+                profile.Provider,
+                request,
+                Array.Empty<string>()),
+            RequestedTake = request.Take,
+            ReturnedRows = 0,
+            Truncated = false,
+            FieldMappings = request.FieldMappings
+                .Select(field => new SourceMappingPreviewFieldResult
+                {
+                    TargetField = field.TargetField,
+                    Aliases = field.Aliases.ToList(),
+                    Status = "missing",
+                    ReasonCode = reasonCode,
+                    Message = message
+                })
+                .ToList(),
+            Issues = new List<SourceMappingPreviewIssue>
+            {
+                new()
+                {
+                    Scope = "connection",
+                    ReasonCode = reasonCode,
+                    Message = message
+                }
+            },
+            Rows = []
+        };
+
+        return preview;
     }
 
     private static IResult? Authorize(HttpContext context, IConfiguration configuration)

@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `QDB05`
+Current READY prompt: `none`
 
 ## Global routing
 
@@ -375,14 +375,13 @@ Allow an authorized administrator to select a named source, test connectivity an
 
 ## QDB05 - Add deterministic mapping profile and bounded preview
 
-Status: READY
+Status: DONE
 Ready after: `QDB04` is `DONE`  
 Priority: P1  
 Type: backend/data model/API tests  
 Feature family: source-mapping-preview  
 Parallel-safe: no  
 Owner: unassigned  
-Local lock: `.ai/task-locks/QDB05-<agent>.lock.md`  
 Commit suggestion: `feat(import): add source mapping preview`
 
 ### Goal
@@ -398,6 +397,38 @@ Map source streams to canonical Trendplus entities and preview a small sample wi
 - field-level validation and rejection reasons;
 - bounded preview;
 - no arbitrary transform scripts or model-generated mappings.
+
+### Completion note
+
+- Date: 2026-08-19
+- Status: DONE
+- Changed files:
+  - `Api/Models/SourceMappingPreviewModels.cs`
+  - `Api/Services/DataSources/SourceMappingPreviewService.cs`
+  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
+  - `Api.Tests/SourceMappingPreviewServiceTests.cs`
+  - `Api.Tests/AdminDataSourceEndpointsTests.cs`
+  - `docs/architecture/DATA_SOURCE_MAPPING_PREVIEW_CONTRACT.md`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed:
+  - added deterministic source-mapping preview models plus a SQL Server-backed admin preview endpoint;
+  - required explicit source table, canonical entity, external keys and cursor selection;
+  - resolved column aliases deterministically and returned field-level status/reason codes;
+  - bounded preview rows to 25 and surfaced truncation/fingerprint metadata;
+  - kept failure and validation states explicit instead of inventing a successful preview.
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceMappingPreviewServiceTests` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~AdminDataSourceEndpointsTests.MappingPreview` - pass
+- Checks not run:
+  - `dotnet build` - not run separately because the targeted `dotnet test` runs compiled the changed projects
+  - `git diff --check` - not run yet in this turn
+  - `node scripts/check-prompt-queues.mjs` - not run yet in this turn
+- Remaining risk:
+  - the preview route currently supports the SQL Server proof connector path only; other providers remain explicitly unavailable.
+- Next:
+  - `QDB06` stays WAITING until the owner approves the database migration
+- Prompt defect / scope repair:
+  - cursor mode validation now normalizes `timestamp_then_id` deterministically instead of treating it as an unknown mode; this keeps preview validation aligned with source-session cursor semantics.
 
 ---
 
