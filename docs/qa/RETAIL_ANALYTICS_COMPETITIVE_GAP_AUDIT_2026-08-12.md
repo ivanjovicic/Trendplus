@@ -160,6 +160,8 @@ A durable SKU/store/day inventory snapshot (variant-aware where source quality p
 
 Do not silently backfill fake historical stock. Historical reconstruction must carry provenance and confidence distinct from observed snapshots.
 
+A bounded first slice of that foundation now exists as the observed daily snapshot contract in `analytics_intel.vw_inventory_snapshot_foundation_v1`, but store-aware historical persistence is still not solved and should not be overclaimed as a full warehouse history.
+
 ### 4. Forecasting is a surface before it is a proven forecasting product
 
 The current runtime has a forecast snapshot read contract with 7/14/28-day values, OOS probability, overstock risk, confidence and explanation. The inspected repository search did not surface a corresponding production materializer/model owner for `analytics_inventory_forecast_snapshot`.

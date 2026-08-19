@@ -3,7 +3,7 @@
 -- Inventory risk intelligence layer.
 --
 -- Assumptions:
--- - there is no persisted daily inventory snapshot table today
+-- - canonical observed daily inventory snapshots are published separately in 025
 -- - current on-hand comes from the latest ProductsDim.Kolicina
 -- - historical stock is reconstructed backwards from:
 --     * current on-hand
@@ -273,7 +273,7 @@ SELECT
 FROM risk_rollup rr;
 
 COMMENT ON VIEW analytics_intel.vw_inventory_risk_signals_v1 IS
-'Versioned inventory risk signal view built from a reconstructed daily stock proxy. Current stock comes from ProductsDim.Kolicina and historical stock is rebuilt backwards from sales plus canonical non-sale inventory movements.';
+'Versioned inventory risk signal view built from a reconstructed daily stock proxy. Current stock comes from ProductsDim.Kolicina and historical stock is rebuilt backwards from sales plus canonical non-sale inventory movements. See 025 for the observed snapshot foundation and provenance contract.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_qty IS
 'Estimated on-hand quantity for the signal date. This is a stock proxy, not a persisted warehouse snapshot.';

@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ96`
+Current READY prompt: none (`RQ96` DONE; `RQ97`/`RQ98` WAITING)
 Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
@@ -28,7 +28,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ70 | DONE | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
 | RQ71 | DONE | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
 | RQ89 | DONE | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
-| RQ96 | READY | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
+| RQ96 | DONE | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
 | RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
@@ -688,7 +688,7 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 
 ## RQ96 - Canonical observed daily inventory snapshot foundation
 
-Status: READY
+Status: DONE
 Ready after: `BCI05` is green in GitHub Actions and Gate-1 connector work is no longer the higher-priority blocker
 Priority: P1
 Type: sql/backend-contract/tests/docs
@@ -812,7 +812,7 @@ The runtime exposes forecast snapshot reads, but the repository evidence does no
 ### Dependencies
 
 - `BCI05`/`BCI01` green first.
-- `RQ96` is the preferred foundation order because forecast trust should not outrun historical stock truth without an explicit owner exception.
+- `RQ96` landed the preferred foundation order because forecast trust should not outrun historical stock truth without an explicit owner exception.
 - If no materializer evidence exists, finish with a fail-closed contract rather than inventing ownership.
 
 ---

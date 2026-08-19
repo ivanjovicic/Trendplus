@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Data;
 using System.Data.Common;
+using Application.Analytics.Queries.GetInventorySnapshotFoundation;
 using Application.Analytics.Queries.GetInventoryAlerts;
 using Application.Analytics.Queries.GetInventoryForecast;
 using Application.Analytics.Queries.GetInventorySizeCurve;
@@ -364,6 +365,56 @@ public sealed class InventorySnapshotContractTests
         Assert.NotEqual(0m, item.CurveConfidence);
         Assert.Equal("missing", item.EvidenceStatus);
         Assert.Equal("Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Observed inventory foundation preserves observed, reconstructed, mixed and missing evidence")]
+    public async Task InventorySnapshotFoundationHandler_PreservesProvenance()
+    {
+        var table = CreateTable(
+            ("article_id", typeof(int)),
+            ("sku", typeof(string)),
+            ("product_name", typeof(string)),
+            ("snapshot_date", typeof(DateTime)),
+            ("observed_at_utc", typeof(DateTime)),
+            ("observed_stock_qty", typeof(decimal)),
+            ("reconstructed_stock_qty", typeof(decimal)),
+            ("stock_qty", typeof(decimal)),
+            ("snapshot_source_status", typeof(string)),
+            ("has_mixed_evidence", typeof(bool)),
+            ("source_records", typeof(int)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(101, "SKU-101", "Observed shoe", new DateTime(2026, 8, 19), new DateTime(2026, 8, 19, 8, 30, 0, DateTimeKind.Utc), 12.0m, 11.0m, 12.0m, "observed", false, 1, 4L);
+        table.Rows.Add(102, "SKU-102", "Reconstructed shoe", new DateTime(2026, 8, 19), DBNull.Value, DBNull.Value, 7.0m, 7.0m, "reconstructed", false, 0, 4L);
+        table.Rows.Add(103, "SKU-103", "Mixed shoe", new DateTime(2026, 8, 19), new DateTime(2026, 8, 19, 9, 15, 0, DateTimeKind.Utc), 5.0m, 8.0m, 5.0m, "mixed", true, 2, 4L);
+        table.Rows.Add(104, "SKU-104", "Missing shoe", new DateTime(2026, 8, 19), DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, "missing", false, 0, 4L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySnapshotFoundationHandler(context, NullLogger<GetInventorySnapshotFoundationHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySnapshotFoundationQuery(Top: 10), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(4, result.TotalCount);
+        Assert.Equal(4, result.ReturnedCount);
+        Assert.Equal(4, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Equal(new DateTime(2026, 8, 19), result.AsOfDate?.Date);
+        Assert.Equal(4, result.Items.Count);
+        var observed = Assert.Single(result.Items, item => item.ArticleId == 101);
+        var reconstructed = Assert.Single(result.Items, item => item.ArticleId == 102);
+        var mixed = Assert.Single(result.Items, item => item.ArticleId == 103);
+        var missing = Assert.Single(result.Items, item => item.ArticleId == 104);
+
+        Assert.Equal("observed", observed.SnapshotSourceStatus);
+        Assert.Equal(12.0m, observed.StockQty);
+        Assert.Equal("reconstructed", reconstructed.SnapshotSourceStatus);
+        Assert.Null(reconstructed.ObservedStockQty);
+        Assert.Equal(7.0m, reconstructed.StockQty);
+        Assert.Equal("mixed", mixed.SnapshotSourceStatus);
+        Assert.True(mixed.HasMixedEvidence);
+        Assert.Equal("missing", missing.SnapshotSourceStatus);
+        Assert.Null(missing.StockQty);
+        Assert.Equal("Observed inventory snapshot foundation sadrzi reconstructed, mixed ili missing redove. Provenance je eksplicitna.", result.Warning);
     }
 
     private static RecordingAnalyticsDbContext CreateContext(DataTable table) => new(new RecordingDbConnection(table));
