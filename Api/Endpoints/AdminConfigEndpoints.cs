@@ -18,6 +18,8 @@ public static class AdminConfigEndpoints
 {
     public static void MapAdminConfigEndpoints(this WebApplication app)
     {
+        app.MapAdminDataSourceEndpoints();
+
         var group = app.MapGroup("/api/admin")
             .WithName("Admin Config");
 

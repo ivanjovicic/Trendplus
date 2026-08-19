@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `QDB04`
+Current READY prompt: `QDB05`
 
 ## Global routing
 
@@ -318,7 +318,7 @@ Implement the first non-Access provider against the provider-neutral contract.
 
 ## QDB04 - Add named source configuration and safe discovery endpoints
 
-Status: READY
+Status: DONE
 Priority: P1  
 Type: backend/security/API tests  
 Feature family: data-source-connection-discovery  
@@ -340,11 +340,42 @@ Allow an authorized administrator to select a named source, test connectivity an
 - rate-limit connection tests;
 - no durable mapping or sync job in this prompt.
 
+### Completion note
+
+- Date: 2026-08-19
+- Status: DONE
+- Changed files:
+  - `Api/Endpoints/AdminConfigEndpoints.cs`
+  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
+  - `Api.Tests/AdminDataSourceEndpointsTests.cs`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed:
+  - added admin data-source discovery endpoints for profiles, connection tests, schemas, tables and columns;
+  - kept connection strings and credentials out of responses;
+  - returned safe categories for unsupported providers, invalid configuration, authentication, permission, timeout and network/database failures;
+  - enforced admin authorization and strict/db-heavy rate limits on the new routes.
+- Checks:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~AdminDataSourceEndpointsTests` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` - not run separately because the targeted Release build already compiled the Api and Api.Tests projects
+  - `dotnet test` - not run separately because the targeted integration test covered the changed surface
+  - `npm run check:analytics-guardrails` - not run; backend-only prompt
+  - `npm run build` - not run; backend-only prompt
+- Remaining risk:
+  - SQL Server discovery still depends on a reachable local SQL Server during integration testing;
+  - non-SQL Server providers remain unsupported in this prompt and are surfaced as safe `unsupported_provider` results.
+- Next:
+  - `QDB05` READY
+- Prompt defect / scope repair:
+  - used in-memory named profile config in the test host to keep the safe-discovery contract isolated from durable secret storage decisions.
+
 ---
 
 ## QDB05 - Add deterministic mapping profile and bounded preview
 
-Status: WAITING  
+Status: READY
 Ready after: `QDB04` is `DONE`  
 Priority: P1  
 Type: backend/data model/API tests  
