@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ96`
+Current READY prompt: none (`RQ96` PARTIAL pending main landing)
 Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
@@ -688,7 +688,7 @@ dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQu
 
 ## RQ96 - Canonical observed daily inventory snapshot foundation
 
-Status: READY
+Status: PARTIAL
 Ready after: `BCI05` is green in GitHub Actions and Gate-1 connector work is no longer the higher-priority blocker
 Priority: P1
 Type: sql/backend-contract/tests/docs
@@ -749,6 +749,24 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 - Owner promotion 2026-08-18: Gate-1 connector work is no longer the higher-priority blocker; this prompt is the current RQ execution READY.
 - Owner 2026-08-18 later approved and completed `QDB06` first; after that close this prompt is restored as current execution READY.
 - If source capture cannot yet produce observed snapshots reliably, finish `PARTIAL` with the exact missing source/runtime dependency.
+
+### Completion note
+
+- Date: 2026-08-19
+- Status: PARTIAL
+- Completion: first-slice observed daily snapshot table, capture function, provenance view and backend contract; SHA not yet verified on origin/main
+- Changed files: listed in `.ai/runs/2026-08-19-RQ96-evidence.md`
+- Checks run: recorded in run log
+- Checks not run: live Postgres 025 smoke unless AnalyticsConnection; frontend; full Api.Tests suite
+- Run log: .ai/runs/2026-08-19-RQ96-evidence.md
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: skipped until merge
+- Missed: scheduled EOD capture worker; HTTP/UI; store-grained ProductsDim
+- Follow-up: verify SHA on origin/main then close RQ96 as DONE; `RQ97` stays WAITING
+- Residual risk: empty observed table until `capture_observed_inventory_daily` is invoked
+- Next: merge this landing PR, then SHA-verify DONE
 
 ---
 

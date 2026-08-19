@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (owner-promoted current is `RQ96` in the inventory-signals addendum)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); current RQ READY is `RQ96`; current execution is `RQ96`. `RQ106` Decision Pulse is WAITING after `RQ96`.
+Current READY prompt: none (`RQ96` PARTIAL pending main landing)
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE). `RQ97` WAITING. `RQ106` Decision Pulse is WAITING after `RQ96`.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 

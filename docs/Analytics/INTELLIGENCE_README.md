@@ -22,13 +22,14 @@ SQL files live under `Database/Analytics/Intelligence/`.
 - `022_inventory_risk_signals_v1.sql`
 - `023_price_intelligence_v1.sql`
 - `024_trend_momentum_v1.sql`
+- `025_observed_inventory_daily_snapshot_v1.sql`
 
 The schema is `analytics_intel`.
 
 Each signal domain provides:
 
 - a live view: `analytics_intel.vw_*_v1`
-- a materialized cache: `analytics_intel.mv_*_v1_cache`
+- a materialized cache: `analytics_intel.mv_*_v1_cache` (observed daily stock in 025 is a durable table plus live join view, not an MV)
 - a unique index so `REFRESH MATERIALIZED VIEW CONCURRENTLY` is available
 
 ## Source Model
@@ -88,8 +89,9 @@ Signals:
 
 Important assumption:
 
-- there is no canonical persisted daily stock snapshot table today
-- daily stock is therefore reconstructed as a proxy from current `ProductsDim.Kolicina`, trailing sales, and canonical movement types in `InventoryMovementFacts`
+- canonical observed daily stock is `analytics_intel.inventory_observed_daily_snapshot` (see `docs/architecture/OBSERVED_INVENTORY_DAILY_SNAPSHOT.md`)
+- this risk view still reconstructs a **proxy** from current `ProductsDim.Kolicina`, trailing sales, and canonical movement types in `InventoryMovementFacts`
+- reconstructed `stock_qty` is not observed warehouse history; use `vw_inventory_daily_stock_v1.provenance` to tell the difference
 
 Movement handling used by the SQL:
 

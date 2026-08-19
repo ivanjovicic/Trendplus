@@ -77,6 +77,75 @@ public sealed class AnalyticsIntelligenceSmokeTests
     }
 
     [Fact]
+    public async Task ObservedDailyStockView_Exists_WithProvenanceColumns()
+    {
+        if (!TryGetAnalyticsConnectionString(out var connectionString))
+        {
+            return;
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await BootstrapIntelligenceSqlAsync(connection,
+            "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
+            "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+            "Database/Analytics/Intelligence/025_observed_inventory_daily_snapshot_v1.sql");
+
+        await using (var existsCommand = new NpgsqlCommand(
+                         "SELECT to_regclass('analytics_intel.vw_inventory_daily_stock_v1')::text;",
+                         connection))
+        {
+            var relationName = (string?)await existsCommand.ExecuteScalarAsync();
+            Assert.Equal("analytics_intel.vw_inventory_daily_stock_v1", relationName);
+        }
+
+        const string probeSql = """
+            SELECT
+                article_id,
+                store_id,
+                date,
+                observed_qty,
+                reconstructed_qty,
+                stock_qty,
+                provenance,
+                captured_at_utc,
+                source_system
+            FROM analytics_intel.vw_inventory_daily_stock_v1
+            LIMIT 5;
+            """;
+
+        await using var probeCommand = new NpgsqlCommand(probeSql, connection)
+        {
+            CommandTimeout = 0
+        };
+
+        await using var reader = await probeCommand.ExecuteReaderAsync();
+        var actualColumns = Enumerable.Range(0, reader.FieldCount)
+            .Select(reader.GetName)
+            .ToArray();
+
+        Assert.Equal(
+            [
+                "article_id",
+                "store_id",
+                "date",
+                "observed_qty",
+                "reconstructed_qty",
+                "stock_qty",
+                "provenance",
+                "captured_at_utc",
+                "source_system"
+            ],
+            actualColumns);
+
+        while (await reader.ReadAsync())
+        {
+            _ = reader.GetValue(0);
+        }
+    }
+
+    [Fact]
     public async Task IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches()
     {
         if (!TryGetAnalyticsConnectionString(out var connectionString))
@@ -91,6 +160,7 @@ public sealed class AnalyticsIntelligenceSmokeTests
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql",
             "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+            "Database/Analytics/Intelligence/025_observed_inventory_daily_snapshot_v1.sql",
             "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",
             "Database/Analytics/Intelligence/024_trend_momentum_v1.sql");
 

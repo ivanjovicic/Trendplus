@@ -3,8 +3,9 @@
 -- Inventory risk intelligence layer.
 --
 -- Assumptions:
--- - there is no persisted daily inventory snapshot table today
--- - current on-hand comes from the latest ProductsDim.Kolicina
+-- - observed SKU/store/day on-hand now lives in analytics_intel.inventory_observed_daily_snapshot (025)
+-- - this view remains a reconstructed daily stock proxy, not the canonical observed snapshot
+-- - current on-hand used by the proxy comes from the latest ProductsDim.Kolicina
 -- - historical stock is reconstructed backwards from:
 --     * current on-hand
 --     * future sales from SalesLineFacts/SalesFacts
@@ -273,10 +274,10 @@ SELECT
 FROM risk_rollup rr;
 
 COMMENT ON VIEW analytics_intel.vw_inventory_risk_signals_v1 IS
-'Versioned inventory risk signal view built from a reconstructed daily stock proxy. Current stock comes from ProductsDim.Kolicina and historical stock is rebuilt backwards from sales plus canonical non-sale inventory movements.';
+'Versioned inventory risk signal view built from a reconstructed daily stock proxy. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_qty IS
-'Estimated on-hand quantity for the signal date. This is a stock proxy, not a persisted warehouse snapshot.';
+'Estimated on-hand quantity for the signal date. This is a reconstructed proxy (provenance reconstructed), not an observed daily snapshot.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.avg_daily_sales_30d IS
 'Average daily sold units over the trailing 30-day window. This drives both days_of_cover and dead-stock heuristics.';
