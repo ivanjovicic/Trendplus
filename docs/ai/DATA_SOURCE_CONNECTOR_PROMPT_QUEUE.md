@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `QDB03`
+Current READY prompt: `QDB04`
 
 ## Global routing
 
@@ -247,7 +247,7 @@ Expected new area:
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
-Status: READY
+Status: DONE
 Ready after: `QDB02` is `DONE` and backend CI executes real tests without an open BCI `PARTIAL`/`BLOCKED` gate (`BCI01`/`BCI05`)
 Priority: P1
 Type: backend/integration tests
@@ -281,12 +281,44 @@ Implement the first non-Access provider against the provider-neutral contract.
 - full and incremental reads produce deterministic ordering;
 - mocked tests are supplemental, not the provider-support proof.
 
+### Completion note
+
+- Date: 2026-08-19
+- Status: DONE
+- Changed files:
+  - `Api/Api.csproj`
+  - `Api.Tests/Api.Tests.csproj`
+  - `Api/Services/DataSources/SqlServerSourceDataSession.cs`
+  - `Api.Tests/SqlServerSourceDataSessionTests.cs`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed:
+  - Added a provider-neutral, read-only SQL Server source session with safe identifier quoting, schema/table/column discovery, exact row counts, bounded async streaming and cursor-aware fallback behavior.
+  - Proved the connector against the local SQL Server engine with reserved identifiers, Unicode, nulls, decimals, timestamps, cancellation and command-timeout behavior.
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SqlServerSourceDataSessionTests` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+  - `git diff --check` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Checks not run:
+  - `npm run check:analytics-guardrails` - not run - backend-only prompt, no frontend source changed
+  - `npm run build` - not run - backend-only prompt, no frontend source changed
+- Remaining risk:
+  - Proof uses the local SQL Server service on `tempdb`; if that instance is unavailable, the integration tests need a configured replacement connection string.
+- Next:
+  - `QDB04 - Add named source configuration and safe discovery endpoints`
+- Prompt defect / scope repair:
+  - QDB03 was claimed from the live queue and completed without changing runtime import behavior outside the provider-neutral connector proof scope.
+
 ---
 
 ## QDB04 - Add named source configuration and safe discovery endpoints
 
-Status: WAITING  
-Ready after: `QDB03` is `DONE`  
+Status: READY
 Priority: P1  
 Type: backend/security/API tests  
 Feature family: data-source-connection-discovery  
