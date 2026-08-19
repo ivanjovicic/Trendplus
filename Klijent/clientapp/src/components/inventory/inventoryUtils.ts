@@ -270,6 +270,16 @@ export function buildRowFromInsightItem(item: InventoryInsightItem, stores: Stor
     estimatedValue: item.estimatedValue,
     idObjekat: stores.find((store) => store.storeName === item.storeName)?.storeId ?? null,
     idDobavljac: suppliers.find((supplier) => supplier.supplierName === item.supplierName)?.supplierId ?? null,
+    stockCoverDays: item.stockCoverDays ?? null,
+    stockCoverStatus: item.stockCoverStatus,
+    stockCoverStatusLabel: item.stockCoverStatusLabel,
+    sellThroughRatio: item.sellThroughRatio ?? null,
+    sellThroughStatus: item.sellThroughStatus,
+    sellThroughStatusLabel: item.sellThroughStatusLabel,
+    signalConfidencePct: item.signalConfidencePct,
+    recommendationAllowed: item.recommendationAllowed,
+    dataQualityStatus: item.dataQualityStatus,
+    reasonCodes: item.reasonCodes,
   }, stores, suppliers);
 }
 

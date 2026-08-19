@@ -531,38 +531,6 @@
   margin-top: 0.35rem;
 }
 
-.daily-sales-no-data-banner {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid var(--accent-warning);
-  background: var(--surface-card);
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
-}
-
-.daily-sales-no-data-banner p {
-  margin: 0;
-  flex: 1;
-  color: var(--text-primary);
-}
-
-.daily-sales-no-data-banner button {
-  flex-shrink: 0;
-  padding: 0.4rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-default);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.daily-sales-no-data-banner button:hover {
-  background: var(--surface-hover);
-}
-
 .daily-sales-table-card {
   border: 1px solid var(--border-default);
   background: var(--surface-card);
@@ -771,7 +739,6 @@
   .daily-sales-empty-row {
     color: transparent !important;
   }
-  .daily-sales-no-data-banner,
   .daily-sales-message,
   .daily-sales-section-grid,
   .daily-sales-panel:not(.daily-sales-table-card),

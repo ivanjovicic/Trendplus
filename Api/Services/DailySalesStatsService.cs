@@ -4,6 +4,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Trendplus2.Dtos;
 
 namespace Api.Services;
 
@@ -555,7 +556,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 MinAvailableDate = minAvailableDate,
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
-            }
+            },
+            Meta = totalItemsInRange == 0
+                ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
+                : AnalyticsResponseMetaFactory.Success()
         };
 
         if (_logger.IsEnabled(LogLevel.Information))

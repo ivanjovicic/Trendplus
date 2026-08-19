@@ -184,6 +184,188 @@ public sealed class InventorySnapshotContractTests
         Assert.DoesNotContain("coalesce(curve_confidence, 0)", commandText, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact(DisplayName = "Forecast snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task ForecastHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("forecast_7d", typeof(decimal)),
+            ("forecast_14d", typeof(decimal)),
+            ("forecast_28d", typeof(decimal)),
+            ("probability_of_oos_in_7d", typeof(decimal)),
+            ("overstock_risk", typeof(decimal)),
+            ("confidence_score", typeof(decimal)),
+            ("explanation", typeof(string)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Forecast snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Rebalance snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task RebalanceHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("from_store_id", typeof(int)),
+            ("to_store_id", typeof(int)),
+            ("sku_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("recommended_qty", typeof(int)),
+            ("urgency", typeof(string)),
+            ("confidence", typeof(decimal)),
+            ("reason", typeof(string)),
+            ("expected_saved_sales", typeof(decimal)),
+            ("expected_capital_release", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetRebalanceSuggestionsHandler(context, NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Rebalance snapshot postoji, ali nema predloga za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Alert snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task AlertsHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Size curve snapshot keeps matching count at zero on empty reader without post-EOF access")]
+    public async Task SizeCurveHandler_EmptySnapshotDoesNotReadCountAfterEof()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("actual_size_share", typeof(decimal)),
+            ("ideal_size_share", typeof(decimal)),
+            ("deviation_pct", typeof(decimal)),
+            ("is_core_size_missing", typeof(bool)),
+            ("is_dead_size", typeof(bool)),
+            ("broken_run", typeof(bool)),
+            ("curve_confidence", typeof(decimal)),
+            ("reason_codes", typeof(string)),
+            ("total_matching_count", typeof(long)));
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.ReturnedCount);
+        Assert.Equal(0, result.TotalMatchingCount);
+        Assert.False(result.IsTruncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("Size curve snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Alert null severity stays null and is not coerced to info")]
+    public async Task AlertsHandler_NullSeverityIsNotInfo()
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add("inventory_missing", 101, 7, "42", DBNull.Value, "Alert", "Message", DBNull.Value, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Null(item.Severity);
+        Assert.NotEqual("info", item.Severity);
+        Assert.Null(item.ConfidenceScore);
+        Assert.NotEqual(0m, item.ConfidenceScore);
+        Assert.Equal("Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Size-curve null boolean stays null with missing evidence, not healthy false")]
+    public async Task SizeCurveHandler_NullBooleanIsNotHealthyFalse()
+    {
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("actual_size_share", typeof(decimal)),
+            ("ideal_size_share", typeof(decimal)),
+            ("deviation_pct", typeof(decimal)),
+            ("is_core_size_missing", typeof(bool)),
+            ("is_dead_size", typeof(bool)),
+            ("broken_run", typeof(bool)),
+            ("curve_confidence", typeof(decimal)),
+            ("reason_codes", typeof(string)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(101, 7, "42", DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, DBNull.Value, "", 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
+        var item = Assert.Single(result.Items);
+
+        Assert.Null(item.ActualSizeShare);
+        Assert.Null(item.IsCoreSizeMissing);
+        Assert.Null(item.IsDeadSize);
+        Assert.Null(item.BrokenRun);
+        Assert.Null(item.CurveConfidence);
+        Assert.NotEqual(false, item.IsDeadSize);
+        Assert.NotEqual(0m, item.CurveConfidence);
+        Assert.Equal("missing", item.EvidenceStatus);
+        Assert.Equal("Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+    }
+
     private static RecordingAnalyticsDbContext CreateContext(DataTable table) => new(new RecordingDbConnection(table));
 
     private static DataTable CreateTable(params (string Name, Type Type)[] columns)
@@ -324,10 +506,106 @@ public sealed class InventorySnapshotContractTests
 
         protected override DbParameter CreateDbParameter() => new NpgsqlParameter();
 
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => _table.CreateDataReader();
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) =>
+            new EofStrictDbDataReader(_table.CreateDataReader());
 
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
-            Task.FromResult<DbDataReader>(_table.CreateDataReader());
+            Task.FromResult<DbDataReader>(new EofStrictDbDataReader(_table.CreateDataReader()));
+    }
+
+    /// <summary>
+    /// DataTable readers keep the last row after EOF; Npgsql does not. Guard GetInt64 so post-loop count reads fail.
+    /// </summary>
+    private sealed class EofStrictDbDataReader : DbDataReader
+    {
+        private readonly DbDataReader _inner;
+        private bool _onRow;
+
+        public EofStrictDbDataReader(DbDataReader inner)
+        {
+            _inner = inner;
+        }
+
+        public override int Depth => _inner.Depth;
+        public override int FieldCount => _inner.FieldCount;
+        public override bool HasRows => _inner.HasRows;
+        public override bool IsClosed => _inner.IsClosed;
+        public override int RecordsAffected => _inner.RecordsAffected;
+        public override object this[int ordinal] => OnRowValue(() => _inner[ordinal]);
+        public override object this[string name] => OnRowValue(() => _inner[name]);
+
+        public override bool Read()
+        {
+            _onRow = _inner.Read();
+            return _onRow;
+        }
+
+        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            _onRow = await _inner.ReadAsync(cancellationToken);
+            return _onRow;
+        }
+
+        public override long GetInt64(int ordinal)
+        {
+            EnsureOnRow();
+            return _inner.GetInt64(ordinal);
+        }
+
+        public override bool GetBoolean(int ordinal) => OnRowValue(() => _inner.GetBoolean(ordinal));
+        public override byte GetByte(int ordinal) => OnRowValue(() => _inner.GetByte(ordinal));
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) =>
+            OnRowValue(() => _inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length));
+        public override char GetChar(int ordinal) => OnRowValue(() => _inner.GetChar(ordinal));
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) =>
+            OnRowValue(() => _inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length));
+        public override string GetDataTypeName(int ordinal) => _inner.GetDataTypeName(ordinal);
+        public override DateTime GetDateTime(int ordinal) => OnRowValue(() => _inner.GetDateTime(ordinal));
+        public override decimal GetDecimal(int ordinal) => OnRowValue(() => _inner.GetDecimal(ordinal));
+        public override double GetDouble(int ordinal) => OnRowValue(() => _inner.GetDouble(ordinal));
+        public override IEnumerator GetEnumerator() => _inner.GetEnumerator();
+        public override Type GetFieldType(int ordinal) => _inner.GetFieldType(ordinal);
+        public override float GetFloat(int ordinal) => OnRowValue(() => _inner.GetFloat(ordinal));
+        public override Guid GetGuid(int ordinal) => OnRowValue(() => _inner.GetGuid(ordinal));
+        public override short GetInt16(int ordinal) => OnRowValue(() => _inner.GetInt16(ordinal));
+        public override int GetInt32(int ordinal) => OnRowValue(() => _inner.GetInt32(ordinal));
+        public override string GetName(int ordinal) => _inner.GetName(ordinal);
+        public override int GetOrdinal(string name) => _inner.GetOrdinal(name);
+        public override string GetString(int ordinal) => OnRowValue(() => _inner.GetString(ordinal));
+        public override object GetValue(int ordinal) => OnRowValue(() => _inner.GetValue(ordinal));
+        public override int GetValues(object[] values) => OnRowValue(() => _inner.GetValues(values));
+        public override bool IsDBNull(int ordinal) => OnRowValue(() => _inner.IsDBNull(ordinal));
+        public override bool NextResult() => _inner.NextResult();
+
+        public override void Close()
+        {
+            _onRow = false;
+            _inner.Close();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        private void EnsureOnRow()
+        {
+            if (!_onRow)
+            {
+                throw new InvalidOperationException("No data exists for the row/column.");
+            }
+        }
+
+        private T OnRowValue<T>(Func<T> read)
+        {
+            EnsureOnRow();
+            return read();
+        }
     }
 
     private sealed class RecordingDbParameterCollection : DbParameterCollection

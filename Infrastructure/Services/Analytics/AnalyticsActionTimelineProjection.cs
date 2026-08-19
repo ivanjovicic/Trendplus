@@ -102,7 +102,7 @@ public static class AnalyticsActionTimelineProjection
         }
         else
         {
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapNoAcceptanceRecord, "No acceptance note was captured."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapNoAcceptanceRecord, "Nema zapisa o prihvatanju."));
         }
 
         if (rejectedNotes.Count > 0)
@@ -122,11 +122,11 @@ public static class AnalyticsActionTimelineProjection
         }
         else if (string.Equals(item.Status, AnalyticsActionConstants.Statuses.Done, StringComparison.OrdinalIgnoreCase))
         {
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapLegacyPartialHistory, "The action is closed as done, but no execution note was captured."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapLegacyPartialHistory, "Akcija je zatvorena kao izvršena, ali nema beleške o izvršenju."));
         }
         else if (acceptedNotes.Count > 0 && !string.Equals(item.Status, AnalyticsActionConstants.Statuses.Rejected, StringComparison.OrdinalIgnoreCase))
         {
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapNoExecutionProof, "The action was accepted, but execution proof is missing."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageWorkflow, GapNoExecutionProof, "Akcija je prihvaćena, ali nema dokaza o izvršenju."));
         }
 
         var outcomeStatus = NormalizeOutcomeStatus(item.OutcomeStatus);
@@ -143,7 +143,7 @@ public static class AnalyticsActionTimelineProjection
                 EvidenceSource: resolutionSnapshot?.EvidenceSource,
                 EvidenceReference: resolutionSnapshot?.EvidenceReference,
                 MeasurementWindowDays: resolutionSnapshot?.MeasuredWindowDays));
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "The row is explicitly not measured."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "Ishod je izričito označen kao nemeren."));
         }
         else if (string.Equals(outcomeStatus, AnalyticsActionConstants.OutcomeStatuses.Success, StringComparison.OrdinalIgnoreCase)
             || string.Equals(outcomeStatus, AnalyticsActionConstants.OutcomeStatuses.Neutral, StringComparison.OrdinalIgnoreCase)
@@ -165,17 +165,17 @@ public static class AnalyticsActionTimelineProjection
             }
             else
             {
-                gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "The outcome status is measured, but the measurement timestamp is missing."));
+                gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "Ishod je označen kao izmeren, ali nedostaje vreme merenja."));
             }
         }
         else
         {
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "The row does not have measurable outcome evidence."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageOutcome, GapNoMeasurementEvidence, "Nema merenog dokaza o ishodu."));
         }
 
         if (orderedNotes.Length == 0 && (item.Status != AnalyticsActionConstants.Statuses.New || !string.Equals(outcomeStatus, AnalyticsActionConstants.OutcomeStatuses.Pending, StringComparison.OrdinalIgnoreCase)))
         {
-            gaps.Add(new AnalyticsActionTimelineGapDto(StageRecommendation, GapLegacyPartialHistory, "The row has no note history, so the timeline is only partially reconstructed."));
+            gaps.Add(new AnalyticsActionTimelineGapDto(StageRecommendation, GapLegacyPartialHistory, "Nema istorije beleški, pa je istorijat samo delimično rekonstruisan."));
         }
 
         var projectionState = ResolveProjectionState(item.Status, outcomeStatus);

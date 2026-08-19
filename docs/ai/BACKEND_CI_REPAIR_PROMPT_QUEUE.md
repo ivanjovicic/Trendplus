@@ -1,4 +1,4 @@
-# Trendplus Backend CI Repair Prompt Queue
+﻿# Trendplus Backend CI Repair Prompt Queue
 
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
@@ -7,11 +7,11 @@ Current READY prompt: none
 
 ## Current diagnosis
 
-Live READY is none. `BCI06` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` is DONE. Parent-queue tasks remain historical except `BCI01`, which is DONE.
+Live READY is `none` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which is DONE.
 
 The bootstrap blocker is fixed. Backend workflow restore/build/test now succeed against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
 
-BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. `BCI06` is DONE, so no BCI prompt is currently READY.
+BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. `BCI06` mixed-solution Windows proof is DONE. This program has no remaining READY prompt.
 
 Canonical GHA proof that bootstrap is unblocked:
 
@@ -228,9 +228,27 @@ The workflow called `Complete backend analytics suite` is blocked by unrelated `
 - Closing GHA:
   - run `31674533356` / job `94366108914` on `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
   - restore=success, build=success, test=success, coverage-summary=success, artifact=`9171046754`
-- Current `origin/main` `ead9f2a` is backend-equivalent
+- Current `origin/main` `ed0d752` is backend-equivalent
 - Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`
 - Next: `BCI06`
+- Completion: 100%
+- Changed files:
+  - `.github/workflows/analytics-tests.yml`
+  - `docs/ci/ANALYTICS_CI_GATES.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- Checks run:
+  - `dotnet restore Api.Tests/Api.Tests.csproj` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --configuration Release` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --settings Api.Tests/coverage.runsettings --results-directory TestResults --logger "trx;LogFileName=analytics-tests.trx"` - pass
+- Checks not run:
+  - `none`
+- Run log: `.ai/runs/2026-08-13-BCI05-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+- Main verification: `git rev-parse origin/main -> f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+- Missed: `none known`
+- Follow-up: `BCI06`
+- Residual risk: `none known`
 
 ---
 

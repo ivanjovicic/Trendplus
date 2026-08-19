@@ -8,6 +8,7 @@ namespace Application.Analytics.Queries.GetInventoryStatus
         int TotalSkuCount,
         int TotalOnHand,
         int LowStockCount,
-        int OutOfStockCount
+        int OutOfStockCount,
+        bool UsedOperationalFallback = false
     );
 }

@@ -295,6 +295,18 @@
   gap: 0.4rem;
 }
 
+.decision-board-code-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.decision-board-code-group-label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
 .decision-board-chip {
   display: inline-flex;
   align-items: center;

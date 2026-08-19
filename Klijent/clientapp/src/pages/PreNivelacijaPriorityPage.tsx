@@ -159,15 +159,12 @@ function reliabilitySignalDisplay(row: DecisionCandidate): { label: string; clas
     };
   }
 
-  if (row.reliabilityPct >= 70) {
-    return { label: "Visoko", className: "pnp-signal-pill signal-strong" };
-  }
-
-  if (row.reliabilityPct >= 40) {
-    return { label: "Srednje", className: "pnp-signal-pill signal-watch" };
-  }
-
-  return { label: "Nisko", className: "pnp-signal-pill signal-weak" };
+  const label = fmtPct(row.reliabilityPct, 0);
+  return {
+    label,
+    className: "pnp-signal-pill signal-na",
+    title: `${RECOMMENDATION_RELIABILITY_LABEL}: ${label}`,
+  };
 }
 
 function isHighPriorityCandidate(row: DecisionCandidate): boolean {
@@ -754,7 +751,7 @@ export default function PreNivelacijaPriorityPage() {
       ) : null}
       {loading ? <div className="pnp-decision-message loading">Učitavam prioritete pre-nivelacije...</div> : null}
 
-      {!loading && data ? (
+      {!loading && data && !showEmptyState ? (
         <>
           {data.alerts && data.alerts.length > 0 ? (
             <section className="pnp-alerts">

@@ -1,3 +1,5 @@
+﻿using SourceMappingPreviewRequest = Api.Models.SourceMappingPreviewRequest;
+using SourceMappingFieldRequest = Api.Models.SourceMappingFieldRequest;
 using Api.Models;
 using Api.Services.DataSources;
 using Xunit;

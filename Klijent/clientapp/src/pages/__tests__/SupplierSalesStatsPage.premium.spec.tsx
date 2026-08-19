@@ -110,4 +110,57 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
+
+  it("error hides KPI zeros when supplier sales fails", async () => {
+    vi.mocked(getSupplierSalesStats).mockRejectedValue(new Error("backend down"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Podaci trenutno nisu dostupni/i);
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prioritetna lista dobavljača")).not.toBeInTheDocument();
+  });
+
+  it("empty is not error when supplier sales returns no rows", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      dataWindowFrom: "2024-01-01T00:00:00Z",
+      dataWindowTo: "2026-06-30T23:59:59Z",
+      sezone: [],
+      suppliers: [],
+      totals: {
+        ukupanPromet: 0,
+        ukupnaKolicina: 0,
+        marginContribution: 0,
+        marginPct: 0,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "insufficient_data",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+      meta: { success: true, emptyReason: "no_supplier_sales", dataQualityStatus: "insufficient_data" },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
+  });
 });

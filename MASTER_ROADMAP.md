@@ -1,6 +1,6 @@
-# Trendplus Master Roadmap
+﻿# Trendplus Master Roadmap
 
-Updated: 2026-08-13
+Updated: 2026-08-18
 Repository: `ivanjovicic/Trendplus`
 Status: canonical planning entry point
 
@@ -39,19 +39,39 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 
 | Program | Owner queue / roadmap | Current READY | Blocked by / current truth | Parallel-safe planning | Next milestone |
 |---|---|---|---|---|---|
-| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05` DONE. `BCI06` DONE on 2026-08-14 after Windows/VS mixed-solution verification; current main remains backend-equivalent. | Evidence/docs only | none |
-| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none | `STAB09` DONE. Residual authz watchlist (import/logs/docs) unqueued — STAB-owned, not SEC. | Evidence/docs when paths clear | Queue STAB follow-ups or accept residual risk |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none (`RQ95` DONE) | BCI01/BCI05 DONE; remaining RQ WAITING stay owner-gated. | Selected docs/tests only | Owner-promoted RQ follow-up |
-| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-16 DONE (no fake reliability + empty/copy on PreNivelacijaPriorityPage). P-UI-17 DONE (ControlBar + DataTable chrome). P-UI-18 DONE (SupplierFootwearAnalyticsPage chrome). | Yes, when paths clear | Await owner-promoted next P-UI prompt |
-| QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | `QDB03` | `QDB01`/`QDB02` DONE. BCI01/BCI05 DONE, so the SQL Server proof connector is unblocked. | Docs/tests when paths clear | QDB03 SQL Server read-only connector |
+| BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Current execution READY is `RQ96` |
+| STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Current execution READY is `RQ96` |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | `RQ96` | `RQ105` DONE. Owner 2026-08-18 ran `QDB06` first, then restored this as current execution READY. `RQ97`/`RQ98` remain WAITING. `RQ106` Decision Pulse is WAITING after `RQ96`. | Selected docs/tests only | Observed daily inventory snapshot foundation |
+| P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-21 DONE. P-UI-22 DONE. Queue complete. | Yes | queue complete |
+| QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB06` DONE) | `QDB01`-`QDB06` DONE. Durable checkpoints are `ConnectionId + MappingProfileId + SourceStream` with `TenantScope=n/a_dedicated`. Destination for this slice is staging rows, not Artikli/Prodaja upsert. `QDB07` WAITING on authorization/release gates. | Docs/tests when paths clear | SQL Server e2e through the checkpoint engine; then QDB07 |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision -> MT02 |
 | GAI | `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md` + `docs/ai/GENAI_COPILOT_ROADMAP.md` | none | Blocked by current core-pilot/release evidence | Planning/audit only | Core pilot ready, then explicit GenAI entry gate |
-| DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | `DEX13` | `DEX13` inventory explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; `DEX12` DONE = supplier explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`; `DEX11` DONE = cross-family explainability readiness documented in `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`; DEX13 remains the live READY pointer until a successor DEX prompt is promoted | Yes, docs/contracts | Await owner-promoted next DEX prompt |
-| RL | same queue/roadmap as DEX | `RL05` | `RL04` DONE = lifecycle + learning eligibility. Next is docs-only measurement-only statistics contract. | Yes, docs/contracts | Measurement-only statistics projection |
-| DT | same queue/roadmap as DEX | `DT06` | `DT05` DONE = Slice-2 filtered timeline. Next is docs-only export/report contract. | Yes, docs/contracts | Timeline export/retrospective contract |
-| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | `PERF15` | PERF14 DONE; D5 cache footprint measured in `.ai/runs/2026-08-12-PERF13-evidence.md`; D6 import overlap measured in `.ai/runs/2026-08-12-PERF14-evidence.md`; D8 still needs MT | Yes, docs/contracts when paths clear | D8 shared-saas evidence gate |
-| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS08` | `OBS01`-`OBS07` DONE; analytics SLA evidence exists and next task is worker-SLA contract/evidence. | Yes, docs/contracts | Worker SLA evidence contract |
-| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none (`SEC04` DONE; `SEC05` WAITING) | `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, docs only when promoted | Data protection/retention assurance plan after dependency decision |
+| DEX | `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md` + `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md` | none | `DEX18` DONE = Executive Board explainability reuse contract frozen. `DEX19` DONE = runtime reuse of that vocabulary landed. | Yes, when path-safe vs current execution | Executive Board explainability runtime complete |
+| RL | same queue/roadmap as DEX | `RL10` | `RL09` DONE = operators can review measurement-only statistics without fake-green rates. Next is Slice 4 advisory calibration contract. Duplicate `RL08` remains OBSOLETE. | Yes, docs/contracts when path-safe vs `RQ96` | Slice 4 advisory calibration contract |
+| DT | same queue/roadmap as DEX | none | `DT08` DONE = Slice-5 hardening. `DT09` WAITING = first-class timestamp contract. | Yes, docs/contracts when path-safe | First-class timeline timestamps |
+| PERF | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/PERFORMANCE_ROADMAP.md` | none | `PERF16` BLOCKED until `MT10` or an owner-recorded shared-SaaS gate. PERF15 DONE = D8 stays MT-owned and `n/a_dedicated`. | Yes, docs/contracts when paths clear | D8 reopen after MT fixtures |
+| OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | `OBS10` | `OBS01`-`OBS09` DONE. Next is the operational dashboard honesty contract. | Yes, docs/contracts | Operational dashboard honesty contract |
+| SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC07` DONE = clientapp production npm audit is 0. `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, scoped dependency/security work when paths clear | SEC05 after MT09 |
+
+Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner 2026-08-18: approved the QDB06 migration and ran it before RQ96. `QDB06` is DONE. Current execution READY is `RQ96`. Parallel-safe planning READYs are `OBS10` and `RL10`. `PERF16` is BLOCKED on `MT10`. `RQ106` Decision Pulse is WAITING after `RQ96`. Do not promote `MT02` or `GAI01` without the named tenant-identity or pilot-ready decision.
+
+| # | ID | Status | Program |
+|---|---|---|---|
+| 1 | `RQ100` | DONE | RQ |
+| 2 | `RQ101` | DONE | RQ |
+| 3 | `RQ102` | DONE | RQ |
+| 4 | `RQ103` | DONE | RQ |
+| 5 | `RQ104` | DONE | RQ |
+| 6 | `RQ105` | DONE | RQ |
+| 7 | `P-UI-21` | DONE | P-UI |
+| 8 | `P-UI-22` | DONE | P-UI |
+| 9 | `DEX18` | DONE | DEX |
+| 10 | `RL07` | DONE | RL |
+| 11 | `DT07` | DONE | DT |
+| 12 | `PERF15` | DONE | PERF |
+| 13 | `OBS08` | DONE | OBS |
+| 14 | `OBS09` | DONE | OBS |
+| 15 | `SEC07` | DONE | SEC |
 
 ## Product and process documents
 

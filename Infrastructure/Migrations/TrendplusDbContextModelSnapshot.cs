@@ -109,6 +109,129 @@ namespace Infrastructure.Migrations
                     b.ToTable("AccessImportCursors", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Model.SourceSyncCheckpoint", b =>
+                {
+                    b.Property<string>("ConnectionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("MappingProfileId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceStream")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CursorMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("id");
+
+                    b.Property<DateTime?>("CursorTimestampUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalKeyTieBreaker")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("OverlapSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60);
+
+                    b.Property<string>("SchemaFingerprint")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("LastStartedBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastCompletedBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LastSuccessfulSyncUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("TenantScope")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("n/a_dedicated");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("ConnectionId", "MappingProfileId", "SourceStream");
+
+                    b.HasIndex("FailureCategory");
+
+                    b.ToTable("SourceSyncCheckpoints", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Model.SourceSyncAppliedRow", b =>
+                {
+                    b.Property<string>("ConnectionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("MappingProfileId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceStream")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ExternalKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTime?>("CursorTimestampUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LastBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApplyStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("ConnectionId", "MappingProfileId", "SourceStream", "ExternalKey");
+
+                    b.HasIndex("LastBatchId");
+
+                    b.ToTable("SourceSyncAppliedRows", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Model.AccessImportLog", b =>
                 {
                     b.Property<long>("Id")

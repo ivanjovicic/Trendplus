@@ -64,8 +64,10 @@ public sealed class GetRebalanceSuggestionsHandler
         try
         {
             await using var reader = await command.ExecuteReaderAsync(ct);
+            var totalMatchingCount = 0;
             while (await reader.ReadAsync(ct))
             {
+                totalMatchingCount = Convert.ToInt32(reader.GetInt64(10));
                 items.Add(new RebalanceSuggestionDto(
                     FromStoreId: reader.GetInt32(0),
                     ToStoreId: reader.GetInt32(1),
@@ -79,9 +81,6 @@ public sealed class GetRebalanceSuggestionsHandler
                     ExpectedCapitalRelease: reader.GetNullableDecimal(9)));
             }
 
-            var totalMatchingCount = items.Count == 0
-                ? 0
-                : Convert.ToInt32(reader.GetInt64(10));
             var returnedCount = items.Count;
 
             var hasMissingEvidence = items.Any(item =>

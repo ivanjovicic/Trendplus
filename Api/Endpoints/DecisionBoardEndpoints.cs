@@ -398,7 +398,7 @@ public static class DecisionBoardEndpoints
                 var confidence = ResolveProductConfidence(row);
                 // Trust PDC: do not reattach LostSalesEstimate when ExpectedImpactRsd is intentionally null.
                 var expectedImpact = row.ExpectedImpactRsd;
-                var warnings = NormalizeWarningCodes(row.WarningCodes, row.ReasonCodes);
+                var warnings = NormalizeWarningCodes(row.WarningCodes);
                 var actionState = ResolveActionState(row.SourceType ?? "product", row.SourceKey ?? $"product:{row.ProductId}", actionStates);
 
                 return new DecisionBoardCardDto(
@@ -422,6 +422,9 @@ public static class DecisionBoardEndpoints
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: warnings,
+                    ConfidenceSource: ResolveProductConfidenceSource(row),
+                    ReasonCodes: row.ReasonCodes,
+                    RecommendationAllowed: row.RecommendationAllowed,
                     DataQualityStatus: NormalizeDataQualityStatus(row.DataQualityStatus),
                     GeneratedAtUtc: productDecisionCenter.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(
@@ -450,6 +453,8 @@ public static class DecisionBoardEndpoints
                 var sourceKey = $"inventory:{item.SuggestionKey}";
                 var actionState = ResolveActionState("inventory", sourceKey, actionStates);
                 var confidence = ResolveInventoryBoardConfidence(item);
+                var confidenceSource = item.SignalConfidencePct.HasValue ? "signal" : "workflow_status_only";
+                var reasonCodes = item.SignalReasonCodes ?? [];
                 var priorityScore = item.Priority switch
                 {
                     "critical" => 250m,
@@ -480,17 +485,17 @@ public static class DecisionBoardEndpoints
                     ActionHref: "/analytics/inventory",
                     AlreadyInAction: actionState is ActionState.Open,
                     AlreadyClosed: actionState is ActionState.Closed,
-                    WarningCodes: confidence.WarningCodes
-                        .Concat([item.ActionType, item.Status])
-                        .Distinct(StringComparer.Ordinal)
-                        .ToList(),
+                    WarningCodes: confidence.WarningCodes,
                     DataQualityStatus: confidence.DataQualityStatus,
                     GeneratedAtUtc: inventoryWorkflow.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(
                         priorityScore,
                         confidence.Level,
                         confidence.DataQualityStatus),
-                    ImpactScore: item.EstimatedValue);
+                    ImpactScore: item.EstimatedValue,
+                    ConfidenceSource: confidenceSource,
+                    ReasonCodes: reasonCodes,
+                    RecommendationAllowed: item.RecommendationAllowed);
             })
             .OrderByDescending(card => card.PriorityScore)
             .Take(10)
@@ -621,13 +626,15 @@ public static class DecisionBoardEndpoints
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
                     WarningCodes: BuildSupplierWarningCodes(trust),
+                    ReasonCodes: item.ReasonCodes,
                     DataQualityStatus: dataQualityStatus,
                     GeneratedAtUtc: trust?.LastRefreshAtUtc ?? supplierSummary.From,
                     PriorityScore: CapInsufficientDataPriority(
                         ComputeSupplierPriority(item, trust, recommendationAllowed),
                         confidenceLevel,
                         dataQualityStatus),
-                    ImpactScore: recommendationAllowed ? item.Revenue : 0m));
+                    ImpactScore: recommendationAllowed ? item.Revenue : 0m,
+                    RecommendationAllowed: recommendationAllowed));
             }
         }
 
@@ -676,7 +683,7 @@ public static class DecisionBoardEndpoints
                     ActionHref: "/analytics/actions",
                     AlreadyInAction: true,
                     AlreadyClosed: false,
-                    WarningCodes: NormalizeWarningCodes(item.DataQualityStatus is null ? [] : [item.DataQualityStatus]),
+                    WarningCodes: [],
                     DataQualityStatus: NormalizeDataQualityStatus(item.DataQualityStatus),
                     GeneratedAtUtc: item.UpdatedAtUtc,
                     PriorityScore: ComputePriorityScore(expectedImpact, item.ConfidencePct, item.DataQualityStatus, item.RecommendationStatus),
@@ -755,7 +762,7 @@ public static class DecisionBoardEndpoints
                 ActionHref: "/analytics/actions",
                 AlreadyInAction: false,
                 AlreadyClosed: true,
-                WarningCodes: NormalizeWarningCodes(item.OutcomeStatus is null ? [] : [item.OutcomeStatus]),
+                WarningCodes: [],
                 DataQualityStatus: NormalizeDataQualityStatus(item.DataQualityStatus),
                 GeneratedAtUtc: item.UpdatedAtUtc,
                 PriorityScore: ComputePriorityScore(expectedImpact, item.ConfidencePct, item.DataQualityStatus, item.RecommendationStatus) - 20m,
@@ -797,7 +804,7 @@ public static class DecisionBoardEndpoints
                 ActionHref: "/admin/configuration?panel=workers",
                 AlreadyInAction: false,
                 AlreadyClosed: false,
-                WarningCodes: [refreshStatus.DataFreshnessStatus],
+                WarningCodes: [],
                 DataQualityStatus: refreshStatus.DataFreshnessStatus,
                 GeneratedAtUtc: refreshStatus.GeneratedAtUtc,
                 PriorityScore: 300m,
@@ -1347,6 +1354,19 @@ public static class DecisionBoardEndpoints
         var score = row.ConfidenceScore ?? row.ConfidencePct;
         var level = ResolveConfidenceLevel(score);
         return (level, score);
+    }
+
+    private static string ResolveProductConfidenceSource(ProductDecisionCenterRowDto row)
+    {
+        if (string.Equals(row.RecommendationStatus, "FIX_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "INSUFFICIENT_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "workflow_status_only";
+        }
+
+        return "signal";
     }
 
     private static decimal ComputePriorityScore(

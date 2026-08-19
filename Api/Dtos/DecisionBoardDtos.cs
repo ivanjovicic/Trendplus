@@ -61,4 +61,7 @@ public sealed record DecisionBoardCardDto(
     string DataQualityStatus,
     DateTime? GeneratedAtUtc,
     decimal PriorityScore,
-    decimal ImpactScore);
+    decimal ImpactScore,
+    string? ConfidenceSource = null,
+    IReadOnlyList<string>? ReasonCodes = null,
+    bool? RecommendationAllowed = null);

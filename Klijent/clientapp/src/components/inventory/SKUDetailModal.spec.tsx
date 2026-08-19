@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SKUDetailModal } from "./SKUDetailModal";
 import type { InventoryRow } from "./types";
 
-function buildPlaceholderRow(): InventoryRow {
+function buildPlaceholderRow(overrides: Partial<InventoryRow> = {}): InventoryRow {
   return {
     id: 999,
     naziv: "SKU bez konteksta",
@@ -38,6 +38,7 @@ function buildPlaceholderRow(): InventoryRow {
     coverageRatio: null,
     signalText: "Nedovoljno podataka",
     contextStatus: "loadingContext",
+    ...overrides,
   };
 }
 
@@ -82,5 +83,40 @@ describe("SKUDetailModal placeholder context", () => {
     expect(screen.getByText("Kontekst artikla nije pronađen. Prikazuju se samo ograničeni podaci.")).toBeInTheDocument();
     expect(screen.getByText("Artikal nije pronađen u detaljnom kontekstu.")).toBeInTheDocument();
     expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
+  });
+
+  it("renders the inventory explainability snapshot when backend signal fields are present", () => {
+    render(
+      <SKUDetailModal
+        detailRow={buildPlaceholderRow({
+          contextStatus: null,
+          stockCoverDays: null,
+          stockCoverStatus: "out_of_stock_risk",
+          stockCoverStatusLabel: "Rizik rasprodaje",
+          sellThroughRatio: 1,
+          sellThroughStatus: "good",
+          sellThroughStatusLabel: "Dobar sell-through",
+          signalConfidencePct: 82,
+          recommendationAllowed: true,
+          reasonCodes: ["replenish_needed", "stock_cover_out_of_stock_risk"],
+          dataQualityStatus: "good",
+        })}
+        detailData={null}
+        detailLoading={false}
+        detailError={null}
+        detailTab="overview"
+        detailSizeCurve={null}
+        detailSizeCurveLoading={false}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onTabChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Snapshot objašnjenja" })).toBeInTheDocument();
+    expect(screen.getByText("82%")).toBeInTheDocument();
+    expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
+    expect(screen.getByText("Rizik rasprodaje")).toBeInTheDocument();
+    expect(screen.getByText("replenish_needed")).toBeInTheDocument();
   });
 });

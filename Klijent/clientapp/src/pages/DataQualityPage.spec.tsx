@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DataQualityPage from "./DataQualityPage";
@@ -343,5 +343,47 @@ describe("DataQualityPage", () => {
     expect(await screen.findByTestId("pilot-intake-panel")).toHaveTextContent("pilot-intake-ok");
     expect(getPilotDataQualityIntakeReport).toHaveBeenCalled();
     expect(getPilotIntakeDurableReport).toHaveBeenCalled();
+  });
+
+  it("ignores stale data quality responses when the issue type changes quickly", async () => {
+    const issueResolvers: Array<(value: DataQualityIssueListResult) => void> = [];
+
+    vi.mocked(getDataQualityIssues).mockImplementation(() => {
+      if (issueResolvers.length >= 2) {
+        throw new Error("Unexpected data quality request");
+      }
+      return new Promise<DataQualityIssueListResult>((resolve) => {
+        issueResolvers.push(resolve);
+      });
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(issueResolvers).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Nedostajući tip obuće" }));
+
+    await waitFor(() => expect(issueResolvers).toHaveLength(2));
+
+    await act(async () => {
+      issueResolvers[1](issues({
+        items: [issue({ name: "Novi signal", issueType: "missingShoeType", productId: "202" })],
+        total: 1,
+      }));
+    });
+
+    expect(await screen.findByText("Novi signal")).toBeInTheDocument();
+
+    await act(async () => {
+      issueResolvers[0](issues({
+        items: [issue({ name: "Stari signal", issueType: "missingSupplier", productId: "101" })],
+        total: 1,
+      }));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Stari signal")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Novi signal")).toBeInTheDocument();
   });
 });

@@ -14,7 +14,6 @@ using Infrastructure.Logging;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
-using System.Net.Http.Json;
 
 namespace Trendplus2.Endpoints;
 
@@ -45,8 +44,13 @@ public static class AccessImportEndpoints
         var group = app.MapGroup("/api/access-import")
             .WithTags("Access Import");
 
-        group.MapGet("/runtime-status", () =>
+        group.MapGet("/runtime-status", (HttpContext httpContext, IConfiguration configuration) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             var status = GetAccessImportRuntimeStatus();
             return Results.Ok(new
             {
@@ -62,9 +66,18 @@ public static class AccessImportEndpoints
             IAccessImportService service,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
+            IConfiguration configuration,
             int take = 20,
             CancellationToken ct = default) =>
-            await GetBatchListResultAsync(service, cache, logger, take, ct))
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            return await GetBatchListResultAsync(service, cache, logger, take, ct);
+        })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatches");
 
@@ -72,9 +85,18 @@ public static class AccessImportEndpoints
             IAccessImportService service,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
+            IConfiguration configuration,
             int take = 20,
             CancellationToken ct = default) =>
-            await GetBatchListResultAsync(service, cache, logger, take, ct))
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            return await GetBatchListResultAsync(service, cache, logger, take, ct);
+        })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportJobs");
 
@@ -84,10 +106,19 @@ public static class AccessImportEndpoints
             IBatchLogService logService,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
+            IConfiguration configuration,
             int logTake = 200,
             string? severity = null,
             CancellationToken ct = default) =>
-            await GetBatchDetailResultAsync(batchId, service, logService, cache, logger, logTake, severity, includeLogs: true, ct))
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            return await GetBatchDetailResultAsync(batchId, service, logService, cache, logger, logTake, severity, includeLogs: true, ct);
+        })
         .RequireRateLimiting("db-heavy")
         .WithName("GetAccessImportBatchDetail");
 
@@ -96,8 +127,15 @@ public static class AccessImportEndpoints
             IAccessImportService service,
             IMemoryCache cache,
             ILogger<Program> logger,
+            HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             try
             {
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -144,12 +182,19 @@ public static class AccessImportEndpoints
         group.MapGet("/batches/{batchId:long}/logs", async (
             long batchId,
             IBatchLogService logService,
+            HttpContext httpContext,
+            IConfiguration configuration,
             string? severity = null,
             string? tableName = null,
             int skip = 0,
             int take = 100,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             var logs = await logService.GetLogsAsync(batchId, severity, tableName, skip, take, ct);
             return Results.Ok(logs);
         })
@@ -159,12 +204,19 @@ public static class AccessImportEndpoints
         group.MapGet("/jobs/{batchId:long}/logs", async (
             long batchId,
             IBatchLogService logService,
+            HttpContext httpContext,
+            IConfiguration configuration,
             string? severity = null,
             string? tableName = null,
             int skip = 0,
             int take = 100,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             var logs = await logService.GetLogsAsync(batchId, severity, tableName, skip, take, ct);
             return Results.Ok(logs);
         })
@@ -336,8 +388,14 @@ public static class AccessImportEndpoints
             TrendplusDbContext trendDb,
             AnalyticsDbContext analyticsDb,
             HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             try
             {
                 var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -375,9 +433,15 @@ public static class AccessImportEndpoints
         group.MapGet("/cleanup/archive", async (
             TrendplusDbContext trendDb,
             HttpContext httpContext,
+            IConfiguration configuration,
             int take = 200,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             try
             {
                 var conn = trendDb.Database.GetDbConnection();
@@ -417,8 +481,14 @@ public static class AccessImportEndpoints
             TrendplusDbContext trendDb,
             HttpRequest request,
             HttpContext httpContext,
+            IConfiguration configuration,
             CancellationToken ct = default) =>
         {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
             try
             {
                 var body = await request.ReadFromJsonAsync<Dictionary<string, long[]>>(cancellationToken: ct);

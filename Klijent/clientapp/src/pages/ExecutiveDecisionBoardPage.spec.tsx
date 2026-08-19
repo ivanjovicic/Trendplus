@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExecutiveDecisionBoardPage from "./ExecutiveDecisionBoardPage";
@@ -45,7 +45,7 @@ vi.mock("../components/analytics/AnalyticsEmptyState", () => ({
 
 vi.mock("../components/analytics/AnalyticsErrorState", () => ({
   default: ({ title, message, onRetry }: { title: string; message: string; onRetry?: () => void }) => (
-    <div data-testid="analytics-error-state">
+    <div data-testid="analytics-error-state" role="alert">
       <strong>{title}</strong>
       <span>{message}</span>
       <button type="button" onClick={onRetry}>Ponovo proveri</button>
@@ -168,6 +168,30 @@ function aggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}): Dec
     impactScore: 120000,
   });
 
+  const inventory = card({
+    id: "inventory:sku-201",
+    kind: "inventory",
+    sectionKey: "stockRisk",
+    sourceModule: "Zalihe",
+    sourceType: "inventory",
+    sourceKey: "inventory:sku-201",
+    title: "Dopuni: Crna kožna sandala",
+    summary: "Signal ukazuje na rizičan stock cover.",
+    confidenceLevel: "high",
+    confidenceScore: 84,
+    expectedImpactRsd: 98000,
+    riskIfIgnored: "Moguća je propuštena prodaja i ubrzani stockout.",
+    recommendedNextAction: "Dopuni veličine 38-40 i proveri raspoloživost.",
+    actionHref: "/analytics/inventory",
+    dataQualityStatus: "warning",
+    priorityScore: 205,
+    impactScore: 98000,
+    confidenceSource: "signal",
+    recommendationAllowed: false,
+    reasonCodes: ["slow_stock", "out_of_stock_risk"],
+    warningCodes: ["slow_stock", "out_of_stock_risk"],
+  });
+
   const outcome = card({
     id: "outcome:summary",
     kind: "outcome",
@@ -212,7 +236,7 @@ function aggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}): Dec
     sections: [
       section("urgent", [urgentProduct], { title: "Top 5 urgentnih odluka", sourceLink: "/analytics/products" }),
       section("impact", [urgentProduct], { title: "Najveći očekivani uticaj", sourceLink: "/analytics/products" }),
-      section("stockRisk", [], { title: "Odluke o riziku zaliha", sourceLink: "/analytics/inventory" }),
+      section("stockRisk", [inventory], { title: "Odluke o riziku zaliha", sourceLink: "/analytics/inventory" }),
       section("supplierRisk", [], { title: "Odluke o riziku i prilici kod dobavljača", sourceLink: "/analytics/supplier?tab=overview" }),
       section("blockers", [blocker], { title: "Blokatori kvaliteta podataka", sourceLink: "/analytics/data-quality" }),
       section("actionsDecision", [action], { title: "Akcije koje čekaju odluku", sourceLink: "/analytics/actions" }),
@@ -263,6 +287,7 @@ function renderPage() {
 
 describe("ExecutiveDecisionBoardPage", () => {
   beforeEach(() => {
+    vi.mocked(getDecisionBoardAggregate).mockReset();
     vi.mocked(getDecisionBoardAggregate).mockResolvedValue(aggregate());
   });
 
@@ -279,9 +304,23 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.getAllByText("120.000 RSD").length).toBeGreaterThan(0);
     expect(screen.getByText("Top 5 urgentnih odluka")).toBeInTheDocument();
     expect(screen.getByText("Blokatori kvaliteta podataka")).toBeInTheDocument();
+    expect(screen.getByText("Odluke o riziku zaliha")).toBeInTheDocument();
     expect(screen.getByText("Akcije koje čekaju odluku")).toBeInTheDocument();
     expect(screen.getByText("Akcije koje čekaju ishod")).toBeInTheDocument();
     expect(screen.getByText("Dopuni nabavnu cenu")).toBeInTheDocument();
+    const inventoryTitles = await screen.findAllByText("Dopuni: Crna kožna sandala");
+    expect(inventoryTitles.length).toBeGreaterThan(0);
+    const inventoryCard = inventoryTitles[0].closest("article");
+    expect(inventoryCard).not.toBeNull();
+    expect(within(inventoryCard as HTMLElement).getByText("Preporuka")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Blokirana")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Izvor pouzdanosti")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Signal zaliha")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Oprez")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Spor obrt")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).getByText("Rizik rasprodaje")).toBeInTheDocument();
+    expect(within(inventoryCard as HTMLElement).queryAllByText("slow stock")).toHaveLength(0);
+    expect(within(inventoryCard as HTMLElement).queryAllByText("out of stock risk")).toHaveLength(0);
     expect(screen.getByText("Realizacija očekivanog uticaja")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Otvori izvor" }).some((link) => link.getAttribute("href") === "/analytics/data-quality")).toBe(true);
     expect(screen.getAllByRole("link", { name: "Dodaj u akcije" }).some((link) => link.getAttribute("href") === "/analytics/actions?sourceType=product")).toBe(true);
@@ -292,10 +331,10 @@ describe("ExecutiveDecisionBoardPage", () => {
 
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
-    expect(screen.getByText("Delimicni signali su dostupni.")).toBeInTheDocument();
+    expect(screen.getByText("Delimični signali su dostupni.")).toBeInTheDocument();
     expect(screen.getByText(/Neki izvori su upozoravajući/i)).toBeInTheDocument();
-    expect(screen.getAllByText("warning").length).toBeGreaterThan(0);
-    expect(screen.getByText("missing cost")).toBeInTheDocument();
+    expect(screen.getByText("Nedostaje nabavna cena")).toBeInTheDocument();
+    expect(screen.queryByText("missing cost")).not.toBeInTheDocument();
   });
 
   it("renders missing expected impact as unavailable, not as a fake zero", async () => {
@@ -317,7 +356,7 @@ describe("ExecutiveDecisionBoardPage", () => {
 
     const emptyState = await screen.findByTestId("analytics-empty-state");
     expect(emptyState).toHaveTextContent("Nema dovoljno signala za izvršni board");
-    expect(emptyState).toHaveTextContent("Nema dovoljno kvalitetnih izvora za board.");
+    expect(emptyState).toHaveTextContent("Board je uspešno učitan, ali trenutno nema dovoljno kvalitetnih izvora da bi odluke bile smisleno rangirane.");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("empty: Nema dovoljno kvalitetnih izvora za board.");
   });
 
@@ -329,9 +368,53 @@ describe("ExecutiveDecisionBoardPage", () => {
     renderPage();
 
     expect(await screen.findByTestId("analytics-error-state")).toHaveTextContent("Decision board API timeout");
+    expect(screen.getByRole("alert")).toHaveTextContent("Decision board API timeout");
+    expect(screen.queryByLabelText("Sažetak board-a")).not.toBeInTheDocument();
+    expect(screen.queryByText("Urgentne odluke")).not.toBeInTheDocument();
+    expect(screen.queryByText("120.000 RSD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ponovo proveri" }));
 
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
     await waitFor(() => expect(getDecisionBoardAggregate).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not dump workflow ActionType or Status as data-quality warning chips", async () => {
+    const workflowCard = card({
+      id: "product:sku-workflow",
+      kind: "product",
+      sectionKey: "urgent",
+      sourceModule: "Odluke o proizvodima",
+      title: "Workflow dump kartica",
+      riskIfIgnored: "Ne sme da izgleda kao DQ upozorenje.",
+      recommendedNextAction: "Prikaži samo data-quality razlog.",
+      actionHref: "/analytics/actions?sourceType=product",
+      dataQualityStatus: "warning",
+      priorityScore: 200,
+      impactScore: 50000,
+      warningCodes: ["accepted", "pending", "REPLENISH", "missing_cost"],
+      reasonCodes: ["done", "Status", "ActionType"],
+    });
+
+    vi.mocked(getDecisionBoardAggregate).mockResolvedValue(
+      aggregate({
+        sections: [
+          section("urgent", [workflowCard], { title: "Top 5 urgentnih odluka", sourceLink: "/analytics/products" }),
+        ],
+      }),
+    );
+
+    renderPage();
+
+    const workflowTitle = await screen.findByText("Workflow dump kartica");
+    const workflowCardEl = workflowTitle.closest("article");
+    expect(workflowCardEl).not.toBeNull();
+
+    expect(within(workflowCardEl as HTMLElement).getByText("Nedostaje nabavna cena")).toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("accepted")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("pending")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("REPLENISH")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("done")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("Status")).not.toBeInTheDocument();
+    expect(within(workflowCardEl as HTMLElement).queryByText("ActionType")).not.toBeInTheDocument();
   });
 });

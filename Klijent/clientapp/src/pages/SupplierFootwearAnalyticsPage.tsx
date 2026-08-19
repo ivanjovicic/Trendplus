@@ -408,7 +408,6 @@ export default function SupplierFootwearAnalyticsPage({
   const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
   const recommendationAllowed = dataQualityStatus === "good" || dataQualityStatus === "warning";
-  const generatedAt = data?.generatedAt ?? null;
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
     {
       key: "period",
@@ -653,27 +652,6 @@ export default function SupplierFootwearAnalyticsPage({
           ]}
           fields={controlBarFields}
         />
-      ) : null}
-
-      {false ? (
-      <header className="sf-decision-header">
-        <div>
-          <h1 className="sf-decision-title">Dobavljači i tipovi obuće</h1>
-          <p className="sf-decision-subtitle">Ekran za podrsku odluci koji spaja dobavljaca i dominantan tip obuce, da se brzo vidi gde je najveci promet, koji tip nosi rezultat i gde treba pojacati fokus.</p>
-        </div>
-        <div className="sf-decision-generated">Generisano: {generatedAt ? new Date(generatedAt ?? "").toLocaleString("sr-RS") : "-"}</div>
-      </header>
-      ) : null}
-
-      {false ? (
-      <section className="sf-decision-filters">
-        <label className="sf-decision-field"><span>Period</span><select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}><option value="30d">Poslednjih 30 dana</option><option value="90d">Poslednjih 90 dana</option><option value="180d">Poslednjih 180 dana</option><option value="365d">Poslednjih 365 dana</option><option value="custom">Prilagođeno</option></select></label>
-        <label className="sf-decision-field"><span>Od</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
-        <label className="sf-decision-field"><span>Do</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
-        <label className="sf-decision-field"><span>Dobavljač</span><select value={vendorId ?? ""} onChange={(e) => setVendorId(e.target.value ? Number(e.target.value) : null)}><option value="">Svi</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.naziv}</option>)}</select></label>
-        <label className="sf-decision-field"><span>Kategorija</span><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Sve</option>{(data?.categories ?? []).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        <div className="sf-decision-actions"><button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button><button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Reset</button></div>
-      </section>
       ) : null}
 
       {invalidRange ? <div className="sf-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}

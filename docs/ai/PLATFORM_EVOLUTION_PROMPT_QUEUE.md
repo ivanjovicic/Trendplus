@@ -12,9 +12,9 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | `PERF15` | D8 shared-saas evidence gate |
-| OBS - Observability | `OBS08` | worker SLA evidence contract (docs) |
-| SEC - Security Evolution | none (`SEC04` DONE; `SEC05` WAITING) | data protection/retention assurance (docs) |
+| PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
+| OBS - Observability | `OBS10` | docs/contracts - operational dashboard honesty |
+| SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
@@ -24,14 +24,153 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ---
 
-## PERF15 - Shared-SaaS evidence gate
+## OBS10 - Prepare operational dashboard honesty contract
 
 Status: READY
+Priority: future / planning
+Feature family: observability-dashboard-honesty
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/OBS10-<agent>.lock.md`
+
+### Problem
+
+Worker, import and analytics SLA contracts exist, but there is still no frozen honesty contract for operational dashboard layers. A later dashboard slice could default missing panels to green, invent healthy metrics, or mix business analytics into operational telemetry.
+
+### Evidence
+
+- docs/roadmaps/OBSERVABILITY_ROADMAP.md OBS-7
+- docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md Slice 5 / O2-6
+- docs/architecture/OBSERVABILITY_SLI_CATALOG.md proposed dashboard layers
+- docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md
+- docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md
+
+### Scope
+
+- docs/contracts only for dashboard layers, unknown/WARN rules and source-of-truth pointers;
+- keep business readiness, API, import, worker and database/cache layers distinct;
+- no runtime dashboard product, vendor choice, alerting or SLA numbers.
+
+### Read first
+
+- OBS09 capture note
+- OBS08 worker SLA contract
+- OBS02 instrumentation rollout plan Slice 5
+- OBS01 catalog dashboard layers
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze a citeable operational dashboard honesty contract that maps each layer to existing OBS evidence, not a new metric catalog.
+2. Keep missing panel data as unknown/WARN, never green or `0`.
+3. Keep tenant dimensions blocked until MT authorizes them.
+4. Do not implement a dashboard UI or start `PERF16` in this prompt.
+
+### Tests
+
+- contract forbids treating missing panel data as healthy;
+- last-success age stays unknown, not `0 seconds`;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable dashboard honesty contract exists;
+- operators can tell which layers are defined vs still unknown;
+- READY pointer remains single for OBS.
+
+### Dependencies
+
+- OBS09 DONE;
+- OBS08 DONE;
+- OBS01/OBS02 dashboard language already exists.
+
+---
+
+## PERF16 - Reopen D8 shared-SaaS measurement when MT isolation fixtures exist
+
+Status: BLOCKED
+Ready after: `MT10` is `DONE` or `MASTER_ROADMAP.md` records an explicit shared-SaaS evidence gate
+Priority: future / measurement
+Feature family: performance-scalability-d8-reopen
+Parallel-safe: yes, docs/contracts until MT fixtures exist
+Owner: unassigned
+Local lock: `.ai/task-locks/PERF16-<agent>.lock.md`
+
+### Problem
+
+PERF15 froze D8 as MT-owned and `n/a_dedicated`, but there is still no authorized shared-SaaS measurement pack. A later PERF slice must wait for MT fixtures or an owner-recorded gate instead of inventing isolation overhead.
+
+### Evidence
+
+- docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md
+- docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md
+- docs/ai/MULTITENANCY_PROMPT_QUEUE.md (`MT02` WAITING, `MT10` WAITING)
+- .ai/runs/2026-08-12-PERF14-evidence.md
+
+### Scope
+
+- docs/contracts or later measurement only after MT fixtures/`MT10` or an owner-recorded gate;
+- no invented `shared_saas` claims from dedicated PERF10–PERF14 packs;
+- no runtime optimization in this prompt.
+
+### Read first
+
+- PERF15 completion note
+- PERF15 shared-SaaS evidence gate
+- MT current READY / `MT10` release gate
+- PERF09 D8 fields
+
+### Do
+
+1. Keep D8 `n/a_dedicated` on dedicated packs until MT fixtures exist.
+2. Reopen measurement only when `MT10` is DONE or `MASTER_ROADMAP.md` records an explicit shared-SaaS gate.
+3. If measuring, cite `mtGateIds`, keep leak checks MT-owned, and leave missing overhead null.
+4. Do not start OBS08 in this prompt if this slice is not current execution.
+
+### Tests
+
+- docs forbid dedicated-to-shared_saas promotion;
+- missing overhead stays null, not `0 ms`;
+- queue and planning validators pass.
+
+### Acceptance
+
+- D8 reopen conditions stay citeable;
+- READY pointer remains single for PERF.
+
+### Dependencies
+
+- PERF15 DONE;
+- `MT10` DONE or an owner-recorded shared-SaaS evidence gate.
+
+### Completion note
+
+- Date: 2026-08-18
+- Status: BLOCKED
+- Completion: 0% - D8 measurement cannot reopen without `MT10` or an owner-recorded shared-SaaS gate
+- Changed files: docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/PERFORMANCE_ROADMAP.md
+- Contract/runtime behavior changed: no; status corrected from READY to BLOCKED so agents do not claim a non-startable prompt
+- Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
+- Checks not run: npm/dotnet tests - docs/routing only
+- Run log: .ai/runs/2026-08-18-queue-promote-ready-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 51550ec833985a79149de9215adee38c7696ceab
+- Main verification: passed - origin/main contains 51550ec833985a79149de9215adee38c7696ceab
+- Missed: no D8 measurement pack
+- Follow-up: reopen PERF16 only after MT10 or an explicit shared-SaaS gate
+- Residual risk: a later agent could still infer shared_saas from dedicated PERF10-PERF14 packs
+- Next: RQ96 is current execution READY; OBS10 and RL10 are parallel-safe planning READYs
+- Prompt defect / scope repair: PERF16 was left READY after the sequential refill even though its MT dependency forbids a start
+
+## PERF15 - Shared-SaaS evidence gate
+
+Status: DONE
 Priority: future / measurement
 Feature family: performance-scalability-d8-shared-saas
 Parallel-safe: no - shares performance/MT contract paths
-Owner: unassigned
-Local lock: `.ai/task-locks/PERF15-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: removed after DONE
 
 ### Problem
 
@@ -78,6 +217,43 @@ PERF14 finished the D6 import-overlap evidence track, but D8 tenant-isolation ov
 
 - PERF14 DONE;
 - MT fixtures/gates or an explicit owner decision for shared-SaaS evidence.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 94%
+- Changed files:
+  - docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md
+  - docs/architecture/PERFORMANCE_SCALABILITY_GATE_EVIDENCE_CONTRACT.md
+  - docs/roadmaps/PERFORMANCE_ROADMAP.md
+  - docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-PERF15-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (68 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only
+- Run log: .ai/runs/2026-08-14-PERF15-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 42a7f8826eed6ac8a5926aceacb2a96937b35534
+- Main verification: git rev-parse origin/main -> f73b6fdd98b274f2afd62667a28da70cf386fc4c; work SHA 42a7f8826eed6ac8a5926aceacb2a96937b35534 is an ancestor
+- Missed: no D8 measurement pack; no MT promotion; shared-SaaS remains unclaimed
+- Follow-up: `OBS08` (current execution); PERF program READY is `PERF16`
+- Residual risk: a later pack could still relabel dedicated evidence as `shared_saas` if it ignores the gate
+- Prompt defect / scope repair: Do-line 3 kept PERF15 READY during the slice; after close the validator needs a successor READY, so `PERF16` was inserted. The Dependencies MT line is the D8 claim gate, not a start blocker.
+- Next: `OBS08` - Define Worker SLA evidence contract
 
 ---
 
@@ -1104,12 +1280,12 @@ Trendplus has known query, worker, cold-start and dataset-scale risks, but optim
 
 ## OBS08 - Define Worker SLA evidence contract
 
-Status: READY
+Status: DONE
 Priority: future
 Feature family: observability-worker-sla-evidence
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/OBS08-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: .ai/task-locks/OBS08-cursor.lock.md (removed after DONE)
 
 ### Problem
 
@@ -1161,6 +1337,100 @@ Worker lifecycle evidence exists as scattered metrics, but there is still no fro
 - OBS07 DONE;
 - OBS06 DONE;
 - OBS05 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md, docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md, docs/architecture/OBSERVABILITY_SLI_CATALOG.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-OBS08-evidence.md
+- Contract/runtime behavior changed: docs-only worker SLA evidence fields, states and unknown-vs-green rules; no runtime wiring
+- Checks run: node scripts/check-agent-instructions.mjs --self-test/--live; node scripts/check-prompt-queues.mjs --self-test/--live; node scripts/check-planning-architecture.mjs --self-test/--live; git diff --check
+- Checks not run: npm run build / dotnet test - docs/contracts only
+- Run log: .ai/runs/2026-08-17-OBS08-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
+- Missed: runtime capture remains OBS09
+- Follow-up: OBS09 READY
+- Residual risk: current /api/workers/health can still look green until OBS09 capture lands
+- Next: OBS09 - Capture worker SLA evidence without fake-green defaults
+- Prompt defect / scope repair: none
+
+---
+
+## OBS09 - Capture worker SLA evidence without fake-green defaults
+
+Status: DONE
+Priority: future / measurement
+Feature family: observability-worker-sla-evidence
+Parallel-safe: yes, docs/contracts or later runtime wiring after OBS08
+Owner: Cursor Auto
+Local lock: .ai/task-locks/OBS09-cursor.lock.md (removed after DONE)
+
+### Problem
+
+After the worker SLA evidence contract exists, the repo still needs a bounded evidence capture path so queue age, last-success and paused/disabled state cannot be presented as healthy zeros.
+
+### Evidence
+
+- OBS08 worker SLA contract (when DONE)
+- `docs/architecture/OBSERVABILITY_SLI_CATALOG.md` worker rows
+- worker classes under `Workers/`
+
+### Scope
+
+- measurement/evidence capture only after OBS08;
+- no invented SLA hours;
+- missing last-success stays unknown.
+
+### Read first
+
+- OBS08
+- OBS07 analytics SLA evidence contract
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` OBS-6
+
+### Do
+
+1. Follow the OBS08 contract fields exactly.
+2. Record unknown/missing worker evidence as unknown, not zero or green.
+3. Do not add alerting rules in this prompt.
+
+### Tests
+
+- evidence cites contract field ids;
+- docs/queue validators pass if only docs change;
+- focused worker tests if runtime capture is in scope after OBS08.
+
+### Acceptance
+
+- worker SLA evidence can be cited without fake-green defaults;
+- OBS08 remains the contract source of truth.
+
+### Dependencies
+
+- OBS08 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Infrastructure/Services/WorkerSlaEvidenceMapper.cs, Api/Endpoints/AllEndpoints.cs, Api.Tests/WorkerSlaEvidenceMapperTests.cs, docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-OBS09-evidence.md
+- Contract/runtime behavior changed: additive SlaEvidence on GET /api/workers/health; uninstrumented fields stay null/unknown; existing health counts unchanged
+- Checks run: focused WorkerSlaEvidenceMapperTests; governance validators; git diff --check
+- Checks not run: full dotnet test suite; npm frontend checks
+- Run log: .ai/runs/2026-08-17-OBS09-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
+- Missed: per-worker runtime policy pause not on snapshot; W5/W6 remain uninstrumented
+- Follow-up: SEC07 sequential next; OBS10 is the current OBS READY
+- Residual risk: legacy health counts can still look green; operators must read SlaEvidence
+- Next: SEC07 - Frontend production dependency vulnerability triage
+- Prompt defect / scope repair: none
 
 ---
 
@@ -1701,9 +1971,117 @@ Slice-1 API/process evidence can show availability and request completion, but s
 
 ---
 
+## SEC07 - Frontend production dependency vulnerability triage
+
+Status: DONE
+Ready after: `SEC04` DONE and current `Klijent/clientapp` production dependency audit evidence exists
+Priority: security / release-hardening
+Feature family: frontend-supply-chain-vulnerability-triage
+Parallel-safe: no - shares frontend dependency lockfile and build/test paths
+Owner: Cursor Auto
+Local lock: .ai/task-locks/SEC07-cursor.lock.md (removed after DONE)
+Commit suggestion: `fix(security): triage frontend dependency vulnerabilities`
+
+### Problem
+
+`Klijent/clientapp` currently reports high-severity production dependency vulnerabilities. The risk should not be closed by a blind `npm audit fix --force`, because the audit indicates at least one breaking transitive upgrade path and `xlsx` has no fixed version available.
+
+### Evidence
+
+- `npm audit --omit=dev --audit-level=low` on 2026-08-13 reported `11 high severity vulnerabilities`.
+- Production dependency findings include:
+  - `react-router` / `react-router-dom` high-severity advisories.
+  - `xlsx` high-severity advisories with no fix available.
+  - `puppeteer` / `puppeteer-core` / `@puppeteer/browsers` / `extract-zip` where the audit suggests a breaking upgrade path.
+  - `basic-ftp`, `ip-address`, `js-yaml`, and `ws` high-severity findings.
+- `SEC04` already documents supply-chain assurance policy, but it does not remediate this concrete frontend audit result.
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md`
+- `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+- `Klijent/clientapp/package.json`
+- `Klijent/clientapp/package-lock.json`
+- frontend import/export code paths that currently import `xlsx`
+- route/navigation tests listed below
+
+### Scope
+
+- `Klijent/clientapp/package.json`
+- `Klijent/clientapp/package-lock.json`
+- frontend import/export code paths that use `xlsx`
+- frontend tests/build only as needed to prove safe remediation
+- optional short QA note under `docs/qa/` if a vulnerability must remain accepted with a bounded reason
+
+### Do Not Touch
+
+- backend NuGet packages unless a separate backend audit finding is reproduced
+- broad React page redesign
+- API contracts
+- unrelated dependency churn
+- `npm audit fix --force` without first documenting the exact breaking changes and proving the app still builds/tests
+
+### Do
+
+1. Re-run `npm audit --omit=dev --json` and save a summarized, non-secret evidence note.
+2. Build a dependency tree for each production finding and classify: direct upgrade, safe transitive upgrade, breaking upgrade requiring tests, no-fixed-version replacement, or accepted residual risk.
+3. Upgrade `react-router-dom`/`react-router` and other fixable production dependencies only within compatible ranges when tests prove routing remains stable.
+4. For `xlsx`, either replace usage with a safer maintained package or record an explicit temporary exception with affected features, mitigation and owner-approved replacement plan.
+5. For Puppeteer-related findings, confirm whether Puppeteer is needed in production dependencies; if it is test/tooling only, move it out of production dependency surface without breaking build/test scripts.
+6. Run focused route/export tests plus build and guardrails.
+7. Leave a durable run log and completion note with remaining vulnerabilities, if any.
+
+### Tests
+
+```powershell
+cd Klijent/clientapp
+npm audit --omit=dev --audit-level=low
+npm run test -- --run src/layout/__tests__/navConfig.spec.ts src/layout/components/__tests__/headerNavigation.spec.ts src/pages/__tests__/AnalyticsDashboard.integration.spec.tsx
+npm run check:analytics-guardrails
+npm run build
+```
+
+### Acceptance
+
+- No high-severity production dependency finding is left unclassified.
+- Fixable production findings are remediated with lockfile evidence.
+- Any residual vulnerability has a documented bounded exception, affected feature surface, mitigation and follow-up owner.
+- Frontend routing, guardrails and production build remain green.
+- Completion note references the exact durable run log path.
+
+### Dependencies
+
+- `SEC04` DONE.
+- This prompt may run before `SEC05` because it is supply-chain remediation, not tenant/offboarding assurance.
+- Do not displace active BCI/STAB/QDB runtime gates unless the owner explicitly prioritizes release security hardening.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/package.json, Klijent/clientapp/package-lock.json, Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.integration.spec.tsx, docs/qa/FRONTEND_DEPENDENCY_VULNERABILITY_TRIAGE_2026-08-17.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, MASTER_ROADMAP.md, .ai/runs/2026-08-17-SEC07-evidence.md
+- Contract/runtime behavior changed: production npm graph no longer ships vulnerable react-router/xlsx/puppeteer; server xlsx export format strings unchanged
+- Checks run: npm audit --omit=dev after = 0; focused routes 9/9; npm run check:analytics-guardrails; npm run build
+- Checks not run: full frontend suite; npm audit fix --force (forbidden)
+- Run log: .ai/runs/2026-08-17-SEC07-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
+- Missed: Puppeteer extract-zip highs remain in the dev tree only
+- Follow-up: sequential refill complete; current execution READY is RQ96; OBS10 and RL10 are parallel-safe planning READYs; PERF16 is BLOCKED on MT10
+- Residual risk: reintroducing Puppeteer as a production dependency would reopen the audit
+- Next: RQ96 - Canonical observed daily inventory snapshot foundation
+- Prompt defect / scope repair: dashboard integration copy aligned to Pregled poslovanja so routing proof stays green
+
+---
+
 ## SEC05 - Data protection and retention assurance plan (S2-3)
 
-Status: READY
+Status: WAITING
+Ready after: MT09 contracts exist or the owner explicitly approves an interim dedicated-deploy offboarding scope
 Priority: future
 Feature family: security-retention-assurance-plan
 Parallel-safe: yes, planning/docs only

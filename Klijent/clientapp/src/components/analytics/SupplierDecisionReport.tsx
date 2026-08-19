@@ -4,6 +4,7 @@ import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/
 import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefinitions";
 import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
+import SupplierExplainabilitySnapshot from "../supplierDecisionHub/SupplierExplainabilitySnapshot";
 import "./SupplierDecisionReport.css";
 
 type SupplierDecisionReportProps = {
@@ -33,6 +34,10 @@ function rowValueAny(payload: ResolvedAnalyticsTablePayload, candidates: Array<{
   return null;
 }
 
+function rowEntry(payload: ResolvedAnalyticsTablePayload, section: string, item: string) {
+  return payload.rows.find((row) => String(row.section) === section && String(row.item) === item) ?? null;
+}
+
 function groupRows(payload: ResolvedAnalyticsTablePayload): Map<string, ReportRow[]> {
   const grouped = new Map<string, ReportRow[]>();
   for (const raw of payload.rows) {
@@ -60,11 +65,32 @@ function groupRowsAny(grouped: Map<string, ReportRow[]>, sectionNames: string[])
   return [];
 }
 
+function scalarText(value: string | number | boolean | null | undefined): string | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
 function metaValue(payload: ResolvedAnalyticsTablePayload, key: string): string | null {
   const found = payload.metadata?.find((item) => item.key === key);
   if (!found || found.value == null) return null;
   const text = String(found.value);
   return text.trim() ? text : null;
+}
+
+function metaNumber(payload: ResolvedAnalyticsTablePayload, key: string): number | null {
+  const value = metaValue(payload, key);
+  if (value == null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function metaBoolean(payload: ResolvedAnalyticsTablePayload, key: string): boolean | null {
+  const value = metaValue(payload, key);
+  if (value == null) return null;
+  if (value.toLowerCase() === "true") return true;
+  if (value.toLowerCase() === "false") return false;
+  return null;
 }
 
 function filterValue(payload: ResolvedAnalyticsTablePayload, key: string): string | null {
@@ -149,6 +175,16 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
   const metaDQ = metaValue(payload, "dataQualityStatus");
   const normalizedDQ = normalizeDataQualityStatus(metaValue(payload, "dataQualityStatus"));
   const recommendationAllowed = metaValue(payload, "recommendationAllowed");
+  const confidencePct = metaNumber(payload, "confidencePct");
+  const reliabilityPct = metaNumber(payload, "reliabilityPct");
+  const reasonCodesPreview = metaValue(payload, "reasonCodesPreview")
+    ?.split(" | ")
+    .map((reason) => reason.trim())
+    .filter(Boolean) ?? [];
+  const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
+  const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
+  const usedFallback = metaBoolean(payload, "usedFallback");
+  const fallbackRow = rowEntry(payload, "Header", "Korišćen fallback");
 
   const warnings = groupRowsAny(grouped, ["Upozorenje"]);
   const kpi = grouped.get("KPI") ?? [];
@@ -208,6 +244,27 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           <div className="sdr-meta-item"><span>Poslednje osveženje</span><strong>{lastRefresh}</strong></div>
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
+      </section>
+
+      <section className="sdr-section">
+        <SupplierExplainabilitySnapshot
+          title="Supplier explainability snapshot"
+          subjectLabel={supplierLabel}
+          periodLabel={period}
+          lastRefreshAt={metaValue(payload, "lastRefreshAtUtc")}
+          requestedDataset={metaValue(payload, "requestedDataset")}
+          effectiveDataset={metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value)}
+          effectivePeriodLabel={effectivePeriodLabel}
+          dataQualityStatus={metaDQ}
+          recommendationAllowed={metaBoolean(payload, "recommendationAllowed")}
+          usedFallback={usedFallback}
+          fallbackReason={metaValue(payload, "fallbackReason") ?? scalarText(fallbackRow?.note)}
+          fallbackReasonCode={metaValue(payload, "fallbackReasonCode")}
+          confidencePct={confidencePct}
+          reliabilityPct={reliabilityPct}
+          reasonCodes={reasonCodesPreview}
+          note="Report koristi isti backend-led explainability snapshot kao i hub, bez lokalnih decision-tree derivacija."
+        />
       </section>
 
       {warnings.length > 0 ? (

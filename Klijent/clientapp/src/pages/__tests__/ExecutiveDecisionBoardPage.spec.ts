@@ -330,6 +330,41 @@ function productCenter(rows: ProductDecisionCenterItem[]): ProductDecisionCenter
 }
 
 describe("buildExecutiveFallbackProductCards (RQ72)", () => {
+  it("preserves recommendationAllowed and confidenceSource for product cards", () => {
+    const cards = buildExecutiveFallbackProductCards(
+      productCenter([
+        productRow({
+          productId: 0,
+          productName: "Blokiran signal",
+          recommendationStatus: "FIX_DATA",
+          recommendationAllowed: false,
+          expectedImpactRsd: null,
+          dataQualityStatus: "insufficient_data",
+          confidenceLevel: "insufficient_data",
+          confidencePct: 20,
+        }),
+        productRow({
+          productId: 1,
+          productName: "Otvoren signal",
+          recommendationStatus: "REPLENISH",
+          recommendationAllowed: true,
+          expectedImpactRsd: 90_000,
+          dataQualityStatus: "good",
+          confidenceLevel: "high",
+          confidencePct: 82,
+        }),
+      ]),
+    );
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0].title).toBe("Otvoren signal");
+    expect(cards[0].recommendationAllowed).toBe(true);
+    expect(cards[0].confidenceSource).toBe("signal");
+    expect(cards[1].title).toBe("Blokiran signal");
+    expect(cards[1].recommendationAllowed).toBe(false);
+    expect(cards[1].confidenceSource).toBe("workflow_status_only");
+  });
+
   it("does not map lostSalesEstimate into expectedImpact when PDC left it null", () => {
     const cards = buildExecutiveFallbackProductCards(
       productCenter([

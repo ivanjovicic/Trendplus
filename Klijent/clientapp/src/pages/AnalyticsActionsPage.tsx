@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   getAnalyticsActionById,
@@ -10,7 +10,9 @@ import {
 } from "../services/analyticsApi";
 import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import RecommendationMeasurementStatisticsReview from "../components/analytics/RecommendationMeasurementStatisticsReview";
 import type {
   AnalyticsActionItem,
   AnalyticsActionImpactLedger,
@@ -124,6 +126,31 @@ const CONFIDENCE_LEVEL_LABELS: Record<string, string> = {
   insufficient_data: "Nedovoljno podataka",
 };
 
+const RECOMMENDATION_TYPE_LABELS: Record<string, string> = {
+  BOOST: "Pojačaj",
+  REPLENISH: "Dopuni",
+  WATCH: "Prati",
+  MARKDOWN: "Snizi cenu",
+  DO_NOT_ORDER: "Ne naručivati",
+  FIX_DATA: "Proveriti podatke",
+  INSUFFICIENT_DATA: "Nedovoljno podataka",
+};
+
+const ACTION_CODE_LABELS: Record<string, string> = {
+  stock_cover_days: "Pokrivenost zalihe",
+  sell_through: "Obrt zalihe",
+  sales_velocity: "Brzina prodaje",
+  stock_risk: "Rizik zalihe",
+  margin: "Marža",
+  trend: "Trend",
+  supplier_reliability: "Pouzdanost dobavljača",
+  missing_cost: "Nedostaje nabavna cena",
+  sparse_sales: "Malo prodaje",
+  low_cover: "Niska pokrivenost",
+  low: "Niska pokrivenost",
+  out_of_stock_risk: "Rizik rasprodaje",
+};
+
 function normalizeDataQualityStatus(value: string | null | undefined): AnalyticsActionDataQualityStatus | null {
   if (!value) return null;
   const lower = value.toLowerCase();
@@ -188,7 +215,7 @@ function formatMetadataJson(value: string | null | undefined): string | null {
 
 function formatList(values: string[] | null | undefined): string {
   if (!values || values.length === 0) return "-";
-  return values.join(", ");
+  return values.map(formatActionCodeLabel).join(", ");
 }
 
 function formatImpactLedgerPeriod(startUtc: string | null | undefined, endUtc: string | null | undefined): string {
@@ -303,7 +330,22 @@ function formatWindowDays(value: number | null | undefined, unavailableLabel: st
 }
 
 function formatLedgerList(values: string[] | null | undefined, unavailableLabel: string): string {
-  return values && values.length > 0 ? values.join(", ") : unavailableLabel;
+  return values && values.length > 0 ? values.map(formatActionCodeLabel).join(", ") : unavailableLabel;
+}
+
+function formatActionCodeLabel(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return value;
+  return ACTION_CODE_LABELS[normalized.toLowerCase()] ?? normalized.replaceAll("_", " ");
+}
+
+function formatSourceModuleLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "-";
+  if (normalized in SOURCE_LABELS) {
+    return SOURCE_LABELS[normalized as AnalyticsActionSourceType];
+  }
+  return normalized.replaceAll("_", " ");
 }
 
 function formatFreshnessLabel(value: string | null | undefined): string {
@@ -314,6 +356,12 @@ function formatFreshnessLabel(value: string | null | undefined): string {
 function formatConfidenceLevelLabel(value: string | null | undefined): string {
   if (!value) return "Nije evidentirano";
   return CONFIDENCE_LEVEL_LABELS[value] ?? value;
+}
+
+function formatRecommendationTypeLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "Nije evidentirano";
+  return RECOMMENDATION_TYPE_LABELS[normalized.toUpperCase()] ?? normalized.replaceAll("_", " ");
 }
 
 function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
@@ -492,20 +540,31 @@ export default function AnalyticsActionsPage() {
   const [outcomeModalBusy, setOutcomeModalBusy] = useState(false);
   const [outcomeModalError, setOutcomeModalError] = useState<string | null>(null);
   const [writeAccessMessage, setWriteAccessMessage] = useState<string | null>(null);
+  const itemsRequestSeqRef = useRef(0);
+  const outcomeSummaryRequestSeqRef = useRef(0);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
+    const requestSeq = ++itemsRequestSeqRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await getAnalyticsActions(f);
+      if (itemsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setItems(res.items);
       setTotalCount(res.totalCount);
       setPage(res.page);
       setTotalPages(res.totalPages);
     } catch (e) {
+      if (itemsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setError(e instanceof Error ? e.message : "Greška pri učitavanju");
     } finally {
-      setLoading(false);
+      if (itemsRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -519,6 +578,7 @@ export default function AnalyticsActionsPage() {
   }, []);
 
   const loadOutcomeSummary = useCallback(async (f: AnalyticsActionFilters) => {
+    const requestSeq = ++outcomeSummaryRequestSeqRef.current;
     setOutcomeSummaryLoading(true);
     setOutcomeSummaryError(null);
     try {
@@ -527,12 +587,20 @@ export default function AnalyticsActionsPage() {
         priority: f.priority,
         dataQualityStatus: f.dataQualityStatus,
       });
+      if (outcomeSummaryRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setOutcomeSummary(summary);
     } catch (e) {
+      if (outcomeSummaryRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setOutcomeSummary(null);
       setOutcomeSummaryError(e instanceof Error ? e.message : "Sažetak ishoda trenutno nije dostupan.");
     } finally {
-      setOutcomeSummaryLoading(false);
+      if (outcomeSummaryRequestSeqRef.current === requestSeq) {
+        setOutcomeSummaryLoading(false);
+      }
     }
   }, []);
 
@@ -794,6 +862,13 @@ export default function AnalyticsActionsPage() {
           </div>
         </div>
       )}
+
+      <RecommendationMeasurementStatisticsReview
+        loading={outcomeSummaryLoading}
+        loadError={outcomeSummaryError}
+        summary={outcomeSummary}
+        onRetry={() => { void loadOutcomeSummary(filters); }}
+      />
 
       <section className="aaq-summary-panel" aria-labelledby="aaq-summary-title">
         <div className="aaq-summary-header">
@@ -1066,12 +1141,21 @@ export default function AnalyticsActionsPage() {
         />
       </div>
 
-      {error && <div className="aaq-error">{error}</div>}
+      {error ? (
+        <AnalyticsErrorState
+          title="Akcije trenutno nisu dostupne"
+          message={error}
+          onRetry={() => {
+            void loadItems(filters);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {writeAccessMessage ? <div className="aaq-error" role="status">{writeAccessMessage}</div> : null}
 
       {loading ? (
         <div className="aaq-loading">Učitavanje...</div>
-      ) : items.length === 0 ? (
+      ) : error ? null : items.length === 0 ? (
         <div className="aaq-empty">
           <p>Nema akcija.</p>
           <p className="aaq-empty-hint">
@@ -1135,7 +1219,7 @@ export default function AnalyticsActionsPage() {
                             <div className="td-desc">{item.description}</div>
                           )}
                         </td>
-                        <td className="td-rec">{item.recommendationStatus ?? "-"}</td>
+                        <td className="td-rec">{formatRecommendationTypeLabel(item.recommendationStatus)}</td>
                         <td>{formatTimestamp(item.dueAtUtc)}</td>
                         <td className="td-num">{fmtRsd(item.impactEstimateRsd, 0, "-")}</td>
                         <td className="td-num">{fmtRsd(item.expectedImpactRsd, 0, "-")}</td>
@@ -1252,7 +1336,7 @@ export default function AnalyticsActionsPage() {
                                 <h3 className="aaq-detail-card-title">Kontekst preporuke</h3>
                                 <div className="aaq-details-grid">
                                   <div><strong>Verzija ledger šeme:</strong> {getLedgerSchemaLabel(detailsItem.ledgerSnapshot)}</div>
-                                  <div><strong>Tip preporuke:</strong> {creationSnapshot?.recommendationType?.trim() || "Nije evidentirano"}</div>
+                                  <div><strong>Tip preporuke:</strong> {formatRecommendationTypeLabel(creationSnapshot?.recommendationType)}</div>
                                   <div><strong>Nivo pouzdanosti:</strong> {formatConfidenceLevelLabel(creationSnapshot?.confidenceLevel)}</div>
                                   <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(creationSnapshot?.inputFreshnessStatus)}</div>
                                   <div><strong>Prozor uticaja:</strong> {formatWindowDays(creationSnapshot?.impactWindowDays, "Nije evidentirano")}</div>
@@ -1292,8 +1376,8 @@ export default function AnalyticsActionsPage() {
                                   <div><strong>Razlog odluke:</strong> {impactLedger.snapshot.decisionReason}</div>
                                   <div><strong>Preporučena akcija:</strong> {impactLedger.snapshot.recommendedAction}</div>
                                   <div><strong>Period izvora:</strong> {formatImpactLedgerPeriod(impactLedger.snapshot.sourcePeriodStartUtc, impactLedger.snapshot.sourcePeriodEndUtc)}</div>
-                                  <div><strong>Izvorni modul:</strong> {impactLedger.snapshot.sourceModule ?? "-"}</div>
-                                  <div><strong>Freshness ulaza:</strong> {impactLedger.snapshot.inputFreshnessStatus}</div>
+                                  <div><strong>Izvorni modul:</strong> {formatSourceModuleLabel(impactLedger.snapshot.sourceModule)}</div>
+                                  <div><strong>Svežina ulaza:</strong> {formatFreshnessLabel(impactLedger.snapshot.inputFreshnessStatus)}</div>
                                   <div><strong>Opseg signala:</strong> {impactLedger.snapshot.impactWindowDays != null ? `${impactLedger.snapshot.impactWindowDays} dana` : "-"}</div>
                                   <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus)!] : impactLedger.resolution.outcomeStatus}</div>
                                   <div><strong>Izmeren uticaj:</strong> {fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")}</div>

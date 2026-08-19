@@ -17,6 +17,7 @@ import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
+import SupplierExplainabilitySnapshot from "../components/supplierDecisionHub/SupplierExplainabilitySnapshot";
 import { getSezone } from "../services/sezoneApi";
 import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction } from "../services/analyticsApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
@@ -34,7 +35,7 @@ import {
 } from "../services/supplierDecisionHubApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
-import { fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { formatDate, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
@@ -365,7 +366,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const scorecardMetaMessage = getAnalyticsMetaMessage(scorecardMeta);
   const recommendationAllowed = trustMetadata?.recommendationAllowed === true;
   const hasVisibleData = Boolean(summary && ranking);
-  const showBlockingError = Boolean((error && !hasVisibleData) || (!hasVisibleData && isAnalyticsMetaError(scorecardMeta)));
+  const showBlockingError = Boolean(
+    isAnalyticsMetaError(scorecardMeta)
+    || (error && !hasVisibleData)
+  );
   const showMetaWarning = !loading && !showBlockingError && isAnalyticsMetaWarning(scorecardMeta);
   const resolvedLastRefreshAt = refreshStatus?.lastSuccessfulRefreshAtUtc ?? trustMetadata?.lastRefreshAtUtc ?? null;
   const hasDatasetFallback = Boolean(
@@ -587,6 +591,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     return rest > 0.1 ? [...top, { name: "Ostali", sharePct: rest }] : top;
   }, [sortedRows]);
   const selectedRow = useMemo(() => (expandedSupplierId == null ? null : sortedRows.find((row) => row.supplierId === expandedSupplierId) ?? null), [expandedSupplierId, sortedRows]);
+  const snapshotRow = selectedRow ?? sortedRows[0] ?? null;
+  const snapshotPeriodLabel = `${formatDate(activeFilters.fromDate)} - ${formatDate(activeFilters.toDate)}`;
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "periodPreset", label: "Period", value: periodPreset },
@@ -860,6 +866,32 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           refreshStatusHref="/admin/configuration?panel=workers"
           compact
         />
+      ) : null}
+
+      {snapshotRow ? (
+        <section className="sdh-decision-snapshot">
+          <SupplierExplainabilitySnapshot
+            compact
+            title="Supplier explainability snapshot"
+            subjectLabel={snapshotRow.supplierName}
+            periodLabel={snapshotPeriodLabel}
+            lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
+            requestedDataset={trustMetadata?.requestedDataset ?? null}
+            effectiveDataset={trustMetadata?.effectiveDataset ?? null}
+            effectivePeriodLabel={trustMetadata?.effectivePeriodLabel ?? null}
+            dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
+            recommendationAllowed={trustMetadata?.recommendationAllowed ?? null}
+            usedFallback={trustMetadata?.usedFallback ?? false}
+            fallbackReason={trustMetadata?.fallbackReason ?? null}
+            fallbackReasonCode={trustMetadata?.fallbackReasonCode ?? null}
+            confidencePct={snapshotRow.confidenceAvailable ? snapshotRow.normalizedConfidence : null}
+            reliabilityPct={snapshotRow.reliabilityAvailable ? snapshotRow.reliabilityPct : null}
+            reasonCodes={snapshotRow.reasonCodes}
+            note={recommendationAllowed
+              ? "Kompaktni snapshot prikazuje backend-led signal iz scorecard skupa."
+              : "Kompaktni snapshot prikazuje pomoćni signal jer je finalna preporuka blokirana."}
+          />
+        </section>
       ) : null}
 
       <section className="sdh-decision-context" aria-label="Objašnjenje skorkarte">
@@ -1216,6 +1248,23 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   </button>
                 </div>
               </div>
+              <SupplierExplainabilitySnapshot
+                subjectLabel={selectedRow.supplierName}
+                periodLabel={snapshotPeriodLabel}
+                lastRefreshAt={trustMetadata?.lastRefreshAtUtc ?? resolvedLastRefreshAt}
+                requestedDataset={trustMetadata?.requestedDataset ?? null}
+                effectiveDataset={trustMetadata?.effectiveDataset ?? null}
+                effectivePeriodLabel={trustMetadata?.effectivePeriodLabel ?? null}
+                dataQualityStatus={selectedRow.dataQualityStatus}
+                recommendationAllowed={recommendationAllowed}
+                usedFallback={trustMetadata?.usedFallback ?? false}
+                fallbackReason={trustMetadata?.fallbackReason ?? null}
+                fallbackReasonCode={trustMetadata?.fallbackReasonCode ?? null}
+                confidencePct={selectedRow.confidenceAvailable ? selectedRow.normalizedConfidence : null}
+                reliabilityPct={selectedRow.reliabilityAvailable ? selectedRow.reliabilityPct : null}
+                reasonCodes={selectedRow.reasonCodes}
+                note={selectedRow.statusReason}
+              />
               <div className="sdh-decision-detail-grid">
                 <article>
                   <span>Prihod <InfoTip text="Ukupna vrednost prodaje ovog dobavljača u izabranom periodu." /></span>

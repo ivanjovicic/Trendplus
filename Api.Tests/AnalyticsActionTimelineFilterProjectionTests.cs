@@ -33,6 +33,7 @@ public sealed class AnalyticsActionTimelineFilterProjectionTests
         Assert.Equal(AnalyticsActionTimelineFilterProjection.EmptyReasonNoEvents, result.EmptyReason);
         Assert.Empty(result.Timelines);
         Assert.Contains("product:999", result.Scope.ScopeExplanation);
+        Assert.Contains("Porodica: sve porodice", result.Scope.ScopeExplanation);
     }
 
     [Fact]
@@ -99,7 +100,8 @@ public sealed class AnalyticsActionTimelineFilterProjectionTests
         Assert.Contains(timeline.Events, eventItem => eventItem.EventType == "recommendation_issued");
         Assert.DoesNotContain(timeline.Events, eventItem => eventItem.EventType == "outcome_measured");
         Assert.Contains(AnalyticsActionTimelineFilterProjection.EmptyReasonNoMeasurement, result.WarningCodes);
-        Assert.Contains("Porodica: REPLENISH", result.Scope.ScopeExplanation);
+        Assert.Contains("Porodica: Dopuni", result.Scope.ScopeExplanation);
+        Assert.DoesNotContain("Porodica: REPLENISH", result.Scope.ScopeExplanation);
     }
 
     private static AnalyticsActionItem CreateAction(

@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-08-11
+Updated: 2026-08-13
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -44,6 +44,7 @@ Useful standards:
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
 - `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
 - `docs/ai/BACKEND_STANDARDS.md`
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
 - `.ai/RUN_LOG_TEMPLATE.md`

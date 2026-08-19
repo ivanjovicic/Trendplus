@@ -136,6 +136,8 @@ export interface InventoryStatus {
   totalOnHand: number;
   lowStockCount: number;
   outOfStockCount: number;
+  usedOperationalFallback?: boolean;
+  meta?: AnalyticsResponseMeta | null;
 }
 
 export interface DailySale {
@@ -461,6 +463,63 @@ export interface ProductDecisionTimelineFilterResponse {
   meta?: AnalyticsResponseMeta | null;
 }
 
+export interface DecisionTimelineExportHonestyHeader {
+  requestedPeriodFromUtc: string;
+  requestedPeriodToUtc: string;
+  effectivePeriodFromUtc: string;
+  effectivePeriodToUtc: string;
+  periodMode: string;
+  generatedAtUtc: string;
+  freshnessStatus?: string | null;
+  dataQualityStatus?: string | null;
+  emptyReason?: string | null;
+  warningCodes?: string[] | null;
+  snapshotCoverage: string;
+  scopeExplanation?: string | null;
+  matchedActionCount?: number | null;
+  matchedEventCount?: number | null;
+}
+
+export interface DecisionTimelineExportFunnel {
+  issuedCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  ignoredCount: number;
+  executedCount: number;
+  measuredCount: number;
+  notMeasuredCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  acceptanceRate?: number | null;
+  executionRate?: number | null;
+  measuredRate?: number | null;
+  successRate?: number | null;
+}
+
+export interface DecisionTimelineExportRow {
+  timelineId: string;
+  actionId: number;
+  sourceRecommendationId: string;
+  currentStatus: string;
+  currentOutcomeStatus: string;
+  workflowStatusSource: string;
+  creationSnapshotPresent: boolean;
+  resolutionSnapshotPresent: boolean;
+  evidenceSnapshotPresent: boolean;
+  snapshotAbsenceReason?: string | null;
+}
+
+export interface ProductDecisionTimelineExportResponse {
+  success: boolean;
+  header: DecisionTimelineExportHonestyHeader;
+  funnel?: DecisionTimelineExportFunnel | null;
+  rows: DecisionTimelineExportRow[];
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  meta?: AnalyticsResponseMeta | null;
+}
+
 export interface ProductDecisionWhyPanel {
   recommendationStatus: ProductDecisionRecommendationStatus;
   recommendationLabel: string;
@@ -549,6 +608,7 @@ export interface ProductDecisionCenterItem {
   recommendationLifecycle?: RecommendationLifecycleCapture | null;
   evidenceSnapshotStatus?: "absent" | "available" | string | null;
   evidenceSnapshotPreview?: ProductDecisionEvidenceSnapshotPreview | null;
+  recommendationAllowed?: boolean | null;
 }
 
 export interface ProductDecisionEvidenceSnapshotPreview {
@@ -644,6 +704,9 @@ export interface DecisionBoardCard {
   alreadyInAction: boolean;
   alreadyClosed: boolean;
   warningCodes: string[];
+  confidenceSource?: string | null;
+  reasonCodes?: string[] | null;
+  recommendationAllowed?: boolean | null;
   dataQualityStatus: "good" | "warning" | "critical" | "insufficient_data" | "unknown" | string;
   generatedAtUtc?: string | null;
   priorityScore: number;
@@ -1182,6 +1245,16 @@ export interface InventoryItemDetail {
   agingBucket: string;
   agingLabel: string;
   abcClass: string;
+  stockCoverDays?: number | null;
+  stockCoverStatus: string;
+  stockCoverStatusLabel: string;
+  sellThroughRatio?: number | null;
+  sellThroughStatus: string;
+  sellThroughStatusLabel: string;
+  signalConfidencePct: number;
+  recommendationAllowed: boolean;
+  dataQualityStatus: string;
+  reasonCodes: string[];
   history: InventoryHistoryItem[];
 }
 
@@ -1216,6 +1289,16 @@ export interface InventoryInsightItem {
   agingLabel: string;
   abcClass: string;
   stockState: string;
+  stockCoverDays?: number | null;
+  stockCoverStatus: string;
+  stockCoverStatusLabel: string;
+  sellThroughRatio?: number | null;
+  sellThroughStatus: string;
+  sellThroughStatusLabel: string;
+  signalConfidencePct: number;
+  recommendationAllowed: boolean;
+  dataQualityStatus: string;
+  reasonCodes: string[];
 }
 
 export interface InventoryInsights {
@@ -1772,6 +1855,32 @@ export interface AnalyticsActionOutcomeSummaryBucket {
   measuredOutcomeCount?: number | null;
 }
 
+export interface RecommendationMeasurementStatistics {
+  success: boolean;
+  issuedCount: number;
+  acceptedCount: number;
+  rejectedCount: number;
+  ignoredCount: number;
+  executedCount: number;
+  measuredCount: number;
+  notMeasuredCount: number;
+  successCount: number;
+  neutralCount: number;
+  negativeCount: number;
+  pendingCount: number;
+  acceptanceRate?: number | null;
+  rejectionRate?: number | null;
+  ignoredRate?: number | null;
+  executionRate?: number | null;
+  measurementCoverageRate?: number | null;
+  notMeasuredShare?: number | null;
+  positiveOutcomeRate?: number | null;
+  neutralOutcomeRate?: number | null;
+  negativeOutcomeRate?: number | null;
+  warningCodes: string[];
+  emptyReason?: string | null;
+}
+
 export interface AnalyticsActionOutcomeSummaryResponse {
   meta: AnalyticsActionOutcomeSummaryMeta;
   totals: AnalyticsActionOutcomeSummaryTotals;
@@ -1782,6 +1891,7 @@ export interface AnalyticsActionOutcomeSummaryResponse {
   byDataQuality: AnalyticsActionOutcomeSummaryBucket[];
   byConfidenceBucket: AnalyticsActionOutcomeSummaryBucket[];
   byReliabilityBucket: AnalyticsActionOutcomeSummaryBucket[];
+  measurementStatistics?: RecommendationMeasurementStatistics | null;
 }
 
 export interface AnalyticsActionFilters {

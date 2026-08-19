@@ -7,6 +7,7 @@ Related:
 
 - `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`
 - `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`
+- `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md`
 - `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md`
 - `.ai/runs/2026-08-12-PERF05-evidence.md`
 - `.ai/runs/2026-08-12-PERF08-evidence.md`
@@ -82,6 +83,10 @@ Every scalability-gate evidence pack must address these dimensions. Until measur
 
 **Cache-footprint follow-up (PERF13):** `.ai/runs/2026-08-12-PERF13-evidence.md` - D5 cache footprint measured with tracked keys 0 -> 6; D6 import overlap still blocked.
 
+**Import-overlap follow-up (PERF14):** `.ai/runs/2026-08-12-PERF14-evidence.md` - D6 measured while analytics reads overlapped a running Access import; D8 remained `n/a_dedicated`.
+
+**Shared-SaaS gate (PERF15):** `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md` - D8 stays MT-owned. Dedicated packs must not be relabeled `shared_saas`. Missing overhead is not `0 ms`.
+
 ### D3 — Database connection pressure
 
 | Field | Meaning |
@@ -149,7 +154,7 @@ Align with baseline family **B6**. Ops report warm/cold targets remain **targets
 | `mtGateIds` | MT prompts/contracts that authorize the claim |
 | `status` | `unmeasured` \| `measured` \| `deferred` \| `n/a_dedicated` |
 
-For `dedicated` mode, set `status=n/a_dedicated`. Do not fabricate shared-SaaS overhead without MT-approved fixtures.
+For `dedicated` mode, set `status=n/a_dedicated`. Do not fabricate shared-SaaS overhead without MT-approved fixtures. PERF15 freezes that boundary in `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md`. Reopen D8 measurement only after `MT10` or an owner-recorded shared-SaaS gate.
 
 ## Evidence pack template
 
@@ -197,13 +202,14 @@ Scalability samples are invalid for gate promotion if any fail:
 
 | Dimension | Existing citeable evidence | Gap for G10/G50 |
 |---|---|---|
-| D2 latency (single load) | PERF05 warm B1/B2; PERF08 cold vs warm bootstrap | No concurrent multi-user pack |
-| D4 workers | Baseline B5 family defined; OBS08 worker SLA contract (docs) | No throughput/queue-depth pack |
-| D5 cache | Baseline B3; prewarm flags in PERF harnesses | No multi-customer cache footprint |
-| D6 import | Baseline B4 deferred in PERF05 | No overlap pack |
-| D7 export | Baseline B6 | No burst pack |
-| D8 isolation | MT program | Blocked until MT fixtures/gates |
-| D1/D3 envelopes | Unmeasured | Need envelope + connection-pressure pack |
+| D1 envelopes | PERF11 observed host envelope | Shared-pool fractions for `shared_saas` remain unmeasured |
+| D2 latency | PERF05/PERF08 single-load; PERF10 warm concurrent reads (dedicated) | No shared-SaaS concurrent pack |
+| D3 connections | PERF10 peak DB connections on dedicated G10 pack | No shared-SaaS connection-pressure pack |
+| D4 workers | PERF12 worker process health on dedicated pack | Shared-SaaS queue-depth pack still needs MT fixtures; OBS08 is the worker-SLA contract lane |
+| D5 cache | PERF13 tracked-key footprint on dedicated pack | No multi-tenant cache footprint |
+| D6 import | PERF14 dedicated overlap pack | No shared-SaaS import-overlap pack |
+| D7 export | PERF12 html generate burst on dedicated pack | No shared-SaaS / production-PDF burst pack |
+| D8 isolation | MT program; PERF15 gate `docs/architecture/PERFORMANCE_SHARED_SAAS_EVIDENCE_GATE.md` | Blocked until MT fixtures/`MT10` or an owner-recorded gate |
 
 ## Non-claims
 

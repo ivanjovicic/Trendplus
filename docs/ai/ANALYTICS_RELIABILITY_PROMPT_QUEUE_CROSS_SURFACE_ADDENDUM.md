@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (RQ51-RQ62 DONE; RQ55/RQ56/RQ63 WAITING)
-Main queue READY prompt: none (RQ01–RQ13 DONE)
+Current READY prompt: none
+Main queue READY prompt: none (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -26,6 +26,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ61 | DONE | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
+| RQ105 | DONE | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
 
 ---
 
@@ -694,3 +695,108 @@ Vendor pre/post `sharePct` is share of absolute revenue change, not normal reven
 ### Acceptance
 
 - Users cannot confuse absolute-change share with revenue share.
+
+---
+
+## RQ105 - Operational fallback must not look like trusted analytics meta
+
+Status: DONE
+Ready after: `RQ100` DONE; path-safe vs cached sales/inventory endpoints
+Priority: P1
+Type: backend/frontend-contract/tests
+Feature family: analytics-operational-fallback-honesty
+Parallel-safe: no, shares cached sales/dashboard inventory paths
+Owner: Cursor Auto
+Local lock: `.ai/task-locks/RQ105-cursor.lock.md` (removed after DONE)
+Commit suggestion: `fix(analytics): surface operational fallback on daily sales and dashboard inventory`
+
+### Problem
+
+Cached `/sales/daily` can still silently use an operational fallback as a bare array without meta, and dashboard bootstrap inventory can still show Artikli counts without a user-facing warning even though `UsedOperationalFallback` exists on the DTO. That is a fake-green / hidden-fallback failure.
+
+### Evidence
+
+- `.ai/runs/2026-08-13-LOCAL-MAIN-LANDING-evidence.md`
+- `.ai/runs/2026-08-13-ANALYTICS-LOCAL-BUGFIX-evidence.md`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusQuery.cs`
+
+### Scope
+
+- cached daily sales response meta when operational fallback is used;
+- dashboard bootstrap inventory warning when `UsedOperationalFallback=true`;
+- focused tests for warning/meta, not a new KPI formula.
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- RQ102 sales period/empty contract
+
+### Do
+
+1. Keep operational fallback explicit in meta or warning codes; do not return a trusted-looking bare array.
+2. Surface dashboard inventory fallback to the operator; do not hide Artikli fallback behind a healthy count.
+3. Empty remains empty; error remains error; fallback remains warning.
+4. Do not invent zeros for missing operational rows.
+
+### Tests
+
+- focused backend test that daily-sales operational fallback is not a silent success without meta/warning;
+- focused test or UI assertion that dashboard inventory fallback is visible;
+- no fake zero on the fallback path.
+
+### Acceptance
+
+- operational fallback is visible to operators and tests;
+- cached daily sales no longer looks like a complete trusted dataset when fallback is used;
+- dashboard inventory fallback warning is shown when `UsedOperationalFallback=true`.
+
+### Dependencies
+
+- `RQ100` preferred first so the current test pack is not displaced;
+- do not mix SQL formula rewrites or Premium chrome into this prompt.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 92%
+- Changed files:
+  - Api/Endpoints/CachedAnalyticsEndpoints.cs
+  - Api.Tests/CachedAnalyticsOperationalFallbackTests.cs
+  - Klijent/clientapp/src/pages/AnalyticsDashboard.tsx
+  - Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx
+  - Klijent/clientapp/src/services/analyticsApi.ts
+  - Klijent/clientapp/src/types/analytics.ts
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_TEST_STRATEGY.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-14-RQ105-evidence.md
+- Checks run:
+  - `dotnet test .\Api.Tests\Api.Tests.csproj --filter FullyQualifiedName~CachedAnalyticsOperationalFallbackTests` - pass (3)
+  - `npm run test -- --run src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx` - pass (1)
+  - `npm run check:analytics-guardrails` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - full `dotnet test` / `dotnet build` - named Api.Tests filter covers the fallback contract
+  - full `npm run build` - named Vitest + guardrails/typecheck already run
+- Run log: .ai/runs/2026-08-14-RQ105-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 68ba893027e4ebaf48945e84fa3d64eb1d3653e8
+- Main verification: git rev-parse origin/main -> 63d1c0be37bd0d235a27daa305af528028acc30c; work SHA 68ba893027e4ebaf48945e84fa3d64eb1d3653e8 is an ancestor
+- Missed: `getDailySales()` still unwraps to an array, so Analytics Details does not render daily-sales warning meta
+- Follow-up: `P-UI-22`
+- Residual risk: supplier-id daily-sales operational joins are not flagged as missing-relation fallback; old bare-array cache keys are unused after `:meta-v1`
+- Prompt defect / scope repair: restored truncated CROSS_SURFACE/P-UI queue files after disk-full; cleaned rebuildable `bin`/`obj` so tests could run
+- Next: `P-UI-22` - Remaining decision-page empty and error chrome

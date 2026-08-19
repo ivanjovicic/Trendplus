@@ -105,18 +105,24 @@ Make cohort statistics conservative enough that the product can say when evidenc
 
 Expose the same statistics in operator and product review surfaces without hiding gaps.
 
+Frozen presentation contract: `docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md`.
+
+Runtime (RL09): Centralne akcije panel `RecommendationMeasurementStatisticsReview` binds funnel, coverage and outcome rates to `measurementStatistics` only.
+
 ### Scope
 
 - add a review surface that shows lifecycle funnel counts, measured coverage and outcome distribution;
 - include period, freshness, data quality and warning context in the header;
 - keep export and report views aligned with the same denominator logic;
-- show explicit "no measurement" and "insufficient evidence" states.
+- show explicit "no measurement" and "insufficient evidence" states;
+- bind rates to `measurementStatistics`, never to legacy `totals` success/coverage aliases.
 
 ### Validation
 
 - dashboards do not invent healthy-looking rates when evidence is absent;
 - exports preserve the same counts and denominators as the review surface;
-- missing/partial data stays visible as a gap, not a fabricated result.
+- missing/partial data stays visible as a gap, not a fabricated result;
+- acceptance and execution are never labeled as success.
 
 ## Slice 4 - Advisory calibration interface
 

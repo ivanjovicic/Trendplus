@@ -230,7 +230,15 @@ export default function InventoryPage() {
       .then((nextStores) => {
         if (cancelled) return;
         setStores(nextStores);
-        setCompareStoreIds((current) => current.length > 0 ? current : nextStores.slice(0, DEFAULT_COMPARE_STORES).map((store) => store.storeId));
+        setCompareStoreIds((current) => {
+          const next = current.length > 0
+            ? current
+            : nextStores.slice(0, DEFAULT_COMPARE_STORES).map((store) => store.storeId);
+          if (current.length === next.length && current.every((id, index) => id === next[index])) {
+            return current;
+          }
+          return next;
+        });
       })
       .catch(console.error)
       .finally(() => {
@@ -301,7 +309,6 @@ export default function InventoryPage() {
     let cancelled = false;
     setLoading(true);
     setInsightsLoading(true);
-    setError(null);
     if (shouldRefreshOperations) setOperationsLoading(true);
     if (shouldRefreshSignals) {
       setForecastLoading(true);
@@ -324,10 +331,20 @@ export default function InventoryPage() {
     void Promise.allSettled(primaryTasks.map((task) => task.promise))
       .then((results) => {
         if (cancelled) return;
+        let balanceFailed = false;
+        let listFailed = false;
         results.forEach((result, index) => {
           const task = primaryTasks[index];
           if (result.status === "rejected") {
             setFirstError(result.reason, "Bilans zaliha trenutno nije dostupan.");
+            if (task.key === "balance") {
+              setBalance(null);
+              balanceFailed = true;
+            }
+            if (task.key === "list") {
+              setPageData(null);
+              listFailed = true;
+            }
             return;
           }
           switch (task.key) {
@@ -335,6 +352,9 @@ export default function InventoryPage() {
             case "list": setPageData(result.value as InventoryPagedResponse); break;
           }
         });
+        if (!balanceFailed && !listFailed) {
+          setError(null);
+        }
       })
       .finally(() => {
         if (cancelled) return;

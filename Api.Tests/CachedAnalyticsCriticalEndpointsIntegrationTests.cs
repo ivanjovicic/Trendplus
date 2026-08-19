@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -78,6 +79,71 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task SalesSummary_StoreFilterDoesNotLeakOtherStoreRevenue()
+    {
+        await using var factory = CreateFactory();
+        var store1 = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-05&toDate=2026-01-07&storeId=1");
+        var store2 = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-05&toDate=2026-01-07&storeId=2");
+
+        Assert.Equal(1_100m, store1.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(200m, store2.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(1, store2.GetProperty("totalTransactions").GetInt32());
+        Assert.Equal(4, store2.GetProperty("totalUnits").GetInt32());
+        Assert.True(store1.GetProperty("meta").GetProperty("success").GetBoolean());
+        Assert.True(store2.GetProperty("meta").GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SalesSummary_AdjacentDayWindowsDoNotOverlap()
+    {
+        await using var factory = CreateFactory();
+        var firstDay = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-05&toDate=2026-01-06&storeId=1");
+        var secondDay = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-06&toDate=2026-01-07&storeId=1");
+        var bothDays = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-05&toDate=2026-01-07&storeId=1");
+
+        Assert.Equal(800m, firstDay.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(300m, secondDay.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(1_100m, bothDays.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(
+            bothDays.GetProperty("totalRevenue").GetDecimal(),
+            firstDay.GetProperty("totalRevenue").GetDecimal() + secondDay.GetProperty("totalRevenue").GetDecimal());
+    }
+
+    [Fact]
+    public async Task SalesSummary_InvalidPeriod_ReturnsBadRequestNotEmptySuccess()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync(
+            "/api/analytics/cached/sales/summary?fromDate=2026-01-07&toDate=2026-01-05&storeId=1");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertInvalidRangeIsNotEmptySuccess(await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task TopProducts_InvalidPeriod_ReturnsBadRequestNotEmptySuccess()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync(
+            "/api/analytics/cached/sales/top-products?fromDate=2026-01-07&toDate=2026-01-05&storeId=1");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertInvalidRangeIsNotEmptySuccess(await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task TopProducts_UsesIndependentRevenueAndUnitsRankings()
     {
         await using var factory = CreateFactory();
@@ -126,12 +192,15 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
 
         Assert.Equal(0, root.GetProperty("totalSku").GetInt32());
         Assert.Equal(0, root.GetProperty("totalOnHand").GetInt32());
+        Assert.Equal(0, root.GetProperty("lowStockCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
         Assert.Equal(0m, root.GetProperty("estimatedInventoryValue").GetDecimal());
 
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());
         Assert.Equal("no_inventory_data", meta.GetProperty("emptyReason").GetString());
         Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
     }
 
     [Fact]
@@ -267,6 +336,20 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         return JsonDocument.Parse(body).RootElement.Clone();
     }
 
+    private static void AssertInvalidRangeIsNotEmptySuccess(string body)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(body));
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+        var looksLikeEmptySuccess = root.TryGetProperty("meta", out var meta)
+            && meta.ValueKind == JsonValueKind.Object
+            && meta.TryGetProperty("success", out var success)
+            && success.ValueKind == JsonValueKind.True
+            && meta.TryGetProperty("emptyReason", out var emptyReason)
+            && emptyReason.ValueKind == JsonValueKind.String;
+        Assert.False(looksLikeEmptySuccess);
+    }
+
     private sealed class CachedAnalyticsFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"cached-analytics-critical-{Guid.NewGuid():N}";
@@ -281,9 +364,11 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                 services.RemoveAll<ITrendplusDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp =>
                     sp.GetRequiredService<TrendplusDbContext>());
             });

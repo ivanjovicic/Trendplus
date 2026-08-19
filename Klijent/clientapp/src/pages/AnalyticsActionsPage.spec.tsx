@@ -176,6 +176,31 @@ function summary(overrides: Partial<AnalyticsActionOutcomeSummaryResponse> = {})
     byDataQuality: [bucket({ key: "warning", label: "Warning" })],
     byConfidenceBucket: [bucket({ key: "high", label: "High" })],
     byReliabilityBucket: [bucket({ key: "medium", label: "Medium" })],
+    measurementStatistics: {
+      success: true,
+      issuedCount: 6,
+      acceptedCount: 3,
+      rejectedCount: 1,
+      ignoredCount: 1,
+      executedCount: 2,
+      measuredCount: 1,
+      notMeasuredCount: 1,
+      successCount: 1,
+      neutralCount: 0,
+      negativeCount: 0,
+      pendingCount: 1,
+      acceptanceRate: 0.5,
+      rejectionRate: null,
+      ignoredRate: null,
+      executionRate: null,
+      measurementCoverageRate: 0.5,
+      notMeasuredShare: 0.5,
+      positiveOutcomeRate: 1,
+      neutralOutcomeRate: 0,
+      negativeOutcomeRate: 0,
+      warningCodes: ["small_measured_sample"],
+      emptyReason: null,
+    },
     ...overrides,
   };
 }
@@ -261,7 +286,8 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText("Malo izmerenih ishoda. Zaključci o uticaju nisu stabilni.")).toBeInTheDocument();
     expect(screen.getByText("Akcije u uzorku")).toBeInTheDocument();
     expect(screen.getAllByText("Zalihe").length).toBeGreaterThan(0);
-    expect(screen.getByText("REPLENISH")).toBeInTheDocument();
+    expect(screen.getByText("Dopuni")).toBeInTheDocument();
+    expect(screen.queryByText("REPLENISH")).not.toBeInTheDocument();
     expect(screen.getAllByText("Upozorenje").length).toBeGreaterThan(0);
     expect(screen.getByText("Čeka proveru")).toBeInTheDocument();
     expect(screen.getByText(/Izmereni uticaj: Još nije izmereno/i)).toBeInTheDocument();
@@ -301,6 +327,15 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getByText(/Ishod je još u toku/i)).toBeInTheDocument();
     expect(screen.getByText("Ledger uticaja")).toBeInTheDocument();
     expect(screen.getByText("Prihvatio menadžer.")).toBeInTheDocument();
+    expect(screen.getByText(/Tip preporuke:/i).parentElement).toHaveTextContent(/Dopuni/i);
+    expect(screen.queryByText(/^replenish$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Kodovi upozorenja:/i).parentElement).toHaveTextContent(/Niska pokrivenost/i);
+    expect(screen.queryByText("low_cover")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Primarni signali:/i).some((node) => node.parentElement?.textContent?.includes("Pokrivenost zalihe"))).toBe(true);
+    expect(screen.queryByText("stock_cover_days")).not.toBeInTheDocument();
+    expect(screen.queryByText("Freshness ulaza")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Svežina ulaza:/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sveže").length).toBeGreaterThan(0);
   });
 
   it("updates action status directly for accept action", async () => {

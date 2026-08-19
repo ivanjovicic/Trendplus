@@ -1,18 +1,18 @@
-# Backend CI Full-Suite Evidence — BCI05 after BCI09
+﻿# Backend CI Full-Suite Evidence — BCI05 after BCI09
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
 Prompt: `BCI05` (re-entry after `BCI09` DONE)
 Agent: cursor
 Green GHA HEAD: `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
-Current origin/main: `ead9f2ac8ae13d4b15a0f44782b5890f04802365` (docs-only DEX follow-up; no backend/workflow diff vs `f1f5a17`)
+Current origin/main: `ed0d752` (docs-only follow-ups after `f1f5a17`; no backend/workflow diff)
 
 ## Decision
 
 `BCI05` is **DONE**.
 `BCI01` is **DONE**.
-`BCI06` is promoted **READY**.
-`QDB03` is promoted **READY** because the open BCI PARTIAL gate is cleared.
+`BCI06` is the next BCI READY/IN_PROGRESS prompt.
+`QDB03` remains unblocked in `MASTER_ROADMAP.md` because the open BCI PARTIAL gate is cleared. The QDB owner-queue READY pointer is a separate program and is not changed here.
 
 ## Analytics safety gate
 
@@ -49,7 +49,7 @@ Current origin/main: `ead9f2ac8ae13d4b15a0f44782b5890f04802365` (docs-only DEX f
 - Failed-test annotations: none
 - Exact TRX totals: unknown without authenticated artifact download
 
-`git diff --name-only f1f5a17..ead9f2a -- Api Api.Tests Application Domain Infrastructure .github/workflows/analytics-tests.yml` is empty, so current `origin/main` is backend-equivalent to this green run.
+`git diff --name-only f1f5a17..HEAD -- Api Api.Tests Application Domain Infrastructure .github/workflows/analytics-tests.yml` is empty, so current `origin/main` is backend-equivalent to this green run.
 
 ## Local equivalent
 
@@ -77,6 +77,6 @@ That is not a product-assertion family. GitHub Actions provides the PostgreSQL s
 
 ## Next
 
-1. `BCI06` may verify Windows/Visual Studio mixed-solution compatibility.
-2. `QDB03` is unblocked for the SQL Server proof connector.
+1. `BCI06` verifies Windows/Visual Studio mixed-solution compatibility.
+2. `QDB03` is unblocked for the SQL Server proof connector after BCI has no remaining READY task.
 3. Do not reopen BCI01 unless a later backend commit turns `analytics-tests` red.

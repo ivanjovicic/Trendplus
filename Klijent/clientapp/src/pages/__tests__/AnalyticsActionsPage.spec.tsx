@@ -6,6 +6,9 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
+    Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (
+      <a href={to} {...props}>{children}</a>
+    ),
     useLocation: () => ({
       search: "",
       pathname: "/analytics/actions",
@@ -98,6 +101,107 @@ function createActionItem(overrides: Record<string, unknown> = {}) {
     updatedByUserName: null,
     notes: [],
     ...overrides,
+  };
+}
+
+function buildMeasurementStatistics(overrides: Record<string, unknown> = {}) {
+  return {
+    success: true,
+    issuedCount: 3,
+    acceptedCount: 2,
+    rejectedCount: 0,
+    ignoredCount: 0,
+    executedCount: 2,
+    measuredCount: 2,
+    notMeasuredCount: 0,
+    successCount: 1,
+    neutralCount: 0,
+    negativeCount: 1,
+    pendingCount: 1,
+    acceptanceRate: 0.67,
+    rejectionRate: 0,
+    ignoredRate: 0,
+    executionRate: 1,
+    measurementCoverageRate: 1,
+    notMeasuredShare: 0,
+    positiveOutcomeRate: 0.25,
+    neutralOutcomeRate: 0,
+    negativeOutcomeRate: 0.5,
+    warningCodes: [],
+    emptyReason: null,
+    ...overrides,
+  };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+function buildResponse(rows: Array<Record<string, unknown>>, totalCount = rows.length) {
+  return {
+    items: rows,
+    totalCount,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+  };
+}
+
+function buildOutcomeSummaryResponse(createdCount: number, measuredImpactSampleCount: number) {
+  return {
+    meta: {
+      success: true,
+      periodMode: "created",
+      createdFrom: "2026-03-17T00:00:00Z",
+      createdTo: "2026-06-15T00:00:00Z",
+      resolvedFrom: null,
+      resolvedTo: null,
+      measuredFrom: null,
+      measuredTo: null,
+      generatedAtUtc: "2026-06-15T00:00:00Z",
+      sampleSize: createdCount,
+      measuredSampleSize: measuredImpactSampleCount,
+      warnings: [],
+      emptyReason: null,
+    },
+    totals: {
+      createdCount,
+      closedCount: 0,
+      openCount: 0,
+      measuredCount: 0,
+      measuredOutcomeCount: 0,
+      pendingOutcomeCount: 0,
+      successCount: 0,
+      neutralCount: 0,
+      negativeCount: 0,
+      notMeasuredCount: 0,
+      outcomeCoverageRate: null,
+      positiveOutcomeRate: null,
+      negativeOutcomeRate: null,
+      closedOutcomeCoverageRate: null,
+      measuredPositiveOutcomeRate: null,
+      measuredNegativeOutcomeRate: null,
+    },
+    impact: {
+      expectedImpactRsd: null,
+      measuredImpactRsd: null,
+      realizationRatio: null,
+      measuredImpactSampleCount,
+    },
+    bySourceType: [],
+    byPriority: [],
+    byOutcomeStatus: [],
+    byDataQuality: [],
+    byConfidenceBucket: [],
+    byReliabilityBucket: [],
+    measurementStatistics: buildMeasurementStatistics({
+      issuedCount: createdCount,
+      measuredCount: measuredImpactSampleCount,
+    }),
   };
 }
 
@@ -264,6 +368,9 @@ describe("AnalyticsActionsPage", () => {
       ],
       byConfidenceBucket: [],
       byReliabilityBucket: [],
+      measurementStatistics: buildMeasurementStatistics({
+        warningCodes: ["small_measured_sample"],
+      }),
     });
     getAnalyticsActionByIdMock.mockResolvedValue(item);
     updateAnalyticsActionStatusMock.mockResolvedValue(item);
@@ -401,7 +508,7 @@ describe("AnalyticsActionsPage", () => {
       );
     });
 
-    expect(await screen.findByText("Negativan ishod")).toBeInTheDocument();
+    expect((await screen.findAllByText("Negativan ishod")).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
     expect(await screen.findByText("Pregled ishoda")).toBeInTheDocument();
     expect(screen.getAllByText("action_outcome_summary").length).toBeGreaterThan(0);
@@ -707,6 +814,17 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
   });
 
+  it("shows the shared error state and does not fall through to the empty list copy when list loading fails", async () => {
+    getAnalyticsActionsMock.mockRejectedValueOnce(new Error("list down"));
+
+    render(<AnalyticsActionsPage />);
+
+    const errorState = await screen.findByRole("alert");
+    expect(errorState).toHaveTextContent("Akcije trenutno nisu dostupne");
+    expect(errorState).toHaveTextContent("list down");
+    expect(screen.queryByText("Nema akcija.")).not.toBeInTheDocument();
+  });
+
   it("shows an empty summary state when there are no measured closed outcomes", async () => {
     getAnalyticsActionOutcomeSummaryMock.mockResolvedValueOnce({
       meta: {
@@ -754,12 +872,49 @@ describe("AnalyticsActionsPage", () => {
       byDataQuality: [],
       byConfidenceBucket: [],
       byReliabilityBucket: [],
+      measurementStatistics: buildMeasurementStatistics({
+        issuedCount: 0,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        ignoredCount: 0,
+        executedCount: 0,
+        measuredCount: 0,
+        notMeasuredCount: 0,
+        successCount: 0,
+        neutralCount: 0,
+        negativeCount: 0,
+        pendingCount: 0,
+        acceptanceRate: null,
+        rejectionRate: null,
+        ignoredRate: null,
+        executionRate: null,
+        measurementCoverageRate: null,
+        notMeasuredShare: null,
+        positiveOutcomeRate: null,
+        neutralOutcomeRate: null,
+        negativeOutcomeRate: null,
+        emptyReason: "no_rows",
+      }),
     });
 
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
     expect(await screen.findByText("Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.")).toBeInTheDocument();
+  });
+
+  it("list error hides empty and fake measured impact", async () => {
+    getAnalyticsActionsMock.mockRejectedValue(new Error("list down"));
+    getAnalyticsActionOutcomeSummaryMock.mockRejectedValue(new Error("summary down"));
+    getAnalyticsActionCountsMock.mockRejectedValue(new Error("counts down"));
+
+    render(<AnalyticsActionsPage />);
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((alert) => alert.textContent?.includes("list down"))).toBe(true);
+    expect(screen.queryByText("Nema akcija.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Izmereni uticaj")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dopuni artikal A")).not.toBeInTheDocument();
   });
 
   it("reloads summary only for source, priority and data quality filters", async () => {
@@ -793,6 +948,39 @@ describe("AnalyticsActionsPage", () => {
         priority: "P2",
         dataQualityStatus: "warning",
       });
+    });
+  });
+
+  it("keeps the newest summary results when filter changes overlap", async () => {
+    const firstSummary = createDeferred<ReturnType<typeof buildOutcomeSummaryResponse>>();
+    const secondSummary = createDeferred<ReturnType<typeof buildOutcomeSummaryResponse>>();
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    getAnalyticsActionOutcomeSummaryMock
+      .mockImplementationOnce(() => firstSummary.promise)
+      .mockImplementationOnce(() => secondSummary.promise);
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P2" } });
+
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenCalledTimes(3);
+    });
+
+    secondSummary.resolve(buildOutcomeSummaryResponse(321, 321));
+
+    const summaryLabel = await screen.findByText("Akcije u uzorku");
+    const summaryCard = summaryLabel.closest(".aaq-summary-card");
+    expect(summaryCard).not.toBeNull();
+    expect(within(summaryCard as HTMLElement).getByText("321")).toBeInTheDocument();
+
+    firstSummary.resolve(buildOutcomeSummaryResponse(7, 7));
+
+    await waitFor(() => {
+      expect(within(summaryCard as HTMLElement).getByText("321")).toBeInTheDocument();
     });
   });
 

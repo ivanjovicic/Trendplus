@@ -3,7 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Application.Artikli.Common.Interfaces;
+using Infrastructure.DbContexts;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Trendplus2.Tests;
@@ -112,6 +119,24 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         var response = await client.GetAsync("/api/analytics/supplier-sales-stats?fromDate=2026-03-10&toDate=2026-03-01");
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact(DisplayName = "Invalid period returns bad request on in-memory host")]
+    public async Task SupplierSalesStats_InvalidPeriod_ReturnsBadRequest_InMemory()
+    {
+        await using var factory = new SupplierSalesInMemoryFactory();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/supplier-sales-stats?fromDate=2026-03-10&toDate=2026-03-01");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(body));
+        using var doc = JsonDocument.Parse(body);
+        Assert.False(
+            doc.RootElement.TryGetProperty("meta", out var meta)
+            && meta.ValueKind == JsonValueKind.Object
+            && meta.TryGetProperty("success", out var success)
+            && success.ValueKind == JsonValueKind.True);
     }
 
     [Fact(DisplayName = "Supplier SharePct invariant: all shares sum to 100%")]
@@ -307,5 +332,30 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
                 unknownSupplierRevenueSharePct = Math.Round(root.GetProperty("dataQuality").GetProperty("unknownSupplierRevenueSharePct").GetDouble(), 2)
             }
         };
+    }
+
+    private sealed class SupplierSalesInMemoryFactory : WebApplicationFactory<global::Program>
+    {
+        private readonly string _databaseName = $"supplier-sales-invalid-period-{Guid.NewGuid():N}";
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
+                services.RemoveAll<TrendplusDbContext>();
+                services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
+                services.RemoveAll<ITrendplusDbContext>();
+
+                services.AddDbContextFactory<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options =>
+                    options.UseInMemoryDatabase(_databaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddScoped<ITrendplusDbContext>(sp =>
+                    sp.GetRequiredService<TrendplusDbContext>());
+            });
+        }
     }
 }

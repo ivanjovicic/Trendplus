@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -371,6 +372,7 @@ export default function DataQualityPage() {
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
   const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
+  const loadRequestSeqRef = useRef(0);
 
   const issueType = normalizeIssueType(searchParams.get("type"));
   const page = parsePositiveInt(searchParams.get("page"), 1);
@@ -450,6 +452,7 @@ export default function DataQualityPage() {
   }, [searchParams, setSearchParams]);
 
   const load = useCallback(async () => {
+    const requestSeq = ++loadRequestSeqRef.current;
     setLoading(true);
     setError(null);
     setHealthError(null);
@@ -482,6 +485,10 @@ export default function DataQualityPage() {
           dataScope: contextDataScope,
         }),
       ]);
+
+      if (loadRequestSeqRef.current !== requestSeq) {
+        return;
+      }
 
       if (issuesResult.status === "fulfilled") {
         setData(issuesResult.value);
@@ -563,7 +570,9 @@ export default function DataQualityPage() {
       setRefreshStatusError(null);
       setIntakeReportError(null);
     } finally {
-      setLoading(false);
+      if (loadRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, [contextDataScope, contextFromDate, contextStoreId, contextSupplierId, contextToDate, issueType, page, pageSize, q, sortBy, sortDir]);
 

@@ -68,7 +68,8 @@ public sealed class RecommendationLifecycleSemanticsTests
             status: AnalyticsActionConstants.Statuses.Done,
             outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Negative,
             outcomeMeasuredAtUtc: new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc),
-            evidenceSource: "action_outcome_summary");
+            evidenceSource: "action_outcome_summary",
+            expectedImpactRsd: 9_000m);
 
         var capture = RecommendationLifecycleSemantics.Project(item);
 
@@ -78,6 +79,7 @@ public sealed class RecommendationLifecycleSemanticsTests
         Assert.True(capture.CountsTowardMeasured);
         Assert.True(capture.CountsTowardNegative);
         Assert.False(capture.CountsTowardSuccess);
+        Assert.Equal(9_000m, item.ExpectedImpactRsd);
         Assert.Contains("measured_learning_eligible", capture.LearningEligibilityReasonCodes);
     }
 
@@ -132,11 +134,101 @@ public sealed class RecommendationLifecycleSemanticsTests
         Assert.False(capture.CountsTowardNegative);
     }
 
+    [Theory]
+    [InlineData(AnalyticsActionConstants.Statuses.New, RecommendationLifecycleSemantics.LifecycleStates.Issued)]
+    [InlineData(AnalyticsActionConstants.Statuses.Accepted, RecommendationLifecycleSemantics.LifecycleStates.Accepted)]
+    [InlineData(AnalyticsActionConstants.Statuses.Deferred, RecommendationLifecycleSemantics.LifecycleStates.Accepted)]
+    [InlineData(AnalyticsActionConstants.Statuses.Rejected, RecommendationLifecycleSemantics.LifecycleStates.Rejected)]
+    public void Project_NonExecutedLifecycle_IsNotLearningEligible_EvenWithExpectedImpactAndMeasuredClaim(
+        string status,
+        string expectedLifecycle)
+    {
+        var item = CreateItem(
+            status: status,
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            outcomeMeasuredAtUtc: new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+            evidenceSource: "action_outcome_summary",
+            expectedImpactRsd: 12_500m);
+
+        var capture = RecommendationLifecycleSemantics.Project(item);
+
+        Assert.Equal(expectedLifecycle, capture.LifecycleState);
+        Assert.Equal(12_500m, item.ExpectedImpactRsd);
+        Assert.False(capture.LearningEligible);
+        Assert.False(capture.CountsTowardMeasured);
+        Assert.False(capture.CountsTowardSuccess);
+        Assert.Contains("execution_required_for_learning", capture.LearningEligibilityReasonCodes);
+        Assert.Contains("acceptance_is_not_success", capture.LearningEligibilityReasonCodes);
+    }
+
+    [Fact]
+    public void Project_IgnoredWithExpectedImpactAndMeasuredClaim_IsNotLearningEligible()
+    {
+        var item = CreateItem(
+            status: AnalyticsActionConstants.Statuses.New,
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            outcomeMeasuredAtUtc: new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+            evidenceSource: "action_outcome_summary",
+            expectedImpactRsd: 8_000m);
+        item.DueAtUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var capture = RecommendationLifecycleSemantics.Project(
+            item,
+            asOfUtc: new DateTime(2026, 8, 11, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Ignored, capture.LifecycleState);
+        Assert.Equal(8_000m, item.ExpectedImpactRsd);
+        Assert.False(capture.LearningEligible);
+        Assert.False(capture.CountsTowardMeasured);
+        Assert.Contains("execution_required_for_learning", capture.LearningEligibilityReasonCodes);
+        Assert.Contains("acceptance_is_not_success", capture.LearningEligibilityReasonCodes);
+    }
+
+    [Fact]
+    public void Project_ExecutedPending_IsNotLearningEligible_AndDoesNotInventMeasuredTimestamp()
+    {
+        var item = CreateItem(
+            status: AnalyticsActionConstants.Statuses.Done,
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending,
+            expectedImpactRsd: 4_000m);
+
+        var capture = RecommendationLifecycleSemantics.Project(item);
+
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Executed, capture.LifecycleState);
+        Assert.Equal(RecommendationLifecycleSemantics.OutcomeEvidenceStates.Pending, capture.OutcomeEvidenceState);
+        Assert.False(capture.LearningEligible);
+        Assert.Null(item.OutcomeMeasuredAtUtc);
+        Assert.Contains("outcome_pending", capture.LearningEligibilityReasonCodes);
+        Assert.Contains("missing_outcome_measured_at", capture.LearningEligibilityReasonCodes);
+    }
+
+    [Fact]
+    public void Project_ExecutedNotMeasured_IsNotLearningEligible_EvenWithLeftoverTimestamp()
+    {
+        var leftoverMeasuredAt = new DateTime(2026, 8, 13, 12, 0, 0, DateTimeKind.Utc);
+        var item = CreateItem(
+            status: AnalyticsActionConstants.Statuses.Done,
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+            outcomeMeasuredAtUtc: leftoverMeasuredAt,
+            evidenceSource: "action_outcome_summary",
+            expectedImpactRsd: 4_000m);
+
+        var capture = RecommendationLifecycleSemantics.Project(item);
+
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Executed, capture.LifecycleState);
+        Assert.Equal(RecommendationLifecycleSemantics.OutcomeEvidenceStates.NotMeasured, capture.OutcomeEvidenceState);
+        Assert.False(capture.LearningEligible);
+        Assert.True(capture.CountsTowardNotMeasured);
+        Assert.False(capture.CountsTowardMeasured);
+        Assert.Contains("outcome_not_measured", capture.LearningEligibilityReasonCodes);
+    }
+
     private static AnalyticsActionItem CreateItem(
         string status,
         string outcomeStatus,
         DateTime? outcomeMeasuredAtUtc = null,
-        string? evidenceSource = null)
+        string? evidenceSource = null,
+        decimal? expectedImpactRsd = null)
     {
         var item = new AnalyticsActionItem
         {
@@ -148,6 +240,7 @@ public sealed class RecommendationLifecycleSemanticsTests
             Status = status,
             OutcomeStatus = outcomeStatus,
             OutcomeMeasuredAtUtc = outcomeMeasuredAtUtc,
+            ExpectedImpactRsd = expectedImpactRsd,
             CreatedAtUtc = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             UpdatedAtUtc = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc)
         };

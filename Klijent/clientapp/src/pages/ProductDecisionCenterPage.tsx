@@ -11,6 +11,7 @@ import {
   getAnalyticsActionSourceStatuses,
   getProductDecisionCenter,
   getProductDecisionTimeline,
+  getProductDecisionTimelineExportCsv,
   getStores,
   getSupplierFilters,
   upsertAnalyticsActionWithResult,
@@ -19,8 +20,16 @@ import {
   fmtNumber,
   fmtPct,
   fmtRsd,
+  formatDate,
+  formatDateTime,
 } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
+import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
+import {
+  timelineEmptyReasonLabel,
+  timelineEventTypeLabel,
+  timelineGapReasonLabel,
+} from "../utils/decisionTimelineLabels";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -39,6 +48,7 @@ import type {
   ProductDecisionWhyPanel,
   ProductDecisionRecommendationStatus,
   ProductDecisionTimelineFilterResponse,
+  DecisionTimelineFilterScope,
   StoreOption,
   SupplierFilterOption,
 } from "../types/analytics";
@@ -420,12 +430,23 @@ function lifecycleStateLabel(value: string | null | undefined): string {
   return "Nije dostupno";
 }
 
-function timelineEmptyReasonLabel(value: string | null | undefined): string {
-  const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "outside_period") return "Nema događaja u izabranom periodu (outside_period).";
-  if (normalized === "no_measurement") return "Nema merenog ishoda (no_measurement).";
-  if (normalized === "no_events") return "Nema timeline događaja za izabrani entitet/porodicu (no_events).";
-  return "Timeline je prazan.";
+function recommendationTypeLabel(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim().toUpperCase();
+  if (!normalized) return "Nije dostupno";
+  return RECOMMENDATION_LABELS[normalized as ProductDecisionRecommendationStatus] ?? value!.trim();
+}
+
+function timelineScopeLabel(
+  scope: DecisionTimelineFilterScope | null | undefined,
+  fallbackSourceKey: string,
+  fallbackFrom: string,
+  fallbackTo: string,
+): string {
+  const sourceKey = scope?.sourceKey?.trim() || fallbackSourceKey;
+  const family = recommendationTypeLabel(scope?.recommendationType);
+  const from = formatDate(scope?.periodFromUtc ?? fallbackFrom, fallbackFrom);
+  const to = formatDate(scope?.periodToUtc ?? fallbackTo, fallbackTo);
+  return `Entitet: ${sourceKey} · Porodica: ${family} · Period: ${from} – ${to}`;
 }
 
 function primaryDriverLabel(value: string): string {
@@ -635,7 +656,11 @@ export default function ProductDecisionCenterPage() {
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
   const [timelineFamilyFilter, setTimelineFamilyFilter] = useState<"row" | "all">("row");
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineExportError, setTimelineExportError] = useState<string | null>(null);
+  const [timelineExportingProductId, setTimelineExportingProductId] = useState<number | null>(null);
   const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
+  const timelineRequestSeqRef = useRef(0);
+  const dataRequestSeqRef = useRef(0);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
@@ -697,6 +722,7 @@ export default function ProductDecisionCenterPage() {
   }, [fromDate, toDate, storeId]);
 
   const loadData = useCallback(async () => {
+    const requestSeq = ++dataRequestSeqRef.current;
     setLoading(true);
     setError(null);
     setStaleWarning(null);
@@ -708,9 +734,15 @@ export default function ProductDecisionCenterPage() {
         supplierId,
         top: 1200,
       });
+      if (dataRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setPayload(response);
       payloadRef.current = response;
     } catch (reason) {
+      if (dataRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       const hasPreviousPayload = payloadRef.current != null;
       if (reason instanceof AnalyticsMetaError) {
         setError({
@@ -728,7 +760,9 @@ export default function ProductDecisionCenterPage() {
         setPayload(null);
       }
     } finally {
-      setLoading(false);
+      if (dataRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, [fromDate, supplierId, storeId, toDate]);
 
@@ -850,6 +884,7 @@ export default function ProductDecisionCenterPage() {
     && isAnalyticsMetaInsufficient(responseMeta);
   const showNoDataState = !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
   const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
+  const hideKpiChrome = hasBlockingError || showInsufficientState || showNoDataState || showFilteredOutState;
 
   const kpis = useMemo(() => ({
     replenishCount: rows.filter((x) => x["recommendationStatus"] === "REPLENISH").length,
@@ -928,10 +963,43 @@ export default function ProductDecisionCenterPage() {
   };
 
   const loadDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
+    const requestSeq = ++timelineRequestSeqRef.current;
     setTimelineLoadingProductId(row.productId);
     setTimelineError(null);
+    setTimelineExportError(null);
     try {
       const timeline = await getProductDecisionTimeline({
+        fromDate,
+        toDate,
+        sourceType: row.sourceType ?? "product",
+        sourceKey: row.sourceKey ?? `product:${row.productId}`,
+          productId: row.productId,
+          recommendationType: familyMode === "row"
+          ? (row.recommendationType ?? row.recommendationStatus)
+          : null,
+      });
+      if (timelineRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      setTimelineByProductId((current) => ({ ...current, [row.productId]: timeline }));
+    } catch (err) {
+      if (timelineRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      setTimelineByProductId((current) => ({ ...current, [row.productId]: null }));
+      setTimelineError(err instanceof Error ? err.message : "Decision Timeline nije dostupan.");
+    } finally {
+      if (timelineRequestSeqRef.current === requestSeq) {
+        setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
+      }
+    }
+  }, [fromDate, toDate]);
+
+  const exportDecisionTimeline = useCallback(async (row: ProductDecisionRow, familyMode: "row" | "all") => {
+    setTimelineExportingProductId(row.productId);
+    setTimelineExportError(null);
+    try {
+      const csv = await getProductDecisionTimelineExportCsv({
         fromDate,
         toDate,
         sourceType: row.sourceType ?? "product",
@@ -941,24 +1009,44 @@ export default function ProductDecisionCenterPage() {
           ? (row.recommendationType ?? row.recommendationStatus)
           : null,
       });
-      setTimelineByProductId((current) => ({ ...current, [row.productId]: timeline }));
+      downloadDecisionTimelineExportCsv(
+        `decision-timeline-${row.productId}.csv`,
+        csv,
+      );
     } catch (err) {
-      setTimelineByProductId((current) => ({ ...current, [row.productId]: null }));
-      setTimelineError(err instanceof Error ? err.message : "Decision Timeline nije dostupan.");
+      setTimelineExportError(err instanceof Error ? err.message : "Decision Timeline export trenutno nije dostupan.");
     } finally {
-      setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
+      setTimelineExportingProductId((current) => (current === row.productId ? null : current));
     }
   }, [fromDate, toDate]);
 
-  const toggleExpandedRow = useCallback((productId: number, row?: ProductDecisionRow) => {
-    setExpandedProductId((current) => {
-      const next = current === productId ? null : productId;
-      if (next != null && row) {
-        void loadDecisionTimeline(row, timelineFamilyFilter);
-      }
-      return next;
-    });
-  }, [loadDecisionTimeline, timelineFamilyFilter]);
+  const expandedTimelineRow = useMemo(() => {
+    if (expandedProductId == null) {
+      return null;
+    }
+
+    return sortedRows.find((row) => row.productId === expandedProductId) ?? null;
+  }, [expandedProductId, sortedRows]);
+
+  useEffect(() => {
+    if (!expandedTimelineRow) {
+      return;
+    }
+
+    void loadDecisionTimeline(expandedTimelineRow, timelineFamilyFilter);
+  }, [
+    expandedTimelineRow?.productId,
+    expandedTimelineRow?.sourceType,
+    expandedTimelineRow?.sourceKey,
+    expandedTimelineRow?.recommendationType,
+    expandedTimelineRow?.recommendationStatus,
+    loadDecisionTimeline,
+    timelineFamilyFilter,
+  ]);
+
+  const toggleExpandedRow = useCallback((productId: number) => {
+    setExpandedProductId((current) => (current === productId ? null : productId));
+  }, []);
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     const queueSpec = buildProductQueueSpec(row);
@@ -1132,7 +1220,7 @@ export default function ProductDecisionCenterPage() {
         />
       </header>
 
-      {!hasBlockingError ? (
+      {!hideKpiChrome ? (
       <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>
@@ -1431,7 +1519,7 @@ export default function ProductDecisionCenterPage() {
 
                   return (
                     <Fragment key={`${row.productId}:${row.recommendationStatus}`}>
-                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId, row)} title="Klik za detalje preporuke.">
+                      <tr className="data-row" onClick={() => toggleExpandedRow(row.productId)} title="Klik za detalje preporuke.">
                         <td>
                           <strong>{row.productName}</strong>
                           <small>{row.sku || "N/A"} | {row.category ?? row.tipObuce ?? "N/A"}</small>
@@ -1480,7 +1568,7 @@ export default function ProductDecisionCenterPage() {
                             className="why-button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              toggleExpandedRow(row.productId, row);
+                              toggleExpandedRow(row.productId);
                             }}
                             title={whyPanel.explainabilityText ?? whyPanel.recommendationReason}
                           >
@@ -1548,23 +1636,23 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-block" data-testid="decision-evidence-snapshot">
-                                <strong>Evidence snapshot:</strong>{" "}
+                                <strong>Snimak dokaza:</strong>{" "}
                                 {evidenceSnapshotByProductId[row.productId]
-                                  ? `Snimljen ${evidenceSnapshotByProductId[row.productId]!.capturedAtUtc} (${evidenceSnapshotByProductId[row.productId]!.recommendationId})`
+                                  ? `Snimljen ${formatDateTime(evidenceSnapshotByProductId[row.productId]!.capturedAtUtc, "Nije dostupno")}`
                                   : row.evidenceSnapshotStatus === "available"
                                     ? "Dostupan"
                                     : "Nije snimljen — snapshot se zamrzava tek kada preporuka uđe u akcije"}
                                 {row.evidenceSnapshotPreview ? (
                                   <small>
-                                    Preview ugovora v{row.evidenceSnapshotPreview.schemaVersion}: {row.evidenceSnapshotPreview.recommendationType}
+                                    Pregled: {recommendationTypeLabel(row.evidenceSnapshotPreview.recommendationType)}
                                     {" · "}
-                                    {row.evidenceSnapshotPreview.periodFromUtc ?? "?"} – {row.evidenceSnapshotPreview.periodToUtc ?? "?"}
+                                    {formatDateTime(row.evidenceSnapshotPreview.periodFromUtc, "Nije dostupno")} – {formatDateTime(row.evidenceSnapshotPreview.periodToUtc, "Nije dostupno")}
                                   </small>
                                 ) : null}
                               </div>
 
                               <div className="reason-block" data-testid="decision-timeline-panel">
-                                <strong>Decision Timeline (Slice-2 filter):</strong>
+                                <strong>Istorija odluke:</strong>
                                 <div className="reason-statuses" style={{ marginTop: "0.5rem" }}>
                                   <button
                                     type="button"
@@ -1572,7 +1660,6 @@ export default function ProductDecisionCenterPage() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setTimelineFamilyFilter("row");
-                                      void loadDecisionTimeline(row, "row");
                                     }}
                                   >
                                     Porodica reda
@@ -1583,28 +1670,48 @@ export default function ProductDecisionCenterPage() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setTimelineFamilyFilter("all");
-                                      void loadDecisionTimeline(row, "all");
                                     }}
                                   >
                                     Sve porodice
                                   </button>
+                                  <button
+                                    type="button"
+                                    className="why-button"
+                                    data-testid="decision-timeline-export"
+                                    disabled={timelineExportingProductId === row.productId}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void exportDecisionTimeline(row, timelineFamilyFilter);
+                                    }}
+                                  >
+                                    {timelineExportingProductId === row.productId ? "Export…" : "Preuzmi CSV"}
+                                  </button>
                                 </div>
                                 {timelineLoadingProductId === row.productId ? (
-                                  <small>Učitavanje timeline filtera…</small>
+                                  <small>Učitavanje istorije odluke…</small>
                                 ) : null}
                                 {timelineError && expandedProductId === row.productId ? (
                                   <small className="recommendation-warning-summary">{timelineError}</small>
                                 ) : null}
+                                {timelineExportError && expandedProductId === row.productId ? (
+                                  <small className="recommendation-warning-summary" data-testid="decision-timeline-export-error">
+                                    {timelineExportError}
+                                  </small>
+                                ) : null}
                                 {(() => {
                                   const timeline = timelineByProductId[row.productId];
                                   if (!timeline) {
-                                    return <small>Timeline još nije učitan za ovaj entitet.</small>;
+                                    return <small>Istorija još nije učitana za ovaj entitet.</small>;
                                   }
                                   return (
                                     <>
                                       <small data-testid="decision-timeline-scope">
-                                        {timeline.scope?.scopeExplanation
-                                          ?? `Entitet: ${row.sourceKey ?? `product:${row.productId}`} · Period: ${fromDate} – ${toDate}`}
+                                        {timelineScopeLabel(
+                                          timeline.scope,
+                                          row.sourceKey ?? `product:${row.productId}`,
+                                          fromDate,
+                                          toDate,
+                                        )}
                                       </small>
                                       {timeline.emptyReason ? (
                                         <small data-testid="decision-timeline-empty">
@@ -1616,15 +1723,15 @@ export default function ProductDecisionCenterPage() {
                                             <li key={item.timelineId}>
                                               <div className="evidence-chain-headline">
                                                 <span className="evidence-chain-label">
-                                                  {item.recommendationType ?? "N/A"} · action #{item.actionId}
+                                                  {recommendationTypeLabel(item.recommendationType)}
                                                 </span>
                                               </div>
                                               <small>
-                                                Događaji: {item.events.map((eventItem) => eventItem.eventType).join(" → ") || "nema"}
+                                                Događaji: {item.events.map((eventItem) => timelineEventTypeLabel(eventItem.eventType)).join(" → ") || "nema"}
                                               </small>
                                               {item.gaps.length ? (
                                                 <small className="recommendation-warning-summary">
-                                                  Praznine: {item.gaps.map((gap) => gap.gapReason).join(", ")}
+                                                  Praznine: {item.gaps.map((gap) => timelineGapReasonLabel(gap.gapReason)).join(", ")}
                                                 </small>
                                               ) : null}
                                             </li>

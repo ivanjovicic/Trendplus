@@ -3,6 +3,7 @@ import InfoTip from "../ui/InfoTip";
 import type { InventoryInsightItem, InventoryInsights, StoreOption, SupplierFilterOption } from "../../types/analytics";
 import { buildRowFromInsightItem, formatCurrency, formatNumber, formatPercent, getAbcTone, getAgingTone } from "./inventoryUtils";
 import type { InventoryRow } from "./types";
+import { InventoryExplainabilitySnapshot } from "./InventoryExplainabilitySnapshot";
 
 type InventoryInsightPanelsProps = {
   insights: InventoryInsights | null;
@@ -63,18 +64,36 @@ export function InventoryInsightPanels({
             Najstariji artikli u filtriranom skupu
           </div>
           <div className="mt-3 space-y-3">
-            {agedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za aging ranking.</div> : agedItems.map((item) => (
-              <button key={`aged-${item.id}`} type="button" onClick={() => onOpenDetail(resolveInsightRow(item, rows, stores, suppliers))} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
+            {agedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za aging ranking.</div> : agedItems.map((item) => {
+              const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
+
+              return (
+              <button key={`aged-${item.id}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]">{item.plu ?? "Bez PLU"} | {item.supplierName ?? "Nerasporedjen dobavljac"}</div>
                 </div>
-                <div className="text-right">
+                <div className="flex items-end justify-between gap-3">
                   <div className="text-sm font-semibold text-[var(--text-primary)]">{formatNumber(item.daysSinceMovement)} dana</div>
                   <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getAgingTone(item.agingBucket)}`}>{item.agingLabel}</div>
                 </div>
+                <InventoryExplainabilitySnapshot
+                  compact
+                  title="Snapshot"
+                  stockCoverDays={resolvedRow.stockCoverDays}
+                  stockCoverStatus={resolvedRow.stockCoverStatus}
+                  stockCoverStatusLabel={resolvedRow.stockCoverStatusLabel}
+                  sellThroughRatio={resolvedRow.sellThroughRatio}
+                  sellThroughStatus={resolvedRow.sellThroughStatus}
+                  sellThroughStatusLabel={resolvedRow.sellThroughStatusLabel}
+                  signalConfidencePct={resolvedRow.signalConfidencePct}
+                  recommendationAllowed={resolvedRow.recommendationAllowed}
+                  dataQualityStatus={resolvedRow.dataQualityStatus}
+                  reasonCodes={resolvedRow.reasonCodes}
+                />
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
       </div>
@@ -105,18 +124,36 @@ export function InventoryInsightPanels({
         <div className="mt-5 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
           <div className="text-sm font-semibold text-white">Kapital najvise vezan u ovim artiklima</div>
           <div className="mt-3 space-y-3">
-            {capitalLockedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za ABC ranking.</div> : capitalLockedItems.map((item) => (
-              <button key={`capital-${item.id}`} type="button" onClick={() => onOpenDetail(resolveInsightRow(item, rows, stores, suppliers))} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
+            {capitalLockedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za ABC ranking.</div> : capitalLockedItems.map((item) => {
+              const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
+
+              return (
+              <button key={`capital-${item.id}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]">{item.storeName ?? "Sve lokacije"} | {item.quantity} kom</div>
                 </div>
-                <div className="text-right">
+                <div className="flex items-end justify-between gap-3">
                   <div className="text-sm font-semibold text-[var(--text-primary)]">{formatCurrency(item.estimatedValue)}</div>
                   <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getAbcTone(item.abcClass)}`}>Klasa {item.abcClass}</div>
                 </div>
+                <InventoryExplainabilitySnapshot
+                  compact
+                  title="Snapshot"
+                  stockCoverDays={resolvedRow.stockCoverDays}
+                  stockCoverStatus={resolvedRow.stockCoverStatus}
+                  stockCoverStatusLabel={resolvedRow.stockCoverStatusLabel}
+                  sellThroughRatio={resolvedRow.sellThroughRatio}
+                  sellThroughStatus={resolvedRow.sellThroughStatus}
+                  sellThroughStatusLabel={resolvedRow.sellThroughStatusLabel}
+                  signalConfidencePct={resolvedRow.signalConfidencePct}
+                  recommendationAllowed={resolvedRow.recommendationAllowed}
+                  dataQualityStatus={resolvedRow.dataQualityStatus}
+                  reasonCodes={resolvedRow.reasonCodes}
+                />
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
       </div>

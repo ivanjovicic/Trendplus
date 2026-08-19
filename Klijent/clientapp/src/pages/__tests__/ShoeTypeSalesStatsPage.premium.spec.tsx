@@ -150,4 +150,56 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.getByText("Patike")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista tipova obuće")).toBeInTheDocument();
   });
+
+  it("error hides KPI zeros when shoe type sales fails", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockRejectedValue(new Error("backend down"));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Podaci trenutno nisu dostupni/i);
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prioritetna lista tipova obuće")).not.toBeInTheDocument();
+  });
+
+  it("empty is not error when shoe type sales returns no rows", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [],
+      totals: {
+        ukupanPromet: 0,
+        ukupanMarzniDoprinos: 0,
+        prePromet: 0,
+        poslePromet: 0,
+        brojTipovaObuce: 0,
+        snapshotCostCoveragePct: 0,
+        isSnapshotActive: false,
+      },
+      dataQuality: {
+        missingCostRevenue: 0,
+        missingCostRevenueSharePct: 0,
+        unknownTypeRevenue: 0,
+        unknownTypeRevenueSharePct: 0,
+        revenueWithNivelacijaSplit: 0,
+        revenueWithNivelacijaSplitSharePct: 0,
+      },
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analitika/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analitika/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
+  });
 });

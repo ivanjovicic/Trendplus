@@ -67,9 +67,52 @@ public sealed class DecisionBoardEndpointsTests
         var productCard = Assert.Single(FindProductCards(response));
 
         Assert.Equal(expectedImpactRsd, productCard.ExpectedImpactRsd);
+        Assert.NotEqual("REPLENISH", productCard.Title);
+        Assert.NotEqual(recommendationStatus, productCard.RecommendedNextAction);
+        Assert.Equal("signal", productCard.ConfidenceSource);
+        Assert.True(productCard.RecommendationAllowed);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
         Assert.Contains(impactSection.Cards, card => card.Id == productCard.Id);
+    }
+
+    [Theory]
+    [InlineData("REPLENISH", 18500.0, 99000.0)]
+    [InlineData("BOOST", 9250.0, 77000.0)]
+    public void BuildDecisionBoardResponse_UsesPdcExpectedImpact_NotLostSalesWhenTheyDiffer(
+        string recommendationStatus,
+        double expectedImpact,
+        double lostSales)
+    {
+        var expectedImpactRsd = (decimal)expectedImpact;
+        var lostSalesEstimate = (decimal)lostSales;
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 211,
+                recommendationStatus: recommendationStatus,
+                recommendationLabel: recommendationStatus == "REPLENISH" ? "Dopuni" : "Pojačaj",
+                recommendedAction: recommendationStatus == "REPLENISH"
+                    ? "Aktiviraj dopunu prema minimalnoj zalihi."
+                    : "Povećaj vidljivost artikla i planiraj brzu dopunu.",
+                dataQualityStatus: "good",
+                confidenceLevel: "high",
+                confidenceScore: 82,
+                lostSalesEstimate: lostSalesEstimate,
+                expectedImpactRsd: expectedImpactRsd));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.Equal(expectedImpactRsd, productCard.ExpectedImpactRsd);
+        Assert.NotEqual(lostSalesEstimate, productCard.ExpectedImpactRsd);
+        Assert.Equal(
+            recommendationStatus == "REPLENISH"
+                ? "Aktiviraj dopunu prema minimalnoj zalihi."
+                : "Povećaj vidljivost artikla i planiraj brzu dopunu.",
+            productCard.RecommendedNextAction);
+        Assert.DoesNotContain(recommendationStatus, productCard.RecommendedNextAction, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -103,9 +146,83 @@ public sealed class DecisionBoardEndpointsTests
         var productCard = Assert.Single(FindProductCards(response));
 
         Assert.Null(productCard.ExpectedImpactRsd);
+        Assert.NotEqual(42_000m, productCard.ExpectedImpactRsd);
+        Assert.NotEqual(0m, productCard.ExpectedImpactRsd);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
         Assert.DoesNotContain(impactSection.Cards, card => card.Id == productCard.Id);
+        Assert.DoesNotContain(
+            FindProductCards(response),
+            card => card.RecommendedNextAction.Equals(recommendationStatus, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("FIX_DATA", "Proveri podatke")]
+    [InlineData("INSUFFICIENT_DATA", "Nedovoljno podataka")]
+    public void BuildDecisionBoardResponse_BlockedStatusesKeepLostSalesOffExpectedImpact(
+        string recommendationStatus,
+        string recommendationLabel)
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 311,
+                recommendationStatus: recommendationStatus,
+                recommendationLabel: recommendationLabel,
+                recommendedAction: recommendationStatus == "FIX_DATA"
+                    ? "Ispravi dobavljača, nabavnu cenu ili kategoriju pre odluke."
+                    : "Sačekaj pouzdaniji signal pre akcije.",
+                dataQualityStatus: recommendationStatus == "FIX_DATA" ? "critical" : "insufficient_data",
+                confidenceLevel: "insufficient_data",
+                confidenceScore: 18,
+                lostSalesEstimate: 42_000m,
+                expectedImpactRsd: null,
+                recommendationAllowed: false,
+                warningCodes: ["critical_data"],
+                reasonCodes: ["fix_data"]));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.Null(productCard.ExpectedImpactRsd);
+        Assert.Equal(0m, productCard.ImpactScore);
+        Assert.Equal("workflow_status_only", productCard.ConfidenceSource);
+        Assert.False(productCard.RecommendationAllowed);
+        Assert.DoesNotContain(recommendationStatus, productCard.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain(recommendationStatus, productCard.RecommendedNextAction, StringComparison.Ordinal);
+        Assert.NotEqual(recommendationLabel, productCard.Title);
+
+        var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
+        Assert.Empty(impactSection.Cards);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_EmptyPdcSlice_IsSuccessfulInsufficientEmpty_NotFakeZeroImpact()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(generatedAtUtc);
+        productDecisionCenter.Meta = new AnalyticsResponseMetaDto
+        {
+            Success = true,
+            DataQualityStatus = "insufficient_data",
+            EmptyReason = "no_rows_for_period",
+            GeneratedAtUtc = generatedAtUtc
+        };
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+
+        Assert.Empty(FindProductCards(response));
+        Assert.All(response.Sections, section => Assert.Empty(section.Cards));
+        Assert.NotNull(response.Meta);
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_board_data", response.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+        Assert.Null(response.Meta.ErrorCode);
+        Assert.DoesNotContain(
+            response.Sections.SelectMany(section => section.Cards),
+            card => card.ExpectedImpactRsd == 0m
+                && string.Equals(card.RecommendedNextAction, "REPLENISH", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -199,6 +316,9 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(blockedCard.PriorityScore <= 40m);
         Assert.Equal(0m, blockedCard.ImpactScore);
         Assert.Contains("supplier_recommendation_blocked", blockedCard.WarningCodes);
+        Assert.Contains("test", blockedCard.ReasonCodes);
+        Assert.DoesNotContain("test", blockedCard.WarningCodes);
+        Assert.False(blockedCard.RecommendationAllowed);
         Assert.Contains("signal_check", blockedCard.SourceKey, StringComparison.Ordinal);
         Assert.Contains("Signal check", blockedCard.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Proveri pouzdanost", blockedCard.RecommendedNextAction, StringComparison.OrdinalIgnoreCase);
@@ -248,6 +368,8 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(supplierCard.PriorityScore > 40m);
         Assert.Equal(900_000m, supplierCard.ImpactScore);
         Assert.DoesNotContain("supplier_recommendation_blocked", supplierCard.WarningCodes);
+        Assert.Contains("test", supplierCard.ReasonCodes);
+        Assert.True(supplierCard.RecommendationAllowed);
         Assert.Contains("negotiation", supplierCard.SourceKey, StringComparison.Ordinal);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
@@ -255,6 +377,29 @@ public sealed class DecisionBoardEndpointsTests
 
         var blockers = Assert.Single(response.Sections.Where(section => section.Key == "blockers"));
         Assert.DoesNotContain(blockers.Cards, card => card.Id == "blocker-supplier-trust");
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_PreservesReasonCodesSeparateFromWarningCodes()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 701,
+                recommendationStatus: "REPLENISH",
+                dataQualityStatus: "good",
+                confidenceLevel: "high",
+                confidenceScore: 82,
+                expectedImpactRsd: 18_000m,
+                warningCodes: ["freshness"],
+                reasonCodes: ["replenish_needed"]));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.Equal(["freshness"], productCard.WarningCodes);
+        Assert.Equal(["replenish_needed"], productCard.ReasonCodes);
     }
 
     [Fact]
@@ -505,7 +650,12 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal("low", inventoryCard.ConfidenceLevel);
         Assert.Null(inventoryCard.ConfidenceScore);
         Assert.Equal("warning", inventoryCard.DataQualityStatus);
-        Assert.Contains("confidence_workflow_status_only", inventoryCard.WarningCodes);
+        Assert.Equal("workflow_status_only", inventoryCard.ConfidenceSource);
+        Assert.Empty(inventoryCard.ReasonCodes ?? []);
+        Assert.Null(inventoryCard.RecommendationAllowed);
+        Assert.Equal(["confidence_workflow_status_only"], inventoryCard.WarningCodes);
+        Assert.DoesNotContain("dopuna", inventoryCard.WarningCodes);
+        Assert.DoesNotContain("approved", inventoryCard.WarningCodes);
         Assert.NotEqual("medium", inventoryCard.ConfidenceLevel);
     }
 
@@ -573,8 +723,15 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal(85m, inventoryCard.ConfidenceScore);
         Assert.Equal(85, inventoryCard.ReliabilityPct);
         Assert.Equal("good", inventoryCard.DataQualityStatus);
+        Assert.Equal("signal", inventoryCard.ConfidenceSource);
+        Assert.Equal(["stock_below_minimum"], inventoryCard.ReasonCodes);
+        Assert.True(inventoryCard.RecommendationAllowed);
+        Assert.DoesNotContain("dopuna", inventoryCard.ReasonCodes ?? []);
+        Assert.DoesNotContain("approved", inventoryCard.ReasonCodes ?? []);
+        Assert.DoesNotContain("dopuna", inventoryCard.WarningCodes);
+        Assert.DoesNotContain("approved", inventoryCard.WarningCodes);
         Assert.DoesNotContain("confidence_workflow_status_only", inventoryCard.WarningCodes);
-        Assert.Contains("stock_below_minimum", inventoryCard.WarningCodes);
+        Assert.Equal(["stock_below_minimum"], inventoryCard.WarningCodes);
     }
 
     private static DecisionBoardAggregateResponseDto BuildBoard(
@@ -708,7 +865,9 @@ public sealed class DecisionBoardEndpointsTests
         decimal? expectedImpactRsd = null,
         bool recommendationAllowed = true,
         IEnumerable<string>? warningCodes = null,
-        IEnumerable<string>? reasonCodes = null) =>
+        IEnumerable<string>? reasonCodes = null,
+        string? recommendationLabel = null,
+        string? recommendedAction = null) =>
         new()
         {
             ProductId = productId,
@@ -737,7 +896,7 @@ public sealed class DecisionBoardEndpointsTests
             ConfidencePct = confidenceScore,
             ReliabilityPct = Math.Min(confidenceScore + 5, 100),
             RecommendationStatus = recommendationStatus,
-            RecommendationLabel = recommendationStatus,
+            RecommendationLabel = recommendationLabel ?? recommendationStatus,
             RecommendationReason = $"Razlog za {recommendationStatus}.",
             ReasonCodes = reasonCodes?.ToList() ?? ["ok"],
             WarningCodes = warningCodes?.ToList() ?? [],
@@ -746,6 +905,6 @@ public sealed class DecisionBoardEndpointsTests
             RiskIfIgnored = "Rizik ako se ignoriše.",
             ExplainabilityText = "Test objašnjenje.",
             InputFreshnessStatus = "fresh",
-            RecommendedAction = "Test akcija."
+            RecommendedAction = recommendedAction ?? "Test akcija."
         };
 }

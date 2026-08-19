@@ -19,6 +19,8 @@ import AnalyticsControlBar, {
 } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import InfoTip from "../components/ui/InfoTip";
 import { savePrintPayload } from "../services/analyticsTableState";
@@ -524,6 +526,36 @@ export default function DailySalesStatsPage() {
 
   const currentSummary = useMemo(() => summarizePeriod(data), [data]);
   const previousSummary = useMemo(() => summarizePeriod(previousData), [previousData]);
+
+  const emptyStateHint = useMemo(() => {
+    if (!data || sortedRows.length > 0) return null;
+    const min = data.metadata.minAvailableDate;
+    const max = data.metadata.maxAvailableDate;
+    if (!min || !max) {
+      return "Nema podataka za izabrane filtere.";
+    }
+
+    const selectedFrom = activeFilters.fromDate;
+    const selectedTo = activeFilters.toDate;
+    const dataFrom = min.slice(0, 10);
+    const dataTo = max.slice(0, 10);
+    if (selectedTo < dataFrom || selectedFrom > dataTo) {
+      return `Izabrani period je van dostupnog raspona prodaje (${fmtDate(min)} - ${fmtDate(max)}).`;
+    }
+
+    if (activeFilters.storeId != null) {
+      return "Nema podataka za izabrani objekat i filtere.";
+    }
+
+    return "Nema podataka za izabrane filtere.";
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, sortedRows.length]);
+
+  const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
+    if (!data || loading || error || sortedRows.length > 0) return null;
+    if (activeFilters.storeId != null) return "filtered_out";
+    if ((data.metadata.warnings?.length ?? 0) > 0) return "insufficient_data";
+    return "no_data";
+  }, [activeFilters.storeId, data, error, loading, sortedRows.length]);
 
   const toolbarColumns = useMemo<AnalyticsTableColumn<DailySalesRow>[]>(() => {
     const baseColumns: AnalyticsTableColumn<DailySalesRow>[] = [
@@ -1299,15 +1331,44 @@ export default function DailySalesStatsPage() {
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
-      {error ? <div className="daily-sales-message error">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Dnevna prodaja trenutno nije dostupna"
+          message={error}
+          onRetry={() => {
+            void load(activeFilters);
+          }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {loading ? (
         <div className="daily-sales-message loading">
-          <UltraSpinner size="sm" label="Loading daily sales data" className="daily-sales-inline-spinner" />
+          <UltraSpinner size="sm" label="Učitavam dnevne podatke" className="daily-sales-inline-spinner" />
           <span>Učitavam dnevne podatke...</span>
         </div>
       ) : null}
+      {!loading && !error && emptyStateVariant ? (
+        <AnalyticsEmptyState
+          variant={emptyStateVariant}
+          emptyReason={emptyStateHint}
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+          onRetry={() => {
+            void load(activeFilters);
+          }}
+          actions={
+            data?.metadata.minAvailableDate && data.metadata.maxAvailableDate
+              ? [
+                  { label: "Prikaži dostupne podatke", onClick: handleJumpToAvailableData },
+                  { label: "Otvori kvalitet podataka", href: "/analytics/data-quality" },
+                  { label: "Proveri status osvežavanja", href: "/admin/configuration?panel=workers" },
+                ]
+              : undefined
+          }
+        />
+      ) : null}
 
-      {!loading && data ? (
+      {!loading && !error && data ? (
         <>
           <section className="daily-sales-kpis">
             <article>
@@ -1472,18 +1533,7 @@ export default function DailySalesStatsPage() {
             ) : null}
           </section>
 
-          {data.metadata.totalItemsInRange === 0 && data.metadata.minAvailableDate ? (
-            <section className="daily-sales-no-data-banner">
-              <p>
-                Nema prodaje u izabranom periodu. Podaci su dostupni od{" "}
-                <strong>{fmtDate(data.metadata.minAvailableDate)}</strong> do{" "}
-                <strong>{fmtDate(data.metadata.maxAvailableDate!)}</strong>.
-              </p>
-              <button type="button" onClick={handleJumpToAvailableData}>
-                Prikazi dostupne podatke
-              </button>
-            </section>
-          ) : data.metadata.warnings.length > 0 ? (
+          {emptyStateVariant ? null : data.metadata.warnings.length > 0 ? (
             <section className="daily-sales-warnings">
               {data.metadata.warnings.map((warning) => (
                 <p key={warning}>{warning}</p>

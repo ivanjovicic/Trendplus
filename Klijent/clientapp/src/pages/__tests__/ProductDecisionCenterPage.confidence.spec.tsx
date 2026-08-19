@@ -11,6 +11,7 @@ const getStoresMock = vi.fn();
 const getSupplierFiltersMock = vi.fn();
 const getProductDecisionCenterMock = vi.fn();
 const getProductDecisionTimelineMock = vi.fn();
+const getProductDecisionTimelineExportCsvMock = vi.fn();
 const getAnalyticsActionSourceStatusesMock = vi.fn();
 const upsertAnalyticsActionWithResultMock = vi.fn();
 
@@ -20,6 +21,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
   getProductDecisionTimeline: (...args: unknown[]) => getProductDecisionTimelineMock(...args),
+  getProductDecisionTimelineExportCsv: (...args: unknown[]) => getProductDecisionTimelineExportCsvMock(...args),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
 }));
@@ -242,6 +244,14 @@ function makeRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 function buildResponse(rows: Array<Record<string, unknown>>, dataQualityStatus: string) {
   return {
     rows,
@@ -314,6 +324,9 @@ beforeEach(() => {
     warningCodes: [],
     meta: { success: true, dataQualityStatus: "insufficient_data" },
   });
+  getProductDecisionTimelineExportCsvMock.mockResolvedValue(
+    "# success=true\n# emptyReason=no_events\n# successRate=\ntimelineId,actionId\n",
+  );
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
@@ -335,8 +348,226 @@ describe("ProductDecisionCenterPage confidence contract", () => {
         recommendationType: "REPLENISH",
       }),
     );
-    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: REPLENISH/i);
-    expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/no_events/i);
+    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/Porodica: REPLENISH/i);
+    expect(screen.getByTestId("decision-timeline-empty")).toHaveTextContent(/Nema događaja za izabrani entitet ili porodicu/i);
+  });
+
+  it("keeps the timeline visible when CSV export fails and does not show fake zero rates", async () => {
+    getProductDecisionTimelineExportCsvMock.mockRejectedValue(new Error("Decision Timeline export trenutno nije dostupan."));
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    const timelinePanel = await screen.findByTestId("decision-timeline-panel");
+    await waitFor(() => {
+      expect(screen.getByTestId("decision-timeline-empty")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("decision-timeline-export"));
+
+    expect(await screen.findByTestId("decision-timeline-export-error")).toHaveTextContent(/nije dostupan/i);
+    expect(timelinePanel).toBeInTheDocument();
+    expect(screen.getByTestId("decision-timeline-empty")).toBeInTheDocument();
+    expect(timelinePanel).not.toHaveTextContent("0%");
+    expect(timelinePanel).not.toHaveTextContent("0 RSD");
+  });
+
+  it("shows human-readable timeline events instead of raw backend codes", async () => {
+    getProductDecisionTimelineMock.mockResolvedValue({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-27",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: REPLENISH · Period: 2026-04-27 – 2026-05-26",
+      },
+      emptyReason: null,
+      timelines: [
+        {
+          timelineId: "timeline-101",
+          actionId: 11,
+          sourceRecommendationId: "product:101:REPLENISH:20260528:20260626",
+          correlationId: "corr-101",
+          sourceType: "product",
+          sourceKey: "product:101",
+          recommendationType: "REPLENISH",
+          projectionState: "issued",
+          issuedAtUtc: "2026-05-28T12:00:00Z",
+          currentStatus: "new",
+          currentOutcomeStatus: "pending",
+          events: [
+            {
+              eventType: "recommendation_issued",
+              stage: "recommendation",
+              occurredAtUtc: "2026-05-28T12:00:00Z",
+            },
+          ],
+          gaps: [
+            {
+              stage: "workflow",
+              gapReason: "no_acceptance_record",
+              message: "No acceptance note was captured.",
+            },
+          ],
+        },
+      ],
+      matchedActionCount: 1,
+      matchedEventCount: 1,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "warning" },
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    const timelinePanel = await screen.findByTestId("decision-timeline-panel");
+    await waitFor(() => {
+      expect(timelinePanel).toHaveTextContent(/Preporuka izdata/i);
+    });
+    expect(timelinePanel).toHaveTextContent(/Nema zapisa o prihvatanju/i);
+    expect(timelinePanel).not.toHaveTextContent("recommendation_issued");
+    expect(timelinePanel).not.toHaveTextContent("no_acceptance_record");
+    expect(timelinePanel).not.toHaveTextContent("No acceptance note was captured.");
+    expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/Porodica: Dopuni/i);
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/REPLENISH/);
+  });
+
+  it("reloads an open timeline when the period changes and ignores stale responses", async () => {
+    const firstTimeline = createDeferred<{
+      scope: {
+        sourceType: string;
+        sourceKey: string;
+        productId: number;
+        recommendationType: string;
+        periodFromUtc: string;
+        periodToUtc: string;
+        scopeExplanation: string;
+      };
+      emptyReason: string | null;
+      timelines: Array<Record<string, unknown>>;
+      matchedActionCount: number;
+      matchedEventCount: number;
+      warningCodes: string[];
+      meta: { success: boolean; dataQualityStatus: string };
+    }>();
+    const secondTimeline = createDeferred<{
+      scope: {
+        sourceType: string;
+        sourceKey: string;
+        productId: number;
+        recommendationType: string;
+        periodFromUtc: string;
+        periodToUtc: string;
+        scopeExplanation: string;
+      };
+      emptyReason: string | null;
+      timelines: Array<Record<string, unknown>>;
+      matchedActionCount: number;
+      matchedEventCount: number;
+      warningCodes: string[];
+      meta: { success: boolean; dataQualityStatus: string };
+    }>();
+
+    getProductDecisionTimelineMock
+      .mockImplementationOnce(() => firstTimeline.promise)
+      .mockImplementationOnce(() => secondTimeline.promise);
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
+
+    await waitFor(() => {
+      expect(getProductDecisionTimelineMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText("Od datuma"), { target: { value: "2026-04-01" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionTimelineMock).toHaveBeenCalledTimes(2);
+    });
+
+    secondTimeline.resolve({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-01",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: Dopuni · Period: 2026-04-01 – 2026-05-26",
+      },
+      emptyReason: "no_events",
+      timelines: [],
+      matchedActionCount: 0,
+      matchedEventCount: 0,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
+    });
+
+    expect(await screen.findByTestId("decision-timeline-scope")).toHaveTextContent(/1\. 4\. 2026/);
+
+    firstTimeline.resolve({
+      scope: {
+        sourceType: "product",
+        sourceKey: "product:101",
+        productId: 101,
+        recommendationType: "REPLENISH",
+        periodFromUtc: "2026-04-27",
+        periodToUtc: "2026-05-26",
+        scopeExplanation: "Entitet: product:101 · Porodica: Dopuni · Period: 2026-04-27 – 2026-05-26",
+      },
+      emptyReason: "no_events",
+      timelines: [],
+      matchedActionCount: 0,
+      matchedEventCount: 0,
+      warningCodes: [],
+      meta: { success: true, dataQualityStatus: "insufficient_data" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("decision-timeline-scope")).toHaveTextContent(/1\. 4\. 2026/);
+    });
+    expect(screen.getByTestId("decision-timeline-scope")).not.toHaveTextContent(/27\. 4\. 2026/);
+  });
+
+  it("keeps the newest product data when a stale response arrives late", async () => {
+    const firstPayload = createDeferred<ReturnType<typeof buildResponse>>();
+    const secondPayload = createDeferred<ReturnType<typeof buildResponse>>();
+
+    getProductDecisionCenterMock
+      .mockImplementationOnce(() => firstPayload.promise)
+      .mockImplementationOnce(() => secondPayload.promise);
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText("Od datuma"), { target: { value: "2026-04-01" } });
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenCalledTimes(2);
+    });
+
+    secondPayload.resolve(buildResponse([makeRow({ productId: 202, productName: "New Model", sourceKey: "product:202", recommendationId: "product:202:REPLENISH:20260401:20260526" })], "good"));
+
+    expect(await screen.findByText("New Model")).toBeInTheDocument();
+
+    firstPayload.resolve(buildResponse([makeRow({ productId: 101, productName: "Old Model", sourceKey: "product:101", recommendationId: "product:101:REPLENISH:20260427:20260526" })], "good"));
+
+    await waitFor(() => {
+      expect(screen.getByText("New Model")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Old Model")).not.toBeInTheDocument();
   });
 
   it("renders strong recommendations with explicit estimated impact wording", async () => {
@@ -349,6 +580,10 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Za.*\?/i })[0]);
 
     expect(screen.getByText(/Zašto ova preporuka\?/i)).toBeInTheDocument();
+    const whyBlock = screen.getByText(/Zašto ova preporuka\?/i).closest(".reason-block");
+    expect(whyBlock).not.toBeNull();
+    expect(whyBlock).not.toHaveTextContent("REPLENISH");
+    expect(whyBlock).not.toHaveTextContent("recommendation_issued");
     expect(screen.getByText(/Izvor objašnjenja: direktan razlog preporuke/i)).toBeInTheDocument();
     expect(screen.getByText(/Glavni pokreta/i)).toBeInTheDocument();
     expect(screen.getByText("Brzina prodaje", { selector: ".reason-chip" })).toBeInTheDocument();
@@ -382,8 +617,8 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     const snapshotPanel = await screen.findByTestId("decision-evidence-snapshot");
     expect(snapshotPanel).toHaveTextContent(/Nije snimljen/i);
-    expect(snapshotPanel).toHaveTextContent(/Preview ugovora v1/i);
-    expect(snapshotPanel).toHaveTextContent(/REPLENISH/i);
+    expect(snapshotPanel).toHaveTextContent(/Pregled: Dopuni/i);
+    expect(snapshotPanel).not.toHaveTextContent(/REPLENISH/i);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dodaj u akcije" })[0]);
 
@@ -391,8 +626,9 @@ describe("ProductDecisionCenterPage confidence contract", () => {
       expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(snapshotPanel).toHaveTextContent(/Snimljen 2026-06-26T12:00:00Z/i);
-    expect(snapshotPanel).toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
+    expect(snapshotPanel).toHaveTextContent(/Snimljen/i);
+    expect(snapshotPanel).not.toHaveTextContent(/2026-06-26T12:00:00Z/i);
+    expect(snapshotPanel).not.toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
   });
 
   it("renders a structured evidence chain in the Why panel", async () => {
@@ -984,5 +1220,17 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Za.*\?/i }));
     expect(screen.getByText(/Svežina ulaza: Zastarelo/i)).toBeInTheDocument();
+  });
+
+  it("shows an error alert and hides KPI cards when the product decision load fails", async () => {
+    getProductDecisionCenterMock.mockRejectedValueOnce(new Error("Product decision API timeout"));
+
+    render(<ProductDecisionCenterPage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Product decision API timeout");
+    expect(screen.queryByLabelText("KPI kartice")).not.toBeInTheDocument();
+    expect(screen.queryByText("Za dopunu")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
-# Trendplus Decision Intelligence Roadmap
+﻿# Trendplus Decision Intelligence Roadmap
 
-Updated: 2026-08-11
+Updated: 2026-08-18
 Status: approved future product direction; runtime implementation remains queue-gated  
 Owner queue: `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
 
@@ -105,6 +105,7 @@ Goal: provide an auditable historical record of what was recommended, what happe
 Authoritative contract:
 
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
+- `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
 Roadmap sequence:
 
@@ -115,18 +116,19 @@ Phases:
 1. canonical timeline event model — **DONE** (`docs/architecture/DECISION_TIMELINE_CONTRACT.md`);
 2. decision/action/execution/outcome correlation identifiers — covered in DT01; first-class timestamps remain a later additive slice;
 3. immutable/append-oriented history semantics for important events — projection-first via notes/snapshots (`docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`);
-4. filtered timeline by entity/recommendation family/time period — planned API/UI slices in DT02;
-5. outcome window and measurement state display — planned UI/export slices in DT02;
+4. filtered timeline by entity/recommendation family/time period — **DONE** Slice-2 runtime in DT05; Product Decision Center remains the live filter surface;
+5. outcome window and measurement state display — planned UI/export slices in DT02; honesty rules frozen in DT06;
 6. success metrics that distinguish issued, accepted, executed, measured and successful denominators — **DONE** in DT01 (aligned with RL01);
-7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots; harden in DT02 Slice 5;
-8. export/reporting for decision review and business retrospectives — planned in DT02 Slice 5.
+7. evidence snapshot links for historical explainability — reuse creation/resolution ledger snapshots and DEX10 evidence snapshots; presence/absence frozen in DT06;
+8. export/reporting for decision review and business retrospectives — **DONE** as DT06 contract plus DT07 runtime export (`GET /api/analytics/cached/products/decision-center/timeline/export`) over Slice-2; Slice-5 hardening is **DONE** in `DT08`.
 
 Authoritative planning outputs:
 
 - `docs/architecture/DECISION_TIMELINE_CONTRACT.md`
 - `docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`
+- `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
 
-Current queue READY: `DEX13` / `RL05` / `DT06` (inventory explainability reuse contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`; DEX13 remains the live READY pointer until a successor DEX prompt is promoted).
+Current queue READY: `RL10` for RL (Slice 4 advisory calibration contract). DEX none. DT none (`DT09` WAITING = first-class timestamps). `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DT07`/`DEX18`/`RL07` DONE. `DEX19` DONE = Executive Board explainability runtime. `DEX17`/`RL06`/`DT06` DONE. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 

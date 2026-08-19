@@ -73,4 +73,43 @@ describe("supplierDecisionHubApi trust metadata mapping", () => {
     expect(result.trustMetadata?.requestedDataset).toBe("all_time");
     expect(result.trustMetadata?.effectiveDataset).toBe("all_time");
   });
+
+  it("rejects HTTP 200 payloads with error meta instead of treating zeros as success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({
+            from: "2026-05-01T00:00:00Z",
+            to: "2026-05-30T23:59:59Z",
+            supplierCount: 0,
+            fullPriceRevenueShare: 0,
+            fullPriceSellthrough: 0,
+            markdownRevenueShare: 0,
+            preMarkdownMarginPct: 0,
+            capitalAtRisk: 0,
+            topGrowSuppliers: [],
+            topRiskSuppliers: [],
+            keyInsights: [],
+            meta: {
+              success: false,
+              errorCode: "supplier_decision_unavailable",
+              errorMessage: "Skorkarta dobavljača trenutno nije dostupna.",
+            },
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+      )
+    );
+
+    await expect(getSupplierDecisionSummary({
+      fromDate: "2026-05-01",
+      toDate: "2026-05-30",
+    })).rejects.toMatchObject({
+      name: "SupplierDecisionApiError",
+      errorCode: "supplier_decision_unavailable",
+    });
+  });
 });

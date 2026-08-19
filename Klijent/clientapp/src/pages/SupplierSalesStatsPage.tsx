@@ -1410,57 +1410,59 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <UltraSpinner size="sm" label="Osvežavam podatke" />
             </div>
           ) : null}
-          <section className="supplier-decision-kpis">
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
-              <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
-              <strong>{fmtRsd(totalRevenue)}</strong>
-              <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan promet" />
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izražen u komadima.">
-              <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
-              <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
-              <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat ukupan broj prodatih jedinica" />
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
-              <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
-              <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
-              <KpiExplainButton metricKey="totalCost" ariaLabel="Kako je izračunata ukupna nabavna vrednost" />
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marže pre operativnih troškova.">
-              <span>{canonicalTerms.marginContribution.label} <InfoTip text={canonicalTerms.marginContribution.desc} /></span>
-              <strong>{fmtRsd(totalMarginContribution)}</strong>
-              <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
-              <small
-                className={`supplier-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
-                title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct, data.totals.snapshotCostCoveragePct)}
-              >
-                {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
-              </small>
-              {data.totals.isSnapshotActive && (data.totals.snapshotCostCoveragePct ?? 0) > 0 ? (
+          {!emptyStateHint ? (
+            <section className="supplier-decision-kpis">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
+                <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
+                <strong>{fmtRsd(totalRevenue)}</strong>
+                <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan promet" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izražen u komadima.">
+                <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
+                <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
+                <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat ukupan broj prodatih jedinica" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
+                <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+                <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
+                <KpiExplainButton metricKey="totalCost" ariaLabel="Kako je izračunata ukupna nabavna vrednost" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marže pre operativnih troškova.">
+                <span>{canonicalTerms.marginContribution.label} <InfoTip text={canonicalTerms.marginContribution.desc} /></span>
+                <strong>{fmtRsd(totalMarginContribution)}</strong>
+                <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                 <small
-                  className="supplier-decision-kpi-badge quality-snapshot"
-                  title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct ?? 0, data.totals.snapshotGeneratedAtUtc, fmtPct)}
+                  className={`supplier-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
+                  title={data.totals.marginQualityTooltip ?? buildCoverageTooltip(data.totals.historicalCostCoveragePct, data.totals.estimatedCostCoveragePct, data.totals.noCostCoveragePct, fmtPct, data.totals.snapshotCostCoveragePct)}
                 >
-                  ❄ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
+                  {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
                 </small>
-              ) : null}
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marže kroz dobavljače.">
-              <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po dobavljaču. Formula po dobavljaču: maržni doprinos / promet sa dostupnim troškom × 100. Prikazana vrednost je aritmetički prosek po dobavljačima — nije ponderisana prometom." /></span>
-              <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
-              <KpiExplainButton metricKey="grossMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
-              <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
-              <strong>{fmtPct(top5SharePct)}</strong>
-              <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
-            </article>
-            <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
-              <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet − prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
-              <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
-              <KpiExplainButton metricKey="popRevenueChangePct" ariaLabel="Kako je izračunat Ukupan PoP trend" />
-            </article>
-          </section>
+                {data.totals.isSnapshotActive && (data.totals.snapshotCostCoveragePct ?? 0) > 0 ? (
+                  <small
+                    className="supplier-decision-kpi-badge quality-snapshot"
+                    title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct ?? 0, data.totals.snapshotGeneratedAtUtc, fmtPct)}
+                  >
+                    ❄ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
+                  </small>
+                ) : null}
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marže kroz dobavljače.">
+                <span>Prosečna marža <InfoTip text="Prosečan procenat maržnog doprinosa po dobavljaču. Formula po dobavljaču: maržni doprinos / promet sa dostupnim troškom × 100. Prikazana vrednost je aritmetički prosek po dobavljačima — nije ponderisana prometom." /></span>
+                <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
+                <KpiExplainButton metricKey="grossMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
+                <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
+                <strong>{fmtPct(top5SharePct)}</strong>
+                <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
+                <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. N/A ako prethodni period nije dostupan." /></span>
+                <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
+                <KpiExplainButton metricKey="popRevenueChangePct" ariaLabel="Kako je izračunat Ukupan PoP trend" />
+              </article>
+            </section>
+          ) : null}
 
           {qualityNotes.length > 0 ? (
             <div className="supplier-decision-message info" role="status" aria-live="polite">

@@ -125,4 +125,63 @@ describe("DailySalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
   });
+
+  it("shows shared error state instead of KPI zeros when daily sales fails", async () => {
+    vi.mocked(getDailySalesStats).mockRejectedValue(new Error("backend down"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("daily-sales-stats-data-table")).not.toBeInTheDocument();
+  });
+
+  it("shows shared empty state instead of only an in-table empty row", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        dateRows: [],
+        topSuppliers: [],
+        topSuppliersOrder: [],
+        metadata: {
+          totalDays: 30,
+          uniqueSuppliersInRange: 0,
+          unknownSupplierPct: 0,
+          unknownSupplierItems: 0,
+          offShiftItems: 0,
+          offShiftRevenue: 0,
+          totalItemsInRange: 0,
+          duplicateReceiptGroupCount: 0,
+          duplicateReceiptHeaderCount: 0,
+          receiptAmountMismatchCount: 0,
+          receiptAmountMismatchRevenue: 0,
+          nonStandardReceiptCount: 0,
+          nonStandardReceiptRevenue: 0,
+          debtReceiptCount: 0,
+          debtReceiptRevenue: 0,
+          minAvailableDate: "2026-01-01",
+          maxAvailableDate: "2026-03-31",
+          warnings: [],
+        },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Nema podataka za izabrani period/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prikaži dostupne podatke" })).toBeInTheDocument();
+    expect(screen.getByText(/van dostupnog raspona prodaje/i)).toBeInTheDocument();
+  });
 });

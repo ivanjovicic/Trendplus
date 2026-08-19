@@ -114,4 +114,20 @@ public static class ProductDecisionReasoningHelper
 
         return codes.ToList();
     }
+
+    public static string RecommendationLabel(string? status)
+    {
+        return (status ?? string.Empty).Trim().ToUpperInvariant() switch
+        {
+            "BOOST" => "Pojačaj",
+            "REPLENISH" => "Dopuni",
+            "WATCH" => "Prati",
+            "MARKDOWN" => "Snizi cenu",
+            "DO_NOT_ORDER" => "Ne naručuj",
+            "FIX_DATA" => "Proveri podatke",
+            "INSUFFICIENT_DATA" => "Nedovoljno podataka",
+            "" => "sve porodice",
+            _ => status!.Trim()
+        };
+    }
 }

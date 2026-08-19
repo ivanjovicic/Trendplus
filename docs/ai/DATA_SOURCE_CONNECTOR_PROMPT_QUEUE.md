@@ -1,9 +1,9 @@
-# Trendplus Data Source Connector Prompt Queue
+﻿# Trendplus Data Source Connector Prompt Queue
 
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `none`
+Current READY prompt: none (`QDB06` DONE; `QDB07` WAITING on authorization/release gates)
 
 ## Global routing
 
@@ -241,22 +241,22 @@ Expected new area:
   - `dotnet test --filter FullyQualifiedName~SourceDataSessionAdapterTests|FullyQualifiedName~DataSourceConnectorContractTests|FullyQualifiedName~AccessReadQueryPushdownTests` - pass (16/16)
   - `git diff --check` - pass (queued files)
   - no Access ODBC/CLI runtime rewrite; import consumers still use `IAccessDataReaderSession`
-- Next: `QDB03` stays WAITING until backend CI executes real tests and the open BCI gate clears
+- Next: `QDB03` is READY because `QDB02` is DONE and `BCI01`/`BCI05` have green GitHub Actions evidence.
 
 ---
 
 ## QDB03 - Add a read-only SQL Server proof connector
 
 Status: DONE
-Ready after: `QDB02` is `DONE` and backend CI executes real tests without an open BCI `PARTIAL`/`BLOCKED` gate (`BCI01`/`BCI05`)
+Ready after: `QDB02` is `DONE` and `BCI01`/`BCI05` have green GitHub Actions evidence
 Priority: P1
 Type: backend/integration tests
 Feature family: sqlserver-source-connector
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/QDB03-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(import): add sql server source connector`
-Demotion note: 2026-08-11 — not READY while `BCI05`/`BCI01` remain PARTIAL (GHA proof pending), despite local Docker suite green.
+Promotion note: 2026-08-13 - `BCI01`/`BCI05` are DONE per `MASTER_ROADMAP.md` with green GHA `31674533356` on `f1f5a17`, so the read-only SQL Server proof connector is unblocked.
 
 ### Goal
 
@@ -283,48 +283,33 @@ Implement the first non-Access provider against the provider-neutral contract.
 
 ### Completion note
 
-- Date: 2026-08-19
+- Date: 2026-08-13
 - Status: DONE
-- Changed files:
-  - `Api/Api.csproj`
-  - `Api.Tests/Api.Tests.csproj`
-  - `Api/Services/DataSources/SqlServerSourceDataSession.cs`
-  - `Api.Tests/SqlServerSourceDataSessionTests.cs`
-  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
-- Contract/runtime behavior changed:
-  - Added a provider-neutral, read-only SQL Server source session with safe identifier quoting, schema/table/column discovery, exact row counts, bounded async streaming and cursor-aware fallback behavior.
-  - Proved the connector against the local SQL Server engine with reserved identifiers, Unicode, nulls, decimals, timestamps, cancellation and command-timeout behavior.
-- Checks run:
-  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SqlServerSourceDataSessionTests` - pass
-  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
-  - `git diff --check` - pass
-  - `node scripts/check-agent-instructions.mjs --self-test` - pass
-  - `node scripts/check-agent-instructions.mjs` - pass
-  - `node scripts/check-prompt-queues.mjs --self-test` - pass
-  - `node scripts/check-prompt-queues.mjs` - pass
-  - `node scripts/check-planning-architecture.mjs --self-test` - pass
-  - `node scripts/check-planning-architecture.mjs` - pass
-- Checks not run:
-  - `npm run check:analytics-guardrails` - not run - backend-only prompt, no frontend source changed
-  - `npm run build` - not run - backend-only prompt, no frontend source changed
-- Remaining risk:
-  - Proof uses the local SQL Server service on `tempdb`; if that instance is unavailable, the integration tests need a configured replacement connection string.
-- Next:
-  - `QDB04 - Add named source configuration and safe discovery endpoints`
-- Prompt defect / scope repair:
-  - QDB03 was claimed from the live queue and completed without changing runtime import behavior outside the provider-neutral connector proof scope.
+- Completion: read-only SQL Server `ISourceDataSession` landed; live LocalDB engine proved discovery, Unicode/nulls/decimals/timestamps, ID and timestamp-then-id cursors, cancellation and command timeout; quoting/SQL unit tests are supplemental
+- Changed files: Api/Services/DataSources/SqlServerSourceDataSession.cs; Api/Services/DataSources/SqlServerIdentifier.cs; Api/Services/DataSources/SqlServerConnectionDiagnostics.cs; Api/Services/DataSources/ISourceDataSession.cs; Api/Api.csproj; Api.Tests/Api.Tests.csproj; Api.Tests/SqlServerSourceDataSessionSqlTests.cs; Api.Tests/SqlServerSourceDataSessionIntegrationTests.cs; docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md; docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md; docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md; MASTER_ROADMAP.md
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~SqlServerSourceDataSession (15 passed, live LocalDB); Access characterization 16 passed; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
+- Checks not run: Testcontainers.MsSql path (Docker daemon was not running); full Api.Tests suite; npm frontend checks
+- Run log: .ai/runs/2026-08-13-QDB03-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
+- Missed: Docker Testcontainers was not executed in this session; named discovery API is QDB04
+- Follow-up: QDB04
+- Residual risk: CI without LocalDB must use Docker Testcontainers or SQLSERVER_TEST_CONNECTION_STRING; ApplicationIntent=ReadOnly is requested but standalone LocalDB ignores Always On routing
+- Prompt defect / scope repair: live proof used SQL Server LocalDB as equivalent real engine because Docker was unavailable; Testcontainers.MsSql remains the preferred CI path
 
 ---
 
 ## QDB04 - Add named source configuration and safe discovery endpoints
 
 Status: DONE
-Priority: P1  
-Type: backend/security/API tests  
-Feature family: data-source-connection-discovery  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB04-<agent>.lock.md`  
+Ready after: `QDB03` is `DONE`
+Priority: P1
+Type: backend/security/API tests
+Feature family: data-source-connection-discovery
+Parallel-safe: no
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(import): add safe source discovery api`
 
 ### Goal
@@ -342,46 +327,33 @@ Allow an authorized administrator to select a named source, test connectivity an
 
 ### Completion note
 
-- Date: 2026-08-19
+- Date: 2026-08-13
 - Status: DONE
-- Changed files:
-  - `Api/Endpoints/AdminConfigEndpoints.cs`
-  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
-  - `Api.Tests/AdminDataSourceEndpointsTests.cs`
-  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
-- Contract/runtime behavior changed:
-  - added admin data-source discovery endpoints for profiles, connection tests, schemas, tables and columns;
-  - kept connection strings and credentials out of responses;
-  - returned safe categories for unsupported providers, invalid configuration, authentication, permission, timeout and network/database failures;
-  - enforced admin authorization and strict/db-heavy rate limits on the new routes.
-- Checks:
-  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~AdminDataSourceEndpointsTests` - pass
-  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
-  - `git diff --check` - pass
-- Checks not run:
-  - `dotnet build` - not run separately because the targeted Release build already compiled the Api and Api.Tests projects
-  - `dotnet test` - not run separately because the targeted integration test covered the changed surface
-  - `npm run check:analytics-guardrails` - not run; backend-only prompt
-  - `npm run build` - not run; backend-only prompt
-- Remaining risk:
-  - SQL Server discovery still depends on a reachable local SQL Server during integration testing;
-  - non-SQL Server providers remain unsupported in this prompt and are surfaced as safe `unsupported_provider` results.
-- Next:
-  - `QDB05` READY
-- Prompt defect / scope repair:
-  - used in-memory named profile config in the test host to keep the safe-discovery contract isolated from durable secret storage decisions.
+- Completion: environment-backed named SQL Server profiles expose admin-only list/test/tables/columns APIs; secrets are omitted; connection tests are strictly rate-limited and return safe failure categories
+- Changed files: Api/Services/DataSources/DataSourceConnectorOptions.cs; Api/Services/DataSources/SourceSessionFactory.cs; Api/Services/DataSources/NamedSourceDiscoveryService.cs; Api/Services/DataSources/ISourceDataSession.cs; Api/Services/DataSources/AccessSourceDataSessionAdapter.cs; Api/Endpoints/DataSourceDiscoveryEndpoints.cs; Api/Program.cs; Api.Tests/DataSourceDiscoveryAuthorizationTests.cs; docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md; docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md; docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md; MASTER_ROADMAP.md
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~DataSourceDiscovery|FullyQualifiedName~SourceDataSessionAdapterTests (12 passed); node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
+- Checks not run: full Api.Tests suite; npm frontend checks; durable secret storage; mapping/sync
+- Run log: .ai/runs/2026-08-13-QDB04-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
+- Missed: no admin UI; Access named profiles are not discovery-backed yet; connection strings stay env/config-only
+- Follow-up: QDB05
+- Residual risk: operators must set DataSources__Sources__{name}__ConnectionString via environment; test-connection uses the existing strict rate-limit policy
+- Prompt defect / scope repair: none
 
 ---
 
 ## QDB05 - Add deterministic mapping profile and bounded preview
 
 Status: DONE
-Ready after: `QDB04` is `DONE`  
-Priority: P1  
-Type: backend/data model/API tests  
-Feature family: source-mapping-preview  
-Parallel-safe: no  
-Owner: unassigned  
+Ready after: `QDB04` is `DONE`
+Priority: P1
+Type: backend/data model/API tests
+Feature family: source-mapping-preview
+Parallel-safe: no
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `feat(import): add source mapping preview`
 
 ### Goal
@@ -400,62 +372,114 @@ Map source streams to canonical Trendplus entities and preview a small sample wi
 
 ### Completion note
 
-- Date: 2026-08-19
+- Date: 2026-08-13
 - Status: DONE
-- Changed files:
-  - `Api/Models/SourceMappingPreviewModels.cs`
-  - `Api/Services/DataSources/SourceMappingPreviewService.cs`
-  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
-  - `Api.Tests/SourceMappingPreviewServiceTests.cs`
-  - `Api.Tests/AdminDataSourceEndpointsTests.cs`
-  - `docs/architecture/DATA_SOURCE_MAPPING_PREVIEW_CONTRACT.md`
-  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
-- Contract/runtime behavior changed:
-  - added deterministic source-mapping preview models plus a SQL Server-backed admin preview endpoint;
-  - required explicit source table, canonical entity, external keys and cursor selection;
-  - resolved column aliases deterministically and returned field-level status/reason codes;
-  - bounded preview rows to 25 and surfaced truncation/fingerprint metadata;
-  - kept failure and validation states explicit instead of inventing a successful preview.
-- Checks run:
-  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceMappingPreviewServiceTests` - pass
-  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~AdminDataSourceEndpointsTests.MappingPreview` - pass
-- Checks not run:
-  - `dotnet build` - not run separately because the targeted `dotnet test` runs compiled the changed projects
-  - `git diff --check` - not run yet in this turn
-  - `node scripts/check-prompt-queues.mjs` - not run yet in this turn
-- Remaining risk:
-  - the preview route currently supports the SQL Server proof connector path only; other providers remain explicitly unavailable.
-- Next:
-  - `QDB06` stays WAITING until the owner approves the database migration
-- Prompt defect / scope repair:
-  - cursor mode validation now normalizes `timestamp_then_id` deterministically instead of treating it as an unknown mode; this keeps preview validation aligned with source-session cursor semantics.
+- Completion: admin-only mapping preview validates explicit table/key/cursor/field mappings, schema fingerprint, field rejection reasons and a bounded sample without durable writes or silent alias guessing
+- Changed files: Api/Services/DataSources/SourceMappingPreviewService.cs; Api/Services/DataSources/SourceMappingPreviewDtos.cs; Api/Services/DataSources/CanonicalSourceEntities.cs; Api/Services/DataSources/SourceSchemaFingerprint.cs; Api/Services/DataSources/NamedSourceDiscoveryService.cs; Api/Endpoints/DataSourceDiscoveryEndpoints.cs; Api/Program.cs; Api.Tests/SourceMappingPreviewTests.cs; docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md; docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md; docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md; MASTER_ROADMAP.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md; docs/ai/ANALYTICS_TEST_STRATEGY.md; docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md; .ai/runs/2026-08-13-QDB05-evidence.md
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~SourceMappingPreviewTests --no-build (6 passed); node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
+- Checks not run: full Api.Tests rebuild (blocked by unrelated InventoryEndpoints dirty-tree compile errors); npm frontend checks; durable mapping persistence; sync/checkpoints
+- Run log: .ai/runs/2026-08-13-QDB05-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
+- Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
+- Missed: mapping is request-scoped only; QDB06 durable checkpoints need an owner-approved migration
+- Follow-up: QDB06 after owner approves a database migration
+- Residual risk: preview returns a bounded mapped sample to authorized admins; rows are not logged or stored; full Api rebuild is currently blocked by unrelated InventoryEndpoints dirty-tree errors
+- Prompt defect / scope repair: QDB06 was not auto-promoted to READY because it still requires owner approval of a database migration
 
 ---
 
 ## QDB06 - Add idempotent checkpointed incremental synchronization
 
-Status: WAITING  
-Ready after: `QDB05` is `DONE` and the owner approves a database migration  
-Priority: P1  
-Type: backend/persistence/workers/integration tests  
-Feature family: source-checkpoint-idempotency  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB06-<agent>.lock.md`  
+Status: DONE
+Ready after: `QDB05` is `DONE` and the owner approves a database migration
+Priority: P1
+Type: backend/persistence/workers/integration tests
+Feature family: source-checkpoint-idempotency
+Parallel-safe: no
+Owner: Cursor Auto
+Local lock: removed after DONE
 Commit suggestion: `feat(import): add durable source checkpoints`
+Promotion note: 2026-08-18 - owner approved the database migration and ran QDB06 before RQ96.
 
-### Goal
+### Problem
 
-Persist checkpoints only after destination effects are durably committed and make retry/restart idempotent.
+Mapped source batches cannot yet retry or restart safely. Access cursors are keyed only by `TableKey`, so connection/mapping identities would collide, and a crash between destination write and cursor advance can duplicate or skip rows.
 
-### Required proof
+### Evidence
 
-- crash before destination commit leaves checkpoint unchanged;
-- crash after destination commit is recoverable without duplicates;
-- timestamp overlap plus external-key deduplication works;
-- account/source/mapping identities cannot collide;
-- schema-key/cursor drift blocks the affected mapping;
-- metrics distinguish read, inserted, updated, skipped and rejected rows.
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` defines checkpoint identity as `ConnectionId + MappingProfileId + SourceStream` and requires the checkpoint to be the last source position whose destination effects were committed.
+- `AccessImportCursors` is keyed only by `TableKey` and must not be reused as the QDB06 identity.
+- QDB05 mapping is request-scoped; there is no durable mapping store. `MappingProfileId` is a hash of the mapping document.
+
+### Scope
+
+- durable `SourceSyncCheckpoints` / `SourceSyncAppliedRows` model and migration
+- checkpoint engine with crash, overlap, identity, schema-drift and metrics proofs
+- EF store that commits destination rows and checkpoint in one transaction
+- dedicated tenant scope `n/a_dedicated`; no caller-header tenant authority
+- do not upsert Artikli/Prodaja in this slice; staging rows are the destination
+- do not write back to customer sources; internal DB stays PostgreSQL
+
+### Read first
+
+- `docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `Api/Services/DataSources/SourceMappingPreviewService.cs`
+- `Api/Services/Access/AccessImportCursorRepository.cs`
+
+### Do
+
+1. Persist checkpoints only after destination effects are staged for the same commit.
+2. Make retry/restart idempotent via external-key payload hash (insert/update/skip).
+3. Block the mapping when schema fingerprint drifts; do not apply new rows.
+4. Keep connection and mapping identities from colliding.
+5. Record read/inserted/updated/skipped/rejected metrics; rejected rows never become fake zeros.
+
+### Tests
+
+- crash before destination commit leaves checkpoint unchanged
+- crash after destination commit is recoverable without duplicates
+- timestamp overlap plus external-key deduplication works
+- connection/mapping identities cannot collide
+- schema fingerprint drift blocks the affected mapping
+- metrics distinguish read, inserted, updated, skipped and rejected rows
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceCheckpointSyncEngineTests`
+
+### Acceptance
+
+- All six required proofs pass.
+- Checkpoint identity is `ConnectionId + MappingProfileId + SourceStream`.
+- Dedicated deployments persist `TenantScope = n/a_dedicated`.
+- Access `TableKey` cursors remain unchanged compatibility.
+
+### Dependencies
+
+- `QDB05` DONE
+- Owner migration approval 2026-08-18
+- Do not start MT02 or invent `shared_saas`; MT07 owns shared tenant ownership later
+- SQL Server end-to-end through this engine remains a later commercial gate, not this slice
+
+### Completion note
+
+- Date: 2026-08-18
+- Status: DONE
+- Completion: durable checkpoint identity, EF tables, and idempotent apply engine landed; required crash/overlap/identity/drift/metrics proofs pass against an in-memory store; destination is `SourceSyncAppliedRows` staging rather than Artikli/Prodaja upsert
+- Changed files: Domain/Model/SourceSyncCheckpoint.cs; Domain/Model/SourceSyncAppliedRow.cs; Api/Services/DataSources/SourceCheckpointSyncContracts.cs; Api/Services/DataSources/SourceCheckpointSyncEngine.cs; Api/Services/DataSources/InMemorySourceSyncStore.cs; Api/Services/DataSources/EfSourceSyncStore.cs; Api/Services/DataSources/SourceCheckpointSyncService.cs; Api/Services/DataSources/SourceMappingProfileId.cs; Api.Tests/SourceCheckpointSyncEngineTests.cs; Infrastructure/Migrations/20260818120000_AddSourceSyncCheckpoints.cs; Infrastructure/Migrations/TrendplusDbContextModelSnapshot.cs; Infrastructure/DbContexts/TrendplusDbContext.cs; Api/Program.cs; docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md; docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md; docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md; MASTER_ROADMAP.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md; docs/ai/ANALYTICS_TEST_STRATEGY.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; .ai/runs/2026-08-18-QDB06-evidence.md
+- Contract/runtime behavior changed: yes; new checkpoint tables and apply API. Access import cursors are unchanged. Canonical Artikli/Prodaja upsert is not in this slice.
+- Checks run: git diff --check; dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SourceCheckpointSyncEngineTests --no-restore (8 passed); node scripts/check-agent-instructions.mjs --self-test; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs --self-test; node scripts/check-prompt-queues.mjs (261 tasks); node scripts/check-planning-architecture.mjs --self-test; node scripts/check-planning-architecture.mjs (71 planning tasks)
+- Checks not run: full Api.Tests suite; live SQL Server e2e through the checkpoint engine; npm frontend checks; EF in-memory crash-split (production EF store uses one transaction)
+- Run log: .ai/runs/2026-08-18-QDB06-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: dcda7e21eb0d8f367481418d446083e47df2a820
+- Main verification: git rev-parse origin/main -> dcda7e21eb0d8f367481418d446083e47df2a820; work SHA dcda7e21eb0d8f367481418d446083e47df2a820 is an ancestor
+- Missed: SQL Server end-to-end through this engine; Artikli/Prodaja destination upsert; admin UI (QDB07)
+- Follow-up: RQ96 current execution READY; RQ106 Decision Pulse WAITING after RQ96; QDB07 after authorization/release gates
+- Residual risk: production workers must call `SourceCheckpointSyncService`; unused tables until a worker/e2e path applies batches. Split-commit crash proof is in-memory; EF store uses one transaction so that failure mode does not occur on the PostgreSQL path.
+- Prompt defect / scope repair: expanded legacy Goal/Required proof into the eight required sections; destination bounded to staging rows to avoid a second owner (Access unique indexes are `DataOrigin='access'` only)
+- Next: `RQ96`
 
 ---
 
@@ -485,6 +509,74 @@ Expose only the proven backend flow:
 
 Do not let the frontend construct SQL, display stored secrets or hide partial/error/schema-drift states.
 
+---
+
+## QDB08 - Add onboarding mapping templates and import diagnostics pack
+
+Status: WAITING
+Ready after: `QDB07` is `DONE` and at least one end-to-end connector flow can already prove discovery, mapping, preview and sync truth
+Priority: P2
+Type: docs/backend/frontend contract/tests
+Feature family: source-onboarding-diagnostics
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/QDB08-<agent>.lock.md`
+Commit suggestion: `feat(import): add onboarding templates and diagnostics`
+
+### Problem
+
+Even with connector discovery and mapping flows in place, first-customer onboarding will still be brittle unless operators get deterministic mapping templates, import diagnostics and a safe explanation of what failed or remains unmapped.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` keeps the current QDB order, then explicitly calls out onboarding mapping templates and import diagnostics as the remaining Gate-1 work needed to make first-customer integration repeatable.
+- `QDB04`-`QDB07` cover named sources, mapping, checkpoints and admin flow, but this queue has no dedicated prompt for reusable onboarding presets or diagnostics truth.
+- Without a bounded diagnostics contract, operators can be left with raw connector errors or ambiguous “import failed” states that do not explain schema drift, rejected rows, missing required fields or safe next actions.
+
+### Scope
+
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- backend diagnostics DTO/endpoints touched by the existing connector flow
+- connector admin UI only where needed to surface truthful diagnostics/templates
+- focused tests for deterministic template/diagnostics behavior
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- current connector admin/runtime files landed by `QDB04`-`QDB07`
+
+### Do
+
+1. Add reusable mapping-template primitives for the first supported source families without introducing AI-generated mappings.
+2. Define a deterministic diagnostics contract that distinguishes connection failure, schema drift, mapping gap, row rejection, checkpoint conflict and partial-success states.
+3. Surface safe next-action guidance for operators, but do not expose secrets, raw source payloads or arbitrary SQL.
+4. Keep the first version bounded to the existing single-customer/single-deployment connector model.
+5. Add focused tests proving stable diagnostics categories and template selection inputs.
+
+### Tests
+
+- `git diff --check`
+- focused backend connector diagnostics tests
+- focused frontend/admin-flow tests only if new diagnostics UI branches are added
+- `dotnet build Api.Tests/Api.Tests.csproj --configuration Release`
+
+### Acceptance
+
+- Operators can start from a deterministic mapping template instead of an empty configuration for the first supported source families.
+- Import diagnostics distinguish the main failure classes without leaking secrets or raw payloads.
+- UI/API messaging stays truthful about partial, blocked and rejected states.
+- The prompt does not expand into generic ETL scripting, arbitrary transforms or multi-tenant connector orchestration.
+
+### Dependencies
+
+- `QDB07` DONE first so the admin flow exists before onboarding assistance is added.
+- Earlier QDB prompts remain authoritative for source/session/checkpoint behavior.
+- Any tenant-owned durable template catalog must wait for the corresponding MT authority if this prompt reaches that boundary.
+
 ## Queue completion definition
 
 The roadmap is not complete merely because multiple drivers exist. Trendplus has credible multi-source support only when it can prove:
@@ -494,6 +586,7 @@ The roadmap is not complete merely because multiple drivers exist. Trendplus has
 - safe configuration and discovery;
 - explicit mapping;
 - durable idempotent checkpoints;
+- deterministic onboarding templates and import diagnostics;
 - schema-drift behavior;
 - authorization, diagnostics and operational evidence;
 - unchanged internal PostgreSQL ownership.

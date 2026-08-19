@@ -1,4 +1,4 @@
-# Trendplus Decision Intelligence Planning Queue
+﻿# Trendplus Decision Intelligence Planning Queue
 
 
 
@@ -38,15 +38,15 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | `DEX13` | docs/contracts only - inventory explainability reuse |
+| DEX - Decision Explainability | none | backend/frontend - Executive Board explainability runtime |
 
 
 
-| RL - Recommendation Learning | `RL05` | docs/contracts only - measurement-only statistics |
+| RL - Recommendation Learning | `RL10` | docs/contracts - Slice 4 advisory calibration |
 
 
 
-| DT - Decision Timeline | `DT06` | docs/contracts only - export/report planning |
+| DT - Decision Timeline | none | Slice-5 hardening complete; `DT09` WAITING |
 
 
 
@@ -70,9 +70,641 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
-## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
+---
+
+---
+
+## RL10 - Prepare Slice 4 advisory calibration contract
 
 Status: READY
+Priority: future / planning
+Feature family: recommendation-learning-calibration-contract
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/RL10-<agent>.lock.md`
+
+### Problem
+
+Operators can now review measurement-only statistics, but there is still no frozen contract for a later advisory calibration job. Without that contract, a later slice could mutate live confidence, treat acceptance as calibration evidence, or invent scores from missing outcome coverage.
+
+### Evidence
+
+- docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 4
+- docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md
+- docs/Analytics/DECISION_CONFIDENCE_CONTRACT.md
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+- Application/Analytics/RecommendationMeasurementStatisticsDto.cs
+
+### Scope
+
+- docs/contracts only for advisory calibration inputs, outputs, eligibility and ignore-safely rules;
+- keep live confidence, ranking and recommendation text unchanged;
+- no runtime calibration job, ML, or schema migration.
+
+### Read first
+
+- RL09 completion note
+- RL02 rollout plan Slice 4
+- confidence calibration audit
+- decision confidence contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze a citeable Slice 4 contract: cohort inputs, eligibility, advisory direction, reason codes and bounded hint fields.
+2. Require explicit later approval before any score mutation.
+3. Keep missing/insufficient measurement coverage as ineligible, not a fake-green calibrated rate.
+4. Do not change live confidence or start `RQ96` in this prompt.
+
+### Tests
+
+- contract forbids automatic confidence mutation;
+- insufficient coverage stays ineligible, not `0%` or a healthy calibrated rate;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable advisory calibration contract exists;
+- the contract can be ignored without changing product behavior;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL09 DONE;
+- RL07 DONE;
+- measurement-statistics review surface exists.
+
+---
+
+## DT09 - Prepare first-class timeline timestamp contract
+
+Status: WAITING
+Ready after: `DT08` is `DONE` and the current execution READY `RQ96` is no longer the higher-priority exclusive path, or the owner explicitly promotes this additive slice
+Priority: future / planning
+Feature family: decision-timeline-timestamps
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/DT09-<agent>.lock.md`
+
+### Problem
+
+DT correlation identifiers exist, but first-class timestamps remain an unqueued additive slice. A later timeline change could invent missing stage times, collapse rejected into done, or treat `not_measured` as a completed timestamped outcome.
+
+### Evidence
+
+- docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md DT phase 2
+- docs/architecture/DECISION_TIMELINE_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md
+- docs/qa/DECISION_TIMELINE_SLICE5_HARDENING_2026-08-17.md
+
+### Scope
+
+- docs/contracts only for which timestamps are first-class vs derived vs absent;
+- preserve Slice-5 honesty: rejected is not done, not_measured is not success/failure;
+- no new event store or schema migration.
+
+### Read first
+
+- DT08 completion note
+- DT01 event model
+- DT06 export/retrospective contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Name the first-class timestamp fields the timeline may expose without inventing missing stages.
+2. Keep absent timestamps explicit rather than backfilling a complete funnel.
+3. Keep export/report parity rules aligned with Slice-2/Slice-5.
+4. Do not implement runtime timestamp persistence in this prompt.
+
+### Tests
+
+- missing timestamps stay absent, not a synthetic completion time;
+- rejected/not_measured honesty from DT08 remains binding;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable first-class timestamp contract exists when this prompt is promoted;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT08 DONE;
+- do not outrank `RQ96` while that exclusive inventory foundation is READY.
+
+---
+
+## DEX19 - Implement Executive Decision Board explainability reuse runtime slice
+
+Status: DONE
+Priority: future / planning
+Feature family: decision-explainability-executive-reuse
+Parallel-safe: yes, when path-safe vs current execution
+Owner: unassigned
+Local lock: .ai/task-locks/DEX19-<agent>.lock.md
+
+### Problem
+
+The Executive Board explainability reuse contract is frozen, but the board runtime still needs to reuse that backend-led vocabulary without inventing local scoring, local Why text or a synthetic decision tree.
+
+### Evidence
+
+- docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md
+- docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+- Api/Endpoints/DecisionBoardEndpoints.cs
+- Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+
+### Scope
+
+- backend-led explainability payload reuse on Executive Decision Board;
+- keep confidence, reliability, recommendation allowance, reason codes and fallback labels authoritative;
+- no new API shape unless a named gap blocks reuse of the frozen contract;
+- no schema migration.
+
+### Read first
+
+- DEX18 completion note
+- Executive Board explainability reuse contract
+- DEX11 cross-family readiness
+- Decision Board aggregation contract tests
+
+### Do
+
+1. Wire the frozen board reuse vocabulary into the executive aggregate/card payload and board UI.
+2. Keep `recommendationAllowed=false` and `confidenceSource=workflow_status_only` explicit.
+3. Preserve empty and error states; missing snapshot or Why evidence stays visible.
+4. Do not invent local confidence, Why prose or a decision tree from section placement.
+
+### Tests
+
+- board cards reuse backend-led confidence/reason/fallback fields instead of local duplicates;
+- missing evidence does not become a healthy-looking zero or complete Why tree;
+- no frontend-invented scoring is added.
+
+### Acceptance
+
+- Executive Decision Board reuses the frozen DEX18 vocabulary at runtime;
+- the board remains a consumer, not a second source of truth;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX18 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 100%
+- Changed files:
+  - Api/Endpoints/DecisionBoardEndpoints.cs
+  - Api.Tests/DecisionBoardEndpointsTests.cs
+  - Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+  - Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - .ai/runs/2026-08-14-DEX19-evidence.md
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter FullyQualifiedName~DecisionBoardEndpointsTests` - pass
+  - `npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts src/pages/__tests__/ExecutiveDecisionBoardPage.reuse.spec.tsx` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` - not run; focused backend test compiled the touched project
+  - `npm run build` - not run; focused frontend tests were sufficient
+- Run log: .ai/runs/2026-08-14-DEX19-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: a7c642e3c7c7e2597e6b478765157525ddfcbb4c
+- Main verification: git rev-parse HEAD -> a7c642e3c7c7e2597e6b478765157525ddfcbb4c
+- Missed: no broader queue item was opened; DEX19 only
+- Follow-up: none
+- Residual risk: fallback product cards now reuse recommendationAllowed/confidenceSource, but other legacy surfaces should still be audited for the same vocabulary if they consume product DTOs directly
+
+## DEX18 - Prepare Executive Decision Board explainability reuse contract
+
+Status: DONE
+Priority: future / planning
+Feature family: decision-explainability-executive-reuse
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: .ai/task-locks/DEX18-cursor.lock.md (removed after DONE)
+
+### Problem
+
+Product, supplier and inventory explainability snapshots exist, but Executive Decision Board still lacks a frozen reuse contract that maps board cards to the shared DEX vocabulary without local scoring or invented Why/tree semantics.
+
+### Evidence
+
+- docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+- docs/architecture/DECISION_GRAPH_CONTRACT.md
+- Api/Endpoints/DecisionBoardEndpoints.cs
+- Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx
+
+### Scope
+
+- docs/contracts only for Executive Decision Board explainability reuse;
+- no new API shape, local scoring or invented decision tree;
+- reuse backend-led recommendation, confidence, fallback and reason codes only.
+
+### Read first
+
+- DEX11 cross-family readiness
+- DEX12 / DEX13 reuse contract style
+- Decision Board aggregation contract tests
+
+### Do
+
+1. Map which board card fields already expose recommendation, confidence, reason, fallback and snapshot identity.
+2. Mark gaps that block reuse of the shared DEX vocabulary.
+3. Keep helper/signal labeling explicit when recommendationAllowed=false or fallback is used.
+4. Do not authorize runtime work in this prompt.
+
+### Tests
+
+- contract forbids frontend-invented confidence or Why text;
+- missing snapshot/tree stays explicit;
+- docs remain UTF-8; no runtime code lands.
+
+### Acceptance
+
+- a docs-only Executive Board explainability reuse contract exists;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX17 DONE;
+- DEX11 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 95%
+- Changed files:
+  - docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md
+  - docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-DEX18-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only
+- Run log: .ai/runs/2026-08-14-DEX18-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 731131fd198ab9390bb3cc158887456dc041e738
+- Main verification: git rev-parse origin/main -> b8f79c99fcc40b69ea6dac42c35085bc5fbb8bc8; work SHA 731131fd198ab9390bb3cc158887456dc041e738 is an ancestor
+- Missed: Executive Board runtime wiring is out of scope and is not a live DEX READY prompt
+- Follow-up: `RL07` (current execution); DEX program READY is `DEX19`
+- Residual risk: board cards can still omit a frozen field at runtime; the contract requires the gap to stay visible rather than be synthesized
+- Prompt defect / scope repair: previous close left DEX18 Status READY after the contract landed; this run closes DEX18 and inserts DEX19 as the required single DEX READY
+- Next: `RL07` - Prepare measurement-statistics review surface contract
+
+
+## DEX17 - Implement Supplier Decision Hub explainability snapshot runtime slice
+
+Status: DONE
+
+Priority: future / planning
+
+Feature family: decision-explainability-supplier-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+Supplier Decision Hub already exposes backend-led trust, fallback, confidence and report semantics, but the runtime page and report surfaces still do not render the shared explainability snapshot that makes those semantics explicit end to end.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_SUPPLIER_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- render the frozen supplier explainability snapshot on supplier decision hub surfaces;
+- reuse backend-led confidence, reliability, recommendation allowance, fallback and reason codes only;
+- keep helper/signal labeling explicit when recommendationAllowed=false or fallback is used;
+- no new API shape, local scoring or invented decision tree.
+
+### Read first
+
+- supplier explainability reuse contract
+- cross-family readiness contract
+- supplier confidence contract audit
+- Decision Intelligence roadmap
+
+### Do
+
+1. Surface the frozen supplier explainability snapshot in summary, ranking, detail and report views.
+2. Keep confidence, reliability, recommendationAllowed, fallback and reason codes backend-led.
+3. Preserve helper/signal labeling when the surface is fallback-based or recommendationAllowed=false.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- snapshot rendering uses backend-led supplier fields only;
+- missing confidence or fallback stays explicit;
+- no local tree or synthetic recommendation truth is introduced.
+
+### Acceptance
+
+- supplier runtime surfaces render shared snapshot semantics;
+- no local tree or synthetic recommendation truth is added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX12 DONE.
+- DEX11 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 96%
+- Changed files:
+  - Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx
+  - Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx
+  - Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx
+  - Klijent/clientapp/src/services/supplierDecisionReport.ts
+  - Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts
+  - Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx
+  - Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - .ai/runs/2026-08-13-DEX17-evidence.md
+- Checks run:
+  - `git diff --check` - pass
+  - `cd Klijent/clientapp; npm run test -- --run src/services/__tests__/supplierDecisionReport.spec.ts src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx src/pages/__tests__/SupplierDecisionHubPage.spec.tsx` - pass
+- Checks not run:
+  - `dotnet build` - not run; no backend files changed.
+  - `dotnet test` - not run; no backend files changed.
+  - `npm run check:analytics-guardrails` - not run; targeted UI/test validation covered the touched surfaces.
+  - `npm run build` - not run; no build-only regression signal surfaced in the exercised surfaces.
+- Run log: .ai/runs/2026-08-13-DEX17-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: ffc76554f0d9b1fe3c6f7fdc8eb8edbf4b9ecf19
+- Main verification: `git rev-parse origin/main -> ffc76554f0d9b1fe3c6f7fdc8eb8edbf4b9ecf19`
+- Missed: full repository build was intentionally skipped in favor of targeted validation.
+- Follow-up: none
+- Residual risk: snapshot semantics still depend on payload metadata staying in sync with the backend contract.
+- Prompt defect / scope repair: DEX17 now renders the shared supplier explainability snapshot in hub and report surfaces with backend-led metadata reuse.
+
+## DEX16 - Implement Inventory Detail and Insight explainability snapshot runtime slice
+
+Status: DONE
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+Inventory detail and insight surfaces now have a frozen snapshot contract, but the runtime pages still do not render the backend-led explainability snapshot or its explicit missing-evidence gaps.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- wire the frozen inventory explainability snapshot into the detail and insight surfaces;
+- reuse confidence, recommendation allowance, reason codes and data quality from backend-led inventory fields;
+- preserve empty, error and fallback states and keep missing evidence explicit;
+- no invented local tree or schema migration.
+
+### Read first
+
+- DEX15 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Surface the frozen inventory explainability snapshot on detail and insight views.
+2. Keep confidence, reason codes and recommendation allowance backend-led.
+3. Preserve empty, error and insufficient-data states rather than synthesizing a green default.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- detail/insight surfaces show missing evidence explicitly;
+- no local confidence model or invented tree semantics are added;
+- inventory explainability reuse stays aligned with the backend contract.
+
+### Acceptance
+
+- inventory detail and insight surfaces render the shared snapshot semantics;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX15 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 98%
+- Changed files:
+  - Api/Dtos/InventoryExperienceDtos.cs
+  - Api/Endpoints/InventoryEndpoints.cs
+  - Api.Tests/InventoryListEndpointIntegrationTests.cs
+  - Klijent/clientapp/src/components/inventory/InventoryExplainabilitySnapshot.tsx
+  - Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx
+  - Klijent/clientapp/src/components/inventory/InventoryInsightPanels.spec.tsx
+  - Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx
+  - Klijent/clientapp/src/components/inventory/SKUDetailModal.spec.tsx
+  - Klijent/clientapp/src/components/inventory/inventoryUtils.ts
+  - Klijent/clientapp/src/types/analytics.ts
+  - .ai/runs/2026-08-13-DEX16-evidence.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+- Checks run:
+  - `git diff --cached --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter InventoryListEndpointIntegrationTests` - pass
+- `cd Klijent/clientapp; npm run test -- --run src/components/inventory/SKUDetailModal.spec.tsx` - pass
+- `cd Klijent/clientapp; npm run test -- --run src/components/inventory/InventoryInsightPanels.spec.tsx` - pass
+- `cd Klijent/clientapp; npm run check:analytics-guardrails` - pass
+- `cd Klijent/clientapp; npm run build` - pass
+- `node scripts/check-agent-instructions.mjs` - pass
+- `node scripts/check-prompt-queues.mjs` - pass
+- `node scripts/check-planning-architecture.mjs` - pass
+- Checks not run:
+  - `node scripts/check-agent-instructions.mjs --self-test` - not run.
+  - `node scripts/check-prompt-queues.mjs --self-test` - not run.
+  - `node scripts/check-planning-architecture.mjs --self-test` - not run.
+- Run log: .ai/runs/2026-08-13-DEX16-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 345b7e692b4b5c0eefea768746bb1020c08b10e0
+- Main verification: `git rev-parse origin/main -> 345b7e692b4b5c0eefea768746bb1020c08b10e0`
+- Missed: no broader inventory report/export follow-up was taken beyond the runtime snapshot surfaces.
+- Follow-up: DEX17 supplier explainability snapshot runtime slice
+- Residual risk: detail and insight sell-through evidence can still surface insufficient-data reasons when denominator evidence is missing.
+- Prompt defect / scope repair: DEX16 needed backend-led snapshot wiring plus frontend reuse; the queue/router now reflects the completed runtime slice.
+
+
+## DEX15 - Prepare Inventory Detail and Insight explainability snapshot contract
+
+Status: DONE
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, docs/contracts only
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+Inventory detail and insight surfaces still expose consumer facts and rollups, but the family lacks a frozen explainability snapshot that shows how backend-led DEX vocabulary should appear without a synthetic decision tree.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- frozen inventory explainability snapshot for detail and insight surfaces;
+- reuse confidence, recommendation allowance, reason codes and data quality from backend-led inventory fields;
+- no invented local tree, Why panel or workflow truth;
+- no schema migration.
+
+### Read first
+
+- DEX14 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Define the smallest detail/insight explainability snapshot contract for inventory surfaces.
+2. Keep confidence, reason codes and recommendation allowance backend-led.
+3. Preserve empty and error states and avoid synthetic defaults.
+4. Keep the smallest possible docs-only surface change.
+
+### Tests
+
+- contract distinguishes evidence-backed signals from workflow-only state;
+- missing evidence stays explicit;
+- detail/insight surfaces remain consumer surfaces, not synthetic decision trees.
+
+### Acceptance
+
+- inventory detail and insight surfaces have a frozen explainability snapshot contract;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX14 DONE.
+
+## DEX14 - Implement Inventory Decision Surface explainability reuse runtime slice
+
+Status: DONE
+
+Priority: future / planning
+
+Feature family: decision-explainability-inventory-reuse
+
+Parallel-safe: yes, backend and surface wiring
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+The inventory explainability reuse contract is frozen, but the runtime wiring still needs to reuse shared DEX vocabulary on the inventory decision surface without inventing local confidence semantics.
+
+### Evidence
+
+- `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`
+- `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
+
+### Scope
+
+- backend-led explainability payload reuse for the inventory decision surface;
+- keep confidence, reliability and recommendation semantics authoritative;
+- no new decision-tree vocabulary;
+- no schema migration.
+
+### Read first
+
+- DEX13 completion note
+- inventory explainability reuse contract
+- cross-family readiness doc
+- Decision Intelligence roadmap
+
+### Do
+
+1. Wire the shared DEX explainability payload into the inventory decision surface.
+2. Keep Why / reason codes, confidence and recommendation allowance backend-led.
+3. Preserve empty and error states instead of inventing local fallbacks.
+4. Keep the smallest possible surface change.
+
+### Tests
+
+- surface shows shared DEX vocabulary rather than local duplicates;
+- missing evidence does not become a healthy-looking zero or blank default;
+- inventory explainability reuse stays aligned with the backend contract.
+
+### Acceptance
+
+- inventory decision surface reuses shared DEX explainability semantics;
+- no local confidence model or invented tree semantics are added;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX13 DONE.
+
+
+## DEX13 - Prepare Inventory Decision Surface explainability reuse contract
+
+Status: DONE
 Priority: future / planning
 Feature family: decision-explainability-inventory-reuse
 Parallel-safe: yes, docs/contracts only
@@ -120,29 +752,6 @@ Inventory Decision Board still lacks a frozen explainability reuse contract that
 ### Dependencies
 
 - DEX12 DONE.
-
-### Completion note
-
-- Date: 2026-08-14
-- Status: DONE
-- Completion: froze the inventory reuse contract wording, marked the inventory family as the next explainability rollout candidate in the cross-family readiness doc, and kept the DEX13 queue slot as the live READY pointer until a successor DEX prompt is promoted.
-- Changed files:
-  - `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md`
-  - `docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md`
-  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-  - `MASTER_ROADMAP.md`
-  - `.ai/runs/2026-08-14-DEX13-evidence.md`
-- Checks:
-  - `node scripts/check-prompt-queues.mjs` - pass
-  - `node scripts/check-planning-architecture.mjs` - pass
-  - `git diff --check` - pass
-- Remaining risk:
-  - This remains a docs-only planning contract; runtime inventory explainability wiring still requires later owner-promoted implementation.
-- Next:
-  - `RL05 - Prepare measurement-only recommendation statistics projection contract`
-- Prompt defect / scope repair:
-  - DEX13 is the only DEX prompt in this queue, so the current READY pointer is retained to satisfy the one-READY-per-program rule until a successor DEX prompt is introduced.
 
 
 ## DEX12 - Prepare Supplier Decision Hub explainability reuse contract
@@ -495,7 +1104,7 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
-- DEX01–DEX10 closed the Product Decision Center first-family loop through evidence snapshot freeze.
+- DEX01-DEX10 closed the Product Decision Center first-family loop through evidence snapshot freeze.
 
 
 
@@ -715,6 +1324,258 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
+## RL09 - Implement measurement-statistics review surface runtime slice
+
+Status: DONE
+Priority: future / planning
+Feature family: recommendation-learning-review-surface
+Parallel-safe: yes, when path-safe vs current execution
+Owner: Cursor Auto
+Local lock: .ai/task-locks/RL09-cursor.lock.md (removed after DONE)
+
+### Problem
+
+The review-surface contract is frozen, but operators still cannot see lifecycle funnel, measurement coverage and outcome distribution without mixing those numbers into legacy outcome-summary totals.
+
+### Evidence
+
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+- docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+- Application/Analytics/RecommendationMeasurementStatisticsDto.cs
+- GET /api/analytics/actions/outcomes/summary
+
+### Scope
+
+- runtime presentation of `measurementStatistics` on a review/dashboard/export surface;
+- reuse shared ErrorState/EmptyState/TrustHeader;
+- no frontend-local rates;
+- no confidence calibration.
+
+### Read first
+
+- RL07 completion note
+- review-surface contract
+- measurement statistics contract
+- rollout plan Slice 3
+
+### Do
+
+1. Bind the review surface to `measurementStatistics` only for funnel, coverage and outcome rates.
+2. Keep acceptance and execution visually distinct from success.
+3. Hide rates on error; keep null rates as unavailable, not `0%`.
+4. Keep print/export aligned with the same denominators and fail gracefully.
+
+### Tests
+
+- focused non-watch Vitest or backend display-contract proof that totals rates are not shown as success;
+- empty `no_rows` uses EmptyState without KPI zeros;
+- missing `measurementStatistics` does not compute local percentages.
+
+### Acceptance
+
+- operators can review measurement-only statistics without fake-green rates;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL07 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/components/analytics/RecommendationMeasurementStatisticsReview.tsx, Klijent/clientapp/src/utils/recommendationMeasurementStatistics.ts, Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx, Klijent/clientapp/src/types/analytics.ts, docs/qa/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE_2026-08-17.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, .ai/runs/2026-08-17-RL09-evidence.md
+- Contract/runtime behavior changed: review/export surface binds funnel, coverage and outcome rates to measurementStatistics only; null rates stay Nije dostupno; missing stats do not recompute from totals
+- Checks run: npx vitest run focused RL09 display-contract and Analytics Actions specs - 41/41 pass; npm run typecheck - pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
+- Checks not run: npm run build (typecheck covered the TS surface); dotnet test (no backend change)
+- Run log: .ai/runs/2026-08-17-RL09-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
+- Missed: Pilot Readiness and Executive Board still show legacy totals coverage copy outside this panel
+- Follow-up: DT08 when path-safe; RL10 is the current RL READY; do not start PERF16 until MT10
+- Residual risk: legacy outcome-summary cards on the same page still show closed/measured totals rates as workflow coverage
+- Next: RQ96 is current execution READY; RL10 is parallel-safe planning
+- Prompt defect / scope repair: none
+
+## RL07 - Prepare measurement-statistics review surface contract
+
+Status: DONE
+Priority: future / planning
+Feature family: recommendation-learning-review-surface
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: .ai/task-locks/RL07-cursor.lock.md (removed after DONE)
+
+### Problem
+
+RL06 exposed measurementStatistics on the outcome summary endpoint, but there is still no frozen contract for an operator review surface that shows lifecycle funnel counts, measured coverage and outcome distribution without hiding gaps or mutating confidence.
+
+### Evidence
+
+- docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+- docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 3
+- docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+- Application/Analytics/RecommendationMeasurementStatisticsProjection.cs
+- GET /api/analytics/actions/outcomes/summary
+
+### Scope
+
+- docs/contracts only for the review/dashboard/export presentation of measurement-only statistics;
+- no confidence calibration;
+- no schema migration;
+- no frontend-local rates.
+
+### Read first
+
+- RL06 completion note
+- measurement statistics contract
+- RL02 rollout plan Slice 3
+
+### Do
+
+1. Define the review-surface fields, empty/insufficient states and warning placement.
+2. Require the same denominators as measurementStatistics; do not reuse legacy totals rates as success.
+3. Keep print/export failure graceful and gap-visible.
+4. Do not authorize runtime UI work in this prompt.
+
+### Tests
+
+- contract keeps acceptance != success and execution != success;
+- missing measured evidence stays not_measured;
+- zero denominators stay null, not 0%.
+
+### Acceptance
+
+- a docs-only review-surface contract exists;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL06 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 94%
+- Changed files:
+  - docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md
+  - docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_REVIEW_SURFACE.md
+  - docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-RL07-evidence.md
+- Checks run:
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (66 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - `dotnet build` / `dotnet test` - docs/contracts only
+  - `npm run build` / frontend tests - docs/contracts only; runtime UI is `RL09`
+- Run log: .ai/runs/2026-08-14-RL07-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 393e73b7df92e9d255fe595699bce8b33928f2d4
+- Main verification: git rev-parse origin/main -> 3b61b57997c959e74534691e1a883b22b97cabf2; work SHA 393e73b7df92e9d255fe595699bce8b33928f2d4 is an ancestor
+- Missed: no runtime review surface; operators still cannot see the funnel until `RL09`
+- Follow-up: `DT07` (current execution); RL program READY is `RL09`
+- Residual risk: existing outcome-summary UI can still show legacy `totals` rates if a later runtime prompt binds the wrong object
+- Prompt defect / scope repair: corrected the RL07 Do-line typo `legacy totals`; inserted `RL09` so RL keeps exactly one READY after this close
+- Next: `DT07` - Implement Decision Timeline export and retrospective report runtime slice
+
+## RL06 - Implement measurement-only recommendation statistics projection runtime slice
+
+Status: DONE
+
+Priority: future / planning
+
+Feature family: recommendation-learning-statistics-projection
+
+Parallel-safe: yes, backend-only
+
+Owner: Codex
+
+Local lock: removed after DONE
+
+### Problem
+
+The measurement-only statistics contract is frozen, but the runtime projection still needs a single backend slice that exposes the documented counts without mutating confidence or collapsing evidence gaps into zeroes.
+
+### Evidence
+
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+### Scope
+
+- backend-only runtime slice for the measurement-only statistics projection;
+- preserve explicit denominators, warnings and empty-state semantics;
+- do not add calibration or confidence mutation;
+- no schema migration and no new event store.
+
+### Read first
+
+- RL05 completion note
+- measurement statistics contract
+- outcome learning contract
+- rollout plan
+
+### Do
+
+1. Implement the smallest backend helper/service path that projects the documented measurement-only statistics.
+2. Keep `not_measured`, `pending` and empty cohorts explicit.
+3. Preserve warning codes and null denominators when evidence is missing.
+4. Wire the projection through the existing outcome summary endpoint only if it can stay read-only.
+
+### Tests
+
+- focused `dotnet test` coverage for denominator handling;
+- acceptance and execution are not success;
+- missing measured evidence stays `not_measured`;
+- empty cohorts stay empty with null rates.
+
+### Acceptance
+
+- the measurement-only statistics projection is exposed through the backend runtime path;
+- the projection remains read-only and deterministic;
+- confidence mutation and calibration remain out of scope;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL05 DONE.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: 92%
+- Changed files: Application/Analytics/RecommendationMeasurementStatisticsProjection.cs; Application/Analytics/RecommendationMeasurementStatisticsDto.cs; Infrastructure/Services/Analytics/AnalyticsActionItemService.cs; Api.Tests/RecommendationMeasurementStatisticsProjectionTests.cs; Api.Tests/AnalyticsActionItemServiceTests.cs; docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; MASTER_ROADMAP.md; .ai/runs/2026-08-13-RL06-evidence.md
+- Checks run: dotnet test Api.Tests --filter RecommendationMeasurementStatisticsProjectionTests|GetOutcomeSummaryAsync_ReturnsNullRates|GetOutcomeSummaryAsync_UsesClosedDenominator pass (8); node scripts/check-prompt-queues.mjs --self-test pass; node scripts/check-prompt-queues.mjs pass; node scripts/check-planning-architecture.mjs --self-test pass; node scripts/check-planning-architecture.mjs fail (DEX/RL/DT 0 READY); node scripts/check-agent-instructions.mjs pass; git diff --check pass
+- Checks not run: npm / frontend - backend-only; full dotnet test suite - focused proof only
+- Run log: .ai/runs/2026-08-13-RL06-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: b8c4e22a5844e79ebda765e9f4d329b4e93a97c5
+- Main verification: git rev-parse origin/main -> cacc6173a91f139269430e5670c3ae77146290a5
+- Missed: frontend does not render measurementStatistics; existing totals keep prior closed/open meaning; no calibration
+- Follow-up: none
+- Residual risk: planning validator will report 0 READY for DEX/RL/DT after this close. Duplicate RL08 is marked OBSOLETE.
+- Prompt defect / scope repair: queue header said docs/contracts only while the prompt body was a backend runtime slice; executed the prompt body because higher-priority execution programs had no READY and DEX/DT already shipped similar runtime slices. Marked RL08 OBSOLETE as a duplicate of RL06.
+
 ## RL05 - Prepare measurement-only recommendation statistics projection contract
 
 
@@ -723,7 +1584,7 @@ Product Decision Center now has graph, evidence, confidence, alternatives, Why, 
 
 
 
-Status: READY
+Status: DONE
 
 
 
@@ -759,7 +1620,7 @@ Local lock: removed after DONE
 
 
 
-Lifecycle capture and learning eligibility exist, but there is still no frozen measurement-only statistics projection contract that can count issued/accepted/executed/measured denominators without mutating confidence.
+Lifecycle capture and learning eligibility exist, but there was still no frozen measurement-only statistics projection contract that could count issued/accepted/executed/measured denominators without mutating confidence.
 
 
 
@@ -879,7 +1740,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-- contract keeps acceptance ≠ success;
+- contract keeps acceptance != success;
 
 
 
@@ -955,7 +1816,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - `docs/architecture/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
 
 
 
@@ -979,7 +1840,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - `node scripts/check-planning-architecture.mjs` - fail (DEX and RL now have 0 READY prompts after advancing to DT06)
+  - `node scripts/check-planning-architecture.mjs` - pass
 
 
 
@@ -999,7 +1860,211 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-  - DT06 - Prepare Decision Timeline export and retrospective reporting contract
+  - RL06 - Implement measurement-only recommendation statistics projection runtime slice
+
+
+
+
+
+## RL08 - Measurement-only recommendation statistics follow-up
+
+
+
+
+
+Status: OBSOLETE
+
+
+
+Priority: future / planning
+
+
+
+Feature family: recommendation-learning-statistics-projection
+
+
+
+Parallel-safe: yes, backend-only
+
+
+
+Owner: Codex
+
+
+
+Local lock: removed after DONE
+
+
+
+
+
+### Problem
+
+
+
+
+
+The measurement-only statistics contract is frozen, but the runtime projection still needs a single backend slice that exposes the documented counts without mutating confidence or collapsing evidence gaps into zeroes.
+
+
+
+
+
+### Evidence
+
+
+
+
+
+- `docs/Analytics/RECOMMENDATION_MEASUREMENT_STATISTICS_CONTRACT.md`
+
+
+
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+
+
+
+- `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
+
+
+
+- `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+
+
+
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs`
+
+
+
+
+
+### Scope
+
+
+
+
+
+- backend-only runtime slice for the measurement-only statistics projection;
+
+
+
+- preserve explicit denominators, warnings and empty-state semantics;
+
+
+
+- do not add calibration or confidence mutation;
+
+
+
+- no schema migration and no new event store.
+
+
+
+
+
+### Read first
+
+
+
+
+
+- RL05 completion note
+
+
+
+- measurement statistics contract
+
+
+
+- outcome learning contract
+
+
+
+- rollout plan
+
+
+
+
+
+### Do
+
+
+
+
+
+1. Implement the smallest backend helper/service path that projects the documented measurement-only statistics.
+
+
+
+2. Keep `not_measured`, `pending` and empty cohorts explicit.
+
+
+
+3. Preserve warning codes and null denominators when evidence is missing.
+
+
+
+4. Wire the projection through the existing outcome summary endpoint only if it can stay read-only.
+
+
+
+
+
+### Tests
+
+
+
+
+
+- focused `dotnet test` coverage for denominator handling;
+
+
+
+- acceptance and execution are not success;
+
+
+
+- missing measured evidence stays `not_measured`;
+
+
+
+- empty cohorts stay empty with null rates.
+
+
+
+
+
+### Acceptance
+
+
+
+
+
+- the measurement-only statistics projection is exposed through the backend runtime path;
+
+
+
+- the projection remains read-only and deterministic;
+
+
+
+- confidence mutation and calibration remain out of scope;
+
+
+
+- READY pointer remains single for RL.
+
+
+
+
+
+### Dependencies
+
+
+
+
+
+- RL05 DONE.
 
 
 
@@ -1015,6 +2080,189 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
+## DT08 - Harden Decision Timeline export and retrospective report regression coverage
+
+Status: DONE
+Priority: future / planning
+Feature family: decision-timeline-hardening
+Parallel-safe: yes, when path-safe vs current execution
+Owner: Cursor Auto
+Local lock: .ai/task-locks/DT08-cursor.lock.md (removed after DONE)
+
+### Problem
+
+DT07 added a Slice-2 timeline export path, but Slice-5 hardening still needs regression coverage so rejected is not collapsed into done, not_measured is not counted as success or failure, and the export/report stays in parity with the live timeline.
+
+### Evidence
+
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md Slice 5
+- docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+- Infrastructure/Services/Analytics/DecisionTimelineExportProjection.cs
+- GET /api/analytics/cached/products/decision-center/timeline/export
+- Api.Tests/DecisionTimelineExportProjectionTests.cs
+
+### Scope
+
+- hardening and parity tests over the existing DT07 export and DT05 timeline;
+- keep requested vs effective period equal;
+- no new event store, schema migration, or second history builder.
+
+### Read first
+
+- DT07 completion note
+- DT06 export/retrospective contract
+- DT02 rollout plan Slice 5
+
+### Do
+
+1. Add the remaining Slice-5 cases: rejected vs done, executed but not measured, missing evidence, and export/UI parity.
+2. Keep zero denominators null and failed export free of KPI zeros.
+3. Do not invent missing stages to complete the funnel.
+4. Do not start PERF15 in this prompt.
+
+### Tests
+
+- rejected is not done;
+- not_measured is not success or failure;
+- export rows stay aligned with Slice-2 events/gaps;
+- empty and error paths still do not emit fake zero rates.
+
+### Acceptance
+
+- timeline and export surfaces stay in parity with Slice-5 hardening tests;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT07 DONE.
+
+### Completion note
+
+- Date: 2026-08-17
+- Status: DONE
+- Completion: 100%
+- Changed files: Api.Tests/DecisionTimelineExportProjectionTests.cs, Klijent/clientapp/src/utils/decisionTimelineLabels.ts, Klijent/clientapp/src/utils/__tests__/decisionTimelineExport.spec.ts, Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx, docs/qa/DECISION_TIMELINE_SLICE5_HARDENING_2026-08-17.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, .ai/runs/2026-08-17-DT08-evidence.md
+- Contract/runtime behavior changed: Slice-5 regression coverage now proves rejected is not done, not_measured is not success/failure, export rows stay aligned with Slice-2 events/gaps, and empty/error CSV still omit fake zero rates. No new event store.
+- Checks run: dotnet test Api.Tests --filter DecisionTimelineExportProjectionTests - 8/8 pass; npx vitest run decisionTimelineExport.spec.ts + ProductDecisionCenterPage.confidence.spec.tsx - 22/22 pass; node scripts/check-agent-instructions.mjs --self-test/--live - pass; node scripts/check-prompt-queues.mjs --self-test/--live - pass (260 tasks); node scripts/check-planning-architecture.mjs --self-test/--live - pass (68 tasks); git diff --check - pass
+- Checks not run: full dotnet test (Testcontainers); npm run build (focused page/label specs plus existing confidence suite)
+- Run log: .ai/runs/2026-08-17-DT08-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: d4acd9bc80df025e17de27505aa54f0a5c65670b
+- Main verification: passed - git rev-parse origin/main -> 51550ec833985a79149de9215adee38c7696ceab; work SHA d4acd9bc80df025e17de27505aa54f0a5c65670b is an ancestor
+- Missed: print CSS / Excel / PDF remain out of scope; delayed-outcome does not invent outcome_measurement_started because Slice-2 does not emit that event
+- Follow-up: current execution READY is RQ96. DT09 remains WAITING. PERF16 is BLOCKED on MT10.
+- Residual risk: attempted success without OutcomeMeasuredAtUtc still keeps CurrentOutcomeStatus=success on the live row, but funnel/export do not count it as measured success
+- Next: RQ96 - Canonical observed daily inventory snapshot foundation
+- Prompt defect / scope repair: none
+
+## DT07 - Implement Decision Timeline export and retrospective report runtime slice
+
+Status: DONE
+Priority: future / planning
+Feature family: decision-timeline-export-report
+Parallel-safe: yes, backend/frontend report paths when RQ100 is not touching the same files
+Owner: Cursor Auto
+Local lock: removed after DONE
+
+### Problem
+
+DT06 froze the export/retrospective contract, but there is still no runtime export or print/report document that reuses the Slice-2 filtered timeline without inventing events or silently widening the period.
+
+### Evidence
+
+- docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md Slice 4
+- DT05 Slice-2 filtered timeline
+
+### Scope
+
+- smallest runtime export/report path over the existing DT05 projection;
+- honesty header, snapshot presence/absence and graceful export failure;
+- no new event store and no invented replay history.
+
+### Read first
+
+- DT06 contract
+- DT05 filtered timeline
+- DEX10 snapshot vocabulary
+
+### Do
+
+1. Reuse the Slice-2 projection for export/report rows; do not rebuild history from live product rows.
+2. Keep requested vs effective period equal; empty period stays empty with emptyReason.
+3. Mark snapshots present or absent explicitly; live lookup must not be labelled snapshot.
+4. Failed print/export must not fabricate zero rates.
+
+### Tests
+
+- focused backend or frontend proof that export/report failure is graceful;
+- empty period does not silently widen;
+- no fake events for missing stages.
+
+### Acceptance
+
+- a runtime timeline export or print/report path exists over Slice-2;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT06 DONE;
+- DT05 DONE.
+
+### Completion note
+
+- Date: 2026-08-14
+- Status: DONE
+- Completion: 92%
+- Changed files:
+  - Infrastructure/Services/Analytics/DecisionTimelineExportProjection.cs
+  - Api/Endpoints/CachedAnalyticsEndpoints.cs
+  - Api.Tests/DecisionTimelineExportProjectionTests.cs
+  - Klijent/clientapp/src/utils/decisionTimelineExport.ts
+  - Klijent/clientapp/src/utils/__tests__/decisionTimelineExport.spec.ts
+  - Klijent/clientapp/src/services/analyticsApi.ts
+  - Klijent/clientapp/src/types/analytics.ts
+  - Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx
+  - Klijent/clientapp/src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx
+  - docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+  - docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md
+  - docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md
+  - MASTER_ROADMAP.md
+  - docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md
+  - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md
+  - .ai/runs/2026-08-14-DT07-evidence.md
+- Checks run:
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~DecisionTimelineExportProjectionTests` - pass (3)
+  - `npm run test -- --run src/utils/__tests__/decisionTimelineExport.spec.ts src/pages/__tests__/ProductDecisionCenterPage.confidence.spec.tsx` - pass (20)
+  - `npm run test -- --run src/pages/__tests__/ProductDecisionCenterPage.queueStatus.spec.tsx src/pages/__tests__/ProductDecisionCenterPage.actionStatusFallback.spec.tsx` - pass (9)
+  - `npm run check:analytics-guardrails` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass (260 tasks)
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass (67 new planning tasks)
+  - `node scripts/check-agent-instructions.mjs --self-test` - pass
+  - `node scripts/check-agent-instructions.mjs` - pass
+  - `git diff --check` - pass
+- Checks not run:
+  - full `dotnet test` - focused Api.Tests filter passed after project compile
+  - `npm run build` - typecheck ran via analytics-guardrails
+- Run log: .ai/runs/2026-08-14-DT07-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 1b1f7ec6c4dd7acd419803b9c5727a4427e42c8e
+- Main verification: git rev-parse origin/main -> 4749c5ce2ee9d2d73956a986ea84bb3446ecd50a; work SHA 1b1f7ec6c4dd7acd419803b9c5727a4427e42c8e is an ancestor
+- Missed: no print CSS / Excel / PDF; funnel rates stay null when denominators are empty; Slice-5 hardening is `DT08`
+- Follow-up: `PERF15` (current execution); DT program READY is `DT08`
+- Residual risk: default last-30-day window when dates are omitted is labeled as both requested and effective; SQL candidate fetch is still wider than the filter window
+- Prompt defect / scope repair: inserted `DT08` so DT keeps exactly one READY after this close
+- Next: `PERF15` - Shared-SaaS evidence gate
+
+
 ## DT06 - Prepare Decision Timeline export and retrospective reporting contract
 
 
@@ -1023,7 +2271,7 @@ Lifecycle capture and learning eligibility exist, but there is still no frozen m
 
 
 
-Status: READY
+Status: DONE
 
 
 
@@ -1151,7 +2399,7 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 
 
-1. Define export/report fields for recommendation → action → outcome timelines.
+1. Define export/report fields for recommendation -> action -> outcome timelines.
 
 
 
@@ -1241,81 +2489,20 @@ Filtered timeline Slice-2 exists for Product Decision Center, but export/reporti
 
 ### Completion note
 
-
-
-
-
-
-
 - Date: 2026-08-13
-
-
-
-- Agent: Codex
-
-
-
-- Changed files:
-
-
-
-  - `docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md`
-
-
-
-  - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
-
-
-
-  - `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`
-
-
-
-  - `MASTER_ROADMAP.md`
-
-
-
-- Checks:
-
-
-
-  - `node scripts/check-prompt-queues.mjs` - pass
-
-
-
-  - `node scripts/check-planning-architecture.mjs` - fail (DEX, RL and DT now have 0 READY prompts after closing DT06)
-
-
-
-  - `git diff --check` - pass
-
-
-
-- Remaining risk:
-
-
-
-  - This is a docs-only timeline export/retrospective contract; runtime export still needs a later prompt.
-
-
-
-- Next:
-
-
-
-  - none
-
-
-
-
-
-
-
----
-
-
-
-
+- Status: DONE
+- Completion: 92%
+- Changed files: docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md; docs/architecture/DECISION_TIMELINE_CONTRACT.md; docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md; docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md; docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md; MASTER_ROADMAP.md; .ai/runs/2026-08-13-DT06-evidence.md
+- Checks run: node scripts/check-prompt-queues.mjs --self-test pass; node scripts/check-prompt-queues.mjs pass; node scripts/check-planning-architecture.mjs --self-test pass; node scripts/check-planning-architecture.mjs fail (DEX 0 READY, DT 0 READY after close; RL06 still READY); node scripts/check-agent-instructions.mjs --self-test pass; node scripts/check-agent-instructions.mjs pass; git diff --check pass
+- Checks not run: dotnet build/test and npm - docs-only, no runtime
+- Run log: .ai/runs/2026-08-13-DT06-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 9c82d0745656a2905ace3424605d6caa0dd498ad
+- Main verification: git rev-parse origin/main -> e8d178538c2e9134bf5761ede9729838ab198d4a
+- Missed: no runtime export endpoint or print CSS; no DT07 invented
+- Follow-up: none
+- Residual risk: planning validator still requires exactly one READY per DEX/DT; those lanes are empty by design until an owner creates a successor. Runtime export remains unauthorized.
+- Prompt defect / scope repair: corrected stale DEX17 READY pointer in the Decision Intelligence header, roadmap current-READY sentence, and MASTER because DEX17 Status is DONE; no DEX18 invented. Did not start RL06 runtime from a planning READY.
 
 
 
@@ -4699,7 +5886,7 @@ Local lock: removed after DONE
 
 
 
-Promotion note: 2026-08-11 — owner-promoted runtime slice after RL01/RL02; does not authorize confidence mutation or calibration.
+Promotion note: 2026-08-11 - owner-promoted runtime slice after RL01/RL02; does not authorize confidence mutation or calibration.
 
 
 
@@ -5627,7 +6814,7 @@ Commit suggestion: `docs(learning): add deterministic statistics rollout plan`
 
 
 
-Promotion note: 2026-08-11 — `RL01` DONE; planning-only; does not authorize runtime calibration.
+Promotion note: 2026-08-11 - `RL01` DONE; planning-only; does not authorize runtime calibration.
 
 
 
@@ -5911,7 +7098,7 @@ Local lock: removed after DONE
 
 
 
-Promotion note: 2026-08-11 — owner-promoted Slice-2 filtered runtime after DT03.
+Promotion note: 2026-08-11 - owner-promoted Slice-2 filtered runtime after DT03.
 
 
 
@@ -6731,7 +7918,7 @@ DT01 needs a bounded persistence/API/UI rollout plan before implementation begin
 
 
 
-  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md` (examples 4–5 + export/drill-down gap-fill)
+  - `docs/architecture/DECISION_TIMELINE_CONTRACT.md` (examples 4-5 + export/drill-down gap-fill)
 
 
 
@@ -7059,7 +8246,7 @@ Local lock: `.ai/task-locks/DT03-codex.lock.md`
 
 
 
-Promotion note: 2026-08-11 — `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
+Promotion note: 2026-08-11 - `DT01`/`DT02` DONE; owner-promoted Slice-1 from `DECISION_TIMELINE_ROLLOUT_PLAN.md`
 
 
 

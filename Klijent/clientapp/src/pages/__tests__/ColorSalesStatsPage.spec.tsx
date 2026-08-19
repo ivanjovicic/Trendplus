@@ -472,6 +472,83 @@ describe("ColorSalesStatsPage", () => {
     expect(await screen.findByText(/Backend preporuka nije dostupna/i)).toBeInTheDocument();
   });
 
+  it("error hides KPI zeros when color sales fails", async () => {
+    vi.mocked(getColorSalesStats).mockRejectedValue(new Error("backend down"));
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Boje trenutno nisu dostupne/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prioritetna lista boja")).not.toBeInTheDocument();
+  });
+
+  it("empty is not error when color sales returns no rows", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [],
+      dataQuality: {
+        missingCostRevenue: 0,
+        missingCostRevenueSharePct: 0,
+        estimatedCostRevenue: 0,
+        estimatedCostRevenueSharePct: 0,
+        unknownColorRevenue: 0,
+        unknownColorRevenueSharePct: 0,
+        revenueWithNivelacijaSplit: 0,
+        revenueWithNivelacijaSplitSharePct: 0,
+      },
+    }));
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ukupan marzni doprinos")).not.toBeInTheDocument();
+  });
+
+  it("mounts the real AnalyticsTrustHeader, not a mocked placeholder", async () => {
+    renderPage();
+
+    expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
+    await screen.findByText("Crna");
+  });
+
+  it("does not invent decision score 0 or reliability from margin coverage", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [
+        color({
+          boja: "Crvena",
+          ukupanPromet: 150000,
+          marginContribution: 50000,
+          reliabilityPct: undefined,
+          marginDataCoveragePct: 83.3,
+          recommendation: {
+            status: "increase_focus",
+            label: "Increase focus",
+            summary: "Jak rast.",
+            confidencePct: undefined as unknown as number,
+            reliabilityPct: undefined as unknown as number,
+            dataQualityStatus: "good",
+            reasonCodes: [],
+          },
+        }),
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+    const decisionScore = await screen.findByText("Decision score");
+    expect(decisionScore.closest("article")).toHaveTextContent("N/A");
+    expect(decisionScore.closest("article")).not.toHaveTextContent(/Decision score\s*0/);
+
+    const reliability = screen.getByText("Pouzdanost podataka");
+    expect(reliability.closest("article")).toHaveTextContent("N/A");
+    expect(reliability.closest("article")).not.toHaveTextContent("83,3");
+  });
+
   it("expands a color row and saves a detail snapshot before navigating to the detail route", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");

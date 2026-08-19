@@ -19,6 +19,7 @@ public interface ISourceDataSession : IAsyncDisposable
 
     SourceCapabilities Capabilities { get; }
 
+    Task TestConnectionAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetColumnsAsync(string table, CancellationToken ct = default);
     Task<SourceRowCountResult> TryGetRowCountAsync(string table, CancellationToken ct = default);
@@ -46,6 +47,7 @@ public sealed class SourceReadQuery
     public long? CursorId { get; init; }
     public long? CursorTieBreakerId { get; init; }
     public int OverlapSeconds { get; init; }
+    public int? MaxRows { get; init; }
     public IReadOnlyList<string> TimestampAliases { get; init; } = [];
     public IReadOnlyList<string> IdAliases { get; init; } = [];
 }

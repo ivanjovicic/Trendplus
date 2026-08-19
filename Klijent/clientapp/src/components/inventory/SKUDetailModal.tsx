@@ -1,5 +1,6 @@
 ﻿import Modal from "../Modal";
 import type { InventoryItemDetail, SizeCurveDto } from "../../types/analytics";
+import { InventoryExplainabilitySnapshot } from "./InventoryExplainabilitySnapshot";
 import { formatCurrency, formatDateTime, formatNumber, getAgingTone, getHistoryDirection, getRecommendation, getStockState, getAbcTone } from "./inventoryUtils";
 import { SizeCurveVisualization } from "./SizeCurveVisualization";
 import type { InventoryRow } from "./types";
@@ -53,6 +54,7 @@ export function SKUDetailModal({
     : detailRow
       ? getRecommendation(detailRow)
       : "Nije dostupno";
+  const snapshotSource = detailData ?? detailRow;
 
   return (
     <Modal isOpen={detailRow != null} onClose={onClose} title={detailRow ? `Detalj artikla: ${detailRow.naziv}` : "Detalj artikla"} size="lg">
@@ -92,6 +94,21 @@ export function SKUDetailModal({
               </div>
             </div>
           </div>
+
+          {snapshotSource ? (
+            <InventoryExplainabilitySnapshot
+              stockCoverDays={snapshotSource.stockCoverDays}
+              stockCoverStatus={snapshotSource.stockCoverStatus}
+              stockCoverStatusLabel={snapshotSource.stockCoverStatusLabel}
+              sellThroughRatio={snapshotSource.sellThroughRatio}
+              sellThroughStatus={snapshotSource.sellThroughStatus}
+              sellThroughStatusLabel={snapshotSource.sellThroughStatusLabel}
+              signalConfidencePct={snapshotSource.signalConfidencePct}
+              recommendationAllowed={snapshotSource.recommendationAllowed}
+              dataQualityStatus={snapshotSource.dataQualityStatus}
+              reasonCodes={snapshotSource.reasonCodes}
+            />
+          ) : null}
 
           {detailLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">Ucitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
           {detailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{detailError}</div><button type="button" aria-label="Pokusaj ponovo ucitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokusaj ponovo</button></div> : null}

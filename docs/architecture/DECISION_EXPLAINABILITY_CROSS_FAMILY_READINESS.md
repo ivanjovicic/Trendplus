@@ -1,4 +1,4 @@
-# Decision Explainability Cross-Family Readiness Contract
+﻿# Decision Explainability Cross-Family Readiness Contract
 
 Status: planning contract for DEX11
 Date: 2026-08-12
@@ -49,8 +49,8 @@ A family is ready for explainability reuse only when all of the following are tr
 | --- | --- | --- | --- | --- |
 | Product Decision Center | Reference implementation | `RecommendationStatus`, `RecommendationLabel`, `RecommendedAction`, `RecommendationReason`, `ReasonCodes`, `PrimaryDrivers`, `ConfidencePct`, `ReliabilityPct`, `ConfidenceBreakdown`, `DataQualityStatus`, `InputFreshnessStatus`, `RecommendationAllowed`, `AlternativeRecommendations`, `decisionTree`, evidence snapshot support | None for the first-family contract; this is the baseline | Ready as the source contract |
 | Supplier Decision Hub | Trust-first supplier surfaces and report output | Confidence/reliability mapping, `recommendationAllowed`, fallback metadata, warning codes, report surfaces, explicit missing-confidence behavior documented in `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md` | No shared decision-tree / Why-panel / evidence-snapshot contract is frozen for the supplier family; some surfaces remain signal- or report-shaped rather than full decision surfaces | Closest non-reference candidate, but still partial |
-| Inventory decision surfaces | Signal and workflow surfaces | Evidence-backed inventory signal fields, `SignalConfidencePct`, `RecommendationAllowed`, `SignalDataQualityStatus`, `SignalReasonCodes`, conservative board fallback documented in `docs/architecture/DECISION_GRAPH_CONTRACT.md` and `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md` | Workflow-only fallback can still own the visible confidence story on some surfaces; DEX13 now freezes the inventory reuse contract, but runtime wiring still needs to keep workflow status clearly separate from evidence-backed decision truth | Partial, contract frozen |
-| Executive Decision Board | Aggregate consumer | Downstream aggregate fields such as `ConfidenceLevel`, `ConfidenceScore`, `ReliabilityPct`, `ExpectedImpactRsd`, `MeasuredImpactRsd`, `RealizationRatio`, `RiskIfIgnored`, `RecommendedNextAction`, `WarningCodes`, `DataQualityStatus` | The board is a consumer, not an independent truth source; it should reuse the canonical contract instead of becoming a second semantic owner | Consumer-only |
+| Inventory decision surfaces | Signal and workflow surfaces | Evidence-backed inventory signal fields, `SignalConfidencePct`, `RecommendationAllowed`, `SignalDataQualityStatus`, `SignalReasonCodes`, conservative board fallback documented in `docs/architecture/DECISION_GRAPH_CONTRACT.md` and `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`, frozen detail/insight snapshot contract documented in `docs/architecture/DECISION_EXPLAINABILITY_INVENTORY_REUSE.md` | Workflow-only fallback can still own the visible confidence story on some surfaces; the family still needs runtime wiring so the snapshot and workflow truth stay visibly separated | Partial |
+| Executive Decision Board | Aggregate consumer with frozen board reuse contract | Downstream aggregate fields such as `ConfidenceLevel`, `ConfidenceScore`, `ReliabilityPct`, `ExpectedImpactRsd`, `MeasuredImpactRsd`, `RealizationRatio`, `RiskIfIgnored`, `RecommendedNextAction`, `WarningCodes`, `DataQualityStatus` | The board is still a consumer, not an independent truth source; DEX18 freezes the board-specific reuse contract, but runtime wiring remains later | Contract frozen; runtime pending |
 
 ## Shared gap rules
 
@@ -64,9 +64,9 @@ A family is ready for explainability reuse only when all of the following are tr
 
 Inference from the current docs:
 
-1. Inventory Decision Surface is the smallest remaining explainability rollout candidate because DEX13 has frozen the inventory reuse contract and the family already exposes backend-led signal fields.
-2. Inventory runtime wiring should keep workflow-only fallback visibly separate from evidence-backed decision truth.
-3. Executive Decision Board should remain a consumer of the canonical contract, not a separate source of truth.
+1. Supplier Decision Hub is the smallest cross-family explainability rollout candidate because it already has explicit confidence, reliability, recommendation allowance and report semantics.
+2. Inventory should follow with a stricter evidence-vs-workflow separation because its current fallback model can still blur operational status with decision truth, even though the detail/insight snapshot contract is now frozen.
+3. Executive Decision Board should remain a consumer of the canonical contract, not a separate source of truth, even now that the board reuse contract is frozen.
 
 This is an inference from the current contract and audit files, not a runtime change request.
 
@@ -80,6 +80,7 @@ This is an inference from the current contract and audit files, not a runtime ch
 ## References
 
 - `docs/architecture/DECISION_GRAPH_CONTRACT.md`
+- `docs/architecture/DECISION_EXPLAINABILITY_EXECUTIVE_BOARD_REUSE.md`
 - `docs/qa/PRODUCT_DECISION_CONFIDENCE_AUDIT.md`
 - `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md`
 - `docs/architecture/DECISION_GRAPH_CONTRACT.md`

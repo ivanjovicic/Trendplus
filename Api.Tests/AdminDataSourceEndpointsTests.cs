@@ -1,7 +1,9 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using Api.Config;
 using Api.Endpoints;
+using SourceMappingPreviewRequest = Api.Models.SourceMappingPreviewRequest;
+using SourceMappingFieldRequest = Api.Models.SourceMappingFieldRequest;
 using Api.Models;
 using Api.Services;
 using Api.Services.DataSources;

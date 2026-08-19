@@ -228,4 +228,52 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getAllByText("Nedostupno").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("Nova baza")).not.toBeInTheDocument();
   });
+
+  it("does not treat missing reliability as a weak Nisko signal", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [
+          vendor({
+            reliabilityPct: null as unknown as number,
+            recommendation: {
+              status: "review",
+              label: "Pregled",
+              summary: "Reliability signal nije dostupan.",
+              confidencePct: 61,
+              reliabilityPct: null as unknown as number,
+              dataQualityStatus: "warning",
+              reasonCodes: ["missing_cost"],
+            },
+          }),
+        ],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+  });
+
+  it("shows backend reliability percent instead of a local Visoko band", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    expect(await screen.findByText(/80% signal/)).toBeInTheDocument();
+    expect(screen.queryByText(/Visoko signal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
+  });
+
+  it("shows an error alert and hides KPI cards when the vendor sales load fails", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockRejectedValue(new Error("Vendor sales API timeout"));
+
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Vendor sales API timeout");
+    expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
+    expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
+  });
 });

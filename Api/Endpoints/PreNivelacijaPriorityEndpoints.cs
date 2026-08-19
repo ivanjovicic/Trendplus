@@ -4,6 +4,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -35,6 +36,7 @@ public static class PreNivelacijaPriorityEndpoints
         public PreNivelacijaQueuesDto Queues { get; init; } = new();
         public List<PreNivelacijaAlertDto> Alerts { get; init; } = [];
         public int TotalCandidates { get; init; }
+        public AnalyticsResponseMetaDto? Meta { get; init; }
     }
 
     public static void MapPreNivelacijaPriorityEndpoints(this WebApplication app)
@@ -147,6 +149,7 @@ public static class PreNivelacijaPriorityEndpoints
                     var artikalIds = artikli.Select(x => x.Id).ToArray();
 
                     Dictionary<int, SalesLite> salesByArtikal;
+                    var salesQueryFailed = false;
                     try
                     {
                         var sales = await (
@@ -176,10 +179,12 @@ public static class PreNivelacijaPriorityEndpoints
                     }
                     catch
                     {
+                        salesQueryFailed = true;
                         salesByArtikal = new Dictionary<int, SalesLite>();
                     }
 
                     Dictionary<int, (int MarkdownEvents, decimal AvgMarkdownPct)> markdownByArtikal;
+                    var markdownQueryFailed = false;
                     try
                     {
                         var markdown = await db.DnevnikPromena
@@ -207,7 +212,13 @@ public static class PreNivelacijaPriorityEndpoints
                     }
                     catch
                     {
+                        markdownQueryFailed = true;
                         markdownByArtikal = new Dictionary<int, (int MarkdownEvents, decimal AvgMarkdownPct)>();
+                    }
+
+                    if (salesQueryFailed || markdownQueryFailed)
+                    {
+                        return BuildEmptyBaseEntry(nowUtc, BuildQueryFailureMeta(salesQueryFailed, markdownQueryFailed));
                     }
 
                     var maxStock = Math.Max(1, artikli.Max(x => x.StockUnits));
@@ -444,7 +455,30 @@ public static class PreNivelacijaPriorityEndpoints
         return "Pre-Nivelacija Score = 0.30*StockPressure + 0.25*VelocityRisk + 0.20*RecencyRisk + 0.10*MarkdownOpportunity + 0.10*MarginPotential + 0.05*SeasonRecencyBoost; Recommendation = 0.50*Score + 0.20*ScenarioDelta + 0.15*StaleRisk + 0.15*Reliability";
     }
 
-    private static PreNivelacijaPriorityBaseCacheEntry BuildEmptyBaseEntry(DateTime nowUtc)
+    internal static AnalyticsResponseMetaDto BuildQueryFailureMeta(bool salesQueryFailed, bool markdownQueryFailed)
+    {
+        if (salesQueryFailed)
+        {
+            return AnalyticsResponseMetaFactory.Error(
+                "pre_nivelacija_sales_unavailable",
+                "Prodaja za pre-nivelacija skor trenutno nije dostupna.",
+                null);
+        }
+
+        if (markdownQueryFailed)
+        {
+            return AnalyticsResponseMetaFactory.Error(
+                "pre_nivelacija_markdown_unavailable",
+                "Dnevnik nivelacija za pre-nivelacija skor trenutno nije dostupan.",
+                null);
+        }
+
+        return AnalyticsResponseMetaFactory.Success();
+    }
+
+    private static PreNivelacijaPriorityBaseCacheEntry BuildEmptyBaseEntry(
+        DateTime nowUtc,
+        AnalyticsResponseMetaDto? meta = null)
     {
         return new PreNivelacijaPriorityBaseCacheEntry
         {
@@ -465,7 +499,10 @@ public static class PreNivelacijaPriorityEndpoints
             Candidates = [],
             Queues = new PreNivelacijaQueuesDto(),
             Alerts = [],
-            TotalCandidates = 0
+            TotalCandidates = 0,
+            Meta = meta ?? AnalyticsResponseMetaFactory.Empty(
+                "no_pre_nivelacija_candidates",
+                "Nema kandidata za pre-nivelaciju.")
         };
     }
 
@@ -491,7 +528,8 @@ public static class PreNivelacijaPriorityEndpoints
             Alerts = baseEntry.Alerts,
             Page = page,
             PageSize = pageSize,
-            TotalCandidates = baseEntry.TotalCandidates
+            TotalCandidates = baseEntry.TotalCandidates,
+            Meta = baseEntry.Meta ?? AnalyticsResponseMetaFactory.Success()
         };
     }
 

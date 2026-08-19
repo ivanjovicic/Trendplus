@@ -2,7 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ89`/`RQ90` DONE; next global repair is `RQ91`)
+Current READY prompt: `RQ96`
+Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -26,7 +27,11 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ69 | DONE | rebalance-store-filter-lineage | Apply/label selected store scope for rebalance suggestions |
 | RQ70 | DONE | forecast-suggested-qty-semantics | Clarify forecast restock suggested quantity semantics |
 | RQ71 | DONE | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
-| RQ89 | READY | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
+| RQ89 | DONE | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
+| RQ96 | READY | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
+| RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
+| RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
+| RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
 
 ---
 
@@ -595,6 +600,285 @@ Commit suggestion: `fix(inventory): preserve inventory list seeded rows`
 - The uncached inventory list route lives in `Api/Endpoints/InventoryEndpoints.cs`.
 - `BCI04` grouped this as a real assertion failure after backend restore/build became healthy.
 - `STAB09`, `RQ77`, and `RQ78` are already DONE, leaving RQ89/RQ90 as the explicit unresolved BCI04 repair prompts.
+
+---
+
+## RQ99 - Inventory signal total-count reader-position regression
+
+Status: DONE
+Priority: P2
+Type: backend-tests/test-infrastructure
+Feature family: inventory-signal-reader-regression
+Parallel-safe: yes
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ99-<agent>.lock.md`
+Commit suggestion: `test(inventory): harden signal reader total count regressions`
+
+### Problem
+
+The inventory forecast, rebalance, alert and size-curve handlers expose `TotalMatchingCount` from `count(*) over()`. A direct 2026-08-13 hotfix moved the count read inside the `ReadAsync` loop so runtime code no longer depends on reading the data reader after EOF, but the existing `InventorySnapshotContractTests` use a permissive reader path and did not prove that failure mode before the fix.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`
+- `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`
+- `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`
+- `Api.Tests/InventorySnapshotContractTests.cs`
+- Existing focused tests passed even when the handlers still read `total_matching_count` after the `while (ReadAsync)` loop, so they are not strict enough to protect the provider-position contract.
+
+### Scope
+
+- `Api.Tests/InventorySnapshotContractTests.cs`
+- shared analytics test reader/helper only if needed
+- the four inventory signal handlers only if the stricter tests expose a real regression
+
+### Do Not Touch
+
+- snapshot SQL/materializers
+- DTO shape or API response semantics unless the stricter regression proves a contract bug
+- React inventory panels
+- unrelated inventory list/action route tests
+
+### Do
+
+1. Add the smallest reusable test double or provider-backed test path that throws when a column is read after EOF.
+2. Prove forecast, rebalance, alert and size-curve handlers read `total_matching_count` only while the reader is positioned on a row.
+3. Cover at least one empty-result case where `TotalMatchingCount` remains `0` without attempting an EOF read.
+4. Keep existing `ReturnedCount`, `TotalMatchingCount` and `IsTruncated` semantics unchanged.
+5. If the stricter test helper is too large for one pass, finish `PARTIAL` with the exact helper design and one implemented handler proof.
+
+### Tests
+
+```powershell
+dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~InventorySnapshotContractTests"
+```
+
+### Acceptance
+
+- The inventory signal total-count contract is protected against permissive reader-test false positives.
+- Each signal family proves no post-EOF column access.
+- Completion note references the exact durable run log path.
+
+### Dependencies
+
+- This is a hardening follow-up, not a release blocker if the 2026-08-13 hotfix is already present and focused contract tests pass.
+- Promote only after higher-priority BCI/STAB/QDB work is not being displaced.
+
+### Completion note
+
+- Date: 2026-08-13
+- Status: DONE
+- Completion: EOF-strict reader already existed; RQ101 added empty-result TotalMatchingCount proofs for forecast, rebalance, alerts and size-curve and ran them
+- Changed files: see RQ101 completion note
+- Contract/runtime behavior changed: no
+- Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~InventorySnapshotContractTests"` as part of the RQ101 combined filter - pass
+- Checks not run: `--configuration Release` named in this prompt; Debug configuration was used by the RQ101 command
+- Run log: .ai/runs/2026-08-13-RQ101-evidence.md
+- Delivery mode: direct-main
+- Main commit SHA: 3244723ecc05e09718088e2d4df59de050b1f634
+- Main verification: git rev-parse origin/main -> 8c667c3b52af0af4b0c2bbf271b305d6713cb397; work SHA 3244723ecc05e09718088e2d4df59de050b1f634 is an ancestor
+- Missed: none known for the four-family empty EOF proofs
+- Follow-up: none
+- Residual risk: none known for reader-position on these handlers
+- Prompt defect / scope repair: closed from RQ101 because that prompt required the EOF-strict assertions to be present and run
+- Next: `RQ103`
+
+---
+
+## RQ96 - Canonical observed daily inventory snapshot foundation
+
+Status: READY
+Ready after: `BCI05` is green in GitHub Actions and Gate-1 connector work is no longer the higher-priority blocker
+Priority: P1
+Type: sql/backend-contract/tests/docs
+Feature family: observed-inventory-snapshot-foundation
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ96-<agent>.lock.md`
+Commit suggestion: `feat(inventory): add observed daily snapshot foundation`
+
+### Problem
+
+Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, which limits truthful historical inventory analytics and keeps later forecasting/backtesting work anchored to reconstruction instead of observed stock evidence.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` identifies a durable SKU/store/day inventory snapshot as the most important analytics data-foundation gap after release/connectors.
+- `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql` explicitly states there is no persisted daily inventory snapshot table today and that historical stock is reconstructed backwards from current stock, sales and movements.
+- The same SQL builds a stock proxy for analytics signals, which is useful but not equivalent to a durable observed snapshot foundation.
+
+### Scope
+
+- inventory snapshot SQL/materialization files under `Database/Analytics/`
+- backend contracts/DTOs that must surface provenance or snapshot availability
+- focused analytics tests proving observed-vs-reconstructed semantics
+- one durable architecture/QA note if a new canonical snapshot contract is introduced
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql`
+- current inventory-risk/inventory-signal handlers that rely on reconstructed history
+
+### Do
+
+1. Introduce the smallest durable observed daily inventory snapshot foundation that does not fabricate history.
+2. Preserve provenance explicitly: observed snapshot, reconstructed proxy, missing, and mixed evidence must stay distinguishable.
+3. Keep true zero separate from missing or unobserved history.
+4. Add focused tests proving that downstream analytics can tell whether a day came from observed stock or reconstruction.
+5. Do not expand into a generic warehouse rewrite, multi-tenant storage model or broad forecasting implementation in this prompt.
+
+### Tests
+
+- `git diff --check`
+- focused SQL/backend contract tests for observed snapshot provenance
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Inventory"`
+- any focused SQL validation command already used by the affected snapshot family
+
+### Acceptance
+
+- Trendplus has a canonical observed daily inventory snapshot foundation or a bounded first slice of it with explicit provenance.
+- Reconstructed history is no longer indistinguishable from observed stock.
+- Later forecast/backtesting prompts can cite one authoritative historical stock source.
+
+### Dependencies
+
+- `BCI05`/`BCI01` green first; do not bypass the current backend-CI override.
+- Owner promotion 2026-08-18: Gate-1 connector work is no longer the higher-priority blocker; this prompt is the current RQ execution READY.
+- Owner 2026-08-18 later approved and completed `QDB06` first; after that close this prompt is restored as current execution READY.
+- If source capture cannot yet produce observed snapshots reliably, finish `PARTIAL` with the exact missing source/runtime dependency.
+
+---
+
+## RQ97 - Forecast snapshot provenance and materializer ownership contract
+
+Status: WAITING
+Ready after: `BCI05` is green and `RQ96` is `DONE` or an explicit owner note says the forecast provenance contract may proceed independently
+Priority: P1
+Type: backend/docs/tests
+Feature family: forecast-snapshot-provenance
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ97-<agent>.lock.md`
+Commit suggestion: `fix(forecast): clarify snapshot ownership and provenance`
+
+### Problem
+
+The runtime exposes forecast snapshot reads, but the repository evidence does not yet prove who materializes `analytics_inventory_forecast_snapshot`, how freshness/ownership is guaranteed, or when the surface should be treated as unavailable rather than productized forecasting.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` states that repository inspection found a forecast snapshot read contract but no proven production materializer/model owner for `analytics_inventory_forecast_snapshot`.
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs` reads directly from `analytics_inventory_forecast_snapshot` and falls back to `SnapshotAvailable: false` only when the relation is missing.
+- The current warning text proves table absence, but not materializer ownership, freshness lineage or approved product use of the forecast surface.
+
+### Scope
+
+- `Application/Analytics/Queries/GetInventoryForecast/`
+- any snapshot metadata contract or related SQL/materializer files actually found by evidence
+- forecast UI/types only if they must surface provenance/freshness truth
+- focused tests/docs for ownership and availability semantics
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`
+- any existing forecast snapshot SQL/materializer artifacts if present on current `main`
+
+### Do
+
+1. Prove the forecast snapshot owner/materializer path from current-main evidence, or make the contract explicitly say it is still a bounded signal surface.
+2. Add the smallest metadata/provenance fields or warnings needed so stale/ownerless forecast data cannot look production-authoritative.
+3. Keep missing-table, stale-generation and owner-unknown states distinguishable.
+4. Add focused tests for the chosen provenance contract.
+5. Do not introduce ML forecasting or broad model infrastructure in this prompt.
+
+### Tests
+
+- `git diff --check`
+- focused forecast contract tests
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Forecast|FullyQualifiedName~Inventory"`
+- frontend test only if forecast provenance messaging changes on the inventory page
+
+### Acceptance
+
+- Forecast snapshot availability now distinguishes missing relation, stale/unknown provenance, and trusted generated evidence.
+- The repo documents or proves who owns/materializes the forecast snapshot.
+- Operators cannot mistake an unproven snapshot table for a full production forecasting product.
+
+### Dependencies
+
+- `BCI05`/`BCI01` green first.
+- `RQ96` is the preferred foundation order because forecast trust should not outrun historical stock truth without an explicit owner exception.
+- If no materializer evidence exists, finish with a fail-closed contract rather than inventing ownership.
+
+---
+
+## RQ98 - Deterministic forecast baseline and backtesting contract
+
+Status: WAITING
+Ready after: `RQ97` is `DONE` and a trustworthy historical stock/forecast comparison window exists
+Priority: P1
+Type: sql/backend/docs/tests
+Feature family: forecast-backtesting-baseline
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ98-<agent>.lock.md`
+Commit suggestion: `feat(forecast): add baseline backtesting contract`
+
+### Problem
+
+Trendplus cannot yet prove predictive value because there is no canonical baseline/backtesting contract showing how forecast quality is measured against observed outcomes.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` lists deterministic baseline models and backtesting as the first serious forecasting requirements after the current signal surface.
+- The same audit explicitly warns against jumping straight to ML before historical stock and backtesting exist.
+- Current forecast handlers expose snapshot values and risk/confidence, but no backtesting scorecard or model-versus-baseline evidence was identified in the inspected repository.
+
+### Scope
+
+- forecast evaluation SQL/contracts
+- backend/report surfaces that need bounded baseline/backtesting metadata
+- focused tests proving error-metric and cohort-window semantics
+- one durable architecture/QA note describing allowed metrics and usage limits
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+- current forecast snapshot handlers/contracts
+- any historical stock foundation landed by `RQ96`
+
+### Do
+
+1. Define the first deterministic baseline and backtesting contract before any broad model upgrade.
+2. Use retail-appropriate, bounded error metrics and explicit evaluation windows.
+3. Keep sparse/new-item/no-history cohorts explicit rather than hiding them in aggregate scores.
+4. Surface backtesting results as evidence only; do not auto-promote them into user-facing certainty without provenance.
+5. Avoid ML/platform sprawl, scenario planning and recommendation write-back in this prompt.
+
+### Tests
+
+- `git diff --check`
+- focused backtesting contract tests
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Forecast|FullyQualifiedName~Backtest"`
+- any targeted SQL validation used by the chosen evaluation artifacts
+
+### Acceptance
+
+- Trendplus has a deterministic baseline/backtesting contract with explicit windows, cohorts and error semantics.
+- Forecast quality can be evaluated against observed outcomes without pretending coverage where evidence is missing.
+- Later forecast improvements must compare against this baseline instead of bypassing measurement.
+
+### Dependencies
+
+- `RQ97` DONE first so the forecast snapshot provenance/owner contract is settled.
+- `RQ96` historical stock foundation must exist, or the owner must explicitly document the limited comparison basis.
+- If trustworthy observed outcomes are unavailable, finish `BLOCKED` with the exact missing evidence window.
 
 ### Contract
 

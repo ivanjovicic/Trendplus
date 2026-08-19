@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +59,50 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal("insufficient_data", item.GetProperty("dataQualityStatus").GetString());
         Assert.Equal(35m, item.GetProperty("signalConfidencePct").GetDecimal());
         Assert.Contains("stock_cover_insufficient_data", item.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Equal(0, item.GetProperty("kolicina").GetInt32());
+        Assert.Equal(0m, item.GetProperty("estimatedValue").GetDecimal());
+        Assert.NotEqual("good", item.GetProperty("dataQualityStatus").GetString());
+        Assert.NotEqual(InventorySignalCalculator.StockCoverHealthy, item.GetProperty("stockCoverStatus").GetString());
+    }
+
+    [Fact]
+    public async Task InventoryDetail_ComputesExplainabilitySnapshotFromSalesAndMovementHistory()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/101/detail");
+
+        Assert.Equal(101, root.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, root.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, root.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("sellThroughRatio").ValueKind);
+        Assert.False(root.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.InRange(root.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+        Assert.Contains("replenish_needed", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("sell_through_denominator_zero", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("stock_cover_out_of_stock_risk", root.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public async Task InventoryInsights_ComputesExplainabilitySnapshotForTopItems()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(factory, "/api/analytics/inventory/insights?search=OOS-101");
+
+        var topAged = Assert.Single(root.GetProperty("topAgedItems").EnumerateArray().ToArray());
+        Assert.Equal(101, topAged.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topAged.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topAged.GetProperty("sellThroughStatus").GetString());
+        Assert.False(topAged.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, topAged.GetProperty("sellThroughRatio").ValueKind);
+        Assert.InRange(topAged.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
+
+        var topCapital = Assert.Single(root.GetProperty("topCapitalLockedItems").EnumerateArray().ToArray());
+        Assert.Equal(101, topCapital.GetProperty("id").GetInt32());
+        Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topCapital.GetProperty("stockCoverStatus").GetString());
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topCapital.GetProperty("sellThroughStatus").GetString());
+        Assert.False(topCapital.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, topCapital.GetProperty("sellThroughRatio").ValueKind);
+        Assert.InRange(topCapital.GetProperty("signalConfidencePct").GetDecimal(), 35m, 45m);
     }
 
     [Fact]
@@ -341,15 +386,19 @@ public sealed class InventoryListEndpointIntegrationTests
                 services.RemoveAll<IAnalyticsDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName, _databaseRoot));
+                    options.UseInMemoryDatabase(_databaseName, _databaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
 
                 services.AddDbContextFactory<AnalyticsDbContext>(options =>
-                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<AnalyticsDbContext>(options =>
-                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot));
+                    options.UseInMemoryDatabase(_analyticsDatabaseName, _analyticsDatabaseRoot)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             });
         }

@@ -27,6 +27,7 @@ import type {
   QuickInsights,
   ProductDecisionCenterResponse,
   ProductDecisionTimelineFilterResponse,
+  ProductDecisionTimelineExportResponse,
   RebalanceListDto,
   ReorderSuggestion,
   InventoryStoreComparison,
@@ -59,6 +60,7 @@ import type {
   PilotIntakeDurableReport,
 } from "../types/analytics";
 import type { DocumentOperationResponse } from "./exportApi";
+import { ensureExportAdminKey } from "./exportApi";
 import { apiUrl } from "../utils/apiUrl";
 import { appendDataScopeToParams } from "../utils/dataScope";
 import {
@@ -245,13 +247,17 @@ async function fetchJsonWithCachedFallback<T>(
   }
 }
 
-async function postJson<T>(path: string, body: unknown, errorMessage?: string): Promise<T> {
+async function postJson<T>(path: string, body: unknown, errorMessage?: string, adminKey?: string): Promise<T> {
   const timeoutMs = DEFAULT_ANALYTICS_GET_TIMEOUT_MS;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (adminKey?.trim()) {
+    headers["X-Admin-Key"] = adminKey.trim();
+  }
   const init: RequestInit = {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   };
 
@@ -501,14 +507,34 @@ export async function getDailySales(
   storeId?: number | null,
   supplierId?: number | null
 ): Promise<DailySale[]> {
+  const payload = await getDailySalesPayload(fromDate, toDate, useCached, storeId, supplierId);
+  return payload.items;
+}
+
+export async function getDailySalesPayload(
+  fromDate?: string,
+  toDate?: string,
+  useCached = true,
+  storeId?: number | null,
+  supplierId?: number | null
+): Promise<{ items: DailySale[]; meta: AnalyticsResponseMeta | null }> {
   const params = new URLSearchParams();
   appendFilterParams(params, fromDate, toDate, storeId, supplierId);
 
-  return fetchJson(
+  const payload = await fetchJson<DailySale[] | { items?: DailySale[]; meta?: AnalyticsResponseMeta | null }>(
     useCached ? "/api/analytics/cached/sales/daily" : "/api/analytics/sales/daily",
     params,
     "Greska pri ucitavanju dnevne prodaje"
   );
+
+  if (Array.isArray(payload)) {
+    return { items: payload, meta: null };
+  }
+
+  return {
+    items: Array.isArray(payload.items) ? payload.items : [],
+    meta: payload.meta ?? null,
+  };
 }
 
 export async function getByCategory(
@@ -795,6 +821,44 @@ export async function getProductDecisionTimeline(options?: {
     params,
     "Greska pri ucitavanju Decision Timeline pregleda"
   );
+}
+
+export async function getProductDecisionTimelineExportCsv(options?: {
+  fromDate?: string;
+  toDate?: string;
+  sourceType?: string | null;
+  sourceKey?: string | null;
+  productId?: number | null;
+  recommendationType?: string | null;
+}): Promise<string> {
+  const params = new URLSearchParams();
+  if (options?.fromDate) params.append("fromDate", options.fromDate);
+  if (options?.toDate) params.append("toDate", options.toDate);
+  if (options?.sourceType) params.append("sourceType", options.sourceType);
+  if (options?.sourceKey) params.append("sourceKey", options.sourceKey);
+  if (options?.productId != null) params.append("productId", String(options.productId));
+  if (options?.recommendationType) params.append("recommendationType", options.recommendationType);
+  params.append("format", "csv");
+
+  const url = makeUrl("/api/analytics/cached/products/decision-center/timeline/export", params);
+  const response = await fetchAnalyticsResponse(url, undefined, DEFAULT_ANALYTICS_GET_TIMEOUT_MS);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json()) as ProductDecisionTimelineExportResponse;
+    assertAnalyticsMetaSuccess(payload, "Decision Timeline export trenutno nije dostupan.");
+    throw new Error("Decision Timeline export nije vratio CSV dokument.");
+  }
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, "Decision Timeline export trenutno nije dostupan."));
+  }
+
+  const csv = await response.text();
+  if (/^# success=false/m.test(csv)) {
+    throw new AnalyticsMetaError("Decision Timeline export trenutno nije dostupan.");
+  }
+
+  return csv;
 }
 
 function readFilterFallbackMeta(response: Response): AnalyticsResponseMeta | null {
@@ -1180,6 +1244,11 @@ export async function exportInventoryReport(options: {
   supplierId?: number | null;
   sortBy?: string | null;
 }): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("izvoz zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     "/api/analytics/inventory/export",
     {
@@ -1192,7 +1261,8 @@ export async function exportInventoryReport(options: {
       supplierId: options.supplierId,
       sortBy: options.sortBy,
     },
-    "Greska pri server-side eksportu bilansa"
+    "Greska pri server-side eksportu bilansa",
+    adminKey
   );
 }
 
@@ -1204,6 +1274,11 @@ export async function previewInventoryReport(options?: {
   supplierId?: number | null;
   sortBy?: string | null;
 }): Promise<DocumentOperationResponse> {
+  const adminKey = ensureExportAdminKey("pregled stampe zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     "/api/analytics/inventory/print-preview",
     {
@@ -1214,7 +1289,8 @@ export async function previewInventoryReport(options?: {
       supplierId: options?.supplierId,
       sortBy: options?.sortBy,
     },
-    "Greska pri pripremi print preview-a"
+    "Greska pri pripremi print preview-a",
+    adminKey
   );
 }
 
@@ -1224,10 +1300,16 @@ export async function printBlankInventoryForm(options?: {
   const params = new URLSearchParams();
   if (options?.orientation) params.set("orientation", options.orientation);
   const qs = params.size > 0 ? `?${params.toString()}` : "";
+  const adminKey = ensureExportAdminKey("prazan obrazac zaliha");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     `/api/analytics/inventory/print-blank${qs}`,
     {},
-    "Greska pri pripremi praznog obrasca za stampu"
+    "Greska pri pripremi praznog obrasca za stampu",
+    adminKey
   );
 }
 
@@ -1467,10 +1549,16 @@ export async function updateInventoryReportSchedule(id: number, input: Inventory
 }
 
 export async function runInventoryReportScheduleNow(id: number): Promise<InventoryScheduleRunResponse> {
+  const adminKey = ensureExportAdminKey("pokretanje rasporeda izvestaja");
+  if (!adminKey) {
+    throw new Error("Admin key je obavezan za izvoz dokumenata.");
+  }
+
   return postJson(
     `/api/analytics/inventory/report-schedules/${id}/run-now`,
     {},
-    "Greska pri rucnom pokretanju rasporeda"
+    "Greska pri rucnom pokretanju rasporeda",
+    adminKey
   );
 }
 

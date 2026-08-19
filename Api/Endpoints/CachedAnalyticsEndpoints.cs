@@ -69,6 +69,16 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                    fromDate = fromDate.Value,
+                    toDate = toDate.Value
+                });
+            }
+
             var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId);
 
             try
@@ -205,6 +215,16 @@ public static class CachedAnalyticsEndpoints
 
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                    fromDate = fromDate.Value,
+                    toDate = toDate.Value
+                });
+            }
 
             var cacheKey = AnalyticsCacheKeys.TopProducts(top, fromDate, toDate, storeId, supplierId);
 
@@ -404,7 +424,8 @@ public static class CachedAnalyticsEndpoints
                                 inventoryData?.TotalSku ?? 0,
                                 inventoryData?.TotalOnHand ?? 0,
                                 inventoryData?.LowStock ?? 0,
-                                inventoryData?.OutOfStock ?? 0
+                                inventoryData?.OutOfStock ?? 0,
+                                UsedOperationalFallback: true
                             );
                         }
                     },
@@ -413,10 +434,23 @@ public static class CachedAnalyticsEndpoints
 
                 var meta = result.TotalSkuCount == 0
                     ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
-                    : AnalyticsResponseMetaFactory.Success();
+                    : result.UsedOperationalFallback
+                        ? AnalyticsResponseMetaFactory.Warning(
+                            "inventory_status_operational_fallback",
+                            "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna.",
+                            "warning")
+                        : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
-                return Results.Ok(new { result.TotalSkuCount, result.TotalOnHand, result.LowStockCount, result.OutOfStockCount, Meta = meta });
+                return Results.Ok(new
+                {
+                    result.TotalSkuCount,
+                    result.TotalOnHand,
+                    result.LowStockCount,
+                    result.OutOfStockCount,
+                    result.UsedOperationalFallback,
+                    Meta = meta
+                });
             }
             catch (Exception ex)
             {
@@ -851,6 +885,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             IAnalyticsDbContext db,
             ITrendplusDbContext trendDb,
+            HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
@@ -863,9 +898,8 @@ public static class CachedAnalyticsEndpoints
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId);
-
-            var result = await cache.GetOrSetAsync(
+            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId) + ":meta-v1";
+            var snapshot = await cache.GetOrSetAsync(
                 cacheKey,
                 async () =>
                 {
@@ -874,10 +908,11 @@ public static class CachedAnalyticsEndpoints
                         var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
                         if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
                         {
-                            return aggregatedDaily;
+                            return new DailySalesCachedSnapshot { Items = aggregatedDaily };
                         }
                     }
 
+                    var usedOperationalFallback = false;
                     try
                     {
                         if (!supplierId.HasValue)
@@ -905,17 +940,21 @@ public static class CachedAnalyticsEndpoints
                                 .OrderBy(x => x.Date)
                                 .ToListAsync(ct);
 
-                            return dailySalesRaw.Select(x => new DailySaleDto
+                            return new DailySalesCachedSnapshot
                             {
-                                Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                                TotalRevenue = x.TotalRevenue,
-                                TransactionCount = x.TransactionCount,
-                                TotalUnits = x.TotalUnits
-                            }).ToList();
+                                Items = dailySalesRaw.Select(x => new DailySaleDto
+                                {
+                                    Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                    TotalRevenue = x.TotalRevenue,
+                                    TransactionCount = x.TransactionCount,
+                                    TotalUnits = x.TotalUnits
+                                }).ToList()
+                            };
                         }
                     }
                     catch (Exception ex) when (IsMissingRelation(ex))
                     {
+                        usedOperationalFallback = true;
                     }
 
                     var fallbackRaw = await (
@@ -937,18 +976,24 @@ public static class CachedAnalyticsEndpoints
                         .OrderBy(x => x.Date)
                         .ToListAsync(ct);
 
-                    return fallbackRaw.Select(x => new DailySaleDto
+                    return new DailySalesCachedSnapshot
                     {
-                        Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                        TotalRevenue = x.TotalRevenue,
-                        TransactionCount = x.TransactionCount,
-                        TotalUnits = x.TotalUnits
-                    }).ToList();
+                        UsedOperationalFallback = usedOperationalFallback,
+                        Items = fallbackRaw.Select(x => new DailySaleDto
+                        {
+                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                            TotalRevenue = x.TotalRevenue,
+                            TransactionCount = x.TransactionCount,
+                            TotalUnits = x.TotalUnits
+                        }).ToList()
+                    };
                 },
                 CacheExpiration.Medium,
                 ct);
 
-            return Results.Ok(result);
+            var meta = ResolveCachedDailySalesMeta(snapshot.UsedOperationalFallback, snapshot.Items.Count);
+            meta.CorrelationId = ResolveCorrelationId(httpContext);
+            return Results.Ok(new { items = snapshot.Items, meta });
         });
 
         // ========== CATEGORY DATA (CACHED) ==========
@@ -1549,6 +1594,93 @@ public static class CachedAnalyticsEndpoints
             }
         });
 
+        // ========== PRODUCT DECISION TIMELINE EXPORT (DT07, read-only over Slice-2) ==========
+        group.MapGet("/products/decision-center/timeline/export", async (
+            IAnalyticsDbContext analyticsDb,
+            ILogger<Program> logger,
+            HttpContext httpContext,
+            string? sourceType = null,
+            string? sourceKey = null,
+            int? productId = null,
+            string? recommendationType = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            string? format = null,
+            CancellationToken ct = default) =>
+        {
+            var nowUtc = DateTime.UtcNow.Date;
+            var periodToUtc = toDate?.Date ?? nowUtc;
+            var periodFromUtc = fromDate?.Date ?? periodToUtc.AddDays(-29);
+            if (periodFromUtc > periodToUtc)
+            {
+                (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
+            }
+
+            var generatedAtUtc = DateTime.UtcNow;
+            var correlationId = ResolveCorrelationId(httpContext);
+            try
+            {
+                var filtered = await BuildProductDecisionTimelineFilterAsync(
+                    analyticsDb,
+                    sourceType,
+                    sourceKey,
+                    productId,
+                    recommendationType,
+                    fromDate,
+                    toDate,
+                    ct);
+
+                DecisionTimelineExportDto export;
+                if (filtered.Meta is { Success: false } || filtered.Scope is null)
+                {
+                    export = DecisionTimelineExportProjection.Error(
+                        periodFromUtc,
+                        periodToUtc,
+                        generatedAtUtc,
+                        filtered.Meta?.ErrorCode ?? "ANALYTICS_UNEXPECTED_ERROR",
+                        filtered.Meta?.ErrorMessage ?? "Decision Timeline export trenutno nije dostupan.",
+                        filtered.WarningCodes);
+                }
+                else
+                {
+                    export = DecisionTimelineExportProjection.FromFilter(
+                        new DecisionTimelineFilterResponseDto(
+                            Scope: filtered.Scope,
+                            EmptyReason: filtered.EmptyReason,
+                            Timelines: filtered.Timelines,
+                            MatchedActionCount: filtered.MatchedActionCount,
+                            MatchedEventCount: filtered.MatchedEventCount,
+                            WarningCodes: filtered.WarningCodes),
+                        generatedAtUtc,
+                        filtered.Meta?.DataQualityStatus);
+                }
+
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Product decision timeline export fallback due to timeout.");
+                var export = DecisionTimelineExportProjection.Error(
+                    periodFromUtc,
+                    periodToUtc,
+                    generatedAtUtc,
+                    "ANALYTICS_TIMEOUT",
+                    "Decision Timeline export trenutno nije dostupan zbog isteka vremena.");
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Product decision timeline export fallback due to unexpected issue.");
+                var export = DecisionTimelineExportProjection.Error(
+                    periodFromUtc,
+                    periodToUtc,
+                    generatedAtUtc,
+                    "ANALYTICS_UNEXPECTED_ERROR",
+                    "Decision Timeline export trenutno nije dostupan.");
+                return FormatDecisionTimelineExport(export, format, correlationId);
+            }
+        });
+
         // ========== CATEGORY TRENDS (CACHED) ==========
         group.MapGet("/sales/category-trends", async (
             IAnalyticsCacheService cache,
@@ -1936,11 +2068,22 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             "Lost-sales validacija nije dostupna.");
 
+                        var inventoryFallback = response.Inventory?.UsedOperationalFallback == true;
+                        var hasSectionErrors = response.Errors.Count > 0;
                         response.Meta = BuildSuccessMeta(
-                            dataQualityStatus: ResolveDashboardDataQualityStatus(response),
-                            isPartial: response.Errors.Count > 0,
-                            warningCode: response.Errors.Count > 0 ? "ANALYTICS_PARTIAL_DATA" : null,
-                            message: response.Errors.Count > 0 ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+                            dataQualityStatus: inventoryFallback
+                                ? "warning"
+                                : ResolveDashboardDataQualityStatus(response),
+                            isPartial: hasSectionErrors || inventoryFallback,
+                            warningCode: inventoryFallback
+                                ? "inventory_status_operational_fallback"
+                                : hasSectionErrors ? "ANALYTICS_PARTIAL_DATA" : null,
+                            warningMessage: inventoryFallback
+                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+                            message: inventoryFallback
+                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
                             lastRefreshAtUtc: response.Advanced?.GeneratedAtUtc ?? response.ValidationFreshness?.LastImport);
 
                         return response;
@@ -4404,7 +4547,8 @@ public static class CachedAnalyticsEndpoints
                 inventoryData?.TotalSku ?? 0,
                 inventoryData?.TotalOnHand ?? 0,
                 inventoryData?.LowStock ?? 0,
-                inventoryData?.OutOfStock ?? 0
+                inventoryData?.OutOfStock ?? 0,
+                UsedOperationalFallback: true
             );
         }
     }
@@ -5255,6 +5399,43 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
+    private static IResult FormatDecisionTimelineExport(
+        DecisionTimelineExportDto export,
+        string? format,
+        string? correlationId)
+    {
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase) && export.Success)
+        {
+            var csv = DecisionTimelineExportProjection.ToCsv(export);
+            return Results.File(
+                System.Text.Encoding.UTF8.GetBytes(csv),
+                "text/csv; charset=utf-8",
+                "decision-timeline-export.csv");
+        }
+
+        var meta = export.Success
+            ? BuildSuccessMeta(
+                dataQualityStatus: export.Header.DataQualityStatus ?? "insufficient_data",
+                lastRefreshAtUtc: export.Header.GeneratedAtUtc)
+            : BuildErrorMeta(
+                export.ErrorCode ?? "ANALYTICS_UNEXPECTED_ERROR",
+                export.ErrorMessage ?? "Decision Timeline export trenutno nije dostupan.",
+                correlationId);
+        meta.CorrelationId = correlationId;
+        meta.GeneratedAtUtc = export.Header.GeneratedAtUtc;
+
+        return Results.Ok(new ProductDecisionTimelineExportResponseDto
+        {
+            Success = export.Success,
+            Header = export.Header,
+            Funnel = export.Funnel,
+            Rows = export.Rows.ToList(),
+            ErrorCode = export.ErrorCode,
+            ErrorMessage = export.ErrorMessage,
+            Meta = meta
+        });
+    }
+
     internal static async Task<ProductDecisionCenterResponseDto> BuildProductDecisionCenterAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
@@ -5684,6 +5865,24 @@ public static class CachedAnalyticsEndpoints
             AnalyzedRows: analyzedRowCount,
             IgnoredRowsCount: Math.Max(0, analyzedRowCount - returnedRowCount),
             IgnoredRowsMeaning: ProductDecisionDenominatorScope.HiddenByTopLimit);
+
+    private static AnalyticsResponseMetaDto ResolveCachedDailySalesMeta(bool usedOperationalFallback, int itemCount)
+    {
+        if (usedOperationalFallback)
+        {
+            return AnalyticsResponseMetaFactory.Warning(
+                "daily_sales_operational_fallback",
+                "Dnevna prodaja je učitana iz operativnih tabela jer analytics relacija nije dostupna.",
+                "warning");
+        }
+
+        if (itemCount == 0)
+        {
+            return AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.");
+        }
+
+        return AnalyticsResponseMetaFactory.Success();
+    }
 
     private static AnalyticsResponseMetaDto BuildSuccessMeta(
         string? dataQualityStatus = null,
@@ -7261,6 +7460,12 @@ public class DailySaleDto
     public int TotalUnits { get; set; }
 }
 
+public class DailySalesCachedSnapshot
+{
+    public List<DailySaleDto> Items { get; set; } = [];
+    public bool UsedOperationalFallback { get; set; }
+}
+
 public class CategoryDataDto
 {
     public string Kategorija { get; set; } = "";
@@ -7587,6 +7792,21 @@ public class ProductDecisionTimelineFilterResponseDto
     public int MatchedActionCount { get; set; }
     public int MatchedEventCount { get; set; }
     public List<string> WarningCodes { get; set; } = [];
+    public AnalyticsResponseMetaDto Meta { get; set; } = new()
+    {
+        Success = true,
+        GeneratedAtUtc = DateTime.UtcNow
+    };
+}
+
+public class ProductDecisionTimelineExportResponseDto
+{
+    public bool Success { get; set; }
+    public DecisionTimelineExportHonestyHeaderDto Header { get; set; } = null!;
+    public DecisionTimelineExportFunnelDto? Funnel { get; set; }
+    public List<DecisionTimelineExportRowDto> Rows { get; set; } = [];
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
     {
         Success = true,

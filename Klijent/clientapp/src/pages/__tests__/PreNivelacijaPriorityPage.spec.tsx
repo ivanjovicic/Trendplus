@@ -16,7 +16,14 @@ vi.mock("recharts", () => ({
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
+  default: ({ title, message }: { title: string; message: string }) => (
+    <div role="alert">
+      <strong>{title}</strong>
+      <span>{message}</span>
+    </div>
+  ),
+}));
 vi.mock("../../components/ui/InfoTip", () => ({ default: () => null }));
 
 const getPreNivelacijaPrioritetiMock = vi.fn();
@@ -193,6 +200,20 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByRole("button", { name: /Reset filtera/i })).toBeInTheDocument();
   });
 
+  it("shows backend reliability as a percent instead of local Visoko/Srednje/Nisko bands", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("28%")).toBeInTheDocument();
+    expect(screen.getByText("61%")).toBeInTheDocument();
+    expect(screen.queryByText("Visoko")).not.toBeInTheDocument();
+    expect(screen.queryByText("Srednje")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
   it("keeps markdown copy scenario-oriented and blocks margin signal without cost", async () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(
       makeResponse([
@@ -308,5 +329,21 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByText("Promenite filtere dobavljača, sezone ili tipa obuće.")).toBeInTheDocument();
     expect(screen.getByText("Proverite kvalitet podataka.")).toBeInTheDocument();
     expect(screen.queryByText(/period/i)).not.toBeInTheDocument();
+    expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
+  });
+
+  it("shows an error alert and hides KPI cards when the priority load fails", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(new Error("Pre-nivelacija API timeout"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pre-nivelacija API timeout");
+    expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
+    expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
   });
 });

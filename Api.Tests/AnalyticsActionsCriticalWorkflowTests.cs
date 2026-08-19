@@ -292,6 +292,87 @@ public sealed class AnalyticsActionsCriticalWorkflowTests
         Assert.Contains("4000 characters or fewer", body, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task OutcomeLifecycle_AcceptanceIsNotSuccess_AndNotMeasuredDoesNotStampTimestamp()
+    {
+        await using var host = await ActionsHost.CreateAsync();
+        var created = await PostActionAsync(host.Client, new
+        {
+            sourceType = AnalyticsActionConstants.SourceTypes.Product,
+            sourceKey = "product:learning:1",
+            sourceId = 101,
+            title = "Dopuni Model 101",
+            description = "Niska pokrivenost zalihe.",
+            recommendationStatus = "REPLENISH",
+            priority = AnalyticsActionConstants.Priorities.P1,
+            expectedImpactRsd = 25_000m,
+            dataQualityStatus = "good"
+        });
+
+        var item = created.GetProperty("item");
+        var actionId = item.GetProperty("id").GetInt64();
+        Assert.False(item.GetProperty("recommendationLifecycle").GetProperty("learningEligible").GetBoolean());
+        Assert.True(
+            !item.TryGetProperty("outcomeMeasuredAtUtc", out var createdMeasuredAt)
+            || createdMeasuredAt.ValueKind == JsonValueKind.Null);
+
+        using var acceptRequest = CreateAdminJsonRequest(
+            HttpMethod.Patch,
+            $"/api/analytics/actions/{actionId}/status",
+            new { status = AnalyticsActionConstants.Statuses.Accepted, note = "Prihvaceno" });
+        using var acceptResponse = await host.Client.SendAsync(acceptRequest);
+        var accepted = await ReadJsonAsync(acceptResponse, HttpStatusCode.OK);
+        Assert.False(accepted.GetProperty("recommendationLifecycle").GetProperty("learningEligible").GetBoolean());
+        Assert.Contains(
+            "acceptance_is_not_success",
+            accepted.GetProperty("recommendationLifecycle").GetProperty("learningEligibilityReasonCodes")
+                .EnumerateArray()
+                .Select(x => x.GetString()));
+
+        using var doneRequest = CreateAdminJsonRequest(
+            HttpMethod.Patch,
+            $"/api/analytics/actions/{actionId}/status",
+            new { status = AnalyticsActionConstants.Statuses.Done, note = "Izvrseno" });
+        using var doneResponse = await host.Client.SendAsync(doneRequest);
+        var executed = await ReadJsonAsync(doneResponse, HttpStatusCode.OK);
+        Assert.False(executed.GetProperty("recommendationLifecycle").GetProperty("learningEligible").GetBoolean());
+        Assert.True(
+            !executed.TryGetProperty("outcomeMeasuredAtUtc", out var executedMeasuredAt)
+            || executedMeasuredAt.ValueKind == JsonValueKind.Null);
+
+        using var notMeasuredRequest = CreateAdminJsonRequest(
+            HttpMethod.Patch,
+            $"/api/analytics/actions/{actionId}/outcome",
+            new
+            {
+                outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.NotMeasured,
+                measuredImpactRsd = 999m,
+                outcomeMeasuredAtUtc = DateTime.UtcNow
+            });
+        using var notMeasuredResponse = await host.Client.SendAsync(notMeasuredRequest);
+        var notMeasured = await ReadJsonAsync(notMeasuredResponse, HttpStatusCode.OK);
+        Assert.Equal(AnalyticsActionConstants.OutcomeStatuses.NotMeasured, notMeasured.GetProperty("outcomeStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, notMeasured.GetProperty("outcomeMeasuredAtUtc").ValueKind);
+        Assert.False(notMeasured.GetProperty("recommendationLifecycle").GetProperty("learningEligible").GetBoolean());
+
+        using var measuredRequest = CreateAdminJsonRequest(
+            HttpMethod.Patch,
+            $"/api/analytics/actions/{actionId}/outcome",
+            new
+            {
+                outcomeStatus = AnalyticsActionConstants.OutcomeStatuses.Success,
+                measuredImpactRsd = 180m,
+                outcomeMeasuredAtUtc = "2026-08-10T09:00:00Z",
+                evidenceSource = "action_outcome_summary",
+                evidenceReference = "summary:product:learning:1"
+            });
+        using var measuredResponse = await host.Client.SendAsync(measuredRequest);
+        var measured = await ReadJsonAsync(measuredResponse, HttpStatusCode.OK);
+        Assert.True(measured.GetProperty("recommendationLifecycle").GetProperty("learningEligible").GetBoolean());
+        Assert.Equal(RecommendationLifecycleSemantics.LifecycleStates.Executed, measured.GetProperty("recommendationLifecycle").GetProperty("lifecycleState").GetString());
+        Assert.NotEqual(JsonValueKind.Null, measured.GetProperty("outcomeMeasuredAtUtc").ValueKind);
+    }
+
     private static async Task<JsonElement> PostActionAsync(HttpClient client, object body)
     {
         using var request = CreateAdminJsonRequest(HttpMethod.Post, "/api/analytics/actions", body);

@@ -256,7 +256,8 @@ public sealed class AnalyticsActionItemService
                 ByOutcomeStatus: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
                 ByDataQuality: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
                 ByConfidenceBucket: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
-                ByReliabilityBucket: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>()
+                ByReliabilityBucket: Array.Empty<AnalyticsActionOutcomeSummaryBucketDto>(),
+                MeasurementStatistics: RecommendationMeasurementStatisticsProjection.CreateEmpty("no_rows")
             );
         }
 
@@ -306,7 +307,8 @@ public sealed class AnalyticsActionItemService
             ByOutcomeStatus: BuildGroupedBuckets(items, x => NormalizeOutcomeStatus(x.OutcomeStatus), GetOutcomeLabel),
             ByDataQuality: BuildGroupedBuckets(items, x => NormalizeDataQualityBucket(x.DataQualityStatus), GetDataQualityLabel),
             ByConfidenceBucket: BuildGroupedBuckets(items, x => GetPercentBucketKey(x.ConfidencePct), GetPercentBucketLabel),
-            ByReliabilityBucket: BuildGroupedBuckets(items, x => GetPercentBucketKey(x.ReliabilityPct), GetPercentBucketLabel)
+            ByReliabilityBucket: BuildGroupedBuckets(items, x => GetPercentBucketKey(x.ReliabilityPct), GetPercentBucketLabel),
+            MeasurementStatistics: RecommendationMeasurementStatisticsProjection.Project(items)
         );
     }
 
@@ -1490,7 +1492,8 @@ public sealed record AnalyticsActionOutcomeSummaryDto(
     IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByOutcomeStatus,
     IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByDataQuality,
     IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByConfidenceBucket,
-    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByReliabilityBucket
+    IReadOnlyList<AnalyticsActionOutcomeSummaryBucketDto> ByReliabilityBucket,
+    RecommendationMeasurementStatisticsDto? MeasurementStatistics = null
 );
 
 public sealed record AnalyticsActionOutcomeSummaryMetaDto(

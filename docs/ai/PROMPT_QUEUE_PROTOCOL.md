@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-08-11
+Updated: 2026-08-15
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -34,6 +34,15 @@ Future planning programs:
 6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
 7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
 
+## When a queue has no READY prompt
+
+If an owner queue header says `Current READY prompt: none`:
+
+1. Do not claim a later `WAITING` prompt from that queue.
+2. Check whether the blocker is only a same-owner routing repair, such as a stale current-ready pointer, a missing completion note, or a mechanical status mismatch.
+3. If the blocker is a same-owner routing repair, make the smallest canonical metadata fix, record it in the queue completion note and durable run log, and keep the real blocked/waiting state visible.
+4. If the blocker is a real dependency, approval, tenant/security decision, or migration gate, stop and report the blocker instead of inventing readiness.
+
 ## Status model
 
 Use these statuses exactly:
@@ -43,20 +52,29 @@ Use these statuses exactly:
 | READY | Current runnable prompt in its program. | Yes, subject to master priority/dependencies |
 | WAITING | Valid later prompt. | No |
 | IN_PROGRESS | Claimed by current owner/workspace. | Only same owner continues |
-| BLOCKED | Missing dependency/decision/evidence. | No |
-| PARTIAL | Some acceptance landed but incomplete. | No unless an explicit follow-up says so |
-| DONE | Acceptance met with evidence. | No |
+| BLOCKED | Missing dependency/decision/evidence that prevents safe progress. | No |
+| PARTIAL | Useful work exists but acceptance/proof/delivery is incomplete. | No unless an explicit follow-up says so |
+| DONE | Acceptance met with synchronized evidence and delivery truth. | No |
 | OBSOLETE | Replaced by current evidence/prompt. | No |
 
-`TODO`, `OPEN`, `COMPLETE`, and free-form live statuses are invalid.
+`TODO`, `OPEN`, `COMPLETE`, `NEEDS_EVIDENCE_SYNC`, and other free-form live statuses are invalid.
+
+Evidence synchronization is not a queue status. Use the separate evidence field defined by `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`:
+
+```text
+Evidence state: synchronized | pending | fallback <reason>
+```
+
+If implementation is useful but evidence/delivery verification is incomplete, use `PARTIAL`; use `BLOCKED` only when a real blocker prevents safe completion.
 
 ## READY invariants
 
-- Exactly one READY prompt per program unless the master roadmap explicitly documents a temporary migration state.
+- A program may have zero or one READY prompt; more than one READY in the same program is invalid.
+- Zero READY is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` (or the equivalent named blocked/complete current truth). Do not infer a valid zero merely because no task happens to be marked READY.
 - Multiple programs may each have one READY prompt; global execution priority still comes from `MASTER_ROADMAP.md`.
 - Parallel-safe means path/feature-family parallelism is allowed; it never means dependency gates can be skipped.
-- Current READY must be declared near the queue top or in the queue's per-program current-READY table.
-- All later prompts remain WAITING until dependencies are met.
+- Current READY (or explicit `none`) must be declared near the queue top or in the queue's per-program current-READY table.
+- All later prompts remain WAITING until dependencies are met or the current pointer is explicitly advanced.
 - A follow-up/evidence addendum belongs to the same program as its parent queue; it does not create a second READY allowance.
 
 ## Required prompt sections
@@ -187,43 +205,48 @@ Mark BLOCKED/PARTIAL rather than guessing when:
 
 ## Completion note
 
-A completed prompt records at minimum:
+A completed or partially completed prompt records at minimum:
 
 ```md
 ### Completion note
 
 - Date:
-- Status:
+- Status: DONE | PARTIAL | BLOCKED
+- Completion:
 - Changed files:
 - Contract/runtime behavior changed:
 - Checks run:
 - Checks not run:
-- Remaining risk:
+- Run log:
+- Evidence state: synchronized | pending | fallback <reason>
+- Delivery mode:
+- Main commit SHA:
+- Main verification:
+- Missed:
+- Follow-up:
+- Residual risk:
 - Next:
 - Prompt defect / scope repair:
 ```
 
 Production/live smoke may be marked complete only from real current deployment evidence.
 
+All new or actively refreshed completion notes use the current evidence contract:
+
+- `Run log:` is mandatory and points to durable `.ai/runs/...` evidence or `fallback <reason>`;
+- `Evidence state:` is mandatory and is separate from queue status;
+- `Delivery mode:`, `Main commit SHA:` and `Main verification:` are mandatory for file-changing work;
+- older completion notes remain historical evidence and are not retroactively normalized unless a task is actively refreshing them.
+
 For every non-trivial file-changing prompt run, also create a durable run log in `.ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md` using `.ai/RUN_LOG_TEMPLATE.md`, or record an explicit fallback reason when a durable log could not be created safely.
 
-Minimum durable run-log sections:
-
-```text
-## What was done
-## Files changed
-## Validation run
-## Validation not run
-## What was missed
-## Risks
-## Next
-```
+Minimum durable run-log sections are owned by `.ai/RUN_LOG_TEMPLATE.md`; do not maintain a second copied section list here.
 
 ## Validation
 
 Choose runtime/docs proof through `docs/ai/VALIDATION_SELECTOR.md`.
 
-Run both governance layers:
+Run both governance layers when queue/planning governance is changed and the commands are available:
 
 ```text
 node scripts/check-agent-instructions.mjs --self-test
@@ -234,7 +257,7 @@ node scripts/check-planning-architecture.mjs --self-test
 node scripts/check-planning-architecture.mjs
 ```
 
-`check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues.
+`check-prompt-queues.mjs` validates the execution queues it inventories, including the BCI parent queue and BCI evidence addendum. `check-planning-architecture.mjs` validates the master roadmap, owner roadmap/queue symmetry and the DEX/RL/DT/PERF/OBS/SEC planning queues, including explicit zero-READY declarations.
 
 ## Commit hygiene
 

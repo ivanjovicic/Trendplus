@@ -1,8 +1,8 @@
-# Trendplus Backend CI Repair - Evidence Follow-up Addendum
+﻿# Trendplus Backend CI Repair - Evidence Follow-up Addendum
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `none`
+Current READY prompt: none
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -16,7 +16,7 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 | BCI09 | DONE | Add `GetFootprintSnapshot()` to the five `IAnalyticsCacheService` test stubs so `Api.Tests` compiles again |
 | BCI05 | DONE | Green GHA restore/build/test/coverage/artifact on `f1f5a17` after BCI09 |
 | BCI01 | DONE | Backend workflow restore/build/test step green on current backend-equivalent main |
-| BCI06 | DONE | Verify the BCI03 mixed-solution/JavaScript SDK model in Windows/Visual Studio or document a proven support boundary |
+| BCI06 | DONE | Windows/VS mixed-solution wrappers load via NuGet JavaScript SDK `1.0.3982316`; backend `.slnf` remains the canonical non-IDE path |
 
 ---
 
@@ -211,7 +211,7 @@ Do not change application runtime behavior in this prompt. If a new product/test
   - restore=success, build=success, test=success, coverage-summary=success, artifact upload=success (`9171046754`)
   - no failed-test annotations
   - exact TRX totals unknown without authenticated artifact download
-- Current `origin/main` `ead9f2a` is backend-equivalent (empty Api/Api.Tests/Application/Domain/Infrastructure/workflow diff)
+- Current `origin/main` `ed0d752` is backend-equivalent (empty Api/Api.Tests/Application/Domain/Infrastructure/workflow diff vs `f1f5a17`)
 - Local Windows `CI=true` suite: 829 total / 797 passed / 32 failed; all 32 are Testcontainers Docker-not-running, not a product family
 - `BCI01` DONE
 - Next: `BCI06`
@@ -418,6 +418,7 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 
 - Date: 2026-08-13
 - Status: DONE
+- Completion: 90%
 - Changed files:
   - `Api.Tests/AnalyticsReportsContractTests.cs`
   - `Api.Tests/CachedAnalyticsFailureContractTests.cs`
@@ -429,7 +430,6 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
   - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
   - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
   - `MASTER_ROADMAP.md`
-- Implementation SHA: `469acbf3177b7ed09e078638e23eb3151e802740`
 - Contract/runtime behavior changed: no
 - Checks run:
   - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
@@ -437,7 +437,13 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 - Checks not run:
   - full `Api.Tests` suite
   - GitHub Actions (owned by BCI05)
-- Remaining risk: current-main GHA is still the previous red build until BCI05 records a new run that includes `469acbf`
+- Run log: `.ai/runs/2026-08-13-BCI09-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `469acbf3177b7ed09e078638e23eb3151e802740`
+- Main verification: historical BCI09 close recorded `469acbf3177b7ed09e078638e23eb3151e802740` as the landed main SHA at closure time; current main may advance later.
+- Missed: green GitHub Actions proof is not part of BCI09 and remains owned by `BCI05`
+- Follow-up: `BCI05`
+- Residual risk: current-main GHA is still the previous red build until BCI05 records a new run that includes `469acbf`
 - Next: `BCI05`
 - Prompt defect / scope repair: stub implementation landed in `469acbf` on local main during this session; this note records verification and queue closure rather than a second code change
 
@@ -446,13 +452,13 @@ Do not change production cache classes, `CachedAnalyticsEndpoints.cs`, workflow 
 ## BCI06 - Verify Windows and Visual Studio mixed-solution compatibility
 
 Status: DONE
-Completed after: `BCI01` DONE and verified again on 2026-08-14 in the current Windows agent
+Ready after: `BCI01` DONE, or earlier only when a Windows/Visual Studio-capable environment is explicitly available without delaying P0 backend assertion repair
 Priority: P2
 Type: build-system/evidence
 Feature family: mixed-solution-windows-compatibility
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/BCI06-<agent>.lock.md`
+Owner: Cursor
+Local lock: removed after DONE
 Commit suggestion: `test(build): verify visual studio solution compatibility`
 
 ### Problem
@@ -514,46 +520,25 @@ Do not change application business logic, npm dependencies or backend test expec
 
 ### Notes (current execution)
 
-- Date: 2026-08-11
-- Owner switched to `Codex` for the final `BCI05` execution pass on the current `main` worktree
-- Local lock: `.ai/task-locks/BCI05-codex.lock.md`
-- Immediate plan: re-run targeted sanity checks, then execute the full local backend suite, and only then commit/push for green GitHub Actions evidence
+- Date: 2026-08-13
+- Owner: Cursor
+- Local lock: `.ai/task-locks/BCI06-cursor.lock.md` (uncommitted; removed before commit)
+- Same-owner routing repair: `BCI05`/`BCI01` marked DONE from existing GHA `31674533356` because `origin/main` never received close commit `cc874eb`
 
 ### Notes (current execution result)
 
-- Date: 2026-08-11
-- Evidence report: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_CODEX_REENTRY.md`
-- Local exact BCI05 sequence: restore=success, build=success, test=success
-- Local suite totals: 809 total / 809 passed / 0 failed
-- Coverage pipeline gap closed locally: `Api.Tests/coverage.runsettings` now emits Cobertura-only output and produced `TestResults/75b4a260-31d7-43b6-b31f-b4a2540166a7/coverage.cobertura.xml`
-- Focused corroboration on the same worktree: `AnalyticsActionItemServiceTests` 36/36, `AnalyticsActionsPage.spec.tsx` 14/14, `npm run build` success, `npm run check:analytics-guardrails` success
-- GHA proof is still pending commit/push from this worktree
-- Next: commit/push current worktree, capture green `analytics-tests` run/job IDs, then close `BCI05` and `BCI01` with remote evidence
+- Date: 2026-08-13
+- Evidence: `docs/qa/BACKEND_CI_BCI06_WINDOWS_EVIDENCE_2026-08-13.md`
+- Run log: `.ai/runs/2026-08-13-BCI06-evidence.md`
+- Mixed-solution Windows support is observed: both `.esproj` wrappers restore/build through `Microsoft.VisualStudio.JavaScript.Sdk/1.0.3982316` with 0 errors
+- Canonical backend path `Trendplus2.Backend.slnf` restore/build remains green
+- Independent POS `npm run build` pass; React production build was proven through `dotnet build Klijent/Klijent.esproj` (same `tsc -b && vite build` script)
+- `vswhere -requires Microsoft.VisualStudio.Workload.Node` and `ComponentGroup.WebToolsExtensions.JavaScript` do not match this VS 2026 install; NetWeb + JavaScript project-system packages are present
+- VS MSBuild `/t:Restore` on `Klijent.esproj` hung after "no packages to restore"; `dotnet build` of the wrappers is the documented JavaScript SDK proof
+- Interactive Visual Studio GUI solution open was not used
+- Next: no remaining BCI READY; `QDB03` is the next existing-execution prompt in `MASTER_ROADMAP.md`
 
 ### Dependencies
 
 - BCI03 implementation already present
 - Windows/Visual Studio-capable verification environment
-
-### Completion note
-
-- Date: 2026-08-14
-- Status: DONE
-- Changed files:
-  - `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
-  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
-  - `MASTER_ROADMAP.md`
-  - `.ai/runs/2026-08-14-BCI06-evidence.md`
-- Contract/runtime behavior changed: no
-- Checks run:
-  - `node scripts/check-javascript-sdk-pins.mjs` - pass
-  - `dotnet restore Trendplus2.sln --force` - pass
-  - `dotnet build Klijent/Klijent.esproj` - pass
-  - `dotnet build Trendplus.POS.Ui/Trendplus.POS.Ui.esproj` - pass
-  - `cd Klijent/clientapp && npm run build` - pass
-  - `cd Trendplus.POS.Ui && npm run build` - pass
-- Checks not run:
-  - Visual Studio GUI open - not run; the documented `dotnet build` equivalent exercised the JavaScript SDK project system
-- Remaining risk: none known on this verification path; Linux backend CI stays isolated from `.esproj` loading
-- Next: `QDB03` in `MASTER_ROADMAP.md`
-- Prompt defect / scope repair: live queue text still pointed at BCI06 after the proof already existed; this pass reconciles the live status to DONE

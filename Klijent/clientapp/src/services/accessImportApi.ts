@@ -175,6 +175,14 @@ function buildFormData(file: File | null, options?: { useRootFile?: boolean; inc
     return fd;
 }
 
+function adminHeaders(adminKey?: string): HeadersInit {
+    const headers: Record<string, string> = {};
+    if (adminKey?.trim()) {
+        headers["X-Admin-Key"] = adminKey.trim();
+    }
+    return headers;
+}
+
 export async function previewAccessImport(file: File | null, useRootFile = false): Promise<AccessImportPreviewResponse> {
     const res = await fetch(apiUrl("/api/access-import/preview"), {
         method: "POST",
@@ -203,6 +211,7 @@ export async function runAccessImport(
 export async function getAccessImportBatches(
     take = 20,
     reason = "unspecified",
+    adminKey?: string,
 ): Promise<AccessImportBatchDto[]> {
     if (batchesInFlightPromise) {
         console.debug(`${BATCHES_DEBUG_PREFIX} request deduped`, { reason, take });
@@ -216,7 +225,7 @@ export async function getAccessImportBatches(
 
     const requestPromise = (async () => {
         try {
-            const res = await fetchWithTimeout(url, undefined, API_COLD_START_TIMEOUT_MS);
+            const res = await fetchWithTimeout(url, { headers: adminHeaders(adminKey) }, API_COLD_START_TIMEOUT_MS);
             if (!res.ok) throw new Error(await parseError(res));
             const rows = (await res.json()) as AccessImportBatchDto[];
             const durationMs = Math.round(performance.now() - startedAt);
@@ -257,11 +266,15 @@ export async function getAccessImportBatches(
     return requestPromise;
 }
 
-export async function getAccessImportBatchDetail(batchId: number, logTake = 200, severity?: string): Promise<BatchDetailDto> {
+export async function getAccessImportBatchDetail(batchId: number, logTake = 200, severity?: string, adminKey?: string): Promise<BatchDetailDto> {
     const params = new URLSearchParams({ logTake: String(logTake) });
     if (severity) params.set("severity", severity);
     try {
-        const res = await fetchWithTimeout(apiUrl(`/api/access-import/batches/${batchId}?${params}`), undefined, API_COLD_START_TIMEOUT_MS);
+        const res = await fetchWithTimeout(
+            apiUrl(`/api/access-import/batches/${batchId}?${params}`),
+            { headers: adminHeaders(adminKey) },
+            API_COLD_START_TIMEOUT_MS,
+        );
         if (!res.ok) throw new Error(await parseError(res));
         return res.json();
     } catch (error) {
@@ -277,14 +290,16 @@ export async function getAccessImportBatchDetail(batchId: number, logTake = 200,
 
 export async function getAccessImportBatchLogs(
     batchId: number,
-    opts?: { severity?: string; tableName?: string; skip?: number; take?: number }
+    opts?: { severity?: string; tableName?: string; skip?: number; take?: number; adminKey?: string }
 ): Promise<AccessImportLogDto[]> {
     const params = new URLSearchParams();
     if (opts?.severity) params.set("severity", opts.severity);
     if (opts?.tableName) params.set("tableName", opts.tableName);
     if (opts?.skip !== undefined) params.set("skip", String(opts.skip));
     if (opts?.take !== undefined) params.set("take", String(opts.take));
-    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/logs?${params}`));
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/logs?${params}`), {
+        headers: adminHeaders(opts?.adminKey),
+    });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
@@ -341,20 +356,28 @@ export async function deleteAccessImportBatch(
     return res.json();
 }
 
-export async function cancelAccessImportBatch(batchId: number): Promise<CancelBatchResult> {
-    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/cancel`), { method: "POST" });
+export async function cancelAccessImportBatch(batchId: number, adminKey?: string): Promise<CancelBatchResult> {
+    const res = await fetch(apiUrl(`/api/access-import/batches/${batchId}/cancel`), {
+        method: "POST",
+        headers: adminHeaders(adminKey),
+    });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
 
-export async function getAccessImportRuntimeStatus(): Promise<AccessImportRuntimeStatusResponse> {
-    const res = await fetch(apiUrl("/api/access-import/runtime-status"));
+export async function getAccessImportRuntimeStatus(adminKey?: string): Promise<AccessImportRuntimeStatusResponse> {
+    const res = await fetch(apiUrl("/api/access-import/runtime-status"), {
+        headers: adminHeaders(adminKey),
+    });
     if (!res.ok) throw new Error(await parseError(res));
     return res.json();
 }
 
-export async function previewCleanupNonAccess(): Promise<Record<string, number>> {
-    const res = await fetch(apiUrl("/api/access-import/cleanup/preview"), { method: "POST" });
+export async function previewCleanupNonAccess(adminKey?: string): Promise<Record<string, number>> {
+    const res = await fetch(apiUrl("/api/access-import/cleanup/preview"), {
+        method: "POST",
+        headers: adminHeaders(adminKey),
+    });
     if (!res.ok) throw new Error(await parseError(res));
     const body = await res.json();
     return body?.preview ?? {};

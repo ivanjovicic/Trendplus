@@ -28,22 +28,28 @@ public sealed class DocumentUserContextAccessor : IDocumentUserContextAccessor
     {
         var httpContext = _httpContextAccessor.HttpContext;
         var user = httpContext?.User;
-        var userId = user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst("user_id")?.Value
-            ?? httpContext?.Request.Headers["X-User-Id"].FirstOrDefault()
-            ?? "anonymous";
-        var userName = user?.Identity?.Name
-            ?? httpContext?.Request.Headers["X-User-Name"].FirstOrDefault()
-            ?? userId;
-        var roles = user?.FindAll("role").Select(claim => claim.Value).ToArray()
-            ?? httpContext?.Request.Headers["X-User-Roles"].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            ?? new[] { "AnalyticsExport" };
+        var isAuthenticated = user?.Identity?.IsAuthenticated == true;
+
+        // Unauthenticated X-User-* headers are not an identity source. They must not
+        // grant export/generate privilege or impersonate another operator.
+        var userId = isAuthenticated
+            ? user!.FindFirst("sub")?.Value
+                ?? user.FindFirst("user_id")?.Value
+                ?? user.Identity?.Name
+                ?? "authenticated"
+            : "anonymous";
+        var userName = isAuthenticated
+            ? user!.Identity?.Name ?? userId
+            : "anonymous";
+        var roles = isAuthenticated
+            ? user!.FindAll("role").Select(claim => claim.Value).ToArray()
+            : Array.Empty<string>();
 
         return new DocumentExecutionContext
         {
             UserId = userId,
             UserName = userName,
-            Roles = roles.Length == 0 ? new[] { "AnalyticsExport" } : roles,
+            Roles = roles,
             CorrelationId = httpContext?.TraceIdentifier,
             IpAddress = httpContext?.Connection.RemoteIpAddress?.ToString(),
             UserAgent = httpContext?.Request.Headers.UserAgent.ToString()

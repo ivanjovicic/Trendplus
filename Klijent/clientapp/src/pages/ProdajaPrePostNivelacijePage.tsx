@@ -349,10 +349,21 @@ function averageNullable(values: Array<number | null | undefined>): number | nul
   return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
 }
 
-function buildConfidenceMeta(reliabilityPct: number): { label: string; tone: ConfidenceTone } {
-  if (reliabilityPct >= 70) return { label: "Visoko", tone: "strong" };
-  if (reliabilityPct >= MEDIUM_SIGNAL_RELIABILITY_PCT) return { label: "Srednje", tone: "watch" };
-  return { label: "Nisko", tone: "weak" };
+function buildConfidenceMeta(
+  reliabilityPct: number | null,
+  reliabilityAvailable: boolean,
+): { label: string; tone: ConfidenceTone } {
+  if (!reliabilityAvailable || reliabilityPct == null) {
+    return { label: "Nije dostupno", tone: "watch" };
+  }
+
+  const tone: ConfidenceTone =
+    reliabilityPct >= 70
+      ? "strong"
+      : reliabilityPct >= MEDIUM_SIGNAL_RELIABILITY_PCT
+        ? "watch"
+        : "weak";
+  return { label: fmtPct(reliabilityPct, 0), tone };
 }
 
 function buildVolatilityMeta(currentRevenue: number, previousRevenue: number | null): {
@@ -612,7 +623,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
       const normalizedReliabilityPct = recommendationReliabilityPct ?? 0;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
-      const confidence = buildConfidenceMeta(normalizedReliabilityPct);
+      const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
       const volatility = previousComparisonError
         ? { pct: null, label: "Nedostupno", tone: "neutral" as const }
         : buildVolatilityMeta(item.postRevenue, previousPostRevenue);

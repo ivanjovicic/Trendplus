@@ -209,6 +209,123 @@ public sealed class DecisionBoardAggregationContractTests
         Assert.Empty(impact.Cards);
     }
 
+    [Fact]
+    public void BuildResponse_FixDataDoesNotPromoteLostSalesEstimateToExpectedImpact()
+    {
+        var response = Build(BuildProductResponse(
+            ProductRow(
+                productId: 601,
+                sourceKey: "product:601",
+                expectedImpactRsd: null,
+                confidenceLevel: "insufficient_data",
+                confidenceScore: null,
+                dataQualityStatus: "critical",
+                recommendationStatus: "FIX_DATA",
+                warningCodes: ["missing_cost"],
+                lostSalesEstimate: 42_000m,
+                recommendationLabel: "Proveri podatke",
+                recommendedAction: "Ispravi dobavljača, nabavnu cenu ili kategoriju pre odluke.")));
+
+        var card = Assert.Single(
+            response.Sections
+                .SelectMany(section => section.Cards)
+                .Where(item => item.Kind == "product")
+                .GroupBy(item => item.Id)
+                .Select(group => group.First()));
+
+        Assert.Null(card.ExpectedImpactRsd);
+        Assert.Equal(0m, card.ImpactScore);
+        Assert.DoesNotContain("FIX_DATA", card.RecommendedNextAction, StringComparison.Ordinal);
+        Assert.Equal("Ispravi dobavljača, nabavnu cenu ili kategoriju pre odluke.", card.RecommendedNextAction);
+
+        var impact = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
+        Assert.Empty(impact.Cards);
+    }
+
+    [Fact]
+    public void BuildResponse_EmptyPdcRows_IsSuccessfulEmptyBoard_NotFakeHealthyZeroImpact()
+    {
+        var emptyPdc = new ProductDecisionCenterResponseDto
+        {
+            GeneratedAtUtc = GeneratedAtUtc,
+            PeriodFromUtc = PeriodFromUtc,
+            PeriodToUtc = PeriodToUtc,
+            TotalRows = 0,
+            AnalyzedRows = 0,
+            Summary = new ProductDecisionCenterSummaryDto(),
+            Rows = [],
+            Meta = new AnalyticsResponseMetaDto
+            {
+                Success = true,
+                DataQualityStatus = "insufficient_data",
+                EmptyReason = "no_rows_for_period",
+                GeneratedAtUtc = GeneratedAtUtc
+            }
+        };
+
+        var response = Build(emptyPdc);
+
+        Assert.Equal(7, response.Sections.Count);
+        Assert.All(response.Sections, section => Assert.Empty(section.Cards));
+        Assert.NotNull(response.Meta);
+        Assert.True(response.Meta!.Success);
+        Assert.Equal("no_board_data", response.Meta.EmptyReason);
+        Assert.Equal("insufficient_data", response.Meta.DataQualityStatus);
+        Assert.False(response.Meta.IsPartial);
+        Assert.DoesNotContain(
+            response.Sections.SelectMany(section => section.Cards),
+            card => card.ExpectedImpactRsd == 0m);
+    }
+
+    [Fact]
+    public void BuildResponse_DoesNotSurfaceStatusFieldsAsWarningCodes()
+    {
+        var actions = new List<AnalyticsActionItem>
+        {
+            Action(
+                id: 21,
+                sourceType: "product",
+                sourceKey: "product:201",
+                status: AnalyticsActionConstants.Statuses.Accepted,
+                expectedImpactRsd: 12_000m,
+                dataQualityStatus: "warning",
+                outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Pending)
+        };
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc: GeneratedAtUtc,
+            periodFromUtc: PeriodFromUtc,
+            periodToUtc: PeriodToUtc,
+            lastRefreshAtUtc: GeneratedAtUtc,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: null,
+            supplierSummary: null,
+            actions,
+            outcomeSummary: null,
+            refreshStatus: new AnalyticsRefreshStatusDto
+            {
+                DataFreshnessStatus = "stale",
+                GeneratedAtUtc = GeneratedAtUtc
+            },
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var actionCard = Assert.Single(response.Sections.Single(section => section.Key == "actionsDecision").Cards);
+        Assert.Equal("warning", actionCard.DataQualityStatus);
+        Assert.DoesNotContain("warning", actionCard.WarningCodes);
+
+        var outcomeCard = Assert.Single(response.Sections.Single(section => section.Key == "actionsOutcome").Cards);
+        Assert.DoesNotContain(AnalyticsActionConstants.OutcomeStatuses.Pending, outcomeCard.WarningCodes);
+
+        var refreshCard = Assert.Single(response.Sections.Single(section => section.Key == "blockers").Cards.Where(card => card.Id == "blocker-refresh"));
+        Assert.Equal("stale", refreshCard.DataQualityStatus);
+        Assert.DoesNotContain("stale", refreshCard.WarningCodes);
+    }
+
     private static DecisionBoardAggregateResponseDto Build(
         ProductDecisionCenterResponseDto? productDecisionCenter,
         IReadOnlyList<AnalyticsActionItem>? actions = null,
@@ -272,7 +389,10 @@ public sealed class DecisionBoardAggregationContractTests
         int? confidenceScore,
         string dataQualityStatus,
         string recommendationStatus,
-        IReadOnlyList<string>? warningCodes = null)
+        IReadOnlyList<string>? warningCodes = null,
+        decimal? lostSalesEstimate = null,
+        string? recommendationLabel = null,
+        string? recommendedAction = null)
     {
         return new ProductDecisionCenterRowDto
         {
@@ -294,7 +414,7 @@ public sealed class DecisionBoardAggregationContractTests
             StockGap = recommendationStatus == "REPLENISH" ? 5 : 0,
             DaysSinceLastSale = confidenceScore.HasValue ? 2 : null,
             TrendPct = confidenceScore.HasValue ? 12m : null,
-            LostSalesEstimate = expectedImpactRsd ?? 0m,
+            LostSalesEstimate = lostSalesEstimate ?? expectedImpactRsd ?? 0m,
             SlowStockCapital = 0m,
             DataQualityStatus = dataQualityStatus,
             ConfidenceLevel = confidenceLevel,
@@ -302,7 +422,7 @@ public sealed class DecisionBoardAggregationContractTests
             ConfidencePct = confidenceScore ?? 0,
             ReliabilityPct = confidenceScore ?? 0,
             RecommendationStatus = recommendationStatus,
-            RecommendationLabel = recommendationStatus,
+            RecommendationLabel = recommendationLabel ?? recommendationStatus,
             RecommendationReason = $"Razlog za {productId}",
             ReasonCodes = warningCodes?.ToList() ?? [],
             WarningCodes = warningCodes?.ToList() ?? [],
@@ -312,7 +432,8 @@ public sealed class DecisionBoardAggregationContractTests
             RiskIfIgnored = $"Rizik za {productId}",
             ExplainabilityText = $"Objašnjenje za {productId}",
             InputFreshnessStatus = confidenceScore.HasValue ? "fresh" : "critical",
-            RecommendedAction = recommendationStatus == "REPLENISH" ? "Dopuni" : "Proveri"
+            RecommendedAction = recommendedAction
+                ?? (recommendationStatus == "REPLENISH" ? "Dopuni" : "Proveri")
         };
     }
 
@@ -321,7 +442,9 @@ public sealed class DecisionBoardAggregationContractTests
         string sourceType,
         string sourceKey,
         string status,
-        decimal? expectedImpactRsd = null)
+        decimal? expectedImpactRsd = null,
+        string? dataQualityStatus = null,
+        string? outcomeStatus = null)
     {
         return new AnalyticsActionItem
         {
@@ -335,6 +458,8 @@ public sealed class DecisionBoardAggregationContractTests
             Priority = AnalyticsActionConstants.Priorities.P1,
             Status = status,
             ExpectedImpactRsd = expectedImpactRsd,
+            DataQualityStatus = dataQualityStatus,
+            OutcomeStatus = outcomeStatus,
             CreatedAtUtc = GeneratedAtUtc.AddDays(-2),
             UpdatedAtUtc = GeneratedAtUtc.AddDays(-1),
             DueAtUtc = GeneratedAtUtc.AddDays(3)

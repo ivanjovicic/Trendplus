@@ -92,8 +92,8 @@ Anonymous analytics reads are **de facto intentional** for the current SPA pilot
 | Surface | Current | Phase 1 target | Risk | Tests |
 |---|---|---|---|---|
 | `/api/analytics/reports/*` | None | Open read for pilot OR Admin-key if report contains customer-sensitive ops detail | P1 | none auth |
-| Inventory export / print / schedule run | None at endpoint; document context accessor | Do **not** treat header roles as auth | P0 spoof | none auth |
-| `/api/documents/*`, `/api/exports*` | Document role/ownership + signed download; defaults `anonymous` + role `AnalyticsExport`; accepts `X-User-*` headers | Phase 1: document that header roles are **not** authentication; follow-up task must stop trusting unauthenticated headers for generate | P0 | none AdminAccess |
+| Inventory export / print / schedule run | **Admin-key** (`AdminAccessControl`, STAB12) | Do **not** treat header roles as auth | P0 spoof | `DocumentExportAuthorizationTests` |
+| `/api/documents/*`, `/api/exports*` | **Admin-key** for generate/list/status; signed download token for GET document/print | Header roles are **not** authentication | P0 | `DocumentSecurityTests`, `DocumentExportAuthorizationTests` |
 
 Evidence: `Infrastructure/Services/Documents/DocumentSecurityServices.cs` (`DocumentUserContextAccessor`).
 
@@ -101,8 +101,8 @@ Evidence: `Infrastructure/Services/Documents/DocumentSecurityServices.cs` (`Docu
 
 | Surface | Current | Phase 1 target | Tests |
 |---|---|---|---|
-| GET runtime-status, batches/jobs, logs | None | **Admin-key** (sensitive ops reads) → STAB04-adjacent / import follow-up | limited |
-| `POST cleanup/preview`, `GET cleanup/archive`, archive export | None | **Admin-key** | none |
+| GET runtime-status, batches/jobs, logs | **Admin-key** (STAB10) | **Admin-key** | `AccessImportAdminAuthorizationTests` |
+| `POST cleanup/preview`, `GET cleanup/archive`, archive export | **Admin-key** (STAB10) | **Admin-key** | `AccessImportAdminAuthorizationTests` |
 | cancel, enqueue, delete, cleanup execute, restore, `/run`, jobs start | `AdminAccessControl` | Keep | `AccessImportAdminAuthorizationTests`, `AccessImportRunEndpointTests` |
 
 ### 3.6 Workers / admin / config / logs / redis
@@ -113,7 +113,7 @@ Evidence: `Infrastructure/Services/Documents/DocumentSecurityServices.cs` (`Docu
 | Worker start/stop/restart/schedule + control enable/disable | `AdminAccessControl` | Keep | `WorkerConfigurationEndpointsTests` |
 | `GET /api/admin/pending-batches`, `/health-check`, `/audit-log`, `/workers/list`, `/workers/{name}` | **Admin-key** (`AdminAccessControl`, STAB04) | **Admin-key** | tests: `AdminConfigOperationalReadsAuthorizationTests` |
 | Admin requeue / stale recovery / demo-verification / worker writes | `AdminAccessControl` | Keep | demo-verification, repair, backend-routing suites |
-| `GET /api/logs`, `/api/logs/{id}`, `/errors` | None | Admin-key (P0 info exposure) | none |
+| `GET /api/logs`, `/api/logs/{id}`, `/errors` | **Admin-key** (`AdminAccessControl`, STAB11) | **Admin-key** | `LogsOperationalReadsAuthorizationTests` |
 | `DELETE /api/logs/clear` | `AdminAccessControl` | Keep | none dedicated |
 | `GET /api/redis/status` | None | Admin-key | none |
 | `POST /api/redis/toggle` | `AdminAccessControl` | Keep | none dedicated |
@@ -166,8 +166,8 @@ Reasons:
 |---|---|---|---|
 | 1 | **STAB04** | Admin operational reads | **DONE** — gated with `AdminAccessControl` + `AdminConfigOperationalReadsAuthorizationTests` |
 | 2 | Import read/cleanup preview follow-up | Access-import sensitive reads | Gate cleanup preview/archive export + batch list if still public |
-| 3 | Logs read follow-up | `/api/logs*` | Gate reads; keep clear already gated |
-| 4 | Document header trust follow-up | Documents/exports | Stop trusting unauthenticated `X-User-*` for generate privilege |
+| 3 | **STAB11** | Logs read follow-up | **DONE** — gated `/errors`, `/api/logs`, `/api/logs/{id}` with `AdminAccessControl` + `LogsOperationalReadsAuthorizationTests` |
+| 4 | **STAB12** | Document header trust follow-up | **DONE** — unauthenticated `X-User-*` headers no longer grant generate/list/export privilege; generate uses admin-key; download/print keep signed tokens |
 | 5 | Helper consolidation | Cache invalidate | Remove duplicate key check; call shared `AdminAccessControl` |
 | 6 | External identity (later) | Auth pipeline | Only after owner picks IdP; then map Analyst/Manager/Admin |
 

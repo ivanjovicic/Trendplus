@@ -1,4 +1,4 @@
-# Analytics Reliability Prompt Priority Review
+﻿# Analytics Reliability Prompt Priority Review
 
 Date: 2026-06-28
 Routing reviewed: 2026-08-10
@@ -19,15 +19,17 @@ Primary goals:
 
 ## Reviewed queues
 
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ12
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ13 + RQ106 + RQ106
 - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` - Q69-Q82
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md` - RQ13-RQ24
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` - RQ25-RQ38
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md` - RQ39-RQ50
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` - RQ51-RQ63
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` - RQ64-RQ71 + RQ89 + RQ96-RQ98
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md` - RQ72-RQ80
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md` - RQ81-RQ88 + RQ90
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` - RQ100-RQ104 (`RQ100`-`RQ104` DONE)
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
 - `docs/ai/ANALYTICS_WAITING_PROMPTS_EXECUTION_PREP.md`
@@ -50,12 +52,14 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 
 The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
 
-1. `RQ89`–`RQ95`, `BCI08`, `BCI09`, `BCI05`, and `BCI01` are DONE.
-2. Green GHA run `31674533356` / job `94366108914` on `f1f5a17` closed the backend suite gate.
-3. Remaining RQ WAITING prompts stay owner-gated; they are not auto-promoted.
-4. If a later backend commit turns `analytics-tests` red, create/reuse one focused prompt; do not weaken tests.
+1. `RQ89`–`RQ95`, `BCI08`, and `BCI09` are DONE.
+2. `BCI05` is READY: local `Api.Tests` Release build is restored on `469acbf`. Capture green GHA on a commit that includes that stub fix.
+3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
+4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
+5. Post-BCI inventory-foundation prompt `RQ96` is READY after owner promotion 2026-08-18. `RQ97`-`RQ98` remain WAITING.
+6. Routing update 2026-08-18: `MASTER_ROADMAP.md` is authoritative. Sequential refill is complete. Current execution is `RQ96`. Parallel-safe planning READYs are `OBS10` and `RL10`. `PERF16` is BLOCKED on `MT10`. Do not revive `RQ89`/`RQ90` as READY.
 
-Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`, `.ai/runs/2026-08-13-BCI05-evidence.md`
+Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
 
 ## Global execution lanes
 
@@ -257,12 +261,13 @@ Next prompt:
 
 The queues are strong enough for agent execution, but current routing is not the old generic lane order. Close the BCI04-derived assertion sequence first: `RQ89` -> `RQ90` -> full backend suite/GitHub Actions evidence. After that, return to the general lane order and owner-gated promotions.
 
-### Current next runnable pointers (2026-08-10)
+### Current next runnable pointers (2026-08-13)
 
-- Backend CI: `BCI01` remains PARTIAL; its remaining assertion repair is delegated to the analytics prompts below.
-- Analytics correctness: `RQ89` READY in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`.
-- Next after RQ89: promote `RQ90` in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`.
-- After RQ90: run the full backend suite and GitHub Actions evidence; only then reconsider `BCI01` DONE.
-- Premium UI: `P-UI-07` remains supplemental/path-safe only.
+The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
+
+- Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
+- Analytics correctness: current RQ READY is `RQ96`. `RQ105` DONE. `RQ106` Decision Pulse is WAITING after `RQ96`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution is `RQ96`.
+- Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

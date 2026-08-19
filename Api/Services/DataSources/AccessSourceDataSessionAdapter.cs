@@ -35,6 +35,9 @@ public sealed class AccessSourceDataSessionAdapter : ISourceDataSession
         Cancellation: true,
         Cdc: false);
 
+    public Task TestConnectionAsync(CancellationToken ct = default)
+        => _inner.GetTablesAsync(includeTemporaryTables: false, ct);
+
     public Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default)
         => _inner.GetTablesAsync(includeTemporaryTables, ct);
 

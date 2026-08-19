@@ -43,6 +43,7 @@ const ACTIVE_QUEUE_FILES = [
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md",
   "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md",
+  "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md",
   "docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md",
   "docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md",
   "docs/ai/MULTITENANCY_PROMPT_QUEUE.md",
@@ -58,6 +59,24 @@ const CURRENT_READY_RE = /^Current READY prompt:\s*(.+)$/im;
 const FEATURE_FAMILY_RE = /^Feature family:\s*(.+)$/im;
 const PARALLEL_SAFE_RE = /^Parallel-safe:\s*(.+)$/im;
 const PRIORITY_RE = /^Priority:\s*(.+)$/im;
+const COMPLETION_NOTE_RE = /^### Completion note\b[^\n]*$/im;
+const COMPLETION_FIELD_RE = /^-\s+([^\r\n:]+):\s*(.*)$/gm;
+const STRICT_COMPLETION_ADOPTION_DATE = "2026-08-13";
+const STRICT_COMPLETION_REQUIRED_FIELDS = [
+  "Date",
+  "Status",
+  "Completion",
+  "Changed files",
+  "Checks run",
+  "Checks not run",
+  "Run log",
+  "Delivery mode",
+  "Main commit SHA",
+  "Main verification",
+  "Missed",
+  "Follow-up",
+  "Residual risk",
+];
 
 function normalizeStatus(raw) {
   return String(raw ?? "")
@@ -91,11 +110,15 @@ function parseTasks(content, filePath) {
     const line = lines[i];
     const header = line.match(new RegExp(`^##\\s+(${TASK_ID_PATTERN})\\b`));
     if (header) {
-      if (current) tasks.push(current);
+      if (current) {
+        current.endLine = i;
+        tasks.push(current);
+      }
       current = {
         id: header[1],
         file: filePath,
         headerLine: i + 1,
+        endLine: lines.length,
         status: null,
         statusLine: null,
         featureFamily: null,
@@ -136,6 +159,57 @@ function parseTasks(content, filePath) {
   return tasks;
 }
 
+function parseIsoDate(value) {
+  const match = String(value ?? "").match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  return match ? match[1] : null;
+}
+
+function isStrictCompletionNoteDate(dateText) {
+  return dateText != null && dateText >= STRICT_COMPLETION_ADOPTION_DATE;
+}
+
+function validateCompletionNote(task, lines) {
+  const errors = [];
+  const sectionLines = lines.slice(task.headerLine, task.endLine);
+  const sectionText = sectionLines.join("\n");
+  const completionMatch = sectionText.match(COMPLETION_NOTE_RE);
+  if (!completionMatch) return errors;
+
+  const completionStartOffset = sectionText.slice(0, completionMatch.index).split(/\r?\n/).length;
+  const completionStartLine = task.headerLine + completionStartOffset;
+  const completionText = sectionText.slice(completionMatch.index);
+  const fields = new Map();
+
+  for (const match of completionText.matchAll(COMPLETION_FIELD_RE)) {
+    fields.set(match[1].trim(), match[2].trim());
+  }
+
+  const dateValue = parseIsoDate(fields.get("Date"));
+  if (!isStrictCompletionNoteDate(dateValue)) {
+    return errors;
+  }
+
+  for (const field of STRICT_COMPLETION_REQUIRED_FIELDS) {
+    const value = fields.get(field);
+    if (value == null || value.length === 0) {
+      errors.push(`${task.file}:${completionStartLine}: strict completion note for '${task.id}' is missing '${field}:'`);
+    }
+  }
+
+  const runLogValue = fields.get("Run log");
+  if (runLogValue) {
+    const isDurableLog = /\.ai\/runs\/\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]+-evidence\.md\b/.test(runLogValue);
+    const isFallback = /^fallback\b.+/i.test(runLogValue);
+    if (!isDurableLog && !isFallback) {
+      errors.push(
+        `${task.file}:${completionStartLine}: strict completion note for '${task.id}' has invalid 'Run log:' value '${runLogValue}'`,
+      );
+    }
+  }
+
+  return errors;
+}
+
 function collectStatusLines(content, filePath) {
   const findings = [];
   const lines = content.split(/\r?\n/);
@@ -152,6 +226,7 @@ function validateQueueFile(filePath, content) {
   const errors = [];
   const tasks = parseTasks(content, filePath);
   const statuses = collectStatusLines(content, filePath);
+  const lines = content.split(/\r?\n/);
 
   for (const entry of statuses) {
     if (UNSUPPORTED_STATUSES.has(entry.status) || !ALLOWED_STATUSES.has(entry.status)) {
@@ -205,6 +280,10 @@ function validateQueueFile(filePath, content) {
         );
       }
     }
+  }
+
+  for (const task of tasks) {
+    errors.push(...validateCompletionNote(task, lines));
   }
 
   return { errors, tasks };
@@ -314,6 +393,11 @@ function runSelfTest() {
     if (!openResult.errors.some((error) => error.includes("unsupported status 'OPEN'"))) {
       failures.push("expected unsupported OPEN failure with file:line");
     }
+    writeFixture(
+      tmpRoot,
+      "docs/ai/NEXT_PROMPT_QUEUE.md",
+      `# Queue\nCurrent READY prompt: none\n`,
+    );
 
     writeFixture(
       tmpRoot,
@@ -358,6 +442,26 @@ function runSelfTest() {
     const genAiConflict = validateRoot(tmpRoot);
     if (!genAiConflict.errors.some((error) => error.includes("GenAI task 'GAI01'"))) {
       failures.push("expected GenAI gate conflict while STAB P0 READY remains");
+    }
+
+    writeFixture(
+      tmpRoot,
+      "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
+      `# Stab\nCurrent READY prompt: none\n\n## STAB10 - Strict note\n\nStatus: DONE\nPriority: P0\nFeature family: strict-completion\nParallel-safe: no\n\n### Completion note\n\n- Date: 2026-08-13\n- Status: DONE\n- Completion: 100%\n- Changed files: docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md\n- Checks run: node scripts/check-prompt-queues.mjs\n- Checks not run: none\n- Run log: .ai/runs/2026-08-13-STAB10-evidence.md\n- Delivery mode: direct-main\n- Main commit SHA: 1234567890abcdef1234567890abcdef12345678\n- Main verification: git rev-parse origin/main -> 1234567890abcdef1234567890abcdef12345678\n- Missed: none known\n- Follow-up: none\n- Residual risk: none known\n`,
+    );
+    const strictValid = validateRoot(tmpRoot);
+    if (strictValid.errors.length > 0) {
+      failures.push(`strict completion sample failed:\n${strictValid.errors.join("\n")}`);
+    }
+
+    writeFixture(
+      tmpRoot,
+      "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
+      `# Stab\nCurrent READY prompt: none\n\n## STAB10 - Strict note\n\nStatus: DONE\nPriority: P0\nFeature family: strict-completion\nParallel-safe: no\n\n### Completion note\n\n- Date: 2026-08-13\n- Status: DONE\n- Completion: 100%\n- Changed files:\n- Checks run:\n- Checks not run:\n- Delivery mode: direct-main\n- Main commit SHA: 1234567890abcdef1234567890abcdef12345678\n- Main verification: git rev-parse origin/main -> 1234567890abcdef1234567890abcdef12345678\n- Missed: none known\n- Follow-up: none\n- Residual risk: none known\n`,
+    );
+    const strictMissingRunLog = validateRoot(tmpRoot);
+    if (!strictMissingRunLog.errors.some((error) => error.includes("missing 'Run log:'"))) {
+      failures.push("expected strict completion note missing Run log failure");
     }
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });

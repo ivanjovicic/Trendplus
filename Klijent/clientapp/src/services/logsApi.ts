@@ -12,7 +12,18 @@ function toUtcIsoOrUndefined(value?: string): string | undefined {
     return parsed.toISOString();
 }
 
+function adminHeaders(adminKey?: string): HeadersInit {
+    const headers: Record<string, string> = {};
+    if (adminKey?.trim()) {
+        headers["X-Admin-Key"] = adminKey.trim();
+    }
+    return headers;
+}
+
 async function parseError(res: Response): Promise<string> {
+    if (res.status === 401) return "Nedostaje admin key za pregled logova.";
+    if (res.status === 403) return "Admin key nije ispravan za pregled logova.";
+
     const raw = await res.text().catch(() => "");
     if (!raw) return `HTTP ${res.status}`;
 
@@ -30,7 +41,8 @@ export async function getLogs(
     level?: string,
     fromDate?: string,
     toDate?: string,
-    searchText?: string
+    searchText?: string,
+    adminKey?: string
 ): Promise<LogsResponse> {
     const params = new URLSearchParams({
         pageNumber: pageNumber.toString(),
@@ -45,10 +57,9 @@ export async function getLogs(
     if (toDateParam) params.append("toDate", toDateParam);
     if (searchText) params.append("searchText", searchText);
 
-    // Use relative path in development (proxied by Vite), absolute in production
     const url = apiUrl(`/api/logs?${params.toString()}`);
 
-    const response = await fetchWithTimeout(url, undefined, LOGS_TIMEOUT_MS);
+    const response = await fetchWithTimeout(url, { headers: adminHeaders(adminKey) }, LOGS_TIMEOUT_MS);
 
     if (!response.ok) {
         throw new Error(await parseError(response));
@@ -57,10 +68,10 @@ export async function getLogs(
     return response.json();
 }
 
-export async function getLogById(id: number): Promise<LogEntry> {
+export async function getLogById(id: number, adminKey?: string): Promise<LogEntry> {
     const url = apiUrl(`/api/logs/${id}`);
 
-    const response = await fetchWithTimeout(url, undefined, LOGS_TIMEOUT_MS);
+    const response = await fetchWithTimeout(url, { headers: adminHeaders(adminKey) }, LOGS_TIMEOUT_MS);
     if (!response.ok) {
         throw new Error(await parseError(response));
     }
@@ -84,9 +95,7 @@ export async function clearLogs(
 
     const response = await fetchWithTimeout(url, {
         method: "DELETE",
-        headers: {
-            "X-Admin-Key": adminKey,
-        },
+        headers: adminHeaders(adminKey),
     }, LOGS_TIMEOUT_MS);
 
     if (!response.ok) {
