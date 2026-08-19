@@ -88,10 +88,10 @@ Worker, import and analytics SLA contracts exist, but there is still no frozen h
 - Checks run: pending
 - Checks not run: pending
 - Run log: .ai/runs/2026-08-19-OBS10-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 5d60b43f636ea40858fe5c37ab66ce0b335699c7
+- Main verification: passed - git rev-parse origin/main -> 5d60b43f636ea40858fe5c37ab66ce0b335699c7
 - Missed: none known
 - Follow-up: none
 - Residual risk: the contract is frozen before any runtime dashboard implementation exists

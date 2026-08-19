@@ -4,9 +4,9 @@ Date: 2026-08-19
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 5d60b43f636ea40858fe5c37ab66ce0b335699c7
+Main verification: passed - git rev-parse origin/main -> 5d60b43f636ea40858fe5c37ab66ce0b335699c7
+Evidence state: synchronized
 
 ## What was done
 - Froze the operational dashboard honesty contract as a citeable docs-only layer contract.
