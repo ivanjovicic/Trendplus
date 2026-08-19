@@ -144,10 +144,10 @@ Operators can now review measurement-only statistics, but there is still no froz
 - Checks run: node scripts/check-agent-instructions.mjs --self-test; node scripts/check-agent-instructions.mjs; node scripts/check-prompt-queues.mjs --self-test; node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs --self-test; node scripts/check-planning-architecture.mjs; git diff --check
 - Checks not run: dotnet build; dotnet test; npm run check:analytics-guardrails; npm run build
 - Run log: .ai/runs/2026-08-19-RL10-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 81fda2689c348e348c18651bf0958e2816ca94f5
+- Main verification: passed - git rev-parse origin/main -> 81fda2689c348e348c18651bf0958e2816ca94f5
 - Missed: none known
 - Follow-up: OBS10 - Prepare operational dashboard honesty contract
 - Residual risk: the advisory contract is frozen before any runtime consumer exists, so implementation still needs a later backend prompt
