@@ -2314,8 +2314,8 @@ public static class DatabaseInitializer
                 ["analytics_intel.vw_inventory_risk_signals_v1", "analytics_intel.mv_inventory_risk_signals_v1_cache"]
             ),
             (
-                "Database/Analytics/Intelligence/025_inventory_snapshot_foundation_v1.sql",
-                ["analytics_intel.vw_inventory_snapshot_foundation_v1", "analytics_intel.mv_inventory_snapshot_foundation_v1_cache"]
+                "Database/Analytics/Intelligence/025_observed_inventory_daily_snapshot_v1.sql",
+                ["analytics_intel.inventory_observed_daily_snapshot", "analytics_intel.vw_inventory_daily_stock_v1"]
             ),
             (
                 "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",

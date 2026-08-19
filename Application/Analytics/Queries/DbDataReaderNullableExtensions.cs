@@ -15,4 +15,7 @@ internal static class DbDataReaderNullableExtensions
 
     public static string? GetNullableString(this DbDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+
+    public static DateTime? GetNullableDateTime(this DbDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? null : reader.GetDateTime(ordinal);
 }

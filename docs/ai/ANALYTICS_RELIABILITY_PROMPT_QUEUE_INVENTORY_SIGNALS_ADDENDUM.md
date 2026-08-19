@@ -750,6 +750,24 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 - Owner 2026-08-18 later approved and completed `QDB06` first; after that close this prompt is restored as current execution READY.
 - If source capture cannot yet produce observed snapshots reliably, finish `PARTIAL` with the exact missing source/runtime dependency.
 
+### Completion note
+
+- Date: 2026-08-19
+- Status: PARTIAL
+- Completion: first-slice observed daily snapshot table, capture function, provenance view and backend contract; SHA not yet verified on origin/main
+- Changed files: listed in `.ai/runs/2026-08-19-RQ96-evidence.md`
+- Checks run: recorded in run log
+- Checks not run: live Postgres 025 smoke unless AnalyticsConnection; frontend; full Api.Tests suite
+- Run log: .ai/runs/2026-08-19-RQ96-evidence.md
+- Evidence state: pending
+- Delivery mode: pull-request
+- Main commit SHA: pending
+- Main verification: skipped until merge
+- Missed: scheduled EOD capture worker; HTTP/UI; store-grained ProductsDim
+- Follow-up: verify SHA on origin/main then close RQ96 as DONE; `RQ97` stays WAITING
+- Residual risk: empty observed table until `capture_observed_inventory_daily` is invoked
+- Next: merge this landing PR, then SHA-verify DONE
+
 ---
 
 ## RQ97 - Forecast snapshot provenance and materializer ownership contract

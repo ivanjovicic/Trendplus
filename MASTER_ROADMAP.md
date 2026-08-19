@@ -54,6 +54,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC07` DONE = clientapp production npm audit is 0. `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, scoped dependency/security work when paths clear | SEC05 after MT09 |
 
 Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner 2026-08-20: `RQ98` DONE; Current execution READY remains `none`. Owner refill 2026-08-20 promoted/executed `DT09` + `DEX20` + `OBS11` + `STAB13` as docs DONE on main (`docs/planning/QUEUE_REFILL_2026-08-20.md`). DT10 is DONE on main. WAITING remain: `RL11`, `RQ107`. `PERF16` stays BLOCKED on `MT10`. Do not promote `MT02` or `GAI01` without the named tenant-identity or pilot-ready decision. SQL Server e2e through QDB06 checkpoints remains a commercial follow-up.
+Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner 2026-08-20: `RQ98` DONE; Current execution READY remains `none`. Owner refill 2026-08-20 promoted/executed `DT09` + `DEX20` + `OBS11` + `STAB13` as docs DONE on main (`docs/planning/QUEUE_REFILL_2026-08-20.md`). DT10 is DONE on main. WAITING remain: `RL11`, `RQ107`. `PERF16` stays BLOCKED on `MT10`. Do not promote `MT02` or `GAI01` without the named tenant-identity or pilot-ready decision. SQL Server e2e through QDB06 checkpoints remains a commercial follow-up.
 
 | # | ID | Status | Program |
 |---|---|---|---|
