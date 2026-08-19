@@ -34,6 +34,15 @@ Future planning programs:
 6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
 7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
 
+## When a queue has no READY prompt
+
+If an owner queue header says `Current READY prompt: none`:
+
+1. Do not claim a later `WAITING` prompt from that queue.
+2. Check whether the blocker is only a same-owner routing repair, such as a stale current-ready pointer, a missing completion note, or a mechanical status mismatch.
+3. If the blocker is a same-owner routing repair, make the smallest canonical metadata fix, record it in the queue completion note and durable run log, and keep the real blocked/waiting state visible.
+4. If the blocker is a real dependency, approval, tenant/security decision, or migration gate, stop and report the blocker instead of inventing readiness.
+
 ## Status model
 
 Use these statuses exactly:
