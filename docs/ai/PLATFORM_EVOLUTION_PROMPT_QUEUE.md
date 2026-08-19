@@ -13,7 +13,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
-| OBS - Observability | `OBS10` | docs/contracts - operational dashboard honesty |
+| OBS - Observability | none | docs/contracts - operational dashboard honesty |
 | SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -26,12 +26,12 @@ Only one prompt per program may be READY. These planning tasks never outrank hig
 
 ## OBS10 - Prepare operational dashboard honesty contract
 
-Status: READY
+Status: DONE
 Priority: future / planning
 Feature family: observability-dashboard-honesty
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/OBS10-<agent>.lock.md`
+Owner: Codex
+Local lock: removed after DONE
 
 ### Problem
 
@@ -77,6 +77,25 @@ Worker, import and analytics SLA contracts exist, but there is still no frozen h
 - one citeable dashboard honesty contract exists;
 - operators can tell which layers are defined vs still unknown;
 - READY pointer remains single for OBS.
+
+### Completion note
+
+- Date: 2026-08-19
+- Status: DONE
+- Completion: 100%
+- Changed files: docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, .ai/runs/2026-08-19-OBS10-evidence.md
+- Contract/runtime behavior changed: froze the operational dashboard honesty contract as a docs-only layer map with explicit unknown/warn/blocked semantics, layer ownership and no fake-green defaults
+- Checks run: pending
+- Checks not run: pending
+- Run log: .ai/runs/2026-08-19-OBS10-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known
+- Follow-up: none
+- Residual risk: the contract is frozen before any runtime dashboard implementation exists
+- Prompt defect / scope repair: none
 
 ### Dependencies
 

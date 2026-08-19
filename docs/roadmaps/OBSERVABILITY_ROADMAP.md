@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. Current queue READY: `OBS10` operational dashboard honesty contract.
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. OBS10 operational dashboard honesty contract complete — `docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md`. Current queue READY: none.
 
 ### OBS-2 - Latency SLIs
 
@@ -138,6 +138,8 @@ Create layered dashboards only after metric ownership is defined:
 6. later decision/action/outcome lifecycle.
 
 A dashboard must preserve WARN/BLOCKED/unknown states rather than defaulting to green when telemetry is absent.
+
+**Status:** OBS10 done - `docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md`.
 
 **Planning:** dashboard/alert slice order is defined in `docs/architecture/OBSERVABILITY_INSTRUMENTATION_ROLLOUT_PLAN.md` (O2-6).
 
