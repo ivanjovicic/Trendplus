@@ -4,13 +4,13 @@ Date: 2026-08-20
 Agent/tool: Cursor Auto
 Delivery target: main
 Working branch / PR: cursor/queue-refill-dt09-dex20
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+Main verification: passed - origin/main contains 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+Evidence state: synchronized
 
 ## What was done
 
-Owner-promoted OBS11. Froze `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md` and aligned the OBS11 routing docs. Status DONE pending main SHA verification.
+Owner-promoted OBS11. Froze `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md` and aligned the OBS11 routing docs. Status DONE with main SHA verification.
 
 ## Files changed
 
@@ -22,11 +22,12 @@ Owner-promoted OBS11. Froze `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INV
 
 ## Validation run
 
-- shared refill validators (see QUEUE-REFILL evidence)
+- `node scripts/check-prompt-queues.mjs`
+- `node scripts/check-planning-architecture.mjs`
 
 ## Validation not run
 
-- runtime dashboard / npm / dotnet — docs only
+- runtime dashboard / npm / dotnet - docs only
 
 ## Documentation impact
 
@@ -34,7 +35,7 @@ Panel inventory and correlation honesty are citeable under OBS10 layers.
 
 ## What was missed
 
-- SHA-on-main verification
+- none
 
 ## Risks
 

@@ -165,14 +165,14 @@ Dashboard honesty layers are frozen, but there is still no citeable inventory of
 - Completion: allowed operational dashboard panels and correlation honesty are frozen in a citeable docs-only contract
 - Changed files: docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-OBS11-evidence.md
 - Contract/runtime behavior changed: yes; runtime UI remains intentionally out of scope
-- Checks run: pending shared refill validators
+- Checks run: `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`
 - Checks not run: dotnet/npm - docs only
 - Run log: .ai/runs/2026-08-20-OBS11-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: pending
-- Main verification: pending
-- Missed: SHA-on-main verification
+- Main commit SHA: 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+- Main verification: passed - origin/main contains 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+- Missed: none
 - Follow-up: none until owner promotes a runtime dashboard slice
 - Residual risk: inventory is docs-only until a UI prompt exists
 - Prompt defect / scope repair: none
