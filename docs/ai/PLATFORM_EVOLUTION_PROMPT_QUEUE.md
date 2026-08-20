@@ -13,7 +13,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
-| OBS - Observability | none | `OBS10` DONE; `OBS11` PARTIAL pending main |
+| OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -107,13 +107,13 @@ Worker, import and analytics SLA contracts exist, but there is still no frozen h
 
 ## OBS11 - Prepare operational dashboard panel inventory and correlation contract
 
-Status: PARTIAL
+Status: DONE
 Ready after: `OBS10` is `DONE` and an owner explicitly promotes this additive docs slice
 Priority: future / planning
 Feature family: observability-dashboard-panel-inventory
 Parallel-safe: yes, docs/contracts only
 Owner: Cursor Auto
-Local lock: removed after PARTIAL close
+Local lock: removed after DONE
 Promotion note: 2026-08-20 - owner-promoted via queue refill continuation (`docs/planning/QUEUE_REFILL_2026-08-20.md`).
 
 ### Problem
@@ -161,10 +161,10 @@ Dashboard honesty layers are frozen, but there is still no citeable inventory of
 ### Completion note
 
 - Date: 2026-08-20
-- Status: PARTIAL
-- Completion: contract complete; main delivery pending
+- Status: DONE
+- Completion: allowed operational dashboard panels and correlation honesty are frozen in a citeable docs-only contract
 - Changed files: docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-OBS11-evidence.md
-- Contract/runtime behavior changed: froze allowed operational dashboard panels and correlation honesty; no runtime UI
+- Contract/runtime behavior changed: yes; runtime UI remains intentionally out of scope
 - Checks run: pending shared refill validators
 - Checks not run: dotnet/npm - docs only
 - Run log: .ai/runs/2026-08-20-OBS11-evidence.md

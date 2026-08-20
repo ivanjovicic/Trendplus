@@ -36,7 +36,7 @@ Define authoritative metrics and dimensions for:
 - report/export success/failure.
 
 **Status:** OBS01 catalog complete — `docs/architecture/OBSERVABILITY_SLI_CATALOG.md`.
-OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. OBS10 operational dashboard honesty contract complete — `docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md`. OBS11 PARTIAL = panel inventory / correlation contract (`docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md`) pending main. Current queue READY: none.
+OBS02 instrumentation plan complete and OBS04 latency contract complete. OBS05 service-level vocabulary complete — `docs/architecture/OBSERVABILITY_SERVICE_LEVEL_VOCABULARY.md`. OBS06 import SLA evidence contract complete. OBS07 analytics SLA evidence contract is complete. OBS08 worker SLA evidence contract complete — `docs/architecture/OBSERVABILITY_WORKER_SLA_EVIDENCE_CONTRACT.md`. OBS09 capture complete — `docs/qa/OBSERVABILITY_WORKER_SLA_EVIDENCE_CAPTURE_2026-08-17.md`. OBS10 operational dashboard honesty contract complete — `docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md`. OBS11 panel inventory / correlation contract complete — `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md`. Current queue READY: none.
 
 ### OBS-2 - Latency SLIs
 

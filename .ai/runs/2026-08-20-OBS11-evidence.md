@@ -10,7 +10,7 @@ Evidence state: pending
 
 ## What was done
 
-Owner-promoted OBS11. Froze `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md`. Status PARTIAL pending main.
+Owner-promoted OBS11. Froze `docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md` and aligned the OBS11 routing docs. Status DONE pending main SHA verification.
 
 ## Files changed
 
@@ -34,7 +34,7 @@ Panel inventory and correlation honesty are citeable under OBS10 layers.
 
 ## What was missed
 
-- SHA-on-main
+- SHA-on-main verification
 
 ## Risks
 
