@@ -13,7 +13,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 | Program | Current READY | Execution class |
 |---|---|---|
 | PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
-| OBS - Observability | none | docs/contracts - operational dashboard honesty |
+| OBS - Observability | none | `OBS10` DONE; `OBS11` PARTIAL pending main |
 | SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
@@ -93,7 +93,7 @@ Worker, import and analytics SLA contracts exist, but there is still no frozen h
 - Main commit SHA: 5d60b43f636ea40858fe5c37ab66ce0b335699c7
 - Main verification: passed - git rev-parse origin/main -> 5d60b43f636ea40858fe5c37ab66ce0b335699c7
 - Missed: none known
-- Follow-up: none
+- Follow-up: OBS11 - Prepare operational dashboard panel inventory contract
 - Residual risk: the contract is frozen before any runtime dashboard implementation exists
 - Prompt defect / scope repair: none
 
@@ -102,6 +102,80 @@ Worker, import and analytics SLA contracts exist, but there is still no frozen h
 - OBS09 DONE;
 - OBS08 DONE;
 - OBS01/OBS02 dashboard language already exists.
+
+---
+
+## OBS11 - Prepare operational dashboard panel inventory and correlation contract
+
+Status: PARTIAL
+Ready after: `OBS10` is `DONE` and an owner explicitly promotes this additive docs slice
+Priority: future / planning
+Feature family: observability-dashboard-panel-inventory
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: removed after PARTIAL close
+Promotion note: 2026-08-20 - owner-promoted via queue refill continuation (`docs/planning/QUEUE_REFILL_2026-08-20.md`).
+
+### Problem
+
+Dashboard honesty layers are frozen, but there is still no citeable inventory of which panels may appear, which correlation IDs they require, and how missing panels stay unknown/WARN. A later UI slice could invent healthy panels or mix business analytics KPIs into operational telemetry.
+
+### Evidence
+
+- docs/architecture/OBSERVABILITY_OPERATIONAL_DASHBOARD_HONESTY_CONTRACT.md
+- docs/architecture/OBSERVABILITY_SLI_CATALOG.md
+- docs/planning/QUEUE_REFILL_2026-08-20.md
+
+### Scope
+
+- docs/contracts only for panel inventory, required correlation fields and unknown/WARN rules;
+- no runtime dashboard product, vendor choice, alerting or SLA numbers.
+
+### Read first
+
+- OBS10 completion note
+- operational dashboard honesty contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze the allowed panel inventory per honesty layer.
+2. Name required correlation IDs when present and keep missing correlation as unknown, not green.
+3. Keep tenant dimensions blocked until MT authorizes them.
+4. Do not implement a dashboard UI in this prompt.
+
+### Tests
+
+- missing panel stays unknown/WARN, never green or `0`;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable panel-inventory contract exists when promoted;
+- READY pointer remains single for OBS.
+
+### Dependencies
+
+- OBS10 DONE.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: PARTIAL
+- Completion: contract complete; main delivery pending
+- Changed files: docs/architecture/OBSERVABILITY_DASHBOARD_PANEL_INVENTORY_CONTRACT.md, docs/roadmaps/OBSERVABILITY_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-OBS11-evidence.md
+- Contract/runtime behavior changed: froze allowed operational dashboard panels and correlation honesty; no runtime UI
+- Checks run: pending shared refill validators
+- Checks not run: dotnet/npm - docs only
+- Run log: .ai/runs/2026-08-20-OBS11-evidence.md
+- Evidence state: pending
+- Delivery mode: branch `cursor/queue-refill-dt09-dex20`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: SHA-on-main verification
+- Follow-up: none until owner promotes a runtime dashboard slice
+- Residual risk: inventory is docs-only until a UI prompt exists
+- Prompt defect / scope repair: none
 
 ---
 

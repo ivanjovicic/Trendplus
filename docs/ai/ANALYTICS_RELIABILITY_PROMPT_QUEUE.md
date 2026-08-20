@@ -231,7 +231,7 @@ Lost-sales validation currently treats `lostSalesEstimate <= 0` as good. Lower-l
 
 ### Notes
 
-- 2026-08-04: DONE. Introduced shared `LostSalesSourceStatus` / `LostSalesSnapshot` and `BuildLostSalesValidationFromSnapshot`. Unavailable → `insufficient_data` with null estimate; view zero → `true_zero`/`good`; fallback zero → `warning`.
+- 2026-08-04: DONE. Introduced shared `LostSalesSourceStatus` / `LostSalesSnapshot` and `BuildLostSalesValidationFromSnapshot`. Unavailable â†’ `insufficient_data` with null estimate; view zero â†’ `true_zero`/`good`; fallback zero â†’ `warning`.
 - Changed files:
   - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
   - `Api.Tests/LostSalesValidationSourceStatusTests.cs`
@@ -367,7 +367,7 @@ Different analytics modules apply `dataScope` through article origin, sale heade
 
 ### Notes
 
-- 2026-08-04: DONE. Docs/tests matrix only; no runtime filter rewrite. Canonical rules proposed (sales→header, quality/inventory→article). Highest P0 mismatch remains DQ top-offender unscoped `sales_30d`.
+- 2026-08-04: DONE. Docs/tests matrix only; no runtime filter rewrite. Canonical rules proposed (salesâ†’header, quality/inventoryâ†’article). Highest P0 mismatch remains DQ top-offender unscoped `sales_30d`.
 - Changed files:
   - `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
   - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs` (extract `TopOffendersSql` const, no SQL change)
@@ -444,7 +444,7 @@ Top offender `sales_30d` currently aggregates sales before applying dataScope at
   - `dotnet test ... --filter "DataScopeConsistencyContractTests|DataQualityPostgresIntegrationTests"` - pass (9; Postgres cases may no-op when fixture unavailable)
   - `git diff --check` (scoped) - pass
 - Risk:
-  - `GetDataQualityIssuesHandler` still has unscoped `sales_30d` (out of RQ06 file scope) → follow-up RQ06-F1.
+  - `GetDataQualityIssuesHandler` still has unscoped `sales_30d` (out of RQ06 file scope) â†’ follow-up RQ06-F1.
 - Next:
   - `RQ07 - Missing-cost offender drilldown`
 
@@ -496,7 +496,7 @@ Health snapshot tracks missing-cost revenue, but top offenders do not support `m
 
 ### Notes
 
-- 2026-08-04: DONE. Top offenders support `missingCost` via article `NabavnaCena` null/≤0 (`is_missing_cost`), independent of supplier CASE. Unknown issue types → API 400 / service `ArgumentOutOfRangeException` (no silent supplier fallback). Issues-list `Normalize` still defaults unknown→missingSupplier (handler not rewritten).
+- 2026-08-04: DONE. Top offenders support `missingCost` via article `NabavnaCena` null/â‰¤0 (`is_missing_cost`), independent of supplier CASE. Unknown issue types â†’ API 400 / service `ArgumentOutOfRangeException` (no silent supplier fallback). Issues-list `Normalize` still defaults unknownâ†’missingSupplier (handler not rewritten).
 - Changed files:
   - `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
   - `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesQuery.cs`
@@ -564,7 +564,7 @@ Decision Board adds a blocker when supplier recommendation is not allowed, but s
 
 ### Notes
 
-- 2026-08-04: DONE. When `RecommendationAllowed=false`, supplier cards are labeled `signal_check` / `insufficient_data`, priority capped ≤40, ImpactScore=0, excluded from `urgent` and `impact`; remain in `supplierRisk` for verification. Trust blocker card kept.
+- 2026-08-04: DONE. When `RecommendationAllowed=false`, supplier cards are labeled `signal_check` / `insufficient_data`, priority capped â‰¤40, ImpactScore=0, excluded from `urgent` and `impact`; remain in `supplierRisk` for verification. Trust blocker card kept.
 - Changed files:
   - `Api/Endpoints/DecisionBoardEndpoints.cs`
   - `Api.Tests/DecisionBoardEndpointsTests.cs`
@@ -626,7 +626,7 @@ Decision Board marks `analytics-actions` as `insufficient_data` when there are n
 
 ### Notes
 
-- 2026-08-04: DONE. Contract: empty successful load → `good` (no `no_actions` warning); `analytics_actions_unavailable` → `insufficient_data`. "Expected actions missing" not auto-warned (would need cross-source expectation; left as future).
+- 2026-08-04: DONE. Contract: empty successful load â†’ `good` (no `no_actions` warning); `analytics_actions_unavailable` â†’ `insufficient_data`. "Expected actions missing" not auto-warned (would need cross-source expectation; left as future).
 - Changed files:
   - `Api/Endpoints/DecisionBoardEndpoints.cs`
   - `Api.Tests/DecisionBoardEndpointsTests.cs`
@@ -823,7 +823,7 @@ Commit suggestion: `docs(analytics): lock pdc ignored rows contract`
   - `dotnet test ... --filter "ProductDecisionCenterIgnoredRows|ProductDecisionCenterSummaryDenominator|ProductDecisionCenterBuilderIntegration"` - pass (11)
   - `git diff --check` (scoped) - pass
 - Risk:
-  - PDC UI still labels `totalRows` without surfacing `ignoredRowsMeaning`; operators should read contract before comparing to DQ intake “ignorisani redovi”.
+  - PDC UI still labels `totalRows` without surfacing `ignoredRowsMeaning`; operators should read contract before comparing to DQ intake â€œignorisani redoviâ€.
 - Next:
   - `RQ13 - Wire inventory signal evidence onto Decision Board cards`
 
@@ -976,3 +976,59 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 - Residual risk: email requires DecisionPulse:Recipients + SMTP enabled; otherwise in-app feed still works
 - Prompt defect / scope repair: first slice limited to Product Decision family; RQ96 was already DONE on origin/main by another agent so this run claimed RQ106 instead
 - Next: none (RQ Current READY none)
+
+---
+
+## RQ107 - Controlled markdown / replenishment scenario planning contract
+
+Status: WAITING
+Ready after: a trusted forecast materializer exists and a measured backtest window is available, or an owner explicitly promotes a docs-only precursor
+Priority: P2
+Type: docs-contract (later runtime)
+Feature family: scenario-planning-contract
+Parallel-safe: yes, docs/contracts only until later runtime authorization
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ107-<agent>.lock.md`
+
+### Problem
+
+Competitive gap Gate 4 still needs controlled scenario planning (markdown / replenishment what-if). Starting that before trusted forecast materialization and measured backtest would invent scenario outcomes from untrusted forecasts.
+
+### Evidence
+
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` Gate 4
+- `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`
+- `docs/planning/QUEUE_REFILL_2026-08-20.md`
+
+### Scope
+
+- docs/contracts only for fixed scenario sets, comparison basis, and no-fake rules;
+- no simulator UI, optimizer, or LLM scenarios in this prompt.
+
+### Read first
+
+- RQ98 / RQ97 completion notes
+- competitive gap audit Gate 4
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze allowed scenario vocabularies (e.g. no-change / fixed markdown / replenishment bands).
+2. Require comparison against measured historical behavior, not invented forecast certainty.
+3. Keep missing measured windows as unavailable, not zero impact.
+4. Do not implement a runtime simulator in this prompt.
+
+### Tests
+
+- missing measured window stays unavailable, not `0` impact;
+- docs/queue validators pass when promoted.
+
+### Acceptance
+
+- one citeable scenario-planning contract exists when promoted;
+- RQ Current READY remains single / none as declared.
+
+### Dependencies
+
+- trusted forecast materializer + measured backtest window, or owner docs-only precursor approval;
+- do not promote ahead of higher-priority exclusive RQ work.

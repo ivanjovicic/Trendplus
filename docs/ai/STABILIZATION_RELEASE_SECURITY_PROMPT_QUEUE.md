@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB12` DONE)
-Current gate verdict: STAB12 completed. Existing-execution READY is `RQ96`. `QDB06` is DONE.
+Current READY prompt: none (`STAB12` DONE; `STAB13` PARTIAL pending main)
+Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack exists locally pending main. Existing-execution READY is `none` (`RQ98` DONE). `QDB06` is DONE. GenAI remains BLOCKED.
 
 ## Goal
 
@@ -169,7 +169,7 @@ The repository has strong historical live-smoke evidence, but the latest checked
 - Evidence: `docs/qa/ANALYTICS_CURRENT_MAIN_DEPLOY_EVIDENCE_2026-08-05.md`
 - Vercel for `a1b9231`: success (previous June/`66084a7` failure evidence is stale for this SHA)
 - Actions analytics suite for `a1b9231`: failure at NuGet `Restore dependencies` (build/tests skipped)
-- Live backend: health/ready PASS; runtime SHA `e9f3238…` ≠ main tip (WARN); refresh-status `unknown` (honest); admin `401`
+- Live backend: health/ready PASS; runtime SHA `e9f3238â€¦` â‰  main tip (WARN); refresh-status `unknown` (honest); admin `401`
 - Live frontend: SPA shell + current assets served; authenticated page-body smoke not completed
 - Local checks (dirty tree): guardrails PASS, build PASS, test:analytics 22 failed / 204 passed
 - Repo code changes: none (docs/queue only)
@@ -285,12 +285,12 @@ The repository has several queue generations and incompatible status conventions
 - Date: 2026-08-05
 - Agent: Cursor-Composer
 - Changed: `scripts/check-prompt-queues.mjs`, `docs/qa/ANALYTICS_QUEUE_RECONCILIATION.md`, `docs/ai/AGENT_START_HERE.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `docs/ai/NEXT_PROMPT_QUEUE.md`, `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`, `docs/ai/QUEUE_STATUS_TEMPLATE.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, this queue
-- Fix: ownership matrix + canonical routing; GenAI `TODO`→`WAITING`; GAI02 demoted from `IN_PROGRESS` under STAB P0; Q20/Q22/Q67 confirmed DONE with current evidence; validator with `--self-test`
+- Fix: ownership matrix + canonical routing; GenAI `TODO`â†’`WAITING`; GAI02 demoted from `IN_PROGRESS` under STAB P0; Q20/Q22/Q67 confirmed DONE with current evidence; validator with `--self-test`
 - Checks: `node scripts/check-prompt-queues.mjs --self-test` pass; `node scripts/check-prompt-queues.mjs` pass (209 tasks); `git diff --check` pass
 - Next READY analytics: none globally (WAITING families remain owner-gated)
 - Next READY cross-cutting: `STAB03`
 - Also READY parallel-safe UI: `P-UI-05`
-- Risk: historical addenda still mention stale “next global: RQ51” prose; validator allows `Current READY prompt: none ...`
+- Risk: historical addenda still mention stale â€œnext global: RQ51â€ prose; validator allows `Current READY prompt: none ...`
 - Next: `STAB03` READY
 
 ---
@@ -407,7 +407,7 @@ The repo has an admin-key helper and several authorization tests, but it does no
 - Agent: Cursor-Composer
 - Evidence: `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`
 - Also updated: `ANALYTICS_ACCESS_CONTROL_AUDIT.md`, `ANALYTICS_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md`, this queue
-- Phase 1 decision: **(b) explicit internal API-key admin mode** — production has no auth pipeline, so Admin-role principal path is unreachable; `X-Admin-Key`/`Admin:ApiKey`/`ADMIN_API_KEY` is the live boundary
+- Phase 1 decision: **(b) explicit internal API-key admin mode** â€” production has no auth pipeline, so Admin-role principal path is unreachable; `X-Admin-Key`/`Admin:ApiKey`/`ADMIN_API_KEY` is the live boundary
 - Next code task: `STAB04` admin operational reads
 - Checks: code inspection pass; targeted auth filter tests fail 17/63 on current branch (recorded, not used as IdP proof); no runtime code changed; `git diff --check` pass
 - Risk: document header roles remain spoofable; import/logs sensitive reads still open until follow-ups
@@ -512,7 +512,7 @@ Risk class: confirmed authorization inconsistency and information exposure.
 - Agent: Cursor-Composer
 - Changed: `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/AdminConfigOperationalReadsAuthorizationTests.cs`
 - Gate: `AdminAccessControl.GetDecision` before DB/service work on `GET pending-batches`, `health-check`, `audit-log`, `workers/list`, `workers/{workerName}`
-- Behavior: missing key → `401`; wrong key → `403`; authorized preserves `200` (or `404` only after auth for unknown worker)
+- Behavior: missing key â†’ `401`; wrong key â†’ `403`; authorized preserves `200` (or `404` only after auth for unknown worker)
 - Checks: `git diff --check` pass; `AdminConfigOperationalReadsAuthorizationTests` 18/18 pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass
 - Risk: import batch-list / logs / document header trust remain out of scope (STAB03 follow-ups)
 - Next: `STAB05` READY
@@ -617,7 +617,7 @@ Public health and documentation surfaces must help the platform without exposing
 - Date: 2026-08-05
 - Agent: Cursor-Composer
 - Changed: `Api/Program.cs`; `Api/Config/CorsOriginsOptions.cs`; `Api/Config/SwaggerExposureOptions.cs`; `Api/Services/Startup/{ProductionEdgePolicy,DependencyHealthPublicErrors,HealthCorsHeaders}.cs`; `Api.Tests/ProductionEdgeMiddlewareTests.cs`; `Api/appsettings.json`; `Api/appsettings.Production.json`; `docs/security/PRODUCTION_EDGE_CONTRACT_2026-08-05.md`
-- Behavior: dependency errors → stable public codes + logged detail; HSTS outside Development; Swagger off by default outside Development (`Swagger:Enabled`); CORS from `Cors:AllowedOrigins`
+- Behavior: dependency errors â†’ stable public codes + logged detail; HSTS outside Development; Swagger off by default outside Development (`Swagger:Enabled`); CORS from `Cors:AllowedOrigins`
 - Checks: `git diff --check` pass; `ProductionEdge*` tests 15/15 pass; `dotnet build Trendplus2.sln --no-restore --configuration Release` pass; live smoke after deploy **not run**
 - Risk: production must keep `Cors:AllowedOrigins` non-empty or startup throws; confirm HSTS header on Render host after deploy
 - Next: `STAB06` READY
@@ -724,7 +724,7 @@ Pilot readiness currently uses the last import timestamp but not the authoritati
 - Date: 2026-08-05
 - Agent: Cursor-Composer
 - Changed: `Api/Endpoints/DataQualityEndpoints.cs`; `Api.Tests/PilotImportBatchStatusContractTests.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `pilotImportReadiness.ts` + tests; `PilotImportReadinessCard.tsx` + card spec; intake report metadata; fixture updates
-- Contract: additive `lastImportStatus` / `lastImportScope` / `lastImportBatchId`; latest batch by `CompletedAtUtc ?? StartedAtUtc`; scope always `global` (honest); failed/cancelled → not_ready
+- Contract: additive `lastImportStatus` / `lastImportScope` / `lastImportBatchId`; latest batch by `CompletedAtUtc ?? StartedAtUtc`; scope always `global` (honest); failed/cancelled â†’ not_ready
 - Checks: `PilotImportBatchStatusContractTests` 27/27; `pilotImportReadiness` 10/10; `PilotImportReadinessCard` 2/2; `check:analytics-guardrails` pass; `npm run build` pass; `git diff --check` pass
 - Risk: store/supplier filters still cannot map to batch rows (explicit global warning)
 - Next: `STAB07` READY
@@ -836,8 +836,8 @@ The repo documents what should be backed up and how restore should work, but it 
 - Date: 2026-08-06
 - Agent: Cursor-Composer
 - Status: **DONE** (live local disposable restore) with accepted non-P0 warnings
-- Changed: `scripts/ops/*` (Npgsql→libpq URI; Docker client via `TRENDPLUS_PG_DOCKER_CONTAINER`; default `pre-data`+`data` restore; `-IncludePostData`); `docs/ops/BACKUP_RESTORE_RUNBOOK.md`; `docs/ops/BACKUP_RESTORE_REHEARSAL_EVIDENCE_2026-08-06.md`
-- Checks: `Test-BackupRestoreGuards.ps1` PASS; live `Invoke-BackupRestoreRehearsal.ps1 -EnvironmentLabel local -AllowDestructiveRestore` PASS (~9s); ops dump SHA256 `D2B63EFC…`; analytics dump SHA256 `7C4A57DB…`; `prodaja_zaglavlje` 3655=3655; analytics table count 80=80
+- Changed: `scripts/ops/*` (Npgsqlâ†’libpq URI; Docker client via `TRENDPLUS_PG_DOCKER_CONTAINER`; default `pre-data`+`data` restore; `-IncludePostData`); `docs/ops/BACKUP_RESTORE_RUNBOOK.md`; `docs/ops/BACKUP_RESTORE_REHEARSAL_EVIDENCE_2026-08-06.md`
+- Checks: `Test-BackupRestoreGuards.ps1` PASS; live `Invoke-BackupRestoreRehearsal.ps1 -EnvironmentLabel local -AllowDestructiveRestore` PASS (~9s); ops dump SHA256 `D2B63EFCâ€¦`; analytics dump SHA256 `7C4A57DBâ€¦`; `prodaja_zaglavlje` 3655=3655; analytics table count 80=80
 - Accepted non-P0: provider retention not verified; post-data/MV refresh skipped by default (full `-IncludePostData` hung 23+ min on `mv_supplier_decision_score_cache`); app `/health` against restored URLs not run
 - Risk: full post-data restore still unproven in time-boxed gate; treat MV refresh as separate overnight check
 - Next: `STAB08` READY (if analytics P0 gate also satisfied per STAB08 Ready after)
@@ -1305,7 +1305,7 @@ Document/export generation and ownership decisions still trust caller-provided `
 - Main commit SHA: 355eccef9e792a7d43f480aa6a363a21cc9ad241
 - Main verification: git rev-parse origin/main -> 096bf20d6908186cd3d7062ca6339c086522040f; work SHA 355eccef9e792a7d43f480aa6a363a21cc9ad241 is an ancestor
 - Missed: none known for the named generate/list/export privilege
-- Follow-up: none; QDB05 is DONE and QDB06 remains WAITING on owner migration approval
+- Follow-up: STAB13 WAITING (pilot release evidence refresh); do not promote GAI01 without refreshed gate
 - Residual risk: operators must supply X-Admin-Key for export/generate; inventory schedule create/update still records user names from anonymous context
 - Prompt defect / scope repair: same-owner UI repair so exportApi/analyticsApi send X-Admin-Key; print URLs now include signed tokens
 
@@ -1323,3 +1323,79 @@ Document/export generation and ownership decisions still trust caller-provided `
 - After `STAB09`: keep `STAB10` as the single STAB READY prompt until access-import operational reads are gated or residual risk is explicitly accepted.
 - After `STAB10`: set `STAB11` to `READY`.
 - After `STAB11`: set `STAB12` to `READY` unless a smaller same-owner document/export split is required by evidence.
+- After `STAB12`: keep STAB Current READY `none` until an owner promotes `STAB13` (pilot release evidence refresh); do not promote `GAI01` from STAB13 alone.
+
+## STAB13 - Refresh pilot release evidence and GenAI entry-gate prep
+
+Status: PARTIAL
+Ready after: Current execution READY is `none` and an owner explicitly promotes this additive docs/evidence slice
+Priority: P1
+Type: evidence/docs
+Feature family: pilot-release-evidence-refresh
+Parallel-safe: yes, evidence/docs when path-safe
+Owner: Cursor Auto
+Local lock: removed after PARTIAL close
+Promotion note: 2026-08-20 - owner-promoted via queue refill continuation.
+
+### Problem
+
+STAB12 closed the unauthenticated document-header privilege gap, but pilot release evidence and the GenAI entry gate still need a fresh, citeable pack after the RQ96-RQ98 / Decision Pulse wave. Stale STAB08-era prose must not be treated as current readiness.
+
+### Evidence
+
+- STAB08 / STAB12 completion notes
+- `MASTER_ROADMAP.md` GenAI blocked-by core-pilot evidence
+- `docs/planning/QUEUE_REFILL_2026-08-20.md`
+
+### Scope
+
+- refresh pilot release evidence pointers and GenAI entry-gate checklist;
+- do not mark `GAI01` READY;
+- no production deploy or secret rotation in this prompt.
+
+### Read first
+
+- STAB12 completion note
+- STAB08 gate materials
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Capture a fresh evidence index for deploy/CI/auth/import/analytics decision surfaces.
+2. Record whether GenAI remains blocked and why.
+3. Keep `GAI01` WAITING/blocked until the gate explicitly clears.
+4. Do not invent tenant or production access.
+
+### Tests
+
+- docs/queue validators pass when promoted;
+- `GAI01` remains non-READY unless owner clears the gate.
+
+### Acceptance
+
+- citeable refreshed pilot evidence pack exists when promoted;
+- GenAI entry remains explicit, not inferred.
+
+### Dependencies
+
+- STAB12 DONE;
+- do not promote `GAI01` from this prompt alone.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: PARTIAL
+- Completion: evidence refresh pack complete; main delivery pending; GenAI stays BLOCKED
+- Changed files: docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md, docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md, docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-STAB13-evidence.md
+- Contract/runtime behavior changed: no runtime; refreshed pointers keep core pilot NOT READY and GenAI BLOCKED
+- Checks run: pending shared refill validators
+- Checks not run: live smoke / production access - out of scope
+- Run log: .ai/runs/2026-08-20-STAB13-evidence.md
+- Evidence state: pending
+- Delivery mode: branch `cursor/queue-refill-dt09-dex20`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: fresh live smoke; SHA-on-main
+- Follow-up: live smoke pack before any GenAI reopen
+- Residual risk: older readiness PASS rows remain historically present and must not be misread as current
+- Prompt defect / scope repair: none

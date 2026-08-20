@@ -1,6 +1,6 @@
 # GenAI Evaluation and Release Gate
 
-Updated: 2026-08-06
+Updated: 2026-08-20
 Status: BLOCKED until the current pilot release evidence is ready
 
 ## Current entry verdict
@@ -8,10 +8,12 @@ Status: BLOCKED until the current pilot release evidence is ready
 - Core pilot: NOT READY
 - GenAI entry: BLOCKED
 - Authoritative refresh evidence:
-  - [`ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md`](ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md)
-  - [`ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md`](ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md)
+  - [`PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`](PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md) (STAB13)
+  - Historical STAB08 pack (do not treat as current alone):
+    - [`ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md`](ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md)
+    - [`ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md`](ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md)
 
-The live backend is healthy, but the pilot readiness page indicates overall `Pilot nije spreman` with mixed readiness cards; the refresh status is `unknown`, and the executive decision-board aggregate is unavailable on live smoke. That is enough to keep GenAI off by default.
+STAB13 keeps GenAI off by default: no fresh live-smoke pack was produced in the docs-only refresh, and prior STAB08 gaps still apply until re-proven.
 
 ## Purpose
 

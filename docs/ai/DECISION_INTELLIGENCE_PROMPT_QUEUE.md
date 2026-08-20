@@ -38,15 +38,15 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | none | backend/frontend - Executive Board explainability runtime |
+| DEX - Decision Explainability | none | `DEX20` PARTIAL = alternatives contract pending main |
 
 
 
-| RL - Recommendation Learning | none | docs/contracts - Slice 4 advisory calibration |
+| RL - Recommendation Learning | none | `RL10` DONE; `RL11` WAITING |
 
 
 
-| DT - Decision Timeline | none | Slice-5 hardening complete; `DT09` WAITING |
+| DT - Decision Timeline | none | `DT09` PARTIAL = timestamp contract pending main; `DT10` WAITING |
 
 
 
@@ -149,21 +149,78 @@ Operators can now review measurement-only statistics, but there is still no froz
 - Main commit SHA: 81fda2689c348e348c18651bf0958e2816ca94f5
 - Main verification: passed - git rev-parse origin/main -> 81fda2689c348e348c18651bf0958e2816ca94f5
 - Missed: none known
-- Follow-up: OBS10 - Prepare operational dashboard honesty contract
+- Follow-up: RL11 - Prepare advisory calibration runtime gate contract
 - Residual risk: the advisory contract is frozen before any runtime consumer exists, so implementation still needs a later backend prompt
 - Prompt defect / scope repair: none
 
 ---
 
-## DT09 - Prepare first-class timeline timestamp contract
+## RL11 - Prepare advisory calibration runtime gate contract
 
 Status: WAITING
-Ready after: `DT08` is `DONE` and the current execution READY `RQ96` is no longer the higher-priority exclusive path, or the owner explicitly promotes this additive slice
+Ready after: `RL10` is `DONE` and an owner explicitly promotes this additive docs slice
+Priority: future / planning
+Feature family: recommendation-learning-calibration-runtime-gate
+Parallel-safe: yes, docs/contracts only
+Owner: unassigned
+Local lock: `.ai/task-locks/RL11-<agent>.lock.md`
+
+### Problem
+
+Slice 4 advisory calibration is frozen, but there is still no citeable gate that says when a later runtime job may write advisory hints versus must stay measurement-only. Without that gate, a later slice could mutate live confidence or treat acceptance as calibration evidence.
+
+### Evidence
+
+- docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md
+- docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md Slice 4
+- docs/planning/QUEUE_REFILL_2026-08-20.md
+
+### Scope
+
+- docs/contracts only for runtime eligibility, write targets, approval evidence and ignore-safely rules;
+- keep live confidence, ranking and recommendation text unchanged;
+- no calibration job, ML training, or schema migration.
+
+### Read first
+
+- RL10 completion note
+- advisory calibration contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze which runtime surfaces may consume advisory hints and which remain measurement-only.
+2. Require explicit later approval before any score mutation.
+3. Keep insufficient coverage ineligible, not a fake-green calibrated rate.
+4. Do not implement a calibration job in this prompt.
+
+### Tests
+
+- contract forbids automatic confidence mutation;
+- missing approval stays blocked, not silently advisory-on;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable runtime gate contract exists when promoted;
+- READY pointer remains single for RL.
+
+### Dependencies
+
+- RL10 DONE.
+
+---
+
+## DT09 - Prepare first-class timeline timestamp contract
+
+Status: PARTIAL
+Ready after: `DT08` is `DONE` and the current execution READY exclusive RQ inventory/forecast foundation path is no longer READY, or the owner explicitly promotes this additive slice
 Priority: future / planning
 Feature family: decision-timeline-timestamps
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/DT09-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: removed after PARTIAL close
+Promotion note: 2026-08-20 - owner-promoted after `RQ98` DONE left Current execution READY none (`docs/planning/QUEUE_REFILL_2026-08-20.md`).
 
 ### Problem
 
@@ -210,7 +267,156 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 ### Dependencies
 
 - DT08 DONE;
-- do not outrank `RQ96` while that exclusive inventory foundation is READY.
+- do not outrank an exclusive inventory/forecast foundation READY while one exists.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: PARTIAL
+- Completion: contract complete; main delivery pending
+- Changed files: docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DT09-evidence.md
+- Contract/runtime behavior changed: froze first-class vs derived vs absent timeline timestamps; no runtime/schema change
+- Checks run: pending validators in same refill branch
+- Checks not run: dotnet/npm - docs only
+- Run log: .ai/runs/2026-08-20-DT09-evidence.md
+- Evidence state: pending
+- Delivery mode: branch `cursor/queue-refill-dt09-dex20`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: SHA-on-main verification
+- Follow-up: DT10 after DT09 DONE on main
+- Residual risk: Slice-2 projection still coalesces derived clocks until a later runtime prompt
+- Prompt defect / scope repair: Ready-after RQ96 wording generalized after RQ96-RQ98 DONE
+
+---
+
+## DT10 - Prepare derived-clock honesty for timeline projection
+
+Status: WAITING
+Ready after: `DT09` is `DONE` on main
+Priority: future / planning
+Feature family: decision-timeline-derived-clock-honesty
+Parallel-safe: yes, docs/contracts only until a later runtime slice is authorized
+Owner: unassigned
+Local lock: `.ai/task-locks/DT10-<agent>.lock.md`
+
+### Problem
+
+DT09 freezes first-class vs derived timestamps, but the live Slice-2 projection still coalesces issuance and note-derived stage times. A later change could quietly promote derived clocks to first-class columns or invent missing stages from notes.
+
+### Evidence
+
+- docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md
+- docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md
+- docs/planning/QUEUE_REFILL_2026-08-20.md
+
+### Scope
+
+- docs/contracts only for how projection/export must label derived clocks and gap reasons;
+- no schema migration or event-store rewrite in this prompt.
+
+### Read first
+
+- DT09 completion note
+- timestamp contract
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze which projection fields remain derived and how consumers must label them.
+2. Keep absent first-class fields null with gap reasons.
+3. Do not implement runtime projection changes in this prompt unless a later owner authorizes a runtime follow-up.
+
+### Tests
+
+- derived issuance cannot be claimed as separate first-class generated vs created times;
+- docs/queue validators pass.
+
+### Acceptance
+
+- citeable derived-clock honesty addendum or contract section exists when promoted;
+- READY pointer remains single for DT.
+
+### Dependencies
+
+- DT09 DONE on main.
+
+---
+
+## DEX20 - Prepare cross-family decision alternatives contract
+
+Status: PARTIAL
+Ready after: `DEX19` is `DONE` and Current execution READY is none, or the owner explicitly promotes this additive docs slice
+Priority: future / planning
+Feature family: decision-alternatives-contract
+Parallel-safe: yes, docs/contracts only
+Owner: Cursor Auto
+Local lock: removed after PARTIAL close
+Promotion note: 2026-08-20 - owner-inserted and promoted via `docs/planning/QUEUE_REFILL_2026-08-20.md`.
+
+### Problem
+
+Product Decision Center already exposes backend alternatives, but other families lack a frozen cross-family contract for present vs absent alternatives. A later UI or board slice could invent a ranked second-best, treat a missing field as empty-success, or score alternatives in the client.
+
+### Evidence
+
+- docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md Alternative decisions
+- docs/architecture/DECISION_EXPLAINABILITY_CROSS_FAMILY_READINESS.md
+- Product Decision Center alternative recommendation DTO (DEX07)
+- docs/planning/QUEUE_REFILL_2026-08-20.md
+
+### Scope
+
+- docs/contracts only for alternative object shape, absence states and no-fake rules;
+- keep live ranking unchanged;
+- no new alternatives endpoint or schema migration.
+
+### Read first
+
+- DEX19 completion note
+- DEX07 alternatives baseline
+- MASTER_ROADMAP.md current READY
+
+### Do
+
+1. Freeze the first-class alternative object and absence vocabulary.
+2. Keep missing alternatives as absent, not a green empty list or `0` KPI.
+3. Forbid frontend ranking and LLM-invented alternatives.
+4. Do not add a runtime alternatives API in this prompt.
+
+### Tests
+
+- empty/missing field is not empty-success;
+- client ranking is forbidden;
+- docs/queue validators pass; no runtime code in this prompt.
+
+### Acceptance
+
+- one citeable alternatives contract exists;
+- READY pointer remains single for DEX.
+
+### Dependencies
+
+- DEX19 DONE.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: PARTIAL
+- Completion: contract complete; main delivery pending
+- Changed files: docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DEX20-evidence.md
+- Contract/runtime behavior changed: froze cross-family alternatives vs absence; no runtime/API change
+- Checks run: pending validators in same refill branch
+- Checks not run: dotnet/npm - docs only
+- Run log: .ai/runs/2026-08-20-DEX20-evidence.md
+- Evidence state: pending
+- Delivery mode: branch `cursor/queue-refill-dt09-dex20`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: SHA-on-main verification
+- Follow-up: none until owner promotes a runtime alternatives slice
+- Residual risk: only PDC currently has runtime alternatives
+- Prompt defect / scope repair: none
 
 ---
 
