@@ -967,10 +967,10 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 - Checks run: dotnet test DecisionPulseProjectorTests (4 passed); npm DecisionPulsePage.spec (1 passed); governance validators
 - Checks not run: full suites; live SMTP send
 - Run log: .ai/runs/2026-08-20-RQ106-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 50236d144d6dd7e668be0601dac9c76c56a3f15e
+- Main verification: git rev-parse origin/main -> 50236d144d6dd7e668be0601dac9c76c56a3f15e; work SHA is an ancestor
 - Missed: inventory/supplier Pulse families; scheduled worker; durable inbox table
 - Follow-up: RQ97 WAITING; SQL Server e2e commercial gate remains owner-routed
 - Residual risk: email requires DecisionPulse:Recipients + SMTP enabled; otherwise in-app feed still works
