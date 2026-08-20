@@ -46,7 +46,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DT - Decision Timeline | none | `DT09` DONE; `DT10` WAITING |
+| DT - Decision Timeline | none | `DT09` DONE; `DT10` DONE |
 
 
 
@@ -157,7 +157,7 @@ Operators can now review measurement-only statistics, but there is still no froz
 
 ## RL11 - Prepare advisory calibration runtime gate contract
 
-Status: WAITING
+Status: DONE
 Ready after: `RL10` is `DONE` and an owner explicitly promotes this additive docs slice
 Priority: future / planning
 Feature family: recommendation-learning-calibration-runtime-gate
@@ -292,13 +292,14 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 
 ## DT10 - Prepare derived-clock honesty for timeline projection
 
-Status: WAITING
+Status: READY
 Ready after: `DT09` is `DONE` on main
 Priority: future / planning
 Feature family: decision-timeline-derived-clock-honesty
 Parallel-safe: yes, docs/contracts only until a later runtime slice is authorized
-Owner: unassigned
-Local lock: `.ai/task-locks/DT10-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: removed after DONE
+Promotion note: 2026-08-20 - owner-promoted after `DT09` landed on main and cleared the derived-clock honesty follow-up.
 
 ### Problem
 
@@ -340,6 +341,25 @@ DT09 freezes first-class vs derived timestamps, but the live Slice-2 projection 
 ### Dependencies
 
 - DT09 DONE on main.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: DONE
+- Completion: derived-clock honesty is now explicit in the DT export/report contract; no runtime schema or projection change
+- Changed files: docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-20-DT10-evidence.md
+- Contract/runtime behavior changed: export/report consumers must keep derived clocks labeled as derived and keep gap reasons visible; runtime remains unchanged
+- Checks run: pending
+- Checks not run: dotnet/npm - docs only
+- Run log: .ai/runs/2026-08-20-DT10-evidence.md
+- Evidence state: pending
+- Delivery mode: branch `cursor/queue-refill-dt09-dex20`
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none
+- Follow-up: none
+- Residual risk: consumers must continue to honor the derived-clock labels and gap reasons
+- Prompt defect / scope repair: none
 
 ---
 

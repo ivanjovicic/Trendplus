@@ -267,6 +267,18 @@ API, Product Decision Center timeline, export file and print/report must agree o
 
 If an export column cannot be populated from the projection, omit it or mark it unknown. Do not compute a substitute in the client.
 
+## Derived-clock honesty
+
+The projection used by DT05/DT07 may still assemble some timestamps from snapshots, notes or fallback lookup. Those values are derived, not first-class, even when they are useful for display.
+
+Export/report consumers must keep that distinction visible:
+
+- first-class stage clocks stay first-class only when the named source exists;
+- derived clocks remain derived and must not be relabeled as a persisted stage time;
+- missing clocks stay `null` with the matching gap reason from the projection;
+- `updatedAtUtc` and note-derived lookup are never substitutes for a business stage clock;
+- the first-class / derived / absent classification in `docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md` remains authoritative.
+
 ## Mapping to current repository primitives
 
 No new storage is required for this contract.

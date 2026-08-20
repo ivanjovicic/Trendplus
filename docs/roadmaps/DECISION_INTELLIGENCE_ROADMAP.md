@@ -114,7 +114,7 @@ Roadmap sequence:
 Phases:
 
 1. canonical timeline event model — **DONE** (`docs/architecture/DECISION_TIMELINE_CONTRACT.md`);
-2. decision/action/execution/outcome correlation identifiers — covered in DT01; first-class timestamps frozen in DT09 (`docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md`); derived-clock honesty remains `DT10` WAITING;
+2. decision/action/execution/outcome correlation identifiers — covered in DT01; first-class timestamps frozen in DT09 (`docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md`); derived-clock honesty is `DT10` DONE;
 3. immutable/append-oriented history semantics for important events — projection-first via notes/snapshots (`docs/architecture/DECISION_TIMELINE_ROLLOUT_PLAN.md`);
 4. filtered timeline by entity/recommendation family/time period — **DONE** Slice-2 runtime in DT05; Product Decision Center remains the live filter surface;
 5. outcome window and measurement state display — planned UI/export slices in DT02; honesty rules frozen in DT06;
@@ -131,7 +131,7 @@ Authoritative planning outputs:
 - `docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md`
 - `docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md`
 
-Current queue READY: none for DEX/RL/DT. `DEX20` PARTIAL = cross-family alternatives contract pending main. `DT09` PARTIAL = first-class timestamp contract pending main. `DT10`/`RL11` WAITING. `RL10` DONE = Slice 4 advisory calibration. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DEX19` DONE = Executive Board explainability runtime. `RL08` remains OBSOLETE.
+Current queue READY: none for DEX/RL/DT. `DEX20` DONE = cross-family alternatives contract on main. `DT09` DONE = first-class timestamp contract on main. `DT10` DONE = derived-clock honesty on main. `RL11` WAITING. `RL10` DONE = Slice 4 advisory calibration. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DEX19` DONE = Executive Board explainability runtime. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 
