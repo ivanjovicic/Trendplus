@@ -157,7 +157,7 @@ Operators can now review measurement-only statistics, but there is still no froz
 
 ## RL11 - Prepare advisory calibration runtime gate contract
 
-Status: DONE
+Status: WAITING
 Ready after: `RL10` is `DONE` and an owner explicitly promotes this additive docs slice
 Priority: future / planning
 Feature family: recommendation-learning-calibration-runtime-gate
@@ -292,7 +292,7 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 
 ## DT10 - Prepare derived-clock honesty for timeline projection
 
-Status: READY
+Status: DONE
 Ready after: `DT09` is `DONE` on main
 Priority: future / planning
 Feature family: decision-timeline-derived-clock-honesty
