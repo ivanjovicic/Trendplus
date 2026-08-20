@@ -117,10 +117,10 @@ Promotion note: 2026-08-20 - RQ59 is DONE, so the executive weak-signal follow-u
 - Checks run: git diff --check (pass); npm run check:analytics-guardrails (pass); npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts (pass)
 - Checks not run: full frontend build; full repo test suites
 - Run log: .ai/runs/2026-08-20-RQ73-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: dfdff711cf9ce760005a72a0cb01d868e8d7e1c8
-- Main verification: pending - code commit landed locally; main push/ancestor verification still to be recorded
+- Main commit SHA: 8c27094d3d70757c2ed22f431e87c5e502ee3e3b
+- Main verification: passed - origin/main contains the implementation commit dfdff711cf9ce760005a72a0cb01d868e8d7e1c8 as an ancestor
 - Missed: a runtime surface export or additional UI copy for potential exposure was intentionally not added
 - Follow-up: none
 - Residual risk: the helper is exported for testability, but the current runtime board path still does not call `buildInventoryCards`
