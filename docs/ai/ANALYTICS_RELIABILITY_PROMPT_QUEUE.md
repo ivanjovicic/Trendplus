@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (owner-promoted current is `RQ96` in the inventory-signals addendum)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); current RQ READY is `RQ96`; current execution is `RQ96`. `RQ106` Decision Pulse is WAITING after `RQ96`.
+Current READY prompt: none (`RQ106` DONE)
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -36,7 +36,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ11 | DONE | transaction-stat-semantics | Clarify transaction item/line/unit count semantics |
 | RQ12 | DONE | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
 | RQ13 | DONE | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
-| RQ106 | WAITING | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
+| RQ106 | DONE | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
 
 ---
 
@@ -894,15 +894,16 @@ RQ10 capped board confidence because `InventoryActionSuggestionDto` lacks eviden
 
 ## RQ106 - Decision Pulse exception digest
 
-Status: WAITING
+Status: DONE
 Ready after: `QDB06` is `DONE` and `RQ96` is `DONE`
 Priority: P1
 Type: backend/frontend-contract/tests
 Feature family: decision-pulse-digest
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ106-<agent>.lock.md`
+Owner: Cursor Auto
+Local lock: removed after DONE
 Commit suggestion: `feat(analytics): add decision pulse digest`
+Promotion note: 2026-08-20 - owner-scheduled after QDB06 and RQ96 both DONE; claimed when no other exclusive READY remained.
 
 ### Problem
 
@@ -955,3 +956,23 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 - `RQ96` DONE so historical inventory evidence can back inventory Pulse items without reconstructed-as-observed confusion
 - Do not displace current execution `RQ96`
 - Do not start MT02 or shared-SaaS notification routing
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: DONE
+- Completion: Product Decision exception Pulse with Why + deep link, stale/empty/error suppression, in-app feed and SMTP email path; tenantScope fixed to n/a_dedicated
+- Changed files: Application/Analytics/DecisionPulse/DecisionPulseProjector.cs; Application/Analytics/DecisionPulse/DecisionPulseEmailComposer.cs; Api/Services/Analytics/DecisionPulseService.cs; Api/Endpoints/DecisionPulseEndpoints.cs; Api/Program.cs; Api.Tests/DecisionPulseProjectorTests.cs; Klijent/clientapp/src/pages/DecisionPulsePage.tsx; Klijent/clientapp/src/services/decisionPulseApi.ts; Klijent/clientapp/src/pages/__tests__/DecisionPulsePage.spec.tsx; Klijent/clientapp/src/App.tsx; Klijent/clientapp/src/layout/navConfig.ts; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md; .ai/runs/2026-08-20-RQ106-evidence.md
+- Contract/runtime behavior changed: yes; new GET/POST `/api/analytics/decision-pulse` and `/analytics/decision-pulse` UI
+- Checks run: dotnet test DecisionPulseProjectorTests (4 passed); npm DecisionPulsePage.spec (1 passed); governance validators
+- Checks not run: full suites; live SMTP send
+- Run log: .ai/runs/2026-08-20-RQ106-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: inventory/supplier Pulse families; scheduled worker; durable inbox table
+- Follow-up: RQ97 WAITING; SQL Server e2e commercial gate remains owner-routed
+- Residual risk: email requires DecisionPulse:Recipients + SMTP enabled; otherwise in-app feed still works
+- Prompt defect / scope repair: first slice limited to Product Decision family; RQ96 was already DONE on origin/main by another agent so this run claimed RQ106 instead
+- Next: none (RQ Current READY none)

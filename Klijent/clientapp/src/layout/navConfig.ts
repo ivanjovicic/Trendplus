@@ -138,6 +138,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
       { to: "/analytics/supplier", label: "Pregled dobavljača", icon: Microscope },
       { to: "/analytics/actions", label: "Centralne akcije", icon: ClipboardList },
+      { to: "/analytics/decision-pulse", label: "Decision Pulse", icon: AlertTriangle },
       {
         to: "/analytics/supplier-decision-hub",
         label: "Odluke o dobavljačima",

@@ -66,6 +66,7 @@ const ConfigurationPage = lazy(() => import("./pages/ConfigurationPage"));
 const ProductDecisionCenterPage = lazy(() => import("./pages/ProductDecisionCenterPage"));
 const SupplierConsolidatedPage = lazy(() => import("./pages/SupplierConsolidatedPage"));
 const AnalyticsActionsPage = lazy(() => import("./pages/AnalyticsActionsPage"));
+const DecisionPulsePage = lazy(() => import("./pages/DecisionPulsePage"));
 const ExecutiveDecisionBoardPage = lazy(() => import("./pages/ExecutiveDecisionBoardPage"));
 const SupplierDecisionReportPage = lazy(() => import("./pages/SupplierDecisionReportPage"));
 const PilotIntakeReportPage = lazy(() => import("./pages/PilotIntakeReportPage"));
@@ -109,6 +110,7 @@ function AppShell() {
                     <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
                     <Route path="/analytics/data-quality" element={<DataQualityPage />} />
                     <Route path="/analytics/actions" element={<AnalyticsActionsPage />} />
+                    <Route path="/analytics/decision-pulse" element={<DecisionPulsePage />} />
                     <Route path="/analytics/decision-board" element={<ExecutiveDecisionBoardPage />} />
                     <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
                     <Route path="/analytics/reports/pilot-intake" element={<PilotIntakeReportPage />} />

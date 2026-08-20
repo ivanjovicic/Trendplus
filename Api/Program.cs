@@ -171,6 +171,8 @@ try
     builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
     builder.Services.Configure<PerformanceLoggingOptions>(builder.Configuration.GetSection(PerformanceLoggingOptions.Section));
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
+    builder.Services.Configure<Api.Services.Analytics.DecisionPulseOptions>(
+        builder.Configuration.GetSection(Api.Services.Analytics.DecisionPulseOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
 
@@ -437,6 +439,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<IDocumentDownloadTokenService, DocumentDownloadTokenService>();
     builder.Services.AddScoped<IDocumentUserContextAccessor, DocumentUserContextAccessor>();
     builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+    builder.Services.AddScoped<Api.Services.Analytics.DecisionPulseService>();
     builder.Services.AddScoped<IInventoryReportScheduleService, Infrastructure.Services.Inventory.InventoryReportScheduleService>();
     builder.Services.AddScoped<IInventoryActionDecisionService, Infrastructure.Services.Inventory.InventoryActionDecisionService>();
     builder.Services.AddScoped<Infrastructure.Services.Inventory.InventoryReportDeliveryService>();
@@ -1205,6 +1208,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAnalyticsRefreshStatusEndpoints();
     app.MapCachedAnalyticsEndpoints();
     app.MapDecisionBoardEndpoints();
+    app.MapDecisionPulseEndpoints();
     app.MapInventoryEndpoints();
     app.MapAnalyticsActionsEndpoints();
     app.MapAnalyticsIntelligenceEndpoints();

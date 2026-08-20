@@ -266,8 +266,8 @@ The queues are strong enough for agent execution, but current routing is not the
 The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
 
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: current RQ READY is none. `RQ96` is DONE. `RQ105` DONE. `RQ106` Decision Pulse is WAITING after `RQ96`. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
-- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution is `RL10`.
+- Analytics correctness: current RQ READY is none. `RQ96` DONE. `RQ106` Decision Pulse DONE. `RQ97`/`RQ98` WAITING. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution READY is none.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.
