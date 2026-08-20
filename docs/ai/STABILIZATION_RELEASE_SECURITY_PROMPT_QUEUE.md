@@ -1325,6 +1325,7 @@ Document/export generation and ownership decisions still trust caller-provided `
 - After `STAB11`: set `STAB12` to `READY` unless a smaller same-owner document/export split is required by evidence.
 - After `STAB12`: keep STAB Current READY `none` until an owner promotes `STAB13` (pilot release evidence refresh); do not promote `GAI01` from STAB13 alone.
 - After `STAB13`: `STAB14` may be promoted when current-main frontend gate or live-smoke truth is red/stale; it still must not promote `GAI01` by itself.
+- After `STAB14`: `STAB15` may be promoted when the frontend gate is green and either `RQ110` is `DONE` or the owner supplies canonical production data-bearing analytics routes/filters for the smoke pack.
 
 ## STAB13 - Refresh pilot release evidence and GenAI entry-gate prep
 
@@ -1491,3 +1492,91 @@ STAB13 refreshed the pilot evidence pointers honestly, but it did not produce fr
 - `STAB13` DONE.
 - `BCI10` remains the higher-priority backend gate in `MASTER_ROADMAP.md`; STAB14 must not claim overall pilot readiness if backend current-main truth is still red.
 - Do not mix tenant-identity, MT, or GenAI runtime work into this prompt.
+
+---
+
+## STAB15 - Production analytics non-empty smoke against exact deploy SHA
+
+Status: WAITING
+Ready after: `STAB14` is `DONE` and either `RQ110` is `DONE` or the owner provides canonical production data-bearing analytics routes/filters
+Priority: P0
+Type: live-smoke/release-evidence
+Feature family: pilot-production-nonempty-smoke
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB15-<agent>.lock.md`
+Commit suggestion: `docs(qa): prove production analytics non-empty smoke on exact deploy`
+
+### Problem
+
+Even after the frontend gate re-closes, the pilot still cannot claim reliable analytics if the exact deployed runtime can reach shell routes yet surface blank charts, blank tables, or misleading healthy-empty states on data-bearing screens. Production needs one exact-SHA smoke pack that proves the main analytics surfaces are either visibly non-empty when canonical data exists or explicitly degraded/blocked with truthful metadata.
+
+### Evidence
+
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` still keeps the core pilot at `NOT READY` because fresh exact-deploy smoke truth is missing.
+- `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md` historically captured route mismatches and runtime route failures that can look like "no data" to an operator even when data exists elsewhere in the system.
+- GitHub Actions run `32379775110` failed on 2026-08-20 for the frontend analytics quality gate, and GitHub Actions run `32384559939` failed on 2026-08-20 for backend analytics/data-integrity coverage; current smoke must therefore tie to the exact deploy SHA instead of stale historical PASS rows.
+- User instruction 2026-08-20: production is available for testing and the pilot should not tolerate blank analytics surfaces when authoritative data exists.
+
+### Scope
+
+- production/live-smoke evidence only for the exact deployed SHA or an explicitly documented deployment SHA
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`
+- one new dated smoke evidence doc under `docs/qa/` if needed to preserve history
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- `MASTER_ROADMAP.md` only if the pilot gate verdict changes
+
+### Read first
+
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`
+- `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/roadmaps/BUSINESS_ROADMAP.md`
+- `STAB14` output
+- `RQ110` matrix/output, or the owner-supplied canonical production data-bearing route/filter list
+
+### Do
+
+1. Resolve the exact deployed SHA being tested and record whether it equals current `main` or a separately identified production SHA.
+2. Use the `RQ110` matrix or an owner-approved equivalent to select canonical production analytics routes/filters that should have visible data:
+   - dashboard
+   - product decision center
+   - executive decision board
+   - inventory
+   - supplier decision/sales
+   - analytics actions
+   - durable report/download route when applicable
+3. Execute a production smoke pack that records for each route:
+   - exact URL/filter payload used;
+   - expected data-bearing rationale;
+   - pass/non-empty, warn/degraded, or block/fail result;
+   - freshness/data-quality metadata observed;
+   - whether the response/page was blank, shell-only, or truthfully degraded.
+4. Treat shell-only success, blank table/chart render, stale empty cache, or hidden fallback as a failed reliability result, not a healthy empty state.
+5. Update the pilot release evidence and GenAI gate docs with the exact verdict and exact tested SHA.
+6. If a route fails, classify the first blocking family tightly enough to feed the next prompt:
+   - route mismatch;
+   - auth/session/environment issue;
+   - cache/refresh/materialized-view lag;
+   - backend contract empty/degraded truth issue;
+   - frontend render mismatch.
+
+### Tests
+
+- `git diff --check`
+- fresh production/live-smoke execution recorded against the exact tested SHA
+- queue/planning validators if docs or roadmap pointers change
+
+### Acceptance
+
+- A citeable production analytics non-empty smoke pack exists for the exact tested deploy SHA.
+- Each named pilot analytics surface is recorded as non-empty, truthfully degraded, or blocked with an explicit reason; no blank/shell-only pass is accepted as healthy.
+- Pilot release evidence and the GenAI gate cite the same exact tested SHA and verdict.
+- Any failing surface is classified narrowly enough to become the next owner prompt instead of remaining a generic "analytics blank" report.
+
+### Dependencies
+
+- `STAB14` DONE first.
+- Prefer `RQ110` DONE first so production smoke uses a canonical data-bearing route/filter matrix instead of ad hoc route guesses.
+- Do not broaden into general load/performance/security work; this prompt is only about exact-SHA production analytics visibility truth.

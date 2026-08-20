@@ -40,6 +40,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
 | RQ108 | READY | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
 | RQ109 | WAITING | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
+| RQ110 | WAITING | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
+| RQ111 | WAITING | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
 
 ---
 
@@ -1184,3 +1186,162 @@ Commit suggestion: `feat(analytics): expand decision pulse coverage`
 
 - `RQ106` DONE.
 - `RQ108` DONE first so inventory/forecast Pulse items can rely on authoritative runtime pairing rather than contract-only forecast truth.
+
+---
+
+## RQ110 - Prove pilot analytics screens stay non-empty when authoritative seeded data exists
+
+Status: WAITING
+Ready after: `RQ108` is `DONE` and the owner authorizes the pilot screen-data reliability sequence
+Priority: P1
+Type: docs/tests/backend-contract
+Feature family: analytics-screen-data-availability
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ110-<agent>.lock.md`
+Commit suggestion: `test(analytics): prove non-empty pilot screen data availability`
+
+### Problem
+
+Trendplus should not show a blank chart, blank table, or misleading empty state on a pilot analytics screen when authoritative data already exists in the database for that screen's requested period/scope. Today this risk is spread across refresh ownership, cache identity, filter lineage, route smoke, and screen-specific endpoint behavior, but there is no single executable proof matrix for the main pilot surfaces.
+
+### Evidence
+
+- User requirement 2026-08-20: maximize analytics data reliability and avoid blank tables/charts when the database already contains data.
+- `docs/qa/ANALYTICS_BACKEND_TEST_COVERAGE_PHASE2_2026-07-02.md` already calls out screen cache identity, explicit empty-success metadata, and inventory list coverage, but not one cross-screen authoritative matrix.
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` shows that some families can lag after aggregation/data-quality refresh even when underlying data has already changed.
+- `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md` historically captured shell-only route mismatches and route-level failures that can look like "no data" from the operator perspective.
+- Current release evidence remains conservative (`docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`): the pilot is not ready until fresh exact-SHA route/smoke truth exists.
+
+### Scope
+
+- one new `docs/qa/` or architecture-style matrix for the main pilot analytics screens:
+  - dashboard
+  - product decision center
+  - executive decision board
+  - inventory
+  - supplier decision/sales
+  - analytics actions
+- focused backend contract tests for those screen families only where seeded non-empty proof is missing
+- the nearest existing backend test hosts for the named screens
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `docs/qa/ANALYTICS_BACKEND_TEST_COVERAGE_PHASE2_2026-07-02.md`
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md`
+- `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+- `Api.Tests/DecisionBoardEndpointsTests.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+
+### Do
+
+1. Create a single matrix that names, for each main pilot analytics screen:
+   - authoritative source tables/views/materialized views;
+   - refresh owner;
+   - canonical period/scope filters;
+   - allowed successful-empty reasons;
+   - one deterministic seeded non-empty fixture/query basis.
+2. Add the smallest focused backend proofs that when the authoritative seeded basis exists, the corresponding API does one of only two things:
+   - returns non-empty rows/series/cards; or
+   - returns an explicit blocked/warning/empty reason that explains why the screen cannot trustfully show data.
+3. Do not treat route-shell fallback, stale cache, or unknown refresh state as a successful empty dataset.
+4. If a screen family fails the new proof, classify the failure into:
+   - source/refresh ownership gap;
+   - filter lineage/scope bug;
+   - cache identity/invalidation bug;
+   - route/render mismatch;
+   - test harness gap.
+5. Keep this prompt at matrix/proof level. Create or refine the runtime repair prompt from the proven failure family instead of broadening this prompt silently.
+
+### Tests
+
+- `git diff --check`
+- focused `dotnet test` commands for the touched screen-family test hosts
+- governance validators if queue docs change
+
+### Acceptance
+
+- There is one citeable pilot analytics screen-data availability matrix.
+- Each named pilot screen has a deterministic seeded proof that authoritative data does not silently collapse into a blank screen or fake empty success.
+- Allowed empty states remain explicit and distinguishable from missing/blocked data.
+- Any reproduced runtime gap is classified tightly enough to feed the next owner prompt.
+
+### Dependencies
+
+- `RQ108` DONE first.
+- Do not fix broad refresh/cache/runtime behavior inside this prompt unless one smallest same-owner repair is required to make the proof executable and is recorded as such.
+
+---
+
+## RQ111 - Close refresh/cache/materialized-view gaps that can hide existing data
+
+Status: WAITING
+Ready after: `RQ110` is `DONE`
+Priority: P1
+Type: backend/workers/cache/tests
+Feature family: analytics-refresh-cache-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ111-<agent>.lock.md`
+Commit suggestion: `fix(analytics): preserve screen data after refresh and cache churn`
+
+### Problem
+
+Even when authoritative data exists, a pilot analytics screen can still look empty or stale if refresh ownership, materialized-view readiness, or cache invalidation is incomplete. The product must not lose visible screen data behind a stale empty cache entry, a refresh family that was not invalidated, or an unlabelled materialized-view lag.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` documents remaining follow-up risk for:
+  - supplier summary surfaces after aggregation-worker refresh;
+  - report-family regeneration/version rotation;
+  - dashboard/product/supplier/inventory trust surfaces after data-quality recalculation.
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md` and `docs/roadmaps/BUSINESS_ROADMAP.md` require refresh/freshness truth to stay visible rather than inferred from page render time.
+- `RQ110` is intended to classify which pilot screen families still collapse into blank or stale states despite an authoritative seeded basis.
+
+### Scope
+
+- `AnalyticsAggregationWorker`, `NightlyAnalyticsRefreshWorker`, `AnalyticsDataQualityHealthWorker`, and the nearest cache invalidation helpers they use
+- screen-family endpoint/meta code only where refresh/materialized-view readiness must be exposed truthfully
+- focused worker/cache/endpoint tests
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `docs/roadmaps/OBSERVABILITY_ROADMAP.md`
+- `docs/roadmaps/BUSINESS_ROADMAP.md`
+- the `RQ110` matrix/proof output
+- nearest worker/cache tests for the affected family
+
+### Do
+
+1. Use the `RQ110` output to pick the smallest proven refresh/cache/materialized-view failure family.
+2. Ensure a successful refresh or worker completion invalidates or refreshes the minimum required screen-family caches so existing data becomes visible without waiting for misleading TTL behavior.
+3. If a screen depends on a materialized view that is not current, expose that as explicit freshness/warning state instead of returning a trusted-looking blank result.
+4. Preserve successful empty semantics for truly empty datasets; do not turn real empty into fake "data exists" or vice versa.
+5. Add focused regression tests for:
+   - successful refresh -> screen family no longer serves stale empty data;
+   - failed refresh -> cache/data remains clearly stale/blocked, not healthy;
+   - materialized-view lag -> visible warning/degraded truth rather than silent blankness.
+
+### Tests
+
+- `git diff --check`
+- focused worker/cache invalidation tests
+- focused endpoint/meta contract tests for the affected screen family
+- governance validators if queue docs change
+
+### Acceptance
+
+- The first proven refresh/cache/materialized-view gap that can hide existing data is closed.
+- A named analytics screen family no longer returns a stale empty/trusted-looking blank state after successful refresh when the authoritative source contains data.
+- Failed or lagging refresh remains visible as warning/degraded truth.
+
+### Dependencies
+
+- `RQ110` DONE.
+- Do not broaden into a repo-wide performance or telemetry program; keep the fix inside the first proven reliability family.

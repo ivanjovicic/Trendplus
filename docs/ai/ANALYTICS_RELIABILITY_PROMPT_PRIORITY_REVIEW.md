@@ -55,7 +55,7 @@ The generic analytics lane order below is temporarily superseded by a reopened c
 1. Historical BCI bootstrap/closure prompts remain DONE, but current-main backend truth is reopened by `BCI10`.
 2. `BCI10` is READY: the current local Release suite is `1013 total / 1011 passed / 2 failed` in the SQL Server source-session family, and newer GitHub Actions backend runs are red.
 3. `QDB09` is READY as the connector-side runtime follow-up for SQL Server checkpoint end-to-end proof; do not duplicate its runtime surface inside `BCI10`.
-4. `RQ108` is READY as the first owner-authorized forecasting runtime follow-up; `RQ109` stays WAITING behind it.
+4. `RQ108` is READY as the first owner-authorized forecasting runtime follow-up; `RQ109` stays WAITING behind it, and `RQ110` -> `RQ111` are queued as the pilot screen-data reliability sequence behind the current forecasting work.
 5. `STAB14` is READY for frontend analytics gate + fresh live-smoke re-entry, but it must not overrule the higher-priority backend gate.
 6. `MASTER_ROADMAP.md` is authoritative. Current execution READY is `BCI10`. Do not revive `RQ89`/`RQ90` or claim `none`.
 
@@ -267,7 +267,7 @@ The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and o
 
 - Backend CI: `BCI10` READY.
 - Release truth: `STAB14` READY.
-- Analytics correctness/runtime forecasting: `RQ108` READY; `RQ109` WAITING.
+- Analytics correctness/runtime forecasting: `RQ108` READY; `RQ109` WAITING; `RQ110` then `RQ111` remain queued for pilot screen-data availability and refresh/cache parity after the current forecasting follow-up.
 - Connector runtime: `QDB09` READY; `QDB07` WAITING behind it plus release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
