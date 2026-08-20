@@ -170,8 +170,8 @@ Dashboard honesty layers are frozen, but there is still no citeable inventory of
 - Run log: .ai/runs/2026-08-20-OBS11-evidence.md
 - Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
-- Main verification: passed - origin/main contains 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+- Main commit SHA: 8ec23c29564b188b4b41f18efb049b6954aee2fe
+- Main verification: passed - origin/main contains 8ec23c29564b188b4b41f18efb049b6954aee2fe
 - Missed: none
 - Follow-up: none until owner promotes a runtime dashboard slice
 - Residual risk: inventory is docs-only until a UI prompt exists

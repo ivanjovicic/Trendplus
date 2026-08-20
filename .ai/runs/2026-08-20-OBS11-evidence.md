@@ -4,8 +4,8 @@ Date: 2026-08-20
 Agent/tool: Cursor Auto
 Delivery target: main
 Working branch / PR: cursor/queue-refill-dt09-dex20
-Main commit SHA: 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
-Main verification: passed - origin/main contains 9d565e04bf6455a9febf1d351cf404a9e1a4e3fa
+Main commit SHA: 8ec23c29564b188b4b41f18efb049b6954aee2fe
+Main verification: passed - origin/main contains 8ec23c29564b188b4b41f18efb049b6954aee2fe
 Evidence state: synchronized
 
 ## What was done
