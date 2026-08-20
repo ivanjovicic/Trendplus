@@ -4,9 +4,9 @@ Date: 2026-08-20
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: not run yet
-Evidence state: pending
+Main commit SHA: 51412cd3a1f5d61f4f5e0c4d5d0acce4d8f67684
+Main verification: passed - local main contains 51412cd3a1f5d61f4f5e0c4d5d0acce4d8f67684
+Evidence state: synchronized
 
 ## What was done
 - Reconciled stale detailed statuses in the decision-intelligence queue so they match the current roadmap truth.
