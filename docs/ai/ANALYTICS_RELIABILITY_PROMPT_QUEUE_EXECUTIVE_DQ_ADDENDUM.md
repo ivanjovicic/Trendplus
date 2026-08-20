@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ73` IN_PROGRESS; `RQ95` DONE; next is `BCI05` re-entry)
+Current READY prompt: none in this addendum (`RQ73` DONE; `RQ95` DONE; next is `BCI05` re-entry)
 Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
@@ -20,7 +20,7 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | RQ72 | DONE | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
-| RQ73 | IN_PROGRESS | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
+| RQ73 | DONE | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
 | RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
 | RQ75 | WAITING | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
 | RQ76 | WAITING | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
@@ -96,16 +96,36 @@ Executive fallback product card builder repeats the old bug where missing `expec
 
 ## RQ73 - Executive inventory weak signal expected impact
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ59 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: executive-inventory-signal-impact
 Parallel-safe: no
 Owner: Codex
-Local lock: `.ai/task-locks/RQ73-codex.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `fix(analytics): avoid executive weak inventory impact`
-Promotion note: 2026-08-20 - RQ59 is DONE, so the executive weak-signal follow-up is now runnable in this workspace.
+Promotion note: 2026-08-20 - RQ59 is DONE, so the executive weak-signal follow-up was promoted and claimed in this workspace.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: DONE
+- Completion: Executive inventory cards now keep `SIGNAL_REVIEW` exposure out of confirmed `expectedImpactRsd`, while actionable inventory rows still preserve impact and ranking
+- Changed files: Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx; Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md; .ai/runs/2026-08-20-RQ73-evidence.md
+- Contract/runtime behavior changed: yes; weak inventory review rows no longer appear as confirmed impact on the Executive board helper
+- Checks run: git diff --check (pass); npm run check:analytics-guardrails (pass); npm run test -- --run src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts (pass)
+- Checks not run: full frontend build; full repo test suites
+- Run log: .ai/runs/2026-08-20-RQ73-evidence.md
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: dfdff711cf9ce760005a72a0cb01d868e8d7e1c8
+- Main verification: pending - code commit landed locally; main push/ancestor verification still to be recorded
+- Missed: a runtime surface export or additional UI copy for potential exposure was intentionally not added
+- Follow-up: none
+- Residual risk: the helper is exported for testability, but the current runtime board path still does not call `buildInventoryCards`
+- Prompt defect / scope repair: RQ73 was WAITING while RQ59 was already DONE; promoted by same-owner routing repair
+- Next: none
 
 ### Why
 
