@@ -4,9 +4,9 @@ Date: 2026-08-20
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: not run yet
-Evidence state: pending
+Main commit SHA: b7ce1e1c0fe1ef97840d0329b2857d2b4f0c7a13
+Main verification: passed - local main contains b7ce1e1c0fe1ef97840d0329b2857d2b4f0c7a13
+Evidence state: synchronized
 
 ## What was done
 - Clarified why `RQ107` is still waiting: the queue requires both a trusted forecast materializer and a measured backtest window before scenario planning can become READY.
@@ -16,12 +16,13 @@ Evidence state: pending
 - docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md
 
 ## Validation run
-- not run yet
+- `git diff --check` - pass
+- `node scripts/check-prompt-queues.mjs` - pass
+- `node scripts/check-planning-architecture.mjs` - pass
 
 ## Validation not run
-- `git diff --check` - pending
-- `node scripts/check-prompt-queues.mjs` - pending
-- `node scripts/check-planning-architecture.mjs` - pending
+- `dotnet test` - not run; docs-only queue analysis
+- `npm run build` - not run; no runtime or frontend code changed
 
 ## Documentation impact
 - `RQ107` now names the exact evidence docs that gate promotion.
