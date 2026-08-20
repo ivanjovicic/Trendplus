@@ -463,7 +463,7 @@ function computePriorityScore(
   return impactComponent + confidenceComponent + statusBonus - dataQualityPenalty;
 }
 
-function buildInventoryCards(
+export function buildInventoryCards(
   inventoryInsights: InventoryInsights | null,
   inventoryRows: InventoryRow[],
   states: Map<string, ActionState>,
@@ -489,7 +489,10 @@ function buildInventoryCards(
     const actionSpec = buildInventorySignalActionSpec(row);
     const actionState = resolveActionState("inventory", actionSpec.sourceKey, states);
     const confidence = confidenceLabelFromValue(row.signalConfidencePct, row.recommendationAllowed === false ? "Nedovoljno podataka" : "Nedovoljno podataka");
-    const impact = actionSpec.expectedImpactRsd ?? row.estimatedValueAmount ?? row.estimatedValue ?? null;
+    const impact =
+      actionSpec.recommendationStatus === "SIGNAL_REVIEW"
+        ? null
+        : actionSpec.expectedImpactRsd ?? row.estimatedValueAmount ?? row.estimatedValue ?? null;
     const riskIfIgnored = row.signalText || row.stockCoverStatusLabel || "Signal nije dovoljno opisan.";
 
     deduped.set(candidate.id, {

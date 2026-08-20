@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   buildExecutiveDecisionBoardModel,
   buildExecutiveFallbackProductCards,
+  buildInventoryCards,
 } from "../ExecutiveDecisionBoardPage";
+import type { InventoryRow } from "../../components/inventory/types";
 import type {
   DecisionBoardAggregateResponse,
   DecisionBoardCard,
   DecisionBoardMetric,
   DecisionBoardSection,
   DecisionBoardSourceState,
+  InventoryInsightItem,
+  InventoryInsights,
   ProductDecisionCenterItem,
   ProductDecisionCenterResponse,
   ProductDecisionRecommendationStatus,
@@ -172,6 +176,88 @@ function baseAggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}):
   };
 }
 
+function baseInventoryRow(overrides: Partial<InventoryRow> & Pick<InventoryRow, "id" | "naziv">): InventoryRow {
+  return {
+    id: overrides.id,
+    naziv: overrides.naziv,
+    plu: "SKU-1",
+    kolicina: 10,
+    minimalnaKolicina: 4,
+    nabavnaCena: 1200,
+    estimatedValue: 12000,
+    idObjekat: 1,
+    idDobavljac: 2,
+    velicina: "42",
+    velicinaGroup: "42",
+    stockCoverDays: 3,
+    stockCoverStatus: "insufficient_data",
+    stockCoverStatusLabel: "Nedovoljno podataka",
+    sellThroughRatio: 0.2,
+    sellThroughStatus: "insufficient_data",
+    sellThroughStatusLabel: "Nedovoljno podataka",
+    signalConfidencePct: 41,
+    recommendationAllowed: false,
+    reasonCodes: ["insufficient_signal"],
+    dataQualityStatus: "warning",
+    supplierName: "Dobavljač X",
+    storeName: "Prodavnica Y",
+    quantity: 10,
+    minimum: 4,
+    reorderGap: 2,
+    stockState: "warning",
+    stockStateLabel: "Upozorenje",
+    estimatedValueAmount: 12000,
+    unitCost: 1200,
+    coverageRatio: 0.3,
+    signalText: "Signal nije dovoljan za potvrđenu preporuku.",
+    ...overrides,
+  };
+}
+
+function baseInventoryInsight(overrides: Partial<InventoryInsightItem> & Pick<InventoryInsightItem, "id" | "naziv">): InventoryInsightItem {
+  return {
+    id: overrides.id,
+    naziv: overrides.naziv,
+    supplierName: "Dobavljač X",
+    storeName: "Prodavnica Y",
+    quantity: 10,
+    minimum: 4,
+    reorderGap: 2,
+    estimatedValue: 12000,
+    daysSinceMovement: 18,
+    agingBucket: "aged",
+    agingLabel: "Staro",
+    abcClass: "A",
+    stockState: "warning",
+    stockCoverDays: 3,
+    stockCoverStatus: "insufficient_data",
+    stockCoverStatusLabel: "Nedovoljno podataka",
+    sellThroughRatio: 0.2,
+    sellThroughStatus: "insufficient_data",
+    sellThroughStatusLabel: "Nedovoljno podataka",
+    signalConfidencePct: 41,
+    recommendationAllowed: false,
+    dataQualityStatus: "warning",
+    reasonCodes: ["insufficient_signal"],
+    ...overrides,
+  };
+}
+
+function baseInventoryInsights(overrides: Partial<InventoryInsights> = {}): InventoryInsights {
+  const topItem = baseInventoryInsight({ id: 201, naziv: "Patike sa slabim signalom" });
+
+  return {
+    totalItems: 1,
+    totalEstimatedValue: 12000,
+    aging: [] as InventoryInsights["aging"],
+    abc: [] as InventoryInsights["abc"],
+    topAgedItems: [topItem],
+    topCapitalLockedItems: [topItem],
+    meta: null,
+    ...overrides,
+  };
+}
+
 describe("ExecutiveDecisionBoardPage model", () => {
   it("maps aggregate sections and metrics into the board model", () => {
     const model = buildExecutiveDecisionBoardModel(baseAggregate());
@@ -229,6 +315,77 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(productCard?.confidenceTone).toBe("insufficient");
     expect(productCard?.confidenceLabel).toContain("Nedovoljno podataka");
     expect(productCard?.expectedImpactRsd).toBeNull();
+  });
+
+  it("keeps weak inventory signal exposure out of expected impact on executive inventory cards", () => {
+    const rows = [
+      baseInventoryRow({
+        id: 201,
+        naziv: "Patike sa slabim signalom",
+        plu: "SKU-201",
+        estimatedValue: 98000,
+        estimatedValueAmount: 98000,
+        stockCoverStatus: "insufficient_data",
+        stockCoverStatusLabel: "Nedovoljno podataka",
+        sellThroughStatus: "insufficient_data",
+        sellThroughStatusLabel: "Nedovoljno podataka",
+        recommendationAllowed: false,
+        signalConfidencePct: 41,
+        signalText: "Signal nije dovoljan za potvrđenu preporuku.",
+      }),
+    ];
+
+    const cards = buildInventoryCards(baseInventoryInsights(), rows, new Map());
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].recommendedNextAction).toBe("Proveri signal zalihe: Patike sa slabim signalom");
+    expect(cards[0].expectedImpactRsd).toBeNull();
+    expect(cards[0].impactScore).toBe(0);
+  });
+
+  it("still preserves expected impact for actionable inventory rows", () => {
+    const row = baseInventoryInsight({
+      id: 202,
+      naziv: "Patike za dopunu",
+      stockCoverStatus: "out_of_stock_risk",
+      stockCoverStatusLabel: "Rizik rasprodaje",
+      sellThroughStatus: "healthy",
+      sellThroughStatusLabel: "Zdravo",
+      recommendationAllowed: true,
+      signalConfidencePct: 86,
+      reasonCodes: ["out_of_stock_risk"],
+    });
+    const rows = [
+      baseInventoryRow({
+        id: 202,
+        naziv: "Patike za dopunu",
+        plu: "SKU-202",
+        estimatedValue: 75000,
+        estimatedValueAmount: 75000,
+        stockCoverStatus: "out_of_stock_risk",
+        stockCoverStatusLabel: "Rizik rasprodaje",
+        sellThroughStatus: "healthy",
+        sellThroughStatusLabel: "Zdravo",
+        recommendationAllowed: true,
+        signalConfidencePct: 86,
+        signalText: "Rizik rasprodaje.",
+        reasonCodes: ["out_of_stock_risk"],
+      }),
+    ];
+
+    const cards = buildInventoryCards(
+      {
+        ...baseInventoryInsights(),
+        topAgedItems: [row],
+        topCapitalLockedItems: [row],
+      },
+      rows,
+      new Map(),
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].expectedImpactRsd).toBe(75000);
+    expect(cards[0].recommendedNextAction).toBe("Dopuni artikal: Patike za dopunu");
   });
 
   it("keeps stale or warning source states visible in the board model", () => {

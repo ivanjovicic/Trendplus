@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ95` DONE; next is `BCI05` re-entry)
+Current READY prompt: none in this addendum (`RQ73` IN_PROGRESS; `RQ95` DONE; next is `BCI05` re-entry)
 Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
@@ -20,7 +20,7 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | RQ72 | DONE | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
-| RQ73 | WAITING | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
+| RQ73 | IN_PROGRESS | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
 | RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
 | RQ75 | WAITING | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
 | RQ76 | WAITING | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
@@ -96,15 +96,16 @@ Executive fallback product card builder repeats the old bug where missing `expec
 
 ## RQ73 - Executive inventory weak signal expected impact
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ59 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
 Feature family: executive-inventory-signal-impact
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ73-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/RQ73-codex.lock.md`
 Commit suggestion: `fix(analytics): avoid executive weak inventory impact`
+Promotion note: 2026-08-20 - RQ59 is DONE, so the executive weak-signal follow-up is now runnable in this workspace.
 
 ### Why
 
