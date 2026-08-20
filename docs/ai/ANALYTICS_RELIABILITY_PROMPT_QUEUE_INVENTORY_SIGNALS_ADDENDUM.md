@@ -827,8 +827,8 @@ The runtime exposes forecast snapshot reads, but the repository evidence does no
 - Run log: .ai/runs/2026-08-20-RQ97-evidence.md
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending push
+- Main commit SHA: 0d0bd62b480a1ceedcaa32d188a0461753f6efea
+- Main verification: passed - origin/main contains 0d0bd62b480a1ceedcaa32d188a0461753f6efea
 - Missed: inventing a forecast materializer (intentionally out of scope); RQ98 comparison window
 - Follow-up: RQ98 remains WAITING (needs trustworthy comparison window); SQL Server e2e commercial gate remains owner-routed
 - Residual risk: environments with a hand-filled snapshot table still surface as owner_unknown — correct until a proven writer lands
