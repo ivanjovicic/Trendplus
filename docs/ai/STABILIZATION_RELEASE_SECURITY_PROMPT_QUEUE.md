@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB12` DONE; `STAB13` PARTIAL pending main)
-Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack exists locally pending main. Existing-execution READY is `none` (`RQ98` DONE). `QDB06` is DONE. GenAI remains BLOCKED.
+Current READY prompt: none (`STAB12` DONE; `STAB13` DONE)
+Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack is on main. Existing-execution READY is `none` (`RQ98` DONE). `QDB06` is DONE. GenAI remains BLOCKED.
 
 ## Goal
 
@@ -1327,7 +1327,7 @@ Document/export generation and ownership decisions still trust caller-provided `
 
 ## STAB13 - Refresh pilot release evidence and GenAI entry-gate prep
 
-Status: PARTIAL
+Status: DONE
 Ready after: Current execution READY is `none` and an owner explicitly promotes this additive docs/evidence slice
 Priority: P1
 Type: evidence/docs
@@ -1385,17 +1385,17 @@ STAB12 closed the unauthenticated document-header privilege gap, but pilot relea
 
 - Date: 2026-08-20
 - Status: PARTIAL
-- Completion: evidence refresh pack complete; main delivery pending; GenAI stays BLOCKED
+- Completion: evidence refresh pack complete; delivered on main; GenAI stays BLOCKED
 - Changed files: docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md, docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md, docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-STAB13-evidence.md
 - Contract/runtime behavior changed: no runtime; refreshed pointers keep core pilot NOT READY and GenAI BLOCKED
-- Checks run: pending shared refill validators
+- Checks run: node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: live smoke / production access - out of scope
 - Run log: .ai/runs/2026-08-20-STAB13-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: pending
-- Main verification: pending
-- Missed: fresh live smoke; SHA-on-main
+- Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
+- Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
+- Missed: fresh live smoke
 - Follow-up: live smoke pack before any GenAI reopen
 - Residual risk: older readiness PASS rows remain historically present and must not be misread as current
 - Prompt defect / scope repair: none

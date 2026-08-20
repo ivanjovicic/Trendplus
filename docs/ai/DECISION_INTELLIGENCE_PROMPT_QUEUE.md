@@ -38,7 +38,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DEX - Decision Explainability | none | `DEX20` PARTIAL = alternatives contract pending main |
+| DEX - Decision Explainability | none | `DEX19` DONE; `DEX20` DONE |
 
 
 
@@ -46,7 +46,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| DT - Decision Timeline | none | `DT09` PARTIAL = timestamp contract pending main; `DT10` WAITING |
+| DT - Decision Timeline | none | `DT09` DONE; `DT10` WAITING |
 
 
 
@@ -213,7 +213,7 @@ Slice 4 advisory calibration is frozen, but there is still no citeable gate that
 
 ## DT09 - Prepare first-class timeline timestamp contract
 
-Status: PARTIAL
+Status: DONE
 Ready after: `DT08` is `DONE` and the current execution READY exclusive RQ inventory/forecast foundation path is no longer READY, or the owner explicitly promotes this additive slice
 Priority: future / planning
 Feature family: decision-timeline-timestamps
@@ -273,17 +273,17 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 
 - Date: 2026-08-20
 - Status: PARTIAL
-- Completion: contract complete; main delivery pending
+- Completion: contract complete; delivered on main
 - Changed files: docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DT09-evidence.md
 - Contract/runtime behavior changed: froze first-class vs derived vs absent timeline timestamps; no runtime/schema change
-- Checks run: pending validators in same refill branch
+- Checks run: node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: dotnet/npm - docs only
 - Run log: .ai/runs/2026-08-20-DT09-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: pending
-- Main verification: pending
-- Missed: SHA-on-main verification
+- Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
+- Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
+- Missed: none
 - Follow-up: DT10 after DT09 DONE on main
 - Residual risk: Slice-2 projection still coalesces derived clocks until a later runtime prompt
 - Prompt defect / scope repair: Ready-after RQ96 wording generalized after RQ96-RQ98 DONE
@@ -345,7 +345,7 @@ DT09 freezes first-class vs derived timestamps, but the live Slice-2 projection 
 
 ## DEX20 - Prepare cross-family decision alternatives contract
 
-Status: PARTIAL
+Status: DONE
 Ready after: `DEX19` is `DONE` and Current execution READY is none, or the owner explicitly promotes this additive docs slice
 Priority: future / planning
 Feature family: decision-alternatives-contract
@@ -403,17 +403,17 @@ Product Decision Center already exposes backend alternatives, but other families
 
 - Date: 2026-08-20
 - Status: PARTIAL
-- Completion: contract complete; main delivery pending
+- Completion: contract complete; delivered on main
 - Changed files: docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DEX20-evidence.md
 - Contract/runtime behavior changed: froze cross-family alternatives vs absence; no runtime/API change
-- Checks run: pending validators in same refill branch
+- Checks run: node scripts/check-prompt-queues.mjs; node scripts/check-planning-architecture.mjs
 - Checks not run: dotnet/npm - docs only
 - Run log: .ai/runs/2026-08-20-DEX20-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: pending
-- Main verification: pending
-- Missed: SHA-on-main verification
+- Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
+- Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
+- Missed: none
 - Follow-up: none until owner promotes a runtime alternatives slice
 - Residual risk: only PDC currently has runtime alternatives
 - Prompt defect / scope repair: none
