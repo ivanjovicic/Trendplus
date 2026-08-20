@@ -982,7 +982,7 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 ## RQ107 - Controlled markdown / replenishment scenario planning contract
 
 Status: WAITING
-Ready after: a trusted forecast materializer exists and a measured backtest window is available, or an owner explicitly promotes a docs-only precursor
+Ready after: RQ97 and RQ98 evidence prove a trusted forecast materializer plus measured backtest window, or an owner explicitly promotes the docs-only precursor below
 Priority: P2
 Type: docs-contract (later runtime)
 Feature family: scenario-planning-contract
@@ -998,7 +998,14 @@ Competitive gap Gate 4 still needs controlled scenario planning (markdown / repl
 
 - `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` Gate 4
 - `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`
+- `docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md`
 - `docs/planning/QUEUE_REFILL_2026-08-20.md`
+
+### Owner-gated path
+
+1. Keep `RQ97` and `RQ98` DONE so the queue stays fail-closed on forecast provenance and backtesting.
+2. Do not promote runtime scenario work until the forecast writer is proven and the backtest comparison window is available.
+3. If the owner wants an intermediate docs-only precursor, freeze only the scenario vocabulary and comparison basis. Do not add simulator logic, optimizer behavior or runtime forecast mutation in that precursor.
 
 ### Scope
 
