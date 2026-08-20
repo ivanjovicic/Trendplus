@@ -912,8 +912,8 @@ Trendplus cannot yet prove predictive value because there is no canonical baseli
 - Run log: .ai/runs/2026-08-20-RQ98-evidence.md
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending push
+- Main commit SHA: 510c9f1a73c90dba4ab6813a60532345fe9333a4
+- Main verification: passed - origin/main contains 510c9f1a73c90dba4ab6813a60532345fe9333a4
 - Missed: measured WAPE/bias/MAE over a real window; seasonal_naive computation; UI scorecard
 - Follow-up: none in RQ inventory-signals lane; commercial SQL Server e2e remains owner-routed; measured backtest reopen after trusted forecast materializer
 - Residual risk: callers must treat EvaluationStatus=unavailable as non-authoritative; do not chart null aggregates as zeros
