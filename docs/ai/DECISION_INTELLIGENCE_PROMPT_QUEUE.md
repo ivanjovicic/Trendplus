@@ -349,13 +349,13 @@ DT09 freezes first-class vs derived timestamps, but the live Slice-2 projection 
 - Completion: derived-clock honesty is now explicit in the DT export/report contract; no runtime schema or projection change
 - Changed files: docs/architecture/DECISION_TIMELINE_EXPORT_REPORT_CONTRACT.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, .ai/runs/2026-08-20-DT10-evidence.md
 - Contract/runtime behavior changed: export/report consumers must keep derived clocks labeled as derived and keep gap reasons visible; runtime remains unchanged
-- Checks run: pending
+- Checks run: `git diff --check`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`
 - Checks not run: dotnet/npm - docs only
 - Run log: .ai/runs/2026-08-20-DT10-evidence.md
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: branch `cursor/queue-refill-dt09-dex20`
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 5f51c8ac18e5b3bff796ecff2da6ceb5c9bc60b9
+- Main verification: passed - origin/main contains 5f51c8ac18e5b3bff796ecff2da6ceb5c9bc60b9
 - Missed: none
 - Follow-up: none
 - Residual risk: consumers must continue to honor the derived-clock labels and gap reasons
