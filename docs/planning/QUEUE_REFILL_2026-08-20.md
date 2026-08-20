@@ -29,7 +29,7 @@ Trigger: `MASTER_ROADMAP.md` Current execution READY = `none` after `RQ98` DONE
 |---|---|
 | `DT10` | Derived-clock honesty after DT09 DONE on main |
 | `RL11` | Advisory calibration runtime gate |
-| `RQ107` | Scenario planning after trusted materializer + measured backtest |
+| `RQ107` | DONE as docs-only scenario planning contract; runtime follow-up remains gated |
 
 ## Explicit non-promotions
 
@@ -40,4 +40,4 @@ Trigger: `MASTER_ROADMAP.md` Current execution READY = `none` after `RQ98` DONE
 
 1. Verify DT09/DEX20 SHA on `origin/main` and flip PARTIAL → DONE.
 2. Optionally promote exactly one path-safe docs READY (`DT10` or `OBS11` or `RL11`), not all three.
-3. Keep RQ Current READY `none` until a named materializer/backtest prompt is owner-authorized.
+3. Keep RQ Current READY `none` until a named runtime materializer/backtest prompt is owner-authorized.

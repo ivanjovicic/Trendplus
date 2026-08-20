@@ -981,14 +981,13 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 
 ## RQ107 - Controlled markdown / replenishment scenario planning contract
 
-Status: WAITING
-Ready after: RQ97 and RQ98 evidence prove a trusted forecast materializer plus measured backtest window, or an owner explicitly promotes the docs-only precursor below
+Status: DONE
+Completed: docs-only precursor promoted on 2026-08-20; runtime scenario work remains gated by trusted forecast materialization plus a measured backtest window
 Priority: P2
 Type: docs-contract (later runtime)
 Feature family: scenario-planning-contract
 Parallel-safe: yes, docs/contracts only until later runtime authorization
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ107-<agent>.lock.md`
 
 ### Problem
 
@@ -999,13 +998,14 @@ Competitive gap Gate 4 still needs controlled scenario planning (markdown / repl
 - `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` Gate 4
 - `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`
 - `docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md`
+- `docs/qa/SCENARIO_PLANNING_CONTRACT_2026-08-20.md`
 - `docs/planning/QUEUE_REFILL_2026-08-20.md`
 
 ### Owner-gated path
 
 1. Keep `RQ97` and `RQ98` DONE so the queue stays fail-closed on forecast provenance and backtesting.
 2. Do not promote runtime scenario work until the forecast writer is proven and the backtest comparison window is available.
-3. If the owner wants an intermediate docs-only precursor, freeze only the scenario vocabulary and comparison basis. Do not add simulator logic, optimizer behavior or runtime forecast mutation in that precursor.
+3. The docs-only precursor is now complete: freeze only the scenario vocabulary and comparison basis. Do not add simulator logic, optimizer behavior or runtime forecast mutation in that precursor.
 
 ### Scope
 
@@ -1032,10 +1032,10 @@ Competitive gap Gate 4 still needs controlled scenario planning (markdown / repl
 
 ### Acceptance
 
-- one citeable scenario-planning contract exists when promoted;
+- one citeable scenario-planning contract exists on main;
 - RQ Current READY remains single / none as declared.
 
 ### Dependencies
 
-- trusted forecast materializer + measured backtest window, or owner docs-only precursor approval;
+- trusted forecast materializer + measured backtest window for runtime follow-up;
 - do not promote ahead of higher-priority exclusive RQ work.
