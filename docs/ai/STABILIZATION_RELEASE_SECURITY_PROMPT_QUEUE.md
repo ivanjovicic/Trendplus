@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB12` DONE; `STAB13` DONE)
-Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack is on main. Existing-execution READY is `none` (`RQ98` DONE). `QDB06` is DONE. GenAI remains BLOCKED.
+Current READY prompt: `STAB14` (`STAB12` DONE; `STAB13` DONE)
+Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack is on main, but core pilot is still not current-main-proven. `STAB14` reopens the frontend analytics gate plus fresh live-smoke proof; GenAI remains BLOCKED.
 
 ## Goal
 
@@ -1324,6 +1324,7 @@ Document/export generation and ownership decisions still trust caller-provided `
 - After `STAB10`: set `STAB11` to `READY`.
 - After `STAB11`: set `STAB12` to `READY` unless a smaller same-owner document/export split is required by evidence.
 - After `STAB12`: keep STAB Current READY `none` until an owner promotes `STAB13` (pilot release evidence refresh); do not promote `GAI01` from STAB13 alone.
+- After `STAB13`: `STAB14` may be promoted when current-main frontend gate or live-smoke truth is red/stale; it still must not promote `GAI01` by itself.
 
 ## STAB13 - Refresh pilot release evidence and GenAI entry-gate prep
 
@@ -1334,7 +1335,7 @@ Type: evidence/docs
 Feature family: pilot-release-evidence-refresh
 Parallel-safe: yes, evidence/docs when path-safe
 Owner: Cursor Auto
-Local lock: removed after PARTIAL close
+Local lock: removed after DONE close
 Promotion note: 2026-08-20 - owner-promoted via queue refill continuation.
 
 ### Problem
@@ -1384,7 +1385,7 @@ STAB12 closed the unauthenticated document-header privilege gap, but pilot relea
 ### Completion note
 
 - Date: 2026-08-20
-- Status: PARTIAL
+- Status: DONE
 - Completion: evidence refresh pack complete; delivered on main; GenAI stays BLOCKED
 - Changed files: docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md, docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md, docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md, MASTER_ROADMAP.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-STAB13-evidence.md
 - Contract/runtime behavior changed: no runtime; refreshed pointers keep core pilot NOT READY and GenAI BLOCKED
@@ -1399,3 +1400,94 @@ STAB12 closed the unauthenticated document-header privilege gap, but pilot relea
 - Follow-up: live smoke pack before any GenAI reopen
 - Residual risk: older readiness PASS rows remain historically present and must not be misread as current
 - Prompt defect / scope repair: none
+
+---
+
+## STAB14 - Reopen frontend analytics gate and current-main live-smoke truth
+
+Status: READY
+Ready after: `STAB13` is `DONE` and current-main frontend release truth is red or stale
+Priority: P0
+Type: frontend/tests/release-evidence
+Feature family: pilot-release-current-main-reentry
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB14-<agent>.lock.md`
+Commit suggestion: `test(release): reclose frontend gate and live smoke truth`
+Promotion note: 2026-08-20 - owner-promoted from the current-main audit because the pilot still has no fresh live-smoke pack and the frontend analytics quality gate is red.
+
+### Problem
+
+STAB13 refreshed the pilot evidence pointers honestly, but it did not produce fresh live runtime proof. The latest frontend analytics gate is also red, so the product still cannot claim a current pilot verdict from the exact current main branch.
+
+### Evidence
+
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` keeps `Core pilot = NOT READY` specifically because no fresh live-smoke pack exists.
+- Business milestone exit rule: `docs/roadmaps/BUSINESS_ROADMAP.md` requires the current STAB evidence to say `Pilot Ready` or `Pilot Ready With Accepted Warnings`; historical readiness docs do not count.
+- Newer frontend gate evidence is red:
+  - GitHub Actions run `32379775110` failed on commit `8c27094`
+- Audit-reproduced frontend failure families include:
+  - Pilot readiness contract drift (`warning/ready` vs current `blocked`)
+  - duplicate `Ponovo proveri` controls
+  - Executive Decision Board duplicate `Spor obrt` / leaked `accepted` chip
+  - inventory freshness tests missing router context
+  - accessibility label/name drift
+  - methodology registry/import drift
+  - relative URL / MSW / `AbortSignal` harness failures
+- STAB13 explicitly left fresh live smoke as missed work.
+
+### Scope
+
+- current failing frontend analytics test files and the exact frontend/runtime files they exercise
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/roadmaps/BUSINESS_ROADMAP.md` only if the cited exit rule or milestone wording must be synchronized
+- `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+- `MASTER_ROADMAP.md`
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`
+- `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+- `docs/roadmaps/BUSINESS_ROADMAP.md`
+- `Klijent/clientapp/package.json`
+- the currently failing frontend test files from `npm run test:analytics`
+
+### Do
+
+1. Reproduce the current frontend analytics quality gate exactly with `npm run test:analytics`.
+2. Group failures by contract family and apply only the smallest truthful repairs on the owned release surfaces.
+3. Keep fail-closed semantics explicit:
+   - blocked stays blocked;
+   - stale/missing evidence never becomes ready/green;
+   - duplicate controls or chips must not mask backend truth.
+4. Re-run the frontend analytics gate until it is green or truthfully reduced to a smaller residual set.
+5. After the gate is green, execute a fresh live-smoke pack against the exact current deployment or current-main runtime covering at minimum:
+   - `/health`
+   - `/ready`
+   - Decision Board aggregate
+   - Decision Pulse
+   - inventory/forecast fail-closed paths
+6. Update the pilot evidence pack and GenAI gate doc with the exact verdict from the fresh smoke.
+7. Keep `GAI01` non-READY unless the new STAB evidence explicitly clears the core pilot gate.
+
+### Tests
+
+- `git diff --check`
+- `cd Klijent/clientapp && npm run test:analytics`
+- targeted frontend specs only when narrowing a failing family
+- fresh live-smoke path recorded against the exact current runtime/deploy
+
+### Acceptance
+
+- The frontend analytics quality gate is tied to a fresh current-main result, not stale historical green evidence.
+- A fresh live-smoke pack exists for the exact current runtime/deploy and updates the STAB pilot verdict honestly.
+- `GAI01` remains blocked unless the refreshed evidence explicitly says otherwise.
+- The prompt does not hide blocked/unknown states behind UI-friendly defaults.
+
+### Dependencies
+
+- `STAB13` DONE.
+- `BCI10` remains the higher-priority backend gate in `MASTER_ROADMAP.md`; STAB14 must not claim overall pilot readiness if backend current-main truth is still red.
+- Do not mix tenant-identity, MT, or GenAI runtime work into this prompt.

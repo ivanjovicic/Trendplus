@@ -2,7 +2,7 @@
 
 Created: 2026-08-10
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: none (current active READY lives in the parent BCI queue: `BCI10`)
 Owner program: `BCI`
 Parent queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 
@@ -17,6 +17,7 @@ Purpose: close evidence that the original BCI prompts explicitly required but th
 | BCI05 | DONE | Green GHA restore/build/test/coverage/artifact on `f1f5a17` after BCI09 |
 | BCI01 | DONE | Backend workflow restore/build/test step green on current backend-equivalent main |
 | BCI06 | DONE | Windows/VS mixed-solution wrappers load via NuGet JavaScript SDK `1.0.3982316`; backend `.slnf` remains the canonical non-IDE path |
+| BCI10 | READY | Reopen current-main backend suite truth after SQL Server contract drift |
 
 ---
 

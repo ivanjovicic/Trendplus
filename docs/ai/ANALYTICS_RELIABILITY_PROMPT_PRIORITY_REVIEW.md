@@ -1,7 +1,7 @@
 ﻿# Analytics Reliability Prompt Priority Review
 
 Date: 2026-06-28
-Routing reviewed: 2026-08-10
+Routing reviewed: 2026-08-20
 Repo: `ivanjovicic/Trendplus`
 Status: planning/review only; no runtime code changed
 
@@ -48,18 +48,18 @@ For a normal implementation run, read only:
 
 Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
 
-## Current BCI assertion-repair override (2026-08-10)
+## Current BCI assertion-repair override (2026-08-20)
 
-The generic analytics lane order below is temporarily superseded by a concrete backend-CI repair sequence produced by `BCI04` and refreshed by `BCI05` evidence.
+The generic analytics lane order below is temporarily superseded by a reopened current-main backend gate plus newly promoted runtime follow-ups.
 
-1. `RQ89`–`RQ95`, `BCI08`, and `BCI09` are DONE.
-2. `BCI05` is READY: local `Api.Tests` Release build is restored on `469acbf`. Capture green GHA on a commit that includes that stub fix.
-3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
-4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
-5. Post-BCI inventory-foundation prompt `RQ96` is DONE after the observed snapshot foundation landed on 2026-08-19. `RQ97` forecast snapshot provenance is DONE (fail-closed). `RQ98` baseline/backtesting contract is DONE (fail-closed; measured window unavailable).
-6. Routing update 2026-08-19: `MASTER_ROADMAP.md` is authoritative. Sequential refill is complete. Current execution is `RL10`. Parallel-safe planning READYs are `OBS10` and `RL10`. `PERF16` is BLOCKED on `MT10`. Do not revive `RQ89`/`RQ90` as READY.
+1. Historical BCI bootstrap/closure prompts remain DONE, but current-main backend truth is reopened by `BCI10`.
+2. `BCI10` is READY: the current local Release suite is `1013 total / 1011 passed / 2 failed` in the SQL Server source-session family, and newer GitHub Actions backend runs are red.
+3. `QDB09` is READY as the connector-side runtime follow-up for SQL Server checkpoint end-to-end proof; do not duplicate its runtime surface inside `BCI10`.
+4. `RQ108` is READY as the first owner-authorized forecasting runtime follow-up; `RQ109` stays WAITING behind it.
+5. `STAB14` is READY for frontend analytics gate + fresh live-smoke re-entry, but it must not overrule the higher-priority backend gate.
+6. `MASTER_ROADMAP.md` is authoritative. Current execution READY is `BCI10`. Do not revive `RQ89`/`RQ90` or claim `none`.
 
-Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
+Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`, 2026-08-20 current-main audit notes
 
 ## Global execution lanes
 
@@ -261,13 +261,14 @@ Next prompt:
 
 The queues are strong enough for agent execution, but current routing is not the old generic lane order. Close the BCI04-derived assertion sequence first: `RQ89` -> `RQ90` -> full backend suite/GitHub Actions evidence. After that, return to the general lane order and owner-gated promotions.
 
-### Current next runnable pointers (2026-08-13)
+### Current next runnable pointers (2026-08-20)
 
-The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
+The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and obsolete. Use `MASTER_ROADMAP.md`.
 
-- Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: current RQ READY is none. `RQ96` DONE. `RQ106` Decision Pulse DONE. `RQ97`/`RQ98` forecast provenance + baseline/backtest contracts DONE (fail-closed). Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
-- Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution READY is none.
+- Backend CI: `BCI10` READY.
+- Release truth: `STAB14` READY.
+- Analytics correctness/runtime forecasting: `RQ108` READY; `RQ109` WAITING.
+- Connector runtime: `QDB09` READY; `QDB07` WAITING behind it plus release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

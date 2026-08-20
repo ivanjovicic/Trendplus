@@ -3,15 +3,15 @@
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
 Purpose: restore truthful execution of the backend analytics test suite and separate real test failures from workflow/bootstrap failures.
-Current READY prompt: none
+Current READY prompt: `BCI10` (`docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`)
 
 ## Current diagnosis
 
-Live READY is `none` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which is DONE.
+Live READY is `BCI10` in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which stays the bootstrap baseline.
 
-The bootstrap blocker is fixed. Backend workflow restore/build/test now succeed against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
+The bootstrap blocker is fixed. Backend workflow restore/build/test can still execute against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
 
-BCI01 is `DONE` from green GHA run `31674533356` on `f1f5a17`. Current `origin/main` is backend-equivalent. `BCI06` mixed-solution Windows proof is DONE. This program has no remaining READY prompt.
+`BCI01` is historically `DONE` from green GHA run `31674533356` on `f1f5a17`, and `BCI06` mixed-solution Windows proof is DONE. That proof no longer closes current-main truth by itself; the current backend gate is reopened by `BCI10` because newer current-main evidence is red again and must be re-closed against the exact current SHA.
 
 Canonical GHA proof that bootstrap is unblocked:
 
@@ -636,6 +636,93 @@ If the first real run passes all tests, mark BCI04 `OBSOLETE` with the run ID an
 
 ---
 
+## BCI10 - Reopen current-main backend suite truth after SQL Server contract drift
+
+Status: READY
+Ready after: current `main` or backend-equivalent evidence is red/stale after historical BCI closure
+Priority: P0
+Type: backend/tests/ci/evidence
+Feature family: backend-ci-current-main-reentry
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/BCI10-<agent>.lock.md`
+Commit suggestion: `test(ci): reclose current main backend suite truth`
+Promotion note: 2026-08-20 - owner-promoted from the current-main audit because the 2026-08-13 green run no longer proves the exact current backend state.
+
+### Problem
+
+The historical Aug 13, 2026 green backend run no longer closes current-main truth. Newer evidence on and after Aug 20, 2026 shows the backend gate is red again, and the current local Release suite now fails in the SQL Server source-session family. Until that is resolved and re-proved on the exact current SHA, the pilot roadmap must not keep claiming no remaining BCI work.
+
+### Evidence
+
+- Historical green proof remains:
+  - GitHub Actions run `31674533356` / job `94366108914` on `f1f5a1756399568a7c5a169d09a8fd1c1dd8d1b8`
+- Newer backend evidence is red:
+  - GitHub Actions run `32384559939` failed on commit `780d907`
+  - GitHub Actions run `32372700553` failed on the RQ98-era backend suite
+  - GitHub Actions run `32362817662` failed on the RQ106-era backend suite
+- Local current-main Release suite reproduced on 2026-08-20:
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal`
+  - `1013 total / 1011 passed / 2 failed`
+- Current failing family:
+  - `SqlServerSourceDataSessionTests.DiscoveryAndStreaming_QuoteReservedIdentifiersAndPreserveValues`
+  - `SqlServerSourceDataSessionTests.ReadRows_RespectsCancellationAndCommandTimeoutWhileLocked`
+- The first failure expects `session.Mode == "readonly"` while current runtime returns `"read-only"`.
+- The second failure expects an exact `TaskCanceledException` while current runtime now surfaces `OperationCanceledException`.
+
+### Scope
+
+- `Api/Services/DataSources/SqlServerSourceDataSession.cs`
+- `Api.Tests/SqlServerSourceDataSessionTests.cs`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- one dated `docs/qa/` evidence note or durable `.ai/runs/...` log update for the re-entry
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+- `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+- `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13_BCI09_REENTRY.md`
+- `Api/Services/DataSources/SqlServerSourceDataSession.cs`
+- `Api.Tests/SqlServerSourceDataSessionTests.cs`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` (`QDB03`, `QDB06` completion notes)
+
+### Do
+
+1. Reproduce the exact two failing SQL Server tests in isolation and inside the full Release suite.
+2. Use the QDB03/QDB06 contract notes to decide whether the runtime behavior or the test expectation is authoritative for:
+   - mode spelling (`readonly` vs `read-only`);
+   - cancellation/timeout exception shape.
+3. Apply the smallest same-owner repair that restores a coherent contract without weakening the backend gate.
+4. Re-run the focused SQL Server family and the full `Api.Tests` Release suite locally.
+5. Push or inspect a fresh GitHub Actions backend run for the resulting current-main SHA.
+6. Update BCI current truth honestly:
+   - green current-main proof -> close the reopened gate;
+   - still red -> keep BCI open and route only the newly proven residual family.
+
+### Tests
+
+- `git diff --check`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "FullyQualifiedName~SqlServerSourceDataSessionTests"`
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity normal`
+- GitHub Actions `analytics-tests.yml` run on the resulting commit
+
+### Acceptance
+
+- Current-main backend suite truth is tied to a fresh exact SHA, not only to the historical Aug 13 green run.
+- The SQL Server source-session contract drift is resolved or truthfully reduced to a smaller residual family.
+- No tests are skipped, filtered from the workflow, or weakened to manufacture a green result.
+- `MASTER_ROADMAP.md` and BCI queue state no longer claim `none` while the current backend gate is materially red.
+
+### Dependencies
+
+- Use historical BCI05/BCI01 evidence only as a baseline, not as closure for the current SHA.
+- Do not duplicate broader QDB09 SQL Server checkpoint work in this prompt.
+- If a new unrelated backend failure family appears, stop and create/reuse a focused owner prompt instead of broadening BCI10 silently.
+
+---
+
 ## Expected transition
 
 1. `BCI01` is `PARTIAL` with GHA proof that restore/build succeed and the test step runs.
@@ -643,3 +730,4 @@ If the first real run passes all tests, mark BCI04 `OBSOLETE` with the run ID an
 3. `BCI02` is `DONE`; coverage/artifact cascade no longer invents secondary root causes.
 4. `BCI03` is `DONE`; canonical backend filter + available SDK pins + pin regression check.
 5. Promote BCI01 to `DONE` only after a GHA run has restore + build + test step all successful.
+6. If later current-main evidence turns red again, use `BCI10` rather than reopening bootstrap-era prompts.

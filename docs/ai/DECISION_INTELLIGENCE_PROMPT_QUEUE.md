@@ -272,7 +272,7 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 ### Completion note
 
 - Date: 2026-08-20
-- Status: PARTIAL
+- Status: DONE
 - Completion: contract complete; delivered on main
 - Changed files: docs/architecture/DECISION_TIMELINE_TIMESTAMP_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DT09-evidence.md
 - Contract/runtime behavior changed: froze first-class vs derived vs absent timeline timestamps; no runtime/schema change
@@ -284,7 +284,7 @@ DT correlation identifiers exist, but first-class timestamps remain an unqueued 
 - Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
 - Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
 - Missed: none
-- Follow-up: DT10 after DT09 DONE on main
+- Follow-up: DT10 DONE on main; DT current READY remains `none`
 - Residual risk: Slice-2 projection still coalesces derived clocks until a later runtime prompt
 - Prompt defect / scope repair: Ready-after RQ96 wording generalized after RQ96-RQ98 DONE
 
@@ -371,7 +371,7 @@ Priority: future / planning
 Feature family: decision-alternatives-contract
 Parallel-safe: yes, docs/contracts only
 Owner: Cursor Auto
-Local lock: removed after PARTIAL close
+Local lock: removed after DONE close
 Promotion note: 2026-08-20 - owner-inserted and promoted via `docs/planning/QUEUE_REFILL_2026-08-20.md`.
 
 ### Problem
@@ -422,7 +422,7 @@ Product Decision Center already exposes backend alternatives, but other families
 ### Completion note
 
 - Date: 2026-08-20
-- Status: PARTIAL
+- Status: DONE
 - Completion: contract complete; delivered on main
 - Changed files: docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md, docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md, MASTER_ROADMAP.md, docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md, docs/planning/QUEUE_REFILL_2026-08-20.md, .ai/runs/2026-08-20-DEX20-evidence.md
 - Contract/runtime behavior changed: froze cross-family alternatives vs absence; no runtime/API change

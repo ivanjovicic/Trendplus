@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ98` DONE)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE.
+Current READY prompt: `RQ108`
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is the current owner-authorized runtime follow-up; `RQ109` remains WAITING.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -37,6 +37,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ12 | DONE | pdc-ignored-rows-contract | Make Product Decision Center ignored/top rows explicit |
 | RQ13 | DONE | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
 | RQ106 | DONE | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
+| RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
+| RQ108 | READY | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
+| RQ109 | WAITING | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
 
 ---
 
@@ -1039,3 +1042,145 @@ Competitive gap Gate 4 still needs controlled scenario planning (markdown / repl
 
 - trusted forecast materializer + measured backtest window for runtime follow-up;
 - do not promote ahead of higher-priority exclusive RQ work.
+
+---
+
+## RQ108 - Add authoritative forecast materializer and observed pairing foundation
+
+Status: READY
+Ready after: `RQ97` and `RQ98` are `DONE` and an owner authorizes the first runtime forecasting follow-up
+Priority: P1
+Type: backend/persistence/tests
+Feature family: forecast-materializer-observed-window
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ108-<agent>.lock.md`
+Commit suggestion: `feat(analytics): materialize forecasts for measured comparison`
+Promotion note: 2026-08-20 - owner-promoted from the pilot audit because forecast provenance/backtest contracts are done but no authoritative runtime writer or paired observed window exists yet.
+
+### Problem
+
+`RQ97` and `RQ98` deliberately closed the forecast surface in a fail-closed way, but Trendplus still has no authoritative runtime writer that materializes forecast snapshots and later pairs them to observed evidence. Without that foundation, backtesting, scorecards and scenario planning remain contracts only.
+
+### Evidence
+
+- `RQ97` froze snapshot provenance and made missing materialization explicit instead of inventing trust.
+- `RQ98` added a fail-closed baseline/backtest contract, but documented that the paired forecast-vs-observed window is still unavailable.
+- `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` keeps the core pilot conservative and lists inventory/forecast fail-closed paths as a minimum smoke area.
+- The 2026-08-20 audit concluded that the product still lacks:
+  - a trusted forecast materializer;
+  - a paired observed outcome window;
+  - measured WAPE/bias/MAE proof on runtime-produced snapshots.
+
+### Scope
+
+- forecast snapshot persistence/materialization files under the existing inventory forecast owner path
+- the observed daily inventory/sales pairing path introduced by `RQ96`
+- fail-closed forecast DTO/API surfaces only where needed to expose authoritative pairing state
+- focused backend tests for materialization, pairing and unavailable-window behavior
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- one dated `docs/qa/` or durable `.ai/runs/...` evidence note for the runtime follow-up
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` (`RQ96`-`RQ98`)
+- `docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md`
+- `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`
+- current inventory forecast query/handler files
+- `RQ96` completion evidence for observed daily snapshot behavior
+
+### Do
+
+1. Add the smallest authoritative forecast snapshot writer/materializer that can persist a forecast snapshot together with its provenance and issue time.
+2. Pair persisted forecast snapshots only to observed evidence that satisfies the canonical RQ96 daily snapshot basis; do not reconstruct observed truth from later live views.
+3. Keep missing or insufficient observed windows explicit as unavailable, not zero error and not a healthy score.
+4. Expose additive runtime fields only where needed so later scorecard work can consume authoritative pairing state.
+5. Do not implement scenario simulation, optimizer behavior, or frontend scorecard UX in this prompt.
+
+### Tests
+
+- `git diff --check`
+- focused backend tests for:
+  - forecast snapshot materialization with provenance preserved
+  - observed pairing on a deterministic historical window
+  - missing observed window -> unavailable / fail-closed
+  - stale or mismatched forecast basis -> unavailable / fail-closed
+- nearest focused full forecast test command for the touched area
+
+### Acceptance
+
+- Trendplus can persist an authoritative forecast snapshot and later pair it to the correct observed window.
+- Missing observed evidence remains unavailable rather than fake-measured.
+- Later measured-scorecard work has a real runtime foundation instead of only contract prose.
+- The prompt does not invent scenario outputs or a frontend scorecard.
+
+### Dependencies
+
+- `RQ96` DONE.
+- `RQ97` DONE.
+- `RQ98` DONE.
+- Do not weaken the fail-closed contract from `RQ97`/`RQ98` while adding the writer/pairing foundation.
+
+---
+
+## RQ109 - Expand Decision Pulse to inventory, supplier and durable delivery
+
+Status: WAITING
+Ready after: `RQ108` is `DONE` and the first authoritative forecast/observed pairing surface exists
+Priority: P1
+Type: backend/frontend-delivery/tests
+Feature family: decision-pulse-expansion
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ109-<agent>.lock.md`
+Commit suggestion: `feat(analytics): expand decision pulse coverage`
+
+### Problem
+
+`RQ106` delivered the first Product Decision Pulse slice, but the audit showed that inventory and supplier families are still missing and there is no scheduler, durable inbox table or live delivery proof. Without a bounded follow-up prompt, Pulse can look more complete than it really is.
+
+### Evidence
+
+- `RQ106` completion note explicitly missed inventory/supplier families, a scheduled worker, a durable inbox table and live SMTP proof.
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` ranks exception/digest delivery as a core near-term differentiator.
+- The 2026-08-20 audit confirmed that the current Pulse is still a first slice rather than a complete operator-delivery surface.
+
+### Scope
+
+- existing Decision Pulse projector/service/email files
+- additive persistence/delivery files needed for a durable inbox or scheduled projection
+- inventory/supplier deep-link/status/freshness wiring
+- focused backend/frontend tests for suppression, scheduling and family coverage
+- no Slack, no generic DSL, no MT/shared-SaaS routing
+
+### Read first
+
+- `RQ106` completion note
+- Decision Pulse backend/frontend files landed by `RQ106`
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md`
+
+### Do
+
+1. Add inventory and supplier Pulse family coverage only when each item can reuse existing backend truth, Why, freshness and deep-link semantics.
+2. Add the smallest durable inbox/scheduler path needed to make Pulse delivery repeatable.
+3. Prove live send or an equally authoritative delivery path without logging secrets or row payloads.
+4. Keep stale/empty/error suppression and `n/a_dedicated` tenant scope rules from `RQ106`.
+
+### Tests
+
+- focused Pulse projector tests for inventory/supplier families
+- durable inbox/scheduler tests
+- frontend Pulse feed tests only where new family branches are added
+- live delivery proof or explicit blocker evidence
+
+### Acceptance
+
+- Decision Pulse covers more than Product Decision without inventing a second recommendation source.
+- Delivery is durable/repeatable instead of purely ad hoc.
+- Missing SMTP or scheduling proof remains explicit, not implied.
+
+### Dependencies
+
+- `RQ106` DONE.
+- `RQ108` DONE first so inventory/forecast Pulse items can rely on authoritative runtime pairing rather than contract-only forecast truth.

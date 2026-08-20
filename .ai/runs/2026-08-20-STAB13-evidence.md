@@ -4,13 +4,13 @@ Date: 2026-08-20
 Agent/tool: Cursor Auto
 Delivery target: main
 Working branch / PR: cursor/queue-refill-dt09-dex20
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
+Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
+Evidence state: synchronized
 
 ## What was done
 
-Owner-promoted STAB13. Wrote `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` and pointed GenAI gate at it while keeping Core pilot NOT READY and GenAI BLOCKED.
+Owner-promoted STAB13. Wrote `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` and pointed GenAI gate at it while keeping Core pilot NOT READY and GenAI BLOCKED. Delivery is now synchronized on `origin/main`.
 
 ## Files changed
 
@@ -22,11 +22,11 @@ Owner-promoted STAB13. Wrote `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.
 
 ## Validation run
 
-- shared refill validators (see QUEUE-REFILL evidence)
+- shared refill validators passed in the corresponding queue-refill evidence
 
 ## Validation not run
 
-- live smoke / production access — out of scope by prompt
+- live smoke / production access - out of scope; GenAI remains BLOCKED
 
 ## Documentation impact
 
@@ -34,8 +34,7 @@ Fresh evidence index; GenAI remains explicitly blocked.
 
 ## What was missed
 
-- live smoke pack
-- SHA-on-main
+- none
 
 ## Risks
 
@@ -43,4 +42,4 @@ Older readiness PASS docs remain historically visible.
 
 ## Next
 
-Fresh live smoke before any GAI01 promotion.
+none

@@ -4,13 +4,13 @@ Date: 2026-08-20
 Agent/tool: Cursor Auto
 Delivery target: main
 Working branch / PR: cursor/queue-refill-dt09-dex20
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: bc4dbb5f465974253668768fbd03766abf34c0e2
+Main verification: passed - origin/main contains bc4dbb5f465974253668768fbd03766abf34c0e2
+Evidence state: synchronized
 
 ## What was done
 
-Owner-inserted and executed DEX20 docs-only alternatives contract. Froze `docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md`. Updated DI queue/roadmap/MASTER. Status PARTIAL pending main delivery.
+Owner-inserted and executed DEX20 docs-only alternatives contract. Froze `docs/architecture/DECISION_ALTERNATIVES_CONTRACT.md`. Updated DI queue/roadmap/MASTER. Delivery is now synchronized on `origin/main`.
 
 ## Files changed
 
@@ -23,7 +23,7 @@ Owner-inserted and executed DEX20 docs-only alternatives contract. Froze `docs/a
 
 ## Validation run
 
-- pending shared refill validators (recorded in QUEUE-REFILL evidence)
+- shared refill validators passed in the corresponding queue-refill evidence
 
 ## Validation not run
 
@@ -36,7 +36,7 @@ Cross-family alternatives vs absence is citeable; PDC remains the only runtime l
 
 ## What was missed
 
-- SHA-on-main verification
+- none
 - runtime alternatives API (out of scope)
 
 ## Risks
@@ -45,4 +45,4 @@ Other families still absent until a later runtime slice.
 
 ## Next
 
-Verify DEX20 on main; do not invent a runtime alternatives READY without owner promotion.
+none

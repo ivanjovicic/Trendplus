@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: none (`QDB06` DONE; `QDB07` WAITING on authorization/release gates)
+Current READY prompt: `QDB09` (`QDB06` DONE; `QDB07` stays WAITING until QDB09 and release gates clear)
 
 ## Global routing
 
@@ -477,7 +477,7 @@ Mapped source batches cannot yet retry or restart safely. Access cursors are key
 - Main commit SHA: dcda7e21eb0d8f367481418d446083e47df2a820
 - Main verification: git rev-parse origin/main -> dcda7e21eb0d8f367481418d446083e47df2a820; work SHA dcda7e21eb0d8f367481418d446083e47df2a820 is an ancestor
 - Missed: SQL Server end-to-end through this engine; Artikli/Prodaja destination upsert; admin UI (QDB07)
-- Follow-up: RQ96 current execution READY; RQ106 Decision Pulse WAITING after RQ96; QDB07 after authorization/release gates
+- Follow-up: QDB09 current READY for SQL Server checkpoint e2e; QDB07 remains WAITING after QDB09 plus authorization/release gates
 - Residual risk: production workers must call `SourceCheckpointSyncService`; unused tables until a worker/e2e path applies batches. Split-commit crash proof is in-memory; EF store uses one transaction so that failure mode does not occur on the PostgreSQL path.
 - Prompt defect / scope repair: expanded legacy Goal/Required proof into the eight required sections; destination bounded to staging rows to avoid a second owner (Access unique indexes are `DataOrigin='access'` only)
 - Next: `RQ96`
@@ -486,29 +486,152 @@ Mapped source batches cannot yet retry or restart safely. Access cursors are key
 
 ## QDB07 - Add controlled admin connector experience
 
-Status: WAITING  
-Ready after: `QDB06` is `DONE` and authorization/release gates permit pilot UI work  
-Priority: P2  
-Type: frontend/backend UX tests  
-Feature family: data-source-admin-experience  
-Parallel-safe: no  
-Owner: unassigned  
-Local lock: `.ai/task-locks/QDB07-<agent>.lock.md`  
+Status: WAITING
+Ready after: `QDB09` is `DONE` and authorization/release gates permit pilot UI work
+Priority: P2
+Type: frontend/backend UX tests
+Feature family: data-source-admin-experience
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/QDB07-<agent>.lock.md`
 Commit suggestion: `feat(import): add source connector admin flow`
 
-### Goal
+### Problem
 
-Expose only the proven backend flow:
+The backend now has discovery, mapping preview and checkpoint infrastructure, but operators still have no truthful first-party admin flow for that proven path. Without a bounded admin prompt, customers would be forced to use raw endpoints or improvised local tools, and a later UI could accidentally hide schema drift, partial sync or secret-handling boundaries.
 
-- connection list and health;
-- test connection;
-- schema/table browser;
-- mapping editor;
-- preview;
-- manual/scheduled sync controls;
-- batch history and safe recovery.
+### Evidence
 
-Do not let the frontend construct SQL, display stored secrets or hide partial/error/schema-drift states.
+- `QDB04` added named source discovery plus admin-only list/test/table/column APIs.
+- `QDB05` added deterministic mapping preview.
+- `QDB06` added durable checkpoints, but its completion note still missed admin UI.
+- The 2026-08-20 audit confirmed that `QDB07` is still missing and must not outrun release/authorization gates.
+
+### Scope
+
+- the existing admin-only connector endpoints and their DTOs
+- connector admin UI pages/components for discovery, mapping preview, manual sync controls and batch history
+- focused backend/frontend tests for truthful state handling
+- no stored secrets in the client, no arbitrary SQL, no tenant/shared-SaaS work
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `QDB04`/`QDB05`/`QDB06` completion notes in this queue
+- current connector discovery and mapping preview endpoints
+
+### Do
+
+1. Expose only the already-proven backend flow:
+   - connection list and health
+   - test connection
+   - schema/table browser
+   - mapping editor
+   - preview
+   - manual/scheduled sync controls
+   - batch history and safe recovery state
+2. Keep partial/error/schema-drift states explicit; do not let the UI silently convert them into success.
+3. Reuse backend authorization and safe error categories from `QDB04`; never surface stored secrets or raw connection strings.
+4. Do not let the frontend construct SQL or invent checkpoint status.
+
+### Tests
+
+- focused backend endpoint tests only where the admin flow needs additive contract fields
+- focused frontend/admin-flow tests for partial, blocked, schema-drift and secret-redaction states
+- `git diff --check`
+- `dotnet build Api.Tests/Api.Tests.csproj --configuration Release`
+
+### Acceptance
+
+- Operators can drive the proven connector flow without raw endpoint usage.
+- The UI remains a consumer of backend truth and does not hide drift/partial/error states.
+- Secrets and arbitrary SQL remain out of scope.
+
+### Dependencies
+
+- `QDB09` DONE first so the admin flow fronts a real SQL Server checkpoint path rather than only disconnected pieces.
+- Authorization/release gates must still permit pilot admin UI work.
+
+---
+
+## QDB09 - Prove SQL Server end-to-end sync through the checkpoint engine
+
+Status: READY
+Ready after: `QDB06` is `DONE` and the owner authorizes the first commercial/runtime follow-up before QDB07
+Priority: P1
+Type: backend/integration tests/workers
+Feature family: sqlserver-checkpoint-e2e
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/QDB09-<agent>.lock.md`
+Commit suggestion: `feat(import): prove sql server checkpoint sync end to end`
+Promotion note: 2026-08-20 - owner-promoted from the pilot audit because `QDB06` closed the checkpoint engine but still left SQL Server end-to-end application and worker proof missing.
+
+### Problem
+
+`QDB06` proved checkpoint semantics in isolation, but no real SQL Server path currently drives discovery, mapping preview and checkpointed application all the way into staged destination rows. Production workers also still do not call the new sync service, so the commercial connector story remains incomplete.
+
+### Evidence
+
+- `QDB06` completion note explicitly missed:
+  - SQL Server end-to-end through the checkpoint engine
+  - production worker call into `SourceCheckpointSyncService`
+  - admin UI (`QDB07`)
+- `QDB03` proved read-only SQL Server source-session behavior, but not end-to-end staging through QDB06.
+- The 2026-08-20 audit also reproduced current SQL Server contract drift in backend tests, which makes a fresh end-to-end re-entry necessary before the queue can claim no active QDB work.
+
+### Scope
+
+- SQL Server source-session/runtime files needed to drive checkpointed application
+- checkpoint sync service/store files already introduced by `QDB06`
+- the smallest production caller path needed to invoke checkpoint sync manually or from the existing worker surface
+- focused SQL Server integration tests proving discovery -> mapping -> preview -> checkpoint apply into `SourceSyncAppliedRows`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- one dated `docs/qa/` or durable `.ai/runs/...` evidence note
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_CONTRACT.md`
+- `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md`
+- `QDB03` completion note
+- `QDB06` completion note
+- current SQL Server source-session and checkpoint sync files
+
+### Do
+
+1. Prove one named SQL Server profile can move from discovery/mapping preview into checkpointed staged application without inventing a second source contract.
+2. Add the smallest production caller path needed to invoke the checkpoint sync service for that profile.
+3. Keep destination bounded to `SourceSyncAppliedRows`; do not upsert `Artikli`/`Prodaja` in this prompt.
+4. Preserve schema-drift blocking, idempotent replay and safe metrics from `QDB06`.
+5. Keep secrets/redaction rules from `QDB04` and do not add arbitrary SQL or shared-SaaS tenant routing.
+
+### Tests
+
+- `git diff --check`
+- focused SQL Server integration tests that prove:
+  - discovery/mapping preview still work on the same named profile
+  - first checkpointed apply writes staged rows and advances the checkpoint
+  - replay/restart stays idempotent
+  - schema drift blocks apply
+  - worker/manual caller path reaches the same sync service
+- nearest full backend test command for touched connector files
+
+### Acceptance
+
+- At least one named SQL Server profile can complete an end-to-end checkpointed sync into staged rows on the exact current main branch.
+- The sync is callable from a real production-facing path, not only an internal helper test.
+- Schema drift, idempotency and secret-redaction rules remain truthful.
+- `QDB07` remains out of scope until this path is proven.
+
+### Dependencies
+
+- `QDB03` DONE.
+- `QDB04` DONE.
+- `QDB05` DONE.
+- `QDB06` DONE.
+- Do not silently expand this prompt into canonical `Artikli`/`Prodaja` upsert or tenant-owned shared-SaaS routing.
 
 ---
 
