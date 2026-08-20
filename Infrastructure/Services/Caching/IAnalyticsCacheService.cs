@@ -247,6 +247,9 @@ public static class AnalyticsCacheKeys
     public static string InventoryForecast(int? storeId = null, int? supplierId = null, int? skuId = null, string? sizeCode = null, int top = 200) =>
         $"{Prefix}inventory-forecast:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:size:{(string.IsNullOrWhiteSpace(sizeCode) ? "all" : sizeCode)}:top:{top}";
 
+    public static string InventoryForecastBacktest(int? storeId = null, int? supplierId = null, int horizonDays = 14) =>
+        $"{Prefix}inventory-forecast-backtest:{FilterSuffix(storeId, supplierId)}:horizon:{horizonDays}";
+
     public static string InventorySizeCurve(int? storeId = null, int? supplierId = null, int? skuId = null, int top = 200) =>
         $"{Prefix}inventory-size-curve:{FilterSuffix(storeId, supplierId)}:sku:{(skuId.HasValue ? skuId.Value.ToString() : "all")}:top:{top}";
 

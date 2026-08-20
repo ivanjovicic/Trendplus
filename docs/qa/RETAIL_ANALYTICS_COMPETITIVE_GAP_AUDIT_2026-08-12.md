@@ -182,6 +182,8 @@ A serious forecast program later needs:
 - drift and stale-model detection;
 - documented explanation of what the forecast may and may not be used for.
 
+**RQ98 (2026-08-20)** freezes the first deterministic baseline/backtesting contract and fail-closed evaluator (`docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`). Measured scores remain unavailable until a trusted forecast materializer + paired outcome window exist.
+
 Do not jump directly to ML because large retail suites use ML.
 
 ### 5. User-facing exception subscription / Decision Pulse

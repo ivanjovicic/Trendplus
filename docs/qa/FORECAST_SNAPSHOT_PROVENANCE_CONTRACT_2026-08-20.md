@@ -25,4 +25,4 @@ Repo: `ivanjovicic/Trendplus`
 
 ## Follow-up
 
-RQ98 (baseline/backtesting) remains WAITING until a trustworthy historical stock/forecast comparison window exists after this contract.
+RQ98 landed a fail-closed baseline/backtesting contract; measured scores stay unavailable until a trusted forecast materializer and paired outcome window exist.

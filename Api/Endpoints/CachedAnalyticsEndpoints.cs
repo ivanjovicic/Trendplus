@@ -1,6 +1,7 @@
 ﻿using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetInventoryForecast;
+using Application.Analytics.Queries.GetForecastBaselineBacktest;
 using Application.Analytics.Queries.GetInventoryAlerts;
 using Application.Analytics.Queries.GetInventorySizeCurve;
 using Application.Analytics.Queries.GetRebalanceSuggestions;
@@ -810,6 +811,25 @@ public static class CachedAnalyticsEndpoints
             var result = await cache.GetOrSetAsync(
                 cacheKey,
                 async () => await mediator.Send(new GetInventoryForecastQuery(storeId, supplierId, skuId, sizeCode, top), ct),
+                AnalyticsCachePolicy.Inventory.Ttl,
+                ct);
+
+            return Results.Ok(result);
+        });
+
+        // ========== FORECAST BASELINE / BACKTEST CONTRACT (CACHED, FAIL-CLOSED) ==========
+        group.MapGet("/inventory/forecast/backtest", async (
+            IAnalyticsCacheService cache,
+            IMediator mediator,
+            int? storeId = null,
+            int? supplierId = null,
+            int horizonDays = 14,
+            CancellationToken ct = default) =>
+        {
+            var cacheKey = AnalyticsCacheKeys.InventoryForecastBacktest(storeId, supplierId, horizonDays);
+            var result = await cache.GetOrSetAsync(
+                cacheKey,
+                async () => await mediator.Send(new GetForecastBaselineBacktestQuery(storeId, supplierId, horizonDays), ct),
                 AnalyticsCachePolicy.Inventory.Ttl,
                 ct);
 

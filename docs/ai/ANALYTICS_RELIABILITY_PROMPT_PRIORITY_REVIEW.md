@@ -56,7 +56,7 @@ The generic analytics lane order below is temporarily superseded by a concrete b
 2. `BCI05` is READY: local `Api.Tests` Release build is restored on `469acbf`. Capture green GHA on a commit that includes that stub fix.
 3. Only a later green GHA run on current backend-equivalent `main` may move `BCI01` from PARTIAL to DONE.
 4. If the suite exposes a new root-cause family, create/reuse one focused prompt; do not weaken tests.
-5. Post-BCI inventory-foundation prompt `RQ96` is DONE after the observed snapshot foundation landed on 2026-08-19. `RQ97` forecast snapshot provenance is DONE (fail-closed). `RQ98` remains WAITING.
+5. Post-BCI inventory-foundation prompt `RQ96` is DONE after the observed snapshot foundation landed on 2026-08-19. `RQ97` forecast snapshot provenance is DONE (fail-closed). `RQ98` baseline/backtesting contract is DONE (fail-closed; measured window unavailable).
 6. Routing update 2026-08-19: `MASTER_ROADMAP.md` is authoritative. Sequential refill is complete. Current execution is `RL10`. Parallel-safe planning READYs are `OBS10` and `RL10`. `PERF16` is BLOCKED on `MT10`. Do not revive `RQ89`/`RQ90` as READY.
 
 Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`
@@ -266,7 +266,7 @@ The queues are strong enough for agent execution, but current routing is not the
 The 2026-08-10 `RQ89`/`RQ90`/`BCI05` pointers below this heading were historical and are obsolete. Use `MASTER_ROADMAP.md`.
 
 - Backend CI: none READY (`BCI01`/`BCI05`/`BCI06` DONE).
-- Analytics correctness: current RQ READY is none. `RQ96` DONE. `RQ106` Decision Pulse DONE. `RQ97` forecast provenance DONE. `RQ98` WAITING. Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
+- Analytics correctness: current RQ READY is none. `RQ96` DONE. `RQ106` Decision Pulse DONE. `RQ97`/`RQ98` forecast provenance + baseline/backtest contracts DONE (fail-closed). Strategy: `docs/ai/ANALYTICS_TEST_STRATEGY.md`.
 - Do not revive `RQ100`/`RQ101`/`RQ102`/`RQ103`/`RQ104`/`RQ105`. `QDB06` is DONE. Current execution READY is none.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.

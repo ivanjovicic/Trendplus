@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ97` DONE; `RQ98` WAITING)
+Current READY prompt: none (`RQ98` DONE)
 Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
@@ -30,7 +30,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ89 | DONE | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
 | RQ96 | DONE | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
 | RQ97 | DONE | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
-| RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
+| RQ98 | DONE | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
 
 ---
@@ -839,13 +839,13 @@ The runtime exposes forecast snapshot reads, but the repository evidence does no
 
 ## RQ98 - Deterministic forecast baseline and backtesting contract
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ97` is `DONE` and a trustworthy historical stock/forecast comparison window exists
 Priority: P1
 Type: sql/backend/docs/tests
 Feature family: forecast-backtesting-baseline
 Parallel-safe: no
-Owner: unassigned
+Owner: Cursor Auto
 Local lock: `.ai/task-locks/RQ98-<agent>.lock.md`
 Commit suggestion: `feat(forecast): add baseline backtesting contract`
 
@@ -899,6 +899,28 @@ Trendplus cannot yet prove predictive value because there is no canonical baseli
 - `RQ97` DONE first so the forecast snapshot provenance/owner contract is settled.
 - `RQ96` historical stock foundation must exist, or the owner must explicitly document the limited comparison basis.
 - If trustworthy observed outcomes are unavailable, finish `BLOCKED` with the exact missing evidence window.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: DONE
+- Completion: Deterministic baseline/backtesting contract + fail-closed evaluator; comparison window unavailable (no trusted forecast materializer); aggregates null not fake zero
+- Changed files: Application/Analytics/Queries/GetForecastBaselineBacktest/*; Api/Endpoints/CachedAnalyticsEndpoints.cs; Infrastructure/Services/Caching/IAnalyticsCacheService.cs; Api.Tests/ForecastBaselineBacktestContractTests.cs; docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md; docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md; docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md; queue/MASTER routing; .ai/runs/2026-08-20-RQ98-evidence.md
+- Contract/runtime behavior changed: yes; GET `/api/analytics/cached/inventory/forecast/backtest`
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~ForecastBaselineBacktestContractTests (3 passed); node scripts/check-prompt-queues.mjs
+- Checks not run: full suites; live paired forecast/outcome SQL materialization (blocked by missing trusted forecast writer)
+- Run log: .ai/runs/2026-08-20-RQ98-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push
+- Missed: measured WAPE/bias/MAE over a real window; seasonal_naive computation; UI scorecard
+- Follow-up: none in RQ inventory-signals lane; commercial SQL Server e2e remains owner-routed; measured backtest reopen after trusted forecast materializer
+- Residual risk: callers must treat EvaluationStatus=unavailable as non-authoritative; do not chart null aggregates as zeros
+- Prompt defect / scope repair: owner continue promoted RQ98 despite Ready-after comparison-window gate; delivered fail-closed contract instead of BLOCKED-only; limited basis documented (RQ96 stock exists, paired forecast series does not). Trailing mis-pasted RQ89 sections below RQ98 Dependencies are historical glue and not part of RQ98 acceptance.
+- Next: none (RQ Current READY none)
+
+### Historical note (mis-pasted RQ89 residual below — not RQ98 scope)
 
 ### Contract
 
