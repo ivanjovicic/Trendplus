@@ -1,4 +1,4 @@
-﻿# Trendplus Master Roadmap
+# Trendplus Master Roadmap
 
 Updated: 2026-08-18
 Repository: `ivanjovicic/Trendplus`
@@ -41,7 +41,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 |---|---|---|---|---|---|
 | BCI | `MASTER_ROADMAP.md` / `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` + `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md` | none | `BCI01`/`BCI05`/`BCI06` DONE. Green GHA `31674533356` on `f1f5a17`; mixed-solution Windows/VS wrappers observed via JavaScript SDK `1.0.3982316`. No remaining BCI READY. | Evidence/docs only | Current execution READY is `none` |
 | STAB | `MASTER_ROADMAP.md` / `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` | none (`STAB12` DONE) | `STAB12` DONE = unauthenticated `X-User-*` headers no longer grant document generate/list/export privilege. No remaining STAB READY. | Evidence/docs when paths clear | Current execution READY is `none` |
-| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + source addenda | none (`RQ106` DONE) | `RQ96` DONE. `RQ106` Decision Pulse DONE = product-decision exception digest with Why + deep link and email/in-app. `RQ97`/`RQ98` remain WAITING. | Selected docs/tests only | Forecast snapshot provenance contract |
+| RQ | `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md` + `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` + active addenda | none (`RQ97` DONE) | `RQ96` DONE. `RQ106` Decision Pulse DONE. `RQ97` forecast snapshot provenance DONE = fail-closed `missing_relation`/`owner_unknown` (no invented materializer). `RQ98` remains WAITING. | Selected docs/tests only | Deterministic forecast baseline/backtesting when comparison window exists |
 | P-UI | `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` + least-improved addendum + `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md` | none | P-UI-21 DONE. P-UI-22 DONE. Queue complete. | Yes | queue complete |
 | QDB | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` + `docs/architecture/DATA_SOURCE_CONNECTOR_ROADMAP.md` | none (`QDB06` DONE) | `QDB01`-`QDB06` DONE. Durable checkpoints are `ConnectionId + MappingProfileId + SourceStream` with `TenantScope=n/a_dedicated`. Destination for this slice is staging rows, not Artikli/Prodaja upsert. `QDB07` WAITING on authorization/release gates. | Docs/tests when paths clear | SQL Server e2e through the checkpoint engine; then QDB07 |
 | MT | `docs/ai/MULTITENANCY_PROMPT_QUEUE.md` + `docs/architecture/MULTITENANCY_ARCHITECTURE_ROADMAP.md` | none (`MT01` DONE) | `MT02` WAITING on owner approval of identity/membership source or single-tenant API-key binding. | Contract docs when paths clear | Owner decision -> MT02 |
@@ -53,7 +53,7 @@ The new DEX/RL/DT/PERF/OBS/SEC programs are future planning lanes. Their first R
 | OBS | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/OBSERVABILITY_ROADMAP.md` | none (`OBS10` DONE) | `OBS01`-`OBS10` DONE. Operational dashboard honesty contract frozen. | Yes, docs/contracts | queue complete |
 | SEC | `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` + `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md` | none | `SEC07` DONE = clientapp production npm audit is 0. `SEC05` waits on MT09 or an explicitly approved interim dedicated-deploy offboarding scope. | Yes, scoped dependency/security work when paths clear | SEC05 after MT09 |
 
-Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner 2026-08-20: `RQ96` was already DONE on origin/main; `RQ106` Decision Pulse claimed and DONE. Current execution READY is none. `PERF16` is BLOCKED on `MT10`. Do not promote `MT02` or `GAI01` without the named tenant-identity or pilot-ready decision. SQL Server e2e through QDB06 checkpoints remains a commercial follow-up.
+Owner refill 2026-08-13 sequential backlog of 15 prompts is complete. Owner 2026-08-20: `RQ97` forecast snapshot provenance DONE (fail-closed; no production materializer on main). Current execution READY is none. `PERF16` is BLOCKED on `MT10`. Do not promote `MT02` or `GAI01` without the named tenant-identity or pilot-ready decision. SQL Server e2e through QDB06 checkpoints remains a commercial follow-up. `RQ98` stays WAITING until a trustworthy stock/forecast comparison window exists.
 
 | # | ID | Status | Program |
 |---|---|---|---|

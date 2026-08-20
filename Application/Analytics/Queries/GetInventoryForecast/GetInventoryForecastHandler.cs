@@ -81,6 +81,7 @@ public sealed class GetInventoryForecastHandler
             }
 
             var returnedCount = items.Count;
+            var provenance = InventoryForecastSnapshotProvenance.ForReadableUnprovenOwner();
 
             var hasMissingEvidence = items.Any(item =>
                 item.Forecast7d is null
@@ -90,6 +91,10 @@ public sealed class GetInventoryForecastHandler
                 || item.OverstockRisk is null
                 || item.ConfidenceScore is null);
 
+            var detailWarning = items.Count == 0
+                ? "Forecast snapshot postoji, ali nema redova za trazene filtere."
+                : hasMissingEvidence ? "Forecast snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null;
+
             return new InventoryForecastListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
                 TotalCount: returnedCount,
@@ -97,14 +102,17 @@ public sealed class GetInventoryForecastHandler
                 TotalMatchingCount: totalMatchingCount,
                 IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
-                Warning: items.Count == 0
-                    ? "Forecast snapshot postoji, ali nema redova za trazene filtere."
-                    : hasMissingEvidence ? "Forecast snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
+                ProvenanceStatus: provenance.ProvenanceStatus,
+                MaterializerOwner: provenance.MaterializerOwner,
+                IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
+                SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
+                Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, detailWarning),
                 Items: items);
         }
         catch (Exception ex) when (IsMissingRelation(ex))
         {
-            _logger.LogWarning(ex, "analytics_inventory_forecast_snapshot is not available yet.");
+            _logger.LogWarning(ex, "analytics_inventory_forecast_snapshot relation is missing; fail-closed as missing_relation.");
+            var provenance = InventoryForecastSnapshotProvenance.ForMissingRelation();
             return new InventoryForecastListDto(
                 GeneratedAtUtc: DateTime.UtcNow,
                 TotalCount: 0,
@@ -112,7 +120,11 @@ public sealed class GetInventoryForecastHandler
                 TotalMatchingCount: 0,
                 IsTruncated: false,
                 SnapshotAvailable: false,
-                Warning: "Forecast snapshot jos nije dostupan. Nightly recompute verovatno jos nije pustio tabelu.",
+                ProvenanceStatus: provenance.ProvenanceStatus,
+                MaterializerOwner: provenance.MaterializerOwner,
+                IsAuthoritativeForecast: provenance.IsAuthoritativeForecast,
+                SnapshotFreshnessUtc: provenance.SnapshotFreshnessUtc,
+                Warning: InventoryForecastSnapshotProvenance.ComposeWarning(provenance.ProvenanceStatus, null),
                 Items: []);
         }
     }

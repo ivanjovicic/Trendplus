@@ -164,7 +164,7 @@ A bounded first slice of that foundation now exists as the observed daily snapsh
 
 ### 4. Forecasting is a surface before it is a proven forecasting product
 
-The current runtime has a forecast snapshot read contract with 7/14/28-day values, OOS probability, overstock risk, confidence and explanation. The inspected repository search did not surface a corresponding production materializer/model owner for `analytics_inventory_forecast_snapshot`.
+The current runtime has a forecast snapshot read contract with 7/14/28-day values, OOS probability, overstock risk, confidence and explanation. The inspected repository search did not surface a corresponding production materializer/model owner for `analytics_inventory_forecast_snapshot`. **RQ97 (2026-08-20)** encodes this as a fail-closed provenance contract (`missing_relation` / `owner_unknown`; `trusted` reserved): see `docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md`.
 
 Treat the current capability as a forecast signal/snapshot contract until end-to-end production generation is explicitly proven.
 

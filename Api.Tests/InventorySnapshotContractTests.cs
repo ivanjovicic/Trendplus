@@ -42,6 +42,11 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal(InventoryForecastSnapshotProvenance.OwnerUnknown, result.ProvenanceStatus);
+        Assert.Equal(InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner, result.MaterializerOwner);
+        Assert.False(result.IsAuthoritativeForecast);
+        Assert.Null(result.SnapshotFreshnessUtc);
+        Assert.NotEqual(InventoryForecastSnapshotProvenance.Trusted, result.ProvenanceStatus);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
@@ -51,7 +56,9 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal(0m, result.Items[0].Forecast7d);
         Assert.Equal(0m, result.Items[0].ProbabilityOfOOSIn7d);
         Assert.Equal(0.95m, result.Items[0].ConfidenceScore);
-        Assert.Equal("Forecast snapshot sadrzi redove sa nepotpunom signalnom evidencijom.", result.Warning);
+        Assert.Contains("owner_unknown", result.Warning, StringComparison.Ordinal);
+        Assert.Contains("nepotpunom signalnom evidencijom", result.Warning, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nightly recompute", result.Warning, StringComparison.OrdinalIgnoreCase);
 
         var commandText = context.Connection.LastCommandText ?? string.Empty;
         Assert.DoesNotContain("coalesce(forecast_7d, 0)", commandText, StringComparison.OrdinalIgnoreCase);
@@ -207,12 +214,34 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal(InventoryForecastSnapshotProvenance.OwnerUnknown, result.ProvenanceStatus);
+        Assert.False(result.IsAuthoritativeForecast);
         Assert.Equal(0, result.TotalCount);
         Assert.Equal(0, result.ReturnedCount);
         Assert.Equal(0, result.TotalMatchingCount);
         Assert.False(result.IsTruncated);
         Assert.Empty(result.Items);
-        Assert.Equal("Forecast snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+        Assert.Contains("owner_unknown", result.Warning, StringComparison.Ordinal);
+        Assert.Contains("nema redova za trazene filtere", result.Warning, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Forecast missing relation is fail-closed as missing_relation")]
+    public async Task ForecastHandler_MissingRelation_IsFailClosed()
+    {
+        var context = CreateContext(CreateTable(("sku_id", typeof(int))), missingRelation: true);
+        var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
+
+        Assert.False(result.SnapshotAvailable);
+        Assert.Equal(InventoryForecastSnapshotProvenance.MissingRelation, result.ProvenanceStatus);
+        Assert.Null(result.MaterializerOwner);
+        Assert.False(result.IsAuthoritativeForecast);
+        Assert.Null(result.SnapshotFreshnessUtc);
+        Assert.Empty(result.Items);
+        Assert.Contains("missing_relation", result.Warning, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nightly recompute", result.Warning, StringComparison.OrdinalIgnoreCase);
+        Assert.NotEqual(InventoryForecastSnapshotProvenance.Trusted, result.ProvenanceStatus);
     }
 
     [Fact(DisplayName = "Rebalance snapshot keeps matching count at zero on empty reader without post-EOF access")]
@@ -417,7 +446,8 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal("Observed inventory snapshot foundation sadrzi reconstructed, mixed ili missing redove. Provenance je eksplicitna.", result.Warning);
     }
 
-    private static RecordingAnalyticsDbContext CreateContext(DataTable table) => new(new RecordingDbConnection(table));
+    private static RecordingAnalyticsDbContext CreateContext(DataTable table, bool missingRelation = false) =>
+        new(new RecordingDbConnection(table, missingRelation));
 
     private static DataTable CreateTable(params (string Name, Type Type)[] columns)
     {
@@ -464,11 +494,13 @@ public sealed class InventorySnapshotContractTests
     private sealed class RecordingDbConnection : DbConnection
     {
         private readonly DataTable _table;
+        private readonly bool _missingRelation;
         private ConnectionState _state = ConnectionState.Closed;
 
-        public RecordingDbConnection(DataTable table)
+        public RecordingDbConnection(DataTable table, bool missingRelation = false)
         {
             _table = table;
+            _missingRelation = missingRelation;
         }
 
         public string? LastCommandText { get; private set; }
@@ -501,7 +533,7 @@ public sealed class InventorySnapshotContractTests
 
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => throw new NotSupportedException();
 
-        protected override DbCommand CreateDbCommand() => new RecordingDbCommand(this, _table);
+        protected override DbCommand CreateDbCommand() => new RecordingDbCommand(this, _table, _missingRelation);
 
         internal void CaptureCommandText(string commandText) => LastCommandText = commandText;
     }
@@ -510,13 +542,15 @@ public sealed class InventorySnapshotContractTests
     {
         private readonly RecordingDbConnection _connection;
         private readonly DataTable _table;
+        private readonly bool _missingRelation;
         private readonly RecordingDbParameterCollection _parameters = new();
         private string _commandText = string.Empty;
 
-        public RecordingDbCommand(RecordingDbConnection connection, DataTable table)
+        public RecordingDbCommand(RecordingDbConnection connection, DataTable table, bool missingRelation = false)
         {
             _connection = connection;
             _table = table;
+            _missingRelation = missingRelation;
         }
 
         public override string CommandText
@@ -557,11 +591,25 @@ public sealed class InventorySnapshotContractTests
 
         protected override DbParameter CreateDbParameter() => new NpgsqlParameter();
 
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) =>
-            new EofStrictDbDataReader(_table.CreateDataReader());
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        {
+            if (_missingRelation)
+            {
+                throw new PostgresException("relation \"analytics_inventory_forecast_snapshot\" does not exist", "ERROR", "ERROR", "42P01");
+            }
 
-        protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
-            Task.FromResult<DbDataReader>(new EofStrictDbDataReader(_table.CreateDataReader()));
+            return new EofStrictDbDataReader(_table.CreateDataReader());
+        }
+
+        protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        {
+            if (_missingRelation)
+            {
+                throw new PostgresException("relation \"analytics_inventory_forecast_snapshot\" does not exist", "ERROR", "ERROR", "42P01");
+            }
+
+            return Task.FromResult<DbDataReader>(new EofStrictDbDataReader(_table.CreateDataReader()));
+        }
     }
 
     /// <summary>

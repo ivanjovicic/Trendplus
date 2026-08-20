@@ -1326,6 +1326,12 @@ export interface ForecastRowDto {
   explanation: string;
 }
 
+export type ForecastProvenanceStatus =
+  | "missing_relation"
+  | "owner_unknown"
+  | "stale"
+  | "trusted";
+
 export interface ForecastDto {
   generatedAtUtc: string;
   totalCount: number;
@@ -1333,6 +1339,12 @@ export interface ForecastDto {
   totalMatchingCount?: number | null;
   isTruncated?: boolean | null;
   snapshotAvailable: boolean;
+  /** missing_relation | owner_unknown | stale | trusted — trusted only with proven materializer */
+  provenanceStatus?: ForecastProvenanceStatus | string | null;
+  materializerOwner?: string | null;
+  isAuthoritativeForecast?: boolean | null;
+  /** Proven snapshot freshness from materializer; not response GeneratedAtUtc */
+  snapshotFreshnessUtc?: string | null;
   warning?: string | null;
   items: ForecastRowDto[];
 }

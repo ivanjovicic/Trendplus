@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ96` DONE; `RQ97`/`RQ98` WAITING)
+Current READY prompt: none (`RQ97` DONE; `RQ98` WAITING)
 Owner-promoted inventory test follow-up: `RQ101` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (DONE; EOF-strict proofs landed with RQ101)
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
@@ -29,7 +29,7 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ71 | DONE | size-curve-boolean-evidence | Stop size-curve missing boolean evidence from becoming healthy false |
 | RQ89 | DONE | inventory-list-route-contract | Preserve seeded rows and honest empty-success semantics in inventory lists |
 | RQ96 | DONE | observed-inventory-snapshot-foundation | Add canonical observed daily inventory snapshot foundation |
-| RQ97 | WAITING | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
+| RQ97 | DONE | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | WAITING | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
 
@@ -754,13 +754,13 @@ Trendplus still lacks a canonical observed SKU/store/day inventory snapshot, whi
 
 ## RQ97 - Forecast snapshot provenance and materializer ownership contract
 
-Status: WAITING
+Status: DONE
 Ready after: `BCI05` is green and `RQ96` is `DONE` or an explicit owner note says the forecast provenance contract may proceed independently
 Priority: P1
 Type: backend/docs/tests
 Feature family: forecast-snapshot-provenance
 Parallel-safe: no
-Owner: unassigned
+Owner: Cursor Auto
 Local lock: `.ai/task-locks/RQ97-<agent>.lock.md`
 Commit suggestion: `fix(forecast): clarify snapshot ownership and provenance`
 
@@ -814,6 +814,26 @@ The runtime exposes forecast snapshot reads, but the repository evidence does no
 - `BCI05`/`BCI01` green first.
 - `RQ96` landed the preferred foundation order because forecast trust should not outrun historical stock truth without an explicit owner exception.
 - If no materializer evidence exists, finish with a fail-closed contract rather than inventing ownership.
+
+### Completion note
+
+- Date: 2026-08-20
+- Status: DONE
+- Completion: Fail-closed forecast snapshot provenance — no production materializer on main; `missing_relation` vs `owner_unknown`; `stale`/`trusted` reserved; UI banners unproven signals
+- Changed files: Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastQuery.cs; Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs; Application/Analytics/Queries/GetInventoryForecast/InventoryForecastSnapshotProvenance.cs; Api.Tests/InventorySnapshotContractTests.cs; Klijent/clientapp/src/types/analytics.ts; Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx; Klijent/clientapp/src/components/inventory/DemandForecastPanel.spec.tsx; docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md; docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md; MASTER_ROADMAP.md; .ai/runs/2026-08-20-RQ97-evidence.md
+- Contract/runtime behavior changed: yes; inventory forecast list DTO gains provenance fields; warnings no longer claim nightly ownership
+- Checks run: git diff --check; dotnet test Api.Tests --filter FullyQualifiedName~InventorySnapshotContractTests (12 passed); npm DemandForecastPanel.spec (2 passed); node scripts/check-prompt-queues.mjs
+- Checks not run: full Api.Tests / frontend suites; live DB materializer proof (none exists on main)
+- Run log: .ai/runs/2026-08-20-RQ97-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending push
+- Missed: inventing a forecast materializer (intentionally out of scope); RQ98 comparison window
+- Follow-up: RQ98 remains WAITING (needs trustworthy comparison window); SQL Server e2e commercial gate remains owner-routed
+- Residual risk: environments with a hand-filled snapshot table still surface as owner_unknown — correct until a proven writer lands
+- Prompt defect / scope repair: promoted RQ97 from WAITING after MASTER next milestone + Ready after deps satisfied (BCI05 green, RQ96 DONE)
+- Next: none (RQ Current READY none)
 
 ---
 

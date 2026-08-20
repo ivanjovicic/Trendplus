@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ106` DONE)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE.
+Current READY prompt: none (`RQ97` DONE; `RQ98` WAITING)
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -972,7 +972,7 @@ Operators still have to open analytics screens to learn that a decision, data-qu
 - Main commit SHA: 50236d144d6dd7e668be0601dac9c76c56a3f15e
 - Main verification: git rev-parse origin/main -> 50236d144d6dd7e668be0601dac9c76c56a3f15e; work SHA is an ancestor
 - Missed: inventory/supplier Pulse families; scheduled worker; durable inbox table
-- Follow-up: RQ97 WAITING; SQL Server e2e commercial gate remains owner-routed
+- Follow-up: RQ97 DONE (fail-closed provenance); RQ98 WAITING; SQL Server e2e commercial gate remains owner-routed
 - Residual risk: email requires DecisionPulse:Recipients + SMTP enabled; otherwise in-app feed still works
 - Prompt defect / scope repair: first slice limited to Product Decision family; RQ96 was already DONE on origin/main by another agent so this run claimed RQ106 instead
 - Next: none (RQ Current READY none)

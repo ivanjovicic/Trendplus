@@ -47,6 +47,10 @@ export function DemandForecastPanel({
     .slice(0, overstockDisplayCount);
 
   const warningText = forecast?.warning;
+  const provenanceStatus = forecast?.provenanceStatus ?? null;
+  const isAuthoritative = forecast?.isAuthoritativeForecast === true;
+  const showUnprovenBanner =
+    Boolean(forecast?.snapshotAvailable) && !isAuthoritative && provenanceStatus !== "trusted";
 
   return (
     <section className="rounded-[28px] border border-border bg-surface p-5">
@@ -71,10 +75,23 @@ export function DemandForecastPanel({
         </div>
       ) : !forecast?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          {forecastLoading ? "Učitavam prognozu..." : "Prognoza trenutno nije dostupna. Snapshot tabela je prazna."}
+          {forecastLoading
+            ? "Učitavam prognozu..."
+            : provenanceStatus === "missing_relation"
+              ? "Prognoza nije dostupna — forecast snapshot relacija nedostaje (missing_relation). Ovo nije production forecasting proizvod."
+              : "Prognoza trenutno nije dostupna. Snapshot relacija nije učitana ili nije dostupna."}
           {warningText ? <div className="mt-2 text-xs text-warning">{warningText}</div> : null}
         </div>
-      ) : (forecast.items ?? []).length === 0 ? (
+      ) : (
+        <>
+          {showUnprovenBanner ? (
+            <div className="mt-4 rounded-2xl border border-warning/40 bg-surface-elevated px-4 py-3 text-sm text-warning">
+              Bounded signal: materializer/owner nije dokazan
+              {provenanceStatus ? ` (${provenanceStatus})` : ""}. Ne tretirati kao production forecasting proizvod.
+              {warningText ? <div className="mt-1 text-xs text-muted">{warningText}</div> : null}
+            </div>
+          ) : null}
+          {(forecast.items ?? []).length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           Nema podataka za prognozu potražnje za trenutni opseg prodavnice i dobavljača.
         </div>
@@ -162,8 +179,10 @@ export function DemandForecastPanel({
           </div>
         </div>
       )}
+        </>
+      )}
       <p className="mt-3 text-xs text-muted">Predlozi dopune su procene zasnovane na forecast signalu, ne finalna narudžbina. Potvrdite stock baseline i operativni kontekst pre naručivanja.</p>
-      {warningText ? <p className="mt-3 text-xs text-warning">Napomena: {warningText}</p> : null}
+      {warningText && !showUnprovenBanner ? <p className="mt-3 text-xs text-warning">Napomena: {warningText}</p> : null}
     </section>
   );
 }
