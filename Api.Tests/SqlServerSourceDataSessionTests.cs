@@ -30,10 +30,11 @@ public sealed class SqlServerSourceDataSessionTests
         await using var session = new SqlServerSourceDataSession(_fixture.ConnectionString);
 
         Assert.Equal("sqlserver", session.Provider);
-        Assert.Equal("readonly", session.Mode);
+        Assert.Equal("read-only", session.Mode);
         Assert.True(session.Capabilities.SchemaDiscovery);
         Assert.True(session.Capabilities.PredicatePushdown);
-        Assert.Contains("sqlserver://", session.SourceIdentity, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Data Source=localhost", session.SourceIdentity, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Initial Catalog=tempdb", session.SourceIdentity, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Password=", session.SourceIdentity, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("User ID=", session.SourceIdentity, StringComparison.OrdinalIgnoreCase);
 
@@ -152,7 +153,7 @@ public sealed class SqlServerSourceDataSessionTests
         await using var cancellableSession = new SqlServerSourceDataSession(_fixture.ConnectionString, commandTimeoutSeconds: 30);
         using (var cancellationSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(250)))
         {
-            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             {
                 await foreach (var _ in cancellableSession.ReadRowsAsync("dbo.Locked Items", cancellationSource.Token))
                 {
