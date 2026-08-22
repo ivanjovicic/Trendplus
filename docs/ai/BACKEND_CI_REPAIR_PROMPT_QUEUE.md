@@ -693,13 +693,13 @@ The historical Aug 13, 2026 green backend run no longer closes current-main trut
   - `git diff --check` - not run yet after the final doc updates
   - GitHub Actions run inspection for the final pushed SHA - pending push/verification
 - Run log: `.ai/runs/2026-08-22-BCI10-evidence.md`
-- Evidence state: pending
-- Delivery mode: direct-main pending push/verification
-- Main commit SHA: pending
-- Main verification: not run yet - commit/push pending
-- Missed: exact pushed `main` SHA verification
-- Follow-up: commit/push, then verify current `main` contains the delivered SHA
-- Residual risk: the queue is green locally, but delivery truth is not complete until the final pushed SHA is recorded
+- Evidence state: done
+- Delivery mode: direct-main
+- Main commit SHA: `42f2d640fe0e11d15f87c81080018af86802ed83`
+- Main verification: `git rev-parse origin/main -> 42f2d640fe0e11d15f87c81080018af86802ed83`
+- Missed: GitHub Actions run for the code-fix push was still queued when this note was written
+- Follow-up: recheck the queued workflow if you need remote CI completion before calling the backend gate fully green
+- Residual risk: the queue is green locally, but the remote workflow had not finished at record time
 - Prompt defect / scope repair: endpoint-group routing required a minimal test-host service registration so auth tests could exercise the intended admin config routes
 
 ### Scope

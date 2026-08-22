@@ -4,9 +4,9 @@ Date: 2026-08-22
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: not run - commit/push pending
-Evidence state: pending
+Main commit SHA: `42f2d640fe0e11d15f87c81080018af86802ed83`
+Main verification: `git rev-parse origin/main -> 42f2d640fe0e11d15f87c81080018af86802ed83`
+Evidence state: done
 
 ## What was done
 - Reproduced the previously red backend suite truth on the current `main` branch.
@@ -27,18 +27,17 @@ Evidence state: pending
 - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release` -> pass (`1016 passed / 0 failed`)
 
 ## Validation not run
-- `git diff --check` -> not run yet after the final doc updates
-- GitHub Actions run inspection for the final pushed SHA -> not run yet until commit/push is complete
+- GitHub Actions run inspection for the code-fix push -> queued at record time; completion still pending
 
 ## Documentation impact
-- Backend CI queue and addendum will be updated to mark `BCI10` DONE.
-- MASTER_ROADMAP will be synchronized to show the backend gate is closed again.
+- Backend CI queue and addendum are updated to mark `BCI10` DONE.
+- MASTER_ROADMAP is synchronized to show the backend gate is closed again.
 
 ## What was missed
-- Exact pushed `main` SHA verification is still pending.
+- The queued GitHub Actions run for `42f2d640fe0e11d15f87c81080018af86802ed83` had not completed at record time.
 
 ## Risks
-- Release gate is green locally, but it still needs to be synchronized to the pushed `main` SHA before the queue can be closed with full delivery truth.
+- Release gate is green locally, but the corresponding GitHub Actions workflow was still queued when this record was written.
 
 ## Next
-- Commit, push, and then update this run log with the delivered `main` SHA and verification result.
+- Recheck the queued workflow if you need remote CI completion before declaring the backend gate fully green.
