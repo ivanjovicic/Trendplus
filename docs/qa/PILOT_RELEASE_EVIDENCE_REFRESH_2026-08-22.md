@@ -10,7 +10,7 @@ Related: `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`, STAB13/STAB14 completio
 | Gate | Verdict | Why |
 |---|---|---|
 | Live smoke pack | **PASS** | The public backend and frontend surfaces were exercised successfully, and the checked pages exposed honest degraded/unknown states instead of fake green zeros. |
-| Core pilot | **NOT READY** | Fresh smoke exists, but the broader current-main delivery truth is still not synchronized until the commit/push verification closes. BCI10 remains the higher-priority backend release gate. |
+| Core pilot | **NOT READY** | Fresh smoke is synchronized to `main`, but the broader pilot is still not ready because BCI10 remains the higher-priority backend release gate. |
 | GenAI entry (`GAI01`) | **BLOCKED** | The core pilot is not cleared and the release gate document remains blocked. |
 
 ## Environment
@@ -36,7 +36,7 @@ Related: `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`, STAB13/STAB14 completio
 
 ## Explicit non-claims
 
-- This smoke does not prove that the current pushed `main` branch is already synchronized to the exact final STAB14 delivery SHA.
+- This smoke is synchronized to the pushed `main` branch, but it does not clear the higher-priority backend CI gate.
 - This smoke does not clear the higher-priority backend CI gate.
 - GenAI remains blocked until the canonical gate is explicitly reopened.
 

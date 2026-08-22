@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB14` is PARTIAL after the 2026-08-21 re-entry; see completion note)
-Current gate verdict: `STAB13` evidence refresh pack is on main. Fresh current-main live-smoke proof has now been captured in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`, but current-main delivery verification is still pending; GenAI remains BLOCKED.
+Current READY prompt: none (`STAB14` is DONE; see completion note)
+Current gate verdict: `STAB13` evidence refresh pack is on main. Fresh current-main live-smoke proof has now been captured and synchronized in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`; GenAI remains BLOCKED because the broader backend gate is still red.
 
 ## Goal
 
@@ -1501,18 +1501,18 @@ STAB13 refreshed the pilot evidence pointers honestly, and the local frontend an
 
 - Date: 2026-08-21
 - Status: PARTIAL
-- Completion: re-closed the local frontend analytics gate and build by fixing the pilot readiness, executive decision board, supplier explainability, inventory freshness, and fetch/test harness drift; a fresh current-main live-smoke pack is now captured, but current-main delivery verification is still pending so STAB14 remains PARTIAL until push verification closes
+- Completion: re-closed the local frontend analytics gate and build by fixing the pilot readiness, executive decision board, supplier explainability, inventory freshness, and fetch/test harness drift; the fresh current-main live-smoke pack is synchronized to `origin/main` and STAB14 is now DONE
 - Changed files: Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx; Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx; Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx; Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx; Klijent/clientapp/src/pages/DataQualityPage.tsx; Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx; Klijent/clientapp/src/pages/PilotReadinessPage.tsx; Klijent/clientapp/src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx; Klijent/clientapp/src/pages/__tests__/ConfigurationPage.spec.tsx; Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx; Klijent/clientapp/src/services/__tests__/logsApi.spec.ts; Klijent/clientapp/src/utils/fetchWithTimeout.ts; docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md; MASTER_ROADMAP.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; .ai/runs/2026-08-22-STAB14-evidence.md
-- Checks run: git diff --check (pass); node scripts/check-prompt-queues.mjs --self-test (pass); node scripts/check-prompt-queues.mjs (pass); node scripts/check-planning-architecture.mjs --self-test (pass); node scripts/check-planning-architecture.mjs (pass); npm run test:analytics -- --cache false (pass); npm run build (pass); npm exec vitest run src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx --cache false (pass); npm exec vitest run src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx --cache false (pass); npm exec vitest run src/services/__tests__/logsApi.spec.ts --cache false (pass); npm exec vitest run src/pages/__tests__/ConfigurationPage.spec.tsx --cache false (pass); npm exec vitest run src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx --cache false (pass); npm exec vitest run src/components/inventory/InventoryItemsTable.spec.tsx --cache false (pass); production live-smoke script via puppeteer-core + local Chrome (pass)
-- Checks not run: exact pushed current-main verification; remote origin/main verification
+- Checks run: git diff --check (pass); node scripts/check-prompt-queues.mjs --self-test (pass); node scripts/check-prompt-queues.mjs (pass); node scripts/check-planning-architecture.mjs --self-test (pass); node scripts/check-planning-architecture.mjs (pass); npm run test:analytics -- --cache false (pass); npm run build (pass); npm exec vitest run src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx --cache false (pass); npm exec vitest run src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx --cache false (pass); npm exec vitest run src/services/__tests__/logsApi.spec.ts --cache false (pass); npm exec vitest run src/pages/__tests__/ConfigurationPage.spec.tsx --cache false (pass); npm exec vitest run src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx --cache false (pass); npm exec vitest run src/components/inventory/InventoryItemsTable.spec.tsx --cache false (pass); production live-smoke script via puppeteer-core + local Chrome (pass); git push origin main (pass)
+- Checks not run: full backend suite - not needed for this frontend/live-smoke release-truth prompt
 - Run log: .ai/runs/2026-08-22-STAB14-evidence.md
-- Evidence state: pending
-- Delivery mode: local worktree only
-- Main commit SHA: pending
-- Main verification: not run - no commit or remote main verification yet
-- Missed: exact pushed current-main verification
-- Follow-up: commit/push and verify current `main`, then STAB15 only if the gate remains green
-- Residual risk: local green validation can still diverge from current-main or deployed runtime truth until the live-smoke pack is synchronized to the exact target SHA
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: f67505d4c9220c53f1823a70c734d6ad2c14bc9f
+- Main verification: passed - `origin/main` contains `f67505d4c9220c53f1823a70c734d6ad2c14bc9f`; `git merge-base --is-ancestor HEAD origin/main` -> `ancestor=true`
+- Missed: none known
+- Follow-up: STAB15 only if the gate remains green
+- Residual risk: current live smoke is synchronized to `main`, but the broader pilot is still not ready because BCI10 remains red
 - Prompt defect / scope repair: same-owner UI and harness repairs so the local analytics gate closes truthfully without inventing current-main proof
 
 ---
