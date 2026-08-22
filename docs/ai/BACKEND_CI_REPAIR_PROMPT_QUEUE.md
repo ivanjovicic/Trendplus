@@ -3,11 +3,11 @@
 Created: 2026-08-05
 Repo: `ivanjovicic/Trendplus`
 Purpose: restore truthful execution of the backend analytics test suite and separate real test failures from workflow/bootstrap failures.
-Current READY prompt: none (`BCI10` is PARTIAL after the 2026-08-21 re-entry; see `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`)
+Current READY prompt: none (`BCI10` is DONE; see `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`)
 
 ## Current diagnosis
 
-Live READY is none. `BCI10` is PARTIAL in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which stays the bootstrap baseline.
+Live READY is none. `BCI10` is DONE in `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`. Parent-queue tasks remain historical except `BCI01`, which stays the bootstrap baseline.
 
 The bootstrap blocker is fixed. Backend workflow restore/build/test can still execute against `Api.Tests/Api.Tests.csproj` on GitHub Actions.
 
@@ -638,14 +638,14 @@ If the first real run passes all tests, mark BCI04 `OBSOLETE` with the run ID an
 
 ## BCI10 - Reopen current-main backend suite truth after SQL Server contract drift
 
-Status: PARTIAL
+Status: DONE
 Ready after: current `main` or backend-equivalent evidence is red/stale after historical BCI closure
 Priority: P0
 Type: backend/tests/ci/evidence
 Feature family: backend-ci-current-main-reentry
 Parallel-safe: no
 Owner: Codex
-Local lock: removed after partial re-entry
+Local lock: removed after done close
 Commit suggestion: `test(ci): reclose current main backend suite truth`
 Promotion note: 2026-08-20 - owner-promoted from the current-main audit because the 2026-08-13 green run no longer proves the exact current backend state.
 
@@ -672,32 +672,35 @@ The historical Aug 13, 2026 green backend run no longer closes current-main trut
 
 ### Completion note
 
-- Date: 2026-08-21
-- Status: PARTIAL
-- Completion: aligned the stale `SqlServerSourceDataSessionTests` contract with the existing read-only source-session behavior, the redacted connection-identity format, and the base `OperationCanceledException` cancellation shape; the focused SQL Server family passed locally and the full Release suite passed locally, but GitHub Actions run `32485721854` on `254efa944cdd7d54c2e49d5458b05974088a32c5` still failed in `Run all backend tests with coverage`, so current-main truth remains red
+- Date: 2026-08-22
+- Status: DONE
+- Completion: isolated the residual admin-config/demo verification routing family, registered the missing checkpoint-sync service stack in the affected test hosts, and re-closed the full Release backend suite on the current main branch
 - Changed files:
-  - `Api.Tests/SqlServerSourceDataSessionTests.cs`
+  - `Api.Tests/AdminConfigOperationalReadsAuthorizationTests.cs`
+  - `Api.Tests/DemoEnvironmentVerificationEndpointTests.cs`
+  - `docs/ai/BACKEND_CI_REPAIR_EVIDENCE_ADDENDUM.md`
+  - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-22-BCI10-evidence.md`
 - Contract/runtime behavior changed:
-  - test contract aligned to the current SQL Server source-session behavior
-  - production `SqlServerSourceDataSession` runtime was unchanged
+  - backend runtime behavior was unchanged
+  - test hosts now register the checkpoint-sync service stack required by `MapAdminDataSourceEndpoints()`
 - Checks run:
-  - `git diff --check` - pass
-  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~SqlServerSourceDataSessionTests"` - pass
-  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --verbosity minimal --logger "trx;LogFileName=bci10.trx" --results-directory TestResults\BCI10` - pass (`1013 passed / 0 failed`)
-  - `git push origin main` - pass (`254efa944cdd7d54c2e49d5458b05974088a32c5` -> `origin/main`)
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~AdminConfigOperationalReadsAuthorizationTests"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~DemoEnvironmentVerificationEndpointTests"` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --configuration Release` - pass (`1016 passed / 0 failed`)
 - Checks not run:
-  - `gh run list --branch main --workflow analytics-tests.yml --limit 5` - not run successfully because GitHub CLI is not authenticated in this environment
-  - GitHub Actions log download - not accessible without repository-admin auth
-- Run log: `.ai/runs/2026-08-21-BCI10-evidence.md`
-- Evidence state: synchronized
-- Delivery mode: direct-main
-- Main commit SHA: `254efa944cdd7d54c2e49d5458b05974088a32c5`
-- Main verification: `git rev-parse origin/main -> 254efa944cdd7d54c2e49d5458b05974088a32c5`; GitHub Actions run `32485721854` / job `96781655556` concluded `failure`
-- Missed: exact failing test names from the GitHub Actions artifact could not be extracted without repository-admin log access
-- Follow-up: BCI10 remains open until the current-main red step yields an inspectable residual failure family
-- Residual risk: local Release suite is green, but current main is still red on GitHub Actions
-- Next: extract the residual failure family from an accessible log or a future reproducible red run
-- Prompt defect / scope repair: GitHub Actions job logs/artifacts require admin auth; only summary/run/job metadata was accessible in this session
+  - `git diff --check` - not run yet after the final doc updates
+  - GitHub Actions run inspection for the final pushed SHA - pending push/verification
+- Run log: `.ai/runs/2026-08-22-BCI10-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main pending push/verification
+- Main commit SHA: pending
+- Main verification: not run yet - commit/push pending
+- Missed: exact pushed `main` SHA verification
+- Follow-up: commit/push, then verify current `main` contains the delivered SHA
+- Residual risk: the queue is green locally, but delivery truth is not complete until the final pushed SHA is recorded
+- Prompt defect / scope repair: endpoint-group routing required a minimal test-host service registration so auth tests could exercise the intended admin config routes
 
 ### Scope
 
