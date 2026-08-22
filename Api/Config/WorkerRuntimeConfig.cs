@@ -162,6 +162,9 @@ public static class WorkerRuntimeConfig
             case "InventoryReportSchedulerWorker":
                 services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
                 return;
+            case "DecisionPulseSchedulerWorker":
+                services.AddHostedService<Workers.DecisionPulseSchedulerWorker>();
+                return;
             case "AccessImportBackgroundWorker":
                 services.AddHostedService<AccessImportBackgroundWorker>();
                 return;

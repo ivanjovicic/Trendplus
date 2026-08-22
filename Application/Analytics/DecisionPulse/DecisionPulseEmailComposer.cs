@@ -24,6 +24,7 @@ public static class DecisionPulseEmailComposer
         var blocks = items.Select(item => $"""
             <li style="margin-bottom:16px;">
               <strong>{Html(item.Title)}</strong>
+              <div>Izvor: {Html(item.SourceType)}</div>
               <div>Status: {Html(item.RecommendationLabel)} ({Html(item.RecommendationStatus)})</div>
               <div>Zašto: {Html(item.WhySummary)}</div>
               <div>Svežina: {Html(item.InputFreshnessStatus)} · DQ: {Html(item.DataQualityStatus)}</div>
@@ -34,7 +35,7 @@ public static class DecisionPulseEmailComposer
         return $"""
             <html><body>
             <h2>Decision Pulse</h2>
-            <p>Izuzeci iz Product Decision porodice · {utcNow:yyyy-MM-dd} UTC · tenant {Html(DecisionPulseProjector.DedicatedTenantScope)}</p>
+            <p>Izuzeci iz Product, Inventory i Supplier porodica · {utcNow:yyyy-MM-dd} UTC · tenant {Html(DecisionPulseProjector.DedicatedTenantScope)}</p>
             <ol>
             {string.Join(Environment.NewLine, blocks)}
             </ol>

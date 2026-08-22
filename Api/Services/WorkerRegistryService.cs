@@ -163,6 +163,7 @@ public sealed class WorkerRegistryService
             "TrendIngestionWorker" => ResolveNextDailyRunAtHour(nowUtc, _trendIngestionOptions.RunAtHourUtc),
             "DocumentGenerationWorker" => nowUtc.AddSeconds(10),
             "InventoryReportSchedulerWorker" => nowUtc.AddMinutes(1),
+            "DecisionPulseSchedulerWorker" => nowUtc.AddMinutes(1),
             _ => null
         };
     }

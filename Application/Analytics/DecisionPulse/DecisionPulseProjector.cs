@@ -42,14 +42,18 @@ public sealed record DecisionPulseProjection(
     string TenantScope);
 
 /// <summary>
-/// Projects product-decision exceptions into Decision Pulse items.
+/// Projects product, inventory and supplier exceptions into Decision Pulse items.
 /// Suppresses stale, empty, insufficient, blocked and error-as-zero evidence.
 /// </summary>
 public static class DecisionPulseProjector
 {
     public const string DedicatedTenantScope = "n/a_dedicated";
     public const string ProductDeepLink = "/analytics/products";
+    public const string InventoryDeepLink = "/analytics/inventory";
+    public const string SupplierDeepLink = "/analytics/supplier?tab=overview";
     public const string SourceTypeProduct = "product";
+    public const string SourceTypeInventory = "inventory";
+    public const string SourceTypeSupplier = "supplier";
 
     private static readonly HashSet<string> ActionableStatuses = new(StringComparer.OrdinalIgnoreCase)
     {

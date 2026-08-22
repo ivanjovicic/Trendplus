@@ -100,6 +100,15 @@ public static class WorkerRegistryCatalog
             RegistersInWorkerProcess: true,
             RegistersInWebProcess: false),
         new(
+            WorkerName: "DecisionPulseSchedulerWorker",
+            DisplayName: "Decision Pulse Scheduler",
+            Description: "Executes Decision Pulse schedules and email delivery.",
+            WorkerType: "scheduled",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
             WorkerName: "DeferredStartupTasksHostedService",
             DisplayName: "Deferred Startup Tasks",
             Description: "One-time startup maintenance tasks.",
