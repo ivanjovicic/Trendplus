@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ108`
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is the current owner-authorized runtime follow-up; `RQ109` remains WAITING.
+Current READY prompt: none (`RQ108` is DONE after the 2026-08-22 sync; `RQ109` remains WAITING)
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` remains WAITING.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -38,7 +38,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ13 | DONE | inventory-evidence-wiring | Wire signal confidence onto board inventory cards |
 | RQ106 | DONE | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
 | RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
-| RQ108 | READY | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
+| RQ108 | DONE | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
 | RQ109 | WAITING | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
 | RQ110 | WAITING | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | WAITING | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
@@ -1049,13 +1049,13 @@ Competitive gap Gate 4 still needs controlled scenario planning (markdown / repl
 
 ## RQ108 - Add authoritative forecast materializer and observed pairing foundation
 
-Status: READY
+Status: DONE
 Ready after: `RQ97` and `RQ98` are `DONE` and an owner authorizes the first runtime forecasting follow-up
 Priority: P1
 Type: backend/persistence/tests
 Feature family: forecast-materializer-observed-window
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ108-<agent>.lock.md`
 Commit suggestion: `feat(analytics): materialize forecasts for measured comparison`
 Promotion note: 2026-08-20 - owner-promoted from the pilot audit because forecast provenance/backtest contracts are done but no authoritative runtime writer or paired observed window exists yet.
@@ -1123,6 +1123,26 @@ Promotion note: 2026-08-20 - owner-promoted from the pilot audit because forecas
 - `RQ97` DONE.
 - `RQ98` DONE.
 - Do not weaken the fail-closed contract from `RQ97`/`RQ98` while adding the writer/pairing foundation.
+
+### Completion note
+
+- Date: 2026-08-22
+- Status: DONE
+- Completion: added an authoritative inventory forecast snapshot materializer with persisted issue-time/provenance metadata, a fail-closed observed-pairing view foundation, trusted provenance surfacing in the forecast read handler, and focused tests proving upsert plus observed pairing; the implementation is now synchronized on current main
+- Changed files: Application/Analytics/Queries/DbDataReaderNullableExtensions.cs; Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs; Application/Analytics/Queries/GetInventoryForecast/InventoryForecastSnapshotProvenance.cs; Application/Analytics/Queries/GetInventoryForecast/InventoryForecastMaterializationContracts.cs; Application/Common/Interfaces/IInventoryForecastSnapshotMaterializerService.cs; Infrastructure/Services/Inventory/InventoryForecastSnapshotMaterializerService.cs; Api.Tests/InventorySnapshotContractTests.cs; Api.Tests/DatabaseInitializerP0IntegrationTests.cs; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md; .ai/runs/2026-08-22-RQ108-evidence.md
+- Contract/runtime behavior changed: authoritative forecast snapshot persistence and observed pairing now ship on current main; missing observed evidence still fails closed as unavailable
+- Checks run: `git diff --check` - pass; `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Trendplus2.Tests.InventorySnapshotContractTests|FullyQualifiedName~Api.Tests.DatabaseInitializerP0IntegrationTests.ForecastMaterializer_PersistsTrustedSnapshot_AndPairsObservedEvidence"` - pass; `node scripts/check-agent-instructions.mjs --self-test` - pass; `node scripts/check-agent-instructions.mjs` - pass; `node scripts/check-prompt-queues.mjs --self-test` - pass; `node scripts/check-prompt-queues.mjs` - pass; `node scripts/check-planning-architecture.mjs --self-test` - pass; `node scripts/check-planning-architecture.mjs` - pass
+- Checks not run: full Release suite - not needed after the targeted materialization/pairing evidence pass; remote workflow re-run - not needed because current main verification is on the pushed delivery SHA
+- Run log: `.ai/runs/2026-08-22-RQ108-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `2f78b23988775423385e23c3a3f67e9e553deaad`
+- Main verification: `git rev-parse origin/main -> 2f78b23988775423385e23c3a3f67e9e553deaad`
+- Missed: none known
+- Follow-up: `RQ109` remains WAITING until owner promotion
+- Residual risk: pairing still depends on the RQ96 observed daily stock foundation; if that foundation is absent, paired evidence remains unavailable rather than invented
+- Next: `RQ109`
+- Prompt defect / scope repair: same-owner runtime foundation repair for forecast materialization and observed pairing
 
 ---
 
