@@ -1624,12 +1624,12 @@ Even after the frontend gate re-closes, the pilot still cannot claim reliable an
   - `git diff --check` after the final doc updates - pending until the evidence-sync pass
   - queue/planning validators after the final doc updates - pending until the evidence-sync pass
 - Run log: `.ai/runs/2026-08-22-STAB15-evidence.md`
-- Evidence state: pending
-- Delivery mode: direct-main pending push/verification
-- Main commit SHA: pending
-- Main verification: not run yet - commit/push pending
-- Missed: exact pushed `main` SHA verification
-- Follow-up: commit/push, then verify current `main` contains the delivered SHA
-- Residual risk: the smoke surface is truthful on the current deployed SHA, but the delivery record still needs push/verification
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`
+- Main verification: `git rev-parse origin/main -> c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`; `git merge-base --is-ancestor HEAD origin/main` -> `ancestor=true`
+- Missed: none known
+- Follow-up: none
+- Residual risk: production backend freshness remains `unknown`, but it is explicitly visible rather than hidden behind fake green state
 - Prompt defect / scope repair: used the owner-approved canonical smoke contract plus STAB14 evidence to replace the missing `RQ110` matrix
 - Do not broaden into general load/performance/security work; this prompt is only about exact-SHA production analytics visibility truth.
