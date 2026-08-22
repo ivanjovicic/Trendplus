@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: none (`QDB09` is IN_PROGRESS after the 2026-08-22 claim; `QDB07` stays WAITING until QDB09 and release gates clear)
+Current READY prompt: none (`QDB09` is DONE after the 2026-08-22 delivery; `QDB07` stays WAITING until QDB09 and release gates clear)
 
 ## Global routing
 
@@ -557,7 +557,7 @@ The backend now has discovery, mapping preview and checkpoint infrastructure, bu
 
 ## QDB09 - Prove SQL Server end-to-end sync through the checkpoint engine
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `QDB06` is `DONE` and the owner authorizes the first commercial/runtime follow-up before QDB07
 Priority: P1
 Type: backend/integration tests/workers
@@ -624,6 +624,40 @@ Promotion note: 2026-08-20 - owner-promoted from the pilot audit because `QDB06`
 - The sync is callable from a real production-facing path, not only an internal helper test.
 - Schema drift, idempotency and secret-redaction rules remain truthful.
 - `QDB07` remains out of scope until this path is proven.
+
+### Completion note
+
+- Date: 2026-08-22
+- Status: DONE
+- Completion: added a production-facing `/api/admin/data-sources/{profileName}/checkpoint-sync` route, wired `SourceCheckpointSyncService` through `ISourceSyncStore`, and proved live SQL Server preview rows can flow through the checkpoint engine into staged rows and checkpoint state
+- Changed files:
+  - `Api/Endpoints/AdminDataSourceEndpoints.cs`
+  - `Api/Program.cs`
+  - `Api/Services/DataSources/SourceCheckpointSyncService.cs`
+  - `Api.Tests/AdminDataSourceEndpointsTests.cs`
+  - `.ai/runs/2026-08-22-QDB09-evidence.md`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: yes; SQL Server admin checkpoint-sync route now validates the named profile, tests the live source connection, and applies a mapped batch through the checkpoint engine
+- Checks run:
+  - `git diff --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter 'FullyQualifiedName~AdminDataSourceEndpointsTests.CheckpointSync_UsesLiveSqlPreviewRows_AndPersistsCheckpointState|FullyQualifiedName~AdminDataSourceEndpointsTests.MappingPreview_ReturnsBoundedRowsAndStableFingerprint|FullyQualifiedName~SourceCheckpointSyncEngineTests'` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release` - pass
+- Checks not run: live relational `EfSourceSyncStore` backing-database proof; full repo build/test sweep; frontend checks
+- Run log: `.ai/runs/2026-08-22-QDB09-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c3de541879e3ec0c1c38296022a38b74c460546c`
+- Main verification: `origin/main` contains `c3de541879e3ec0c1c38296022a38b74c460546c` and that SHA is an ancestor of current `origin/main`
+- Missed: live relational store proof for `EfSourceSyncStore`
+- Follow-up: `QDB07` remains WAITING until release gates permit the admin UI
+- Residual risk: the endpoint is proven through the checkpoint engine and live SQL Server preview rows, but the relational store seam still deserves one targeted follow-up test
+- Next: `QDB07`
+- Prompt defect / scope repair: none
 
 ### Dependencies
 
