@@ -1136,8 +1136,8 @@ Promotion note: 2026-08-20 - owner-promoted from the pilot audit because forecas
 - Run log: `.ai/runs/2026-08-22-RQ108-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `2f78b23988775423385e23c3a3f67e9e553deaad`
-- Main verification: `git rev-parse origin/main -> 2f78b23988775423385e23c3a3f67e9e553deaad`
+- Main commit SHA: `908afeef7a76795280c8e15387454ac33dd2ada4`
+- Main verification: `git rev-parse origin/main -> 908afeef7a76795280c8e15387454ac33dd2ada4`
 - Missed: none known
 - Follow-up: `RQ109` remains WAITING until owner promotion
 - Residual risk: pairing still depends on the RQ96 observed daily stock foundation; if that foundation is absent, paired evidence remains unavailable rather than invented
