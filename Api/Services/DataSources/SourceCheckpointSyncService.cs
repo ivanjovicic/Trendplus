@@ -6,10 +6,10 @@ namespace Api.Services.DataSources;
 /// </summary>
 public sealed class SourceCheckpointSyncService
 {
-    private readonly EfSourceSyncStore _store;
+    private readonly ISourceSyncStore _store;
     private readonly SourceCheckpointSyncEngine _engine;
 
-    public SourceCheckpointSyncService(EfSourceSyncStore store, SourceCheckpointSyncEngine engine)
+    public SourceCheckpointSyncService(ISourceSyncStore store, SourceCheckpointSyncEngine engine)
     {
         _store = store;
         _engine = engine;

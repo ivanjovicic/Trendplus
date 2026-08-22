@@ -1,5 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Api.Config;
 using Api.Endpoints;
 using SourceMappingPreviewRequest = Api.Models.SourceMappingPreviewRequest;
@@ -241,6 +243,100 @@ public sealed class AdminDataSourceEndpointsTests
     }
 
     [Fact]
+    public async Task CheckpointSync_UsesLiveSqlPreviewRows_AndPersistsCheckpointState()
+    {
+        var emptyProfileName = $"empty-{Guid.NewGuid():N}";
+        await PrepareDiscoveryDataAsync();
+        var syncStore = new InMemorySourceSyncStore();
+        await using var host = await CreateHostAsync(_fixture.ConnectionString, emptyProfileName, syncStore);
+
+        var previewRequest = new SourceMappingPreviewRequest
+        {
+            CanonicalEntity = "source_items",
+            SourceTable = "dbo.SourceItems",
+            ExternalKeyColumns = ["Id"],
+            Cursor = new SourceReadQuery
+            {
+                CursorMode = "id",
+                CursorId = 0,
+                IdAliases = ["Id"]
+            },
+            FieldMappings =
+            [
+                new SourceMappingFieldRequest { TargetField = "Id", Aliases = ["Id"] },
+                new SourceMappingFieldRequest { TargetField = "Name", Aliases = ["Name"] },
+                new SourceMappingFieldRequest { TargetField = "Quantity", Aliases = ["Quantity"] }
+            ],
+            Take = 2
+        };
+
+        using var previewResponse = await SendMappingPreviewAsync(host.Client, previewRequest);
+        previewResponse.EnsureSuccessStatusCode();
+
+        var preview = await previewResponse.Content.ReadFromJsonAsync<SourceMappingPreviewResponse>();
+        Assert.NotNull(preview);
+        Assert.Equal(2, preview!.Rows.Count);
+        Assert.Equal("sqlserver", preview.Provider);
+        Assert.Equal("live-sql", preview.ProfileName);
+
+        var mappingProfileId = SourceMappingProfileId.Compute(
+            "live-sql",
+            preview.CanonicalEntity,
+            preview.SourceTable,
+            preview.ExternalKeyColumns.FirstOrDefault(),
+            preview.Cursor?.CursorMode,
+            preview.FieldMappings
+                .Where(field => string.Equals(field.Status, "matched", StringComparison.OrdinalIgnoreCase))
+                .Select(field => (field.TargetField, field.SourceColumn ?? string.Empty)));
+
+        var rows = preview.Rows.Select(row =>
+        {
+            var externalKey = GetPreviewValue(row, "Id")?.ToString();
+            return new SourceSyncRow(
+                externalKey,
+                null,
+                externalKey,
+                BuildPayloadHash(row));
+        }).ToArray();
+
+        var syncRequest = new SourceSyncBatchRequest(
+            new SourceSyncIdentity("live-sql", mappingProfileId, "dbo.SourceItems"),
+            preview.Cursor?.CursorMode ?? "id",
+            preview.SchemaFingerprint,
+            60,
+            Guid.Parse("bbbbbbbb-cccc-dddd-eeee-ffffffffffff"),
+            rows);
+
+        using var syncHttpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/admin/data-sources/live-sql/checkpoint-sync")
+        {
+            Content = JsonContent.Create(syncRequest)
+        };
+        syncHttpRequest.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var syncResponse = await host.Client.SendAsync(syncHttpRequest);
+        syncResponse.EnsureSuccessStatusCode();
+
+        var result = await syncResponse.Content.ReadFromJsonAsync<SourceSyncBatchResult>();
+        Assert.NotNull(result);
+        Assert.True(result!.Success);
+        Assert.Equal(2, result.Metrics.Read);
+        Assert.Equal(2, result.Metrics.Inserted);
+        Assert.Equal(0, result.Metrics.Updated);
+        Assert.Equal(0, result.Metrics.Skipped);
+        Assert.Equal(0, result.Metrics.Rejected);
+        Assert.NotNull(result.Checkpoint);
+        Assert.Equal(SourceCheckpointSyncEngine.DedicatedTenantScope, result.Checkpoint!.TenantScope);
+        Assert.Equal("live-sql", result.Checkpoint.Identity.ConnectionId);
+        Assert.Equal(mappingProfileId, result.Checkpoint.Identity.MappingProfileId);
+
+        Assert.Equal(2, syncStore.Rows.Count);
+        var checkpoint = syncStore.GetCheckpoint(result.Checkpoint.Identity);
+        Assert.NotNull(checkpoint);
+        Assert.Equal(preview.SchemaFingerprint, checkpoint!.SchemaFingerprint);
+        Assert.Equal(SourceCheckpointSyncEngine.DedicatedTenantScope, checkpoint.TenantScope);
+    }
+
+    [Fact]
     public async Task MappingPreview_RejectsWithoutAdminKey()
     {
         var emptyProfileName = $"empty-{Guid.NewGuid():N}";
@@ -347,7 +443,10 @@ public sealed class AdminDataSourceEndpointsTests
             Take = take
         };
 
-    private static async Task<TestHost> CreateHostAsync(string connectionString, string emptyProfileName)
+    private static async Task<TestHost> CreateHostAsync(
+        string connectionString,
+        string emptyProfileName,
+        InMemorySourceSyncStore? syncStore = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -370,6 +469,11 @@ public sealed class AdminDataSourceEndpointsTests
         builder.Services.Configure<NightlyAnalyticsRefreshOptions>(_ => { });
         builder.Services.Configure<OpenTrainingModelTrainingOptions>(_ => { });
         builder.Services.Configure<AnalyticsDataQualityHealthOptions>(_ => { });
+        syncStore ??= new InMemorySourceSyncStore();
+        builder.Services.AddSingleton<ISourceSyncStore>(syncStore);
+        builder.Services.AddSingleton(syncStore);
+        builder.Services.AddSingleton<SourceCheckpointSyncEngine>();
+        builder.Services.AddScoped<SourceCheckpointSyncService>();
         builder.Configuration["Admin:ApiKey"] = AdminApiKey;
         builder.Configuration["DataSources:NamedProfiles:live-sql:Provider"] = "sqlserver";
         builder.Configuration["DataSources:NamedProfiles:live-sql:DisplayName"] = "Live SQL";
@@ -390,6 +494,24 @@ public sealed class AdminDataSourceEndpointsTests
     {
         using var request = new HttpRequestMessage(method, route);
         return await client.SendAsync(request);
+    }
+
+    private static object? GetPreviewValue(SourceMappingPreviewRow row, string fieldName)
+        => row.Values.FirstOrDefault(value => string.Equals(value.TargetField, fieldName, StringComparison.OrdinalIgnoreCase))?.Value;
+
+    private static string BuildPayloadHash(SourceMappingPreviewRow row)
+    {
+        var builder = new StringBuilder();
+        foreach (var value in row.Values.OrderBy(value => value.TargetField, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append(value.TargetField);
+            builder.Append('=');
+            builder.Append(value.Value?.ToString() ?? string.Empty);
+            builder.Append('|');
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
+        return Convert.ToHexString(hash)[..32].ToLowerInvariant();
     }
 
     private sealed class TestHost : IAsyncDisposable

@@ -72,6 +72,16 @@ public static class AdminDataSourceEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/{profileName}/checkpoint-sync", ApplyCheckpointSync)
+            .WithName("ApplyDataSourceCheckpointSync")
+            .WithSummary("Apply a mapped source batch through the checkpoint engine")
+            .RequireRateLimiting("db-heavy")
+            .Produces<SourceSyncBatchResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status400BadRequest);
     }
 
     private static Task<IResult> GetProfiles(
@@ -352,6 +362,73 @@ public static class AdminDataSourceEndpoints
         }
     }
 
+    private static async Task<IResult> ApplyCheckpointSync(
+        string profileName,
+        HttpContext context,
+        IConfiguration configuration,
+        [FromBody] SourceSyncBatchRequest request,
+        SourceCheckpointSyncService syncService,
+        CancellationToken ct = default)
+    {
+        var denial = Authorize(context, configuration);
+        if (denial is not null)
+            return denial;
+
+        if (!TryResolveProfile(configuration, profileName, out var profile, out var notFound))
+            return notFound;
+
+        if (request is null)
+            return TypedResults.BadRequest(new { error = "request body is required." });
+
+        if (!profile.IsConfigured)
+        {
+            return TypedResults.Ok(CreateUnavailableCheckpointSyncResult(
+                request,
+                "invalid_configuration",
+                "Connection string is missing or blank."));
+        }
+
+        if (!string.Equals(profile.Provider, "sqlserver", StringComparison.OrdinalIgnoreCase))
+        {
+            return TypedResults.Ok(CreateUnavailableCheckpointSyncResult(
+                request,
+                "unsupported_provider",
+                $"Provider '{profile.Provider}' is not supported by this checkpoint path."));
+        }
+
+        if (!string.Equals(request.Identity.ConnectionId, profile.Name, StringComparison.OrdinalIgnoreCase))
+            return TypedResults.BadRequest(new { error = "identity.connectionId must match the profileName route." });
+
+        var session = CreateSession(profile);
+        if (session is null)
+        {
+            return TypedResults.Ok(CreateUnavailableCheckpointSyncResult(
+                request,
+                "unsupported_provider",
+                $"Provider '{profile.Provider}' is not supported by this checkpoint path."));
+        }
+
+        await using (session)
+        {
+            try
+            {
+                await session.TestConnectionAsync(ct);
+                var result = syncService.Apply(request);
+                return TypedResults.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                var failure = MapConnectionTestFailure(profile, ex);
+                return TypedResults.Ok(new SourceSyncBatchResult(
+                    false,
+                    failure.Category,
+                    "Unable to apply checkpoint sync for this source.",
+                    new SourceSyncMetrics(request.Rows.Count, 0, 0, 0, 0),
+                    null));
+            }
+        }
+    }
+
     private static ISourceDataSession? CreateSession(NamedDataSourceProfile profile)
     {
         if (string.Equals(profile.Provider, "sqlserver", StringComparison.OrdinalIgnoreCase))
@@ -573,6 +650,17 @@ public static class AdminDataSourceEndpoints
 
         return "unknown_error";
     }
+
+    private static SourceSyncBatchResult CreateUnavailableCheckpointSyncResult(
+        SourceSyncBatchRequest request,
+        string reasonCode,
+        string message)
+        => new(
+            false,
+            reasonCode,
+            message,
+            new SourceSyncMetrics(request.Rows.Count, 0, 0, 0, 0),
+            null);
 
     private static string ParseSchemaName(string tableReference)
     {

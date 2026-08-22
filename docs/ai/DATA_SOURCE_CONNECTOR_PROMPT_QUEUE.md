@@ -3,7 +3,7 @@
 Created: 2026-08-05  
 Repository: `ivanjovicic/Trendplus`  
 Queue purpose: evolve the existing Access reader into a safe multi-source import architecture without changing the internal PostgreSQL database or starting a broad rewrite.  
-Current READY prompt: `QDB09` (`QDB06` DONE; `QDB07` stays WAITING until QDB09 and release gates clear)
+Current READY prompt: none (`QDB09` is IN_PROGRESS after the 2026-08-22 claim; `QDB07` stays WAITING until QDB09 and release gates clear)
 
 ## Global routing
 
@@ -557,7 +557,7 @@ The backend now has discovery, mapping preview and checkpoint infrastructure, bu
 
 ## QDB09 - Prove SQL Server end-to-end sync through the checkpoint engine
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `QDB06` is `DONE` and the owner authorizes the first commercial/runtime follow-up before QDB07
 Priority: P1
 Type: backend/integration tests/workers

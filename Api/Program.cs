@@ -180,7 +180,7 @@ try
     builder.Services.AddSingleton<NamedSourceDiscoveryService>();
     builder.Services.AddSingleton<SourceMappingPreviewService>();
     builder.Services.AddSingleton<SourceCheckpointSyncEngine>();
-    builder.Services.AddScoped<EfSourceSyncStore>();
+    builder.Services.AddScoped<ISourceSyncStore, EfSourceSyncStore>();
     builder.Services.AddScoped<SourceCheckpointSyncService>();
     builder.Services.AddFileStorage(builder.Configuration);
     var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
@@ -423,6 +423,7 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
+builder.Services.AddScoped<IInventoryForecastSnapshotMaterializerService, Infrastructure.Services.Inventory.InventoryForecastSnapshotMaterializerService>();
 builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();
