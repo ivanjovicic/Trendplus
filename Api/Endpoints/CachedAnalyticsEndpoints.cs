@@ -1893,7 +1893,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildDailySalesSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Dnevni trend prodaje nije dostupan.");
+                            "Dnevni trend prodaje nije dostupan.") ?? [];
 
                         response.CategoryData = await MeasureSectionAsync(
                             "CategoryData",
@@ -1903,7 +1903,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildCategoryDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po kategorijama nije dostupna.");
+                            "Prodaja po kategorijama nije dostupna.") ?? [];
 
                         response.GenderData = await MeasureSectionAsync(
                             "GenderData",
@@ -1913,7 +1913,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildGenderDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po polu nije dostupna.");
+                            "Prodaja po polu nije dostupna.") ?? [];
 
                         response.SupplierData = await MeasureSectionAsync(
                             "SupplierData",
@@ -1923,7 +1923,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildSupplierDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po dobavljačima nije dostupna.");
+                            "Prodaja po dobavljačima nije dostupna.") ?? [];
 
                         response.SupplierOptions = await MeasureSectionAsync(
                             "SupplierOptions",
@@ -1933,7 +1933,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildSupplierFilterOptionsAsync(db, fromDate, toDate, storeId, ct, normalizedDataScope),
                                 DashboardReferenceSectionTtl,
                                 ct),
-                            "Lista dobavljača za filter nije dostupna.");
+                            "Lista dobavljača za filter nije dostupna.") ?? [];
 
                         response.WeekdayData = await MeasureSectionAsync(
                             "WeekdayData",
@@ -1943,7 +1943,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildWeekdayDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po danima nije dostupna.");
+                            "Prodaja po danima nije dostupna.") ?? [];
 
                         response.HourData = await MeasureSectionAsync(
                             "HourData",
@@ -1953,7 +1953,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildHourDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po satima nije dostupna.");
+                            "Prodaja po satima nije dostupna.") ?? [];
 
                         response.PaymentData = await MeasureSectionAsync(
                             "PaymentData",
@@ -1963,7 +1963,7 @@ public static class CachedAnalyticsEndpoints
                                 async () => await BuildPaymentDataSnapshotAsync(db, fromDate, toDate, storeId, supplierId, ct, normalizedDataScope),
                                 DashboardSectionTtl,
                                 ct),
-                            "Prodaja po nacinu placanja nije dostupna.");
+                            "Prodaja po nacinu placanja nije dostupna.") ?? [];
 
                         response.QuickInsights = await MeasureSectionAsync(
                             "QuickInsights",

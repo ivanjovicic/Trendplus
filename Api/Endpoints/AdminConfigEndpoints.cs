@@ -145,7 +145,7 @@ public static class AdminConfigEndpoints
                 LastHeartbeatUtc = x.LastHeartbeatUtc,
                 CurrentStep = x.CurrentStep,
                 CurrentTable = x.CurrentTable,
-                ElapsedSeconds = x.StartedAtUtc != null && (x.CompletedAtUtc == null ? DateTime.UtcNow : x.CompletedAtUtc) > x.StartedAtUtc
+                ElapsedSeconds = (x.CompletedAtUtc == null ? DateTime.UtcNow : x.CompletedAtUtc) > x.StartedAtUtc
                     ? (int)((x.CompletedAtUtc ?? DateTime.UtcNow) - x.StartedAtUtc).TotalSeconds
                     : 0,
                 RowsRead = x.RowsRead,

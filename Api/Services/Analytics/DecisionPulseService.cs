@@ -45,7 +45,7 @@ public sealed class DecisionPulseService
                 storeId,
                 supplierId,
                 top: Math.Clamp(_options.MaxCandidates, 10, 500),
-                dataScope,
+                dataScope ?? string.Empty,
                 ct);
 
             var candidates = (pdc.Rows ?? [])
