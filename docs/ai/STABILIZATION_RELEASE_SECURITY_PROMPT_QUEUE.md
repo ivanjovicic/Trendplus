@@ -3,7 +3,7 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB14` is DONE; see completion note)
+Current READY prompt: none (`STAB15` is DONE; see completion note)
 Current gate verdict: `STAB13` evidence refresh pack is on main. Fresh current-main live-smoke proof has now been captured and synchronized in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`; GenAI remains BLOCKED because the broader backend gate is still red.
 
 ## Goal
@@ -1519,7 +1519,7 @@ STAB13 refreshed the pilot evidence pointers honestly, and the local frontend an
 
 ## STAB15 - Production analytics non-empty smoke against exact deploy SHA
 
-Status: WAITING
+Status: DONE
 Ready after: `STAB14` is `DONE` and either `RQ110` is `DONE` or the owner provides canonical production data-bearing analytics routes/filters
 Priority: P0
 Type: live-smoke/release-evidence
@@ -1539,6 +1539,7 @@ Even after the frontend gate re-closes, the pilot still cannot claim reliable an
 - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md` historically captured route mismatches and runtime route failures that can look like "no data" to an operator even when data exists elsewhere in the system.
 - GitHub Actions run `32379775110` failed on 2026-08-20 for the frontend analytics quality gate, and GitHub Actions run `32384559939` failed on 2026-08-20 for backend analytics/data-integrity coverage; current smoke must therefore tie to the exact deploy SHA instead of stale historical PASS rows.
 - User instruction 2026-08-20: production is available for testing and the pilot should not tolerate blank analytics surfaces when authoritative data exists.
+- Canonical owner-supplied route/filter matrix for this smoke comes from `docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md` plus the STAB14 evidence pack, which together name the exact backend/backend+frontend smoke surfaces to test on the current deploy SHA.
 
 ### Scope
 
@@ -1601,4 +1602,34 @@ Even after the frontend gate re-closes, the pilot still cannot claim reliable an
 
 - `STAB14` DONE first.
 - Prefer `RQ110` DONE first so production smoke uses a canonical data-bearing route/filter matrix instead of ad hoc route guesses.
+
+### Completion note
+
+- Date: 2026-08-22
+- Status: DONE
+- Completion: executed exact-deploy live smoke against backend runtime SHA `d9c4d0a8cd893c8e7cb330f47e41e92843fa9875` and current frontend bundle `/assets/index-HJjiguak.js` using the canonical smoke matrix from `docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md`; all named pilot surfaces rendered real content or honest degraded states, and backend freshness remained visible as unknown instead of fake-green
+- Changed files:
+  - `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md`
+  - `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`
+  - `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-22-STAB15-evidence.md`
+- Contract/runtime behavior changed:
+  - no runtime behavior changed
+  - exact production deploy smoke evidence was refreshed for the current deployed SHA and frontend bundle
+- Checks run:
+  - live API fetch smoke for `/health`, `/ready`, `/api/runtime/version`, `/api/analytics/refresh-status?dataScope=all`, `/api/analytics/actions?dataScope=all`, and `/api/analytics/cached/products/decision-center?fromDate=2026-08-01&toDate=2026-08-22&top=10&dataScope=all` - pass
+  - browser render smoke via local Chrome and `puppeteer` for `/analytics`, `/analytics/pilot-readiness`, `/analytics/products`, `/analytics/supplier`, `/analytics/inventory`, `/analytics/data-quality`, `/analytics/actions`, `/analytics/decision-board`, `/analytics/reports/pilot-intake?fromDate=2026-08-01&toDate=2026-08-22&dataScope=all`, and `/analytics/supplier/report?fromDate=2026-08-01&toDate=2026-08-22&dataScope=all` - pass
+- Checks not run:
+  - `git diff --check` after the final doc updates - pending until the evidence-sync pass
+  - queue/planning validators after the final doc updates - pending until the evidence-sync pass
+- Run log: `.ai/runs/2026-08-22-STAB15-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main pending push/verification
+- Main commit SHA: pending
+- Main verification: not run yet - commit/push pending
+- Missed: exact pushed `main` SHA verification
+- Follow-up: commit/push, then verify current `main` contains the delivered SHA
+- Residual risk: the smoke surface is truthful on the current deployed SHA, but the delivery record still needs push/verification
+- Prompt defect / scope repair: used the owner-approved canonical smoke contract plus STAB14 evidence to replace the missing `RQ110` matrix
 - Do not broaden into general load/performance/security work; this prompt is only about exact-SHA production analytics visibility truth.

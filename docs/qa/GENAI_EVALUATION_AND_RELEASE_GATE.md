@@ -1,6 +1,6 @@
 # GenAI Evaluation and Release Gate
 
-Updated: 2026-08-20
+Updated: 2026-08-22
 Status: BLOCKED until the current pilot release evidence is ready
 
 ## Current entry verdict
@@ -8,13 +8,14 @@ Status: BLOCKED until the current pilot release evidence is ready
 - Core pilot: NOT READY
 - GenAI entry: BLOCKED
 - Authoritative refresh evidence:
+  - [`PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md`](PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md) (STAB15 exact-deploy smoke, synchronized to the deployed SHA and current frontend bundle)
   - [`PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`](PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md) (STAB14 fresh smoke, synchronized to `main`)
   - [`PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`](PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md) (STAB13)
   - Historical STAB08 pack (do not treat as current alone):
     - [`ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md`](ANALYTICS_PRODUCTION_READINESS_STATUS_2026-08-06.md)
     - [`ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md`](ANALYTICS_PILOT_RELEASE_CHECKLIST_V3.md)
 
-STAB14 adds a fresh live-smoke pack and is synchronized to `main`, but the higher-priority backend gate remains red. GenAI therefore stays blocked.
+STAB14 adds a fresh live-smoke pack synchronized to `main`, and STAB15 proves the exact deployed production runtime is truthful on the canonical smoke matrix. GenAI still stays blocked because the higher-priority backend current-main gate remains red.
 
 ## Purpose
 
