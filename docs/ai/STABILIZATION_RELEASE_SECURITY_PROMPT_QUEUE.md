@@ -1627,7 +1627,7 @@ Even after the frontend gate re-closes, the pilot still cannot claim reliable an
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`
-- Main verification: `git rev-parse origin/main -> c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`; `git merge-base --is-ancestor HEAD origin/main` -> `ancestor=true`
+- Main verification: `git merge-base --is-ancestor c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd origin/main` -> `ancestor=true`
 - Missed: none known
 - Follow-up: none
 - Residual risk: production backend freshness remains `unknown`, but it is explicitly visible rather than hidden behind fake green state

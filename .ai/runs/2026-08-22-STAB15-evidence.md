@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
 Main commit SHA: `c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`
-Main verification: `git rev-parse origin/main -> c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd`; `git merge-base --is-ancestor HEAD origin/main` -> `ancestor=true`
+Main verification: `git merge-base --is-ancestor c5cabafb69eba05de4ffe5ce8e9b71cbf538eacd origin/main` -> `ancestor=true`
 Evidence state: synchronized
 
 ## What was done
