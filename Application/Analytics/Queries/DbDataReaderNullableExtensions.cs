@@ -2,7 +2,7 @@ using System.Data.Common;
 
 namespace Application.Analytics.Queries;
 
-internal static class DbDataReaderNullableExtensions
+public static class DbDataReaderNullableExtensions
 {
     public static int? GetNullableInt32(this DbDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetInt32(ordinal);

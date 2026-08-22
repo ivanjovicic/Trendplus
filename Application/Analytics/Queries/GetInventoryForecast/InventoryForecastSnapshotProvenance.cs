@@ -34,6 +34,13 @@ public static class InventoryForecastSnapshotProvenance
             IsAuthoritativeForecast: false,
             SnapshotFreshnessUtc: null);
 
+    public static InventoryForecastProvenanceContract ForTrustedOwner(string materializerOwner, DateTime snapshotFreshnessUtc) =>
+        new(
+            ProvenanceStatus: Trusted,
+            MaterializerOwner: materializerOwner,
+            IsAuthoritativeForecast: true,
+            SnapshotFreshnessUtc: snapshotFreshnessUtc);
+
     public static string ComposeWarning(string provenanceStatus, string? detailWarning)
     {
         var baseWarning = provenanceStatus switch

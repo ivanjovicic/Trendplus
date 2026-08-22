@@ -33,8 +33,12 @@ public sealed class InventorySnapshotContractTests
             ("overstock_risk", typeof(decimal)),
             ("confidence_score", typeof(decimal)),
             ("explanation", typeof(string)),
+            ("issue_time_utc", typeof(DateTime)),
+            ("materializer_owner", typeof(string)),
+            ("provenance_status", typeof(string)),
+            ("snapshot_freshness_utc", typeof(DateTime)),
             ("total_matching_count", typeof(long)));
-        table.Rows.Add(101, 7, "42", 0m, DBNull.Value, 4.5m, 0m, DBNull.Value, 0.95m, "Signal", 2L);
+        table.Rows.Add(101, 7, "42", 0m, DBNull.Value, 4.5m, 0m, DBNull.Value, 0.95m, "Signal", DateTime.UtcNow, DBNull.Value, DBNull.Value, DBNull.Value, 2L);
 
         var context = CreateContext(table);
         var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
@@ -51,6 +55,10 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
         Assert.True(result.IsTruncated);
+        Assert.Equal(InventoryForecastSnapshotProvenance.OwnerUnknown, result.ProvenanceStatus);
+        Assert.Equal(InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner, result.MaterializerOwner);
+        Assert.False(result.IsAuthoritativeForecast);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Null(result.Items[0].Forecast14d);
         Assert.Null(result.Items[0].OverstockRisk);
         Assert.Equal(0m, result.Items[0].Forecast7d);
@@ -206,6 +214,10 @@ public sealed class InventorySnapshotContractTests
             ("overstock_risk", typeof(decimal)),
             ("confidence_score", typeof(decimal)),
             ("explanation", typeof(string)),
+            ("issue_time_utc", typeof(DateTime)),
+            ("materializer_owner", typeof(string)),
+            ("provenance_status", typeof(string)),
+            ("snapshot_freshness_utc", typeof(DateTime)),
             ("total_matching_count", typeof(long)));
 
         var context = CreateContext(table);
@@ -221,8 +233,45 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal(0, result.TotalMatchingCount);
         Assert.False(result.IsTruncated);
         Assert.Empty(result.Items);
+        Assert.Equal(InventoryForecastSnapshotProvenance.OwnerUnknown, result.ProvenanceStatus);
+        Assert.Equal(InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner, result.MaterializerOwner);
         Assert.Contains("owner_unknown", result.Warning, StringComparison.Ordinal);
         Assert.Contains("nema redova za trazene filtere", result.Warning, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Forecast snapshot trusted metadata becomes authoritative provenance")]
+    public async Task ForecastHandler_TrustedMetadataIsAuthoritative()
+    {
+        var issuedAtUtc = new DateTime(2026, 8, 21, 10, 15, 0, DateTimeKind.Utc);
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("forecast_7d", typeof(decimal)),
+            ("forecast_14d", typeof(decimal)),
+            ("forecast_28d", typeof(decimal)),
+            ("probability_of_oos_in_7d", typeof(decimal)),
+            ("overstock_risk", typeof(decimal)),
+            ("confidence_score", typeof(decimal)),
+            ("explanation", typeof(string)),
+            ("issue_time_utc", typeof(DateTime)),
+            ("materializer_owner", typeof(string)),
+            ("provenance_status", typeof(string)),
+            ("snapshot_freshness_utc", typeof(DateTime)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(201, 7, "43", 12m, 8m, 4m, 0.25m, 0.10m, 0.82m, "Trusted signal", issuedAtUtc, "forecast-worker", "trusted", issuedAtUtc, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(InventoryForecastSnapshotProvenance.Trusted, result.ProvenanceStatus);
+        Assert.Equal("forecast-worker", result.MaterializerOwner);
+        Assert.True(result.IsAuthoritativeForecast);
+        Assert.Equal(issuedAtUtc, result.SnapshotFreshnessUtc);
+        Assert.DoesNotContain("owner_unknown", result.Warning, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Forecast missing relation is fail-closed as missing_relation")]

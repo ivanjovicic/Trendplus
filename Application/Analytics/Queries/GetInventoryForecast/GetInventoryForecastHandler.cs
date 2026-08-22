@@ -44,6 +44,10 @@ public sealed class GetInventoryForecastHandler
                 overstock_risk,
                 confidence_score,
                 coalesce(explanation, 'snapshot') as explanation,
+                issue_time_utc,
+                materializer_owner,
+                provenance_status,
+                snapshot_freshness_utc,
                 count(*) over() as total_matching_count
             from analytics_inventory_forecast_snapshot
             where (@storeId is null or store_id = @storeId)
@@ -64,9 +68,34 @@ public sealed class GetInventoryForecastHandler
         {
             await using var reader = await command.ExecuteReaderAsync(ct);
             var totalMatchingCount = 0;
+            var hasTrustedMaterialization = false;
+            string? materializerOwner = null;
+            DateTime? snapshotFreshnessUtc = null;
             while (await reader.ReadAsync(ct))
             {
-                totalMatchingCount = Convert.ToInt32(reader.GetInt64(10));
+                totalMatchingCount = Convert.ToInt32(reader.GetInt64(14));
+                var rowIssueTimeUtc = reader.GetNullableDateTime(10);
+                var rowMaterializerOwner = reader.GetNullableString(11);
+                var rowProvenanceStatus = reader.GetNullableString(12);
+                var rowSnapshotFreshnessUtc = reader.GetNullableDateTime(13) ?? rowIssueTimeUtc;
+
+                if (materializerOwner is null && !string.IsNullOrWhiteSpace(rowMaterializerOwner))
+                {
+                    materializerOwner = rowMaterializerOwner.Trim();
+                }
+
+                if (rowSnapshotFreshnessUtc.HasValue
+                    && (!snapshotFreshnessUtc.HasValue || rowSnapshotFreshnessUtc.Value > snapshotFreshnessUtc.Value))
+                {
+                    snapshotFreshnessUtc = rowSnapshotFreshnessUtc.Value;
+                }
+
+                if (string.Equals(rowProvenanceStatus, InventoryForecastSnapshotProvenance.Trusted, StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(rowMaterializerOwner))
+                {
+                    hasTrustedMaterialization = true;
+                }
+
                 items.Add(new InventoryForecastDto(
                     SkuId: reader.GetInt32(0),
                     StoreId: reader.GetInt32(1),
@@ -81,7 +110,11 @@ public sealed class GetInventoryForecastHandler
             }
 
             var returnedCount = items.Count;
-            var provenance = InventoryForecastSnapshotProvenance.ForReadableUnprovenOwner();
+            var provenance = hasTrustedMaterialization
+                ? InventoryForecastSnapshotProvenance.ForTrustedOwner(
+                    materializerOwner ?? InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner,
+                    snapshotFreshnessUtc ?? DateTime.UtcNow)
+                : InventoryForecastSnapshotProvenance.ForReadableUnprovenOwner();
 
             var hasMissingEvidence = items.Any(item =>
                 item.Forecast7d is null
