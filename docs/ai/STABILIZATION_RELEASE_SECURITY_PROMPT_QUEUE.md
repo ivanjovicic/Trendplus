@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: `STAB14` (`STAB12` DONE; `STAB13` DONE)
-Current gate verdict: STAB12 completed. `STAB13` evidence refresh pack is on main, but core pilot is still not current-main-proven. `STAB14` reopens the frontend analytics gate plus fresh live-smoke proof; GenAI remains BLOCKED.
+Current READY prompt: none (`STAB14` is PARTIAL after the 2026-08-21 re-entry; see completion note)
+Current gate verdict: `STAB13` evidence refresh pack is on main. Fresh current-main live-smoke proof has now been captured in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`, but current-main delivery verification is still pending; GenAI remains BLOCKED.
 
 ## Goal
 
@@ -1406,28 +1406,32 @@ STAB12 closed the unauthenticated document-header privilege gap, but pilot relea
 
 ## STAB14 - Reopen frontend analytics gate and current-main live-smoke truth
 
-Status: READY
+Status: PARTIAL
 Ready after: `STAB13` is `DONE` and current-main frontend release truth is red or stale
 Priority: P0
 Type: frontend/tests/release-evidence
 Feature family: pilot-release-current-main-reentry
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/STAB14-<agent>.lock.md`
 Commit suggestion: `test(release): reclose frontend gate and live smoke truth`
 Promotion note: 2026-08-20 - owner-promoted from the current-main audit because the pilot still has no fresh live-smoke pack and the frontend analytics quality gate is red.
 
 ### Problem
 
-STAB13 refreshed the pilot evidence pointers honestly, but it did not produce fresh live runtime proof. The latest frontend analytics gate is also red, so the product still cannot claim a current pilot verdict from the exact current main branch.
+STAB13 refreshed the pilot evidence pointers honestly, and the local frontend analytics gate is green again, but it still did not produce fresh current-main/live runtime proof. The product therefore still cannot claim a current pilot verdict from the exact current main branch.
 
 ### Evidence
 
 - `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md` keeps `Core pilot = NOT READY` specifically because no fresh live-smoke pack exists.
+- The local frontend analytics gate now passes again:
+  - `npm run test:analytics -- --cache false`
+  - `npm run build`
+- Exact current-main / deployed-runtime proof is still missing.
 - Business milestone exit rule: `docs/roadmaps/BUSINESS_ROADMAP.md` requires the current STAB evidence to say `Pilot Ready` or `Pilot Ready With Accepted Warnings`; historical readiness docs do not count.
-- Newer frontend gate evidence is red:
+- Historical frontend gate evidence was red before this re-entry:
   - GitHub Actions run `32379775110` failed on commit `8c27094`
-- Audit-reproduced frontend failure families include:
+- Audit-reproduced frontend failure families that were repaired locally in this re-entry include:
   - Pilot readiness contract drift (`warning/ready` vs current `blocked`)
   - duplicate `Ponovo proveri` controls
   - Executive Decision Board duplicate `Spor obrt` / leaked `accepted` chip
@@ -1492,6 +1496,24 @@ STAB13 refreshed the pilot evidence pointers honestly, but it did not produce fr
 - `STAB13` DONE.
 - `BCI10` remains the higher-priority backend gate in `MASTER_ROADMAP.md`; STAB14 must not claim overall pilot readiness if backend current-main truth is still red.
 - Do not mix tenant-identity, MT, or GenAI runtime work into this prompt.
+
+### Completion note
+
+- Date: 2026-08-21
+- Status: PARTIAL
+- Completion: re-closed the local frontend analytics gate and build by fixing the pilot readiness, executive decision board, supplier explainability, inventory freshness, and fetch/test harness drift; a fresh current-main live-smoke pack is now captured, but current-main delivery verification is still pending so STAB14 remains PARTIAL until push verification closes
+- Changed files: Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx; Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx; Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx; Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx; Klijent/clientapp/src/pages/DataQualityPage.tsx; Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx; Klijent/clientapp/src/pages/PilotReadinessPage.tsx; Klijent/clientapp/src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx; Klijent/clientapp/src/pages/__tests__/ConfigurationPage.spec.tsx; Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx; Klijent/clientapp/src/services/__tests__/logsApi.spec.ts; Klijent/clientapp/src/utils/fetchWithTimeout.ts; docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md; MASTER_ROADMAP.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; .ai/runs/2026-08-22-STAB14-evidence.md
+- Checks run: git diff --check (pass); node scripts/check-prompt-queues.mjs --self-test (pass); node scripts/check-prompt-queues.mjs (pass); node scripts/check-planning-architecture.mjs --self-test (pass); node scripts/check-planning-architecture.mjs (pass); npm run test:analytics -- --cache false (pass); npm run build (pass); npm exec vitest run src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx --cache false (pass); npm exec vitest run src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx --cache false (pass); npm exec vitest run src/services/__tests__/logsApi.spec.ts --cache false (pass); npm exec vitest run src/pages/__tests__/ConfigurationPage.spec.tsx --cache false (pass); npm exec vitest run src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx --cache false (pass); npm exec vitest run src/components/inventory/InventoryItemsTable.spec.tsx --cache false (pass); production live-smoke script via puppeteer-core + local Chrome (pass)
+- Checks not run: exact pushed current-main verification; remote origin/main verification
+- Run log: .ai/runs/2026-08-22-STAB14-evidence.md
+- Evidence state: pending
+- Delivery mode: local worktree only
+- Main commit SHA: pending
+- Main verification: not run - no commit or remote main verification yet
+- Missed: exact pushed current-main verification
+- Follow-up: commit/push and verify current `main`, then STAB15 only if the gate remains green
+- Residual risk: local green validation can still diverge from current-main or deployed runtime truth until the live-smoke pack is synchronized to the exact target SHA
+- Prompt defect / scope repair: same-owner UI and harness repairs so the local analytics gate closes truthfully without inventing current-main proof
 
 ---
 

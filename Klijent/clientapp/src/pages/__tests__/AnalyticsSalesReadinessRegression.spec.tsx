@@ -49,6 +49,7 @@ describe("Analytics sales-readiness regressions", () => {
       rest.get("/api/analytics/cached/dashboard/bootstrap", (_req, res, ctx) => res(ctx.status(500))),
       rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
       rest.get("/api/analytics/health", (_req, res, ctx) => res(ctx.status(200), ctx.json({ status: "ok", tables: {}, message: "ok" }))),
+      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
     );
 
     render(
@@ -82,7 +83,46 @@ describe("Analytics sales-readiness regressions", () => {
         meta: { success: true },
       }))),
       rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
-      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(200), ctx.json({ readinessStatus: "warning", recommendedActions: [], meta: { success: true } }))),
+      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(200), ctx.json({
+        readinessStatus: "warning",
+        readinessLabel: "Upozorenje",
+        readinessScore: 42,
+        generatedAtUtc: "2026-08-21T08:00:00Z",
+        lastImportAtUtc: "2026-08-21T07:45:00Z",
+        lastImportStatus: "success",
+        lastImportScope: "all",
+        lastRefreshAtUtc: "2026-08-21T07:50:00Z",
+        dataScope: "all",
+        loadedData: {
+          articlesCount: 0,
+          saleItemsCount: 0,
+          receiptsCount: 0,
+          suppliersCount: 0,
+          storesCount: 0,
+          firstSaleDate: null,
+          lastSaleDate: null,
+        },
+        issues: {
+          missingSupplierCount: 0,
+          missingCostCount: 0,
+          missingCategoryCount: 0,
+          missingColorCount: 0,
+          missingSizeCount: 0,
+          saleWithoutArticleCount: 0,
+          zeroOrNegativePriceCount: 0,
+          duplicateSkuCount: 0,
+          missingSupplierNameCount: 0,
+        },
+        impact: {
+          revenueWithoutCostPercent: 0,
+          articlesWithoutSupplierPercent: 0,
+          recommendationsBlockedCount: 0,
+          ignoredRowsCount: 0,
+          insufficientSignalCount: 0,
+        },
+        recommendedActions: [],
+        meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
+      }))),
       rest.get("/api/analytics/reports/pilot-intake", (_req, res, ctx) => res(ctx.status(200), ctx.json({ rows: [], payload: { rows: [] }, meta: { success: true, emptyReason: "no_import" } }))),
       rest.get("/api/analytics/data-quality/top-offenders", (_req, res, ctx) => res(ctx.status(200), ctx.json({ issueType: "missingSupplier", limit: 10, count: 0, items: [], meta: { success: true, emptyReason: "no_top_offenders" } }))),
       rest.get("/api/analytics/data-quality/trend", (_req, res, ctx) => res(ctx.status(200), ctx.json({ days: 7, points: [], dataScope: "all", meta: { success: true } }))),
@@ -96,7 +136,8 @@ describe("Analytics sales-readiness regressions", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Podaci trenutno nisu dostupni|Nema otvorenih data quality problema/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Nema dovoljno podataka za pouzdanu analizu/i })).toBeInTheDocument();
+    expect(screen.getByText(/Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak/i)).toBeInTheDocument();
   });
 
   it("Inventory API failure renders error state instead of hanging loader", async () => {
@@ -130,6 +171,10 @@ describe("Analytics sales-readiness regressions", () => {
   });
 
   it("Pilot intake report without payload shows useful expired explanation", async () => {
+    server.use(
+      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
+    );
+
     render(
       <MemoryRouter initialEntries={["/analytics/reports/pilot-intake"]}>
         <Routes>

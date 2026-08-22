@@ -230,6 +230,6 @@ describe("ConfigurationPage", () => {
     expect(screen.queryByText("Isključi radnike")).not.toBeInTheDocument();
     expect(screen.queryByText("Worker Management")).not.toBeInTheDocument();
     expect(screen.queryByText("Refresh")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Osveži" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Osve[zž]i/ })).toHaveLength(1);
   });
 });

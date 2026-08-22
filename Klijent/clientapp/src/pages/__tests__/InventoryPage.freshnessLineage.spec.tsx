@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import InventoryPage from "../InventoryPage";
 import { formatDateTime } from "../../utils/analyticsFormatters";
@@ -124,7 +125,11 @@ describe("InventoryPage freshness lineage", () => {
   });
 
   it("does not promote secondary panel timestamps to the inventory header", async () => {
-    render(<InventoryPage />);
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent("Sekundarni paneli imaju zasebnu svežinu");

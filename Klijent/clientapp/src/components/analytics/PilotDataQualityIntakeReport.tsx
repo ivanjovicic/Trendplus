@@ -219,7 +219,7 @@ function resolveTrustSignalState(
   return "clear";
 }
 
-function issueSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
+export function issueSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
   return resolveTrustSignalState(
     [
       report.issues.missingSupplierCount,
@@ -236,7 +236,7 @@ function issueSignalState(report: PilotDataQualityIntakeReport): TrustSignalStat
   );
 }
 
-function impactSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
+export function impactSignalState(report: PilotDataQualityIntakeReport): TrustSignalState {
   return resolveTrustSignalState(
     [
       report.impact.revenueWithoutCostPercent,
@@ -439,7 +439,9 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
           metricKey={methodologyKey}
           onClose={() => setMethodologyKey(null)}
         />
-      ) : null}
+      ) : (
+        <MetricMethodologyPanel metricKeys={["dataReadinessScore"]} />
+      )}
     </section>
   );
 }

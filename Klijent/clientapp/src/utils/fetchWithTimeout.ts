@@ -15,47 +15,58 @@ export async function fetchWithTimeout(
   init?: RequestInit,
   timeoutMs = API_COLD_START_TIMEOUT_MS
 ): Promise<Response> {
-  const controller = new AbortController();
+  const fetchImpl = typeof window !== "undefined" && typeof window.fetch === "function"
+    ? window.fetch.bind(window)
+    : fetch;
   const externalSignal = init?.signal;
-  let didTimeout = false;
-  let wasExternallyAborted = false;
+  const { signal: _ignoredSignal, ...requestInit } = init ?? {};
+  const normalizedInput = typeof input === "string"
+    ? (() => {
+        try {
+          return new URL(input, window.location.href).toString();
+        } catch {
+          return input;
+        }
+      })()
+    : input instanceof URL
+      ? new URL(input.toString(), window.location.href).toString()
+      : input;
 
-  const timeoutId = window.setTimeout(() => {
-    didTimeout = true;
-    controller.abort(new DOMException("Request timed out", "TimeoutError"));
-  }, timeoutMs);
-
-  const abortFromExternalSignal = () => {
-    wasExternallyAborted = true;
-    controller.abort(externalSignal?.reason);
-  };
-
-  if (externalSignal) {
-    if (externalSignal.aborted) {
-      wasExternallyAborted = true;
-      controller.abort();
-    } else {
-      externalSignal.addEventListener("abort", abortFromExternalSignal, { once: true });
-    }
+  if (externalSignal?.aborted) {
+    throw externalSignal.reason instanceof Error
+      ? externalSignal.reason
+      : new DOMException("Request aborted", "AbortError");
   }
 
+  let timeoutId: number | undefined;
+  let abortListener: (() => void) | null = null;
+
+  const timeoutPromise = new Promise<Response>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new FetchTimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+
+  const abortPromise = externalSignal ? new Promise<Response>((_, reject) => {
+    abortListener = () => {
+      reject(externalSignal.reason instanceof Error
+        ? externalSignal.reason
+        : new DOMException("Request aborted", "AbortError"));
+    };
+
+    externalSignal.addEventListener("abort", abortListener, { once: true });
+  }) : null;
+
   try {
-    return await fetch(input, {
-      ...init,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (didTimeout) {
-      throw new FetchTimeoutError(timeoutMs);
-    }
-
-    if (wasExternallyAborted && error instanceof DOMException && error.name === "AbortError") {
-      throw error;
-    }
-
-    throw error;
+    return await Promise.race(
+      [fetchImpl(normalizedInput, requestInit), timeoutPromise, abortPromise].filter(Boolean) as Array<Promise<Response>>,
+    );
   } finally {
-    window.clearTimeout(timeoutId);
-    externalSignal?.removeEventListener("abort", abortFromExternalSignal);
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId);
+    }
+    if (externalSignal && abortListener) {
+      externalSignal.removeEventListener("abort", abortListener);
+    }
   }
 }

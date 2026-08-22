@@ -20,7 +20,7 @@ describe("logsApi admin headers", () => {
     await getLogs(1, 100, undefined, undefined, undefined, undefined, "secret-admin-key");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/logs?pageNumber=1&pageSize=100",
+      expect.stringContaining("/api/logs?pageNumber=1&pageSize=100"),
       expect.objectContaining({
         headers: { "X-Admin-Key": "secret-admin-key" },
       })
@@ -37,7 +37,7 @@ describe("logsApi admin headers", () => {
     await getLogById(12, "secret-admin-key");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/logs/12",
+      expect.stringContaining("/api/logs/12"),
       expect.objectContaining({
         headers: { "X-Admin-Key": "secret-admin-key" },
       })

@@ -54,7 +54,7 @@ describe("SupplierExplainabilitySnapshot", () => {
 
     expect(snapshot).toBeInTheDocument();
     expect(within(snapshot).getByText("Supplier explainability snapshot")).toBeInTheDocument();
-    expect(within(snapshot).getByText("Alpha")).toBeInTheDocument();
+    expect(within(snapshot).getByText(/Alpha/)).toBeInTheDocument();
     expect(within(snapshot).getByText("Poslednjih 90 dana")).toBeInTheDocument();
   });
 });

@@ -193,8 +193,8 @@ describe("Inventory signal presentation", () => {
       onNextPage: next,
     });
 
-    expect(screen.getByRole("button", { name: "Prethodna" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
+    expect(screen.getByRole("button", { name: /Idi na prethodnu stranu tabele artikala/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /Idi na sledeću stranu tabele artikala/ }));
     expect(next).toHaveBeenCalledTimes(1);
     expect(previous).not.toHaveBeenCalled();
   });

@@ -345,6 +345,35 @@ function boardCodeLabel(code: string): string {
   return code.replaceAll("_", " ");
 }
 
+const BOARD_CODE_NOISE = new Set([
+  "new",
+  "accepted",
+  "deferred",
+  "rejected",
+  "done",
+  "pending",
+  "status",
+  "actiontype",
+  "replenish",
+  "expand",
+  "boost",
+  "markdown",
+  "fix_data",
+  "insufficient_data",
+]);
+
+function normalizeBoardCodeKey(code: string): string {
+  return code.trim().toLowerCase().replace(/[\s_-]+/g, "_");
+}
+
+function isBoardCodeNoise(code: string): boolean {
+  return BOARD_CODE_NOISE.has(normalizeBoardCodeKey(code));
+}
+
+function boardCodeDisplayKey(code: string): string {
+  return boardCodeLabel(code).trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function normalizeBoardCodes(codes: string[] | null | undefined): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
@@ -357,6 +386,23 @@ function normalizeBoardCodes(codes: string[] | null | undefined): string[] {
     ordered.push(normalized);
   }
   return ordered;
+}
+
+function buildBoardCodeChips(
+  codes: string[] | null | undefined,
+  seen: Set<string>,
+): string[] {
+  const chips: string[] = [];
+
+  for (const code of normalizeBoardCodes(codes)) {
+    if (isBoardCodeNoise(code)) continue;
+    const displayKey = boardCodeDisplayKey(code);
+    if (seen.has(displayKey)) continue;
+    seen.add(displayKey);
+    chips.push(code);
+  }
+
+  return chips;
 }
 
 /** Legacy/fallback product cards — trusts PDC expectedImpactRsd only (RQ72 / RQ01 parity). */
@@ -1113,8 +1159,9 @@ function deriveWorstStatus(values: Array<string | null | undefined>): string | n
 
 function renderSectionCard(card: BoardCard) {
   const confidenceSourceLabel = formatConfidenceSourceLabel(card.confidenceSource);
-  const warningCodes = normalizeBoardCodes(card.warningCodes);
-  const reasonCodes = normalizeBoardCodes(card.reasonCodes);
+  const seenCodeLabels = new Set<string>();
+  const warningCodes = buildBoardCodeChips(card.warningCodes, seenCodeLabels);
+  const reasonCodes = buildBoardCodeChips(card.reasonCodes, seenCodeLabels);
 
   return (
     <article key={card.id} className={`decision-board-card decision-board-card-${card.kind} decision-board-card-${card.confidenceTone}`}>

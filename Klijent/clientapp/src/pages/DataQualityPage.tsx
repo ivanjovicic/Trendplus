@@ -658,7 +658,7 @@ export default function DataQualityPage() {
           ? "good"
           : health?.meta?.dataQualityStatus ?? null);
 
-  const trustSummary = intakeReport
+  const trustSummary = intakeReport?.issues
     ? {
         missingSupplierCount: intakeReport.issues.missingSupplierCount,
         missingCostCount: intakeReport.issues.missingCostCount,
@@ -787,7 +787,7 @@ export default function DataQualityPage() {
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Artikli bez nabavne cene</span>
-            <strong>{fmtNumber(intakeReport?.issues.missingCostCount ?? null)}</strong>
+            <strong>{fmtNumber(intakeReport?.issues?.missingCostCount ?? null)}</strong>
             <p>Risk threshold: {health.thresholds.missingCostRevenueSharePct}% udela prihoda bez cene</p>
             <KpiExplainButton metricKey="missingCostCount" ariaLabel="Kako je izračunat broj artikala bez nabavne cene" />
           </article>
@@ -809,7 +809,7 @@ export default function DataQualityPage() {
           {intakeReport ? (
             <article className="data-quality-health-card">
               <span className="data-quality-health-label">Blokirane preporuke</span>
-              <strong>{fmtNumber(intakeReport.impact.recommendationsBlockedCount)}</strong>
+              <strong>{fmtNumber(intakeReport.impact?.recommendationsBlockedCount ?? null)}</strong>
               <p>Preporuke koje nisu dozvoljene dok se ne popravi kvalitet podataka.</p>
               <KpiExplainButton metricKey="blockedRecommendationsCount" ariaLabel="Kako je izračunat broj blokiranih preporuka" />
             </article>
@@ -818,7 +818,7 @@ export default function DataQualityPage() {
           {intakeReport ? (
             <article className="data-quality-health-card">
               <span className="data-quality-health-label">Ignorisani redovi</span>
-              <strong>{fmtNumber(intakeReport.impact.ignoredRowsCount)}</strong>
+              <strong>{fmtNumber(intakeReport.impact?.ignoredRowsCount ?? null)}</strong>
               <p>Redovi isključeni iz analitike zbog nevalidnih ili nepotpunih podataka.</p>
               <KpiExplainButton metricKey="ignoredRowsCount" ariaLabel="Kako je izračunat broj ignorisanih redova" />
             </article>

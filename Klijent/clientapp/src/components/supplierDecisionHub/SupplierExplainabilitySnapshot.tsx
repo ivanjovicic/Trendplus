@@ -152,7 +152,9 @@ export default function SupplierExplainabilitySnapshot({
         <div className="min-w-0">
           <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--text-primary)]">{title}</div>
           {subjectLabel ? (
-            <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{subjectLabel}</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+              Izabrani dobavljač: <span>{subjectLabel} (pregled)</span>
+            </p>
           ) : null}
           {compact ? null : (
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--text-primary)]">

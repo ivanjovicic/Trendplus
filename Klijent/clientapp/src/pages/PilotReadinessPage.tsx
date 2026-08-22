@@ -312,8 +312,13 @@ function buildRefreshCard(refreshStatus: AnalyticsRefreshStatus | null): Readine
 
   const freshness = (refreshStatus.dataFreshnessStatus ?? "unknown").trim().toLowerCase();
   const lastSuccess = refreshStatus.lastSuccessfulRefreshAtUtc ? new Date(refreshStatus.lastSuccessfulRefreshAtUtc) : null;
-  const hoursSinceSuccess = lastSuccess && !Number.isNaN(lastSuccess.getTime())
-    ? (Date.now() - lastSuccess.getTime()) / (1000 * 60 * 60)
+  const referenceTime = refreshStatus.generatedAtUtc
+    ? new Date(refreshStatus.generatedAtUtc)
+    : refreshStatus.lastAttemptAtUtc
+      ? new Date(refreshStatus.lastAttemptAtUtc)
+      : null;
+  const hoursSinceSuccess = lastSuccess && referenceTime && !Number.isNaN(lastSuccess.getTime()) && !Number.isNaN(referenceTime.getTime())
+    ? (referenceTime.getTime() - lastSuccess.getTime()) / (1000 * 60 * 60)
     : null;
   const hasCriticalAge = hoursSinceSuccess != null && hoursSinceSuccess > 72;
   const hasWorkerProblem = refreshStatus.workersEnabled === false || refreshStatus.processType === "worker" && refreshStatus.processMode === "web";
@@ -409,7 +414,7 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
     status: isBlocked ? "blocked" : isWarning ? "warning" : "ready",
     reason: rows > 0
       ? `Nađeno je ${formatLoadCount(rows)} redova; replenish ${formatLoadCount(productDecisionCenter.summary.replenishCount)}, markdown ${formatLoadCount(productDecisionCenter.summary.markdownCount)} i high-potential ${formatLoadCount(productDecisionCenter.summary.highPotentialCount)}.`
-      : metaMessage ?? "Product Decision Center je stigao bez redova za trenutni opseg.",
+      : meta?.emptyReason ?? metaMessage ?? "Product Decision Center je stigao bez redova za trenutni opseg.",
     actionLabel: "Otvori Odluke o proizvodima",
     href: "/analytics/products",
     meta: `Bad data ${formatLoadCount(productDecisionCenter.summary.badDataCount)}, izgubljena prodaja ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}`,
@@ -806,7 +811,7 @@ export default function PilotReadinessPage() {
 
         <div className="pilot-readiness-overview-actions">
           <button type="button" className="pilot-readiness-action" onClick={() => setReloadTick((value) => value + 1)}>
-            Ponovo proveri
+            Ponovo proveri readiness
           </button>
           <Link to="/analytics/data-quality" className="pilot-readiness-action">
             Kvalitet podataka
