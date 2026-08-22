@@ -4,9 +4,9 @@ Date: 2026-08-22
 Agent/tool: Codex / shell
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: c3de541879e3ec0c1c38296022a38b74c460546c
+Main verification: passed - origin/main contains c3de541879e3ec0c1c38296022a38b74c460546c
+Evidence state: synchronized
 
 ## What was done
 - Claimed QDB09 and moved the queue/router truth to `IN_PROGRESS`/`none`.
