@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ108` is DONE after the 2026-08-22 sync; `RQ109` remains WAITING)
-Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` remains WAITING.
+Current READY prompt: none (`RQ108` is DONE after the 2026-08-22 sync; the first authoritative forecast/observed pairing surface exists, and `RQ109` is DONE after the 2026-08-22 sync)
+Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -39,7 +39,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ106 | DONE | decision-pulse-digest | Email + in-app exception digest after QDB06 and RQ96 |
 | RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
 | RQ108 | DONE | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
-| RQ109 | WAITING | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
+| RQ109 | DONE | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
 | RQ110 | WAITING | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | WAITING | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
 
@@ -1148,13 +1148,13 @@ Promotion note: 2026-08-20 - owner-promoted from the pilot audit because forecas
 
 ## RQ109 - Expand Decision Pulse to inventory, supplier and durable delivery
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ108` is `DONE` and the first authoritative forecast/observed pairing surface exists
 Priority: P1
 Type: backend/frontend-delivery/tests
 Feature family: decision-pulse-expansion
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ109-<agent>.lock.md`
 Commit suggestion: `feat(analytics): expand decision pulse coverage`
 
@@ -1206,6 +1206,26 @@ Commit suggestion: `feat(analytics): expand decision pulse coverage`
 
 - `RQ106` DONE.
 - `RQ108` DONE first so inventory/forecast Pulse items can rely on authoritative runtime pairing rather than contract-only forecast truth.
+
+### Completion note
+
+- Date: 2026-08-22
+- Status: DONE
+- Completion: expanded Decision Pulse to inventory and supplier families, added a durable scheduled delivery path, verified the implementation with focused build/test checks, and synchronized the implementation to current main
+- Changed files: `Api/Services/Analytics/DecisionPulseService.cs`, `Api/Services/Analytics/DecisionPulseDeliveryService.cs`, `Api/Workers/DecisionPulseSchedulerWorker.cs`, `Api/Endpoints/DecisionPulseEndpoints.cs`, `Api/Program.cs`, `Api/Config/WorkerRuntimeConfig.cs`, `Api/Services/WorkerRegistryService.cs`, `Api.Tests/DecisionPulseProjectorTests.cs`, `Application/Analytics/DecisionPulse/DecisionPulseAutomationContracts.cs`, `Application/Analytics/DecisionPulse/DecisionPulseEmailComposer.cs`, `Application/Analytics/DecisionPulse/DecisionPulseProjector.cs`, `Application/Common/Interfaces/IDecisionPulseScheduleService.cs`, `Infrastructure/Properties/AssemblyInfo.cs`, `Infrastructure/Services/Analytics/DecisionPulseScheduleService.cs`, `Infrastructure/Services/WorkerRegistryCatalog.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- Contract/runtime behavior changed: Decision Pulse now includes inventory and supplier items, email output shows the source family, and scheduler-backed delivery is available via the new pulse schedule table/worker
+- Checks run: `dotnet build Api/Api.csproj --no-restore --configuration Release` (pass), `dotnet test Api.Tests/Api.Tests.csproj --no-build --configuration Release --filter "DecisionPulseProjectorTests"` (pass), `git diff --check` (pass)
+- Checks not run: live SMTP send, full solution test suite
+- Run log: `.ai/runs/2026-08-22-RQ109-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `54a29409efd842da438de99c890f5ecb3054cbc3`
+- Main verification: `git merge-base --is-ancestor 54a29409efd842da438de99c890f5ecb3054cbc3 origin/main -> ancestor=true`
+- Missed: no live external email proof yet
+- Follow-up: none for this prompt; RQ110 remains the next queued analytics reliability prompt
+- Residual risk: scheduler delivery still depends on runtime SMTP/configuration
+- Next: `RQ110`
+- Prompt defect / scope repair: none; the queue prompt was mechanically promotable after confirming the dependency gate
 
 ---
 
