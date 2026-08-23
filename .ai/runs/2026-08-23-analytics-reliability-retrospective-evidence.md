@@ -4,8 +4,8 @@ Date: 2026-08-23
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: 81b21bb65a824c9d2a7b2b24a69cf7f6cd38e0b3
-Main verification: passed - `git rev-parse origin/main` returned `81b21bb65a824c9d2a7b2b24a69cf7f6cd38e0b3`; `HEAD` is an ancestor of `origin/main`
+Main commit SHA: 81b21bbe5483039755c979049512dc7eecc7f03e
+Main verification: passed - `git rev-parse origin/main` returned `81b21bbe5483039755c979049512dc7eecc7f03e`; `HEAD` is an ancestor of `origin/main`
 Evidence state: synchronized
 
 ## What was done
