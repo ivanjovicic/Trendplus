@@ -1,7 +1,7 @@
 ﻿# Analytics Reliability Prompt Priority Review
 
 Date: 2026-06-28
-Routing reviewed: 2026-08-20
+Routing reviewed: 2026-08-23
 Repo: `ivanjovicic/Trendplus`
 Status: planning/review only; no runtime code changed
 
@@ -19,7 +19,7 @@ Primary goals:
 
 ## Reviewed queues
 
-- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ13 + RQ106 + RQ106
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` - RQ01-RQ13 + RQ106-RQ120
 - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` - Q69-Q82
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md` - RQ13-RQ24
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` - RQ25-RQ38
@@ -48,18 +48,16 @@ For a normal implementation run, read only:
 
 Do not read every addendum unless the target prompt's `Merge / split rule` says to read a sibling prompt.
 
-## Current BCI assertion-repair override (2026-08-20)
+## Current main routing truth (2026-08-23)
 
-The generic analytics lane order below is temporarily superseded by a reopened current-main backend gate plus newly promoted runtime follow-ups.
+The historical 2026-08-20 BCI/STAB/QDB override is closed on current `main`; use `MASTER_ROADMAP.md` and the current queue headers for execution.
 
-1. Historical BCI bootstrap/closure prompts remain DONE, but current-main backend truth is reopened by `BCI10`.
-2. `BCI10` is READY: the current local Release suite is `1013 total / 1011 passed / 2 failed` in the SQL Server source-session family, and newer GitHub Actions backend runs are red.
-3. `QDB09` is READY as the connector-side runtime follow-up for SQL Server checkpoint end-to-end proof; do not duplicate its runtime surface inside `BCI10`.
-4. `RQ108` is DONE after the 2026-08-22 sync; `RQ109` is DONE after the 2026-08-22 sync; `RQ110` is claimed/in progress; `RQ111` remains the next runtime reliability follow-up; and `RQ112`-`RQ114` are now prepared as the accuracy/evidence chain behind it.
-5. `STAB14` is READY for frontend analytics gate + fresh live-smoke re-entry, but it must not overrule the higher-priority backend gate.
-6. `MASTER_ROADMAP.md` is authoritative. Current execution READY is `BCI10`. Do not revive `RQ89`/`RQ90` or claim `none`.
+1. `BCI10`, `STAB14`, `STAB15`, and `QDB09` are DONE on current `main`; no historical READY pointer may be revived.
+2. `RQ108` and `RQ109` are DONE; `RQ110` is the active `IN_PROGRESS` owner task and the analytics queue has no separate READY prompt.
+3. `RQ111`-`RQ114` are the staged visibility → refresh → reconciliation → provenance/seed chain; `RQ115`-`RQ120` are residual follow-ups from the retrospective audit.
+4. `MASTER_ROADMAP.md` is authoritative. Do not claim current readiness from the old 2026-08-20 narrative or from a stale task lock.
 
-Evidence: `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-10_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-11_RQ95_REENTRY.md`, `docs/qa/BACKEND_CI_FULL_SUITE_EVIDENCE_2026-08-13.md`, `docs/qa/BACKEND_CI_CACHE_FOOTPRINT_STUB_EVIDENCE_2026-08-13.md`, 2026-08-20 current-main audit notes
+Evidence: `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`, `MASTER_ROADMAP.md`, and the current queue header.
 
 ## Global execution lanes
 
@@ -188,12 +186,17 @@ These prompts are intentionally staged behind `RQ110` -> `RQ111` so the reposito
 | G1 | RQ112 | Reconcile one pilot family's summary vs detail/export truth. | Once data is visible and refreshed, the next correctness question is whether headline values match drilldown/export. |
 | G2 | RQ113 | Expose family-level freshness/provenance truth. | After numeric reconciliation, the operator still needs to know which generation/fallback basis produced the numbers. |
 | G3 | RQ114 | Build deterministic reusable seed pack + expected-output manifest. | This makes later reliability work repeatable instead of prompt-local or fixture-local. |
+| G4 | RQ115 | Isolate the dashboard seeded-data proof. | RQ110 explicitly left the dashboard as the least isolated screen family. |
+| G5 | RQ116 | Prove Pulse queued/sent/disabled/failed states. | RQ109 added the delivery path but did not exercise live SMTP or a complete receipt contract. |
+| G6 | RQ117 | Prove forecast/observed pairing availability. | RQ108 remains fail-closed when the observed window is missing or stale. |
+| G7 | RQ118/RQ119 | Close residual dataScope lineage gaps. | RQ05/RQ06 documented, but did not fix, the issues-handler and dual-origin families. |
+| G8 | RQ120 | Surface trust metadata in the first proven pilot UI. | Backend fields are not useful evidence if the operator cannot see their meaning. |
 
 ### Ready-quality prompts
 
-These are clear enough for direct execution with minimal extra research when their routing/dependencies permit them:
+These are historical ready-quality assessments, not current READY pointers; execute only when `MASTER_ROADMAP.md` and the owning queue promote them:
 
-- RQ89 (current READY)
+- RQ89 (historical ready-quality)
 - RQ90 (ready-quality, serialized after RQ89)
 - RQ01
 - RQ39
@@ -275,10 +278,10 @@ The queues are strong enough for agent execution, but current routing is not the
 
 The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and obsolete. Use `MASTER_ROADMAP.md`.
 
-- Backend CI: `BCI10` READY.
-- Release truth: `STAB14` READY.
-- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` IN_PROGRESS; `RQ111` WAITING for refresh/cache parity after the current forecasting follow-up; `RQ112`-`RQ114` WAITING as prepared accuracy/evidence follow-ups.
-- Connector runtime: `QDB09` READY; `QDB07` WAITING behind it plus release gates.
+- Backend CI: no current READY (`BCI10` DONE).
+- Release truth: no current READY (`STAB14`/`STAB15` DONE).
+- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` IN_PROGRESS; `RQ111`-`RQ120` WAITING behind their named dependencies/owner gates.
+- Connector runtime: no current READY (`QDB09` DONE); `QDB07` remains WAITING behind release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.
 - Validators: `node scripts/check-prompt-queues.mjs` and `node scripts/check-planning-architecture.mjs`.

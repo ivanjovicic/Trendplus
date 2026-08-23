@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ110` (`RQ108` is DONE after the 2026-08-22 sync; the owner-supplied canonical route/filter matrix now exists, and `RQ110` is claimed/in progress)
+Current READY prompt: none (`RQ110` is `IN_PROGRESS`; continue it as the active owner task, then promote the staged `WAITING` chain)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -45,6 +45,12 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ112 | WAITING | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
 | RQ113 | WAITING | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
+| RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
+| RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
+| RQ117 | WAITING | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
+| RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
+| RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
+| RQ120 | WAITING | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
 
 ---
 
@@ -1608,3 +1614,360 @@ Trendplus now has growing current-main proof needs for pilot analytics, but many
 - `RQ112` DONE.
 - `RQ113` DONE.
 - Keep this prompt at reusable proof-harness scope; do not broaden into general integration-test refactoring.
+
+---
+
+## RQ115 - Isolate the dashboard seeded-data proof left open by RQ110
+
+Status: WAITING
+Ready after: `RQ110` is `DONE`
+Priority: P1
+Type: docs/tests/backend-contract
+Feature family: analytics-dashboard-seeded-proof
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ115-<agent>.lock.md`
+Commit suggestion: `test(analytics): prove dashboard seeded data path`
+
+### Problem
+
+The RQ110 review explicitly found that the dashboard family has no separately named isolated seeded-non-empty backend proof. The pilot matrix currently relies on route/meta/smoke evidence for that row, so a dashboard blank state could still be confused with a valid empty dataset.
+
+### Evidence
+
+- `.ai/runs/2026-08-22-RQ110-evidence.md` records the dashboard gap as the primary missed item.
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md` identifies the dashboard as the least isolated proof surface.
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` records dashboard refresh/cache risk.
+
+### Scope
+
+- the dashboard endpoint/query and its nearest backend test host;
+- the dashboard row in `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`;
+- one deterministic seeded fixture or source-basis note;
+- this queue and a dated evidence note.
+
+### Read first
+
+- the final RQ110 matrix and completion note;
+- dashboard endpoint/service files and nearest focused tests;
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`.
+
+### Do
+
+1. Name the authoritative dashboard source, requested/effective period and scope, refresh owner, and cache identity.
+2. Add the smallest deterministic seeded proof that returns non-empty dashboard data when the source basis exists.
+3. If the source cannot be trusted or is unavailable, return an explicit empty/warning/provenance reason; never use a blank route shell or zero-filled fallback as proof.
+4. Classify any failure as source, filter, cache, route/render, or test-harness gap and create a narrower follow-up if runtime repair is needed.
+
+### Tests
+
+- `git diff --check`;
+- focused dashboard backend contract/integration test;
+- prompt and planning validators when queue/docs change.
+
+### Acceptance
+
+- Dashboard has a separately citeable seeded non-empty proof or an explicit blocked/degraded contract.
+- A missing dashboard row cannot be reported as healthy empty data.
+- The matrix names the physical source or honestly records why it cannot be named.
+
+### Dependencies
+
+- `RQ110` DONE.
+- Do not broaden into the full refresh/cache repair owned by `RQ111`.
+
+---
+
+## RQ116 - Prove Decision Pulse queued/sent/disabled states without claiming unverified delivery
+
+Status: WAITING
+Ready after: `RQ109` is `DONE` and the owner authorizes delivery-proof work
+Priority: P1
+Type: backend/tests/docs
+Feature family: decision-pulse-delivery-truth
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ116-<agent>.lock.md`
+Commit suggestion: `test(analytics): prove decision pulse delivery states`
+
+### Problem
+
+RQ109 added scheduled Pulse generation and a delivery path, but its evidence explicitly missed live SMTP proof and did not prove a durable receipt for each attempt. Operators must be able to distinguish queued, delivered, disabled, and failed delivery without treating missing SMTP configuration as success.
+
+### Evidence
+
+- `.ai/runs/2026-08-22-RQ109-evidence.md` records that live SMTP send was not exercised.
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` records that RQ106/RQ109 still lack external delivery proof.
+- Existing delivery/config services define the runtime boundary; this prompt must not invent production credentials or recipients.
+
+### Scope
+
+- Decision Pulse delivery/schedule services, config, and nearest tests;
+- an additive delivery-attempt/receipt contract or durable in-app state if the existing owner supports it;
+- queue/docs evidence only.
+
+### Read first
+
+- RQ109 completion note and current Pulse service/worker tests;
+- `Api/Services/Analytics/DecisionPulseDeliveryService.cs`;
+- `Application/Analytics/DecisionPulse/DecisionPulseAutomationContracts.cs`;
+- the current SMTP/runtime configuration contract.
+
+### Do
+
+1. Define explicit states such as `queued`, `sent`, `disabled`, `failed`, and `not_attempted` with safe reason codes.
+2. Ensure disabled/missing SMTP or recipients cannot be reported as delivered.
+3. Add deterministic tests for successful composition, disabled configuration, recipient absence, and delivery failure.
+4. If external SMTP cannot be exercised, record that as an external gate and prove the local receipt/state contract instead of fabricating a live-send result.
+
+### Tests
+
+- `git diff --check`;
+- focused Decision Pulse delivery/scheduler tests;
+- governance validators if queue/docs metadata changes.
+
+### Acceptance
+
+- Every Pulse attempt has an honest local delivery state and reason.
+- No evidence claims live SMTP delivery without an actual configured send.
+- Existing empty/error suppression and tenant scope remain unchanged.
+
+### Dependencies
+
+- `RQ109` DONE.
+- No production SMTP, recipient, or secret changes are authorized by this prompt.
+
+---
+
+## RQ117 - Prove forecast/observed pairing availability and stale/missing semantics
+
+Status: WAITING
+Ready after: `RQ108` and `RQ96` are `DONE`
+Priority: P1
+Type: backend/tests/docs
+Feature family: forecast-observed-pair-availability
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ117-<agent>.lock.md`
+Commit suggestion: `test(analytics): prove forecast observed pairing availability`
+
+### Problem
+
+RQ108 delivered the forecast materializer and fail-closed observed pairing foundation, but its residual risk states that pairing remains dependent on the RQ96 observed daily stock foundation. A forecast comparison must be explicitly unavailable when no observed window exists, rather than silently becoming zero, trusted, or complete.
+
+### Evidence
+
+- `.ai/runs/2026-08-22-RQ108-evidence.md` records the observed-pair dependency as the remaining risk.
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md` defines RQ96 provenance and missing-history semantics.
+- Current forecast materialization code already exposes provenance fields that can be tested without inventing observations.
+
+### Scope
+
+- inventory forecast read/materializer/pairing contracts and nearest tests;
+- one dated pairing availability contract note;
+- queue and run evidence.
+
+### Read first
+
+- RQ96, RQ97, RQ98, and RQ108 completion evidence;
+- forecast materialization and observed-pairing source files;
+- `Api.Tests/InventorySnapshotContractTests.cs` and related integration coverage.
+
+### Do
+
+1. Add deterministic fixtures for trusted paired data, missing observed data, stale observed data, and mismatched store/period scope.
+2. Return explicit `trusted`, `stale`, `missing_relation`, or `unavailable` semantics with null comparison values when evidence is absent.
+3. Prove forecast issue time, observed date, tenant/store scope, and provenance cannot be borrowed from unrelated rows.
+4. Keep this prompt at pairing availability; do not add forecasting formulas or fabricate historical stock.
+
+### Tests
+
+- `git diff --check`;
+- focused forecast materializer/pairing tests;
+- governance validators if queue/docs metadata changes.
+
+### Acceptance
+
+- Paired comparisons are trusted only when both forecast and observed evidence match the requested scope/window.
+- Missing, stale, and mismatched observations remain explicit and non-actionable.
+- No synthetic zero or inferred freshness is used to complete a comparison.
+
+### Dependencies
+
+- `RQ96`, `RQ97`, and `RQ108` DONE.
+
+---
+
+## RQ118 - Close the residual unscoped Data Quality issues sales window
+
+Status: WAITING
+Ready after: owner promotes the P1 dataScope residual
+Priority: P1
+Type: backend/tests
+Feature family: data-quality-issues-scope-lineage
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ118-<agent>.lock.md`
+Commit suggestion: `fix(analytics): align data quality issues scope`
+
+### Problem
+
+RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQualityIssuesHandler` as using an unscoped `sales_30d` CTE. That can leak sales from another origin into a scoped Data Quality issue list and make a warning amount look more authoritative than its source.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md` marks the residual as `RQ06-F1`.
+- `.ai/runs/2026-08-22-large-commit-review-evidence.md` confirms earlier work did not re-audit this handler.
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` RQ06 completion notes leave this exact residual open.
+
+### Scope
+
+- `GetDataQualityIssuesHandler` and its nearest SQL/query tests;
+- the dataScope consistency audit and this queue;
+- no PDC, inventory, or supplier formula changes.
+
+### Read first
+
+- `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`;
+- RQ05/RQ06 completion notes;
+- the handler and `DataScopeConsistencyContractTests`.
+
+### Do
+
+1. Reproduce imported/existing/all cases where article and sale-header origins differ.
+2. Apply the canonical sale-header scope to the sales window, or document an explicit forced-all contract in response metadata.
+3. Add true-zero, missing-scope, and cross-origin regression cases.
+4. Preserve existing all-scope behavior unless a before/after contract note proves it was wrong.
+
+### Tests
+
+- `git diff --check`;
+- focused Data Quality issues and dataScope tests;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- Scoped Data Quality issue revenue cannot include an unrelated sale origin silently.
+- Missing/unknown scope is explicit, not treated as all or zero.
+
+### Dependencies
+
+- RQ05/RQ06 DONE; owner promotion required because this is a residual follow-up, not a new current READY task.
+
+---
+
+## RQ119 - Resolve or explicitly expose PDC/inventory dual-origin scope behavior
+
+Status: WAITING
+Ready after: `RQ118` is `DONE` or the owner explicitly reprioritizes the dual-origin lane
+Priority: P1
+Type: backend/tests/docs
+Feature family: analytics-dual-origin-scope-contract
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ119-<agent>.lock.md`
+Commit suggestion: `docs(analytics): freeze dual origin scope contract`
+
+### Problem
+
+The RQ05 audit found high-risk dual-origin or forced-all behavior in Product Decision Center, inventory insights, and Decision Board inventory cards. Without an explicit contract, users can compare scoped sales with unscoped inventory and draw a false replenishment or supplier conclusion.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md` tracks `RQ05-F1` and `RQ05-F2`.
+- `docs/qa/ANALYTICS_SQL_FILTER_CONSISTENCY_AUDIT.md` repeats the same unresolved scope split.
+- RQ05 completion explicitly states these follow-ups were documented, not fixed.
+
+### Scope
+
+- one smallest proven PDC or inventory/Decision Board scope family;
+- contract tests and an additive scope/provenance note;
+- no SQL formula rewrite or frontend redesign.
+
+### Read first
+
+- both dataScope audits and RQ05 completion note;
+- the selected builder/endpoint and nearest contract tests;
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`.
+
+### Do
+
+1. Choose one family and state whether article origin, sale-header origin, both, or forced-all is authoritative.
+2. Add mismatch fixtures and expose requested/effective scope in metadata when the two origins cannot be aligned safely.
+3. Keep recommendation/action eligibility conservative when scope evidence is mixed or unavailable.
+4. Create a separate follow-up for any second family instead of broadening this task.
+
+### Tests
+
+- `git diff --check`;
+- focused scope-lineage tests for the selected family;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- One high-risk dual-origin family has a tested, citeable scope contract.
+- Mixed-scope values are labelled/degraded rather than silently compared as like-for-like.
+
+### Dependencies
+
+- `RQ118` DONE or explicit owner reprioritization.
+
+---
+
+## RQ120 - Surface source, denominator, and provenance metadata in the first proven pilot UI
+
+Status: WAITING
+Ready after: `RQ112` and `RQ113` are `DONE`
+Priority: P1
+Type: frontend-contract/tests
+Feature family: analytics-trust-metadata-ui-propagation
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ120-<agent>.lock.md`
+Commit suggestion: `fix(analytics): surface pilot trust metadata`
+
+### Problem
+
+Several earlier contracts added additive backend trust metadata, while earlier evidence noted that UI labels can still be absent. A numerically correct pilot result is not fully defensible if the operator cannot see its denominator, source status, effective scope, or generation/provenance state.
+
+### Evidence
+
+- RQ02/RQ12 introduced denominator metadata; RQ03 introduced `sourceStatus` vocabulary.
+- RQ104 proves selected core pages do not invent reliability, but does not cover every pilot family or every new provenance field.
+- RQ112/RQ113 are intended to select the first reconciled/provenance-backed family for this UI slice.
+
+### Scope
+
+- one pilot family selected by RQ112/RQ113;
+- its TypeScript API type, trust header/metadata mapping, and nearest UI contract tests;
+- no frontend formula or local confidence scoring.
+
+### Read first
+
+- final RQ112/RQ113 contracts;
+- selected family backend DTO and TypeScript service/type definitions;
+- RQ104 evidence and the shared analytics trust UI patterns.
+
+### Do
+
+1. Map backend source status, denominator scope, requested/effective period/scope, freshness, and provenance fields without renaming their meaning.
+2. Render unknown/unavailable as explicit trust states; never coerce them to zero, green, fresh, or measured.
+3. Add one success, true-zero, unknown/fallback, and error/empty display test for the selected family.
+4. Keep machine reason codes behind the established operator mapping.
+
+### Tests
+
+- `git diff --check`;
+- focused Vitest contract tests and analytics guardrails;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- The first proven pilot family visibly explains the backend-owned data trust metadata.
+- UI output preserves denominator, source/fallback, freshness, and effective-scope semantics.
+- No local scoring or fake-zero fallback is introduced.
+
+### Dependencies
+
+- `RQ112` and `RQ113` DONE.
+- If frontend dependencies are unavailable, record the environment failure and do not change backend semantics to satisfy the harness.
