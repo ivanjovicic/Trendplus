@@ -55,7 +55,7 @@ The generic analytics lane order below is temporarily superseded by a reopened c
 1. Historical BCI bootstrap/closure prompts remain DONE, but current-main backend truth is reopened by `BCI10`.
 2. `BCI10` is READY: the current local Release suite is `1013 total / 1011 passed / 2 failed` in the SQL Server source-session family, and newer GitHub Actions backend runs are red.
 3. `QDB09` is READY as the connector-side runtime follow-up for SQL Server checkpoint end-to-end proof; do not duplicate its runtime surface inside `BCI10`.
-4. `RQ108` is DONE after the 2026-08-22 sync; `RQ109` is DONE after the 2026-08-22 sync, and `RQ110` -> `RQ111` remain queued as the pilot screen-data reliability sequence behind the current forecasting work.
+4. `RQ108` is DONE after the 2026-08-22 sync; `RQ109` is DONE after the 2026-08-22 sync; `RQ110` is claimed/in progress; `RQ111` remains the next runtime reliability follow-up; and `RQ112`-`RQ114` are now prepared as the accuracy/evidence chain behind it.
 5. `STAB14` is READY for frontend analytics gate + fresh live-smoke re-entry, but it must not overrule the higher-priority backend gate.
 6. `MASTER_ROADMAP.md` is authoritative. Current execution READY is `BCI10`. Do not revive `RQ89`/`RQ90` or claim `none`.
 
@@ -179,6 +179,16 @@ Parallel-safe options if separate agents are careful:
 
 ## Prompt quality assessment
 
+### Prepared current-main follow-up chain
+
+These prompts are intentionally staged behind `RQ110` -> `RQ111` so the repository does not jump from "screen is blank" straight into broad semantic refactors without first proving visibility and refresh truth.
+
+| Rank | Prompt | Action | Why it is next |
+|---|---|---|---|
+| G1 | RQ112 | Reconcile one pilot family's summary vs detail/export truth. | Once data is visible and refreshed, the next correctness question is whether headline values match drilldown/export. |
+| G2 | RQ113 | Expose family-level freshness/provenance truth. | After numeric reconciliation, the operator still needs to know which generation/fallback basis produced the numbers. |
+| G3 | RQ114 | Build deterministic reusable seed pack + expected-output manifest. | This makes later reliability work repeatable instead of prompt-local or fixture-local. |
+
 ### Ready-quality prompts
 
 These are clear enough for direct execution with minimal extra research when their routing/dependencies permit them:
@@ -267,7 +277,7 @@ The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and o
 
 - Backend CI: `BCI10` READY.
 - Release truth: `STAB14` READY.
-- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` then `RQ111` remain queued for pilot screen-data availability and refresh/cache parity after the current forecasting follow-up.
+- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` IN_PROGRESS; `RQ111` WAITING for refresh/cache parity after the current forecasting follow-up; `RQ112`-`RQ114` WAITING as prepared accuracy/evidence follow-ups.
 - Connector runtime: `QDB09` READY; `QDB07` WAITING behind it plus release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.

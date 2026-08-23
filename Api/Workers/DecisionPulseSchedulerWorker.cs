@@ -141,25 +141,42 @@ public sealed class DecisionPulseSchedulerWorker : BackgroundService
         return !lastRunLocal.HasValue || lastRunLocal.Value.Date < nowLocal.Date;
     }
 
-    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    internal static TimeZoneInfo ResolveTimeZone(string timeZoneId)
     {
         if (string.IsNullOrWhiteSpace(timeZoneId))
         {
             return TimeZoneInfo.Local;
         }
 
+        if (TryResolveTimeZone(timeZoneId, out var resolved))
+        {
+            return resolved;
+        }
+
+        if (string.Equals(timeZoneId, "Europe/Belgrade", StringComparison.OrdinalIgnoreCase)
+            && TryResolveTimeZone("Central Europe Standard Time", out var fallback))
+        {
+            return fallback;
+        }
+
+        return TimeZoneInfo.Local;
+    }
+
+    private static bool TryResolveTimeZone(string timeZoneId, out TimeZoneInfo resolved)
+    {
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            resolved = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return true;
         }
         catch (TimeZoneNotFoundException)
         {
-            if (string.Equals(timeZoneId, "Europe/Belgrade", StringComparison.OrdinalIgnoreCase))
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById("Central Europe Standard Time");
-            }
-
-            return TimeZoneInfo.Local;
         }
+        catch (InvalidTimeZoneException)
+        {
+        }
+
+        resolved = TimeZoneInfo.Local;
+        return false;
     }
 }

@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ108` is DONE after the 2026-08-22 sync; the first authoritative forecast/observed pairing surface exists, and `RQ109` is DONE after the 2026-08-22 sync)
+Current READY prompt: `RQ110` (`RQ108` is DONE after the 2026-08-22 sync; the owner-supplied canonical route/filter matrix now exists, and `RQ110` is claimed/in progress)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -40,8 +40,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
 | RQ108 | DONE | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
 | RQ109 | DONE | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
-| RQ110 | WAITING | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
+| RQ110 | IN_PROGRESS | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | WAITING | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
+| RQ112 | WAITING | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
+| RQ113 | WAITING | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
+| RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 
 ---
 
@@ -1231,8 +1234,8 @@ Commit suggestion: `feat(analytics): expand decision pulse coverage`
 
 ## RQ110 - Prove pilot analytics screens stay non-empty when authoritative seeded data exists
 
-Status: WAITING
-Ready after: `RQ108` is `DONE` and the owner authorizes the pilot screen-data reliability sequence
+Status: IN_PROGRESS
+Ready after: `RQ108` is `DONE` and the owner-supplied canonical production data-bearing route/filter matrix exists (`docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md` + `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md`)
 Priority: P1
 Type: docs/tests/backend-contract
 Feature family: analytics-screen-data-availability
@@ -1252,6 +1255,7 @@ Trendplus should not show a blank chart, blank table, or misleading empty state 
 - `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` shows that some families can lag after aggregation/data-quality refresh even when underlying data has already changed.
 - `docs/qa/ANALYTICS_PILOT_SMOKE_RESULT.md` historically captured shell-only route mismatches and route-level failures that can look like "no data" from the operator perspective.
 - Current release evidence remains conservative (`docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-20.md`): the pilot is not ready until fresh exact-SHA route/smoke truth exists.
+- Owner-supplied route/filter coverage exists in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md` and `docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md`.
 
 ### Scope
 
@@ -1265,6 +1269,7 @@ Trendplus should not show a blank chart, blank table, or misleading empty state 
 - focused backend contract tests for those screen families only where seeded non-empty proof is missing
 - the nearest existing backend test hosts for the named screens
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
 
 ### Read first
 
@@ -1276,6 +1281,7 @@ Trendplus should not show a blank chart, blank table, or misleading empty state 
 - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
 - `Api.Tests/DecisionBoardEndpointsTests.cs`
 - `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
 
 ### Do
 
@@ -1385,3 +1391,220 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
 
 - `RQ110` DONE.
 - Do not broaden into a repo-wide performance or telemetry program; keep the fix inside the first proven reliability family.
+
+---
+
+## RQ112 - Reconcile pilot analytics summary values against detail/export on the first proven family
+
+Status: WAITING
+Ready after: `RQ111` is `DONE`
+Priority: P1
+Type: backend/tests/docs
+Feature family: analytics-summary-detail-reconciliation
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ112-<agent>.lock.md`
+Commit suggestion: `test(analytics): reconcile pilot summary and detail truth`
+
+### Problem
+
+After `RQ110` and `RQ111`, a pilot analytics screen may be non-empty and freshly refreshed yet still numerically misleading if its summary cards, table rows, chart totals, and export values do not reconcile for the same authoritative seeded basis. Trendplus needs one current-main proof that the first proven family with both summary and detail surfaces is either numerically aligned or explicitly labeled when denominators differ.
+
+### Evidence
+
+- `RQ110` proves whether a screen can stay data-bearing when authoritative seeded data exists, but it does not by itself prove that screen-level summaries reconcile to the underlying detail surface.
+- `RQ111` closes the first refresh/cache/materialized-view family that can hide existing data, but it still does not prove that the now-visible numbers match one another.
+- Earlier prompt families closed isolated correctness gaps such as mixed denominators (`RQ02`, `RQ12`, `RQ83`) and cross-surface numeric drift (`RQ40`, `RQ55`), but not one current-main pilot-family proof that summary, detail, and export use the same defended semantics.
+- Pilot analytics trust depends not only on visible data, but on the operator being able to defend why the headline number matches the underlying drilldown or why it intentionally does not.
+
+### Scope
+
+- the first pilot screen family identified by `RQ110`/`RQ111` that has:
+  - a summary/header/KPI surface; and
+  - a table/detail and/or export surface
+- the nearest query/endpoint/DTO/test files for that single family only
+- one dated `docs/qa/` reconciliation note or a scoped extension to `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- the final `RQ110` matrix/proof output
+- the final `RQ111` runtime-gap output
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- the nearest summary/detail/export tests for the chosen family
+- the chosen family's endpoint/query files
+
+### Do
+
+1. Use the `RQ110` and `RQ111` outputs to choose the smallest current-main pilot family where summary and detail/export can both be proven from the same seeded basis.
+2. Add one deterministic reconciliation fixture that names:
+   - authoritative source rows or snapshot basis;
+   - requested/effective period and scope;
+   - expected summary values;
+   - expected detail/export values;
+   - any allowed intentional denominator or coverage difference.
+3. Make summary, detail, chart, and export semantics align for that family, or add additive metadata that explains the intentional difference without silently changing business meaning.
+4. Do not let dropped rows, hidden unknown buckets, stale cached totals, or unit conversions create a trusted-looking headline number that the underlying surface cannot defend.
+5. Keep the fix inside one family; if a second family shows the same failure, record it as follow-up evidence rather than broadening this prompt silently.
+
+### Tests
+
+- `git diff --check`
+- focused backend tests for the chosen summary/detail family
+- focused export/detail parity tests if an export surface is touched
+- governance validators if queue docs change
+
+### Acceptance
+
+- One current-main pilot family has a deterministic reconciliation proof from authoritative seeded basis to summary and detail/export output.
+- Summary values no longer overstate, understate, or silently redefine the same dataset relative to the underlying surface.
+- Any intentional denominator or coverage split is explicit in contract metadata or proof documentation.
+
+### Dependencies
+
+- `RQ110` DONE.
+- `RQ111` DONE.
+- Do not broaden into multi-family audit work; prove the first family completely.
+
+---
+
+## RQ113 - Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference
+
+Status: WAITING
+Ready after: `RQ112` is `DONE`
+Priority: P1
+Type: backend/frontend-contract/tests
+Feature family: analytics-generation-provenance-truth
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ113-<agent>.lock.md`
+Commit suggestion: `fix(analytics): expose pilot generation provenance truth`
+
+### Problem
+
+Even when a pilot analytics family is non-empty and numerically reconciled, it can still be weakly evidenced if the operator cannot tell which refresh/materialized-view generation produced it, whether it came from a fallback path, or whether the visible period/scope is requested truth or effective fallback. Trendplus should not require an operator to infer freshness or provenance from page render time, cache age, or a single borrowed timestamp.
+
+### Evidence
+
+- `RQ111` is intended to close the first refresh/cache/materialized-view gap, but its acceptance is about preventing hidden stale empty states, not standardizing family-level provenance truth.
+- `RQ61` and `RQ105` already fixed surface-specific freshness/fallback honesty issues, yet they do not provide one current-main contract that ties visible pilot numbers to a named generation/provenance basis.
+- The `RQ110` matrix makes source tables/views and refresh owners explicit, which creates the evidence foundation for a stricter provenance contract.
+- Pilot release truth still depends on being able to explain not only what number is shown, but which owned refresh/basis generated it and whether fallback or degradation was involved.
+
+### Scope
+
+- the first pilot family from `RQ110`/`RQ111`/`RQ112` whose visible trust still depends on inferred freshness or provenance
+- nearest endpoint/meta DTO files and only the minimum frontend mapping needed to surface truthful additive metadata
+- focused endpoint/meta contract tests and small UI assertions only when a visible trust state changes
+- one dated `docs/qa/` provenance note if a current owner doc does not already capture the new contract
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- final outputs from `RQ110`, `RQ111`, and `RQ112`
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_HARDENING_ADDENDUM.md`
+- the chosen family's endpoint/meta/frontend trust files
+- nearest freshness/fallback tests already covering that family
+
+### Do
+
+1. Choose the smallest pilot family whose current-main trust still depends on inferred freshness, inferred fallback, or inferred effective period/scope.
+2. Add only the minimum additive contract fields needed to expose:
+   - requested period/scope;
+   - effective period/scope when fallback occurs;
+   - refresh/materialized-view generation or equivalent provenance basis;
+   - fallback/degraded/operational path state.
+3. Ensure the surface does not borrow freshness or provenance from an unrelated panel or fallback branch.
+4. Keep unknown or unavailable provenance explicit as unknown/unavailable; do not coerce it into fresh, healthy, or measured.
+5. If a visible UI label changes, keep the wording aligned to backend truth rather than inventing new scoring language on the frontend.
+
+### Tests
+
+- `git diff --check`
+- focused endpoint/meta contract tests for the chosen family
+- focused UI trust-state tests only if visible copy or branching changes
+- governance validators if queue docs change
+
+### Acceptance
+
+- One pilot analytics family can expose why its data is trusted using explicit requested/effective period, provenance, and fallback truth instead of inference.
+- Unknown or degraded provenance no longer looks fresh or fully authoritative.
+- The frontend does not invent provenance semantics that the backend contract does not own.
+
+### Dependencies
+
+- `RQ110` DONE.
+- `RQ111` DONE.
+- `RQ112` DONE.
+- Keep the scope to one family and one provenance contract.
+
+---
+
+## RQ114 - Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof
+
+Status: WAITING
+Ready after: `RQ113` is `DONE`
+Priority: P1
+Type: tests/docs
+Feature family: analytics-deterministic-seed-pack
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ114-<agent>.lock.md`
+Commit suggestion: `test(analytics): add deterministic pilot proof seed pack`
+
+### Problem
+
+Trendplus now has growing current-main proof needs for pilot analytics, but many focused checks still rely on one-off seeded fixtures or prompt-local reasoning. Without a reusable deterministic seed pack and expected-output manifest, future reliability prompts can pass locally while proving different implicit datasets, which weakens both repeatability and evidence quality.
+
+### Evidence
+
+- `RQ110` introduces a named screen-data availability matrix, which is a strong start, but it does not by itself create a reusable authoritative seed pack for future prompts.
+- `RQ112` and `RQ113` depend on deterministic seeded bases and expected outputs; without a shared pack, later prompts can drift in what they consider the authoritative proof dataset.
+- Existing analytics tests already contain seeded cases across dashboard, product decision, decision board, inventory, supplier, and actions, but they are spread across hosts and are not yet documented as one reusable pilot proof basis.
+- Pilot-readiness claims are stronger when repeated prompts can cite the same known seed set, expected rows, expected warnings, and allowed empty/degraded states.
+
+### Scope
+
+- test fixtures/builders/seed helpers already used by the pilot analytics test hosts
+- one new `docs/qa/` manifest that names the canonical seed pack, its authoritative basis, and expected outputs by screen family
+- minimal test-host changes needed so later prompts can reuse the same seed pack instead of cloning ad hoc datasets
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- final outputs from `RQ110`, `RQ112`, and `RQ113`
+- the pilot screen-family test hosts named by `RQ110`
+- the nearest existing seed helpers/builders for those hosts
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+
+### Do
+
+1. Create one reusable deterministic seed pack for pilot analytics proof that can back at least the main families already exercised by `RQ110` through `RQ113`.
+2. Document, for each included family:
+   - authoritative source rows/snapshots;
+   - requested/effective filters;
+   - expected non-empty outputs;
+   - allowed explicit empty/degraded/warning outcomes.
+3. Reuse existing test helpers where possible; do not create a second parallel seed system without a clear owner reason.
+4. Add only the smallest test-host hooks needed so later reliability prompts can consume the same pack with stable names and stable expected-output references.
+5. Keep the seed pack deterministic and current-main-friendly; do not introduce runtime-only or environment-specific proof requirements.
+
+### Tests
+
+- `git diff --check`
+- focused tests for any touched seed helpers or hosts
+- governance validators if queue/docs metadata changes
+
+### Acceptance
+
+- Trendplus has one reusable deterministic pilot analytics seed pack and expected-output manifest that later prompts can cite directly.
+- Future reliability prompts no longer need to reinvent the authoritative seeded basis for the same pilot families.
+- The proof basis stays compatible with explicit empty/degraded semantics instead of forcing every family to look non-empty.
+
+### Dependencies
+
+- `RQ110` DONE.
+- `RQ112` DONE.
+- `RQ113` DONE.
+- Keep this prompt at reusable proof-harness scope; do not broaden into general integration-test refactoring.

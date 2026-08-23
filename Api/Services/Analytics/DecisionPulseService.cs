@@ -130,9 +130,7 @@ public sealed class DecisionPulseService
             else
             {
                 sourceFailures.Add("supplier_filters_invalid");
-                sourceFailureMessages.Add(validationError is null
-                    ? "Supplier filters nisu validni."
-                    : "Supplier filters nisu validni.");
+                sourceFailureMessages.Add(FormatValidationError(validationError) ?? "Supplier filters nisu validni.");
             }
         }
         catch (Exception ex)
@@ -320,40 +318,7 @@ public sealed class DecisionPulseService
             item.GeneratedAtUtc,
             item.TenantScope)).ToArray();
 
-        DecisionPulseResponseMetaDto meta;
-        if (!projection.SourceSucceeded)
-        {
-            meta = DecisionPulseResponseMetaFactory.Error(
-                projection.FailureCategory ?? "source_error",
-                projection.FailureMessage ?? "Pulse izvor nije dostupan.",
-                correlationId: null);
-        }
-        else if (items.Length == 0)
-        {
-            meta = DecisionPulseResponseMetaFactory.Empty(
-                "no_pulse_items",
-                projection.SuppressedCount > 0
-                    ? "Nema actionable Pulse stavki posle potiskivanja stale/empty/insufficient dokaza."
-                    : "Nema Decision Pulse izuzetaka za period.",
-                "insufficient_data");
-        }
-        else
-        {
-            meta = DecisionPulseResponseMetaFactory.Success(
-                "good",
-                generatedAtUtc,
-                isPartial: projection.SuppressedCount > 0 || sourceFailures.Count > 0,
-                warningCode: projection.SuppressedCount > 0
-                    ? "PULSE_SUPPRESSED"
-                    : sourceFailures.Count > 0
-                        ? "PULSE_PARTIAL"
-                        : null,
-                warningMessage: projection.SuppressedCount > 0
-                    ? $"Potisnuto {projection.SuppressedCount} stavki zbog stale/empty/insufficient dokaza."
-                    : sourceFailures.Count > 0
-                        ? $"Neki Decision Pulse izvori nisu dostupni ({string.Join(", ", sourceFailures)})."
-                        : null);
-        }
+        var meta = BuildResponseMeta(projection, generatedAtUtc, sourceFailures, sourceFailureMessages);
 
         return new DecisionPulseResponseDto(
             generatedAtUtc ?? DateTime.UtcNow,
@@ -363,6 +328,82 @@ public sealed class DecisionPulseService
             projection.SuppressedCount,
             items,
             meta);
+    }
+
+    private static string? FormatValidationError(Dictionary<string, string[]>? validationError)
+    {
+        if (validationError is null || validationError.Count == 0)
+        {
+            return null;
+        }
+
+        var parts = validationError
+            .Select(pair => pair.Value is { Length: > 0 }
+                ? $"{pair.Key}: {string.Join(", ", pair.Value)}"
+                : pair.Key)
+            .ToArray();
+
+        return parts.Length == 0
+            ? null
+            : $"Supplier filters nisu validni ({string.Join("; ", parts)}).";
+    }
+
+    internal static DecisionPulseResponseMetaDto BuildResponseMeta(
+        DecisionPulseProjection projection,
+        DateTime? generatedAtUtc,
+        IReadOnlyList<string> sourceFailures,
+        IReadOnlyList<string> sourceFailureMessages)
+    {
+        if (!projection.SourceSucceeded)
+        {
+            return DecisionPulseResponseMetaFactory.Error(
+                projection.FailureCategory ?? "source_error",
+                projection.FailureMessage ?? "Pulse izvor nije dostupan.",
+                correlationId: null);
+        }
+
+        if (projection.Items.Count == 0)
+        {
+            var message = projection.SuppressedCount > 0
+                ? $"Nema actionable Pulse stavki posle potiskivanja {projection.SuppressedCount} kandidata zbog stale/empty/insufficient dokaza."
+                : "Nema Decision Pulse izuzetaka za period.";
+
+            if (sourceFailures.Count == 0)
+            {
+                return DecisionPulseResponseMetaFactory.Empty(
+                    "no_pulse_items",
+                    message,
+                    "insufficient_data");
+            }
+
+            var sourceFailureMessage = sourceFailureMessages.FirstOrDefault()
+                ?? $"Neki Decision Pulse izvori nisu dostupni ({string.Join(", ", sourceFailures)}).";
+            var combinedMessage = $"{message} {sourceFailureMessage}";
+            var meta = DecisionPulseResponseMetaFactory.Empty(
+                "no_pulse_items",
+                combinedMessage,
+                "insufficient_data");
+            meta.IsPartial = true;
+            meta.WarningCode = "PULSE_PARTIAL";
+            meta.WarningMessage = sourceFailureMessage;
+            meta.Message = combinedMessage;
+            return meta;
+        }
+
+        return DecisionPulseResponseMetaFactory.Success(
+            "good",
+            generatedAtUtc,
+            isPartial: projection.SuppressedCount > 0 || sourceFailures.Count > 0,
+            warningCode: projection.SuppressedCount > 0
+                ? "PULSE_SUPPRESSED"
+                : sourceFailures.Count > 0
+                    ? "PULSE_PARTIAL"
+                    : null,
+            warningMessage: projection.SuppressedCount > 0
+                ? $"Potisnuto {projection.SuppressedCount} stavki zbog stale/empty/insufficient dokaza."
+                : sourceFailures.Count > 0
+                    ? $"Neki Decision Pulse izvori nisu dostupni ({string.Join(", ", sourceFailures)})."
+                    : null);
     }
 
     private string[] ResolveRecipients(IReadOnlyList<string>? recipientsOverride)
