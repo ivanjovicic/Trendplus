@@ -12,10 +12,11 @@ public sealed class PilotAnalyticsSeedPackTests
     public void SeedPack_DeclaresCanonicalFamiliesAndBases()
     {
         Assert.Equal("pilot-analytics-proof-pack-v1", PilotAnalyticsSeedPack.PackId);
-        Assert.Equal(6, PilotAnalyticsSeedPack.Families.Count);
+        Assert.Equal(7, PilotAnalyticsSeedPack.Families.Count);
         Assert.Equal(
             new[]
             {
+                "dashboard",
                 "product-decision-center",
                 "supplier-decision-sales",
                 "inventory",

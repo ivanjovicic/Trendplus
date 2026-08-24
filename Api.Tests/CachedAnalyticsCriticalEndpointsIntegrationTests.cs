@@ -204,6 +204,26 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task DashboardBootstrap_SeededData_ReturnsNonEmptyExecutiveSnapshot()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/dashboard/bootstrap?fromDate=2026-01-05&toDate=2026-01-07&storeId=1&dataScope=all");
+
+        Assert.Equal(1_100m, root.GetProperty("summary").GetProperty("totalRevenue").GetDecimal());
+
+        var executive = root.GetProperty("executive");
+        Assert.True(executive.GetProperty("topSuppliers").EnumerateArray().Any());
+        Assert.True(executive.GetProperty("topMarginProducts").EnumerateArray().Any());
+        Assert.True(executive.GetProperty("negativeSignals").EnumerateArray().Any());
+
+        var meta = root.GetProperty("meta");
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.NotEqual("ANALYTICS_TIMEOUT", meta.GetProperty("errorCode").GetString());
+    }
+
+    [Fact]
     public async Task QuickInsights_ReturnsBestDayTopProductAndScopedLowStockCount()
     {
         await using var factory = CreateFactory();

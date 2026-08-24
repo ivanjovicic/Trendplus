@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ115` (`RQ114` is `DONE`; claim `RQ115` next if you continue the analytics reliability lane)
+Current READY prompt: none (`RQ115` is `DONE`; `RQ116` remains `WAITING` until the delivery-proof gate is authorized)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -45,7 +45,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ112 | DONE | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
 | RQ113 | DONE | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | DONE | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
-| RQ115 | READY | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
+| RQ115 | DONE | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
 | RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
 | RQ117 | WAITING | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
 | RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
@@ -1729,7 +1729,7 @@ Trendplus now has growing current-main proof needs for pilot analytics, but many
 
 ## RQ115 - Isolate the dashboard seeded-data proof left open by RQ110
 
-Status: READY
+Status: DONE
 Ready after: `RQ110` is `DONE`
 Priority: P1
 Type: docs/tests/backend-contract
@@ -1785,6 +1785,26 @@ The RQ110 review explicitly found that the dashboard family has no separately na
 
 - `RQ110` DONE.
 - Do not broaden into the full refresh/cache repair owned by `RQ111`.
+
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: Added a separately citeable seeded dashboard proof, then expanded the reusable pilot analytics seed pack and manifest so the dashboard, product-decision, inventory, and actions families all share one canonical proof basis instead of cloning ad hoc fixtures.
+- Changed files: `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`, `Api.Tests/PilotAnalyticsSeedPack.cs`, `Api.Tests/PilotAnalyticsSeedPackTests.cs`, `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`, `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+- Contract/runtime behavior changed: the dashboard now has a deterministic non-empty seeded proof; the pilot proof pack manifest now names the dashboard basis alongside the existing reusable shared families; inventory keeps a runtime-relative freshness base to preserve the out-of-stock signal path.
+- Checks run: `git diff --check` (pass); `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~PilotAnalyticsSeedPackTests|FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests.DashboardBootstrap_SeededData_ReturnsNonEmptyExecutiveSnapshot|FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests.SalesSummary_ReturnsExactScopedTotalsAndHealthyMeta|FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests.InventoryBalance_ReturnsExactCountsAndValueForStore"` (pass, 5 passed)
+- Checks not run: full repo suites; not needed after the focused proof and helper tests passed
+- Run log: `.ai/runs/2026-08-24-RQ115-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: main
+- Main commit SHA: pending final docs commit
+- Main verification: current main contains `53adf409e617aacc69449ecfa1a8939b2307bd7d`
+- Missed: none known
+- Follow-up: `RQ116` remains WAITING until the delivery-proof gate is authorized
+- Residual risk: inventory freshness is intentionally runtime-relative so the out-of-stock path stays exercised; later prompts should reuse the pack instead of re-seeding ad hoc timestamps.
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 

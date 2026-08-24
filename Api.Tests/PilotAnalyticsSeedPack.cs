@@ -23,6 +23,29 @@ internal static class PilotAnalyticsSeedPack
     public static readonly IReadOnlyList<PilotAnalyticsSeedFamilySpec> Families =
     [
         new(
+            Family: "dashboard",
+            CanonicalBasis: "Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.DashboardBootstrap_SeededData_ReturnsNonEmptyExecutiveSnapshot",
+            RequestedPeriod: "2026-01-05 through 2026-01-07",
+            Scope: "storeId=1, dataScope=all",
+            ExpectedOutputs:
+            [
+                "summary totalRevenue stays 1100",
+                "executive topSuppliers and topMarginProducts stay non-empty",
+                "dashboard meta stays success"
+            ],
+            AllowedStates:
+            [
+                "explicit warning / partial state",
+                "explicit empty source state",
+                "honest freshness / provenance warning"
+            ],
+            ProofFiles:
+            [
+                "Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs",
+                "Api.Tests/CachedAnalyticsOperationalFallbackTests.cs",
+                "docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md"
+            ]),
+        new(
             Family: "product-decision-center",
             CanonicalBasis: "Api.Tests/ProductDecisionCenterBuilderIntegrationTests.SeedDecisionDataAsync",
             RequestedPeriod: "2026-05-21 through 2026-06-19",
