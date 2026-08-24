@@ -53,8 +53,8 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 The historical 2026-08-20 BCI/STAB/QDB override is closed on current `main`; use `MASTER_ROADMAP.md` and the current queue headers for execution.
 
 1. `BCI10`, `STAB14`, `STAB15`, and `QDB09` are DONE on current `main`; no historical READY pointer may be revived.
-2. `RQ108` and `RQ109` are DONE; `RQ110` is DONE and `RQ111` is DONE, with `RQ112` as the next READY prompt.
-3. `RQ112`-`RQ114` are the staged visibility → refresh → reconciliation → provenance/seed chain; `RQ115`-`RQ120` are residual follow-ups from the retrospective audit.
+2. `RQ108` and `RQ109` are DONE; `RQ110` is DONE and `RQ111` is DONE; `RQ112` is DONE; `RQ113` is the next READY prompt.
+3. `RQ113`-`RQ114` are the staged provenance/seed chain; `RQ115`-`RQ120` are residual follow-ups from the retrospective audit.
 4. `MASTER_ROADMAP.md` is authoritative. Do not claim current readiness from the old 2026-08-20 narrative or from a stale task lock.
 
 Evidence: `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`, `MASTER_ROADMAP.md`, and the current queue header.
@@ -179,13 +179,17 @@ Parallel-safe options if separate agents are careful:
 
 ### Prepared current-main follow-up chain
 
-These prompts are intentionally staged behind `RQ111` -> `RQ112` so the repository does not jump from "screen is blank" straight into broad semantic refactors without first proving visibility and refresh truth.
+These prompts are intentionally staged behind `RQ112` -> `RQ113` so the repository does not jump from a reconciled supplier family straight into broader provenance/seed refactors without first proving the visible numbers and their basis.
 
 | Rank | Prompt | Action | Why it is next |
 |---|---|---|---|
-| G1 | RQ112 | Reconcile one pilot family's summary vs detail/export truth. | Once data is visible and refreshed, the next correctness question is whether headline values match drilldown/export. |
-| G2 | RQ113 | Expose family-level freshness/provenance truth. | After numeric reconciliation, the operator still needs to know which generation/fallback basis produced the numbers. |
-| G3 | RQ114 | Build deterministic reusable seed pack + expected-output manifest. | This makes later reliability work repeatable instead of prompt-local or fixture-local. |
+| G1 | RQ113 | Expose family-level freshness/provenance truth. | Once summary/detail/export reconcile, the next correctness question is which generation/fallback basis produced the numbers. |
+| G2 | RQ114 | Build deterministic reusable seed pack + expected-output manifest. | This makes later reliability work repeatable instead of prompt-local or fixture-local. |
+| G3 | RQ115 | Isolate the dashboard seeded-data proof. | RQ110 explicitly left the dashboard as the least isolated screen family. |
+| G4 | RQ116 | Prove Pulse queued/sent/disabled/failed states. | RQ109 added the delivery path but did not exercise live SMTP or a complete receipt contract. |
+| G5 | RQ117 | Prove forecast/observed pairing availability. | RQ108 remains fail-closed when the observed window is missing or stale. |
+| G6 | RQ118/RQ119 | Close residual dataScope lineage gaps. | RQ05/RQ06 documented, but did not fix, the issues-handler and dual-origin families. |
+| G7 | RQ120 | Surface trust metadata in the first proven pilot UI. | Backend fields are not useful evidence if the operator cannot see their meaning. |
 | G4 | RQ115 | Isolate the dashboard seeded-data proof. | RQ110 explicitly left the dashboard as the least isolated screen family. |
 | G5 | RQ116 | Prove Pulse queued/sent/disabled/failed states. | RQ109 added the delivery path but did not exercise live SMTP or a complete receipt contract. |
 | G6 | RQ117 | Prove forecast/observed pairing availability. | RQ108 remains fail-closed when the observed window is missing or stale. |
@@ -280,7 +284,7 @@ The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and o
 
 - Backend CI: no current READY (`BCI10` DONE).
 - Release truth: no current READY (`STAB14`/`STAB15` DONE).
-- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` DONE; `RQ111` DONE; `RQ112` READY; `RQ113`-`RQ120` WAITING behind their named dependencies/owner gates.
+- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` DONE; `RQ111` DONE; `RQ112` DONE; `RQ113` READY; `RQ114`-`RQ120` WAITING behind their named dependencies/owner gates.
 - Connector runtime: no current READY (`QDB09` DONE); `QDB07` remains WAITING behind release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.

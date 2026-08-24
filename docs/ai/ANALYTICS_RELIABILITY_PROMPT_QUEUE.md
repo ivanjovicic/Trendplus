@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ112` is `IN_PROGRESS`; continue it as the active owner task, then promote the staged `WAITING` chain)
+Current READY prompt: `RQ113` (`RQ112` is `DONE`; claim `RQ113` next if you continue the analytics reliability lane)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -42,8 +42,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ109 | DONE | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
 | RQ110 | DONE | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | DONE | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
-| RQ112 | IN_PROGRESS | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
-| RQ113 | WAITING | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
+| RQ112 | DONE | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
+| RQ113 | READY | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 | RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
 | RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
@@ -1450,7 +1450,7 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
 
 ## RQ112 - Reconcile pilot analytics summary values against detail/export on the first proven family
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ111` is `DONE`
 Priority: P1
 Type: backend/tests/docs
@@ -1501,6 +1501,28 @@ After `RQ110` and `RQ111`, a pilot analytics screen may be non-empty and freshly
 4. Do not let dropped rows, hidden unknown buckets, stale cached totals, or unit conversions create a trusted-looking headline number that the underlying surface cannot defend.
 5. Keep the fix inside one family; if a second family shows the same failure, record it as follow-up evidence rather than broadening this prompt silently.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: reconciled the supplier decision family so summary metrics, detail sections, and export payload rows all match the same authoritative seeded basis.
+- Changed files:
+  - `Api.Tests/AnalyticsReportsContractTests.cs`
+  - `docs/qa/ANALYTICS_SUPPLIER_SUMMARY_DETAIL_RECONCILIATION_2026-08-24.md`
+  - `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-08-24-RQ112-evidence.md`
+- Checks run: `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `git diff --check`; `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~AnalyticsReportsContractTests|FullyQualifiedName~SupplierNegotiationPackReportTests|FullyQualifiedName~SupplierDecisionHubContractTests"`
+- Checks not run: full solution build/test; live smoke / production proof
+- Run log: `.ai/runs/2026-08-24-RQ112-evidence.md`
+- Main commit SHA: `42b6b38691d46e44c67ba0e5c36a21427755d09a`
+- Main verification: `git merge-base --is-ancestor 42b6b38691d46e44c67ba0e5c36a21427755d09a origin/main -> ancestor=true`
+- Missed: no intentional denominator split was needed for the first proven family
+- Evidence state: synchronized
+- Delivery mode: main delivered
+- Follow-up: `RQ113`
+- Residual risk: other analytics families still need their own staged reconciliation proofs
+
 ### Tests
 
 - `git diff --check`
@@ -1524,7 +1546,7 @@ After `RQ110` and `RQ111`, a pilot analytics screen may be non-empty and freshly
 
 ## RQ113 - Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference
 
-Status: WAITING
+Status: READY
 Ready after: `RQ112` is `DONE`
 Priority: P1
 Type: backend/frontend-contract/tests
