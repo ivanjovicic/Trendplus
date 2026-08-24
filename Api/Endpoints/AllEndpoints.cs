@@ -1813,6 +1813,9 @@ public static class AllEndpoints
                     sezonaId,
                     storeId,
                     dataScope = normalizedDataScope,
+                    provenanceBasis = snapshotPathUsed && activeBatchId.HasValue
+                        ? $"live_query/snapshot_cost_batch_{activeBatchId.Value}"
+                        : "live_query",
                     suppliers = suppliersWithRecommendation,
                     totals,
                     dataQuality,

@@ -112,6 +112,85 @@ describe("analytics trust-state header proof", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 
+  it("Supplier sales exposes provenance basis when data loads successfully", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      generatedAt: "2026-07-01T08:00:00Z",
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      dataWindowFrom: "2026-06-01T00:00:00Z",
+      dataWindowTo: "2026-06-30T23:59:59Z",
+      sezonaId: null,
+      storeId: null,
+      dataScope: "all",
+      provenanceBasis: "live_query",
+      suppliers: [
+        {
+          dobavljacId: 1,
+          dobavljacNaziv: "Alfa",
+          isUnknown: false,
+          preNivelacijePromet: 0,
+          preNivelacijeKolicina: 0,
+          posleNivelacijePromet: 10000,
+          posleNivelacijeKolicina: 5,
+          ukupanPromet: 10000,
+          ukupnaKolicina: 5,
+          previousPeriodRevenue: 8000,
+          previousPeriodUnits: 4,
+          brojArtikalaSaNivelacijom: 0,
+          brojArtikalaUkupno: 2,
+          revenueWithCost: 10000,
+          estimatedCostRevenue: 0,
+          marginContribution: 4000,
+          marginDataCoveragePct: 100,
+          fallbackCostCoveragePct: 0,
+          marginPct: 40,
+          totalCost: 6000,
+          popRevenueChangePct: 25,
+          popUnitsChangePct: 25,
+          prePostNivelacijaRevenueImpactPct: null,
+          prePostNivelacijaUnitsImpactPct: null,
+          prePostNivelacijaRevenueCoveragePct: null,
+          recommendation: {
+            status: "maintain",
+            label: "Maintain",
+            summary: "Stabilan partner.",
+            confidencePct: 80,
+            reliabilityPct: 75,
+            dataQualityStatus: "good",
+            reasonCodes: ["stable_margin"],
+          },
+          footwearBreakdown: [],
+        },
+      ],
+      totals: {
+        ukupanPromet: 10000,
+        ukupnaKolicina: 5,
+        marginContribution: 4000,
+        marginPct: 40,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "good",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+      sezone: [],
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expect(await screen.findByText("Osnova generisanja")).toBeInTheDocument();
+    expect(screen.getByText("live_query")).toBeInTheDocument();
+  });
+
   it("Analytics Actions mounts the real AnalyticsTrustHeader", async () => {
     const analyticsApi = await import("../../services/analyticsApi");
     vi.mocked(analyticsApi.getAnalyticsActions).mockResolvedValue({

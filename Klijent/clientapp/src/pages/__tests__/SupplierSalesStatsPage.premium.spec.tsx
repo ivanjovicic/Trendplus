@@ -28,6 +28,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       fromDate: "2026-06-01",
       toDate: "2026-06-30",
       generatedAt: "2026-07-01T08:00:00Z",
+      provenanceBasis: "live_query",
       sezone: [],
       suppliers: [
         {
@@ -132,6 +133,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       generatedAt: "2026-07-01T08:00:00Z",
       dataWindowFrom: "2024-01-01T00:00:00Z",
       dataWindowTo: "2026-06-30T23:59:59Z",
+      provenanceBasis: "live_query",
       sezone: [],
       suppliers: [],
       totals: {

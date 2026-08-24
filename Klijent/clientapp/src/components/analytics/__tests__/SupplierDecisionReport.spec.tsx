@@ -48,6 +48,7 @@ function buildPayload() {
       { key: "requestedDataset", label: "Traženi dataset", value: "90d" },
       { key: "effectiveDataset", label: "Efektivni dataset", value: "90d" },
       { key: "effectivePeriodLabel", label: "Efektivni period", value: "Poslednjih 90 dana" },
+      { key: "provenanceBasis", label: "Osnova generisanja", value: "mv_supplier_decision_score_cache_90d" },
       { key: "usedFallback", label: "Korišćen fallback", value: false },
       { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: true },
       { key: "confidencePct", label: "Sigurnost signala", value: 83 },
@@ -70,6 +71,7 @@ describe("SupplierDecisionReport", () => {
     expect(screen.getByText("Korišćen fallback dataset")).toBeInTheDocument();
     expect(screen.getByText("usedFallback=true")).toBeInTheDocument();
     expect(screen.getByText("Finalni savet")).toBeInTheDocument();
+    expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
   });
 
   it("copies meeting summary with requested button label", async () => {

@@ -1681,6 +1681,7 @@ public static class SupplierDecisionHubEndpoints
                 new("lastRefreshAtUtc", "Poslednje osveženje", (refreshInfo?.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc)?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", refreshInfo?.DataFreshnessStatus ?? string.Empty),
                 new("dataQualityStatus", "Kvalitet podataka", trust?.DataCoverageStatus ?? "insufficient_data"),
+                new("provenanceBasis", "Osnova generisanja", trust?.ProvenanceBasis ?? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))),
                 new("usedFallback", "Korišćen fallback", (trust?.UsedFallback ?? false).ToString()),
                 new("recommendationAllowed", "Preporuka dozvoljena", (trust?.RecommendationAllowed ?? false).ToString()),
                 new("methodology", "Metodologija", methodologySummary)
@@ -2507,6 +2508,7 @@ SELECT
             180 => "window_180d",
             _ => "all_history"
         };
+        var provenanceBasis = SelectDecisionScoreMv(windowDays);
         var fallbackReasonCode = (string?)null;
         var fallbackReason = (string?)null;
         if (usedFallback)
@@ -2552,7 +2554,8 @@ SELECT
             windowDays,
             filters.DataScope,
             coverage,
-            BuildDecisionScoreDataNote(filters));
+            BuildDecisionScoreDataNote(filters),
+            provenanceBasis);
     }
 
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildPrecomputedSupplierRowsSql(
@@ -3614,7 +3617,8 @@ public sealed record ScorecardTrustMetadata(
     int WindowDays,
     string DataScope,
     string Coverage,
-    string? DataNote)
+    string? DataNote,
+    string? ProvenanceBasis = null)
 {
     [JsonPropertyName("requestedPeriodFrom")]
     public DateTime RequestedPeriodFrom => RequestedFrom;

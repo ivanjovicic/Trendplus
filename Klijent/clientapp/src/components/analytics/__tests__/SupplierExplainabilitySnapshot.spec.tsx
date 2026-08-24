@@ -30,6 +30,7 @@ function buildPayload() {
       { key: "requestedDataset", label: "Traženi dataset", value: "30d" },
       { key: "effectiveDataset", label: "Efektivni dataset", value: "90d" },
       { key: "effectivePeriodLabel", label: "Efektivni period", value: "Poslednjih 90 dana" },
+      { key: "provenanceBasis", label: "Osnova generisanja", value: "mv_supplier_decision_score_cache_90d" },
       { key: "usedFallback", label: "Korišćen fallback", value: true },
       { key: "fallbackReason", label: "Razlog fallback-a", value: "Nedovoljno transakcija u 30d opsegu" },
       { key: "fallbackReasonCode", label: "Kod fallback-a", value: "fallback_90d" },
@@ -56,5 +57,6 @@ describe("SupplierExplainabilitySnapshot", () => {
     expect(within(snapshot).getByText("Supplier explainability snapshot")).toBeInTheDocument();
     expect(within(snapshot).getByText(/Alpha/)).toBeInTheDocument();
     expect(within(snapshot).getByText("Poslednjih 90 dana")).toBeInTheDocument();
+    expect(within(snapshot).getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
   });
 });

@@ -534,6 +534,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       refreshIsRunning: refreshStatus?.isRunning ?? false,
       refreshCurrentStep: refreshStatus?.currentStep ?? null,
       dataSource: `Supplier decision scorecard (request: ${trustMetadata?.requestedDataset ?? "n/a"}, effective: ${trustMetadata?.effectiveDataset ?? trustMetadata?.coverage ?? "unknown"}, scope: ${trustMetadata?.dataScope ?? activeFilters.dataScope ?? "all"})`,
+      provenanceBasis: trustMetadata?.provenanceBasis ?? null,
       dataQualityStatus: trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data"),
       dataQualitySummary: {
         missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
@@ -843,6 +844,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           refreshIsRunning={refreshStatus?.isRunning ?? false}
           refreshCurrentStep={refreshStatus?.currentStep ?? null}
           dataSource="Supplier decision materialized view"
+          provenanceBasis={trustMetadata?.provenanceBasis ?? null}
           dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
           dataQualitySummary={{
             missingSupplierCount: trustMetadata?.missingSupplierNameCount ?? null,
@@ -879,6 +881,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             requestedDataset={trustMetadata?.requestedDataset ?? null}
             effectiveDataset={trustMetadata?.effectiveDataset ?? null}
             effectivePeriodLabel={trustMetadata?.effectivePeriodLabel ?? null}
+            provenanceBasis={trustMetadata?.provenanceBasis ?? null}
             dataQualityStatus={trustMetadata?.dataCoverageStatus ?? (trustMetadata?.recommendationAllowed ? "good" : "insufficient_data")}
             recommendationAllowed={trustMetadata?.recommendationAllowed ?? null}
             usedFallback={trustMetadata?.usedFallback ?? false}

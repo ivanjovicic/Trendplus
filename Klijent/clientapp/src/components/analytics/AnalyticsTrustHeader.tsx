@@ -32,6 +32,7 @@ type AnalyticsTrustHeaderProps = {
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
+  provenanceBasis?: string | null;
   usedFallback?: boolean;
   fallbackReason?: string | null;
   fallbackReasonCode?: string | null;
@@ -143,6 +144,7 @@ export default function AnalyticsTrustHeader({
   requestedDataset,
   effectiveDataset,
   effectivePeriodLabel,
+  provenanceBasis,
   usedFallback,
   fallbackReason,
   fallbackReasonCode,
@@ -161,6 +163,7 @@ export default function AnalyticsTrustHeader({
     ? `${normalizedRequestedDataset} -> ${normalizedEffectiveDataset}`
     : (normalizedEffectiveDataset ?? normalizedRequestedDataset);
   const effectiveLabel = effectivePeriodLabel?.trim() || null;
+  const provenanceLabel = provenanceBasis?.trim() || null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = recommendationAllowed === false && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
@@ -205,6 +208,12 @@ export default function AnalyticsTrustHeader({
             {dataSource?.trim() || "Izvor podataka nije naveden"}
           </strong>
         </div>
+        {provenanceLabel ? (
+          <div className="ath-meta-item">
+            <span className="ath-meta-key">Osnova generisanja</span>
+            <strong className="ath-meta-value">{provenanceLabel}</strong>
+          </div>
+        ) : null}
         {hasDataset ? (
           <div className="ath-meta-item">
             <span className="ath-meta-key">Dataset</span>

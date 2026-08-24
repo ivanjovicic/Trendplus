@@ -296,6 +296,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("bool UsedFallback", endpoint);
         Assert.Contains("string? FallbackReasonCode", endpoint);
         Assert.Contains("DateTime? LastRefreshAtUtc", endpoint);
+        Assert.Contains("string? ProvenanceBasis", endpoint);
         Assert.Contains("int RowCount", endpoint);
         Assert.Contains("int IgnoredRowCount", endpoint);
         Assert.Contains("int ZeroRevenueRowsExcludedCount", endpoint);

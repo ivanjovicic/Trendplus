@@ -165,6 +165,7 @@ export interface SupplierSalesStatsResponse {
   sezonaId: number | null;
   storeId: number | null;
   dataScope?: string | null;
+  provenanceBasis?: string | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
   dataQuality: SupplierSalesDataQuality;

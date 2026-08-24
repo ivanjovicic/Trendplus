@@ -117,6 +117,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.Equal("good", response.TrustMetadata!.DataCoverageStatus);
         Assert.True(response.TrustMetadata.RecommendationAllowed);
         Assert.False(response.TrustMetadata.UsedFallback);
+        Assert.Equal("mv_supplier_decision_score_cache_90d", response.TrustMetadata.ProvenanceBasis);
         Assert.True(response.Meta!.Success);
         Assert.Equal("good", response.Meta.DataQualityStatus);
     }
@@ -241,6 +242,7 @@ public sealed class SupplierDecisionHubContractTests
         Assert.True(report.Meta.IsPartial);
         Assert.Equal("STALE_REFRESH", report.Meta.WarningCode);
         Assert.Equal("warning", report.Meta.DataQualityStatus);
+        Assert.Contains(report.Payload.Metadata, item => item.Key == "provenanceBasis" && item.Value == "mv_supplier_decision_score_cache_90d");
     }
 
     [Fact]

@@ -184,6 +184,7 @@ export default function SupplierConsolidatedPage() {
         refreshIsRunning={trustPayload?.refreshIsRunning ?? false}
         refreshCurrentStep={trustPayload?.refreshCurrentStep ?? null}
         dataSource={trustPayload?.dataSource ?? "Supplier decision materialized view"}
+        provenanceBasis={trustPayload?.provenanceBasis ?? null}
         dataQualityStatus={trustPayload?.dataQualityStatus ?? null}
         dataQualitySummary={trustPayload?.dataQualitySummary}
         requestedDataset={trustPayload?.requestedDataset ?? null}

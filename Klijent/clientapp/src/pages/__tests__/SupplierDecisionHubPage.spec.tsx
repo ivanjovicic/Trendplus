@@ -173,6 +173,7 @@ describe("SupplierDecisionHubPage", () => {
       requestedDataset: "30d",
       effectiveDataset: "30d",
       effectivePeriodLabel: "Poslednjih 30 dana",
+      provenanceBasis: "mv_supplier_decision_score_cache_90d",
       dataCoverageStatus: "insufficient_data",
       usedFallback: false,
       fallbackReason: null,
@@ -244,6 +245,7 @@ describe("SupplierDecisionHubPage", () => {
       requestedDataset: "30d",
       effectiveDataset: "90d",
       effectivePeriodLabel: "Poslednjih 90 dana",
+      provenanceBasis: "mv_supplier_decision_score_cache_90d",
       dataCoverageStatus: "warning",
       usedFallback: true,
       fallbackReason: "no_data_30d",
@@ -300,6 +302,7 @@ describe("SupplierDecisionHubPage", () => {
 
     expect(await screen.findByText(/Prikazan je pomoćni dataset: Poslednjih 90 dana. Finalna preporuka je blokirana./i)).toBeInTheDocument();
     expect(screen.getAllByText("Pomoćni signal").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("mv_supplier_decision_score_cache_90d").length).toBeGreaterThan(0);
   });
   it("keeps missing supplier confidence unavailable instead of inventing a 0% value", async () => {
     installFetchMock((url) => ({

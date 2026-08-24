@@ -74,6 +74,7 @@ export type ScorecardTrustMetadata = {
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
+  provenanceBasis?: string | null;
   dataCoverageStatus?: string | null;
   dataScope?: string | null;
   coverage?: string | null;

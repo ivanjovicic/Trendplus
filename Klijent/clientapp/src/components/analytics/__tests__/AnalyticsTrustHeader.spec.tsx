@@ -15,6 +15,7 @@ function renderHeader(overrides: Partial<ComponentProps<typeof AnalyticsTrustHea
         lastRefreshAt="2026-07-01T08:15:00Z"
         dataFreshnessStatus="fresh"
         dataSource="analytics_daily_summary"
+        provenanceBasis="mv_analytics_daily_summary"
         dataQualityStatus="good"
         mode="recommendation"
         dataQualitySummary={{
@@ -40,6 +41,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText("Podaci deluju pouzdano")).toBeInTheDocument();
     expect(screen.getByText("Sveže")).toBeInTheDocument();
     expect(screen.getByText("analytics_daily_summary")).toBeInTheDocument();
+    expect(screen.getByText("mv_analytics_daily_summary")).toBeInTheDocument();
 
     const summary = screen.getByText("Sažetak kvaliteta podataka").closest(".ath-summary");
     expect(summary).not.toBeNull();
@@ -70,12 +72,14 @@ describe("AnalyticsTrustHeader", () => {
       fallbackReasonCode: "NO_WINDOW_ROWS",
       dataQualityStatus: "warning",
       dataFreshnessStatus: "stale",
+      provenanceBasis: "mv_supplier_decision_score_cache_90d",
     });
 
     expect(screen.getByText("Postoje upozorenja")).toBeInTheDocument();
     expect(screen.getByText("Zastarelo")).toBeInTheDocument();
     expect(screen.getByText("requested_window -> all_time")).toBeInTheDocument();
     expect(screen.getByText("All-time fallback")).toBeInTheDocument();
+    expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
     expect(screen.getByText(/Fallback aktiviran\./i)).toBeInTheDocument();
     expect(screen.getByText(/NO_WINDOW_ROWS/i)).toBeInTheDocument();
     expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();

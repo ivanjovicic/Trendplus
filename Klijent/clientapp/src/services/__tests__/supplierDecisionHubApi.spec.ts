@@ -31,6 +31,7 @@ describe("supplierDecisionHubApi trust metadata mapping", () => {
         requestedDataset: "all_history",
         effectiveDataset: "all_history",
         effectivePeriodLabel: "Neograniceno",
+        provenanceBasis: "mv_supplier_decision_score_cache",
         dataCoverageStatus: "good",
         usedFallback: false,
         rowCount: 1,

@@ -942,6 +942,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       lastRefreshAt: data.generatedAt ?? null,
       dataFreshnessStatus: "unknown",
       dataSource: `Supplier sales stats (scope: ${activeDataScope})`,
+      provenanceBasis: data.provenanceBasis ?? null,
       dataQualityStatus: headerDataQualityStatus,
       recommendationAllowed: headerDataQualityStatus === "good" || headerDataQualityStatus === "warning",
       recommendationNote: "Pregled je canonical decision surface za dobavljače. Preporuke dolaze iz backenda.",
@@ -1307,6 +1308,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           lastRefreshAt={data?.generatedAt ?? null}
           dataFreshnessStatus="unknown"
           dataSource="Supplier decision materialized view"
+          provenanceBasis={data?.provenanceBasis ?? null}
           dataQualityStatus={headerDataQualityStatus ?? null}
           mode="recommendation"
           recommendationNote="Ovo je glavni recommendation pogled. Skorkarta je dodatni signal u odvojenom tabu."

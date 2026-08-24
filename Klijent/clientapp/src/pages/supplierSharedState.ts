@@ -38,6 +38,7 @@ export type SupplierTrustHeaderPayload = {
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
+  provenanceBasis?: string | null;
   usedFallback?: boolean;
   fallbackReason?: string | null;
   fallbackReasonCode?: string | null;

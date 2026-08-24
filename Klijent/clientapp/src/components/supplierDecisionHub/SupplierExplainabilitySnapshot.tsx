@@ -10,6 +10,7 @@ type SupplierExplainabilitySnapshotProps = {
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
+  provenanceBasis?: string | null;
   dataQualityStatus?: string | null;
   recommendationAllowed?: boolean | null;
   usedFallback?: boolean | null;
@@ -80,6 +81,7 @@ export default function SupplierExplainabilitySnapshot({
   requestedDataset,
   effectiveDataset,
   effectivePeriodLabel,
+  provenanceBasis,
   dataQualityStatus,
   recommendationAllowed,
   usedFallback,
@@ -99,6 +101,7 @@ export default function SupplierExplainabilitySnapshot({
     ? `${requestedLabel} → ${effectiveLabel}`
     : (effectiveLabel ?? requestedLabel);
   const periodText = periodLabel?.trim() || "Nedostupan";
+  const provenanceText = provenanceBasis?.trim() || null;
   const qualityLabel = normalizeQualityLabel(dataQualityStatus);
 
   const cards = [
@@ -140,6 +143,7 @@ export default function SupplierExplainabilitySnapshot({
     { label: "Period", value: periodText },
     { label: "Dataset", value: datasetLabel ?? "Nedostupan", secondary: effectivePeriodLabel?.trim() || null },
     { label: "Osveženje", value: lastRefreshAt ? formatDateTime(lastRefreshAt, "Nedostupno") : "Nedostupno" },
+    { label: "Osnova generisanja", value: provenanceText ?? "Nedostupna" },
   ];
 
   return (

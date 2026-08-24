@@ -22,6 +22,7 @@ type ScorecardTrustMetadata = {
   requestedDataset?: string | null;
   effectiveDataset?: string | null;
   effectivePeriodLabel?: string | null;
+  provenanceBasis?: string | null;
   usedFallback?: boolean;
   fallbackReason?: string | null;
   fallbackReasonCode?: string | null;
@@ -355,6 +356,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "reliabilityPct", label: "Pouzdanost signala", value: avgReliabilityPct },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
+    { key: "provenanceBasis", label: "Osnova generisanja", value: trust?.provenanceBasis ?? null },
     { key: "usedFallback", label: "Korišćen fallback", value: trust?.usedFallback ?? false },
     { key: "fallbackReason", label: "Razlog fallback-a", value: trust?.fallbackReason ?? null },
     { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: trust?.recommendationAllowed ?? false },

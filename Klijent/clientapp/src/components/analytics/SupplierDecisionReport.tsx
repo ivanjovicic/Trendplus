@@ -183,6 +183,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     .filter(Boolean) ?? [];
   const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
   const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
+  const provenanceBasis = metaValue(payload, "provenanceBasis");
   const usedFallback = metaBoolean(payload, "usedFallback");
   const fallbackRow = rowEntry(payload, "Header", "Korišćen fallback");
 
@@ -255,6 +256,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           requestedDataset={metaValue(payload, "requestedDataset")}
           effectiveDataset={metaValue(payload, "effectiveDataset") ?? scalarText(effectiveDatasetRow?.value)}
           effectivePeriodLabel={effectivePeriodLabel}
+          provenanceBasis={provenanceBasis}
           dataQualityStatus={metaDQ}
           recommendationAllowed={metaBoolean(payload, "recommendationAllowed")}
           usedFallback={usedFallback}

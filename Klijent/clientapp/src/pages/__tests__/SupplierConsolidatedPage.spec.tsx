@@ -16,6 +16,7 @@ vi.mock("../SupplierSalesStatsPage", () => ({
         requestedDataset: "30d",
         effectiveDataset: "90d",
         effectivePeriodLabel: "Poslednjih 90 dana",
+        provenanceBasis: "mv_supplier_decision_score_cache_90d",
         usedFallback: true,
         fallbackReason: "Trazeni 30d nema zaseban scorecard dataset.",
         fallbackReasonCode: "no_mv_30d",
@@ -54,6 +55,7 @@ describe("SupplierConsolidatedPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Dataset")).toBeInTheDocument();
       expect(screen.getByText(/30d\s*(→|->)\s*90d/)).toBeInTheDocument();
+      expect(screen.getByText("mv_supplier_decision_score_cache_90d")).toBeInTheDocument();
       expect(screen.getByText(/Fallback aktiviran\./)).toBeInTheDocument();
     });
   });
