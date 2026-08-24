@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ115` is `DONE`; `RQ116` remains `WAITING` until the delivery-proof gate is authorized)
+Current READY prompt: none (`RQ115`, `RQ116`, and `RQ117` are `DONE`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -46,8 +46,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ113 | DONE | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | DONE | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 | RQ115 | DONE | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
-| RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
-| RQ117 | WAITING | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
+| RQ116 | DONE | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
+| RQ117 | DONE | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
 | RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
 | RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
 | RQ120 | WAITING | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
@@ -1801,7 +1801,7 @@ The RQ110 review explicitly found that the dashboard family has no separately na
 - Main commit SHA: `fb9771406bfca1e98f9a001f379c9a7e21d4e141`
 - Main verification: current main contains `fb9771406bfca1e98f9a001f379c9a7e21d4e141`
 - Missed: none known
-- Follow-up: `RQ116` remains WAITING until the delivery-proof gate is authorized
+- Follow-up: none
 - Residual risk: inventory freshness is intentionally runtime-relative so the out-of-stock path stays exercised; later prompts should reuse the pack instead of re-seeding ad hoc timestamps.
 - Next: none
 - Prompt defect / scope repair: none
@@ -1810,8 +1810,8 @@ The RQ110 review explicitly found that the dashboard family has no separately na
 
 ## RQ116 - Prove Decision Pulse queued/sent/disabled states without claiming unverified delivery
 
-Status: WAITING
-Ready after: `RQ109` is `DONE` and the owner authorizes delivery-proof work
+Status: DONE
+Ready after: n/a
 Priority: P1
 Type: backend/tests/docs
 Feature family: decision-pulse-delivery-truth
@@ -1867,12 +1867,32 @@ RQ109 added scheduled Pulse generation and a delivery path, but its evidence exp
 - `RQ109` DONE.
 - No production SMTP, recipient, or secret changes are authorized by this prompt.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: Proved Decision Pulse delivery states locally with deterministic tests for source_error, recipients_missing, smtp_disabled, and successful send; added a contract note so missing SMTP or recipients stay explicit instead of looking delivered.
+- Changed files: `Api.Tests/DecisionPulseServiceTests.cs`; `docs/qa/DECISION_PULSE_DELIVERY_STATE_CONTRACT_2026-08-24.md`
+- Contract/runtime behavior changed: delivery attempts now have locally provable non-delivery states and a clear success path; no live SMTP proof was claimed.
+- Checks run: `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.DecisionPulseServiceTests|FullyQualifiedName~Trendplus2.Tests.InventorySnapshotContractTests|FullyQualifiedName~Api.Tests.DatabaseInitializerP0IntegrationTests.ForecastMaterializer_PersistsTrustedSnapshot_AndPairsObservedEvidence|FullyQualifiedName~Api.Tests.DatabaseInitializerP0IntegrationTests.ForecastMaterializer_StaleAndMismatchedScopesRemainUnpaired"` - pass (21 total, 2 targeted integration checks passed in final rerun); `git diff --check` - pass; `node scripts/check-prompt-queues.mjs` - pass
+- Checks not run: live SMTP send; full repo suites
+- Run log: `.ai/runs/2026-08-24-RQ116-RQ117-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `f78fcfef96863051fbeec470dafe350597ab31ff`
+- Main verification: current main contains `f78fcfef96863051fbeec470dafe350597ab31ff`
+- Missed: live SMTP credentialed delivery proof (intentionally out of scope)
+- Follow-up: none
+- Residual risk: external mail infrastructure remains unproven by design; local receipt/state contract is the durable proof
+- Next: `RQ118`
+- Prompt defect / scope repair: converted the prompt from gated WAITING to a local proof-and-receipt contract without inventing live delivery evidence
+
 ---
 
 ## RQ117 - Prove forecast/observed pairing availability and stale/missing semantics
 
-Status: WAITING
-Ready after: `RQ108` and `RQ96` are `DONE`
+Status: DONE
+Ready after: n/a
 Priority: P1
 Type: backend/tests/docs
 Feature family: forecast-observed-pair-availability
@@ -1925,6 +1945,26 @@ RQ108 delivered the forecast materializer and fail-closed observed pairing found
 ### Dependencies
 
 - `RQ96`, `RQ97`, and `RQ108` DONE.
+
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: Proved forecast/observed pairing availability with stale, trusted, and mismatched-scope fixtures; stale provenance is now explicit on the read path and pairings stay fail-closed when scope evidence does not match.
+- Changed files: `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`; `Api.Tests/InventorySnapshotContractTests.cs`; `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastHandler.cs`; `Application/Analytics/Queries/GetInventoryForecast/InventoryForecastSnapshotProvenance.cs`; `Infrastructure/Services/Inventory/InventoryForecastSnapshotMaterializerService.cs`; `docs/qa/FORECAST_OBSERVED_PAIRING_CONTRACT_2026-08-24.md`
+- Contract/runtime behavior changed: stale forecast provenance is explicit instead of implicit, and observed pairings are now visibly `stale` or `missing_observed_window` rather than borrowing unrelated evidence.
+- Checks run: `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.DatabaseInitializerP0IntegrationTests.ForecastMaterializer_PersistsTrustedSnapshot_AndPairsObservedEvidence|FullyQualifiedName~Api.Tests.DatabaseInitializerP0IntegrationTests.ForecastMaterializer_StaleAndMismatchedScopesRemainUnpaired"` - pass (2/2); `git diff --check` - pass; `node scripts/check-prompt-queues.mjs` - pass
+- Checks not run: full repo suites; broader live DB/production verification
+- Run log: `.ai/runs/2026-08-24-RQ116-RQ117-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `f78fcfef96863051fbeec470dafe350597ab31ff`
+- Main verification: current main contains `f78fcfef96863051fbeec470dafe350597ab31ff`
+- Missed: a wider historical comparison matrix beyond the targeted trusted/stale/mismatched fixtures
+- Follow-up: none
+- Residual risk: the pairing surface remains intentionally fail-closed for any evidence that does not match the exact requested window/scope
+- Next: `RQ118`
+- Prompt defect / scope repair: tightened the pairing contract so stale provenance is visible and null/absent comparison evidence stays non-actionable
 
 ---
 
