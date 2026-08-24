@@ -221,6 +221,126 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReport_ReconcilesSummaryDetailAndExportFromSeededBasis()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m),
+                CreateSupplierRow(2, "Beta", "EXPAND_SELECTIVELY", 74m, 76m, 410000m, 1100m),
+                CreateSupplierRow(3, "Gamma", "PRICE_NEGOTIATE", 63m, 68m, 280000m, 980m)
+            ],
+            0,
+            0,
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters);
+
+        Assert.True(summary.Meta!.Success);
+        Assert.Equal(3, summary.SupplierCount);
+        Assert.Equal(0.64m, summary.FullPriceRevenueShare);
+        Assert.Equal(0.57m, summary.FullPriceSellthrough);
+        Assert.Equal(0.36m, summary.MarkdownRevenueShare);
+        Assert.Equal(0.31m, summary.PreMarkdownMarginPct);
+        Assert.Equal(435000m, summary.CapitalAtRisk);
+        Assert.Equal("Alpha", summary.TopGrowSuppliers[0].SupplierName);
+        Assert.Equal("Gamma", summary.TopRiskSuppliers[0].SupplierName);
+
+        var executiveSummary = Assert.Single(report.Sections.Where(section => section.Key == "executive-summary"));
+        Assert.Equal(3, executiveSummary.RowCount);
+        Assert.Contains(executiveSummary.Rows, row =>
+            string.Equals(Convert.ToString(row["metric"]), "Kandidat za rast", StringComparison.Ordinal) &&
+            string.Equals(Convert.ToString(row["value"]), "Alpha", StringComparison.Ordinal));
+        Assert.Contains(executiveSummary.Rows, row =>
+            string.Equals(Convert.ToString(row["metric"]), "Kapital u riziku", StringComparison.Ordinal) &&
+            string.Equals(Convert.ToString(row["value"]), "435000", StringComparison.Ordinal));
+
+        var topSuppliers = Assert.Single(report.Sections.Where(section => section.Key == "top-suppliers"));
+        Assert.Equal(2, topSuppliers.RowCount);
+        Assert.Collection(topSuppliers.Rows,
+            row =>
+            {
+                Assert.Equal("Alpha", Convert.ToString(row["supplierName"]));
+                Assert.Equal("EXPAND", Convert.ToString(row["recommendation"]));
+                Assert.Equal(520000m, Convert.ToDecimal(row["revenue"]));
+                Assert.Equal(82m, Convert.ToDecimal(row["confidencePct"]));
+                Assert.Equal(84m, Convert.ToDecimal(row["reliabilityPct"]));
+                Assert.Equal("good", Convert.ToString(row["dataQualityStatus"]));
+            },
+            row =>
+            {
+                Assert.Equal("Beta", Convert.ToString(row["supplierName"]));
+                Assert.Equal("EXPAND_SELECTIVELY", Convert.ToString(row["recommendation"]));
+                Assert.Equal(410000m, Convert.ToDecimal(row["revenue"]));
+                Assert.Equal(74m, Convert.ToDecimal(row["confidencePct"]));
+                Assert.Equal(76m, Convert.ToDecimal(row["reliabilityPct"]));
+                Assert.Equal("good", Convert.ToString(row["dataQualityStatus"]));
+            });
+
+        var riskSuppliers = Assert.Single(report.Sections.Where(section => section.Key == "risk-suppliers"));
+        Assert.Equal(1, riskSuppliers.RowCount);
+        Assert.Collection(riskSuppliers.Rows, row =>
+        {
+            Assert.Equal("Gamma", Convert.ToString(row["supplierName"]));
+            Assert.Equal("PRICE_NEGOTIATE", Convert.ToString(row["recommendation"]));
+            Assert.Equal(280000m, Convert.ToDecimal(row["revenue"]));
+            Assert.Equal(63m, Convert.ToDecimal(row["confidencePct"]));
+            Assert.Equal(68m, Convert.ToDecimal(row["reliabilityPct"]));
+        });
+
+        Assert.Contains(report.Rows, row =>
+            string.Equals(row.Section, "KPI", StringComparison.Ordinal) &&
+            string.Equals(row.Item, "Prihod", StringComparison.Ordinal) &&
+            string.Equals(row.Value, "1210000", StringComparison.Ordinal));
+        Assert.Contains(report.Rows, row =>
+            string.Equals(row.Section, "KPI", StringComparison.Ordinal) &&
+            string.Equals(row.Item, "Kapital u riziku", StringComparison.Ordinal) &&
+            string.Equals(row.Value, "435000", StringComparison.Ordinal));
+        Assert.Contains(report.Rows, row =>
+            string.Equals(row.Section, "Top dobavljači", StringComparison.Ordinal) &&
+            string.Equals(row.Item, "Alpha", StringComparison.Ordinal) &&
+            string.Equals(row.Value, "520000", StringComparison.Ordinal) &&
+            string.Equals(row.Secondary, "Signal: EXPAND", StringComparison.Ordinal));
+        Assert.Contains(report.Rows, row =>
+            string.Equals(row.Section, "Rizik", StringComparison.Ordinal) &&
+            string.Equals(row.Item, "Gamma", StringComparison.Ordinal) &&
+            string.Equals(row.Value, "280000", StringComparison.Ordinal) &&
+            string.Equals(row.Secondary, "Signal: PRICE_NEGOTIATE", StringComparison.Ordinal));
+
+        Assert.Equal(report.Rows.Count, report.Payload.Rows.Count);
+        for (var i = 0; i < report.Rows.Count; i++)
+        {
+            var legacy = report.Rows[i];
+            var payload = report.Payload.Rows[i];
+
+            Assert.Equal(legacy.Section, payload.Section);
+            Assert.Equal(legacy.Item, payload.Item);
+            Assert.Equal(legacy.Value, payload.Value);
+            Assert.Equal(legacy.Secondary, payload.Secondary);
+            Assert.Equal(legacy.Note, payload.Note);
+        }
+
+        Assert.True(report.Meta!.Success);
+        Assert.False(report.UsedFallback);
+        Assert.Equal("good", report.DataQualityStatus);
+    }
+
+    [Fact]
     public void SupplierDecisionReportBuilder_ProducesFallbackWarningFor30dRequest()
     {
         var toUtc = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);

@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ112` (`RQ111` is `DONE`; claim `RQ112` next if you continue the analytics reliability lane)
+Current READY prompt: none (`RQ112` is `IN_PROGRESS`; continue it as the active owner task, then promote the staged `WAITING` chain)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -42,7 +42,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ109 | DONE | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
 | RQ110 | DONE | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | DONE | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
-| RQ112 | READY | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
+| RQ112 | IN_PROGRESS | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
 | RQ113 | WAITING | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 | RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
@@ -1450,13 +1450,13 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
 
 ## RQ112 - Reconcile pilot analytics summary values against detail/export on the first proven family
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ111` is `DONE`
 Priority: P1
 Type: backend/tests/docs
 Feature family: analytics-summary-detail-reconciliation
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ112-<agent>.lock.md`
 Commit suggestion: `test(analytics): reconcile pilot summary and detail truth`
 
