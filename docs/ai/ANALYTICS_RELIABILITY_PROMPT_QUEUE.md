@@ -1420,11 +1420,11 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
   - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
   - `MASTER_ROADMAP.md`
   - `.ai/runs/2026-08-24-RQ111-evidence.md`
-- Main commit SHA: pending
-- Main verification: not run
-- Missed: full target-branch delivery still needs a recorded commit SHA before we can call this synchronized on main
+- Main commit SHA: `11610dc2e27bbd486eeb27d797bc1a5d0151ab18`
+- Main verification: `git merge-base --is-ancestor 11610dc2e27bbd486eeb27d797bc1a5d0151ab18 origin/main -> ancestor=true`
+- Missed: no additional miss inside the RQ111 acceptance scope; `RQ112` remains the next queued follow-up
 - Evidence state: synchronized
-- Delivery mode: local until commit SHA is recorded
+- Delivery mode: main delivered
 - Follow-up: `RQ112`
 - Residual risk: the refreshed dashboard proof is still focused on the first proven family; other families remain staged behind their own prompts
 
