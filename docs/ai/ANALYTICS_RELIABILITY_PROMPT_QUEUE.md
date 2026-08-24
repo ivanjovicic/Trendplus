@@ -1798,8 +1798,8 @@ The RQ110 review explicitly found that the dashboard family has no separately na
 - Run log: `.ai/runs/2026-08-24-RQ115-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: main
-- Main commit SHA: pending final docs commit
-- Main verification: current main contains `53adf409e617aacc69449ecfa1a8939b2307bd7d`
+- Main commit SHA: `fb9771406bfca1e98f9a001f379c9a7e21d4e141`
+- Main verification: current main contains `fb9771406bfca1e98f9a001f379c9a7e21d4e141`
 - Missed: none known
 - Follow-up: `RQ116` remains WAITING until the delivery-proof gate is authorized
 - Residual risk: inventory freshness is intentionally runtime-relative so the out-of-stock path stays exercised; later prompts should reuse the pack instead of re-seeding ad hoc timestamps.
