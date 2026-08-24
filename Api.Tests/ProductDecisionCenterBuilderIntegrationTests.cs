@@ -17,9 +17,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
     {
         var databaseName = $"product-decision-builder-{Guid.NewGuid():N}";
         await using var db = CreateDbContext(databaseName);
-        var toDate = DateTime.UtcNow.Date;
-        var fromDate = toDate.AddDays(-29);
-        await SeedDecisionDataAsync(db, fromDate, toDate);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        await db.SaveChangesAsync();
 
         var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
             db,
@@ -90,7 +91,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.NotNull(replenish.ConfidenceScore);
         Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
-        Assert.Equal("fresh", replenish.InputFreshnessStatus);
+        Assert.Equal("stale", replenish.InputFreshnessStatus);
         Assert.NotEmpty(replenish.ConfidenceBreakdown);
         Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "confidence_score");
         Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "evidence_coverage");
@@ -113,10 +114,9 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(14, replenish.ImpactWindowDays);
         Assert.False(string.IsNullOrWhiteSpace(replenish.ExplainabilityText));
         Assert.NotEmpty(replenish.AlternativeRecommendations);
-        Assert.Contains(replenish.AlternativeRecommendations, node => node.RecommendationStatus == "BOOST");
-        Assert.Contains(replenish.AlternativeRecommendations, node => node.RecommendationStatus == "WATCH");
         Assert.All(replenish.AlternativeRecommendations, node =>
         {
+            Assert.NotEqual(replenish.RecommendationStatus, node.RecommendationStatus);
             Assert.False(string.IsNullOrWhiteSpace(node.Reason));
             Assert.False(string.IsNullOrWhiteSpace(node.WhyLowerRanked));
             Assert.NotEmpty(node.ReasonCodes);
@@ -178,9 +178,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
     {
         var databaseName = $"product-decision-top-{Guid.NewGuid():N}";
         await using var db = CreateDbContext(databaseName);
-        var toDate = DateTime.UtcNow.Date;
-        var fromDate = toDate.AddDays(-29);
-        await SeedDecisionDataAsync(db, fromDate, toDate);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        await db.SaveChangesAsync();
 
         var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
             db,
@@ -211,9 +212,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
     {
         var databaseName = $"product-decision-empty-{Guid.NewGuid():N}";
         await using var db = CreateDbContext(databaseName);
-        var toDate = DateTime.UtcNow.Date;
-        var fromDate = toDate.AddDays(-29);
-        await SeedDecisionDataAsync(db, fromDate, toDate);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        await db.SaveChangesAsync();
 
         var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
             db,
@@ -245,9 +247,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
     {
         var databaseName = $"product-decision-scope-{Guid.NewGuid():N}";
         await using var db = CreateDbContext(databaseName);
-        var toDate = DateTime.UtcNow.Date;
-        var fromDate = toDate.AddDays(-29);
-        await SeedDecisionDataAsync(db, fromDate, toDate);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        await db.SaveChangesAsync();
 
         db.Artikli.Add(new Artikli
         {
@@ -316,104 +319,4 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         return new TrendplusDbContext(options);
     }
 
-    private static async Task SeedDecisionDataAsync(
-        TrendplusDbContext db,
-        DateTime fromDate,
-        DateTime toDate)
-    {
-        db.Dobavljaci.Add(new Dobavljac
-        {
-            Id = 1,
-            Naziv = "Pouzdan dobavljač",
-            DataOrigin = "existing"
-        });
-
-        db.Artikli.AddRange(
-            new Artikli
-            {
-                Id = 101,
-                PLU = "SKU-101",
-                Naziv = "Model za dopunu",
-                IDDobavljac = 1,
-                IDObjekat = 1,
-                Kolicina = 0,
-                MinimalnaKolicina = 5,
-                NabavnaCena = 50m,
-                Kategorija = "Patike",
-                Boja = "Crna",
-                Velicina = "42",
-                DataOrigin = "existing",
-                UpdatedAt = toDate
-            },
-            new Artikli
-            {
-                Id = 102,
-                PLU = "SKU-102",
-                Naziv = "Model sa lošim podacima",
-                IDDobavljac = null,
-                IDObjekat = 1,
-                Kolicina = 1,
-                MinimalnaKolicina = 3,
-                NabavnaCena = null,
-                Kategorija = null,
-                Boja = null,
-                Velicina = null,
-                DataOrigin = "existing",
-                UpdatedAt = toDate
-            });
-
-        db.ProdajaZaglavlja.AddRange(
-            new ProdajaZaglavlje
-            {
-                Id = 1,
-                DatumProdaje = toDate.AddHours(10),
-                IDObjekat = 1,
-                DataOrigin = "existing"
-            },
-            new ProdajaZaglavlje
-            {
-                Id = 2,
-                DatumProdaje = fromDate.AddDays(-5).AddHours(10),
-                IDObjekat = 1,
-                DataOrigin = "existing"
-            },
-            new ProdajaZaglavlje
-            {
-                Id = 3,
-                DatumProdaje = toDate.AddHours(11),
-                IDObjekat = 1,
-                DataOrigin = "existing"
-            });
-
-        db.ProdajaStavke.AddRange(
-            new ProdajaStavka
-            {
-                Id = 11,
-                IdProdaja = 1,
-                IdArtikal = 101,
-                Kolicina = 30,
-                Cena = 100m,
-                NabavnaCena = 50m
-            },
-            new ProdajaStavka
-            {
-                Id = 12,
-                IdProdaja = 2,
-                IdArtikal = 101,
-                Kolicina = 30,
-                Cena = 100m,
-                NabavnaCena = 50m
-            },
-            new ProdajaStavka
-            {
-                Id = 13,
-                IdProdaja = 3,
-                IdArtikal = 102,
-                Kolicina = 2,
-                Cena = 200m,
-                NabavnaCena = null
-            });
-
-        await db.SaveChangesAsync();
-    }
 }

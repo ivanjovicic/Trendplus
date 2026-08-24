@@ -582,26 +582,19 @@ public sealed class AnalyticsActionsEndpointsTests
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-            var item = new AnalyticsActionItem
-            {
-                SourceType = sourceType ?? AnalyticsActionConstants.SourceTypes.Inventory,
-                SourceKey = sourceKey ?? $"inventory-{Guid.NewGuid():N}",
-                SourceId = 101,
-                Title = "Proveri dopunu",
-                Description = "Proveriti efekat akcije",
-                RecommendationStatus = "dopuna",
-                Priority = AnalyticsActionConstants.Priorities.P1,
-                Status = status ?? AnalyticsActionConstants.Statuses.Accepted,
-                CreatedAtUtc = new DateTime(2026, 5, 26, 12, 0, 0, DateTimeKind.Utc),
-                UpdatedAtUtc = new DateTime(2026, 5, 26, 12, 0, 0, DateTimeKind.Utc),
-                DueAtUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-                ExpectedImpactRsd = 5000m,
-                OutcomeStatus = outcomeStatus,
-                MeasuredImpactRsd = measuredImpactRsd,
-                OutcomeMeasuredAtUtc = outcomeMeasuredAtUtc,
-                OutcomeNotes = outcomeNotes,
-                MetadataJson = metadataJson,
-            };
+            var now = DateTime.UtcNow;
+            var item = PilotAnalyticsSeedPack.CreateCanonicalAnalyticsActionItem(
+                sourceType: sourceType ?? AnalyticsActionConstants.SourceTypes.Inventory,
+                sourceKey: sourceKey ?? $"inventory-{Guid.NewGuid():N}",
+                status: status ?? AnalyticsActionConstants.Statuses.Accepted,
+                outcomeStatus: outcomeStatus,
+                measuredImpactRsd: measuredImpactRsd,
+                outcomeMeasuredAtUtc: outcomeMeasuredAtUtc,
+                outcomeNotes: outcomeNotes,
+                metadataJson: metadataJson,
+                createdAtUtc: now,
+                updatedAtUtc: now,
+                dueAtUtc: now.AddDays(5));
 
             db.AnalyticsActionItems.Add(item);
             await db.SaveChangesAsync();
