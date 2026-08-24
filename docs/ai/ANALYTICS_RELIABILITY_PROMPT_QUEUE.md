@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ113` (`RQ112` is `DONE`; claim `RQ113` next if you continue the analytics reliability lane)
+Current READY prompt: `RQ114` (`RQ113` is `DONE`; claim `RQ114` next if you continue the analytics reliability lane)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -43,8 +43,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ110 | DONE | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
 | RQ111 | DONE | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
 | RQ112 | DONE | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
-| RQ113 | READY | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
-| RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
+| RQ113 | DONE | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
+| RQ114 | READY | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 | RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
 | RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
 | RQ117 | WAITING | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
@@ -1546,7 +1546,7 @@ After `RQ110` and `RQ111`, a pilot analytics screen may be non-empty and freshly
 
 ## RQ113 - Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference
 
-Status: READY
+Status: DONE
 Ready after: `RQ112` is `DONE`
 Priority: P1
 Type: backend/frontend-contract/tests
@@ -1615,11 +1615,31 @@ Even when a pilot analytics family is non-empty and numerically reconciled, it c
 - `RQ112` DONE.
 - Keep the scope to one family and one provenance contract.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: Added an explicit provenance basis contract for the supplier decision hub and supplier sales stats family, surfaced it in the shared trust header / snapshot UI and report payload metadata, and verified the focused backend/frontend contract tests.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api.Tests/SupplierDecisionHubContractTests.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`, `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`, `Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx`, `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`, `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`, `Klijent/clientapp/src/services/supplierDecisionReport.ts`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `Klijent/clientapp/src/pages/supplierSharedState.ts`, `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierConsolidatedPage.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx`, `Klijent/clientapp/src/services/__tests__/supplierDecisionHubApi.spec.ts`, `docs/qa/ANALYTICS_GENERATION_PROVENANCE_TRUTH_2026-08-24.md`
+- Contract/runtime behavior changed: supplier analytics trust surfaces now expose a backend-led provenance basis instead of leaving refresh/materialized-view generation implicit; the supplier decision hub still carries requested/effective dataset and fallback state, while supplier sales stats now carries a live-query/snapshot provenance basis.
+- Checks run: `git diff --check` (pass); `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~SupplierDecisionHubContractTests|FullyQualifiedName~SupplierDecisionSchemaSqlTests|FullyQualifiedName~DecisionPulseProjectorTests|FullyQualifiedName~DecisionBoardEndpointsTests"` (pass); `npm ci` in `Klijent/clientapp` (pass); `npm run test:run -- src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx src/pages/__tests__/SupplierDecisionHubPage.spec.tsx src/pages/__tests__/SupplierConsolidatedPage.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx src/services/__tests__/supplierDecisionHubApi.spec.ts` (pass after one assertion refinement); `npm run test:run -- src/pages/__tests__/SupplierDecisionHubPage.spec.tsx` (pass)
+- Checks not run: full repo build/test suites; not needed after the focused contract and UI proof passed
+- Run log: `.ai/runs/2026-08-24-RQ113-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: main
+- Main commit SHA: 25ec243515becb9d1c6bc47561cd08ba6af35cf4
+- Main verification: current main contains 25ec243515becb9d1c6bc47561cd08ba6af35cf4
+- Missed: none known
+- Follow-up: RQ114
+- Residual risk: the supplier sales stats provenance basis is intentionally string-based (`live_query` or `live_query/snapshot_cost_batch_<id>`) and may need future owner-doc refinement if that surface gets a stricter materialized-view contract.
+- Next: RQ114
+- Prompt defect / scope repair: none
+
 ---
 
 ## RQ114 - Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof
 
-Status: WAITING
+Status: READY
 Ready after: `RQ113` is `DONE`
 Priority: P1
 Type: tests/docs
