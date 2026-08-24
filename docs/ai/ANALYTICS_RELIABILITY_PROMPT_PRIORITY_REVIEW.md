@@ -53,8 +53,8 @@ Do not read every addendum unless the target prompt's `Merge / split rule` says 
 The historical 2026-08-20 BCI/STAB/QDB override is closed on current `main`; use `MASTER_ROADMAP.md` and the current queue headers for execution.
 
 1. `BCI10`, `STAB14`, `STAB15`, and `QDB09` are DONE on current `main`; no historical READY pointer may be revived.
-2. `RQ108` and `RQ109` are DONE; `RQ110` is the active `IN_PROGRESS` owner task and the analytics queue has no separate READY prompt.
-3. `RQ111`-`RQ114` are the staged visibility → refresh → reconciliation → provenance/seed chain; `RQ115`-`RQ120` are residual follow-ups from the retrospective audit.
+2. `RQ108` and `RQ109` are DONE; `RQ110` is DONE and `RQ111` is DONE, with `RQ112` as the next READY prompt.
+3. `RQ112`-`RQ114` are the staged visibility → refresh → reconciliation → provenance/seed chain; `RQ115`-`RQ120` are residual follow-ups from the retrospective audit.
 4. `MASTER_ROADMAP.md` is authoritative. Do not claim current readiness from the old 2026-08-20 narrative or from a stale task lock.
 
 Evidence: `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`, `MASTER_ROADMAP.md`, and the current queue header.
@@ -179,7 +179,7 @@ Parallel-safe options if separate agents are careful:
 
 ### Prepared current-main follow-up chain
 
-These prompts are intentionally staged behind `RQ110` -> `RQ111` so the repository does not jump from "screen is blank" straight into broad semantic refactors without first proving visibility and refresh truth.
+These prompts are intentionally staged behind `RQ111` -> `RQ112` so the repository does not jump from "screen is blank" straight into broad semantic refactors without first proving visibility and refresh truth.
 
 | Rank | Prompt | Action | Why it is next |
 |---|---|---|---|
@@ -280,7 +280,7 @@ The older `RQ89`/`RQ90`/`BCI05` pointers below this heading are historical and o
 
 - Backend CI: no current READY (`BCI10` DONE).
 - Release truth: no current READY (`STAB14`/`STAB15` DONE).
-- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` IN_PROGRESS; `RQ111`-`RQ120` WAITING behind their named dependencies/owner gates.
+- Analytics correctness/runtime forecasting: `RQ108` DONE; `RQ109` DONE; `RQ110` DONE; `RQ111` DONE; `RQ112` READY; `RQ113`-`RQ120` WAITING behind their named dependencies/owner gates.
 - Connector runtime: no current READY (`QDB09` DONE); `QDB07` remains WAITING behind release gates.
 - Premium UI: none READY (`P-UI-22` DONE, queue complete).
 - GenAI: dormant until core release gates are clear.

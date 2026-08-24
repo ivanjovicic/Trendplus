@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ110` is `IN_PROGRESS`; continue it as the active owner task, then promote the staged `WAITING` chain)
+Current READY prompt: `RQ112` (`RQ111` is `DONE`; claim `RQ112` next if you continue the analytics reliability lane)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -40,9 +40,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ107 | DONE | scenario-planning-contract | Freeze docs-only scenario vocabulary while runtime stays gated |
 | RQ108 | DONE | forecast-materializer-observed-window | Add authoritative forecast materializer and observed pairing foundation |
 | RQ109 | DONE | decision-pulse-expansion | Expand Decision Pulse beyond the first Product Decision slice |
-| RQ110 | IN_PROGRESS | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
-| RQ111 | WAITING | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
-| RQ112 | WAITING | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
+| RQ110 | DONE | analytics-screen-data-availability | Prove pilot analytics screens stay non-empty when authoritative seeded data exists |
+| RQ111 | DONE | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
+| RQ112 | READY | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
 | RQ113 | WAITING | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
 | RQ114 | WAITING | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
 | RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
@@ -1240,7 +1240,7 @@ Commit suggestion: `feat(analytics): expand decision pulse coverage`
 
 ## RQ110 - Prove pilot analytics screens stay non-empty when authoritative seeded data exists
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ108` is `DONE` and the owner-supplied canonical production data-bearing route/filter matrix exists (`docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md` + `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22_STAB15.md`)
 Priority: P1
 Type: docs/tests/backend-contract
@@ -1327,18 +1327,44 @@ Trendplus should not show a blank chart, blank table, or misleading empty state 
 - `RQ108` DONE first.
 - Do not fix broad refresh/cache/runtime behavior inside this prompt unless one smallest same-owner repair is required to make the proof executable and is recorded as such.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: established the citable pilot screen-data availability matrix, fixed the browser request-timeout contract, and split the dashboard-isolation gap into `RQ115` instead of broadening `RQ110`.
+- Changed files:
+  - `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `MASTER_ROADMAP.md`
+  - `Klijent/clientapp/src/utils/fetchWithTimeout.ts`
+  - `Klijent/clientapp/src/utils/__tests__/fetchWithTimeout.spec.ts`
+- Contract/runtime behavior changed: dashboard/bootstrap proof is now citable at route/meta/smoke level, and fetch timeout abort behavior now matches the repo contract.
+- Checks run: `git diff --check`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `npm run test:run -- src/utils/__tests__/fetchWithTimeout.spec.ts`; `npm run typecheck`
+- Checks not run: backend runtime tests; live SMTP send
+- Run log: `.ai/runs/2026-08-22-RQ110-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `0794cfc61250c23d3377b0c8670c830b21d32152`
+- Main verification: `git merge-base --is-ancestor 0794cfc61250c23d3377b0c8670c830b21d32152 origin/main -> ancestor=true`
+- Missed: dashboard family still lacks a separately named isolated seeded-non-empty backend proof
+- Follow-up: `RQ115`
+- Residual risk: some surfaces still lean on route/meta/smoke proof rather than a named physical source on every row
+- Next: `RQ111`
+- Prompt defect / scope repair: split the dashboard gap into `RQ115` rather than broadening `RQ110` further
+
 ---
 
 ## RQ111 - Close refresh/cache/materialized-view gaps that can hide existing data
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ110` is `DONE`
 Priority: P1
 Type: backend/workers/cache/tests
 Feature family: analytics-refresh-cache-parity
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ111-<agent>.lock.md`
+Owner: Codex
+Local lock: `.ai/task-locks/RQ111-codex.lock.md`
 Commit suggestion: `fix(analytics): preserve screen data after refresh and cache churn`
 
 ### Problem
@@ -1380,6 +1406,28 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
    - failed refresh -> cache/data remains clearly stale/blocked, not healthy;
    - materialized-view lag -> visible warning/degraded truth rather than silent blankness.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: proved the dashboard bootstrap family rebuilds fresh summary values after cache invalidation and a new authoritative sale lands in the active date window.
+- Checks run: `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `git diff --check`; `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~CachedAnalyticsOperationalFallbackTests|FullyQualifiedName~AnalyticsAggregationWorkerTests"`; `dotnet test Api.Tests/Api.Tests.csproj --configuration Release --filter "FullyQualifiedName~CachedAnalyticsOperationalFallbackTests.DashboardBootstrap_AfterRefreshInvalidation_RebuildsFreshSummary"`
+- Checks not run: full-solution build/test; live refresh smoke; production deployment proof
+- Run log: `.ai/runs/2026-08-24-RQ111-evidence.md`
+- Changed files:
+  - `Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+  - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-24-RQ111-evidence.md`
+- Main commit SHA: pending
+- Main verification: not run
+- Missed: full target-branch delivery still needs a recorded commit SHA before we can call this synchronized on main
+- Evidence state: synchronized
+- Delivery mode: local until commit SHA is recorded
+- Follow-up: `RQ112`
+- Residual risk: the refreshed dashboard proof is still focused on the first proven family; other families remain staged behind their own prompts
+
 ### Tests
 
 - `git diff --check`
@@ -1402,7 +1450,7 @@ Even when authoritative data exists, a pilot analytics screen can still look emp
 
 ## RQ112 - Reconcile pilot analytics summary values against detail/export on the first proven family
 
-Status: WAITING
+Status: READY
 Ready after: `RQ111` is `DONE`
 Priority: P1
 Type: backend/tests/docs

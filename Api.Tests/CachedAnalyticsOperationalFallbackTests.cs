@@ -6,6 +6,7 @@ using Domain.Model;
 using Domain.Model.Analytics;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
+using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +82,57 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         Assert.Equal("inventory_status_operational_fallback", meta.GetProperty("warningCode").GetString());
         Assert.Contains("Artikli", meta.GetProperty("warningMessage").GetString(), StringComparison.Ordinal);
         Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
+    }
+
+    [Fact]
+    public async Task DashboardBootstrap_AfterRefreshInvalidation_RebuildsFreshSummary()
+    {
+        await using var factory = CreateFactory();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+        var cache = scope.ServiceProvider.GetRequiredService<IAnalyticsCacheService>();
+        var cacheAdmin = scope.ServiceProvider.GetRequiredService<AnalyticsCacheAdminService>();
+
+        var url = "/api/analytics/cached/dashboard/bootstrap?fromDate=2026-01-05&toDate=2026-01-07&storeId=1";
+
+        var initial = await GetJsonAsync(factory, url);
+        var initialRevenue = initial.GetProperty("summary").GetProperty("totalRevenue").GetDecimal();
+
+        db.ProdajaZaglavlja.Add(
+            new ProdajaZaglavlje
+            {
+                Id = 4,
+                DatumProdaje = new DateTime(2026, 1, 6, 12, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.Add(
+            new ProdajaStavka
+            {
+                Id = 15,
+                IdProdaja = 4,
+                IdArtikal = 101,
+                Kolicina = 4,
+                Cena = 100m
+            });
+        db.SaveChanges();
+
+        await cacheAdmin.ClearFamiliesAsync([AnalyticsCachePolicy.DashboardFamily], CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.DashboardBootstrapPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.DashboardAdvancedPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.SalesSummaryPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.DailySalesPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.CategoryDataPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.GenderDataPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.SupplierDataPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.TopProductsPrefix, CancellationToken.None);
+        await cache.RemoveByPrefixAsync(AnalyticsCacheKeys.TopProductsAdvancedPrefix, CancellationToken.None);
+
+        var refreshed = await GetJsonAsync(factory, url);
+        var refreshedRevenue = refreshed.GetProperty("summary").GetProperty("totalRevenue").GetDecimal();
+
+        Assert.Equal(initialRevenue + 400m, refreshedRevenue);
+        Assert.True(refreshed.GetProperty("meta").GetProperty("success").GetBoolean());
     }
 
     private static OperationalFallbackFactory CreateFactory()
