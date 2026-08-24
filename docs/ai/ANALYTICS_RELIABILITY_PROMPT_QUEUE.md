@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ114` (`RQ113` is `DONE`; claim `RQ114` next if you continue the analytics reliability lane)
+Current READY prompt: `RQ115` (`RQ114` is `DONE`; claim `RQ115` next if you continue the analytics reliability lane)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -44,8 +44,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ111 | DONE | analytics-refresh-cache-parity | Close refresh/cache/materialized-view gaps that can hide existing data |
 | RQ112 | DONE | analytics-summary-detail-reconciliation | Reconcile pilot analytics summary values against detail/export on the first proven family |
 | RQ113 | DONE | analytics-generation-provenance-truth | Expose exact freshness/provenance truth for the first pilot family that still looks trusted by inference |
-| RQ114 | READY | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
-| RQ115 | WAITING | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
+| RQ114 | DONE | analytics-deterministic-seed-pack | Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof |
+| RQ115 | READY | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
 | RQ116 | WAITING | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
 | RQ117 | WAITING | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
 | RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
@@ -1639,7 +1639,7 @@ Even when a pilot analytics family is non-empty and numerically reconciled, it c
 
 ## RQ114 - Build a reusable deterministic seed pack and expected-output manifest for pilot analytics proof
 
-Status: READY
+Status: DONE
 Ready after: `RQ113` is `DONE`
 Priority: P1
 Type: tests/docs
@@ -1705,11 +1705,31 @@ Trendplus now has growing current-main proof needs for pilot analytics, but many
 - `RQ113` DONE.
 - Keep this prompt at reusable proof-harness scope; do not broaden into general integration-test refactoring.
 
+### Completion note
+
+- Date: 2026-08-24
+- Status: DONE
+- Completion: Added a reusable pilot analytics seed pack and expected-output manifest, then switched the product-decision, inventory, and analytics-actions host tests to the shared pack so later prompts can cite one canonical proof basis instead of cloning ad hoc fixtures.
+- Changed files: `Api.Tests/PilotAnalyticsSeedPack.cs`, `Api.Tests/PilotAnalyticsSeedPackTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, `Api.Tests/AnalyticsActionsEndpointsTests.cs`, `docs/qa/ANALYTICS_PILOT_DETERMINISTIC_SEED_PACK_2026-08-24.md`
+- Contract/runtime behavior changed: pilot proof fixtures now have one reusable shared seed pack and manifest; product-decision and inventory seeds stay aligned to the shared helper, while inventory keeps a runtime-relative freshness base to preserve the out-of-stock signal path.
+- Checks run: `git diff --check` (pass); `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~PilotAnalyticsSeedPackTests|FullyQualifiedName~ProductDecisionCenterBuilderIntegrationTests|FullyQualifiedName~InventoryListEndpointIntegrationTests|FullyQualifiedName~AnalyticsActionsEndpointsTests"` (pass, 36 passed)
+- Checks not run: full repo suites; not needed after the focused proof and helper tests passed
+- Run log: `.ai/runs/2026-08-24-RQ114-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: main
+- Main commit SHA: 53adf409e617aacc69449ecfa1a8939b2307bd7d
+- Main verification: current main contains 53adf409e617aacc69449ecfa1a8939b2307bd7d
+- Missed: none known
+- Follow-up: `RQ115`
+- Residual risk: inventory freshness is intentionally runtime-relative so the out-of-stock path stays exercised; later prompts should reuse the pack instead of re-seeding ad hoc timestamps.
+- Next: `RQ115`
+- Prompt defect / scope repair: none
+
 ---
 
 ## RQ115 - Isolate the dashboard seeded-data proof left open by RQ110
 
-Status: WAITING
+Status: READY
 Ready after: `RQ110` is `DONE`
 Priority: P1
 Type: docs/tests/backend-contract
