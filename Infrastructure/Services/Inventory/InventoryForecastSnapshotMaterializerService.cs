@@ -166,11 +166,11 @@ public sealed class InventoryForecastSnapshotMaterializerService : IInventoryFor
             ORDER BY forecast_basis_date DESC, sku_id, store_id, horizon_days;
             """;
 
-        AddParameter(cmd, "storeId", request.StoreId);
-        AddParameter(cmd, "supplierId", request.SupplierId);
-        AddParameter(cmd, "skuId", request.SkuId);
-        AddParameter(cmd, "sizeCode", string.IsNullOrWhiteSpace(request.SizeCode) ? DBNull.Value : request.SizeCode.Trim());
-        AddParameter(cmd, "horizonDays", request.HorizonDays);
+        AddParameter(cmd, "storeId", NpgsqlDbType.Integer, request.StoreId);
+        AddParameter(cmd, "supplierId", NpgsqlDbType.Integer, request.SupplierId);
+        AddParameter(cmd, "skuId", NpgsqlDbType.Integer, request.SkuId);
+        AddParameter(cmd, "sizeCode", NpgsqlDbType.Text, string.IsNullOrWhiteSpace(request.SizeCode) ? DBNull.Value : request.SizeCode.Trim());
+        AddParameter(cmd, "horizonDays", NpgsqlDbType.Integer, request.HorizonDays);
 
         var results = new List<InventoryForecastObservedPairDto>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -285,6 +285,8 @@ public sealed class InventoryForecastSnapshotMaterializerService : IInventoryFor
                     o.stock_qty,
                     o.provenance AS observed_provenance,
                     CASE
+                        WHEN COALESCE(NULLIF(btrim(f.provenance_status), ''), 'owner_unknown') = 'stale'
+                            THEN 'stale'
                         WHEN COALESCE(NULLIF(btrim(f.provenance_status), ''), 'owner_unknown') <> 'trusted'
                             THEN 'unavailable_untrusted_forecast'
                         WHEN o.provenance = 'observed'
@@ -325,6 +327,19 @@ public sealed class InventoryForecastSnapshotMaterializerService : IInventoryFor
         var parameter = command.CreateParameter();
         parameter.ParameterName = name;
         parameter.Value = value ?? DBNull.Value;
+        command.Parameters.Add(parameter);
+    }
+
+    private static void AddParameter(IDbCommand command, string name, NpgsqlDbType type, object? value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value ?? DBNull.Value;
+        if (parameter is NpgsqlParameter npgsqlParameter)
+        {
+            npgsqlParameter.NpgsqlDbType = type;
+        }
+
         command.Parameters.Add(parameter);
     }
 

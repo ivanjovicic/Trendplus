@@ -69,6 +69,7 @@ public sealed class GetInventoryForecastHandler
             await using var reader = await command.ExecuteReaderAsync(ct);
             var totalMatchingCount = 0;
             var hasTrustedMaterialization = false;
+            var hasStaleMaterialization = false;
             string? materializerOwner = null;
             DateTime? snapshotFreshnessUtc = null;
             while (await reader.ReadAsync(ct))
@@ -96,6 +97,11 @@ public sealed class GetInventoryForecastHandler
                     hasTrustedMaterialization = true;
                 }
 
+                if (string.Equals(rowProvenanceStatus, InventoryForecastSnapshotProvenance.Stale, StringComparison.OrdinalIgnoreCase))
+                {
+                    hasStaleMaterialization = true;
+                }
+
                 items.Add(new InventoryForecastDto(
                     SkuId: reader.GetInt32(0),
                     StoreId: reader.GetInt32(1),
@@ -114,6 +120,10 @@ public sealed class GetInventoryForecastHandler
                 ? InventoryForecastSnapshotProvenance.ForTrustedOwner(
                     materializerOwner ?? InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner,
                     snapshotFreshnessUtc ?? DateTime.UtcNow)
+                : hasStaleMaterialization
+                    ? InventoryForecastSnapshotProvenance.ForStaleOwner(
+                        materializerOwner ?? InventoryForecastSnapshotProvenance.UnprovenMaterializerOwner,
+                        snapshotFreshnessUtc ?? DateTime.UtcNow)
                 : InventoryForecastSnapshotProvenance.ForReadableUnprovenOwner();
 
             var hasMissingEvidence = items.Any(item =>

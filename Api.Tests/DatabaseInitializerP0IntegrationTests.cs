@@ -91,6 +91,8 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
             return;
         }
 
+        ResetForecastSchemaGuard();
+
         await using var analyticsDb = CreateAnalyticsDbContext(analyticsConnectionString);
         await analyticsDb.Database.EnsureCreatedAsync();
 
@@ -263,6 +265,162 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     }
 
     [Fact]
+    public async Task ForecastMaterializer_StaleAndMismatchedScopesRemainUnpaired()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var analyticsConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_forecast_scope_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(analyticsConnectionString))
+        {
+            return;
+        }
+
+        ResetForecastSchemaGuard();
+
+        await using var analyticsDb = CreateAnalyticsDbContext(analyticsConnectionString);
+        await analyticsDb.Database.EnsureCreatedAsync();
+
+        var basisDate = new DateTime(2026, 8, 18);
+        var observedAtUtc = new DateTime(2026, 8, 21, 10, 15, 0, DateTimeKind.Utc);
+        var staleIssuedAtUtc = new DateTime(2026, 8, 21, 11, 30, 0, DateTimeKind.Utc);
+        var mismatchedIssuedAtUtc = new DateTime(2026, 8, 21, 12, 30, 0, DateTimeKind.Utc);
+
+        await using (var setupConnection = new NpgsqlConnection(analyticsConnectionString))
+        {
+            await setupConnection.OpenAsync();
+
+            await using var setupCommand = new NpgsqlCommand(
+                """
+                CREATE SCHEMA IF NOT EXISTS analytics_intel;
+
+                CREATE TABLE IF NOT EXISTS analytics_intel.inventory_observed_daily_snapshot (
+                    article_id integer NOT NULL,
+                    store_id integer NOT NULL,
+                    snapshot_date date NOT NULL,
+                    on_hand_qty numeric(18, 4) NOT NULL,
+                    captured_at_utc timestamptz NOT NULL DEFAULT now(),
+                    source_system text NOT NULL
+                );
+
+                CREATE OR REPLACE VIEW analytics_intel.vw_inventory_daily_stock_v1 AS
+                SELECT
+                    article_id,
+                    store_id,
+                    snapshot_date AS date,
+                    on_hand_qty AS observed_qty,
+                    NULL::numeric(18, 4) AS reconstructed_qty,
+                    on_hand_qty AS stock_qty,
+                    'observed'::text AS provenance,
+                    captured_at_utc,
+                    source_system
+                FROM analytics_intel.inventory_observed_daily_snapshot;
+                """,
+                setupConnection);
+            await setupCommand.ExecuteNonQueryAsync();
+
+            await using var seedObservedCommand = new NpgsqlCommand(
+                """
+                INSERT INTO analytics_intel.inventory_observed_daily_snapshot (
+                    article_id,
+                    store_id,
+                    snapshot_date,
+                    on_hand_qty,
+                    captured_at_utc,
+                    source_system
+                )
+                VALUES (
+                    @articleId,
+                    @storeId,
+                    @snapshotDate,
+                    @onHandQty,
+                    @capturedAtUtc,
+                    @sourceSystem
+                );
+                """,
+                setupConnection);
+
+            seedObservedCommand.Parameters.AddWithValue("articleId", 401);
+            seedObservedCommand.Parameters.AddWithValue("storeId", 7);
+            seedObservedCommand.Parameters.AddWithValue("snapshotDate", basisDate.AddDays(7));
+            seedObservedCommand.Parameters.AddWithValue("onHandQty", 13m);
+            seedObservedCommand.Parameters.AddWithValue("capturedAtUtc", observedAtUtc);
+            seedObservedCommand.Parameters.AddWithValue("sourceSystem", "fixture");
+            await seedObservedCommand.ExecuteNonQueryAsync();
+        }
+
+        var service = new InventoryForecastSnapshotMaterializerService(
+            analyticsDb,
+            NullLogger<InventoryForecastSnapshotMaterializerService>.Instance);
+
+        await service.UpsertAsync(
+            new InventoryForecastSnapshotMaterializationRequest(
+                SkuId: 401,
+                StoreId: 7,
+                SupplierId: 19,
+                SizeCode: "42",
+                ForecastBasisDateUtc: basisDate,
+                IssuedAtUtc: staleIssuedAtUtc,
+                MaterializerOwner: "forecast-worker",
+                ProvenanceStatus: "stale",
+                SnapshotFreshnessUtc: staleIssuedAtUtc,
+                Forecast7d: 11m,
+                Forecast14d: 8m,
+                Forecast28d: 4m,
+                ProbabilityOfOOSIn7d: 0.25m,
+                OverstockRisk: 0.10m,
+                ConfidenceScore: 0.82m,
+                Explanation: "Stale forecast snapshot"),
+            CancellationToken.None);
+
+        await service.UpsertAsync(
+            new InventoryForecastSnapshotMaterializationRequest(
+                SkuId: 402,
+                StoreId: 8,
+                SupplierId: 19,
+                SizeCode: "42",
+                ForecastBasisDateUtc: basisDate,
+                IssuedAtUtc: mismatchedIssuedAtUtc,
+                MaterializerOwner: "forecast-worker",
+                ProvenanceStatus: "trusted",
+                SnapshotFreshnessUtc: mismatchedIssuedAtUtc,
+                Forecast7d: 12m,
+                Forecast14d: 9m,
+                Forecast28d: 5m,
+                ProbabilityOfOOSIn7d: 0.35m,
+                OverstockRisk: 0.15m,
+                ConfidenceScore: 0.91m,
+                Explanation: "Trusted forecast snapshot for a different store"),
+            CancellationToken.None);
+
+        var stalePairs = await service.ListObservedPairingsAsync(
+            new InventoryForecastObservedPairQuery(SkuId: 401, StoreId: 7, SupplierId: 19, SizeCode: "42"),
+            CancellationToken.None);
+
+        Assert.Equal(3, stalePairs.Count);
+        var stalePair = Assert.Single(stalePairs, item => item.HorizonDays == 7);
+        Assert.Equal("stale", stalePair.ProvenanceStatus);
+        Assert.Equal("stale", stalePair.PairingStatus);
+        Assert.Equal(13m, stalePair.ObservedQty);
+        Assert.Equal(13m, stalePair.StockQty);
+        Assert.NotEqual("paired_observed", stalePair.PairingStatus);
+
+        var mismatchedPairs = await service.ListObservedPairingsAsync(
+            new InventoryForecastObservedPairQuery(SkuId: 402, StoreId: 8, SupplierId: 19, SizeCode: "42"),
+            CancellationToken.None);
+
+        Assert.Equal(3, mismatchedPairs.Count);
+        var mismatchedPair = Assert.Single(mismatchedPairs, item => item.HorizonDays == 7);
+        Assert.Equal("trusted", mismatchedPair.ProvenanceStatus);
+        Assert.Equal("missing_observed_window", mismatchedPair.PairingStatus);
+        Assert.Null(mismatchedPair.ObservedQty);
+        Assert.Null(mismatchedPair.StockQty);
+    }
+
+    [Fact]
     public async Task DeferredBackfillPattern_CreatesFreshDbContexts_AfterScopedContextsAreDisposed()
     {
         if (!_fixture.IsAvailable)
@@ -352,6 +510,15 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
             ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             throw;
         }
+    }
+
+    private static void ResetForecastSchemaGuard()
+    {
+        var field = typeof(InventoryForecastSnapshotMaterializerService).GetField(
+            "_schemaEnsured",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        field?.SetValue(null, false);
     }
 }
 

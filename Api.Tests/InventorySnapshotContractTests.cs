@@ -274,6 +274,41 @@ public sealed class InventorySnapshotContractTests
         Assert.DoesNotContain("owner_unknown", result.Warning, StringComparison.Ordinal);
     }
 
+    [Fact(DisplayName = "Forecast snapshot stale metadata stays non-authoritative")]
+    public async Task ForecastHandler_StaleMetadataIsVisibleAndNonAuthoritative()
+    {
+        var staleAtUtc = new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc);
+        var table = CreateTable(
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("forecast_7d", typeof(decimal)),
+            ("forecast_14d", typeof(decimal)),
+            ("forecast_28d", typeof(decimal)),
+            ("probability_of_oos_in_7d", typeof(decimal)),
+            ("overstock_risk", typeof(decimal)),
+            ("confidence_score", typeof(decimal)),
+            ("explanation", typeof(string)),
+            ("issue_time_utc", typeof(DateTime)),
+            ("materializer_owner", typeof(string)),
+            ("provenance_status", typeof(string)),
+            ("snapshot_freshness_utc", typeof(DateTime)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(202, 7, "43", 10m, 7m, 3m, 0.15m, 0.08m, 0.71m, "Stale signal", staleAtUtc, "forecast-worker", "stale", staleAtUtc, 1L);
+
+        var context = CreateContext(table);
+        var handler = new GetInventoryForecastHandler(context, NullLogger<GetInventoryForecastHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryForecastQuery(Top: 1), CancellationToken.None);
+
+        Assert.True(result.SnapshotAvailable);
+        Assert.Equal(InventoryForecastSnapshotProvenance.Stale, result.ProvenanceStatus);
+        Assert.Equal("forecast-worker", result.MaterializerOwner);
+        Assert.False(result.IsAuthoritativeForecast);
+        Assert.Equal(staleAtUtc, result.SnapshotFreshnessUtc);
+        Assert.Contains("stale", result.Warning, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Forecast missing relation is fail-closed as missing_relation")]
     public async Task ForecastHandler_MissingRelation_IsFailClosed()
     {
