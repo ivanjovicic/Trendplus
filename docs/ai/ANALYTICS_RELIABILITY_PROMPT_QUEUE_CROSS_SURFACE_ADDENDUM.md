@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ127`
-Main queue READY prompt: `RQ127` (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
+Current READY prompt: none
+Main queue READY prompt: none (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -29,7 +29,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ105 | DONE | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
 | RQ125 | DONE | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
 | RQ126 | DONE | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
-| RQ127 | READY | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
+| RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 
 ---
 
@@ -1035,3 +1035,23 @@ Supplier, ShoeType, and Color recommendation builders compute an average known-m
 ### Dependencies
 
 - `RQ125` DONE or explicit owner promotion.
+
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: supplier, shoe-type, and color recommendation builders now preserve a nullable known-margin baseline, and the decision engine degrades to `insufficient_data` when the comparison basis is genuinely absent instead of silently using `0`
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`, `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`, `Klijent/clientapp/src/services/colorSalesStatsApi.ts`, `Klijent/clientapp/src/services/shoeTypeSalesStatsApi.ts`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-08-26-RQ127-evidence.md`
+- Contract/runtime behavior changed: missing known-margin baseline is no longer turned into a fake-zero comparison baseline; affected recommendation outputs now stay unavailable/degraded when the comparison basis is absent
+- Checks run: `git diff --check` pass; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsDecisionRecommendationEngineTests"` pass; `npm run build` pass; `node scripts/check-prompt-queues.mjs` pass; `node scripts/check-planning-architecture.mjs` pass
+- Checks not run: integration tests for the supplier/shoe/color endpoint fixtures - not needed for this regression because the engine-level null-baseline contract and focused endpoint patch were already validated by build, unit tests, and routing validation
+- Run log: `.ai/runs/2026-08-26-RQ127-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 47f03b0b6c4ee14adfbd92a59bba68a8cb45a43c
+- Main verification: `git branch --contains 47f03b0b6c4ee14adfbd92a59bba68a8cb45a43c` -> `* main`
+- Missed: vendor recommendation baseline handling in `Api/Endpoints/AllEndpoints.cs` still deserves its own queue item if we want the same fake-zero guard there
+- Follow-up: none
+- Residual risk: any future recommendation family that computes a known-margin baseline with `DefaultIfEmpty(0d)` would need the same nullable-baseline treatment
+- Next: none
+- Prompt defect / scope repair: none
