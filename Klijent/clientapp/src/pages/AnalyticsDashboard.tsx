@@ -364,6 +364,11 @@ function buildFallbackDecisionActionsFromAdvanced(
     const dataQualityStatus = normalizeRecommendationQualityStatus(
       item.dataQualityStatus,
     );
+    const hasTrustPayload =
+      item.recommendationAllowed != null ||
+      item.confidencePct != null ||
+      item.reliabilityPct != null ||
+      Boolean(item.dataQualityStatus?.trim());
 
     return {
       sourceType: inferDashboardActionSourceType({
@@ -379,14 +384,15 @@ function buildFallbackDecisionActionsFromAdvanced(
       reason: item.recommendation || "Potrebna je dodatna provera signala.",
       statusReason:
         item.statusReason ||
-        item.recommendation ||
-        "Pouzdanost preporuke nije dostupna.",
+        (hasTrustPayload
+          ? item.recommendation || "Legacy dashboard action bez trust payloada."
+          : "Legacy dashboard action bez trust payloada."),
       recommendationStatus: null,
       expectedImpact: null,
       impactEstimateRsd: null,
       confidencePct: normalizedConfidencePct,
       reliabilityPct: normalizedReliabilityPct,
-      recommendationAllowed: false,
+      recommendationAllowed: item.recommendationAllowed ?? false,
       dataQualityStatus,
       actionUrl: mapLegacyActionLink(item.title || ""),
       metadata: { legacyAction: true },

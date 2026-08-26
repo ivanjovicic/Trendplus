@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ124` (`RQ123` is `DONE`)
+Current READY prompt: none (`RQ124` is `DONE`; see cross-surface addendum for `RQ125`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -54,8 +54,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ121 | DONE | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
 | RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
 | RQ123 | DONE | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
-| RQ124 | READY | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
-| RQ124 | WAITING | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
+| RQ124 | DONE | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 
 ---
 
@@ -2239,6 +2238,24 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 
 - Date: 2026-08-26
 - Status: DONE
+- Completion: surfaced backend-owned trust payload on dashboard legacy/advanced action cards by extending the dashboard action DTO, preserving actionable/blocked/legacy trust states in the advanced fallback bridge, and proving the new rendering contract in backend and frontend regression tests.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`; `Api.Tests/CachedAnalyticsDashboardActionTrustTests.cs`; `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`; `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx`; `Klijent/clientapp/src/types/analytics.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-08-26-RQ124-evidence.md`
+- Contract/runtime behavior changed: dashboard legacy/advanced action cards now carry explicit trust metadata instead of collapsing to one generic `insufficient_data` fallback, while legacy/unavailable fallback still stays explicit when trust payload is missing
+- Checks run: `git diff --check` (pass); `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~CachedAnalyticsDashboardActionTrustTests|FullyQualifiedName~CachedAnalyticsOperationalFallbackTests"` (pass); `npm run test:run -- src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx` (pass)
+- Checks not run: full solution build/test, live browser smoke, remote main verification
+- Run log: `.ai/runs/2026-08-26-RQ124-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: the broader cross-surface trust/freshness lanes remain for RQ125-RQ127
+- Follow-up: `RQ125` is now READY
+- Residual risk: legacy dashboard action cards still rely on the advanced fallback bridge when Product Decision rows are absent, so any future backend schema drift should be caught by the new trust-state regression test before it reaches the UI
+
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
 - Completion: Added backend-owned row-trust payload to advanced top-product DTOs, surfaced it in the dashboard margin column as explicit trust badges/details, and added backend/frontend contract coverage for good vs insufficient-data rows.
 - Changed files: Api/Endpoints/CachedAnalyticsEndpoints.cs; Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs; Klijent/clientapp/src/pages/AnalyticsDashboard.tsx; Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx; Klijent/clientapp/src/types/analytics.ts; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md; .ai/runs/2026-08-26-RQ121-evidence.md
 - Contract/runtime behavior changed: yes; dashboard margin rows now show a trust badge and explanatory detail instead of generic fallback copy
@@ -2419,8 +2436,8 @@ Pilot supplier/data-quality reports now have reconciled numbers and stable URLs,
 
 ## RQ124 - Expose backend-owned trust payload on dashboard legacy/advanced action cards
 
-Status: READY
-Ready after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard action-trust lane
+Status: DONE
+Completed after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard action-trust lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: analytics-dashboard-action-trust-payload

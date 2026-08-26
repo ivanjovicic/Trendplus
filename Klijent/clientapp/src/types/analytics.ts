@@ -250,7 +250,6 @@ export interface DashboardAction {
   priority: "P1" | "P2" | "P3" | string;
   title: string;
   recommendation: string;
-  // TODO(backend-dto): add confidence/reliability/dataQualityStatus/statusReason to dashboard actions.
   confidencePct?: number | null;
   reliabilityPct?: number | null;
   recommendationAllowed?: boolean | null;

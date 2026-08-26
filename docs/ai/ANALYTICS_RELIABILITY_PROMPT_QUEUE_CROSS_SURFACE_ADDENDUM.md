@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main queue READY prompt: none (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
+Current READY prompt: `RQ125`
+Main queue READY prompt: `RQ125` (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -27,6 +27,9 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
 | RQ105 | DONE | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
+| RQ125 | READY | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
+| RQ126 | WAITING | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
+| RQ127 | WAITING | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 
 ---
 
@@ -800,3 +803,195 @@ Cached `/sales/daily` can still silently use an operational fallback as a bare a
 - Residual risk: supplier-id daily-sales operational joins are not flagged as missing-relation fallback; old bare-array cache keys are unused after `:meta-v1`
 - Prompt defect / scope repair: restored truncated CROSS_SURFACE/P-UI queue files after disk-full; cleaned rebuildable `bin`/`obj` so tests could run
 - Next: `P-UI-22` - Remaining decision-page empty and error chrome
+
+---
+
+## RQ125 - Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages
+
+Status: READY
+Ready after: `RQ120` is `DONE` or the owner explicitly promotes the stats trust-metadata lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: stats-trust-meta-freshness
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ125-<agent>.lock.md`
+Commit suggestion: `fix(analytics): add stats trust metadata`
+
+### Problem
+
+Supplier, ShoeType, and Color stats pages already mount `AnalyticsTrustHeader`, but their endpoint contracts still expose mostly `generatedAt` and page-local summary fields instead of an authoritative analytics `meta` payload. The pages therefore infer trust from incomplete signals: they use `generatedAt` as `lastRefreshAt`, hardcode or omit freshness state, and can show a modern trust header without a proven backend-owned refresh/data-quality contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `shoeTypeSalesStatsApi.ts`, and `colorSalesStatsApi.ts` define response shapes without additive `meta` / `lastRefreshAtUtc` semantics.
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx` sets `lastRefreshAt={data?.generatedAt ?? null}` and `dataFreshnessStatus="unknown"`.
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx` does the same and relies on locally assembled `headerDataQualityStatus`.
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx` also uses `generatedAt` as the only visible freshness timestamp.
+- `Api/Endpoints/AllEndpoints.cs` returns supplier/shoe/color response objects with `generatedAt`, `dataScope`, and page-specific aggregates, but no shared `AnalyticsResponseMetaDto` for empty/partial/fallback/freshness truth.
+
+### Scope
+
+- supplier/shoe/color stats endpoint response DTOs/shapes in `Api/Endpoints/AllEndpoints.cs`;
+- the matching TypeScript service contracts and trust-header mapping on the three pages;
+- the nearest backend/frontend tests for trust metadata rendering;
+- no recommendation formula rewrite and no Premium UI redesign.
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`
+- `Klijent/clientapp/src/services/shoeTypeSalesStatsApi.ts`
+- `Klijent/clientapp/src/services/colorSalesStatsApi.ts`
+- `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
+
+### Do
+
+1. Add the smallest additive backend-owned trust metadata needed for supplier/shoe/color stats: freshness/last-refresh truth, data-quality status, and explicit empty/partial/fallback semantics where applicable.
+2. Stop using `generatedAt` as an implied refresh timestamp unless the backend contract explicitly says so.
+3. Keep existing KPI/recommendation numbers unchanged unless the new metadata proves they should already render as degraded/empty/insufficient.
+4. Add focused coverage for a healthy success case, an insufficient/empty case, and a degraded or fallback trust case on at least one of the three pages plus the shared response contract.
+
+### Tests
+
+- `git diff --check`
+- focused backend contract tests for the selected stats endpoints
+- focused Vitest coverage for trust-header mapping on supplier/shoe/color pages
+- `node scripts/check-prompt-queues.mjs` if queue/docs change again during execution
+
+### Acceptance
+
+- Supplier/shoe/color stats pages no longer infer trust and freshness from `generatedAt` alone.
+- The trust header can show backend-owned quality/freshness semantics or an explicit unavailable state.
+- Empty/fallback/partial stats states do not look like a fresh trusted success solely because the page has a timestamp.
+
+### Dependencies
+
+- `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ126 - Add authoritative trust metadata to Daily Sales instead of placeholder trust-header values
+
+Status: WAITING
+Ready after: `RQ120` is `DONE` or the owner explicitly promotes the Daily Sales trust lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: daily-sales-trust-meta-contract
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ126-<agent>.lock.md`
+Commit suggestion: `fix(analytics): add daily sales trust metadata`
+
+### Problem
+
+The Daily Sales page shows a shared trust header, but it currently feeds that header placeholder values: `dataQualityStatus={null}`, `dataFreshnessStatus="unknown"`, and `lastRefreshAt={null}` even on successful loads. The endpoint returns table rows and `metadata.warnings`, but it does not provide a canonical analytics trust contract that distinguishes healthy success, warning/degraded data quality, stale data, or explicit empty-success truth.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts` defines `DailySalesTableResponse` without additive analytics `meta`.
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx` passes `lastRefreshAt={null}`, `dataFreshnessStatus="unknown"`, and `dataQualityStatus={null}` into `AnalyticsTrustHeader`.
+- `Api/Endpoints/DailySalesStatsEndpoints.cs` returns `DailySalesTableResponse` and uses `metadata.warnings`, but the response contract shown in the frontend types has no standard trust payload.
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` `RQ105` already fixed operational fallback honesty, leaving the broader successful Daily Sales trust-state contract still unresolved.
+
+### Scope
+
+- `Api/Endpoints/DailySalesStatsEndpoints.cs` and the owning response/service contract;
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts`;
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx` and nearest Daily Sales tests;
+- no shift KPI formula rewrite and no dashboard/board contract changes.
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `Api/Endpoints/DailySalesStatsEndpoints.cs`
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts`
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
+
+### Do
+
+1. Decide the smallest truthful Daily Sales trust payload: last refresh/generation lineage, data-quality status, empty reason, and warning/degraded semantics when receipt anomalies or partial conditions matter.
+2. Map that payload into `AnalyticsTrustHeader` instead of placeholder null/unknown values.
+3. Keep successful empty state separate from warning/error states; do not turn empty success into fake green or fake failure.
+4. Add focused coverage for healthy success, explicit empty success, and warning/degraded trust rendering.
+
+### Tests
+
+- `git diff --check`
+- focused Daily Sales backend contract tests
+- focused Vitest coverage for Daily Sales trust header behavior
+- `node scripts/check-prompt-queues.mjs` if queue/docs change again during execution
+
+### Acceptance
+
+- Daily Sales trust header reflects backend-owned trust semantics instead of placeholder null/unknown values.
+- Receipt-quality or partial-warning states remain visible on successful responses.
+- Empty Daily Sales periods remain explicit success, not silent null trust and not fake healthy freshness.
+
+### Dependencies
+
+- `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ127 - Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0`
+
+Status: WAITING
+Ready after: `RQ125` is `DONE` or the owner explicitly promotes the stats margin-baseline lane
+Priority: P1
+Type: backend/tests
+Feature family: stats-margin-baseline-unavailable
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ127-<agent>.lock.md`
+Commit suggestion: `fix(analytics): guard stats recommendation margin baseline`
+
+### Problem
+
+Supplier, ShoeType, and Color recommendation builders compute an average known-margin baseline with `.DefaultIfEmpty(0d).Average()` after filtering out unknown buckets. When there are no valid known rows, the recommendation engine receives `0` as if it were a real market baseline. That can turn “no trustworthy comparison basis exists” into a measured comparison against fake zero and potentially overstate confidence or recommendation direction.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs` uses `.Where(...known...).Select(row => row.marginPct).DefaultIfEmpty(0d).Average()` in supplier, shoe-type, and color recommendation input builders.
+- The same builders pass that computed average directly into `AnalyticsDecisionRecommendationEngine.Evaluate(...)`.
+- Unknown-bucket share can already be significant (`unknownSupplierSharePct`, `unknownTypeSharePct`, `unknownColorSharePct`), so “all known rows missing” is a realistic degraded-data scenario, not a theoretical edge case.
+- No existing prompt in the cross-surface addendum currently isolates this fake-zero benchmark risk across the supplier/shoe/color recommendation family.
+
+### Scope
+
+- supplier/shoe/color recommendation input builders in `Api/Endpoints/AllEndpoints.cs`;
+- the nearest backend tests that can prove recommendation behavior when no known-margin baseline exists;
+- only additive or conservative recommendation/degradation behavior needed to stop fake-zero comparison; no unrelated UI redesign.
+
+### Read first
+
+- `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- supplier/shoe/color recommendation sections in `Api/Endpoints/AllEndpoints.cs`
+- any existing backend tests covering supplier/shoe/color recommendations
+
+### Do
+
+1. Reproduce a case where the selected stats family has revenue rows but no trustworthy known-margin baseline after filtering unknown/no-data rows.
+2. Decide the truthful contract: explicit unavailable baseline with degraded recommendation, or another backend-owned conservative fallback that does not pretend the baseline is `0`.
+3. Preserve existing behavior when a real known-margin baseline exists.
+4. Add focused regression coverage for no-baseline, real-baseline, and unknown-bucket-heavy scenarios.
+
+### Tests
+
+- `git diff --check`
+- focused backend tests for supplier/shoe/color recommendation edge cases
+- `node scripts/check-prompt-queues.mjs` if queue/docs change again during execution
+
+### Acceptance
+
+- Missing known-margin baseline is no longer silently treated as a real `0` comparison baseline.
+- Supplier/shoe/color recommendation outputs visibly degrade or stay unavailable when the comparison basis is absent.
+- Existing recommendation behavior remains stable when the baseline is genuinely available.
+
+### Dependencies
+
+- `RQ125` DONE or explicit owner promotion.

@@ -3688,7 +3688,10 @@ public static class CachedAnalyticsEndpoints
             {
                 Priority = oosStatus == "critical" ? "P1" : "P2",
                 Title = "Replenishment",
-                Recommendation = "Prioritize refill for OOS/low-stock SKUs with highest velocity."
+                Recommendation = "Prioritize refill for OOS/low-stock SKUs with highest velocity.",
+                RecommendationAllowed = true,
+                DataQualityStatus = oosStatus,
+                StatusReason = "Lost sales estimate indicates stock-out pressure."
             });
             snapshot.Validations.Add(new DashboardValidationDto
             {
@@ -3709,7 +3712,10 @@ public static class CachedAnalyticsEndpoints
             {
                 Priority = "P1",
                 Title = "Data quality fix",
-                Recommendation = "Backfill PLU, name and category for missing SKUs before pricing decisions."
+                Recommendation = "Backfill PLU, name and category for missing SKUs before pricing decisions.",
+                RecommendationAllowed = true,
+                DataQualityStatus = completenessStatus,
+                StatusReason = "Completeness validation is below target."
             });
             snapshot.Validations.Add(new DashboardValidationDto
             {
@@ -3730,7 +3736,10 @@ public static class CachedAnalyticsEndpoints
             {
                 Priority = freshnessStatus == "critical" ? "P1" : "P2",
                 Title = "Refresh pipeline",
-                Recommendation = "Run import sync and refresh aggregate summaries."
+                Recommendation = "Run import sync and refresh aggregate summaries.",
+                RecommendationAllowed = true,
+                DataQualityStatus = freshnessStatus,
+                StatusReason = "Freshness validation indicates stale data."
             });
             snapshot.Validations.Add(new DashboardValidationDto
             {
@@ -3751,7 +3760,10 @@ public static class CachedAnalyticsEndpoints
             {
                 Priority = "P3",
                 Title = "Portfolio balance",
-                Recommendation = "Diversify sales concentration by promoting medium-performing SKUs."
+                Recommendation = "Diversify sales concentration by promoting medium-performing SKUs.",
+                RecommendationAllowed = false,
+                DataQualityStatus = paretoStatus,
+                StatusReason = "Pareto concentration is elevated."
             });
             snapshot.Validations.Add(new DashboardValidationDto
             {
@@ -3783,7 +3795,7 @@ public static class CachedAnalyticsEndpoints
         return snapshot;
     }
 
-    private static List<DashboardDecisionActionDto> BuildDashboardDecisionActions(
+    internal static List<DashboardDecisionActionDto> BuildDashboardDecisionActions(
         ProductDecisionCenterResponseDto? productDecisionSnapshot,
         DashboardAdvancedSnapshotDto? advancedSnapshot,
         DateTime? fromDate,
@@ -3916,14 +3928,16 @@ public static class CachedAnalyticsEndpoints
                     Title = TranslateLegacyActionTitle(action.Title),
                     Description = action.Recommendation,
                     Reason = action.Recommendation,
-                    StatusReason = action.Recommendation,
+                    StatusReason = ResolveDashboardLegacyActionStatusReason(action),
                     RecommendationStatus = null,
                     ExpectedImpact = null,
                     ImpactEstimateRsd = null,
-                    ConfidencePct = null,
-                    ReliabilityPct = null,
-                    RecommendationAllowed = false,
-                    DataQualityStatus = "insufficient_data",
+                    ConfidencePct = action.ConfidencePct,
+                    ReliabilityPct = action.ReliabilityPct,
+                    RecommendationAllowed = action.RecommendationAllowed ?? false,
+                    DataQualityStatus = string.IsNullOrWhiteSpace(action.DataQualityStatus)
+                        ? "insufficient_data"
+                        : action.DataQualityStatus,
                     ActionUrl = mappedLink,
                     Metadata = new Dictionary<string, object?>
                     {
@@ -4447,6 +4461,23 @@ public static class CachedAnalyticsEndpoints
         if (normalized.Contains("portfolio")) return BuildDashboardActionLink("/analytics/products", fromDate, toDate, storeId, supplierId);
         if (normalized.Contains("refresh")) return BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId);
         return BuildDashboardActionLink("/analytics", fromDate, toDate, storeId, supplierId);
+    }
+
+    private static string ResolveDashboardLegacyActionStatusReason(DashboardActionDto action)
+    {
+        if (!string.IsNullOrWhiteSpace(action.StatusReason))
+            return action.StatusReason;
+
+        var hasTrustPayload =
+            action.RecommendationAllowed.HasValue ||
+            action.ConfidencePct.HasValue ||
+            action.ReliabilityPct.HasValue ||
+            !string.IsNullOrWhiteSpace(action.DataQualityStatus);
+
+        if (hasTrustPayload && !string.IsNullOrWhiteSpace(action.Recommendation))
+            return action.Recommendation;
+
+        return "Legacy dashboard action bez trust payloada.";
     }
 
     private static string TranslateLegacyActionTitle(string title)
@@ -7885,6 +7916,11 @@ public class DashboardActionDto
     public string Priority { get; set; } = "P3";
     public string Title { get; set; } = "";
     public string Recommendation { get; set; } = "";
+    public string? StatusReason { get; set; }
+    public int? ConfidencePct { get; set; }
+    public int? ReliabilityPct { get; set; }
+    public bool? RecommendationAllowed { get; set; }
+    public string? DataQualityStatus { get; set; }
 }
 
 public class DashboardDecisionActionDto
