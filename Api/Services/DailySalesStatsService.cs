@@ -524,6 +524,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             }
         }
 
+        var generatedAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         var response = new DailySalesTableResponse
         {
             RequestedFrom = fromDateUtc,
@@ -557,9 +558,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 MaxAvailableDate = maxAvailableDate,
                 Warnings = warnings
             },
-            Meta = totalItemsInRange == 0
-                ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
-                : AnalyticsResponseMetaFactory.Success()
+            Meta = BuildDailySalesMeta(totalItemsInRange, warnings, generatedAtUtc)
         };
 
         if (_logger.IsEnabled(LogLevel.Information))
@@ -576,6 +575,37 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         }
 
         return response;
+    }
+
+    private static AnalyticsResponseMetaDto BuildDailySalesMeta(
+        int totalItemsInRange,
+        IReadOnlyCollection<string> warnings,
+        DateTime generatedAtUtc)
+    {
+        if (totalItemsInRange == 0)
+        {
+            var emptyMeta = AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.");
+            emptyMeta.GeneratedAtUtc = generatedAtUtc;
+            emptyMeta.LastRefreshAtUtc = generatedAtUtc;
+            return emptyMeta;
+        }
+
+        if (warnings.Count > 0)
+        {
+            var warningMeta = AnalyticsResponseMetaFactory.Warning(
+                "DAILY_SALES_WARNINGS",
+                "Dnevna prodaja ima upozorenja o kvalitetu podataka.",
+                "warning",
+                generatedAtUtc);
+            warningMeta.GeneratedAtUtc = generatedAtUtc;
+            warningMeta.LastRefreshAtUtc = generatedAtUtc;
+            return warningMeta;
+        }
+
+        var successMeta = AnalyticsResponseMetaFactory.Success("good", generatedAtUtc);
+        successMeta.GeneratedAtUtc = generatedAtUtc;
+        successMeta.LastRefreshAtUtc = generatedAtUtc;
+        return successMeta;
     }
 
     private static string NormalizeDataScope(string? dataScope)

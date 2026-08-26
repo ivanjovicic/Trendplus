@@ -1,4 +1,5 @@
 import { fetchAnalyticsJson } from "./analyticsHttp";
+import type { AnalyticsResponseMeta } from "../types/analytics";
 
 export interface DailySalesSupplierHeader {
   supplierId: number | null;
@@ -51,6 +52,7 @@ export interface DailySalesTableResponse {
   topSuppliersOrder: string[];
   dateRows: DailySalesRow[];
   metadata: DailySalesMetadata;
+  meta?: AnalyticsResponseMeta;
 }
 
 export interface DailySalesQuery {

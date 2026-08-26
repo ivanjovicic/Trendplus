@@ -550,6 +550,19 @@ export default function DailySalesStatsPage() {
     return "Nema podataka za izabrane filtere.";
   }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, sortedRows.length]);
 
+  const responseMeta = data?.meta ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? null;
+  const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? null;
+  const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustDataFreshnessStatus = responseMeta?.emptyReason
+    ? "unknown"
+    : trustIsPartial
+      ? "stale"
+      : "fresh";
+  const trustEmptyStateReason = responseMeta?.emptyReason
+    ? responseMeta.message ?? emptyStateHint
+    : emptyStateHint;
+
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || error || sortedRows.length > 0) return null;
     if (activeFilters.storeId != null) return "filtered_out";
@@ -1289,14 +1302,16 @@ export default function DailySalesStatsPage() {
         description="Dnevni pregled po smenama: količine, prihodi i top dobavljači."
         periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
         periodTo={data?.requestedTo ?? activeFilters.toDate}
-        lastRefreshAt={null}
-        dataFreshnessStatus="unknown"
+        lastRefreshAt={trustLastRefreshAt}
+        dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Daily sales analytics (scope: ${data?.dataScope ?? memoizedQueryDataScope})`}
-        dataQualityStatus={null}
+        dataQualityStatus={trustDataQualityStatus}
+        isPartial={trustIsPartial}
         mode="signal"
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"
+        emptyStateReason={!loading && !error ? trustEmptyStateReason : null}
         compact
       />
 

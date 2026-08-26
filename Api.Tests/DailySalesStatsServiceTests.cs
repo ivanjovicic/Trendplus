@@ -86,6 +86,10 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(2, result.Metadata.OffShiftItems);
         Assert.True(result.Metadata.UnknownSupplierPct > 20m);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("van smena", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("warning", result.Meta.DataQualityStatus);
+        Assert.True(result.Meta.IsPartial);
+        Assert.Equal("DAILY_SALES_WARNINGS", result.Meta.WarningCode);
+        Assert.NotNull(result.Meta.LastRefreshAtUtc);
     }
 
     [Fact]
@@ -129,6 +133,9 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(7, row.TotalItemsSold);
         Assert.Equal(350m, row.TotalRevenue);
         Assert.Equal("imported", imported.DataScope);
+        Assert.Equal("warning", imported.Meta.DataQualityStatus);
+        Assert.True(imported.Meta.IsPartial);
+        Assert.NotNull(imported.Meta.LastRefreshAtUtc);
     }
 
     [Fact]
@@ -219,6 +226,33 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(8, result.DateRows.Sum(r => r.FirstShiftTotalItems));
         Assert.Equal(0, result.Metadata.OffShiftItems);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("Satnica prodaje nije dostupna", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_WhenNoDataInRange_ReturnsEmptyTrustMeta()
+    {
+        await using var db = CreateDbContext();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            requestedFromUtc: new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 4, 7, 0, 0, 0, DateTimeKind.Utc),
+            storeId: 1,
+            topN: 5,
+            dataScope: "all",
+            ct: CancellationToken.None);
+
+        Assert.Equal(7, result.DateRows.Count);
+        Assert.All(result.DateRows, row =>
+        {
+            Assert.Equal(0, row.TotalItemsSold);
+            Assert.Equal(0m, row.TotalRevenue);
+        });
+        Assert.Equal("insufficient_data", result.Meta.DataQualityStatus);
+        Assert.Equal("no_data_in_period", result.Meta.EmptyReason);
+        Assert.NotNull(result.Meta.LastRefreshAtUtc);
+        Assert.Null(result.Meta.WarningCode);
+        Assert.False(result.Meta.IsPartial);
     }
 
     [Fact]

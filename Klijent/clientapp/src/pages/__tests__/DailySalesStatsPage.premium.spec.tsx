@@ -22,7 +22,32 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title }: { title: string }) => <div data-testid="analytics-trust-header">{title}</div>,
+  default: ({
+    title,
+    lastRefreshAt,
+    dataFreshnessStatus,
+    dataQualityStatus,
+    isPartial,
+    emptyStateReason,
+  }: {
+    title: string;
+    lastRefreshAt?: string | null;
+    dataFreshnessStatus?: string | null;
+    dataQualityStatus?: string | null;
+    isPartial?: boolean;
+    emptyStateReason?: string | null;
+  }) => (
+    <div
+      data-testid="analytics-trust-header"
+      data-last-refresh-at={lastRefreshAt ?? ""}
+      data-freshness={dataFreshnessStatus ?? ""}
+      data-quality={dataQualityStatus ?? ""}
+      data-partial={isPartial ? "true" : "false"}
+      data-empty-reason={emptyStateReason ?? ""}
+    >
+      {title}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/ui/InfoTip", () => ({
@@ -89,6 +114,13 @@ function response(overrides: Partial<DailySalesTableResponse> = {}): DailySalesT
       maxAvailableDate: "2026-04-30",
       warnings: [],
     },
+    meta: {
+      success: true,
+      generatedAtUtc: "2026-07-01T08:00:00Z",
+      lastRefreshAtUtc: "2026-07-01T08:00:00Z",
+      dataQualityStatus: "good",
+      isPartial: false,
+    },
     ...overrides,
   };
 }
@@ -110,6 +142,11 @@ describe("DailySalesStatsPage premium controls", () => {
     );
 
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po smeni");
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:00:00Z");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-quality", "good");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "fresh");
+    });
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
     expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();
@@ -149,6 +186,15 @@ describe("DailySalesStatsPage premium controls", () => {
         dateRows: [],
         topSuppliers: [],
         topSuppliersOrder: [],
+        meta: {
+          success: true,
+          generatedAtUtc: "2026-07-01T08:05:00Z",
+          lastRefreshAtUtc: "2026-07-01T08:05:00Z",
+          dataQualityStatus: "insufficient_data",
+          emptyReason: "no_data_in_period",
+          message: "Nema prodaje za izabrani period.",
+          isPartial: false,
+        },
         metadata: {
           totalDays: 30,
           uniqueSuppliersInRange: 0,
@@ -181,7 +227,65 @@ describe("DailySalesStatsPage premium controls", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /Nema podataka za izabrani period/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-quality", "insufficient_data");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute(
+        "data-empty-reason",
+        "Nema prodaje za izabrani period.",
+      );
+    });
     expect(screen.getByRole("button", { name: "Prikaži dostupne podatke" })).toBeInTheDocument();
     expect(screen.getByText(/van dostupnog raspona prodaje/i)).toBeInTheDocument();
+  });
+
+  it("surfaces backend trust warnings from Daily Sales meta", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        meta: {
+          success: true,
+          generatedAtUtc: "2026-07-01T08:15:00Z",
+          lastRefreshAtUtc: "2026-07-01T08:15:00Z",
+          dataQualityStatus: "warning",
+          isPartial: true,
+          warningCode: "DAILY_SALES_WARNINGS",
+          warningMessage: "Dnevna prodaja ima upozorenja o kvalitetu podataka.",
+          message: "Dnevna prodaja ima upozorenja o kvalitetu podataka.",
+        },
+        metadata: {
+          totalDays: 30,
+          uniqueSuppliersInRange: 1,
+          unknownSupplierPct: 12,
+          unknownSupplierItems: 4,
+          offShiftItems: 2,
+          offShiftRevenue: 1000,
+          totalItemsInRange: 18,
+          duplicateReceiptGroupCount: 0,
+          duplicateReceiptHeaderCount: 0,
+          receiptAmountMismatchCount: 0,
+          receiptAmountMismatchRevenue: 0,
+          nonStandardReceiptCount: 0,
+          nonStandardReceiptRevenue: 0,
+          debtReceiptCount: 0,
+          debtReceiptRevenue: 0,
+          minAvailableDate: "2026-01-01",
+          maxAvailableDate: "2026-04-30",
+          warnings: ["Veliki udeo prodaje ima nepoznatog dobavljača (20%+)."],
+        },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-quality", "warning");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-freshness", "stale");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-partial", "true");
+    });
   });
 });
