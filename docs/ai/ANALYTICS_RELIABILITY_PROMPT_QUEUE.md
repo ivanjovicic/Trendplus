@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ123` remains `WAITING`)
+Current READY prompt: `RQ124` (`RQ123` is `DONE`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -53,7 +53,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ120 | DONE | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
 | RQ121 | DONE | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
 | RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
-| RQ123 | WAITING | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
+| RQ123 | DONE | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
+| RQ124 | READY | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 | RQ124 | WAITING | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 
 ---
@@ -2338,8 +2339,8 @@ Supplier Decision Hub SQL/tests already preserve missing-evidence guardrails, bu
 
 ## RQ123 - Prove report-generation freshness/cache-version truth for pilot reports
 
-Status: WAITING
-Ready after: `RQ112` is `DONE` or the owner explicitly reprioritizes report freshness truth
+Status: DONE
+Completed after: `RQ112` is `DONE` or the owner explicitly reprioritizes report freshness truth
 Priority: P1
 Type: backend/tests/docs
 Feature family: analytics-report-cache-generation-truth
@@ -2358,6 +2359,24 @@ Pilot supplier/data-quality reports now have reconciled numbers and stable URLs,
 - `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md` still names report cache version bump as part of the supplier-decision/report owner chain.
 - `Api.Tests/AnalyticsCacheAdminServiceTests.cs` proves that explicit report-family invalidation bumps the report version, but not that report generation itself truthfully refreshes freshness semantics.
 - `docs/qa/ANALYTICS_BACKEND_TEST_COVERAGE_PHASE2_2026-07-02.md` proves stable report URLs and report-cache invalidation exist, but not the exact on-demand generation freshness contract.
+
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: proved the supplier report freshness contract by asserting that report generation and last authoritative refresh are exposed as separate facts, that the report payload metadata carries both timestamps, and that the report cache version contract still cleanly separates cached generation from refresh truth.
+- Changed files: `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-08-26-RQ123-evidence.md`
+- Contract/runtime behavior changed: no runtime formula changed; the supplier report contract now explicitly proves generated-vs-refreshed freshness semantics and the report UI test verifies both timestamps are presented separately
+- Checks run: `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsReportsContractTests|FullyQualifiedName~AnalyticsCacheAdminServiceTests"` (pass); `npm run test:run -- src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx` (pass)
+- Checks not run: full solution build/test, live browser smoke, remote main verification
+- Run log: `.ai/runs/2026-08-26-RQ123-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `1e2f5539f6b7884bddb08e3b5272f47d39ac6f10`
+- Main verification: `git branch --contains 1e2f5539f6b7884bddb08e3b5272f47d39ac6f10 -> * main`
+- Missed: no new runtime report cache invalidation behavior was added; the contract was proven rather than altered
+- Follow-up: `RQ124` is now READY
+- Residual risk: the runtime still relies on existing cache-version rotation from administrative or refresh-family paths; this task only proved the contract truthfully
 
 ### Scope
 
@@ -2400,7 +2419,7 @@ Pilot supplier/data-quality reports now have reconciled numbers and stable URLs,
 
 ## RQ124 - Expose backend-owned trust payload on dashboard legacy/advanced action cards
 
-Status: WAITING
+Status: READY
 Ready after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard action-trust lane
 Priority: P1
 Type: backend-frontend-contract/tests
