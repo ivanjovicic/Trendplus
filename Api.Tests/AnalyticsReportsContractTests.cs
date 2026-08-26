@@ -221,6 +221,46 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void SupplierDecisionReportBuilder_ExposesGeneratedAndRefreshedTimesSeparately()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            fromUtc,
+            toUtc,
+            true,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            null,
+            "all");
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [
+                CreateSupplierRow(1, "Alpha", "EXPAND", 82m, 84m, 520000m, 1400m)
+            ],
+            0,
+            0,
+            new DateTime(2026, 6, 30, 12, 0, 0, DateTimeKind.Utc));
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+        var refreshInfo = new SupplierDecisionHubEndpoints.ReportRefreshInfo(
+            LastRefreshAtUtc: new DateTime(2026, 6, 30, 9, 15, 0, DateTimeKind.Utc),
+            DataFreshnessStatus: "stale",
+            WarningMessage: "Refresh je stariji od generisanja reporta.");
+
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters, refreshInfo);
+
+        Assert.True(report.GeneratedAtUtc > refreshInfo.LastRefreshAtUtc);
+        Assert.Equal(refreshInfo.LastRefreshAtUtc, report.LastRefreshAtUtc);
+        Assert.Equal("stale", report.DataFreshnessStatus);
+        Assert.Equal(refreshInfo.LastRefreshAtUtc!.Value.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "lastRefreshAtUtc").Value);
+        Assert.Equal(report.GeneratedAtUtc.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "generatedAtUtc").Value);
+    }
+
+    [Fact]
     public void SupplierDecisionReport_ReconcilesSummaryDetailAndExportFromSeededBasis()
     {
         var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);

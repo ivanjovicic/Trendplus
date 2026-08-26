@@ -100,4 +100,21 @@ describe("SupplierDecisionReport", () => {
     expect(screen.getByText("Pomoćni signal")).toBeInTheDocument();
     expect(screen.getByText(/proveriti podatke i signal pre pregovora/i)).toBeInTheDocument();
   });
+
+  it("shows report generation time separately from the last refresh time", () => {
+    const payload = buildPayload();
+    payload.metadata = [
+      ...payload.metadata,
+      { key: "generatedAtUtc", label: "Generisano", value: "2026-08-26T10:00:00Z" },
+      { key: "dataFreshness", label: "Svežina podataka", value: "stale" },
+    ];
+
+    render(<SupplierDecisionReport payload={payload} />);
+
+    expect(screen.getByText("Datum izveštaja")).toBeInTheDocument();
+    expect(screen.getByText("2026-08-26T10:00:00Z")).toBeInTheDocument();
+    expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-31T05:30:00Z")).toBeInTheDocument();
+    expect(screen.getByText("Svežina podataka: stale")).toBeInTheDocument();
+  });
 });
