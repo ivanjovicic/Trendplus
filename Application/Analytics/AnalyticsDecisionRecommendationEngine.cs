@@ -28,7 +28,7 @@ public static class AnalyticsDecisionRecommendationEngine
         string DataQualityStatus,
         IReadOnlyList<string> ReasonCodes);
 
-    public static RecommendationResult Evaluate(RecommendationInput input, double averageMarginPct)
+    public static RecommendationResult Evaluate(RecommendationInput input, double? averageMarginPct)
     {
         var reasons = new List<string>();
 
@@ -40,6 +40,7 @@ public static class AnalyticsDecisionRecommendationEngine
         if (input.IsNewEntity) reasons.Add("new_entity");
         if (!input.HasPreviousPeriodWindow) reasons.Add("previous_period_missing");
         if (input.PreviousPeriodRevenue.HasValue && input.PreviousPeriodRevenue.Value <= 0m && input.TotalRevenue > 0m) reasons.Add("no_previous_baseline");
+        if (!averageMarginPct.HasValue) reasons.Add("missing_known_margin_baseline");
         if (marginCoverage < 70d) reasons.Add("missing_cost_coverage");
         if (splitCoverage > 0d && splitCoverage < 60d) reasons.Add("limited_nivelacija_coverage");
         if (unknownShare >= 15d) reasons.Add("unknown_heavy_dataset");
@@ -106,7 +107,7 @@ public static class AnalyticsDecisionRecommendationEngine
 
     private static string DecideStatus(
         RecommendationInput input,
-        double averageMarginPct,
+        double? averageMarginPct,
         double reliabilityPct,
         string dataQualityStatus,
         IReadOnlyCollection<string> reasons)
@@ -114,6 +115,11 @@ public static class AnalyticsDecisionRecommendationEngine
         if (input.IsUnknownEntity)
         {
             return "do_not_trust";
+        }
+
+        if (reasons.Contains("missing_known_margin_baseline"))
+        {
+            return "insufficient_data";
         }
 
         if (reasons.Contains("tiny_sample") || (!input.HasPreviousPeriodWindow && input.TotalRevenue < 60000m))
@@ -133,7 +139,7 @@ public static class AnalyticsDecisionRecommendationEngine
 
         var pop = input.PopRevenueChangePct.Value;
         var absoluteMarginFloor = 8d;
-        var dynamicMarginFloor = Math.Max(absoluteMarginFloor, averageMarginPct - 2d);
+        var dynamicMarginFloor = Math.Max(absoluteMarginFloor, (averageMarginPct ?? absoluteMarginFloor) - 2d);
 
         if (pop >= 12d && input.MarginPct >= dynamicMarginFloor && input.SharePct >= 2.5d && reliabilityPct >= 60d)
         {
@@ -173,10 +179,14 @@ public static class AnalyticsDecisionRecommendationEngine
             ? $" Margin signal relies on estimated cost ({input.MarginCoveragePct ?? 0:0.#}% coverage)."
             : "";
 
+        var baselineCaveat = reasons.Contains("missing_known_margin_baseline")
+            ? " Comparable known-margin baseline is unavailable."
+            : "";
+
         return status switch
         {
-            "increase_focus" => $"Strong PoP trend and healthy margin with acceptable reliability ({reliabilityPct:0.#}%).{costCaveat}",
-            "maintain" => $"Stable supplier profile without strong upside/downside signal. Reliability {reliabilityPct:0.#}%.{costCaveat}",
+            "increase_focus" => $"Strong PoP trend and healthy margin with acceptable reliability ({reliabilityPct:0.#}%).{costCaveat}{baselineCaveat}",
+            "maintain" => $"Stable supplier profile without strong upside/downside signal. Reliability {reliabilityPct:0.#}%.{costCaveat}{baselineCaveat}",
             "review" when reasons.Contains("new_entity") =>
                 "Supplier is new versus previous comparable period; review manually before increasing focus.",
             "review" => "Performance or quality signals are mixed; review before changing procurement focus.",
@@ -186,6 +196,8 @@ public static class AnalyticsDecisionRecommendationEngine
                 "Data reliability is too low or margin signal is unstable; do not trust automated recommendation.",
             "insufficient_data" when reasons.Contains("previous_period_missing") =>
                 "Comparable previous period is missing; insufficient evidence for a reliable recommendation.",
+            "insufficient_data" when reasons.Contains("missing_known_margin_baseline") =>
+                "Comparable known-margin baseline is missing; insufficient evidence for a reliable recommendation.",
             "insufficient_data" when IsTinySample(input) =>
                 "Sample is too small (revenue/units/articles) to produce a trustworthy recommendation.",
             _ => "Insufficient evidence for automated decision support."

@@ -101,7 +101,7 @@ export interface SupplierSalesTotals {
   ukupanPromet: number;
   ukupanMarzniDoprinos: number;
   ukupanTrosak?: number;
-  prosecnaMarza: number;
+  prosecnaMarza: number | null;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
   noCostCoveragePct?: number;

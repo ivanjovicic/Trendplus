@@ -1624,11 +1624,13 @@ public static class AllEndpoints
                         toUtc);
                 }
 
-                var averageKnownMarginPct = suppliers
+                var knownSupplierMarginValues = suppliers
                     .Where(row => !row.isUnknown)
                     .Select(row => row.marginPct)
-                    .DefaultIfEmpty(0d)
-                    .Average();
+                    .ToList();
+                var averageKnownMarginPct = knownSupplierMarginValues.Count > 0
+                    ? knownSupplierMarginValues.Average()
+                    : (double?)null;
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct ?? 0d;
@@ -1753,7 +1755,7 @@ public static class AllEndpoints
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = suppliers.Sum(r => r.marginContribution),
                     ukupanTrosak = suppliers.Sum(r => r.totalCost),
-                    prosecnaMarza = Math.Round(averageKnownMarginPct, 2),
+                    prosecnaMarza = averageKnownMarginPct.HasValue ? Math.Round(averageKnownMarginPct.Value, 2) : (double?)null,
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
@@ -2334,11 +2336,13 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var averageMarginPct = shoeTypes
+                var knownShoeTypeMarginValues = shoeTypes
                     .Where(row => !string.Equals(row.tipObuceNaziv, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Select(row => row.marginPct)
-                    .DefaultIfEmpty(0d)
-                    .Average();
+                    .ToList();
+                var averageMarginPct = knownShoeTypeMarginValues.Count > 0
+                    ? knownShoeTypeMarginValues.Average()
+                    : (double?)null;
                 var unknownTypeSharePct = dataQuality.unknownTypeRevenueSharePct ?? 0d;
 
                 var shoeTypesWithRecommendation = shoeTypes
@@ -2449,7 +2453,7 @@ public static class AllEndpoints
                     ukupanPromet = totalRevenue,
                     ukupanMarzniDoprinos = shoeTypes.Sum(r => r.marginContribution),
                     ukupanTrosak = shoeTypes.Sum(r => r.totalCost),
-                    prosecnaMarza = Math.Round(averageMarginPct, 2),
+                    prosecnaMarza = averageMarginPct.HasValue ? Math.Round(averageMarginPct.Value, 2) : (double?)null,
                     historicalCostCoveragePct = totalHistPct,
                     estimatedCostCoveragePct = totalEstPct,
                     noCostCoveragePct = totalNoCostPct,
@@ -2906,11 +2910,13 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
-                var averageMarginPct = colors
+                var knownColorMarginValues = colors
                     .Where(row => !string.Equals(row.boja, "Nepoznato", StringComparison.OrdinalIgnoreCase))
                     .Select(row => row.marginPct)
-                    .DefaultIfEmpty(0d)
-                    .Average();
+                    .ToList();
+                var averageMarginPct = knownColorMarginValues.Count > 0
+                    ? knownColorMarginValues.Average()
+                    : (double?)null;
                 var unknownColorSharePct = dataQuality.unknownColorRevenueSharePct ?? 0d;
 
                 var colorsWithRecommendation = colors

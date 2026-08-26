@@ -1,3 +1,4 @@
+using System;
 using Application.Analytics;
 using System.Linq;
 using Xunit;
@@ -81,6 +82,33 @@ public class AnalyticsDecisionRecommendationEngineTests
         // Engine may return 'insufficient_data' for low revenue or 'review' for missing context; accept either
         Assert.True(res.Status == "insufficient_data" || res.Status == "review");
         Assert.Contains("previous_period_missing", res.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Missing known-margin baseline -> insufficient_data")]
+    public void MissingKnownMarginBaseline_InsufficientData()
+    {
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 120000m,
+            TotalUnits: 240,
+            ItemCount: 24,
+            SharePct: 8d,
+            MarginPct: 18d,
+            MarginCoveragePct: 85d,
+            SplitCoveragePct: 85d,
+            PopRevenueChangePct: 9d,
+            PopUnitsChangePct: 4d,
+            PreviousPeriodRevenue: 110000m,
+            PreviousPeriodUnits: 220,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d);
+
+        var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: null);
+
+        Assert.Equal("insufficient_data", res.Status);
+        Assert.Contains("missing_known_margin_baseline", res.ReasonCodes);
+        Assert.Contains("baseline is missing", res.Summary, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact(DisplayName = "Strong growth + good margin + reliability -> increase_focus")]
