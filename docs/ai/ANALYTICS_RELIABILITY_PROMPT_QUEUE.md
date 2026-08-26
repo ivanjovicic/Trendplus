@@ -2158,6 +2158,7 @@ Several earlier contracts added additive backend trust metadata, while earlier e
   - `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
   - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
   - `MASTER_ROADMAP.md`
+  - `.ai/runs/2026-08-26-RQ120-evidence.md`
 - Contract/runtime behavior changed: supplier sales stats now shows the shared trust header with the source label, requested/effective scope lineage, and effective data-window truth derived from the existing API response.
 - Checks run: `npm run test:run -- src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
 - Checks not run: full repo build/test suites
@@ -2165,7 +2166,7 @@ Several earlier contracts added additive backend trust metadata, while earlier e
 - Evidence state: pending
 - Delivery mode: direct-main
 - Main commit SHA: ead24ae3c531802ca54a58b607f3ef107121abb2
-- Main verification: `git rev-parse HEAD -> ead24ae3c531802ca54a58b607f3ef107121abb2`
+- Main verification: `git merge-base --is-ancestor ead24ae3c531802ca54a58b607f3ef107121abb2 HEAD -> true`
 - Missed: none known
 - Follow-up: `RQ121`
 - Residual risk: the supplier sales stats endpoint still derives scope lineage on the frontend because its backend response does not expose a dedicated requested/effective dataset contract
