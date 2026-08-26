@@ -1803,9 +1803,10 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
+                var generatedAtUtc = DateTime.UtcNow;
                 var response = new
                 {
-                    generatedAt = DateTime.UtcNow,
+                    generatedAt = generatedAtUtc,
                     fromDate = fromUtc,
                     toDate = toUtc,
                     dataWindowFrom,
@@ -1819,6 +1820,14 @@ public static class AllEndpoints
                     suppliers = suppliersWithRecommendation,
                     totals,
                     dataQuality,
+                    meta = BuildStatsTrustMeta(
+                        suppliers.Count,
+                        "no_supplier_sales",
+                        "Nema podataka za prodaju po dobavljaču.",
+                        dataQuality.missingCostRevenueSharePct,
+                        dataQuality.unknownSupplierRevenueSharePct,
+                        dataQuality.revenueWithNivelacijaSplitSharePct,
+                        generatedAtUtc),
                     sezone
                 };
 
@@ -2489,9 +2498,10 @@ public static class AllEndpoints
                         : (double?)null
                 };
 
+                var generatedAtUtc = DateTime.UtcNow;
                 var response = new
                 {
-                    generatedAt = DateTime.UtcNow,
+                    generatedAt = generatedAtUtc,
                     fromDate = fromUtc,
                     toDate = toUtc,
                     dataWindowFrom,
@@ -2502,6 +2512,14 @@ public static class AllEndpoints
                     shoeTypes = shoeTypesWithRecommendation,
                     totals,
                     dataQuality,
+                    meta = BuildStatsTrustMeta(
+                        shoeTypes.Count,
+                        "no_shoe_type_sales",
+                        "Nema podataka za prodaju po tipu obuće.",
+                        dataQuality.missingCostRevenueSharePct,
+                        dataQuality.unknownTypeRevenueSharePct,
+                        dataQuality.revenueWithNivelacijaSplitSharePct,
+                        generatedAtUtc),
                     sezone
                 };
 
@@ -3060,9 +3078,10 @@ public static class AllEndpoints
                     })
                     .ToList();
 
+                var generatedAtUtc = DateTime.UtcNow;
                 var response = new
                 {
-                    generatedAt = DateTime.UtcNow,
+                    generatedAt = generatedAtUtc,
                     fromDate = fromUtc,
                     toDate = toUtc,
                     dataWindowFrom,
@@ -3073,6 +3092,14 @@ public static class AllEndpoints
                     colors = colorsWithRecommendation,
                     totals,
                     dataQuality,
+                    meta = BuildStatsTrustMeta(
+                        colors.Count,
+                        "no_color_sales",
+                        "Nema podataka za prodaju po boji artikla.",
+                        dataQuality.missingCostRevenueSharePct,
+                        dataQuality.unknownColorRevenueSharePct,
+                        dataQuality.revenueWithNivelacijaSplitSharePct,
+                        generatedAtUtc),
                     sezone
                 };
 
@@ -6525,6 +6552,56 @@ public static class AllEndpoints
         }
 
         return httpContext.TraceIdentifier;
+    }
+
+    internal static AnalyticsResponseMetaDto BuildStatsTrustMeta(
+        int rowCount,
+        string emptyReason,
+        string emptyMessage,
+        double? missingCostRevenueSharePct,
+        double? unknownRevenueSharePct,
+        double? comparableSplitCoveragePct,
+        DateTime generatedAtUtc)
+    {
+        if (rowCount <= 0)
+        {
+            var emptyMeta = AnalyticsResponseMetaFactory.Empty(emptyReason, emptyMessage, "insufficient_data");
+            emptyMeta.GeneratedAtUtc = generatedAtUtc;
+            emptyMeta.LastRefreshAtUtc = generatedAtUtc;
+            return emptyMeta;
+        }
+
+        var missingCostShare = missingCostRevenueSharePct ?? 0d;
+        var unknownShare = unknownRevenueSharePct ?? 0d;
+        var splitCoverage = comparableSplitCoveragePct ?? 100d;
+
+        var isCritical = missingCostShare >= 50d || unknownShare >= 20d || splitCoverage < 40d;
+        if (isCritical)
+        {
+            var criticalMeta = AnalyticsResponseMetaFactory.Warning(
+                "STATS_TRUST_CRITICAL",
+                "Kvalitet podataka je kritično degradiran; trust i dalje dolazi iz backenda.",
+                "critical",
+                generatedAtUtc);
+            criticalMeta.GeneratedAtUtc = generatedAtUtc;
+            return criticalMeta;
+        }
+
+        var isWarning = missingCostShare >= 10d || unknownShare >= 10d || splitCoverage < 60d;
+        if (isWarning)
+        {
+            var warningMeta = AnalyticsResponseMetaFactory.Warning(
+                "STATS_TRUST_DEGRADED",
+                "Podaci imaju upozorenja o kvalitetu; prikaz je delimično oslabljen.",
+                "warning",
+                generatedAtUtc);
+            warningMeta.GeneratedAtUtc = generatedAtUtc;
+            return warningMeta;
+        }
+
+        var successMeta = AnalyticsResponseMetaFactory.Success("good", generatedAtUtc);
+        successMeta.GeneratedAtUtc = generatedAtUtc;
+        return successMeta;
     }
 
     private static AnalyticsResponseMetaDto CloneAnalyticsResponseMeta(AnalyticsResponseMetaDto meta)

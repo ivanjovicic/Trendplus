@@ -559,6 +559,12 @@ export default function ColorSalesStatsPage() {
     return qualityNotes.length > 0 ? "warning" : "good";
   }, [data, qualityNotes.length, sortedRows.length]);
 
+  const responseMeta = data?.meta ?? null;
+  const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
+  const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || loading || sortedRows.length > 0) return null;
     if (qualityNotes.length > 0) return "insufficient_data";
@@ -766,13 +772,14 @@ export default function ColorSalesStatsPage() {
         description="Decision-support pogled za izbor boja koje treba pojačati u nabavci."
         periodFrom={data?.fromDate ?? activeFilters.fromDate}
         periodTo={data?.toDate ?? activeFilters.toDate}
-        lastRefreshAt={data?.generatedAt ?? null}
-        dataFreshnessStatus="unknown"
+        lastRefreshAt={trustLastRefreshAt}
+        dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
         dataSource={`Color sales stats materialized view (scope: ${data?.dataScope ?? dataScope})`}
-        dataQualityStatus={headerDataQualityStatus}
+        dataQualityStatus={trustDataQualityStatus}
         mode="recommendation"
+        isPartial={trustIsPartial}
         recommendationNote="Preporuke dolaze iz backenda; ovaj ekran zadržava odluku, period i kvalitet podataka na jednom mestu."
-        emptyStateReason={!loading && !error && emptyStateHint ? emptyStateHint : null}
+        emptyStateReason={!loading && !error && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"

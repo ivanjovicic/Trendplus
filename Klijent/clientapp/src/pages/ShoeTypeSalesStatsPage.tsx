@@ -647,6 +647,12 @@ export default function ShoeTypeSalesStatsPage() {
     return "good";
   }, [data, qualityNotes.length]);
 
+  const responseMeta = data?.meta ?? null;
+  const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
+  const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+
   const showBlockingError = Boolean(error && !data);
   const showStaleError = Boolean(error && data);
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
@@ -920,10 +926,13 @@ export default function ShoeTypeSalesStatsPage() {
         description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
-        lastRefreshAt={data?.generatedAt ?? null}
+        lastRefreshAt={trustLastRefreshAt}
+        dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
         dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
-        dataQualityStatus={headerDataQualityStatus}
+        dataQualityStatus={trustDataQualityStatus}
         mode="signal"
+        isPartial={trustIsPartial}
+        emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"
         refreshStatusHref="/admin/configuration?panel=workers"

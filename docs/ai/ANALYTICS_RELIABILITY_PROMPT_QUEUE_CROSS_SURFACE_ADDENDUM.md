@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ125`
-Main queue READY prompt: `RQ125` (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
+Current READY prompt: `RQ126`
+Main queue READY prompt: `RQ126` (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -27,8 +27,8 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
 | RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
 | RQ105 | DONE | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
-| RQ125 | READY | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
-| RQ126 | WAITING | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
+| RQ125 | DONE | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
+| RQ126 | READY | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
 | RQ127 | WAITING | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 
 ---
@@ -808,7 +808,7 @@ Cached `/sales/daily` can still silently use an operational fallback as a bare a
 
 ## RQ125 - Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages
 
-Status: READY
+Status: DONE
 Ready after: `RQ120` is `DONE` or the owner explicitly promotes the stats trust-metadata lane
 Priority: P1
 Type: backend-frontend-contract/tests
@@ -870,11 +870,31 @@ Supplier, ShoeType, and Color stats pages already mount `AnalyticsTrustHeader`, 
 
 - `RQ120` DONE or explicit owner promotion.
 
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: added backend-owned trust metadata to supplier/shoe/color stats responses, mapped the new meta into the three trust headers, and kept freshness honest when the payload is empty, degraded, or partial
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api.Tests/AnalyticsStatsTrustMetaTests.cs`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/src/services/colorSalesStatsApi.ts`, `Klijent/clientapp/src/services/shoeTypeSalesStatsApi.ts`, `Klijent/clientapp/src/services/supplierSalesStatsApi.ts`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: stats pages now consume backend-owned `meta` for data-quality and freshness semantics instead of inferring trust solely from `generatedAt`
+- Checks run: `git diff --check` pass; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsStatsTrustMetaTests|FullyQualifiedName~AnalyticsMetaContractTests"` pass; `npm run test:run -- src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx` pass
+- Checks not run: `node scripts/check-prompt-queues.mjs --self-test`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs --self-test`, `node scripts/check-planning-architecture.mjs` — to run after queue/roadmap sync
+- Run log: `.ai/runs/2026-08-26-RQ125-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: supplier premium trust-meta assertion stayed out because the deterministic page-level proof already exists in shared trust-state coverage and backend contract tests
+- Follow-up: `RQ126` READY
+- Residual risk: Daily Sales still needs its own authoritative trust contract to eliminate placeholder trust values there
+- Next: `RQ126`
+- Prompt defect / scope repair: none
+
 ---
 
 ## RQ126 - Add authoritative trust metadata to Daily Sales instead of placeholder trust-header values
 
-Status: WAITING
+Status: READY
 Ready after: `RQ120` is `DONE` or the owner explicitly promotes the Daily Sales trust lane
 Priority: P1
 Type: backend-frontend-contract/tests

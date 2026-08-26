@@ -1,3 +1,4 @@
+import type { AnalyticsResponseMeta } from "../types/analytics";
 import { fetchAnalyticsJson } from "./analyticsHttp";
 
 export interface AnalyticsRecommendation {
@@ -120,6 +121,7 @@ export interface SezonaOption {
 
 export interface ShoeTypeSalesStatsResponse {
   generatedAt: string;
+  meta?: AnalyticsResponseMeta;
   fromDate: string | null;
   toDate: string | null;
   dataWindowFrom: string | null;

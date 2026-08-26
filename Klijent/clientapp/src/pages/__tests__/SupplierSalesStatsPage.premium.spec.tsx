@@ -6,7 +6,7 @@ import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
 
 const AnalyticsTrustHeaderMock = vi.hoisted(() =>
-  vi.fn(({ title }: { title: string }) => <div data-testid="analytics-trust-header">{title}</div>)
+  vi.fn((props: { title: string }) => <div data-testid="analytics-trust-header">{props.title}</div>)
 );
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
@@ -32,6 +32,12 @@ describe("SupplierSalesStatsPage premium controls", () => {
       fromDate: "2026-06-01",
       toDate: "2026-06-30",
       generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataQualityStatus: "good",
+        isPartial: false,
+      },
       provenanceBasis: "live_query",
       sezone: [],
       suppliers: [
@@ -112,6 +118,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(screen.getByTestId("supplier-sales-stats-data-table")).toBeInTheDocument();
     });
+
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
@@ -121,6 +128,14 @@ describe("SupplierSalesStatsPage premium controls", () => {
       fromDate: "2026-06-01",
       toDate: "2026-06-30",
       generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T07:50:00Z",
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_supplier_sales",
+        message: "Nema podataka za prodaju po dobavljaču.",
+        isPartial: false,
+      },
       dataWindowFrom: "2024-01-01T00:00:00Z",
       dataWindowTo: "2026-06-30T23:59:59Z",
       provenanceBasis: "live_query",
@@ -150,9 +165,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => {
-      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
-    });
+    await screen.findByRole("heading", { name: /Nema (podataka|dovoljno podataka)/i });
 
     const trustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
       title?: string;
@@ -161,6 +174,9 @@ describe("SupplierSalesStatsPage premium controls", () => {
       requestedDataset?: string | null;
       effectiveDataset?: string | null;
       effectivePeriodLabel?: string | null;
+      lastRefreshAt?: string | null;
+      dataQualityStatus?: string | null;
+      emptyStateReason?: string | null;
     };
 
     expect(trustHeaderProps).toEqual(expect.objectContaining({
@@ -193,6 +209,12 @@ describe("SupplierSalesStatsPage premium controls", () => {
       fromDate: "2026-06-01",
       toDate: "2026-06-30",
       generatedAt: "2026-07-01T08:00:00Z",
+      meta: {
+        success: true,
+        lastRefreshAtUtc: "2026-07-01T08:00:00Z",
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_supplier_sales",
+      },
       dataWindowFrom: "2024-01-01T00:00:00Z",
       dataWindowTo: "2026-06-30T23:59:59Z",
       provenanceBasis: "live_query",

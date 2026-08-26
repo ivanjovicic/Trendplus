@@ -938,6 +938,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return "good";
   }, [data, qualityNotes.length]);
 
+  const responseMeta = data?.meta ?? null;
+  const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
+  const trustIsPartial = responseMeta?.isPartial ?? false;
+  const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
+
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!data || visibleSuppliers.length > 0) return null;
     if (headerDataQualityStatus === "insufficient_data") return "insufficient_data";
@@ -955,19 +961,19 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     onTrustMetadataChange({
       periodFrom: data.fromDate ?? activeFilters.fromDate,
       periodTo: data.toDate ?? activeFilters.toDate,
-      lastRefreshAt: data.generatedAt ?? null,
-      dataFreshnessStatus: "unknown",
+      lastRefreshAt: trustLastRefreshAt,
+      dataFreshnessStatus: trustIsPartial ? "stale" : "unknown",
       dataSource: `Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`,
       provenanceBasis: data.provenanceBasis ?? null,
-      dataQualityStatus: headerDataQualityStatus,
+      dataQualityStatus: trustDataQualityStatus,
       requestedDataset: formatSupplierDataScopeLabel(activeDataScope),
       effectiveDataset: formatSupplierDataScopeLabel(data.dataScope ?? activeDataScope),
       effectivePeriodLabel: formatEffectivePeriodLabel(data.dataWindowFrom, data.dataWindowTo),
-      recommendationAllowed: headerDataQualityStatus === "good" || headerDataQualityStatus === "warning",
+      recommendationAllowed: trustDataQualityStatus === "good" || trustDataQualityStatus === "warning",
       recommendationNote: "Pregled je canonical decision surface za dobavljače. Preporuke dolaze iz backenda.",
-      emptyStateReason: emptyStateHint,
+      emptyStateReason: trustEmptyStateReason,
     });
-  }, [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data, embedded, emptyStateHint, headerDataQualityStatus, onTrustMetadataChange]);
+  }, [activeDataScope, activeFilters.fromDate, activeFilters.toDate, data, embedded, onTrustMetadataChange, trustDataQualityStatus, trustEmptyStateReason, trustIsPartial, trustLastRefreshAt]);
 
   const toolbarFilters = useMemo<AnalyticsNamedValue[]>(
     () => [
@@ -1324,17 +1330,18 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           description="Canonical pregled prodaje po dobavljačima za poslovnu odluku. Preporuke dolaze iz backenda."
           periodFrom={data?.fromDate ?? activeFilters.fromDate}
           periodTo={data?.toDate ?? activeFilters.toDate}
-          lastRefreshAt={data?.generatedAt ?? null}
-          dataFreshnessStatus="unknown"
+          lastRefreshAt={trustLastRefreshAt}
+          dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
           dataSource={`Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`}
           provenanceBasis={data?.provenanceBasis ?? null}
-          dataQualityStatus={headerDataQualityStatus ?? null}
+          dataQualityStatus={trustDataQualityStatus ?? null}
           requestedDataset={formatSupplierDataScopeLabel(activeDataScope)}
           effectiveDataset={formatSupplierDataScopeLabel(data?.dataScope ?? activeDataScope)}
           effectivePeriodLabel={formatEffectivePeriodLabel(data?.dataWindowFrom, data?.dataWindowTo)}
           mode="recommendation"
+          isPartial={trustIsPartial}
           recommendationNote="Ovo je glavni recommendation pogled. Skorkarta je dodatni signal u odvojenom tabu."
-          emptyStateReason={!loading && !showBlockingError && emptyStateHint ? emptyStateHint : null}
+          emptyStateReason={!loading && !showBlockingError && trustEmptyStateReason ? trustEmptyStateReason : null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
           compact
