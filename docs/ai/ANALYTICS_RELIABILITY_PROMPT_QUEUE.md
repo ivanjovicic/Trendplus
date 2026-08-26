@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ121` (`RQ120` is `DONE`)
+Current READY prompt: `RQ122` (`RQ121` is `DONE`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -51,8 +51,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
 | RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
 | RQ120 | DONE | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
-| RQ121 | READY | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
-| RQ122 | WAITING | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
+| RQ121 | DONE | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
+| RQ122 | READY | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
 | RQ123 | WAITING | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
 | RQ124 | WAITING | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 
@@ -2176,13 +2176,13 @@ Several earlier contracts added additive backend trust metadata, while earlier e
 
 ## RQ121 - Expose per-row margin/recommendation trust payload in dashboard top-product tables
 
-Status: READY
+Status: DONE
 Ready after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard row-trust lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: analytics-dashboard-row-trust-payload
 Parallel-safe: no
-Owner: unassigned
+Owner: agent-system
 Local lock: `.ai/task-locks/RQ121-<agent>.lock.md`
 Commit suggestion: `fix(analytics): surface dashboard row trust payload`
 
@@ -2234,11 +2234,30 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 
 - `RQ120` DONE or explicit owner promotion.
 
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: Added backend-owned row-trust payload to advanced top-product DTOs, surfaced it in the dashboard margin column as explicit trust badges/details, and added backend/frontend contract coverage for good vs insufficient-data rows.
+- Changed files: Api/Endpoints/CachedAnalyticsEndpoints.cs; Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs; Klijent/clientapp/src/pages/AnalyticsDashboard.tsx; Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx; Klijent/clientapp/src/types/analytics.ts; docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md; MASTER_ROADMAP.md; .ai/runs/2026-08-26-RQ121-evidence.md
+- Contract/runtime behavior changed: yes; dashboard margin rows now show a trust badge and explanatory detail instead of generic fallback copy
+- Checks run: npm run test:run -- src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx (pass); dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests.TopProducts_ExposesMarginTrustPayloadForDashboardRows" (pass)
+- Checks not run: full solution build; broader suite; direct cached top-products-advanced endpoint against InMemory factory because that route requires relational SQL behavior
+- Run log: .ai/runs/2026-08-26-RQ121-evidence.md
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: supplier trust payload remains the next lane in RQ122; no formula/ranking rewrite was attempted
+- Follow-up: RQ122 READY
+- Residual risk: advanced top-products data still depends on the existing SQL path for real runtime data; the new trust payload itself is derived conservatively from margin-impact availability
+- Prompt defect / scope repair: the cached advanced top-products route cannot be exercised end-to-end in the InMemory integration factory, so the backend check was shifted to a serialization contract test tied to the actual DTO namespace
+
 ---
 
 ## RQ122 - Surface backend-owned trust state on supplier summary/quadrant/header recommendations
 
-Status: WAITING
+Status: READY
 Ready after: `RQ112` and `RQ120` are `DONE`, or the owner explicitly promotes the supplier trust-payload lane
 Priority: P1
 Type: backend-frontend-contract/tests
