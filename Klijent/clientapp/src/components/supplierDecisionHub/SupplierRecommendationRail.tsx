@@ -1,4 +1,5 @@
 import type { SummarySupplierItem } from "../../services/supplierDecisionHubApi";
+import { dataQualityStatusLabel, formatReliability } from "../../utils/analyticsQuality";
 import {
   confidenceLabel,
   formatCurrency,
@@ -62,6 +63,14 @@ function SupplierColumn({
                 <div className="supplier-decision-reco-copy">
                   <div className="supplier-decision-reco-label">Razlog preporuke</div>
                   <p>{recommendation.razlog}</p>
+                </div>
+                <div className="supplier-decision-reco-copy">
+                  <div className="supplier-decision-reco-label">Trust signala</div>
+                  <p>
+                    Pouzdanost: {formatReliability(item.reliabilityPct, 0)} · Kvalitet:{" "}
+                    {dataQualityStatusLabel(item.dataQualityStatus)}
+                  </p>
+                  <p>{item.statusReason || "Nema dodatnog obrazloženja."}</p>
                 </div>
                 <div className="supplier-decision-reco-foot">
                   <span>Prihod: {formatCurrency(item.revenue)}</span>

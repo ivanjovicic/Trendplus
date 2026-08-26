@@ -20,7 +20,21 @@ describe("supplierDecisionHubApi trust metadata mapping", () => {
       markdownRevenueShare: 0.2,
       preMarkdownMarginPct: 0.3,
       capitalAtRisk: 1000,
-      topGrowSuppliers: [],
+      topGrowSuppliers: [
+        {
+          supplierId: 11,
+          supplierName: "Dobavljač 11",
+          revenue: 12000,
+          mlSupplierScore: 76,
+          supplierQualityIndex: 81,
+          recommendationCode: "EXPAND",
+          confidenceScore: 88,
+          reliabilityPct: 82,
+          dataQualityStatus: "warning",
+          statusReason: "Signal je dobar, ali uz upozorenje na pokrivenost.",
+          reasonCodes: ["coverage_gap"],
+        },
+      ],
       topRiskSuppliers: [],
       keyInsights: [],
       trustMetadata: {
@@ -73,6 +87,12 @@ describe("supplierDecisionHubApi trust metadata mapping", () => {
     expect(result.trustMetadata?.requestedTo).toBe("2026-05-30T23:59:59Z");
     expect(result.trustMetadata?.requestedDataset).toBe("all_time");
     expect(result.trustMetadata?.effectiveDataset).toBe("all_time");
+    expect(result.topGrowSuppliers[0]).toMatchObject({
+      reliabilityPct: 82,
+      dataQualityStatus: "warning",
+      statusReason: "Signal je dobar, ali uz upozorenje na pokrivenost.",
+      reasonCodes: ["coverage_gap"],
+    });
   });
 
   it("rejects HTTP 200 payloads with error meta instead of treating zeros as success", async () => {

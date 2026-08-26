@@ -3172,7 +3172,11 @@ FROM final_suppliers;
                 supplier.TopFeature3,
                 supplier.SupplierQualityIndex,
                 supplier.RecommendationCode,
-                supplier.ConfidenceScore),
+                supplier.ConfidenceScore,
+                supplier.ReliabilityPct,
+                supplier.DataQualityStatus,
+                supplier.StatusReason,
+                supplier.ReasonCodes),
             new SupplierKpisDto(
                 supplier.Revenue,
                 supplier.Units,
@@ -3628,8 +3632,6 @@ public sealed record ScorecardTrustMetadata(
 }
 
 // TODO(backend-dto): extend Supplier Decision Hub recommendation DTOs with
-// ReliabilityPct, DataQualityStatus, StatusReason and ReasonCodes so the UI can
-// stop showing "pouzdanost nije dostupna" fallbacks for supplier recommendations.
 public sealed record SummarySupplierItem(
     int SupplierId,
     string SupplierName,
@@ -3654,7 +3656,6 @@ public sealed record QuadrantResponse(
     ScorecardTrustMetadata? TrustMetadata = null,
     AnalyticsResponseMetaDto? Meta = null);
 
-// TODO(backend-dto): include recommendation quality payload on quadrant items too.
 public sealed record QuadrantItem(
     int SupplierId,
     string SupplierName,
@@ -3679,7 +3680,6 @@ public sealed record RankingResponse(
     ScorecardTrustMetadata? TrustMetadata = null,
     AnalyticsResponseMetaDto? Meta = null);
 
-// TODO(backend-dto): include recommendation quality payload and margin quality context on ranking rows.
 public sealed record RankingItem(
     int SupplierId,
     string SupplierName,
@@ -3767,7 +3767,6 @@ public sealed record SupplierDecisionReportPayloadNamedValueContract(
     string Label,
     string Value);
 
-// TODO(backend-dto): expose recommendation quality payload on supplier details header.
 public sealed record SupplierHeaderDto(
     int SupplierId,
     string SupplierName,
@@ -3780,7 +3779,11 @@ public sealed record SupplierHeaderDto(
     string TopFeature3,
     decimal SupplierQualityIndex,
     string RecommendationCode,
-    decimal ConfidenceScore);
+    decimal ConfidenceScore,
+    decimal ReliabilityPct,
+    string DataQualityStatus,
+    string StatusReason,
+    IReadOnlyList<string> ReasonCodes);
 
 public sealed record SupplierKpisDto(
     decimal Revenue,

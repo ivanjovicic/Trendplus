@@ -14,6 +14,7 @@ import {
   signalQualityLabel,
   signalQualityReasonLabel,
 } from "./utils";
+import { dataQualityStatusLabel, formatReliability } from "../../utils/analyticsQuality";
 
 type SupplierDetailDrawerProps = {
   open: boolean;
@@ -152,6 +153,8 @@ export default function SupplierDetailDrawer({
                   <span>AI procena dobavljača: {formatScore(details.supplierHeader.mlSupplierScore)}</span>
                   <span>Indeks kvaliteta: {formatScore(details.supplierHeader.supplierQualityIndex)}</span>
                   <span>Pouzdanost: {confidenceLabel(details.supplierHeader.confidenceScore)}</span>
+                  <span>Trust signala: {formatReliability(details.supplierHeader.reliabilityPct, 0)}</span>
+                  <span>Kvalitet podataka: {dataQualityStatusLabel(details.supplierHeader.dataQualityStatus)}</span>
                 </div>
               </div>
               {details.supplierHeader.aiExplanation ? (
@@ -159,6 +162,9 @@ export default function SupplierDetailDrawer({
                   AI signal: {details.supplierHeader.aiExplanation}
                 </p>
               ) : null}
+              <p className="supplier-decision-muted">
+                Razlog signala: {details.supplierHeader.statusReason || "Nema dodatnog obrazloženja."}
+              </p>
               {[details.supplierHeader.topFeature1, details.supplierHeader.topFeature2, details.supplierHeader.topFeature3].some(Boolean) ? (
                 <div className="supplier-decision-detail-stats">
                   <span>AI signal 1: {formatFeatureName(details.supplierHeader.topFeature1)}</span>

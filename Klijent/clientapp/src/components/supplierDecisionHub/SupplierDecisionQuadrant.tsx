@@ -9,6 +9,7 @@ import {
   ZAxis,
 } from "recharts";
 import type { QuadrantItem } from "../../services/supplierDecisionHubApi";
+import { dataQualityStatusLabel, formatReliability } from "../../utils/analyticsQuality";
 import {
   confidenceLabel,
   formatCurrency,
@@ -150,6 +151,9 @@ export default function SupplierDecisionQuadrant({
                       <span>
                         Preporuka: {recommendation.label} · {confidenceLabel(point.confidenceScore)}
                       </span>
+                      <span>Pouzdanost signala: {formatReliability(point.reliabilityPct, 0)}</span>
+                      <span>Kvalitet podataka: {dataQualityStatusLabel(point.dataQualityStatus)}</span>
+                      <span>{point.statusReason || "Nema dodatnog obrazloženja."}</span>
                     </div>
                   );
                 }}

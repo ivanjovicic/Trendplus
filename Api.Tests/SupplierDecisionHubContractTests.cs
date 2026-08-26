@@ -114,12 +114,67 @@ public sealed class SupplierDecisionHubContractTests
 
         Assert.Equal("Grow", response.TopGrowSuppliers.First().SupplierName);
         Assert.Equal("Risk", response.TopRiskSuppliers.First().SupplierName);
+        Assert.Equal(90m, response.TopGrowSuppliers.First().ReliabilityPct);
+        Assert.Equal("good", response.TopGrowSuppliers.First().DataQualityStatus);
+        Assert.Equal("Test signal", response.TopGrowSuppliers.First().StatusReason);
+        Assert.Equal("expand", response.TopGrowSuppliers.First().ReasonCodes.Single());
         Assert.Equal("good", response.TrustMetadata!.DataCoverageStatus);
         Assert.True(response.TrustMetadata.RecommendationAllowed);
         Assert.False(response.TrustMetadata.UsedFallback);
         Assert.Equal("mv_supplier_decision_score_cache_90d", response.TrustMetadata.ProvenanceBasis);
         Assert.True(response.Meta!.Success);
         Assert.Equal("good", response.Meta.DataQualityStatus);
+    }
+
+    [Fact]
+    public void SupplierHeaderDto_ExposesRecommendationTrustPayload()
+    {
+        var header = new SupplierHeaderDto(
+            SupplierId: 42,
+            SupplierName: "Dobavljač 42",
+            PeriodFrom: new DateTime(2026, 4, 3, 0, 0, 0, DateTimeKind.Utc),
+            PeriodTo: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            MlSupplierScore: 81.5m,
+            AiExplanation: "Stabilan signal.",
+            TopFeature1: "margin",
+            TopFeature2: "sellthrough",
+            TopFeature3: "stock",
+            SupplierQualityIndex: 78m,
+            RecommendationCode: "EXPAND",
+            ConfidenceScore: 88m,
+            ReliabilityPct: 82m,
+            DataQualityStatus: "warning",
+            StatusReason: "Signal je dobar, ali uz upozorenje na pokrivenost.",
+            ReasonCodes: ["coverage_gap"]);
+
+        Assert.Equal(82m, header.ReliabilityPct);
+        Assert.Equal("warning", header.DataQualityStatus);
+        Assert.Equal("Signal je dobar, ali uz upozorenje na pokrivenost.", header.StatusReason);
+        Assert.Equal("coverage_gap", header.ReasonCodes.Single());
+    }
+
+    [Fact]
+    public void QuadrantItem_ExposesRecommendationTrustPayload()
+    {
+        var item = new QuadrantItem(
+            SupplierId: 42,
+            SupplierName: "Dobavljač 42",
+            Revenue: 12_000m,
+            MarkdownDependency: 38.5m,
+            FullPriceSellthrough: 0.62m,
+            PreMarkdownMarginPct: 0.34m,
+            SupplierQualityIndex: 78m,
+            RecommendationCode: "EXPAND",
+            ConfidenceScore: 88m,
+            ReliabilityPct: 82m,
+            DataQualityStatus: "warning",
+            StatusReason: "Signal je dobar, ali uz upozorenje na pokrivenost.",
+            ReasonCodes: ["coverage_gap"]);
+
+        Assert.Equal(82m, item.ReliabilityPct);
+        Assert.Equal("warning", item.DataQualityStatus);
+        Assert.Equal("Signal je dobar, ali uz upozorenje na pokrivenost.", item.StatusReason);
+        Assert.Equal("coverage_gap", item.ReasonCodes.Single());
     }
 
     [Fact]

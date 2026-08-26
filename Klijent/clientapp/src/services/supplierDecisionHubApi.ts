@@ -55,6 +55,10 @@ export type SummarySupplierItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct: number;
+  dataQualityStatus: string;
+  statusReason: string;
+  reasonCodes: string[];
 };
 
 export type KeyInsightItem = {
@@ -121,6 +125,10 @@ export type QuadrantItem = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct: number;
+  dataQualityStatus: string;
+  statusReason: string;
+  reasonCodes: string[];
 };
 
 export type QuadrantResponse = {
@@ -172,6 +180,10 @@ export type SupplierHeaderDto = {
   supplierQualityIndex: number;
   recommendationCode: RecommendationCode;
   confidenceScore: number;
+  reliabilityPct: number;
+  dataQualityStatus: string;
+  statusReason: string;
+  reasonCodes: string[];
 };
 
 export type SupplierKpisDto = {
