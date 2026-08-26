@@ -882,8 +882,8 @@ Supplier, ShoeType, and Color stats pages already mount `AnalyticsTrustHeader`, 
 - Run log: `.ai/runs/2026-08-26-RQ125-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 00e2604cc1ee26b7fe8f9ca772bef7ff8ffaa1f5
+- Main verification: git branch --contains 00e2604cc1ee26b7fe8f9ca772bef7ff8ffaa1f5 -> * main
 - Missed: supplier premium trust-meta assertion stayed out because the deterministic page-level proof already exists in shared trust-state coverage and backend contract tests
 - Follow-up: `RQ126` READY
 - Residual risk: Daily Sales still needs its own authoritative trust contract to eliminate placeholder trust values there
