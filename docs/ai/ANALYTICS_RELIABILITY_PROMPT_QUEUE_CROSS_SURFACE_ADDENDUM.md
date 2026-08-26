@@ -967,8 +967,8 @@ The Daily Sales page shows a shared trust header, but it currently feeds that he
 - Run log: `.ai/runs/2026-08-26-RQ126-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 3d4088660a8126dd864d15b6b3c1712875cbed9f
+- Main verification: git branch --contains 3d4088660a8126dd864d15b6b3c1712875cbed9f -> * main
 - Missed: I did not broaden Daily Sales into a broader dashboard trust refactor
 - Follow-up: `RQ127` READY
 - Residual risk: warning classification is driven by the service’s existing quality-warning list; future semantics changes should stay backend-owned
