@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ122` (`RQ121` is `DONE`)
+Current READY prompt: none (`RQ123` remains `WAITING`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -52,7 +52,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
 | RQ120 | DONE | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
 | RQ121 | DONE | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
-| RQ122 | READY | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
+| RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
 | RQ123 | WAITING | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
 | RQ124 | WAITING | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 
@@ -2257,8 +2257,8 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 
 ## RQ122 - Surface backend-owned trust state on supplier summary/quadrant/header recommendations
 
-Status: READY
-Ready after: `RQ112` and `RQ120` are `DONE`, or the owner explicitly promotes the supplier trust-payload lane
+Status: DONE
+Completed after: `RQ112` and `RQ120` are `DONE`, or the owner explicitly promotes the supplier trust-payload lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: supplier-decision-recommendation-trust-payload
@@ -2277,6 +2277,24 @@ Supplier Decision Hub SQL/tests already preserve missing-evidence guardrails, bu
 - `Klijent/clientapp/src/services/supplierDecisionHubApi.ts` omits reliability/data-quality/status-reason fields from `SummarySupplierItem`, `QuadrantItem`, and `SupplierHeaderDto`, even though `RankingItem` already carries part of that vocabulary.
 - `Klijent/clientapp/src/components/supplierDecisionHub/SupplierRecommendationRail.tsx` currently shows revenue and confidence copy but no explicit trust/degradation reason.
 - `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` notes that supplier-decision SQL already keeps explicit cost-coverage / missing-evidence flags and conservative `REVIEW_QUALITY` fallback.
+
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: surfaced backend-owned supplier recommendation trust on summary, quadrant and header contracts; rendered the trust context in the recommendation rail, quadrant tooltip and supplier detail header; and added focused contract/UI tests so the backend-owned reliability, data-quality and status-reason payload no longer disappears between API and UI.
+- Changed files: `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/SupplierDecisionHubContractTests.cs`; `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionHubApi.spec.ts`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierRecommendationRail.tsx`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDecisionQuadrant.tsx`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.tsx`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierRecommendationRail.spec.tsx`; `Klijent/clientapp/src/components/supplierDecisionHub/SupplierDetailDrawer.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-08-26-RQ122-evidence.md`
+- Contract/runtime behavior changed: supplier decision summary items, quadrant items and supplier header payloads now carry backend-owned reliability/data-quality/status-reason/reason-codes fields; the rail, quadrant tooltip and header drawer now render the trust state explicitly instead of implying stronger confidence by omission
+- Checks run: `git diff --check` (pass); `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~SupplierDecisionHubContractTests"` (pass); `npm run test:run -- src/components/supplierDecisionHub/SupplierRecommendationRail.spec.tsx src/components/supplierDecisionHub/SupplierDetailDrawer.spec.tsx src/services/__tests__/supplierDecisionHubApi.spec.ts` (pass); `npm run typecheck` (pass)
+- Checks not run: full solution build/test, live browser smoke, remote main verification
+- Run log: `.ai/runs/2026-08-26-RQ122-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `569705f11ba0db22fcb0e13b88c1ca7c3a971878`
+- Main verification: `git branch --contains 569705f11ba0db22fcb0e13b88c1ca7c3a971878 -> * main`
+- Missed: no dedicated hover regression for the quadrant tooltip itself; the new trust text is covered by component-level rendering and contract tests
+- Follow-up: none for this prompt; `RQ123` remains `WAITING`
+- Residual risk: older API consumers that do not yet send the new trust fields will need to be upgraded to avoid empty trust lines in the new UI surfaces
 
 ### Scope
 
