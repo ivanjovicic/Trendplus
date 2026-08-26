@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ115`, `RQ116`, and `RQ117` are `DONE`)
+Current READY prompt: `RQ121` (`RQ120` is `DONE`)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -50,7 +50,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ117 | DONE | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
 | RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
 | RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
-| RQ120 | WAITING | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
+| RQ120 | DONE | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
+| RQ121 | READY | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
+| RQ122 | WAITING | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
+| RQ123 | WAITING | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
+| RQ124 | WAITING | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 
 ---
 
@@ -1970,7 +1974,7 @@ RQ108 delivered the forecast materializer and fail-closed observed pairing found
 
 ## RQ118 - Close the residual unscoped Data Quality issues sales window
 
-Status: WAITING
+Status: READY
 Ready after: owner promotes the P1 dataScope residual
 Priority: P1
 Type: backend/tests
@@ -2086,7 +2090,7 @@ The RQ05 audit found high-risk dual-origin or forced-all behavior in Product Dec
 
 ## RQ120 - Surface source, denominator, and provenance metadata in the first proven pilot UI
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ112` and `RQ113` are `DONE`
 Priority: P1
 Type: frontend-contract/tests
@@ -2095,6 +2099,7 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ120-<agent>.lock.md`
 Commit suggestion: `fix(analytics): surface pilot trust metadata`
+Promotion note: 2026-08-25 - `RQ112` and `RQ113` are DONE on current main, so this follow-up is promoted to READY.
 
 ### Problem
 
@@ -2141,3 +2146,277 @@ Several earlier contracts added additive backend trust metadata, while earlier e
 
 - `RQ112` and `RQ113` DONE.
 - If frontend dependencies are unavailable, record the environment failure and do not change backend semantics to satisfy the harness.
+
+### Completion note
+
+- Date: 2026-08-26
+- Status: DONE
+- Completion: surfaced the pilot trust metadata in the first proven UI by forwarding requested/effective scope lineage and the available effective period window into the shared supplier trust header.
+- Changed files:
+  - `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`
+  - `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: supplier sales stats now shows the shared trust header with the source label, requested/effective scope lineage, and effective data-window truth derived from the existing API response.
+- Checks run: `npm run test:run -- src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/analyticsTrustStateProof.spec.tsx`
+- Checks not run: full repo build/test suites
+- Run log: `.ai/runs/2026-08-26-RQ120-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: ead24ae3c531802ca54a58b607f3ef107121abb2
+- Main verification: `git rev-parse HEAD -> ead24ae3c531802ca54a58b607f3ef107121abb2`
+- Missed: none known
+- Follow-up: `RQ121`
+- Residual risk: the supplier sales stats endpoint still derives scope lineage on the frontend because its backend response does not expose a dedicated requested/effective dataset contract
+- Prompt defect / scope repair: none
+
+---
+
+## RQ121 - Expose per-row margin/recommendation trust payload in dashboard top-product tables
+
+Status: READY
+Ready after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard row-trust lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: analytics-dashboard-row-trust-payload
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ121-<agent>.lock.md`
+Commit suggestion: `fix(analytics): surface dashboard row trust payload`
+
+### Problem
+
+Dashboard top-product tables still render margin rows with generic fallback copy like `Kvalitet marže nije dostupan`, while the backend DTO/type layer still carries TODOs for row-level margin-quality tier, cost-coverage, and recommendation-quality payload. A row can look financially meaningful without showing whether margin evidence is missing, partial, or intentionally unavailable.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` still marks `TopProductAdvancedItemDto` with a backend DTO TODO to expose per-row margin quality tier / cost coverage and recommendation quality payload.
+- `Klijent/clientapp/src/types/analytics.ts` keeps the matching TODO on `TopProductAdvancedItem`.
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` falls back to `Kvalitet marže nije dostupan` for table rows instead of rendering a proven row-level trust contract.
+- Earlier trust work (`RQ18`, `RQ45`) already established that hidden coverage fields make margin output look more trustworthy than the evidence allows.
+
+### Scope
+
+- dashboard top-product backend DTO/query mapping;
+- `TopProductAdvancedItem` TypeScript contract and the nearest dashboard row rendering/tests;
+- no margin formula rewrite, no ranking-score rewrite, and no Supplier Decision Hub changes.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`;
+- `Klijent/clientapp/src/types/analytics.ts`;
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`;
+- `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT_ADVANCED_V2.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`.
+
+### Do
+
+1. Decide the smallest truthful row contract: real margin-quality / cost-coverage fields when available, otherwise an explicit unavailable/insufficient row state.
+2. Propagate that contract through DTOs and frontend types without inventing frontend-only scoring.
+3. Replace the generic disclaimer with row-level trust text/badges that distinguish missing evidence from true zero or healthy coverage.
+4. Add focused regression coverage for good, warning/partial, and unavailable margin rows.
+
+### Tests
+
+- `git diff --check`;
+- focused dashboard/backend contract tests for top-product rows;
+- focused frontend/Vitest tests for row trust rendering;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- Dashboard top-product rows visibly explain whether margin/recommendation trust is good, partial, or unavailable.
+- Unknown coverage is not presented as normal-looking margin confidence.
+- The dashboard no longer relies on a generic shared disclaimer when row-level evidence is actually the missing contract.
+
+### Dependencies
+
+- `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ122 - Surface backend-owned trust state on supplier summary/quadrant/header recommendations
+
+Status: WAITING
+Ready after: `RQ112` and `RQ120` are `DONE`, or the owner explicitly promotes the supplier trust-payload lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: supplier-decision-recommendation-trust-payload
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ122-<agent>.lock.md`
+Commit suggestion: `fix(analytics): surface supplier recommendation trust`
+
+### Problem
+
+Supplier Decision Hub SQL/tests already preserve missing-evidence guardrails, but the API/UI still hide part of that trust context on summary cards, quadrant items, and supplier header payloads. Operators can see a recommendation, revenue, and confidence label without the backend-owned reliability/data-quality/status-reason context that proves whether the recommendation is actually decision-safe.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs` still carries backend DTO TODOs for `SummarySupplierItem`, `QuadrantItem`, `RankingItem`, and `SupplierHeaderDto` to expose recommendation quality payload and margin-quality context.
+- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts` omits reliability/data-quality/status-reason fields from `SummarySupplierItem`, `QuadrantItem`, and `SupplierHeaderDto`, even though `RankingItem` already carries part of that vocabulary.
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierRecommendationRail.tsx` currently shows revenue and confidence copy but no explicit trust/degradation reason.
+- `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` notes that supplier-decision SQL already keeps explicit cost-coverage / missing-evidence flags and conservative `REVIEW_QUALITY` fallback.
+
+### Scope
+
+- Supplier Decision Hub summary/quadrant/header DTOs and frontend contracts;
+- the rail/header rendering and nearest contract tests;
+- no supplier score weighting rewrite, no SQL score formula rewrite, and no report-template redesign.
+
+### Read first
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`;
+- `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`;
+- `Klijent/clientapp/src/components/supplierDecisionHub/SupplierRecommendationRail.tsx`;
+- `docs/qa/ANALYTICS_SUPPLIER_SUMMARY_DETAIL_RECONCILIATION_2026-08-24.md`;
+- `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`.
+
+### Do
+
+1. Expose the smallest additive backend-owned recommendation trust payload on summary, quadrant, and header contracts.
+2. Render degraded/partial/review-quality states explicitly instead of leaving the rail/header to imply stronger trust than the backend proved.
+3. Preserve existing recommendation codes and confidence semantics; do not invent frontend fallback formulas.
+4. Add focused tests for good, degraded/review-quality, and unavailable trust payloads.
+
+### Tests
+
+- `git diff --check`;
+- focused Supplier Decision Hub contract tests;
+- focused frontend tests for rail/header trust rendering;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- Supplier summary/quadrant/header recommendations can show backend-owned trust state or explicit unavailable semantics.
+- A recommendation with partial or review-quality evidence no longer looks like a plain high-confidence action by omission.
+- Frontend types stop hiding trust fields that already belong to the backend contract.
+
+### Dependencies
+
+- `RQ112` and `RQ120` DONE, or explicit owner promotion.
+
+---
+
+## RQ123 - Prove report-generation freshness/cache-version truth for pilot reports
+
+Status: WAITING
+Ready after: `RQ112` is `DONE` or the owner explicitly reprioritizes report freshness truth
+Priority: P1
+Type: backend/tests/docs
+Feature family: analytics-report-cache-generation-truth
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ123-<agent>.lock.md`
+Commit suggestion: `fix(analytics): prove report freshness truth`
+
+### Problem
+
+Pilot supplier/data-quality reports now have reconciled numbers and stable URLs, but the current evidence still leaves one trust gap: report generation itself does not prove a report cache-version bump or another freshness guarantee. A report can therefore be numerically correct for some earlier refresh yet still appear freshly generated without a fully tested cache/freshness contract.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` lists as the highest-risk finding that report generation does not rotate report cache version on its own and still depends on import/nightly/data-quality/admin invalidation.
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md` still names report cache version bump as part of the supplier-decision/report owner chain.
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs` proves that explicit report-family invalidation bumps the report version, but not that report generation itself truthfully refreshes freshness semantics.
+- `docs/qa/ANALYTICS_BACKEND_TEST_COVERAGE_PHASE2_2026-07-02.md` proves stable report URLs and report-cache invalidation exist, but not the exact on-demand generation freshness contract.
+
+### Scope
+
+- one pilot report family (`/analytics/supplier/report` or `/analytics/reports/pilot-intake`) and its cache-version/freshness path;
+- the nearest cache/report contract tests plus one QA doc note;
+- no broad cache-family redesign beyond the selected report truth contract.
+
+### Read first
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`;
+- `docs/qa/ANALYTICS_PILOT_SCREEN_DATA_AVAILABILITY_MATRIX.md`;
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs`;
+- `Api.Tests/AnalyticsReportsContractTests.cs`;
+- the selected report endpoint/cache path.
+
+### Do
+
+1. Decide the truthful contract: either report generation rotates/invalidates the report family when needed, or generation remains read-only but must expose freshness as inherited from the last authoritative refresh.
+2. Encode that contract in focused tests so “generated now” cannot be mistaken for “refreshed from source now”.
+3. If generation is intentionally read-only, surface/document the exact freshness/version semantics rather than relying on inference.
+4. Keep the fix scoped to one report family; split any second report lane into a follow-up.
+
+### Tests
+
+- `git diff --check`;
+- focused report/cache contract tests;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- The selected pilot report family has a citeable freshness/cache-version contract.
+- Report generation no longer implies a stronger freshness guarantee than the system can prove.
+- Operators can tell whether a report is newly rendered, newly refreshed, both, or neither.
+
+### Dependencies
+
+- `RQ112` DONE or explicit owner reprioritization.
+
+---
+
+## RQ124 - Expose backend-owned trust payload on dashboard legacy/advanced action cards
+
+Status: WAITING
+Ready after: `RQ120` is `DONE` or the owner explicitly promotes the dashboard action-trust lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: analytics-dashboard-action-trust-payload
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ124-<agent>.lock.md`
+Commit suggestion: `fix(analytics): surface dashboard action trust payload`
+
+### Problem
+
+The dashboard still carries a thin legacy/advanced action contract. `DashboardActionDto` exposes only priority/title/recommendation, while the dashboard action UI and bridge layer already reason about confidence, reliability, recommendation gating, data-quality state, and status reason. When Product Decision rows are unavailable, `BuildDashboardDecisionActions(...)` maps legacy advanced actions into generic helper signals with `RecommendationAllowed=false`, `DataQualityStatus="insufficient_data"`, and null confidence/reliability values. That keeps the UI fail-closed, but it also hides whether the action is truly blocked, merely stale, or actually backed by a known validation condition.
+
+### Evidence
+
+- `Klijent/clientapp/src/types/analytics.ts` still carries `TODO(backend-dto): add confidence/reliability/dataQualityStatus/statusReason to dashboard actions`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` defines `DashboardActionDto` with only `Priority`, `Title`, and `Recommendation`.
+- The same file maps `advancedSnapshot.Actions` into `DashboardDecisionActionDto` by forcing generic fallback trust fields: `RecommendationAllowed = false`, `DataQualityStatus = "insufficient_data"`, `ConfidencePct = null`, `ReliabilityPct = null`, and `StatusReason = action.Recommendation`.
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` renders decision/action cards with explicit trust UI (`confidencePct`, `reliabilityPct`, `dataQualityStatus`, `statusReason`), so the current bridge can make every legacy advanced action look equally blocked even when the originating signal was more specific.
+
+### Scope
+
+- `DashboardActionDto` and the advanced snapshot action builder/bridge in `CachedAnalyticsEndpoints.cs`;
+- the dashboard TypeScript contract and nearest dashboard action rendering/tests;
+- no ranking-score rewrite, no Product Decision formula rewrite, and no Decision Board contract redesign outside the dashboard action payload.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`;
+- `Klijent/clientapp/src/types/analytics.ts`;
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`;
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx`;
+- `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`.
+
+### Do
+
+1. Decide the smallest truthful additive payload for legacy/advanced dashboard actions: real recommendation gate/trust fields when the backend knows them, otherwise an explicit unavailable/legacy fallback state that is distinct from a proven blocked recommendation.
+2. Propagate that payload through the backend DTO and frontend type without inventing frontend-only scoring or silently upgrading trust.
+3. Replace the generic fallback mapping so helper actions preserve why they are limited: stale validation, missing evidence, workflow-only fallback, or another explicit backend-owned reason.
+4. Add focused regression coverage for a healthy/actionable action, an explicitly limited helper signal, and a legacy fallback action with unavailable trust payload.
+
+### Tests
+
+- `git diff --check`;
+- focused dashboard backend/contract tests for advanced action mapping;
+- focused Vitest coverage for dashboard action trust rendering/fallback behavior;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- Dashboard legacy/advanced action cards no longer collapse every thin payload into the same generic `insufficient_data` helper state.
+- The UI can distinguish actionable trust, blocked trust, and unavailable/legacy fallback semantics without inventing local confidence.
+- Backend-owned action trust metadata is visible or explicitly unavailable, not silently implied by generic copy.
+
+### Dependencies
+
+- `RQ120` DONE or explicit owner promotion.
