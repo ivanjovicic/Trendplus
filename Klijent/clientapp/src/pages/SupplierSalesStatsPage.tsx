@@ -71,6 +71,12 @@ type SortField =
   | "status";
 type DecisionStatus = "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
 
+const SUPPLIER_DATA_SCOPE_LABELS: Record<string, string> = {
+  all: "Svi podaci",
+  existing: "Postojeći artikli",
+  imported: "Uvezeni podaci",
+};
+
 type ActiveFilters = {
   fromDate: string;
   toDate: string;
@@ -246,6 +252,16 @@ function trendClass(value: number | null | undefined): string {
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
+}
+
+function formatEffectivePeriodLabel(fromDate?: string | null, toDate?: string | null): string | null {
+  if (!fromDate || !toDate) return null;
+  return `${formatDate(fromDate)} - ${formatDate(toDate)}`;
+}
+
+function formatSupplierDataScopeLabel(scope: string | null | undefined): string {
+  if (!scope) return "Svi podaci";
+  return SUPPLIER_DATA_SCOPE_LABELS[scope] ?? scope;
 }
 
 type StatusTooltipData = {
@@ -941,9 +957,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       periodTo: data.toDate ?? activeFilters.toDate,
       lastRefreshAt: data.generatedAt ?? null,
       dataFreshnessStatus: "unknown",
-      dataSource: `Supplier sales stats (scope: ${activeDataScope})`,
+      dataSource: `Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`,
       provenanceBasis: data.provenanceBasis ?? null,
       dataQualityStatus: headerDataQualityStatus,
+      requestedDataset: formatSupplierDataScopeLabel(activeDataScope),
+      effectiveDataset: formatSupplierDataScopeLabel(data.dataScope ?? activeDataScope),
+      effectivePeriodLabel: formatEffectivePeriodLabel(data.dataWindowFrom, data.dataWindowTo),
       recommendationAllowed: headerDataQualityStatus === "good" || headerDataQualityStatus === "warning",
       recommendationNote: "Pregled je canonical decision surface za dobavljače. Preporuke dolaze iz backenda.",
       emptyStateReason: emptyStateHint,
@@ -1307,9 +1326,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           periodTo={data?.toDate ?? activeFilters.toDate}
           lastRefreshAt={data?.generatedAt ?? null}
           dataFreshnessStatus="unknown"
-          dataSource="Supplier decision materialized view"
+          dataSource={`Supplier sales stats (scope: ${formatSupplierDataScopeLabel(activeDataScope)})`}
           provenanceBasis={data?.provenanceBasis ?? null}
           dataQualityStatus={headerDataQualityStatus ?? null}
+          requestedDataset={formatSupplierDataScopeLabel(activeDataScope)}
+          effectiveDataset={formatSupplierDataScopeLabel(data?.dataScope ?? activeDataScope)}
+          effectivePeriodLabel={formatEffectivePeriodLabel(data?.dataWindowFrom, data?.dataWindowTo)}
           mode="recommendation"
           recommendationNote="Ovo je glavni recommendation pogled. Skorkarta je dodatni signal u odvojenom tabu."
           emptyStateReason={!loading && !showBlockingError && emptyStateHint ? emptyStateHint : null}

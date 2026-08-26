@@ -187,6 +187,8 @@ describe("analytics trust-state header proof", () => {
     );
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expect(screen.getByText("Supplier sales stats (scope: Svi podaci)")).toBeInTheDocument();
+    expect(screen.getByText("Svi podaci -> Svi podaci")).toBeInTheDocument();
     expect(await screen.findByText("Osnova generisanja")).toBeInTheDocument();
     expect(screen.getByText("live_query")).toBeInTheDocument();
   });

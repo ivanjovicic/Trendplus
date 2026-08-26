@@ -5,8 +5,12 @@ import SupplierSalesStatsPage from "../SupplierSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
 
+const AnalyticsTrustHeaderMock = vi.hoisted(() =>
+  vi.fn(({ title }: { title: string }) => <div data-testid="analytics-trust-header">{title}</div>)
+);
+
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title }: { title: string }) => <div data-testid="analytics-trust-header">{title}</div>,
+  default: AnalyticsTrustHeaderMock,
 }));
 
 vi.mock("../../services/analyticsApi", async () => {
@@ -110,6 +114,64 @@ describe("SupplierSalesStatsPage premium controls", () => {
     });
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
+  });
+
+  it("forwards supplier trust lineage and effective period into the shared trust header", async () => {
+    vi.mocked(getSupplierSalesStats).mockResolvedValue({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+      generatedAt: "2026-07-01T08:00:00Z",
+      dataWindowFrom: "2024-01-01T00:00:00Z",
+      dataWindowTo: "2026-06-30T23:59:59Z",
+      provenanceBasis: "live_query",
+      sezone: [],
+      suppliers: [],
+      totals: {
+        ukupanPromet: 0,
+        ukupnaKolicina: 0,
+        marginContribution: 0,
+        marginPct: 0,
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+        marginQualityTier: "insufficient_data",
+        isSnapshotActive: false,
+        snapshotCostCoveragePct: null,
+      },
+      dataQuality: {
+        missingCostRevenueSharePct: 0,
+        unknownSupplierRevenueSharePct: 0,
+      },
+      meta: { success: true, emptyReason: "no_supplier_sales", dataQualityStatus: "insufficient_data" },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(AnalyticsTrustHeaderMock).toHaveBeenCalled();
+    });
+
+    const trustHeaderProps = AnalyticsTrustHeaderMock.mock.calls.at(-1)?.[0] as {
+      title?: string;
+      dataSource?: string | null;
+      provenanceBasis?: string | null;
+      requestedDataset?: string | null;
+      effectiveDataset?: string | null;
+      effectivePeriodLabel?: string | null;
+    };
+
+    expect(trustHeaderProps).toEqual(expect.objectContaining({
+      title: "Dobavljači: Pregled",
+      dataSource: "Supplier sales stats (scope: Svi podaci)",
+      provenanceBasis: "live_query",
+      requestedDataset: "Svi podaci",
+      effectiveDataset: "Svi podaci",
+    }));
+    expect(trustHeaderProps.effectivePeriodLabel).toContain("2024");
+    expect(trustHeaderProps.effectivePeriodLabel).toContain("2026");
   });
 
   it("error hides KPI zeros when supplier sales fails", async () => {
