@@ -177,6 +177,34 @@ function statusLabel(value?: string | null): string {
   return "Neutralno";
 }
 
+function topProductTrustTone(row: Pick<TopProductAdvancedItem, "marginQualityTier" | "dataQualityStatus" | "marginImpact">): Tone {
+  const normalized = (row.marginQualityTier ?? row.dataQualityStatus ?? "").trim().toLowerCase();
+  if (normalized === "good") return "good";
+  if (normalized === "warning") return "warning";
+  if (normalized === "critical") return "critical";
+  if (normalized === "insufficient_data") return "warning";
+  return row.marginImpact == null ? "warning" : "neutral";
+}
+
+function topProductTrustLabel(row: Pick<TopProductAdvancedItem, "marginQualityLabel" | "marginQualityShortLabel" | "dataQualityStatus" | "marginImpact">): string {
+  if (row.marginQualityShortLabel?.trim()) return row.marginQualityShortLabel.trim();
+  if (row.marginQualityLabel?.trim()) return row.marginQualityLabel.trim();
+  if (row.marginImpact == null || row.dataQualityStatus === "insufficient_data") {
+    return "Nedovoljno podataka";
+  }
+  return "Margin signal dostupan";
+}
+
+function topProductTrustDetail(row: Pick<TopProductAdvancedItem, "marginQualityTooltip" | "statusReason" | "reasonCodes" | "dataQualityStatus" | "marginImpact">): string | null {
+  if (row.marginQualityTooltip?.trim()) return row.marginQualityTooltip.trim();
+  if (row.statusReason?.trim()) return row.statusReason.trim();
+  if (row.reasonCodes?.length) return `Razlozi: ${row.reasonCodes.join(", ")}`;
+  if (row.marginImpact == null || row.dataQualityStatus === "insufficient_data") {
+    return "Nabavna cena nije dostupna, pa margin signal nije potvrđen.";
+  }
+  return null;
+}
+
 function decisionPriorityRank(priority?: string | null): number {
   if (priority === "P1") return 1;
   if (priority === "P2") return 2;
@@ -2731,10 +2759,19 @@ export default function AnalyticsDashboard() {
                                   ? "Nije dostupno"
                                   : fmtRsd(row.marginImpact)}
                               </div>
-                              <small className="analytics-data-table__subvalue">
-                                {row.marginQualityLabel ??
-                                  "Kvalitet marže nije dostupan"}
-                              </small>
+                              <div className="analytics-data-table__subvalue">
+                                <span
+                                  className={`stock-pill ${topProductTrustTone(row)}`}
+                                  title={topProductTrustDetail(row) ?? undefined}
+                                >
+                                  {topProductTrustLabel(row)}
+                                </span>
+                                {topProductTrustDetail(row) ? (
+                                  <small className="analytics-data-table__subvalue">
+                                    {topProductTrustDetail(row)}
+                                  </small>
+                                ) : null}
+                              </div>
                             </td>
                             <td
                               className={`analytics-data-table__numeric ${

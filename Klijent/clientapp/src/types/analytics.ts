@@ -317,9 +317,10 @@ export interface TopProductAdvancedItem {
   marginImpact?: number | null;
   stockStatus: "good" | "warning" | "critical" | "neutral" | string;
   trendPct?: number | null;
-  // TODO(backend-dto): add per-row margin quality tier / cost coverage and recommendation quality payload.
   marginQualityLabel?: string | null;
   marginQualityTier?: string | null;
+  marginQualityShortLabel?: string | null;
+  marginQualityTooltip?: string | null;
   confidencePct?: number | null;
   reliabilityPct?: number | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Api.Tests;
@@ -165,6 +166,120 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal("Model B", byUnits[1].GetProperty("productName").GetString());
 
         Assert.True(root.GetProperty("meta").GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
+    public async Task TopProducts_ExposesMarginTrustPayloadForDashboardRows()
+    {
+        var payload = new TopProductsAdvancedResultDto
+        {
+            ByRevenue =
+            [
+                new TopProductAdvancedItemDto
+                {
+                    ProductId = 101,
+                    Sku = "SKU-101",
+                    ProductName = "Runner 101",
+                    Revenue = 125000m,
+                    Units = 12,
+                    VelocityUnitsPerDay = 1.5m,
+                    MarginImpact = 34000m,
+                    StockStatus = "good",
+                    TrendPct = 12.4m,
+                    MarginQualityLabel = "Margin signal dostupan",
+                    MarginQualityTier = "good",
+                    MarginQualityShortLabel = "Dostupno",
+                    MarginQualityTooltip = "Margin impact je izračunat iz dostupne nabavne cene.",
+                    DataQualityStatus = "good",
+                    StatusReason = "Margin signal je potvrđen na osnovu dostupne nabavne cene.",
+                    ReasonCodes = ["margin_available"]
+                }
+            ],
+            ByUnits =
+            [
+                new TopProductAdvancedItemDto
+                {
+                    ProductId = 102,
+                    Sku = "SKU-102",
+                    ProductName = "Runner 102",
+                    Revenue = 98000m,
+                    Units = 9,
+                    VelocityUnitsPerDay = 1.1m,
+                    MarginImpact = null,
+                    StockStatus = "warning",
+                    TrendPct = -4.8m,
+                    MarginQualityLabel = "Nedovoljno podataka",
+                    MarginQualityTier = "insufficient_data",
+                    MarginQualityShortLabel = "Nedostaje dokaz",
+                    MarginQualityTooltip = "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+                    DataQualityStatus = "insufficient_data",
+                    StatusReason = "Nabavna cena nije dostupna za ovaj artikal.",
+                    ReasonCodes = ["missing_cost"]
+                }
+            ],
+            ByVelocity = [],
+            ByMarginImpact =
+            [
+                new TopProductAdvancedItemDto
+                {
+                    ProductId = 101,
+                    Sku = "SKU-101",
+                    ProductName = "Runner 101",
+                    Revenue = 125000m,
+                    Units = 12,
+                    VelocityUnitsPerDay = 1.5m,
+                    MarginImpact = 34000m,
+                    StockStatus = "good",
+                    TrendPct = 12.4m,
+                    MarginQualityLabel = "Margin signal dostupan",
+                    MarginQualityTier = "good",
+                    MarginQualityShortLabel = "Dostupno",
+                    MarginQualityTooltip = "Margin impact je izračunat iz dostupne nabavne cene.",
+                    DataQualityStatus = "good",
+                    StatusReason = "Margin signal je potvrđen na osnovu dostupne nabavne cene.",
+                    ReasonCodes = ["margin_available"]
+                },
+                new TopProductAdvancedItemDto
+                {
+                    ProductId = 102,
+                    Sku = "SKU-102",
+                    ProductName = "Runner 102",
+                    Revenue = 98000m,
+                    Units = 9,
+                    VelocityUnitsPerDay = 1.1m,
+                    MarginImpact = null,
+                    StockStatus = "warning",
+                    TrendPct = -4.8m,
+                    MarginQualityLabel = "Nedovoljno podataka",
+                    MarginQualityTier = "insufficient_data",
+                    MarginQualityShortLabel = "Nedostaje dokaz",
+                    MarginQualityTooltip = "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+                    DataQualityStatus = "insufficient_data",
+                    StatusReason = "Nabavna cena nije dostupna za ovaj artikal.",
+                    ReasonCodes = ["missing_cost"]
+                }
+            ],
+            MarginAvailable = true,
+            MarginMessage = null
+        };
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var byMarginImpact = root.GetProperty("byMarginImpact").EnumerateArray().ToArray();
+
+        Assert.Equal(2, byMarginImpact.Length);
+
+        var firstRow = byMarginImpact[0];
+        Assert.Equal("good", firstRow.GetProperty("marginQualityTier").GetString());
+        Assert.Equal("Margin signal dostupan", firstRow.GetProperty("marginQualityLabel").GetString());
+        Assert.Equal("Dostupno", firstRow.GetProperty("marginQualityShortLabel").GetString());
+        Assert.Equal("Margin impact je izračunat iz dostupne nabavne cene.", firstRow.GetProperty("marginQualityTooltip").GetString());
+        Assert.Equal("good", firstRow.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal("Margin signal je potvrđen na osnovu dostupne nabavne cene.", firstRow.GetProperty("statusReason").GetString());
+
+        var reasonCodes = firstRow.GetProperty("reasonCodes").EnumerateArray().Select(x => x.GetString()).ToArray();
+        Assert.Contains("margin_available", reasonCodes);
     }
 
     [Fact]

@@ -3532,6 +3532,22 @@ public static class CachedAnalyticsEndpoints
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
+                var hasMarginImpact = !reader.IsDBNull(6);
+                var marginQualityTier = hasMarginImpact ? "good" : "insufficient_data";
+                var marginQualityLabel = hasMarginImpact
+                    ? "Margin signal dostupan"
+                    : "Nedovoljno podataka";
+                var marginQualityShortLabel = hasMarginImpact
+                    ? "Dostupno"
+                    : "Nedostaje dokaz";
+                var marginQualityTooltip = hasMarginImpact
+                    ? "Margin impact je izračunat iz dostupne nabavne cene."
+                    : "Nabavna cena nije dostupna, pa margin signal nije potvrđen.";
+                var dataQualityStatus = hasMarginImpact ? "good" : "insufficient_data";
+                var statusReason = hasMarginImpact
+                    ? "Margin signal je potvrđen na osnovu dostupne nabavne cene."
+                    : "Nabavna cena nije dostupna za ovaj artikal.";
+
                 all.Add(new TopProductAdvancedItemDto
                 {
                     ProductId = reader.IsDBNull(0) ? 0 : reader.GetInt32(0),
@@ -3542,7 +3558,14 @@ public static class CachedAnalyticsEndpoints
                     VelocityUnitsPerDay = reader.IsDBNull(5) ? 0m : Math.Round(reader.GetDecimal(5), 2),
                     MarginImpact = reader.IsDBNull(6) ? null : Math.Round(reader.GetDecimal(6), 2),
                     StockStatus = reader.IsDBNull(7) ? "neutral" : reader.GetString(7),
-                    TrendPct = reader.IsDBNull(8) ? null : Math.Round(reader.GetDecimal(8), 2)
+                    TrendPct = reader.IsDBNull(8) ? null : Math.Round(reader.GetDecimal(8), 2),
+                    MarginQualityLabel = marginQualityLabel,
+                    MarginQualityTier = marginQualityTier,
+                    MarginQualityShortLabel = marginQualityShortLabel,
+                    MarginQualityTooltip = marginQualityTooltip,
+                    DataQualityStatus = dataQualityStatus,
+                    StatusReason = statusReason,
+                    ReasonCodes = hasMarginImpact ? ["margin_available"] : ["missing_cost"]
                 });
             }
 
@@ -7567,8 +7590,6 @@ public class SupplierFilterOptionDto
     public string SupplierName { get; set; } = "";
 }
 
-// TODO(backend-dto): expose per-row margin quality tier / cost coverage and recommendation quality payload
-// so dashboard margin tables do not rely on generic "quality unavailable" disclaimers.
 public class TopProductAdvancedItemDto
 {
     public int ProductId { get; set; }
@@ -7580,6 +7601,13 @@ public class TopProductAdvancedItemDto
     public decimal? MarginImpact { get; set; }
     public string StockStatus { get; set; } = "neutral";
     public decimal? TrendPct { get; set; }
+    public string? MarginQualityLabel { get; set; }
+    public string? MarginQualityTier { get; set; }
+    public string? MarginQualityShortLabel { get; set; }
+    public string? MarginQualityTooltip { get; set; }
+    public string? DataQualityStatus { get; set; }
+    public string? StatusReason { get; set; }
+    public List<string> ReasonCodes { get; set; } = [];
 }
 
 public class TopProductsAdvancedResultDto

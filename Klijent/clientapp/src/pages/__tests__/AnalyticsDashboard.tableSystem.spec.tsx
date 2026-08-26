@@ -41,7 +41,13 @@ const topRows = [
     marginImpact: 34000,
     stockStatus: "good",
     trendPct: 12.4,
-    marginQualityLabel: "Pouzdano",
+    marginQualityLabel: "Margin signal dostupan",
+    marginQualityTier: "good",
+    marginQualityShortLabel: "Dostupno",
+    marginQualityTooltip: "Margin impact je izračunat iz dostupne nabavne cene.",
+    dataQualityStatus: "good",
+    statusReason: "Margin signal je potvrđen na osnovu dostupne nabavne cene.",
+    reasonCodes: ["margin_available"],
   },
   {
     productId: 102,
@@ -53,7 +59,13 @@ const topRows = [
     marginImpact: 22000,
     stockStatus: "warning",
     trendPct: -4.8,
-    marginQualityLabel: "Delimicno",
+    marginQualityLabel: "Nedovoljno podataka",
+    marginQualityTier: "insufficient_data",
+    marginQualityShortLabel: "Nedostaje dokaz",
+    marginQualityTooltip: "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+    dataQualityStatus: "insufficient_data",
+    statusReason: "Nabavna cena nije dostupna za ovaj artikal.",
+    reasonCodes: ["missing_cost"],
   },
 ];
 
@@ -138,5 +150,13 @@ describe("AnalyticsDashboard table system", () => {
       within(table).getByRole("columnheader", { name: /Promet/i }),
     ).toHaveClass("analytics-data-table__numeric");
     expect(within(table).getByText("SKU-101")).toBeInTheDocument();
+    expect(within(table).getByText("Dostupno")).toBeInTheDocument();
+    expect(
+      within(table).getByTitle("Margin impact je izračunat iz dostupne nabavne cene."),
+    ).toBeInTheDocument();
+    expect(within(table).getByText("Nedostaje dokaz")).toBeInTheDocument();
+    expect(
+      within(table).getByTitle("Nabavna cena nije dostupna, pa margin signal nije potvrđen."),
+    ).toBeInTheDocument();
   });
 });
