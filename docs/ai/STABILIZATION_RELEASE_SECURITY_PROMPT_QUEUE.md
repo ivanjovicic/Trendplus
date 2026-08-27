@@ -4,7 +4,7 @@ Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
 Current READY prompt: none (`STAB15` is DONE; `STAB16` is BLOCKED on read-only production DB/provider deploy access)
-Current gate verdict: the 2026-08-27 live audit found that the canonical Render API is still deployed at `d9c4d0a8cd893c8e7cb330f47e41e92843fa9875`, behind current `main`, and has no registered worker process. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`.
+Current gate verdict: the first 2026-08-27 live audit found Render behind current `main`; a same-day API-only recheck now shows the canonical Render API at runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`, but no dedicated worker process or durable refresh proof is visible yet. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` and `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ## Goal
 
@@ -1650,14 +1650,14 @@ Commit suggestion: `docs(ops): prove production analytics deploy and worker pari
 
 ### Problem
 
-The canonical production API reports a deployment SHA behind current `main` and exposes no successful analytics-refresh jobs because the web process has no registered workers. This makes freshness unknown, leaves cache warnings active, and prevents the pilot from claiming that the analytics data is refreshed or deploy-parallel with the code that users see.
+The canonical production API now reports a runtime SHA contained in current `main`, but it still exposes no successful analytics-refresh jobs because the web process has no registered workers. This keeps freshness unknown, leaves cache warnings active, and prevents the pilot from claiming durable refreshed analytics or source-reconciled production truth.
 
 ### Evidence
 
-- 2026-08-27 `GET https://trendplus-api.onrender.com/api/runtime/version` returned deployed commit `d9c4d0a8cd893c8e7cb330f47e41e92843fa9875`, which predates the current-main Decision Board/PDC trust repairs.
+- A same-day 2026-08-27 API-only recheck returned `commitSha=6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main` and includes the current PDC/Decision Board trust-repair chain.
 - `GET /api/analytics/refresh-status?dataScope=all` returned `workersEnabled=false`, process `web`, unknown freshness, in-memory-cache warning, and six job reasons equivalent to “Worker nije registrovan u web procesu.”
 - `Api/Config/WorkerRuntimeConfig.cs` and `Api/Program.cs` deliberately register heavy refresh workers only for `PROCESS_TYPE=worker`; enabling them inside the web process would violate the established runtime boundary.
-- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` records the exact public observations and the missing direct database reconciliation proof.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` plus `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md` record the public observations and the still-missing direct database reconciliation/browser proof.
 
 ### Scope
 
@@ -1673,12 +1673,13 @@ The canonical production API reports a deployment SHA behind current `main` and 
 - `Api/Program.cs`;
 - `Api/Services/Analytics/AnalyticsRefreshStatusService.cs`;
 - `docs/DEPLOY_TO_FLY.md` and the canonical provider configuration that actually owns `trendplus-api.onrender.com`;
+- `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`;
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`.
 
 ### Do
 
 1. Use authorized provider access to identify the canonical API deployment and its worker service; do not infer that the Fly fallback is canonical when the frontend points at Render.
-2. Deploy an exact current-`main` SHA through the approved path and record both the source SHA and runtime-version SHA.
+2. Verify the canonical runtime SHA is contained in current `main`; if it is not, deploy through the approved path and record both the source SHA and runtime-version SHA.
 3. Configure/restore a dedicated process with `PROCESS_TYPE=worker`; keep heavy refresh jobs disabled in the web API process.
 4. Use `TRENDPLUS_AUDIT_DATABASE_URL` only for read-only reconciliation of the selected endpoint windows against the production source tables; do not record credentials or mutate data.
 5. Prove at least one successful, timestamped refresh for each required job family, cache/freshness state, and the PDC stale/blocked contract after deployment.
@@ -1687,7 +1688,7 @@ The canonical production API reports a deployment SHA behind current `main` and 
 ### Tests
 
 - `git diff --check` for repository changes;
-- provider/runtime version check proves the exact current-main SHA;
+- provider/runtime version check proves the runtime SHA is contained in current `main`;
 - `/health`, `/ready`, `/api/analytics/refresh-status?dataScope=all`, PDC, Decision Board, and supplier-report live checks;
 - read-only database-to-endpoint reconciliation for the documented window when the audit connection is supplied;
 - queue/planning validators if routing/evidence docs change.

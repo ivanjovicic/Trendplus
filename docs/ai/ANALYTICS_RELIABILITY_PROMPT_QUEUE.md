@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ127` is `DONE`; `RQ128` is WAITING on `STAB16` exact-deploy evidence)
+Current READY prompt: `RQ129` (`RQ128` remains WAITING on `STAB16` worker/freshness/reconciliation proof)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -2282,7 +2282,7 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
 Status: WAITING
-Ready after: `STAB16` is DONE with an exact current-main deployment and worker/freshness evidence
+Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
 Feature family: pdc-actionability-deploy-parity
@@ -2293,15 +2293,16 @@ Commit suggestion: `test(analytics): prove product decision actionability parity
 
 ### Problem
 
-The 2026-08-27 production PDC response returned actionable recommendations for rows labelled `INSUFFICIENT_DATA`, even when their data-quality/freshness evidence warned that the signal was unsafe. Current main now fails closed in the PDC profile, Decision Board aggregation, and Executive Board compatibility rendering, but the canonical production runtime has not deployed that contract.
+The first 2026-08-27 production audit found PDC rows looking actionable under insufficient evidence. A same-day API-only recheck now shows the main fail-closed product repair on the canonical Render runtime, but exact live parity still cannot be claimed until `STAB16` closes worker/freshness, browser, and read-only reconciliation proof on that runtime family.
 
 ### Evidence
 
-- Production PDC retry returned 50 visible rows from 12,422 analyzed rows; 44 visible rows were `INSUFFICIENT_DATA` and six were `WATCH`, yet all 50 had `recommendationAllowed=true`.
-- The same response carried warning/critical freshness evidence for the insufficient rows, so the true condition is not a legitimate zero or healthy empty state.
+- A same-day 2026-08-27 API-only recheck returned runtime `commitSha=6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`.
+- The same recheck returned 50 visible rows from 12,422 analyzed rows with 12 visible rows already blocked by `recommendationAllowed=false`, showing the product fail-closed path is now live for clearly blocked cases.
+- `/api/analytics/refresh-status?dataScope=all` still returned `workersEnabled=false`, process `web`, unknown freshness, an in-memory-cache warning, and zero successful job timestamps, so exact live parity cannot yet be claimed.
 - `CachedAnalyticsEndpoints.BuildProductDecisionConfidenceProfile(...)` now centrally clears recommendation allowance, decision confidence, and expected impact for blocked/stale/critical/unknown evidence.
 - `DecisionBoardEndpoints` and `ExecutiveDecisionBoardPage.tsx` now fail closed for blocked recommendation payloads so an old numeric diagnostic value cannot look like decision confidence.
-- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` records the exact live observation and deployment mismatch.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` plus `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md` record the live observations and the remaining proof gap.
 
 ### Scope
 
@@ -2317,7 +2318,8 @@ The 2026-08-27 production PDC response returned actionable recommendations for r
 - `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`;
 - `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`;
 - `Api.Tests/DecisionBoardEndpointsTests.cs`;
-- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`;
+- `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ### Do
 
@@ -2345,6 +2347,76 @@ The 2026-08-27 production PDC response returned actionable recommendations for r
 
 - `STAB16` DONE; it supplies the exact current-main deployment, worker/freshness evidence, and read-only reconciliation path.
 - No direct production data mutation or formula change is authorized in this prompt.
+
+---
+
+## RQ129 - Remove non-product fake confidence from blocked and insufficient Decision Board cards
+
+Status: READY
+Ready after: n/a
+Priority: P0
+Type: backend-contract/tests
+Feature family: decision-board-non-product-confidence-normalization
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ129-<agent>.lock.md`
+Commit suggestion: `fix(analytics): remove fake confidence from blocked board cards`
+
+### Problem
+
+The live Decision Board still exposes numeric confidence where the contract says operators should see a blocked or insufficient signal. On 2026-08-27, production inventory cards with `recommendationAllowed=false` still carried scores like `55` and `35`, and the outcome summary card returned `confidenceLevel=insufficient_data` together with `confidenceScore=0`. Those values can read like decision confidence instead of blocked evidence or an undersized sample.
+
+### Evidence
+
+- Live `GET /api/analytics/decision-board?dataScope=all` returned inventory cards with `recommendationAllowed=false`, `confidenceLevel=insufficient_data`, warning `inventory_recommendation_blocked`, and still `confidenceScore` values `55` / `35`.
+- The same response returned the `actionsOutcome` summary card with `confidenceLevel=insufficient_data` and `confidenceScore=0` because `BuildOutcomeCards(...)` currently maps `outcomeSummary.Meta.MeasuredSampleSize` into `ConfidenceScore`.
+- `DecisionBoardEndpoints.ResolveInventoryBoardConfidence(...)` currently preserves `SignalConfidencePct` even when `RecommendationAllowed == false`, and `Api.Tests/DecisionBoardEndpointsTests.cs` locks that behavior with `Assert.Equal(72m, resolved.ConfidenceScore)`.
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md` still documents “score preserved” for blocked inventory cards, but `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` separately says missing/blocked recommendation confidence must stay nullable and that outcome feedback must not become recommendation confidence by itself.
+
+### Scope
+
+- `Api/Endpoints/DecisionBoardEndpoints.cs`;
+- targeted backend tests in `Api.Tests/DecisionBoardEndpointsTests.cs` and `Api.Tests/DecisionBoardAggregationContractTests.cs`;
+- Decision Board contract docs only where they describe the now-misleading blocked/insufficient confidence semantics;
+- optional `ExecutiveDecisionBoardPage` test coverage if a rendering regression needs to be locked.
+
+### Read first
+
+- `Api/Endpoints/DecisionBoardEndpoints.cs`;
+- `Api.Tests/DecisionBoardEndpointsTests.cs`;
+- `Api.Tests/DecisionBoardAggregationContractTests.cs`;
+- `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`;
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md`;
+- `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
+
+### Do
+
+1. Make blocked inventory cards fail closed: when `RecommendationAllowed == false`, keep `confidenceLevel=insufficient_data` but clear `confidenceScore` and `reliabilityPct` instead of preserving the signal score.
+2. Separate outcome sample size from decision confidence: a small-sample or incomplete outcome summary may remain visible, but its `confidenceScore` must not be `0` or another numeric value that looks like recommendation confidence.
+3. Add focused regression coverage for at least:
+   - blocked inventory with signal evidence;
+   - workflow-only inventory fallback;
+   - outcome summary with `MeasuredSampleSize < 10`;
+   - one healthy inventory or outcome counterexample that keeps legitimate confidence behavior unchanged.
+4. Update the owning Decision Board/inventory contract docs to match the fixed semantics without redesigning the broader board DTO.
+
+### Tests
+
+- `git diff --check`;
+- focused `dotnet test` for `DecisionBoardEndpointsTests` and `DecisionBoardAggregationContractTests`;
+- focused frontend board test only if render behavior changes;
+- governance validators when queue/docs change.
+
+### Acceptance
+
+- Inventory cards with `recommendationAllowed=false` cannot carry numeric decision confidence or reliability through the Decision Board API.
+- Outcome summary cards with insufficient sample do not expose `confidenceScore=0` or another numeric confidence surrogate; sample size stays visible only as sample/coverage context.
+- Blocked/insufficient non-product Decision Board cards remain visibly blocked without introducing fake zero, fake confidence, or frontend-owned scoring.
+
+### Dependencies
+
+- `RQ13` is historical DONE and may be refined here only within the same Decision Board confidence family.
+- No production mutation, worker configuration, or formula rewrite is authorized in this prompt.
 
 ### Completion note
 
