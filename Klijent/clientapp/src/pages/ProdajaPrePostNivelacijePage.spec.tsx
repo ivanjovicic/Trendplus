@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProdajaPrePostNivelacijePage from "./ProdajaPrePostNivelacijePage";
 import { getStores } from "../services/analyticsApi";
+import { getAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { getVendorSalesNivelacija } from "../services/vendorSalesNivelacijaApi";
 import type { VendorSalesNivelacijaResponse, VendorSalesNivelacijaVendorStat } from "../services/vendorSalesNivelacijaApi";
@@ -254,6 +255,27 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     expect(await screen.findByText(/Nije dostupno/)).toBeInTheDocument();
     expect(screen.queryByText(/Nisko signal/)).not.toBeInTheDocument();
+  });
+
+  it("labels absolute-change share explicitly in detail and export snapshot", async () => {
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(screen.getByText(/Napomena o udelu promene/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/abs\(promena prometa\) \/ zbir apsolutnih promena prometa/i).length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+
+    const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
+    expect(snapshot).toEqual(expect.objectContaining({
+      table: "nivelacije-pre-post",
+      recordId: "10",
+      title: "Vendor A",
+    }));
+    expect(snapshot?.fields.some((field) => field.key === "absoluteChangeSharePct" && field.label === "Udeo u apsolutnoj promeni %")).toBe(true);
+    expect(snapshot?.metadata.some((meta) => meta.key === "absoluteChangeShareFormula" && meta.value.includes("apsolutnih promena"))).toBe(true);
   });
 
   it("shows backend reliability percent instead of a local Visoko band", async () => {

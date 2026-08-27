@@ -659,14 +659,14 @@ Vendor pre/post page can show current data when previous-period request fails, b
 
 ## RQ63 - Vendor absolute-change share naming
 
-Status: WAITING
+Status: DONE
 Ready after: higher-priority reliability fixes
 Priority: P2
 Type: frontend-contract/docs/tests
 Feature family: vendor-change-share-naming
 Parallel-safe: yes
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ63-<agent>.lock.md`
+Local lock: `.ai/task-locks/RQ63-<agent>.lock.md` (removed after DONE)
 Commit suggestion: `docs(analytics): clarify vendor absolute change share`
 
 ### Why
@@ -698,6 +698,26 @@ Vendor pre/post `sharePct` is share of absolute revenue change, not normal reven
 ### Acceptance
 
 - Users cannot confuse absolute-change share with revenue share.
+
+### Completion note
+
+- Date: 2026-08-27
+- Status: DONE
+- Completion: vendor pre/post share is now labeled and explained as share of absolute revenue change, with matching detail/export wording and snapshot metadata
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`
+- Contract/runtime behavior changed: the decision table now exposes `absoluteChangeSharePct`, the visible column says `Udeo u apsolutnoj promeni %`, and detail/export notes make the absolute-change denominator explicit
+- Checks run: `git diff --check` pass; `npm run test -- --run src/pages/ProdajaPrePostNivelacijePage.spec.tsx` pass; `npm run build` pass
+- Checks not run: broader queue validators - not needed for this narrow same-owner frontend/documentation cleanup
+- Run log: `.ai/runs/2026-08-27-RQ63-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no broader prompt-router promotion was needed because the cross-surface queue remains parked with no READY prompt
+- Follow-up: none
+- Residual risk: the backend field still remains named `sharePct` in the source DTO, but the UI/export semantics are now explicit
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 

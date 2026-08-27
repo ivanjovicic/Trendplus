@@ -76,6 +76,7 @@ type ActiveFilters = {
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
+  absoluteChangeSharePct: number;
   sharePct: number;
   postSharePct: number;
   trendPct: number;
@@ -143,7 +144,12 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljač", dataType: "text" },
   { key: "preRevenue", header: "Promet pre", dataType: "currency" },
   { key: "postRevenue", header: "Promet posle", dataType: "currency" },
-  { key: "sharePct", header: "Udeo promene %", dataType: "percent" },
+  {
+    key: "absoluteChangeSharePct",
+    header: "Udeo u apsolutnoj promeni %",
+    detailLabel: "Udeo u apsolutnoj promeni %",
+    dataType: "percent",
+  },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
@@ -613,9 +619,10 @@ export default function ProdajaPrePostNivelacijePage() {
       const confidencePctValue = normalizeRecommendationPct(backendRecommendation?.confidencePct);
       const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
-      const sharePct = item.changeSharePercent ?? (
+      const absoluteChangeSharePct = item.changeSharePercent ?? (
         totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
       );
+      const sharePct = absoluteChangeSharePct;
       const postSharePct = item.postRevenueSharePercent ?? (
         totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
       );
@@ -630,6 +637,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
       return {
         ...item,
+        absoluteChangeSharePct,
         sharePct,
         postSharePct,
         trendPct,
@@ -984,6 +992,11 @@ const advancedSignals = useMemo(
       { key: "articlesCount", label: "Artikala", value: data?.totals.articlesCount ?? 0 },
       { key: "windowDays", label: "Prozor analize", value: data?.windowDays ?? 0 },
       { key: "rowsExported", label: "Vidljivih redova", value: focusedRows.length },
+      {
+        key: "absoluteChangeShareFormula",
+        label: "Formula udele promene",
+        value: "abs(promena prometa) / zbir apsolutnih promena prometa",
+      },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(data?.dataQuality.analyzedSharePercent, 0) },
       { key: "duplicateRowsRemoved", label: "Duplicati uklonjeni", value: data?.dataQuality.duplicateRowsRemoved ?? 0 },
@@ -1528,9 +1541,9 @@ const advancedSignals = useMemo(
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("sharePct")}>
-                          Udeo promene{sortMarker("sharePct", sortField, sortDir)}
+                          Udeo apsolutne promene{sortMarker("sharePct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Udeo u apsolutnoj promeni prometa: |promena dobavljača| / zbir |promena svih dobavljača|. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konačan efekat nivelacije." />
+                        <InfoTip text="Udeo apsolutne promene = abs(promena prometa) / zbir apsolutnih promena prometa. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konačan efekat nivelacije." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("changeRevenue")}>
@@ -1629,6 +1642,9 @@ const advancedSignals = useMemo(
                   Otvori puni detalj
                 </button>
               </div>
+              <p className="ppn-decision-reason">
+                <strong>Napomena o udelu promene:</strong> kolona koristi abs(promena prometa) / zbir apsolutnih promena prometa, pa ne pokazuje udeo u ukupnom prometu.
+              </p>
 
               <div className="ppn-decision-detail-grid">
                 <article>
