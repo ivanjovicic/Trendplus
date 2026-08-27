@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - Api/**
-      - Application/**
-      - Domain/**
-      - Infrastructure/**
-      - Klijent/clientapp/**
-      - render.yaml
-      - docker-compose.production.yml
-      - .github/workflows/deploy-render-manual.yml
+      - 'Api/**'
+      - 'Application/**'
+      - 'Domain/**'
+      - 'Infrastructure/**'
+      - 'Klijent/clientapp/**'
+      - 'render.yaml'
+      - 'docker-compose.production.yml'
+      - '.github/workflows/deploy-render-manual.yml'
   workflow_dispatch:
     inputs:
       ref:
