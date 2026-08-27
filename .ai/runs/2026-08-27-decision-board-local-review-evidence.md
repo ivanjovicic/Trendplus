@@ -48,8 +48,7 @@ Evidence state: synchronized
 - none known
 
 ## Risks
-- Existing solution warnings remain, including a duplicate `Microsoft.Data.SqlClient` package reference and analyzer warnings outside this scope.
-- Existing solution warnings remain outside this scope; remote delivery is verified.
+- Existing solution warnings remain, including a duplicate `Microsoft.Data.SqlClient` package reference and analyzer warnings outside this scope; remote delivery is verified.
 
 ## Next
 - none
