@@ -1974,14 +1974,14 @@ RQ108 delivered the forecast materializer and fail-closed observed pairing found
 
 ## RQ118 - Close the residual unscoped Data Quality issues sales window
 
-Status: READY
+Status: DONE
 Ready after: owner promotes the P1 dataScope residual
 Priority: P1
 Type: backend/tests
 Feature family: data-quality-issues-scope-lineage
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ118-<agent>.lock.md`
+Owner: root
+Local lock: `.ai/task-locks/RQ118-<agent>.lock.md` (removed after DONE)
 Commit suggestion: `fix(analytics): align data quality issues scope`
 
 ### Problem
@@ -2027,6 +2027,25 @@ RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQ
 ### Dependencies
 
 - RQ05/RQ06 DONE; owner promotion required because this is a residual follow-up, not a new current READY task.
+
+### Completion note
+
+- Date: 2026-08-27
+- Status: DONE
+- Completion: `GetDataQualityIssuesHandler` now scopes `sales_30d` by sale-header `DataOrigin`, so imported/existing issue lists no longer mix revenue across origins
+- Changed files: `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesHandler.cs`, `Api.Tests/DataQualityIssuesHandlerTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`, `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`, `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-08-27-RQ118-evidence.md`
+- Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.DataQualityIssuesHandlerTests.Handle_ScopesSales30dByDataScope"` pass; `git diff --check` pass; `node scripts/check-prompt-queues.mjs --self-test` pass; `node scripts/check-prompt-queues.mjs` pass; `node scripts/check-planning-architecture.mjs --self-test` pass; `node scripts/check-planning-architecture.mjs` pass
+- Checks not run: broader backend suite - not needed for this narrow handler regression because the focused integration test proved the residual
+- Run log: `.ai/runs/2026-08-27-RQ118-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: RQ119 dual-origin lane remains waiting and was not pulled into this same prompt
+- Follow-up: none
+- Residual risk: query load still depends on the same sale-header `DataOrigin` contract being accurate in source data
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 

@@ -178,7 +178,7 @@ Fix:
 - `sales_30d` now filters by sale-header `DataOrigin` (RQ05 sales-revenue rule).
 - Article membership remains article-origin scoped.
 - `dataScope=all` unchanged (includes all headers).
-- Residual: `GetDataQualityIssuesHandler` still uses unscoped `sales_30d` (RQ06-F1).
+- Residual resolved in RQ118: `GetDataQualityIssuesHandler` now uses the same sale-header scope.
 
 Recommended prompt: RQ06 (DONE for offenders).
 

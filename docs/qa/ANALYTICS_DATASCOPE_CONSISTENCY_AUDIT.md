@@ -52,13 +52,13 @@ If list / detail / export / action are presented as the same view, they must sha
 | Supplier decision hub rows | `BuildRowFilters` | article | period sales headers unscoped | yes | yes | Article eligibility; sales/returns indirect | Document or add header scope | Medium | Q81 |
 | DQ health Capture | `CaptureAsync` | article (orphans + sales join) | via article | n/a | n/a | Revenue shares by article origin | Keep article for quality; document sales-by-article | Medium | — |
 | DQ top offenders | `GetTopOffendersAsync` | article (`quality_source`) | sale header (`sales_30d`) | n/a | n/a | **RQ06 DONE**: header-scoped sales + article membership | Keep | Was P0 cross-scope leak | RQ06 DONE |
-| DQ issues handler | `GetDataQualityIssuesHandler` | article | **still unscoped** `sales_30d` | n/a | n/a | Same pre-RQ06 CTE pattern | Align with RQ06 sales-header rule | Residual P1 | RQ06-F1 / RQ07 vicinity |
+| DQ issues handler | `GetDataQualityIssuesHandler` | article | sale-header-scoped `sales_30d` | n/a | n/a | Same pre-RQ06 CTE pattern; RQ118 closed the residual | Keep the RQ06 sales-header rule | Resolved in RQ118 | RQ118 |
 | ShoeType / Color list vs detail (FE) | clientapp pages | varies | varies | varies | n/a | List omits `dataScope`; detail URL includes it | Same query lineage | High UX | RQ53/RQ54 |
 | Vendor / supplier pre-post pages (FE) | clientapp | API supports | API supports | API supports | — | Page may not pass store/scope | Pass or hide controls | Medium | RQ53/RQ54 |
 
 ## Top risks (evidence)
 
-1. **DQ top-offender `sales_30d` unscoped** — **fixed in RQ06**: `TopOffendersSql` now filters sale-header `DataOrigin`. Contract: `DataScopeConsistencyContractTests`. Residual: `GetDataQualityIssuesHandler` still has unscoped CTE (follow-up RQ06-F1).
+1. **DQ top-offender `sales_30d` unscoped** — **fixed in RQ06**: `TopOffendersSql` now filters sale-header `DataOrigin`. Contract: `DataScopeConsistencyContractTests`. Residual resolved in RQ118: `GetDataQualityIssuesHandler` now filters the same sale-header scope.
 2. **PDC dual-origin** — articles filtered by `a.DataOrigin`, sales/prev/last-sale by `pz.DataOrigin` in `CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync`. Existing membership test does not cover mismatched origins.
 3. **Inventory / Decision Board forced-all** — cached inventory puts `dataScope` in cache key but does not pass it into `GetInventoryInsightsAsync`; Decision Board omits scope for inventory insights/workflow while scoping PDC/DQ/supplier.
 
@@ -66,7 +66,7 @@ If list / detail / export / action are presented as the same view, they must sha
 
 | ID | Title | Depends on |
 |---|---|---|
-| RQ06 | DQ top-offender / issues `sales_30d` scope correctness | RQ05 (this audit) — **offenders DONE 2026-08-04**; issues handler residual → RQ06-F1 |
+| RQ06 | DQ top-offender / issues `sales_30d` scope correctness | RQ05 (this audit) — **offenders DONE 2026-08-04**; issues handler residual closed by RQ118 |
 | RQ05-F1 | PDC mismatched article vs sale-header origin contract/tests (+ optional align) | RQ05 |
 | RQ05-F2 | Inventory + Decision Board apply article `dataScope` or explicit forced-all meta | RQ05 |
 | RQ05-F3 | ShoeType/Color/Vendor list↔detail↔export scope lineage (overlaps RQ53/RQ54) | RQ05 |

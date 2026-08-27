@@ -242,6 +242,158 @@ public sealed class DataQualityIssuesHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ScopesSales30dByDataScope()
+    {
+        if (!TryCreateContexts(out var trendDb, out var analyticsDb))
+        {
+            return;
+        }
+
+        var uniqueId = CreateUniqueId() + 50_000;
+        var importedProductId = uniqueId + 1;
+        var existingProductId = uniqueId + 2;
+        var importedSku = $"DQ-SCOPE-I-{importedProductId}";
+        var existingSku = $"DQ-SCOPE-E-{existingProductId}";
+
+        var importedSaleAccessId = uniqueId + 10;
+        var importedSaleExistingId = uniqueId + 11;
+        var existingSaleAccessId = uniqueId + 12;
+        var existingSaleExistingId = uniqueId + 13;
+
+        try
+        {
+            trendDb.Artikli.AddRange(
+                new Artikli
+                {
+                    Id = importedProductId,
+                    PLU = importedSku,
+                    Naziv = "Imported scope issue",
+                    IDTipObuce = null,
+                    IDDobavljac = null,
+                    Kolicina = 4,
+                    UpdatedAt = DateTime.UtcNow,
+                    DataOrigin = "access"
+                },
+                new Artikli
+                {
+                    Id = existingProductId,
+                    PLU = existingSku,
+                    Naziv = "Existing scope issue",
+                    IDTipObuce = null,
+                    IDDobavljac = null,
+                    Kolicina = 6,
+                    UpdatedAt = DateTime.UtcNow,
+                    DataOrigin = "existing"
+                });
+
+            trendDb.ProdajaZaglavlja.AddRange(
+                new ProdajaZaglavlje
+                {
+                    Id = importedSaleAccessId,
+                    BrojRacuna = $"DQ-SCOPE-{importedSaleAccessId}",
+                    DatumProdaje = DateTime.UtcNow,
+                    DataOrigin = "access"
+                },
+                new ProdajaZaglavlje
+                {
+                    Id = importedSaleExistingId,
+                    BrojRacuna = $"DQ-SCOPE-{importedSaleExistingId}",
+                    DatumProdaje = DateTime.UtcNow,
+                    DataOrigin = "existing"
+                },
+                new ProdajaZaglavlje
+                {
+                    Id = existingSaleAccessId,
+                    BrojRacuna = $"DQ-SCOPE-{existingSaleAccessId}",
+                    DatumProdaje = DateTime.UtcNow,
+                    DataOrigin = "access"
+                },
+                new ProdajaZaglavlje
+                {
+                    Id = existingSaleExistingId,
+                    BrojRacuna = $"DQ-SCOPE-{existingSaleExistingId}",
+                    DatumProdaje = DateTime.UtcNow,
+                    DataOrigin = "existing"
+                });
+
+            trendDb.ProdajaStavke.AddRange(
+                new ProdajaStavka
+                {
+                    Id = uniqueId + 20,
+                    IdProdaja = importedSaleAccessId,
+                    IdArtikal = importedProductId,
+                    Kolicina = 1,
+                    Cena = 1000m
+                },
+                new ProdajaStavka
+                {
+                    Id = uniqueId + 21,
+                    IdProdaja = importedSaleExistingId,
+                    IdArtikal = importedProductId,
+                    Kolicina = 1,
+                    Cena = 700m
+                },
+                new ProdajaStavka
+                {
+                    Id = uniqueId + 22,
+                    IdProdaja = existingSaleAccessId,
+                    IdArtikal = existingProductId,
+                    Kolicina = 1,
+                    Cena = 300m
+                },
+                new ProdajaStavka
+                {
+                    Id = uniqueId + 23,
+                    IdProdaja = existingSaleExistingId,
+                    IdArtikal = existingProductId,
+                    Kolicina = 1,
+                    Cena = 2000m
+                });
+
+            await trendDb.SaveChangesAsync();
+
+            var handler = new GetDataQualityIssuesHandler(trendDb);
+
+            var importedResult = await handler.Handle(new GetDataQualityIssuesQuery(
+                DataQualityIssueTypes.MissingSupplier,
+                Query: importedSku,
+                DataScope: "imported"), CancellationToken.None);
+
+            var importedItem = Assert.Single(importedResult.Items, x => x.ProductId == importedProductId.ToString());
+            Assert.Equal(1000m, importedItem.Sales30d);
+
+            var existingResult = await handler.Handle(new GetDataQualityIssuesQuery(
+                DataQualityIssueTypes.MissingSupplier,
+                Query: existingSku,
+                DataScope: "existing"), CancellationToken.None);
+
+            var existingItem = Assert.Single(existingResult.Items, x => x.ProductId == existingProductId.ToString());
+            Assert.Equal(2000m, existingItem.Sales30d);
+        }
+        finally
+        {
+            await trendDb.ProdajaStavke.Where(x =>
+                x.Id == uniqueId + 20 ||
+                x.Id == uniqueId + 21 ||
+                x.Id == uniqueId + 22 ||
+                x.Id == uniqueId + 23).ExecuteDeleteAsync();
+
+            await trendDb.ProdajaZaglavlja.Where(x =>
+                x.Id == importedSaleAccessId ||
+                x.Id == importedSaleExistingId ||
+                x.Id == existingSaleAccessId ||
+                x.Id == existingSaleExistingId).ExecuteDeleteAsync();
+
+            await trendDb.Artikli.Where(x =>
+                x.Id == importedProductId ||
+                x.Id == existingProductId).ExecuteDeleteAsync();
+
+            await trendDb.DisposeAsync();
+            await analyticsDb.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task Handle_SupportsPagination_AndSorting()
     {
         if (!TryCreateContexts(out var trendDb, out var analyticsDb))

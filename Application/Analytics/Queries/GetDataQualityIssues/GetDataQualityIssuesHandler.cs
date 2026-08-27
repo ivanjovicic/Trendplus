@@ -36,6 +36,11 @@ public sealed class GetDataQualityIssuesHandler
                 FROM prodaja_stavke ps
                 JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
                 WHERE p.datum_prodaje >= @salesFromUtc
+                  AND (
+                        @dataScope = 'all'
+                     OR (@dataScope = 'imported' AND p.data_origin = 'access')
+                     OR (@dataScope = 'existing' AND (p.data_origin = 'existing' OR p.data_origin IS NULL OR p.data_origin = ''))
+                  )
                 GROUP BY ps.id_artikal
             ),
             quality_source AS (
