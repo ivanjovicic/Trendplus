@@ -2037,10 +2037,10 @@ RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQ
 - Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.DataQualityIssuesHandlerTests.Handle_ScopesSales30dByDataScope"` pass; `git diff --check` pass; `node scripts/check-prompt-queues.mjs --self-test` pass; `node scripts/check-prompt-queues.mjs` pass; `node scripts/check-planning-architecture.mjs --self-test` pass; `node scripts/check-planning-architecture.mjs` pass
 - Checks not run: broader backend suite - not needed for this narrow handler regression because the focused integration test proved the residual
 - Run log: `.ai/runs/2026-08-27-RQ118-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: ae8835e80676aaa0c51f5aae90e7519b8ffef9fe
+- Main verification: `git branch --contains ae8835e80676aaa0c51f5aae90e7519b8ffef9fe` -> `* main`
 - Missed: RQ119 dual-origin lane remains waiting and was not pulled into this same prompt
 - Follow-up: none
 - Residual risk: query load still depends on the same sale-header `DataOrigin` contract being accurate in source data
