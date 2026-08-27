@@ -338,6 +338,40 @@ public sealed class DecisionBoardEndpointsTests
     }
 
     [Fact]
+    public void BuildDecisionBoardResponse_BlocksSupplierCards_WhenTrustMetadataIsMissing()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var supplier = CreateSupplierItem(
+            supplierId: 78,
+            supplierName: "Dobavljač bez trust metapodataka",
+            revenue: 900_000m,
+            confidenceScore: 95m,
+            recommendationCode: "EXPAND");
+        var supplierSummary = CreateSupplierSummary(
+            generatedAtUtc,
+            recommendationAllowed: true,
+            usedFallback: false,
+            grow: [supplier],
+            risk: [],
+            includeTrustMetadata: false);
+
+        var response = BuildBoard(generatedAtUtc, CreateProductDecisionCenter(generatedAtUtc), supplierSummary);
+        var card = Assert.Single(
+            response.Sections
+                .SelectMany(section => section.Cards)
+                .Where(item => item.Kind == "supplier")
+                .DistinctBy(item => item.Id));
+
+        Assert.False(card.RecommendationAllowed);
+        Assert.Equal("insufficient_data", card.ConfidenceLevel);
+        Assert.Equal("insufficient_data", card.DataQualityStatus);
+        Assert.Equal(0m, card.ImpactScore);
+        Assert.True(card.PriorityScore <= 40m);
+        Assert.Contains("supplier_recommendation_blocked", card.WarningCodes);
+        Assert.Contains("signal_check", card.SourceKey, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildDecisionBoardResponse_AllowsHighConfidenceSupplier_WhenRecommendationAllowed()
     {
         var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
@@ -768,7 +802,8 @@ public sealed class DecisionBoardEndpointsTests
         bool recommendationAllowed,
         bool usedFallback,
         IReadOnlyList<SummarySupplierItem> grow,
-        IReadOnlyList<SummarySupplierItem> risk)
+        IReadOnlyList<SummarySupplierItem> risk,
+        bool includeTrustMetadata = true)
     {
         var from = generatedAtUtc.AddDays(-30);
         var trust = new ScorecardTrustMetadata(
@@ -810,7 +845,7 @@ public sealed class DecisionBoardEndpointsTests
             TopRiskSuppliers: risk,
             KeyInsights: [],
             DataNote: trust.DataNote,
-            TrustMetadata: trust);
+            TrustMetadata: includeTrustMetadata ? trust : null);
     }
 
     private static SummarySupplierItem CreateSupplierItem(

@@ -588,11 +588,12 @@ function buildSupplierActionSourceKey(
   return `supplier:${actionKind}:${item.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
 }
 
-function buildSupplierCards(summary: SummaryResponse | null, states: Map<string, ActionState>): BoardCard[] {
+export function buildExecutiveFallbackSupplierCards(summary: SummaryResponse | null, states: Map<string, ActionState> = new Map()): BoardCard[] {
   if (!summary) return [];
 
   const trustMetadata = summary.trustMetadata ?? null;
-  const recommendationAllowed = trustMetadata?.recommendationAllowed ?? true;
+  // A compatibility response without trust metadata is a verification signal, never an actionable recommendation.
+  const recommendationAllowed = trustMetadata?.recommendationAllowed ?? false;
   const filters = {
     fromDate: summary.from.slice(0, 10),
     toDate: summary.to.slice(0, 10),
@@ -612,9 +613,16 @@ function buildSupplierCards(summary: SummaryResponse | null, states: Map<string,
       const actionKey = buildSupplierActionSourceKey(item, filters, recommendationAllowed);
       const actionState = resolveActionState("supplier", actionKey, states);
       const confidenceScore = normalizeRecommendationPct(item.confidenceScore);
-      const confidence = confidenceLabelFromValue(confidenceScore);
-      const confidenceTone = confidenceToneFromValue(confidenceScore);
+      const confidence = recommendationAllowed
+        ? confidenceLabelFromValue(confidenceScore)
+        : "Nedovoljno podataka";
+      const confidenceTone = recommendationAllowed
+        ? confidenceToneFromValue(confidenceScore)
+        : "insufficient";
       const impact = item.revenue > 0 ? item.revenue : null;
+      const dataQualityStatus = recommendationAllowed
+        ? trustMetadata?.dataCoverageStatus ?? "unknown"
+        : "insufficient_data";
 
       cards.push({
         id: `supplier:${group.cardTitle}:${item.supplierId}:${index}`,
@@ -624,32 +632,39 @@ function buildSupplierCards(summary: SummaryResponse | null, states: Map<string,
         sourceType: "supplier",
         sourceKey: actionKey,
         title: item.supplierName,
-        summary: `${recommendation.label}. ${recommendation.razlog}`,
+        summary: recommendationAllowed
+          ? `${recommendation.label}. ${recommendation.razlog}`
+          : `Signal check: ${recommendation.label}. Preporuka nije dozvoljena bez trust metapodataka. ${recommendation.razlog}`,
         confidenceLabel: confidence,
-        confidenceTone: confidenceToneFromValue(confidenceScore),
+        confidenceTone,
         confidenceScore,
         expectedImpactRsd: null,
         measuredImpactRsd: null,
         realizationRatio: null,
         riskIfIgnored: recommendation.razlog,
-        recommendedNextAction: recommendation.label,
+        recommendedNextAction: recommendationAllowed
+          ? recommendation.label
+          : "Proveri pouzdanost dobavljačkog dataset-a pre odluke.",
         actionCta: openActionStateLabel(actionState),
         sourceLink: group.actionLink,
         actionHref: sourceActionLink("supplier"),
         alreadyInAction: actionState === "open",
         alreadyClosed: actionState === "closed",
         actionStateLabel: openActionStateLabel(actionState),
-        warningCodes: trustMetadata?.dataCoverageStatus && trustMetadata.dataCoverageStatus !== "good"
-          ? [String(trustMetadata.dataCoverageStatus)]
-          : [],
-        dataQualityStatus: trustMetadata?.dataCoverageStatus ?? "unknown",
+        warningCodes: recommendationAllowed
+          ? trustMetadata?.dataCoverageStatus && trustMetadata.dataCoverageStatus !== "good"
+            ? [String(trustMetadata.dataCoverageStatus)]
+            : []
+          : ["supplier_recommendation_blocked"],
+        dataQualityStatus,
         generatedAtUtc: summary.to,
         priorityScore: capInsufficientDataPriority(
-          computePriorityScore(impact, confidenceScore, trustMetadata?.dataCoverageStatus ?? "unknown", item.recommendationCode),
+          computePriorityScore(impact, confidenceScore, dataQualityStatus, item.recommendationCode),
           confidenceTone,
-          trustMetadata?.dataCoverageStatus,
+          dataQualityStatus,
         ),
-        impactScore: impact ?? 0,
+        impactScore: recommendationAllowed ? impact ?? 0 : 0,
+        recommendationAllowed,
       });
     });
   }

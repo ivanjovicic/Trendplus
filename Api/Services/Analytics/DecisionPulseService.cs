@@ -242,9 +242,9 @@ public sealed class DecisionPulseService
             item.SignalReasonCodes ?? [],
             NormalizeInventoryPulseStatus(item.ActionType),
             item.Label,
-            item.SignalDataQualityStatus ?? "good",
+            item.SignalDataQualityStatus ?? "insufficient_data",
             "fresh",
-            item.RecommendationAllowed ?? true,
+            item.RecommendationAllowed ?? false,
             DecisionPulseProjector.InventoryDeepLink,
             item.UpdatedAtUtc ?? generatedAtUtc);
 
@@ -275,7 +275,7 @@ public sealed class DecisionPulseService
             ResolveSupplierRecommendationLabel(item.RecommendationCode),
             item.DataQualityStatus,
             "fresh",
-            trust?.RecommendationAllowed ?? true,
+            trust?.RecommendationAllowed ?? false,
             DecisionPulseProjector.SupplierDeepLink,
             trust?.LastRefreshAtUtc ?? generatedAtUtc);
 

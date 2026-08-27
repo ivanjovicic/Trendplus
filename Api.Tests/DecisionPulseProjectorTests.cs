@@ -68,6 +68,37 @@ public sealed class DecisionPulseProjectorTests
     }
 
     [Fact]
+    public void Project_SuppressesInventoryDecision_WhenOptionalTrustSignalIsMissing()
+    {
+        var candidate = DecisionPulseService.MapInventoryCandidate(
+            new InventoryActionSuggestionDto(
+                "replenish|SKU-201|0|0",
+                "replenish",
+                "high",
+                "Dopuni SKU-201",
+                "Artikal pada ispod sigurnog cover-a.",
+                "pending",
+                201,
+                "SKU-201",
+                "Patika",
+                "Magacin A",
+                null,
+                12,
+                18_000m,
+                6,
+                null,
+                DateTime.UtcNow),
+            DateTime.UtcNow);
+
+        var projection = DecisionPulseProjector.Project([candidate], sourceSucceeded: true);
+
+        Assert.Equal("insufficient_data", candidate.DataQualityStatus);
+        Assert.False(candidate.RecommendationAllowed);
+        Assert.Empty(projection.Items);
+        Assert.Equal(1, projection.SuppressedCount);
+    }
+
+    [Fact]
     public void Project_IncludesFreshSupplierDecision_WithWhyAndDeepLink()
     {
         var trust = new ScorecardTrustMetadata(
@@ -119,6 +150,32 @@ public sealed class DecisionPulseProjectorTests
         Assert.Equal(DecisionPulseProjector.SupplierDeepLink, projection.Items[0].DeepLink);
         Assert.Equal("BOOST", projection.Items[0].RecommendationStatus);
         Assert.Contains("širenje", projection.Items[0].WhySummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Project_SuppressesSupplierDecision_WhenTrustMetadataIsMissing()
+    {
+        var candidate = DecisionPulseService.MapSupplierCandidate(
+            new SummarySupplierItem(
+                13,
+                "Dobavljač bez trust metapodataka",
+                25_000m,
+                0.82m,
+                0.79m,
+                "EXPAND",
+                77m,
+                88m,
+                "good",
+                "Signal ukazuje na širenje saradnje.",
+                ["supplier_grow"]),
+            trust: null,
+            generatedAtUtc: DateTime.UtcNow);
+
+        var projection = DecisionPulseProjector.Project([candidate], sourceSucceeded: true);
+
+        Assert.False(candidate.RecommendationAllowed);
+        Assert.Empty(projection.Items);
+        Assert.Equal(1, projection.SuppressedCount);
     }
 
     [Fact]

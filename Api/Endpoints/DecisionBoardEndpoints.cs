@@ -570,7 +570,8 @@ public static class DecisionBoardEndpoints
         }
 
         var trust = supplierSummary.TrustMetadata;
-        var recommendationAllowed = trust?.RecommendationAllowed ?? true;
+        // Trust metadata is optional for compatibility, but an absent contract cannot authorize a supplier decision.
+        var recommendationAllowed = trust?.RecommendationAllowed ?? false;
         var filters = new
         {
             FromDate = supplierSummary.From,
@@ -1182,7 +1183,7 @@ public static class DecisionBoardEndpoints
     {
         if (trust is null)
         {
-            return [];
+            return ["supplier_recommendation_blocked", "supplier_trust_missing"];
         }
 
         var warnings = new List<string>();

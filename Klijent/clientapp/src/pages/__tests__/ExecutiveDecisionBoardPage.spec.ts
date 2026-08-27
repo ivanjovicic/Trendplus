@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildExecutiveDecisionBoardModel,
   buildExecutiveFallbackProductCards,
+  buildExecutiveFallbackSupplierCards,
   buildInventoryCards,
 } from "../ExecutiveDecisionBoardPage";
 import type { InventoryRow } from "../../components/inventory/types";
+import type { SummaryResponse } from "../../services/supplierDecisionHubApi";
 import type {
   DecisionBoardAggregateResponse,
   DecisionBoardCard,
@@ -602,5 +604,50 @@ describe("buildExecutiveFallbackProductCards (RQ72)", () => {
     expect(cards[0].expectedImpactRsd).toBe(40_000);
     expect(cards[1].title).toBe("Veliki lost sales bez impact");
     expect(cards[1].expectedImpactRsd).toBeNull();
+  });
+});
+
+describe("buildExecutiveFallbackSupplierCards", () => {
+  it("blocks a supplier signal when compatibility payload omits trust metadata", () => {
+    const summary: SummaryResponse = {
+      from: "2026-06-01T00:00:00Z",
+      to: "2026-06-30T23:59:59Z",
+      supplierCount: 1,
+      fullPriceRevenueShare: 0.8,
+      fullPriceSellthrough: 0.6,
+      markdownRevenueShare: 0.2,
+      preMarkdownMarginPct: 0.3,
+      capitalAtRisk: 10_000,
+      topGrowSuppliers: [{
+        supplierId: 78,
+        supplierName: "Dobavljač bez trust metapodataka",
+        revenue: 900_000,
+        mlSupplierScore: 80,
+        supplierQualityIndex: 75,
+        recommendationCode: "EXPAND",
+        confidenceScore: 95,
+        reliabilityPct: 95,
+        dataQualityStatus: "good",
+        statusReason: "Signal je inače jak.",
+        reasonCodes: ["supplier_grow"],
+      }],
+      topRiskSuppliers: [],
+      keyInsights: [],
+      trustMetadata: null,
+    };
+
+    const cards = buildExecutiveFallbackSupplierCards(summary);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({
+      recommendationAllowed: false,
+      confidenceTone: "insufficient",
+      dataQualityStatus: "insufficient_data",
+      impactScore: 0,
+    });
+    expect(cards[0].priorityScore).toBeLessThanOrEqual(40);
+    expect(cards[0].warningCodes).toContain("supplier_recommendation_blocked");
+    expect(cards[0].sourceKey).toContain("signal_check");
+    expect(cards[0].recommendedNextAction).toContain("Proveri pouzdanost");
   });
 });
