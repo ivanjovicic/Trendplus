@@ -240,18 +240,18 @@ Data Quality health backend can return meta `insufficient_data` / `no_sales_in_p
 - Completion: Data Quality health now treats `insufficient_data`, `no_sales_in_period`, and zero-total-revenue as insufficient/no-data instead of green.
 - Changed files: `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
 - Contract/runtime behavior changed: yes; the health card no longer reports "Podaci su u zelenoj zoni" for insufficient/no-sales evidence
-- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx` (pass, 7 tests)
-- Checks not run: full frontend build; full repo suites
+- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx src/pages/ExecutiveDecisionBoardPage.spec.tsx src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` (pass, 27 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass)
+- Checks not run: full repo suites
 - Run log: `.ai/runs/2026-08-25-RQ75-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: none
-- Main commit SHA: pending
-- Main verification: not run - no commit to `main` in this turn
-- Missed: `RQ76` is now the next ready follow-up and still needs execution
+- Delivery mode: direct-main
+- Main commit SHA: df538b3b90b67cc165fbb41383f0046d236583bd
+- Main verification: passed - local `main` contains the delivery commit
+- Missed: no known gap in this prompt; `RQ76` was completed in the same delivery
 - Residual risk: other DataQualityPage summaries still rely on threshold logic for non-insufficient statuses
-- Follow-up: `RQ76 - Data Quality one-point trend no-baseline`
+- Follow-up: none
 - Prompt defect / scope repair: promoted `RQ75` from WAITING to READY because `RQ04` was DONE on current main
-- Next: `RQ76`
+- Next: none
 
 ---
 
@@ -294,13 +294,13 @@ Promotion note: 2026-08-25 - `RQ75` is DONE on current main, so this prompt is n
 - Completion: Data Quality trend now shows a neutral/no-baseline state for one-point history instead of marking it improving.
 - Changed files: `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.css`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
 - Contract/runtime behavior changed: yes; one-point trend histories now render neutral tones for the chart and legend
-- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx` (pass, 8 tests)
-- Checks not run: full frontend build; full repo suites
+- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx src/pages/ExecutiveDecisionBoardPage.spec.tsx src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts` (pass, 27 tests); `npm run check:analytics-guardrails` (pass); `npm run build` (pass)
+- Checks not run: full repo suites
 - Run log: `.ai/runs/2026-08-25-RQ76-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: none
-- Main commit SHA: pending
-- Main verification: not run - no commit to `main` in this turn
+- Delivery mode: direct-main
+- Main commit SHA: df538b3b90b67cc165fbb41383f0046d236583bd
+- Main verification: passed - local `main` contains the delivery commit
 - Missed: no next READY prompt promoted yet
 - Residual risk: the neutral legend/chart treatment is only applied to the DataQuality trend card
 - Follow-up: none
