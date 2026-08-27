@@ -31,7 +31,7 @@ Review the latest analytics runtime commits, verify the nearest React and .NET p
 - `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~CachedAnalyticsCriticalEndpointsIntegrationTests|FullyQualifiedName~LostSalesValidationScopePostgresIntegrationTests|FullyQualifiedName~AnalyticsStatsTrustMetaTests|FullyQualifiedName~DailySalesStatsServiceTests|FullyQualifiedName~AnalyticsDecisionRecommendationEngineTests"` — passed, 36/36.
 - Frontend targeted Vitest for five analytics pages — passed, 14/14.
 - `npm run check:analytics-guardrails` — passed (encoding, guardrails, typecheck).
-- `npm run build` — passed before the final equivalent React-only fallback assertions; targeted Vitest and guardrails passed after the final patch.
+- `npm run build` — passed after the final React patch (Vite production build completed; only existing chunk-size advisory was emitted).
 - `git diff --check` — passed before commit (only expected CRLF conversion warnings).
 
 ## Not completed / residual risks
