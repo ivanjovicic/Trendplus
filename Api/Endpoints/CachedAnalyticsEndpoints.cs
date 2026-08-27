@@ -5571,6 +5571,9 @@ public static class CachedAnalyticsEndpoints
                 GeneratedAtUtc = nowUtc,
                 PeriodFromUtc = periodFromUtc,
                 PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
+                RequestedDataScope = normalizedDataScope,
+                ScopeAuthority = "both",
+                ScopeBreakdown = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin",
                 Summary = BuildProductDecisionCenterSummary([], analyzedLostSalesEstimate: 0m, analyzedSlowStockCapital: 0m),
                 TotalRows = 0,
                 AnalyzedRows = 0,
@@ -5886,6 +5889,9 @@ public static class CachedAnalyticsEndpoints
             GeneratedAtUtc = nowUtc,
             PeriodFromUtc = periodFromUtc,
             PeriodToUtc = periodToExclusiveUtc.AddDays(-1),
+            RequestedDataScope = normalizedDataScope,
+            ScopeAuthority = "both",
+            ScopeBreakdown = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin",
             TotalRows = rowWindow.TotalRows,
             AnalyzedRows = rowWindow.AnalyzedRows,
             IgnoredRowsCount = rowWindow.IgnoredRowsCount,
@@ -7846,6 +7852,9 @@ public class ProductDecisionCenterResponseDto
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime PeriodFromUtc { get; set; }
     public DateTime PeriodToUtc { get; set; }
+    public string RequestedDataScope { get; set; } = "all";
+    public string ScopeAuthority { get; set; } = "both";
+    public string ScopeBreakdown { get; set; } = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin";
     /// <summary>Returned/top row count (same as <see cref="Rows"/>.Count).</summary>
     public int TotalRows { get; set; }
     /// <summary>All analyzed product rows before top limiting.</summary>

@@ -44,7 +44,7 @@ If list / detail / export / action are presented as the same view, they must sha
 | Top products advanced / velocity / Pareto | same | article join for attrs | sale header | yes | yes | Header scope; view path when `all` | Keep sales-header | Medium (view forced-all) | Q81 |
 | Lost-sales snapshot | `GetLostSalesSnapshotAsync` | article (OOS universe) | sale header (recent CTE) | yes | yes | Dual; validation often forced `all` | Dual OK + pass request scope | High on validation path | RQ05-F4 / Q81 |
 | Lost-sales validation endpoint | `/validation/lost-sales` | forced all | forced all | no | no | Defaults `dataScope=all` | Honor request scope | High fake-green risk if scoped UI | RQ05-F4 |
-| Product Decision Center | `BuildProductDecisionCenterAsync` | article | sale header | yes | yes | **Dual-origin** on same response | Keep dual only with mismatch tests/meta, or align sales to header with article membership | High | RQ05-F1 |
+| Product Decision Center | `BuildProductDecisionCenterAsync` | article | sale header | yes | yes | **Dual-origin with explicit provenance contract** | Expose requested/effective scope and provenance, or align sales to header with article membership | Medium | RQ119 |
 | PDC inventory journal signals | `LoadInventorySignalWindowStatsFromJournalAsync` | not applied | n/a | store | n/a | Scope ignored | Article or document forced-all | Medium | RQ05-F2 |
 | Inventory insights / store comparison (cached) | `/inventory/insights` | cache key only | n/a | yes | yes | `dataScope` in key, not passed to builder | Apply article scope or forced-all meta | High | RQ05-F2 |
 | Decision Board inventory cards | `DecisionBoardEndpoints` | not passed | n/a | yes | yes | Inventory forced all while PDC/supplier/DQ scoped | Same as inventory rule | High | RQ05-F2 |
@@ -59,15 +59,15 @@ If list / detail / export / action are presented as the same view, they must sha
 ## Top risks (evidence)
 
 1. **DQ top-offender `sales_30d` unscoped** — **fixed in RQ06**: `TopOffendersSql` now filters sale-header `DataOrigin`. Contract: `DataScopeConsistencyContractTests`. Residual resolved in RQ118: `GetDataQualityIssuesHandler` now filters the same sale-header scope.
-2. **PDC dual-origin** — articles filtered by `a.DataOrigin`, sales/prev/last-sale by `pz.DataOrigin` in `CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync`. Existing membership test does not cover mismatched origins.
-3. **Inventory / Decision Board forced-all** — cached inventory puts `dataScope` in cache key but does not pass it into `GetInventoryInsightsAsync`; Decision Board omits scope for inventory insights/workflow while scoping PDC/DQ/supplier.
+2. **Inventory / Decision Board forced-all** — cached inventory puts `dataScope` in cache key but does not pass it into `GetInventoryInsightsAsync`; Decision Board omits scope for inventory insights/workflow while scoping PDC/DQ/supplier. PDC dual-origin is now explicit and tested in RQ119.
+3. **PDC dual-origin is explicit, not silent** — Product Decision Center now exposes requested scope plus dual-origin provenance on the response, so the remaining work is inventory/Decision Board consistency rather than hidden PDC ambiguity.
 
 ## Follow-up prompts
 
 | ID | Title | Depends on |
 |---|---|---|
 | RQ06 | DQ top-offender / issues `sales_30d` scope correctness | RQ05 (this audit) — **offenders DONE 2026-08-04**; issues handler residual closed by RQ118 |
-| RQ05-F1 | PDC mismatched article vs sale-header origin contract/tests (+ optional align) | RQ05 |
+| RQ05-F1 | PDC mismatched article vs sale-header origin contract/tests (+ optional align) | RQ05 — resolved by RQ119 |
 | RQ05-F2 | Inventory + Decision Board apply article `dataScope` or explicit forced-all meta | RQ05 |
 | RQ05-F3 | ShoeType/Color/Vendor list↔detail↔export scope lineage (overlaps RQ53/RQ54) | RQ05 |
 | RQ05-F4 | Lost-sales validation/bootstrap honor request `dataScope` | RQ05 / RQ03 |

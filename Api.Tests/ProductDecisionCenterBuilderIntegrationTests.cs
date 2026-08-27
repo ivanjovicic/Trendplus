@@ -307,8 +307,14 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
 
         var importedRow = Assert.Single(imported.Rows);
         Assert.Equal(103, importedRow.ProductId);
+        Assert.Equal("imported", imported.RequestedDataScope);
+        Assert.Equal("both", imported.ScopeAuthority);
+        Assert.Contains("article_origin=Artikli.DataOrigin", imported.ScopeBreakdown);
+        Assert.Contains("sale_origin=ProdajaZaglavlje.DataOrigin", imported.ScopeBreakdown);
         Assert.DoesNotContain(existing.Rows, row => row.ProductId == 103);
         Assert.Equal(2, existing.Rows.Count);
+        Assert.Equal("existing", existing.RequestedDataScope);
+        Assert.Equal("both", existing.ScopeAuthority);
     }
 
     private static TrendplusDbContext CreateDbContext(string databaseName)

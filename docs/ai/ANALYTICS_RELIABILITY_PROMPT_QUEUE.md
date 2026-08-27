@@ -2034,6 +2034,7 @@ RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQ
 - Status: DONE
 - Completion: `GetDataQualityIssuesHandler` now scopes `sales_30d` by sale-header `DataOrigin`, so imported/existing issue lists no longer mix revenue across origins
 - Changed files: `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesHandler.cs`, `Api.Tests/DataQualityIssuesHandlerTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`, `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`, `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-08-27-RQ118-evidence.md`
+- Missed: none known
 - Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.DataQualityIssuesHandlerTests.Handle_ScopesSales30dByDataScope"` pass; `git diff --check` pass; `node scripts/check-prompt-queues.mjs --self-test` pass; `node scripts/check-prompt-queues.mjs` pass; `node scripts/check-planning-architecture.mjs --self-test` pass; `node scripts/check-planning-architecture.mjs` pass
 - Checks not run: broader backend suite - not needed for this narrow handler regression because the focused integration test proved the residual
 - Run log: `.ai/runs/2026-08-27-RQ118-evidence.md`
@@ -2041,7 +2042,7 @@ RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQ
 - Delivery mode: direct-main
 - Main commit SHA: ae8835e80676aaa0c51f5aae90e7519b8ffef9fe
 - Main verification: `git branch --contains ae8835e80676aaa0c51f5aae90e7519b8ffef9fe` -> `* main`
-- Missed: RQ119 dual-origin lane remains waiting and was not pulled into this same prompt
+  - Missed: RQ119 dual-origin lane was still waiting at that time and was not pulled into this same prompt; it was later closed by RQ119.
 - Follow-up: none
 - Residual risk: query load still depends on the same sale-header `DataOrigin` contract being accurate in source data
 - Next: none
@@ -2051,14 +2052,14 @@ RQ05/RQ06 fixed the top-offender query path, but the audit still names `GetDataQ
 
 ## RQ119 - Resolve or explicitly expose PDC/inventory dual-origin scope behavior
 
-Status: WAITING
+Status: DONE
 Ready after: `RQ118` is `DONE` or the owner explicitly reprioritizes the dual-origin lane
 Priority: P1
 Type: backend/tests/docs
 Feature family: analytics-dual-origin-scope-contract
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ119-<agent>.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `docs(analytics): freeze dual origin scope contract`
 
 ### Problem
@@ -2100,6 +2101,28 @@ The RQ05 audit found high-risk dual-origin or forced-all behavior in Product Dec
 
 - One high-risk dual-origin family has a tested, citeable scope contract.
 - Mixed-scope values are labelled/degraded rather than silently compared as like-for-like.
+
+### Notes
+
+- 2026-08-27: DONE. Product Decision Center now exposes explicit dual-origin provenance metadata on the response itself (`RequestedDataScope`, `ScopeAuthority`, `ScopeBreakdown`) and the integration test asserts the requested scope for both imported and existing paths. The family is now explicit about article-origin membership plus sale-header revenue, rather than silently comparing the two as though they were interchangeable.
+- Changed files:
+  - `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+  - `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `MASTER_ROADMAP.md`
+  - `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
+  - `docs/qa/ANALYTICS_DATA_RELIABILITY_AUDIT.md`
+  - `docs/qa/ANALYTICS_RELIABILITY_RETROSPECTIVE_AUDIT_2026-08-23.md`
+- Checks:
+  - `dotnet test .\\Api.Tests\\Api.Tests.csproj --filter "FullyQualifiedName~Api.Tests.ProductDecisionCenterBuilderIntegrationTests.BuildProductDecisionCenter_DataScopeSeparatesImportedAndExistingProducts"` - pass
+  - `git diff --check` - pass
+  - `node scripts/check-prompt-queues.mjs --self-test` - pass
+  - `node scripts/check-prompt-queues.mjs` - pass
+  - `node scripts/check-planning-architecture.mjs --self-test` - pass
+  - `node scripts/check-planning-architecture.mjs` - pass
+- Run log: `.ai/runs/2026-08-27-RQ119-evidence.md`
+- Evidence state: synchronized
+- Next: `RQ05-F2 - Inventory + Decision Board apply article dataScope or explicit forced-all meta`
 
 ### Dependencies
 
