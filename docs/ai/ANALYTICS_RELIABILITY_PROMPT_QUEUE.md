@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ127` is `DONE`; see cross-surface addendum)
+Current READY prompt: none (`RQ127` is `DONE`; `RQ128` is WAITING on `STAB16` exact-deploy evidence)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -55,6 +55,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
 | RQ123 | DONE | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
 | RQ124 | DONE | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
+| RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 
 ---
 
@@ -2275,6 +2276,75 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 ### Dependencies
 
 - `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
+
+Status: WAITING
+Ready after: `STAB16` is DONE with an exact current-main deployment and worker/freshness evidence
+Priority: P0
+Type: backend-frontend-contract/live-evidence
+Feature family: pdc-actionability-deploy-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ128-<agent>.lock.md`
+Commit suggestion: `test(analytics): prove product decision actionability parity in production`
+
+### Problem
+
+The 2026-08-27 production PDC response returned actionable recommendations for rows labelled `INSUFFICIENT_DATA`, even when their data-quality/freshness evidence warned that the signal was unsafe. Current main now fails closed in the PDC profile, Decision Board aggregation, and Executive Board compatibility rendering, but the canonical production runtime has not deployed that contract.
+
+### Evidence
+
+- Production PDC retry returned 50 visible rows from 12,422 analyzed rows; 44 visible rows were `INSUFFICIENT_DATA` and six were `WATCH`, yet all 50 had `recommendationAllowed=true`.
+- The same response carried warning/critical freshness evidence for the insufficient rows, so the true condition is not a legitimate zero or healthy empty state.
+- `CachedAnalyticsEndpoints.BuildProductDecisionConfidenceProfile(...)` now centrally clears recommendation allowance, decision confidence, and expected impact for blocked/stale/critical/unknown evidence.
+- `DecisionBoardEndpoints` and `ExecutiveDecisionBoardPage.tsx` now fail closed for blocked recommendation payloads so an old numeric diagnostic value cannot look like decision confidence.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` records the exact live observation and deployment mismatch.
+
+### Scope
+
+- Product Decision Center response/profile, Decision Board aggregate card, and Executive Board presentation parity;
+- focused backend/frontend regression tests and exact-deploy live evidence;
+- no new recommendation formula, ranking threshold, database migration, or frontend-owned business scoring.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`;
+- `Api/Endpoints/DecisionBoardEndpoints.cs`;
+- `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`;
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`;
+- `Api.Tests/AnalyticsProductDecisionConfidenceTests.cs`;
+- `Api.Tests/DecisionBoardEndpointsTests.cs`;
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`.
+
+### Do
+
+1. Keep the backend PDC profile as the authoritative actionability gate; do not recreate it in UI code.
+2. Prove the four minimum counterexamples: source-blocked, `INSUFFICIENT_DATA`/`FIX_DATA`, critical data quality, and stale/unknown freshness all return `recommendationAllowed=false`, `confidenceScore=null`, and `expectedImpactRsd=null`.
+3. Prove the Decision Board removes the blocked row from executable impact ranking and renders it as insufficient/blocked with a visible reason.
+4. Prove the PDC and Executive Board UIs preserve the backend block even when a compatibility payload contains an old diagnostic percentage.
+5. After `STAB16`, run the same checks on the exact deployed SHA and record returned/analyzed counts separately from visible rows.
+
+### Tests
+
+- focused `AnalyticsProductDecisionConfidenceTests`, `ProductDecisionCenterBuilderIntegrationTests`, and `DecisionBoardEndpointsTests`;
+- focused `ExecutiveDecisionBoardPage.spec.ts` and PDC confidence presentation test;
+- exact-deploy API/browser smoke after `STAB16`;
+- `git diff --check` and governance validators when queue/evidence docs change.
+
+### Acceptance
+
+- Blocked PDC rows cannot carry actionable decision confidence or expected impact through API, Board aggregation, UI, or action payload.
+- A numeric diagnostic percentage is never rendered as high/medium/low recommendation confidence when the recommendation is blocked.
+- Live evidence ties the PDC/Board result to the exact current-main deployed SHA and records true returned/analyzed/ignored counts.
+- Empty, unknown, stale, warning, and critical states remain visibly distinct from a valid zero or healthy recommendation.
+
+### Dependencies
+
+- `STAB16` DONE; it supplies the exact current-main deployment, worker/freshness evidence, and read-only reconciliation path.
+- No direct production data mutation or formula change is authorized in this prompt.
 
 ### Completion note
 

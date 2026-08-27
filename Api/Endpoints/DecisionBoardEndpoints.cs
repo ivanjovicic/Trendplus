@@ -1389,7 +1389,9 @@ public static class DecisionBoardEndpoints
         if (!recommendationAllowed
             || string.Equals(row.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
         {
-            return ("insufficient_data", row.ConfidenceScore ?? row.ConfidencePct);
+            // A blocked PDC signal may keep its raw diagnostic percentage, but it is
+            // not decision confidence and must not rank or look executable on the board.
+            return ("insufficient_data", null);
         }
 
         var score = row.ConfidenceScore ?? row.ConfidencePct;

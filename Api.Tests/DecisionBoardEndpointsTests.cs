@@ -33,6 +33,7 @@ public sealed class DecisionBoardEndpointsTests
         var urgentSection = Assert.Single(response.Sections.Where(section => section.Key == "urgent"));
         var urgentCard = Assert.Single(urgentSection.Cards);
         Assert.Equal("insufficient_data", urgentCard.ConfidenceLevel);
+        Assert.Null(urgentCard.ConfidenceScore);
         Assert.Null(urgentCard.ExpectedImpactRsd);
         Assert.True(urgentCard.PriorityScore <= 40m);
 
@@ -219,6 +220,7 @@ public sealed class DecisionBoardEndpointsTests
 
         Assert.False(productCard.RecommendationAllowed);
         Assert.Equal("insufficient_data", productCard.ConfidenceLevel);
+        Assert.Null(productCard.ConfidenceScore);
         Assert.Null(productCard.ExpectedImpactRsd);
         Assert.Equal(0m, productCard.ImpactScore);
         Assert.True(productCard.PriorityScore <= 40m);
@@ -227,6 +229,32 @@ public sealed class DecisionBoardEndpointsTests
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
         Assert.DoesNotContain(impactSection.Cards, card => card.Id == productCard.Id);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_BlocksStaleProductEvidenceBeforeItCanShowConfidence()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var staleRow = CreateProductRow(
+            productId: 313,
+            recommendationStatus: "REPLENISH",
+            dataQualityStatus: "good",
+            confidenceLevel: "high",
+            confidenceScore: 95,
+            expectedImpactRsd: 125_000m,
+            recommendationAllowed: true);
+        staleRow.InputFreshnessStatus = "stale";
+
+        var response = BuildBoard(generatedAtUtc, CreateProductDecisionCenter(generatedAtUtc, staleRow));
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.False(productCard.RecommendationAllowed);
+        Assert.Equal("insufficient_data", productCard.ConfidenceLevel);
+        Assert.Null(productCard.ConfidenceScore);
+        Assert.Null(productCard.ExpectedImpactRsd);
+        Assert.Equal(0m, productCard.ImpactScore);
+        Assert.True(productCard.PriorityScore <= 40m);
+        Assert.Contains("product_recommendation_blocked", productCard.WarningCodes);
     }
 
     [Fact]

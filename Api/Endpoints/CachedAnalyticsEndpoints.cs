@@ -6126,9 +6126,8 @@ public static class CachedAnalyticsEndpoints
         var confidenceScore = row.ConfidencePct > 0 && !IsProductDecisionInsufficientData(row)
             ? row.ConfidencePct
             : (int?)null;
-        var warningCodes = BuildProductDecisionWarningCodes(row);
+        var warningCodes = BuildProductDecisionWarningCodes(row).ToList();
         var confidenceLevel = ResolveProductDecisionConfidenceLevel(row, confidenceScore, warningCodes);
-        var primaryDrivers = BuildProductDecisionPrimaryDrivers(row, warningCodes);
         var expectedImpactRsd = ResolveProductDecisionExpectedImpact(row);
         var impactWindowDays = ResolveProductDecisionImpactWindowDays(recommendationStatus);
         var riskIfIgnored = BuildProductDecisionRiskIfIgnored(recommendationStatus);
@@ -6147,6 +6146,22 @@ public static class CachedAnalyticsEndpoints
                 row.DataQualityStatus)
             : row.RecommendationReason;
         var inputFreshnessStatus = ResolveProductDecisionInputFreshnessStatus(row, confidenceLevel);
+        if (!IsProductDecisionRecommendationAllowed(row, inputFreshnessStatus))
+        {
+            // A source row can be numerically populated while still being unsafe to action.
+            // Preserve the evidence, but do not expose confidence or expected impact as executable truth.
+            row.RecommendationAllowed = false;
+            confidenceScore = null;
+            confidenceLevel = "insufficient_data";
+            expectedImpactRsd = null;
+            impactWindowDays = null;
+            if (!warningCodes.Contains("product_recommendation_blocked", StringComparer.OrdinalIgnoreCase))
+            {
+                warningCodes.Add("product_recommendation_blocked");
+            }
+        }
+
+        var primaryDrivers = BuildProductDecisionPrimaryDrivers(row, warningCodes);
         var confidenceBreakdown = BuildProductDecisionConfidenceBreakdown(
             row,
             confidenceLevel,
@@ -7010,6 +7025,7 @@ public static class CachedAnalyticsEndpoints
             "missing_supplier" => "Nedostaje dobavljač",
             "insufficient_history" => "Nedovoljno istorije",
             "expected_impact_denominator_missing" => "Nedostaje ulaz za procenu uticaja",
+            "product_recommendation_blocked" => "Preporuka proizvoda je blokirana",
             "data_quality_critical" => "Kvalitet podataka je kritičan",
             "insufficient_data" => "Nedovoljno podataka",
             "data_quality_blocker" => "Blokada kvaliteta podataka",
@@ -7352,6 +7368,34 @@ public static class CachedAnalyticsEndpoints
         }
 
         return "fresh";
+    }
+
+    private static bool IsProductDecisionRecommendationAllowed(
+        ProductDecisionCenterRowDto row,
+        string inputFreshnessStatus)
+    {
+        if (!row.RecommendationAllowed)
+        {
+            return false;
+        }
+
+        if (string.Equals(row.RecommendationStatus, "INSUFFICIENT_DATA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.RecommendationStatus, "FIX_DATA", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.Equals(row.DataQualityStatus, "critical", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.DataQualityStatus, "error", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(row.DataQualityStatus, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !string.Equals(inputFreshnessStatus, "stale", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(inputFreshnessStatus, "critical", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(inputFreshnessStatus, "unknown", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildRecommendationReason(

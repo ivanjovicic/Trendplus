@@ -88,10 +88,12 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.NotEmpty(replenish.WhyPanel.AlternativeRecommendations);
         Assert.NotEmpty(replenish.WhyPanel.DecisionTree);
         Assert.Contains(replenish.WhyPanel.DecisionTree, node => node.Code == "selected_branch" && node.IsSelected);
-        Assert.NotNull(replenish.ConfidenceScore);
-        Assert.InRange(replenish.ConfidenceScore!.Value, 60, 99);
+        Assert.False(replenish.RecommendationAllowed);
+        Assert.Equal("insufficient_data", replenish.ConfidenceLevel);
+        Assert.Null(replenish.ConfidenceScore);
         Assert.Contains("sales_velocity", replenish.PrimaryDrivers);
         Assert.Equal("stale", replenish.InputFreshnessStatus);
+        Assert.Contains("product_recommendation_blocked", replenish.WarningCodes);
         Assert.NotEmpty(replenish.ConfidenceBreakdown);
         Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "confidence_score");
         Assert.Contains(replenish.ConfidenceBreakdown, node => node.Code == "evidence_coverage");
@@ -110,8 +112,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(replenish.ConfidenceLevel, replenish.EvidenceSnapshotPreview.ConfidenceLevel);
         Assert.Equal(replenish.EvidenceChain.Count, replenish.EvidenceSnapshotPreview.EvidenceChain.Count);
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.ReplenishNeeded, replenish.ReasonCodes);
-        Assert.Equal(500m, replenish.ExpectedImpactRsd);
-        Assert.Equal(14, replenish.ImpactWindowDays);
+        Assert.Null(replenish.ExpectedImpactRsd);
+        Assert.Null(replenish.ImpactWindowDays);
+        Assert.False(replenish.WhyPanel.RecommendationAllowed);
+        Assert.Null(replenish.WhyPanel.ExpectedImpactRsd);
         Assert.False(string.IsNullOrWhiteSpace(replenish.ExplainabilityText));
         Assert.NotEmpty(replenish.AlternativeRecommendations);
         Assert.All(replenish.AlternativeRecommendations, node =>
@@ -131,6 +135,8 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, fixData.ReasonCodes);
         Assert.Contains("missing_cost", fixData.WarningCodes);
         Assert.Equal("critical", fixData.InputFreshnessStatus);
+        Assert.False(fixData.RecommendationAllowed);
+        Assert.Contains("product_recommendation_blocked", fixData.WarningCodes);
         Assert.Equal(400m, fixData.LostSalesEstimate);
         Assert.Null(fixData.ExpectedImpactRsd);
         Assert.Equal("Proveri podatke", fixData.RecommendationLabel);

@@ -33,6 +33,7 @@ public sealed class AnalyticsProductDecisionConfidenceTests
             RecommendationReason = "Brza prodaja i nizak stock cover.",
             ReasonCodes = ["high_velocity", "low_stock"],
             DataQualityStatus = "good",
+            RecommendationAllowed = true,
             ConfidencePct = 88,
             ReliabilityPct = 79,
         };
@@ -221,6 +222,7 @@ public sealed class AnalyticsProductDecisionConfidenceTests
             RecommendationReason = "",
             ReasonCodes = ["positive_trend"],
             DataQualityStatus = "good",
+            RecommendationAllowed = true,
             ConfidencePct = 41,
             ReliabilityPct = 38,
         };
@@ -234,5 +236,51 @@ public sealed class AnalyticsProductDecisionConfidenceTests
         Assert.True(profile.WhyPanel.SummaryFallbackUsed);
         Assert.Equal("recommendation_reason_missing", profile.WhyPanel.SummaryFallbackReason);
         Assert.False(string.IsNullOrWhiteSpace(profile.WhyPanel.ExplainabilityText));
+    }
+
+    [Fact]
+    public void BlockedOrStaleEvidence_ClearsActionabilityConfidenceAndExpectedImpact()
+    {
+        var row = new ProductDecisionCenterRowDto
+        {
+            ProductId = 404,
+            Sku = "SKU-404",
+            ProductName = "Model stale signal",
+            Revenue = 120000m,
+            UnitsSold = 36,
+            VelocityUnitsPerDay = 1.1m,
+            MarginContribution = 24000m,
+            MarginPct = 24m,
+            MarginCoveragePct = 92m,
+            CurrentStock = 1,
+            MinStock = 8,
+            StockGap = 7,
+            DaysSinceLastSale = 90,
+            TrendPct = 8m,
+            LostSalesEstimate = 36000m,
+            RecommendationStatus = "REPLENISH",
+            RecommendationReason = "Istorijski signal bez sveže prodaje.",
+            DataQualityStatus = "good",
+            RecommendationAllowed = true,
+            ConfidencePct = 91,
+            ReliabilityPct = 85
+        };
+
+        var profile = CachedAnalyticsEndpoints.BuildProductDecisionConfidenceProfile(
+            row,
+            new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.False(row.RecommendationAllowed);
+        Assert.Equal("stale", profile.InputFreshnessStatus);
+        Assert.Equal("insufficient_data", profile.ConfidenceLevel);
+        Assert.Null(profile.ConfidenceScore);
+        Assert.Null(profile.ExpectedImpactRsd);
+        Assert.Null(profile.ImpactWindowDays);
+        Assert.Contains("product_recommendation_blocked", profile.WarningCodes);
+        Assert.False(profile.WhyPanel.RecommendationAllowed);
+        Assert.Null(profile.WhyPanel.ExpectedImpactRsd);
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "actionability" && node.ValueText == "Ne");
+        Assert.Contains(profile.EvidenceChain, node => node.Code == "expected_impact" && node.IsMissing);
     }
 }

@@ -232,12 +232,11 @@ function capInsufficientDataPriority(
 }
 
 function confidenceLabelFromProduct(item: ProductDecisionCenterItem): { label: string; tone: BoardTone; score: number | null } {
-  if (item.confidenceLevel === "insufficient_data") {
-    const score = normalizeRecommendationPct(item.confidenceScore ?? item.confidencePct);
+  if (item.recommendationAllowed === false || item.confidenceLevel === "insufficient_data") {
     return {
       label: "Nedovoljno podataka",
       tone: "insufficient",
-      score,
+      score: null,
     };
   }
 
@@ -1042,8 +1041,8 @@ function confidencePresentationFromBoardCard(
   const normalizedScore = normalizeRecommendationPct(card.confidenceScore);
   const level = (card.confidenceLevel ?? "").trim().toLowerCase();
 
-  if (level === "insufficient_data" || card.dataQualityStatus === "insufficient_data") {
-    return { label: confidenceLabelFromValue(normalizedScore, "Nedovoljno podataka"), tone: "insufficient", score: normalizedScore };
+  if (card.recommendationAllowed === false || level === "insufficient_data" || card.dataQualityStatus === "insufficient_data") {
+    return { label: "Nedovoljno podataka", tone: "insufficient", score: null };
   }
 
   if (level === "high") {

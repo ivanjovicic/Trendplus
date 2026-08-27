@@ -319,6 +319,44 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(productCard?.expectedImpactRsd).toBeNull();
   });
 
+  it("fails closed when a blocked aggregate card still carries a diagnostic confidence number", () => {
+    const payload = baseAggregate({
+      sections: [
+        baseSection("urgent", [
+          baseCard({
+            id: "product:blocked-stale",
+            kind: "product",
+            sectionKey: "urgent",
+            sourceModule: "Odluke o proizvodima",
+            title: "Zastareo signal",
+            confidenceLevel: "insufficient_data",
+            confidenceScore: 95,
+            expectedImpactRsd: null,
+            riskIfIgnored: "Potrebna je sveža potvrda.",
+            recommendedNextAction: "Proveri signal.",
+            actionHref: "/analytics/products",
+            recommendationAllowed: false,
+            dataQualityStatus: "good",
+            priorityScore: 40,
+            impactScore: 0,
+          }),
+        ]),
+        ...baseAggregate().sections.slice(1),
+      ],
+      metrics: baseAggregate().metrics,
+    });
+
+    const model = buildExecutiveDecisionBoardModel(payload);
+    const blockedCard = model.sections.flatMap((section) => section.cards).find((card) => card.title === "Zastareo signal");
+
+    expect(blockedCard).toMatchObject({
+      confidenceTone: "insufficient",
+      confidenceLabel: "Nedovoljno podataka",
+      confidenceScore: null,
+      recommendationAllowed: false,
+    });
+  });
+
   it("does not crash when a compatibility aggregate omits the warnings array", () => {
     const payload = baseAggregate({ warnings: undefined as unknown as string[] });
 

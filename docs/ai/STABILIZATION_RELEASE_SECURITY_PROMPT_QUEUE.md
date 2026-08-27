@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB15` is DONE; see completion note)
-Current gate verdict: `STAB13` evidence refresh pack is on main. Fresh current-main live-smoke proof has now been captured and synchronized in `docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md`; GenAI remains BLOCKED because the broader backend gate is still red.
+Current READY prompt: none (`STAB15` is DONE; `STAB16` is BLOCKED on read-only production DB/provider deploy access)
+Current gate verdict: the 2026-08-27 live audit found that the canonical Render API is still deployed at `d9c4d0a8cd893c8e7cb330f47e41e92843fa9875`, behind current `main`, and has no registered worker process. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`.
 
 ## Goal
 
@@ -1633,3 +1633,75 @@ Even after the frontend gate re-closes, the pilot still cannot claim reliable an
 - Residual risk: production backend freshness remains `unknown`, but it is explicitly visible rather than hidden behind fake green state
 - Prompt defect / scope repair: used the owner-approved canonical smoke contract plus STAB14 evidence to replace the missing `RQ110` matrix
 - Do not broaden into general load/performance/security work; this prompt is only about exact-SHA production analytics visibility truth.
+
+---
+
+## STAB16 - Restore exact-deploy parity and durable analytics refresh workers
+
+Status: BLOCKED
+Ready after: production provider deployment authority and read-only audit connection are available
+Priority: P0
+Type: deploy/ops/live-evidence
+Feature family: production-analytics-freshness-deploy-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/STAB16-<agent>.lock.md`
+Commit suggestion: `docs(ops): prove production analytics deploy and worker parity`
+
+### Problem
+
+The canonical production API reports a deployment SHA behind current `main` and exposes no successful analytics-refresh jobs because the web process has no registered workers. This makes freshness unknown, leaves cache warnings active, and prevents the pilot from claiming that the analytics data is refreshed or deploy-parallel with the code that users see.
+
+### Evidence
+
+- 2026-08-27 `GET https://trendplus-api.onrender.com/api/runtime/version` returned deployed commit `d9c4d0a8cd893c8e7cb330f47e41e92843fa9875`, which predates the current-main Decision Board/PDC trust repairs.
+- `GET /api/analytics/refresh-status?dataScope=all` returned `workersEnabled=false`, process `web`, unknown freshness, in-memory-cache warning, and six job reasons equivalent to “Worker nije registrovan u web procesu.”
+- `Api/Config/WorkerRuntimeConfig.cs` and `Api/Program.cs` deliberately register heavy refresh workers only for `PROCESS_TYPE=worker`; enabling them inside the web process would violate the established runtime boundary.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` records the exact public observations and the missing direct database reconciliation proof.
+
+### Scope
+
+- the authorized Render/Fly deployment configuration and provider evidence for the canonical API route;
+- dedicated worker-process configuration, deployment, and refresh-status proof;
+- read-only production analytics reconciliation and one dated QA/run-evidence update;
+- no production database mutation, schema migration, analytics formula rewrite, or web-process worker registration.
+
+### Read first
+
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`;
+- `Api/Config/WorkerRuntimeConfig.cs`;
+- `Api/Program.cs`;
+- `Api/Services/Analytics/AnalyticsRefreshStatusService.cs`;
+- `docs/DEPLOY_TO_FLY.md` and the canonical provider configuration that actually owns `trendplus-api.onrender.com`;
+- `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`.
+
+### Do
+
+1. Use authorized provider access to identify the canonical API deployment and its worker service; do not infer that the Fly fallback is canonical when the frontend points at Render.
+2. Deploy an exact current-`main` SHA through the approved path and record both the source SHA and runtime-version SHA.
+3. Configure/restore a dedicated process with `PROCESS_TYPE=worker`; keep heavy refresh jobs disabled in the web API process.
+4. Use `TRENDPLUS_AUDIT_DATABASE_URL` only for read-only reconciliation of the selected endpoint windows against the production source tables; do not record credentials or mutate data.
+5. Prove at least one successful, timestamped refresh for each required job family, cache/freshness state, and the PDC stale/blocked contract after deployment.
+6. Refresh the production audit, release evidence, and queue status only from the exact deployed runtime evidence.
+
+### Tests
+
+- `git diff --check` for repository changes;
+- provider/runtime version check proves the exact current-main SHA;
+- `/health`, `/ready`, `/api/analytics/refresh-status?dataScope=all`, PDC, Decision Board, and supplier-report live checks;
+- read-only database-to-endpoint reconciliation for the documented window when the audit connection is supplied;
+- queue/planning validators if routing/evidence docs change.
+
+### Acceptance
+
+- The canonical production runtime reports a SHA contained in current `main`.
+- The web process remains API-only while a dedicated worker process is registered and produces durable successful-refresh timestamps.
+- Unknown/stale/fallback evidence remains visible until the successful refresh proof exists; no fake-green fallback is introduced.
+- The live PDC and Decision Board never expose an actionable recommendation, decision confidence, or expected impact when freshness/data quality blocks it.
+- The direct database reconciliation and exact-deploy smoke results are recorded with windows, counts, and any mismatch classification.
+
+### Dependencies
+
+- Production provider deploy/read authority for the canonical Render service.
+- A local, read-only `TRENDPLUS_AUDIT_DATABASE_URL` supplied outside repository files.
+- No production mutation authority is needed or requested.
