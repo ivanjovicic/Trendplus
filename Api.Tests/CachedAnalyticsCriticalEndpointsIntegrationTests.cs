@@ -1,9 +1,12 @@
 using System.Net;
 using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
+using Application.Common.Interfaces;
+using Application.Inventory.Models;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
+using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -368,6 +371,124 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(550m, root.GetProperty("avgTransactionValue").GetDecimal());
     }
 
+    [Fact]
+    public async Task InventoryInsightsAndDecisionBoard_RespectArticleDataScope()
+    {
+        await using var factory = CreateFactory();
+        SeedInventoryScopeProbeData(factory.Services);
+
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var cache = services.GetRequiredService<IAnalyticsCacheService>();
+        var trendDb = services.GetRequiredService<TrendplusDbContext>();
+        var analyticsDb = services.GetRequiredService<AnalyticsDbContext>();
+        var actionDecisionService = new NoopInventoryActionDecisionService();
+
+        var importedInsights = await InventoryEndpoints.GetInventoryInsightsAsync(
+            cache,
+            trendDb,
+            analyticsDb,
+            storeId: null,
+            supplierId: null,
+            search: "ScopeProbe",
+            sortBy: null,
+            ct: CancellationToken.None,
+            dataScope: "imported");
+
+        Assert.Equal(1, importedInsights.TotalItems);
+        Assert.Single(importedInsights.TopAgedItems);
+        Assert.Equal(902, importedInsights.TopAgedItems[0].Id);
+
+        var existingInsights = await InventoryEndpoints.GetInventoryInsightsAsync(
+            cache,
+            trendDb,
+            analyticsDb,
+            storeId: null,
+            supplierId: null,
+            search: "ScopeProbe",
+            sortBy: null,
+            ct: CancellationToken.None,
+            dataScope: "existing");
+
+        Assert.Equal(1, existingInsights.TotalItems);
+        Assert.Single(existingInsights.TopAgedItems);
+        Assert.Equal(901, existingInsights.TopAgedItems[0].Id);
+
+        var importedWorkflow = await InventoryEndpoints.GetInventoryActionWorkflowAsync(
+            cache,
+            trendDb,
+            analyticsDb,
+            actionDecisionService,
+            storeId: null,
+            supplierId: null,
+            search: "ScopeProbe",
+            ct: CancellationToken.None,
+            dataScope: "imported");
+
+        var importedBoard = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc: DateTime.UtcNow,
+            periodFromUtc: null,
+            periodToUtc: null,
+            lastRefreshAtUtc: null,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: importedWorkflow,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "imported",
+            storeId: null,
+            supplierId: null);
+
+        var importedInventoryCards = importedBoard.Sections
+            .SelectMany(section => section.Cards)
+            .Where(card => card.Kind == "inventory")
+            .DistinctBy(card => card.Id)
+            .ToArray();
+        Assert.Single(importedInventoryCards);
+        Assert.Contains("Imported", importedInventoryCards[0].Title, StringComparison.OrdinalIgnoreCase);
+
+        var existingWorkflow = await InventoryEndpoints.GetInventoryActionWorkflowAsync(
+            cache,
+            trendDb,
+            analyticsDb,
+            actionDecisionService,
+            storeId: null,
+            supplierId: null,
+            search: "ScopeProbe",
+            ct: CancellationToken.None,
+            dataScope: "existing");
+
+        var existingBoard = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc: DateTime.UtcNow,
+            periodFromUtc: null,
+            periodToUtc: null,
+            lastRefreshAtUtc: null,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: existingWorkflow,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "existing",
+            storeId: null,
+            supplierId: null);
+
+        var existingInventoryCards = existingBoard.Sections
+            .SelectMany(section => section.Cards)
+            .Where(card => card.Kind == "inventory")
+            .DistinctBy(card => card.Id)
+            .ToArray();
+        Assert.Single(existingInventoryCards);
+        Assert.Contains("Existing", existingInventoryCards[0].Title, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static CachedAnalyticsFactory CreateFactory()
     {
         var factory = new CachedAnalyticsFactory();
@@ -456,6 +577,42 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         db.SaveChanges();
     }
 
+    private static void SeedInventoryScopeProbeData(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+
+        db.Artikli.AddRange(
+            new Artikli
+            {
+                Id = 901,
+                PLU = "SCOPEPROBE-EXISTING",
+                Naziv = "ScopeProbe Existing",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 0,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 10m,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow
+            },
+            new Artikli
+            {
+                Id = 902,
+                PLU = "SCOPEPROBE-IMPORTED",
+                Naziv = "ScopeProbe Imported",
+                IDObjekat = 1,
+                IDDobavljac = 1,
+                Kolicina = 0,
+                MinimalnaKolicina = 5,
+                NabavnaCena = 10m,
+                DataOrigin = "access",
+                UpdatedAt = DateTime.UtcNow
+            });
+
+        db.SaveChanges();
+    }
+
     private static async Task<JsonElement> GetJsonAsync(WebApplicationFactory<global::Program> factory, string url)
     {
         using var client = factory.CreateClient();
@@ -469,6 +626,15 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(body));
         return JsonDocument.Parse(body).RootElement.Clone();
+    }
+
+    private sealed class NoopInventoryActionDecisionService : IInventoryActionDecisionService
+    {
+        public Task<IReadOnlyDictionary<string, InventoryActionDecisionDefinition>> ListAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyDictionary<string, InventoryActionDecisionDefinition>>(new Dictionary<string, InventoryActionDecisionDefinition>());
+
+        public Task<InventoryActionDecisionDefinition> UpsertAsync(InventoryActionDecisionUpsertRequest request, CancellationToken ct = default)
+            => throw new NotSupportedException("Noop test double does not persist inventory action decisions.");
     }
 
     private static void AssertInvalidRangeIsNotEmptySuccess(string body)

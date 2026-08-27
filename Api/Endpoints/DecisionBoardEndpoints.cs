@@ -94,7 +94,8 @@ public static class DecisionBoardEndpoints
                 supplierId,
                 search,
                 null,
-                ct);
+                ct,
+                normalizedDataScope);
         }
         catch (Exception ex)
         {
@@ -112,7 +113,8 @@ public static class DecisionBoardEndpoints
                 storeId,
                 supplierId,
                 search,
-                ct);
+                ct,
+                normalizedDataScope);
         }
         catch (Exception ex)
         {

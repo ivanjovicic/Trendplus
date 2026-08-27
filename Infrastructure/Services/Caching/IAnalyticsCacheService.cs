@@ -271,13 +271,13 @@ public static class AnalyticsCacheKeys
         return $"{Prefix}inventory-store-comparison:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:search:{HashPart(search)}";
     }
 
-    public static string InventoryDataset(int? storeId = null, int? supplierId = null, string? search = null, int[]? storeIds = null, bool applyAbcClassification = true)
+    public static string InventoryDataset(int? storeId = null, int? supplierId = null, string? search = null, int[]? storeIds = null, bool applyAbcClassification = true, string? dataScope = null)
     {
         var normalizedStoreIds = storeIds is { Length: > 0 }
             ? string.Join(',', storeIds.Where(id => id > 0).Distinct().OrderBy(id => id))
             : "none";
 
-        return $"{Prefix}inventory-dataset:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:search:{HashPart(search)}:abc:{applyAbcClassification}";
+        return $"{Prefix}inventory-dataset:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:search:{HashPart(search)}:abc:{applyAbcClassification}";
     }
 
     // Validation endpoints

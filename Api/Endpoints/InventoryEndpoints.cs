@@ -89,13 +89,14 @@ public static class InventoryEndpoints
             int? supplierId = null,
             string? search = null,
             string? sortBy = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 1000);
 
             var query = ApplyInventorySorting(
-                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search),
+                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search, dataScope: dataScope),
                 sortBy);
 
             var total = await query.CountAsync(ct);
@@ -183,9 +184,10 @@ public static class InventoryEndpoints
             int? supplierId = null,
             string? search = null,
             string? sortBy = null,
+            string? dataScope = null,
             CancellationToken ct = default) =>
         {
-            return Results.Ok(await GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct));
+            return Results.Ok(await GetInventoryInsightsAsync(cache, db, analyticsDb, storeId, supplierId, search, sortBy, ct, dataScope));
         })
         .WithName("GetInventoryInsights");
 
@@ -534,9 +536,10 @@ public static class InventoryEndpoints
             int[]? compareStoreIds,
             int? supplierId,
             string? search,
-            CancellationToken ct) =>
+            string? dataScope = null,
+            CancellationToken ct = default) =>
         {
-            var comparison = await GetInventoryStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
+            var comparison = await GetInventoryStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct, dataScope);
             return Results.Ok(comparison);
         })
         .WithName("GetInventoryStoreComparison");
@@ -549,9 +552,10 @@ public static class InventoryEndpoints
             int? storeId,
             int? supplierId,
             string? search,
-            CancellationToken ct) =>
+            string? dataScope = null,
+            CancellationToken ct = default) =>
         {
-            var workflow = await GetInventoryActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+            var workflow = await GetInventoryActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct, dataScope);
             return Results.Ok(workflow);
         })
         .WithName("GetInventoryActionSuggestions");
@@ -712,9 +716,10 @@ public static class InventoryEndpoints
         int? supplierId,
         string? search,
         string? sortBy,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
-        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
+        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct, dataScope);
         var articleIds = items.Select(item => item.Id).ToArray();
         var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
         var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
@@ -728,8 +733,9 @@ public static class InventoryEndpoints
         int[]? compareStoreIds,
         int? supplierId,
         string? search,
-        CancellationToken ct) =>
-        BuildStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct);
+        CancellationToken ct,
+        string? dataScope = null) =>
+        BuildStoreComparisonAsync(cache, db, analyticsDb, compareStoreIds, supplierId, search, ct, dataScope);
 
     public static Task<InventoryActionWorkflowDto> GetInventoryActionWorkflowAsync(
         IAnalyticsCacheService cache,
@@ -739,8 +745,9 @@ public static class InventoryEndpoints
         int? storeId,
         int? supplierId,
         string? search,
-        CancellationToken ct) =>
-        BuildActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct);
+        CancellationToken ct,
+        string? dataScope = null) =>
+        BuildActionWorkflowAsync(cache, db, analyticsDb, actionDecisionService, storeId, supplierId, search, ct, dataScope);
 
     private static Task<List<InventoryDatasetItem>> GetCachedInventoryDatasetAsync(
         IAnalyticsCacheService cache,
@@ -751,18 +758,19 @@ public static class InventoryEndpoints
         string? search,
         IReadOnlyCollection<int>? storeIds,
         bool applyAbcClassification,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
         var normalizedStoreIds = storeIds?
             .Where(id => id > 0)
             .Distinct()
             .OrderBy(id => id)
             .ToArray();
-        var cacheKey = AnalyticsCacheKeys.InventoryDataset(storeId, supplierId, search, normalizedStoreIds, applyAbcClassification);
+        var cacheKey = AnalyticsCacheKeys.InventoryDataset(storeId, supplierId, search, normalizedStoreIds, applyAbcClassification, dataScope);
 
         return cache.GetOrSetAsync(
             cacheKey,
-            () => BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, null, ct, normalizedStoreIds, applyAbcClassification),
+            () => BuildInventoryDatasetAsync(db, analyticsDb, storeId, supplierId, search, null, ct, normalizedStoreIds, applyAbcClassification, dataScope),
             CacheExpiration.Short,
             ct);
     }
@@ -772,8 +780,13 @@ public static class InventoryEndpoints
         int? storeId,
         int? supplierId,
         string? search,
-        IReadOnlyCollection<int>? storeIds = null)
+        IReadOnlyCollection<int>? storeIds = null,
+        string? dataScope = null)
     {
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+        var importedOnly = normalizedDataScope == "imported";
+        var existingOnly = normalizedDataScope == "existing";
+
         if (storeId.HasValue)
         {
             query = query.Where(a => a.IDObjekat == storeId.Value);
@@ -791,6 +804,10 @@ public static class InventoryEndpoints
             query = query.Where(a => a.IDDobavljac == supplierId.Value);
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(a => (a.Naziv ?? string.Empty).Contains(search) || (a.PLU ?? string.Empty).Contains(search));
+        if (importedOnly)
+            query = query.Where(a => a.DataOrigin == "access");
+        else if (existingOnly)
+            query = query.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
 
         return query;
     }
@@ -817,10 +834,11 @@ public static class InventoryEndpoints
         string? sortBy,
         CancellationToken ct,
         IReadOnlyCollection<int>? storeIds = null,
-        bool applyAbcClassification = true)
+        bool applyAbcClassification = true,
+        string? dataScope = null)
     {
         var baseItems = await ApplyInventorySorting(
-                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search, storeIds),
+                ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, search, storeIds, dataScope),
                 sortBy)
             .Select(a => new InventoryArticleProjection(
                 a.Id,
@@ -1105,7 +1123,8 @@ public static class InventoryEndpoints
         int[]? compareStoreIds,
         int? supplierId,
         string? search,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
         var selectedStoreIds = (compareStoreIds ?? [])
             .Distinct()
@@ -1114,7 +1133,7 @@ public static class InventoryEndpoints
 
         if (selectedStoreIds.Count == 0)
         {
-            selectedStoreIds = await ApplyInventoryFilters(db.Artikli.AsNoTracking(), null, supplierId, search)
+            selectedStoreIds = await ApplyInventoryFilters(db.Artikli.AsNoTracking(), null, supplierId, search, dataScope: dataScope)
                 .Where(item => item.IDObjekat.HasValue)
                 .GroupBy(item => item.IDObjekat!.Value)
                 .Select(group => new
@@ -1130,7 +1149,7 @@ public static class InventoryEndpoints
 
         var selectedItems = selectedStoreIds.Count == 0
             ? []
-            : await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, null, supplierId, search, selectedStoreIds, applyAbcClassification: false, ct);
+            : await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, null, supplierId, search, selectedStoreIds, applyAbcClassification: false, ct, dataScope);
 
         var storeNames = await LoadStoreNamesAsync(analyticsDb, selectedStoreIds.Select(static id => (int?)id), ct);
         var stores = selectedStoreIds
@@ -1214,9 +1233,10 @@ public static class InventoryEndpoints
         int? storeId,
         int? supplierId,
         string? search,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
-        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct);
+        var items = await GetCachedInventoryDatasetAsync(cache, db, analyticsDb, storeId, supplierId, search, null, applyAbcClassification: true, ct, dataScope);
         var decisions = await actionDecisionService.ListAsync(ct);
         var articleIds = items.Select(item => item.Id).ToArray();
         var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
@@ -1344,6 +1364,17 @@ public static class InventoryEndpoints
             distinctSuggestions.Count(item => item.Status == "deferred"),
             distinctSuggestions.Count(item => item.Status == "closed"),
             distinctSuggestions);
+    }
+
+    private static string NormalizeDataScope(string? rawScope)
+    {
+        var normalized = (rawScope ?? "all").Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "imported" or "access" => "imported",
+            "existing" => "existing",
+            _ => "all"
+        };
     }
 
     private static InventoryActionSuggestionDto ToSuggestion(

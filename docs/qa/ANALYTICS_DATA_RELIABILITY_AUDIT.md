@@ -156,7 +156,7 @@ Evidence:
 - Matrix + canonical rules: `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
 - Contract test locking offender SQL split: `Api.Tests/DataScopeConsistencyContractTests.cs`
 
-Recommended prompts: RQ06 (offenders), RQ05-F2 (inventory/board), RQ53/RQ54 (FE lineage), Q81 (SQL helpers). PDC dual-origin is now explicitly covered by RQ119.
+Recommended prompts: RQ06 (offenders), RQ05-F4 (lost-sales validation/bootstrap), RQ53/RQ54 (FE lineage), Q81 (SQL helpers). PDC dual-origin is explicitly covered by RQ119 and inventory/Decision Board scope is resolved by RQ05-F2.
 
 ### R06 - Data Quality top offenders 30d sales impact ignores sale-level dataScope
 
