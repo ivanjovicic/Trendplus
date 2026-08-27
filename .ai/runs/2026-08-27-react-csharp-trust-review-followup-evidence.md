@@ -4,9 +4,9 @@ Date: 2026-08-27
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: c3a43288420465fbe3258d3328d993ca5d450607
+Main verification: passed - local `main` contains c3a43288420465fbe3258d3328d993ca5d450607 after direct commit.
+Evidence state: synchronized
 
 ## What was done
 
