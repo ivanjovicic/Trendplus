@@ -489,6 +489,34 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Contains("Existing", existingInventoryCards[0].Title, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task CachedInventoryList_RespectsJournalDataScope()
+    {
+        await using var factory = CreateFactory();
+        SeedInventoryJournalScopeProbeData(factory.Services);
+
+        var importedRoot = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/inventory/list?page=1&pageSize=10&storeId=1&search=JournalProbe&dataScope=imported");
+
+        var importedItem = importedRoot.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(903, importedItem.GetProperty("id").GetInt32());
+        Assert.Equal("warning", importedItem.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(0.4m, importedItem.GetProperty("sellThroughRatio").GetDecimal());
+
+        var existingRoot = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/inventory/list?page=1&pageSize=10&storeId=1&search=JournalProbe&dataScope=existing");
+
+        var existingItem = existingRoot.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(903, existingItem.GetProperty("id").GetInt32());
+        Assert.Equal("critical", existingItem.GetProperty("sellThroughStatus").GetString());
+        Assert.Equal(0.2667m, existingItem.GetProperty("sellThroughRatio").GetDecimal());
+        Assert.NotEqual(
+            importedItem.GetProperty("signalConfidencePct").GetDecimal(),
+            existingItem.GetProperty("signalConfidencePct").GetDecimal());
+    }
+
     private static CachedAnalyticsFactory CreateFactory()
     {
         var factory = new CachedAnalyticsFactory();
@@ -609,6 +637,69 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                 DataOrigin = "access",
                 UpdatedAt = DateTime.UtcNow
             });
+
+        db.SaveChanges();
+    }
+
+    private static void SeedInventoryJournalScopeProbeData(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+
+        db.Artikli.Add(new Artikli
+        {
+            Id = 903,
+            PLU = "JOURNALPROBE-001",
+            Naziv = "JournalProbe Item",
+            IDObjekat = 1,
+            IDDobavljac = 1,
+            Kolicina = 10,
+            MinimalnaKolicina = 5,
+            NabavnaCena = 20m,
+            DataOrigin = "existing",
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        db.DnevnikPromena.AddRange(
+            new DnevnikPromena
+            {
+                Id = 7001,
+                ArtikalId = 903,
+                IDObjekat = 1,
+                TipPromene = TipPromeneConstants.UlazRobe,
+                Datum = new DateTime(2026, 8, 20, 9, 0, 0, DateTimeKind.Utc),
+                Kolicina = 2,
+                Iznos = 40m,
+                DataOrigin = "access"
+            },
+            new DnevnikPromena
+            {
+                Id = 7002,
+                ArtikalId = 903,
+                IDObjekat = 1,
+                TipPromene = TipPromeneConstants.Prodaja,
+                Datum = new DateTime(2026, 8, 20, 10, 0, 0, DateTimeKind.Utc),
+                Kolicina = -5,
+                Iznos = 100m,
+                DataOrigin = "existing"
+            });
+
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 4,
+            DatumProdaje = new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 15,
+            IdProdaja = 4,
+            IdArtikal = 903,
+            Kolicina = 4,
+            Cena = 100m
+        });
 
         db.SaveChanges();
     }

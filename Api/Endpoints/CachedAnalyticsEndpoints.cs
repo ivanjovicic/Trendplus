@@ -539,6 +539,7 @@ public static class CachedAnalyticsEndpoints
             int pageSize = 50,
             int? storeId = null,
             int? supplierId = null,
+            string? dataScope = null,
             string? search = null,
             string? sortBy = null,
             CancellationToken ct = default) =>
@@ -547,8 +548,9 @@ public static class CachedAnalyticsEndpoints
             var correlationId = ResolveCorrelationId(httpContext);
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 1000);
+            var normalizedDataScope = NormalizeDataScope(dataScope);
 
-            var cacheKey = $"analytics:inventory:list:{page}:{pageSize}:{storeId}:{supplierId}:{search}:{sortBy}";
+            var cacheKey = $"analytics:inventory:list:{page}:{pageSize}:{storeId}:{supplierId}:{normalizedDataScope}:{search}:{sortBy}";
             try
             {
                 var paged = await cache.GetOrSetAsync(
@@ -613,6 +615,7 @@ public static class CachedAnalyticsEndpoints
                             storeId,
                             salesFromDate,
                             DateTime.UtcNow,
+                            normalizedDataScope,
                             ct);
 
                         var items = new List<InventoryListItemDto>(rawItems.Count);
@@ -5669,6 +5672,7 @@ public static class CachedAnalyticsEndpoints
             storeId,
             periodFromUtc,
             periodToExclusiveUtc,
+            normalizedDataScope,
             ct);
 
         var rows = new List<ProductDecisionCenterRowDto>(articles.Count);
@@ -7432,6 +7436,7 @@ public static class CachedAnalyticsEndpoints
         int? storeId,
         DateTime fromUtc,
         DateTime toExclusiveUtc,
+        string? dataScope,
         CancellationToken ct)
     {
         var stats = new Dictionary<int, InventorySignalWindowStats>();
@@ -7440,15 +7445,26 @@ public static class CachedAnalyticsEndpoints
             return stats;
         }
 
+        var normalizedDataScope = NormalizeDataScope(dataScope);
+
         foreach (var batch in articleIds.Chunk(MovementStatsBatchSize))
         {
-            var movementRows = await db.DnevnikPromena
+            var movementQuery = db.DnevnikPromena
                 .AsNoTracking()
                 .Where(x => x.ArtikalId.HasValue
                     && batch.Contains(x.ArtikalId.Value)
                     && x.Datum >= fromUtc
                     && x.Datum < toExclusiveUtc
-                    && (!storeId.HasValue || x.IDObjekat == storeId.Value))
+                    && (!storeId.HasValue || x.IDObjekat == storeId.Value));
+
+            movementQuery = normalizedDataScope switch
+            {
+                "imported" => movementQuery.Where(x => x.DataOrigin == "access"),
+                "existing" => movementQuery.Where(x => x.DataOrigin == "existing" || x.DataOrigin == null || x.DataOrigin == ""),
+                _ => movementQuery
+            };
+
+            var movementRows = await movementQuery
                 .Select(x => new
                 {
                     ArtikalId = x.ArtikalId!.Value,
