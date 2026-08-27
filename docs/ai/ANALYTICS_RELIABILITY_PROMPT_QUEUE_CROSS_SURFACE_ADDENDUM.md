@@ -711,8 +711,8 @@ Vendor pre/post `sharePct` is share of absolute revenue change, not normal reven
 - Run log: `.ai/runs/2026-08-27-RQ63-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 196797a56227bf6606fec8afccb4b926e55c7fe9
+- Main verification: `git branch --contains 196797a56227bf6606fec8afccb4b926e55c7fe9` -> `* main`
 - Missed: no broader prompt-router promotion was needed because the cross-surface queue remains parked with no READY prompt
 - Follow-up: none
 - Residual risk: the backend field still remains named `sharePct` in the source DTO, but the UI/export semantics are now explicit
