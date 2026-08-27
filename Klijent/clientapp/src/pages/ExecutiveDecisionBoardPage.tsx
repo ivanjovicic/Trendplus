@@ -336,6 +336,9 @@ function boardCodeLabel(code: string): string {
   }
   if (normalized === "confidence_workflow_status_only") return "Samo status toka";
   if (normalized === "inventory_recommendation_blocked") return "Preporuka nije dozvoljena";
+  if (normalized === "product_recommendation_blocked") return "Preporuka proizvoda je blokirana";
+  if (normalized === "supplier_recommendation_blocked") return "Preporuka dobavljača je blokirana";
+  if (normalized === "supplier_trust_missing") return "Nedostaju metapodaci pouzdanosti dobavljača";
   if (normalized === "stock_below_minimum") return "Ispod minimuma";
   if (normalized === "missing_cost") return "Nedostaje nabavna cena";
   if (normalized === "missing_supplier") return "Nedostaje dobavljač";
@@ -1123,6 +1126,7 @@ function mapDecisionBoardCard(
 }
 
 function buildBoardModel(payload: DecisionBoardAggregateResponse): BoardModel {
+  const warnings = payload.warnings ?? [];
   const sections: BoardSection[] = (payload.sections ?? []).map((section) => ({
     key: section.key as BoardSectionKey,
     title: section.title,
@@ -1150,7 +1154,7 @@ function buildBoardModel(payload: DecisionBoardAggregateResponse): BoardModel {
     sections,
     metrics,
     hasData,
-    isPartial: Boolean(payload.meta?.isPartial || payload.warnings.length > 0 || hasPartialSource || normalizedOverallStatus !== "good"),
+    isPartial: Boolean(payload.meta?.isPartial || warnings.length > 0 || hasPartialSource || normalizedOverallStatus !== "good"),
     overallDataQualityStatus: payload.overallDataQualityStatus,
     periodFrom: payload.periodFromUtc ?? null,
     periodTo: payload.periodToUtc ?? null,

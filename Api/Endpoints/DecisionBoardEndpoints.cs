@@ -397,10 +397,15 @@ public static class DecisionBoardEndpoints
         return productDecisionCenter.Rows
             .Select((row, index) =>
             {
-                var confidence = ResolveProductConfidence(row);
+                var recommendationAllowed = IsProductRecommendationAllowed(row);
+                var confidence = ResolveProductConfidence(row, recommendationAllowed);
                 // Trust PDC: do not reattach LostSalesEstimate when ExpectedImpactRsd is intentionally null.
-                var expectedImpact = row.ExpectedImpactRsd;
-                var warnings = NormalizeWarningCodes(row.WarningCodes);
+                var expectedImpact = recommendationAllowed ? row.ExpectedImpactRsd : null;
+                var warnings = NormalizeWarningCodes(row.WarningCodes).ToList();
+                if (!recommendationAllowed)
+                {
+                    warnings.Add("product_recommendation_blocked");
+                }
                 var actionState = ResolveActionState(row.SourceType ?? "product", row.SourceKey ?? $"product:{row.ProductId}", actionStates);
 
                 return new DecisionBoardCardDto(
@@ -419,14 +424,16 @@ public static class DecisionBoardEndpoints
                     MeasuredImpactRsd: null,
                     RealizationRatio: null,
                     RiskIfIgnored: row.RiskIfIgnored ?? row.RecommendationReason,
+                    // A blocked signal must not rank or quantify an action, but its
+                    // source-owned remediation can still tell the user what evidence to fix.
                     RecommendedNextAction: row.RecommendedAction,
                     ActionHref: "/analytics/products",
                     AlreadyInAction: actionState == ActionState.Open,
                     AlreadyClosed: actionState == ActionState.Closed,
-                    WarningCodes: warnings,
+                    WarningCodes: warnings.Distinct(StringComparer.Ordinal).ToList(),
                     ConfidenceSource: ResolveProductConfidenceSource(row),
                     ReasonCodes: row.ReasonCodes,
-                    RecommendationAllowed: row.RecommendationAllowed,
+                    RecommendationAllowed: recommendationAllowed,
                     DataQualityStatus: NormalizeDataQualityStatus(row.DataQualityStatus),
                     GeneratedAtUtc: productDecisionCenter.GeneratedAtUtc,
                     PriorityScore: CapInsufficientDataPriority(
@@ -848,7 +855,35 @@ public static class DecisionBoardEndpoints
             }
         }
 
-        if (supplierSummary?.TrustMetadata is { RecommendationAllowed: false })
+        if (supplierSummary is { TrustMetadata: null })
+        {
+            cards.Add(new DecisionBoardCardDto(
+                Id: "blocker-supplier-trust-missing",
+                Kind: "blocker",
+                SectionKey: "blockers",
+                SourceModule: "Dobavljači",
+                SourceType: "supplier",
+                SourceKey: "supplier-trust",
+                Title: "Nedostaju trust metapodaci dobavljača",
+                Summary: "Supplier rezultati su vraćeni bez metapodataka koji potvrđuju kvalitet i dozvolu preporuke.",
+                ConfidenceLevel: "insufficient_data",
+                ConfidenceScore: null,
+                ReliabilityPct: null,
+                ExpectedImpactRsd: null,
+                MeasuredImpactRsd: null,
+                RealizationRatio: null,
+                RiskIfIgnored: "Dobavljačka preporuka može delovati akcijski bez dokaza da je dozvoljena.",
+                RecommendedNextAction: "Otvori dobavljački report i proveri trust metapodatke pre odluke.",
+                ActionHref: "/analytics/supplier?tab=overview",
+                AlreadyInAction: false,
+                AlreadyClosed: false,
+                WarningCodes: BuildSupplierWarningCodes(null),
+                DataQualityStatus: "insufficient_data",
+                GeneratedAtUtc: null,
+                PriorityScore: 175m,
+                ImpactScore: 0m));
+        }
+        else if (supplierSummary?.TrustMetadata is { RecommendationAllowed: false })
         {
             cards.Add(new DecisionBoardCardDto(
                 Id: "blocker-supplier-trust",
@@ -1347,9 +1382,12 @@ public static class DecisionBoardEndpoints
             : "low";
     }
 
-    private static (string Level, int? Score) ResolveProductConfidence(ProductDecisionCenterRowDto row)
+    private static (string Level, int? Score) ResolveProductConfidence(
+        ProductDecisionCenterRowDto row,
+        bool recommendationAllowed)
     {
-        if (string.Equals(row.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
+        if (!recommendationAllowed
+            || string.Equals(row.ConfidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
         {
             return ("insufficient_data", row.ConfidenceScore ?? row.ConfidencePct);
         }
@@ -1357,6 +1395,25 @@ public static class DecisionBoardEndpoints
         var score = row.ConfidenceScore ?? row.ConfidencePct;
         var level = ResolveConfidenceLevel(score);
         return (level, score);
+    }
+
+    private static bool IsProductRecommendationAllowed(ProductDecisionCenterRowDto row)
+    {
+        if (!row.RecommendationAllowed)
+        {
+            return false;
+        }
+
+        var dataQualityStatus = NormalizeDataQualityStatus(row.DataQualityStatus);
+        if (dataQualityStatus is "insufficient_data" or "critical" or "error" or "failed")
+        {
+            return false;
+        }
+
+        var freshness = (row.InputFreshnessStatus ?? string.Empty).Trim();
+        return !string.Equals(freshness, "stale", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(freshness, "critical", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(freshness, "unknown", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveProductConfidenceSource(ProductDecisionCenterRowDto row)

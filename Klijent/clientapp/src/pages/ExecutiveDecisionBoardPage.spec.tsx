@@ -337,6 +337,43 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.queryByText("missing cost")).not.toBeInTheDocument();
   });
 
+  it("explains missing supplier trust metadata as a blocker", async () => {
+    const trustBlocker = card({
+      id: "blocker-supplier-trust-missing",
+      kind: "blocker",
+      sectionKey: "blockers",
+      sourceModule: "Dobavljači",
+      sourceType: "supplier",
+      sourceKey: "supplier-trust",
+      title: "Nedostaju trust metapodaci dobavljača",
+      summary: "Supplier rezultati nemaju dokaz dozvole preporuke.",
+      confidenceLevel: "insufficient_data",
+      confidenceScore: null,
+      expectedImpactRsd: null,
+      riskIfIgnored: "Preporuka može delovati akcijski bez dokaza.",
+      recommendedNextAction: "Proveri trust metapodatke.",
+      actionHref: "/analytics/supplier?tab=overview",
+      dataQualityStatus: "insufficient_data",
+      priorityScore: 175,
+      impactScore: 0,
+      warningCodes: ["supplier_recommendation_blocked", "supplier_trust_missing"],
+    });
+
+    vi.mocked(getDecisionBoardAggregate).mockResolvedValue(
+      aggregate({
+        sections: [section("blockers", [trustBlocker], { title: "Blokatori kvaliteta podataka" })],
+      }),
+    );
+
+    renderPage();
+
+    const title = await screen.findByText("Nedostaju trust metapodaci dobavljača");
+    const blocker = title.closest("article");
+    expect(blocker).not.toBeNull();
+    expect(within(blocker as HTMLElement).getByText("Preporuka dobavljača je blokirana")).toBeInTheDocument();
+    expect(within(blocker as HTMLElement).getByText("Nedostaju metapodaci pouzdanosti dobavljača")).toBeInTheDocument();
+  });
+
   it("renders missing expected impact as unavailable, not as a fake zero", async () => {
     renderPage();
 

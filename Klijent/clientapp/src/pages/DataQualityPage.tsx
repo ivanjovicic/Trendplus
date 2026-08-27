@@ -133,8 +133,11 @@ function buildLinePath(points: DataQualityTrendPoint[], selector: (point: DataQu
     .join(" ");
 }
 
-function trendTone(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number): "improving" | "worsening" {
-  if (points.length < 2) return "improving";
+function trendTone(
+  points: DataQualityTrendPoint[],
+  selector: (point: DataQualityTrendPoint) => number,
+): "neutral" | "improving" | "worsening" {
+  if (points.length < 2) return "neutral";
   return selector(points[points.length - 1]) <= selector(points[0]) ? "improving" : "worsening";
 }
 
@@ -622,6 +625,17 @@ export default function DataQualityPage() {
 
   const healthStatus = useMemo(() => {
     if (!health) return { label: "Snapshot nije dostupan", tone: "neutral" as const };
+
+    const metaStatus = (health.meta?.dataQualityStatus ?? "").trim().toLowerCase();
+    const emptyReason = (health.meta?.emptyReason ?? "").trim().toLowerCase();
+    const hasInsufficientEvidence =
+      metaStatus === "insufficient_data" ||
+      emptyReason === "no_sales_in_period" ||
+      health.totalRevenue <= 0;
+
+    if (hasInsufficientEvidence) {
+      return { label: "Nedovoljno podataka", tone: "warning" as const };
+    }
 
     const hasWarning =
       health.orphanArticleCount >= health.thresholds.orphanArticleCount ||

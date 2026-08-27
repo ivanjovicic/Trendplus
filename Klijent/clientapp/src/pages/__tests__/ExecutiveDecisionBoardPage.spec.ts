@@ -319,6 +319,12 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(productCard?.expectedImpactRsd).toBeNull();
   });
 
+  it("does not crash when a compatibility aggregate omits the warnings array", () => {
+    const payload = baseAggregate({ warnings: undefined as unknown as string[] });
+
+    expect(() => buildExecutiveDecisionBoardModel(payload)).not.toThrow();
+  });
+
   it("keeps weak inventory signal exposure out of expected impact on executive inventory cards", () => {
     const rows = [
       baseInventoryRow({

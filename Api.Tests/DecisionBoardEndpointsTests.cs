@@ -198,6 +198,38 @@ public sealed class DecisionBoardEndpointsTests
     }
 
     [Fact]
+    public void BuildDecisionBoardResponse_BlocksCriticalProductEvidenceBeforeItCanRankOrShowImpact()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(
+            generatedAtUtc,
+            CreateProductRow(
+                productId: 312,
+                recommendationStatus: "REPLENISH",
+                dataQualityStatus: "critical",
+                confidenceLevel: "high",
+                confidenceScore: 95,
+                expectedImpactRsd: 125_000m,
+                recommendationAllowed: true,
+                warningCodes: ["missing_cost"],
+                reasonCodes: ["replenish_needed"]));
+
+        var response = BuildBoard(generatedAtUtc, productDecisionCenter);
+        var productCard = Assert.Single(FindProductCards(response));
+
+        Assert.False(productCard.RecommendationAllowed);
+        Assert.Equal("insufficient_data", productCard.ConfidenceLevel);
+        Assert.Null(productCard.ExpectedImpactRsd);
+        Assert.Equal(0m, productCard.ImpactScore);
+        Assert.True(productCard.PriorityScore <= 40m);
+        Assert.Contains("product_recommendation_blocked", productCard.WarningCodes);
+        Assert.Equal("Test akcija.", productCard.RecommendedNextAction);
+
+        var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
+        Assert.DoesNotContain(impactSection.Cards, card => card.Id == productCard.Id);
+    }
+
+    [Fact]
     public void BuildDecisionBoardResponse_EmptyPdcSlice_IsSuccessfulInsufficientEmpty_NotFakeZeroImpact()
     {
         var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
@@ -369,6 +401,12 @@ public sealed class DecisionBoardEndpointsTests
         Assert.True(card.PriorityScore <= 40m);
         Assert.Contains("supplier_recommendation_blocked", card.WarningCodes);
         Assert.Contains("signal_check", card.SourceKey, StringComparison.Ordinal);
+
+        var blockers = Assert.Single(response.Sections, section => section.Key == "blockers");
+        var trustBlocker = Assert.Single(blockers.Cards, item => item.Id == "blocker-supplier-trust-missing");
+        Assert.Equal("insufficient_data", trustBlocker.DataQualityStatus);
+        Assert.Contains("supplier_recommendation_blocked", trustBlocker.WarningCodes);
+        Assert.Contains("supplier_trust_missing", trustBlocker.WarningCodes);
     }
 
     [Fact]

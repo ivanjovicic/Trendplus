@@ -186,7 +186,7 @@ function topOffenders(overrides: Partial<DataQualityTopOffendersResult> = {}): D
   };
 }
 
-function trend(): DataQualityTrendResult {
+function trend(overrides: Partial<DataQualityTrendResult> = {}): DataQualityTrendResult {
   return {
     days: 7,
     dataScope: "all",
@@ -195,6 +195,7 @@ function trend(): DataQualityTrendResult {
       { date: "2026-07-01T00:00:00Z", missingCostRevenueSharePct: 18.3, unknownSupplierRevenueSharePct: 15, orphanArticleCount: 14 },
     ],
     meta: { success: true },
+    ...overrides,
   };
 }
 
@@ -284,6 +285,46 @@ describe("DataQualityPage", () => {
     expect(await screen.findByTestId("data-quality-top-offenders-table")).toBeInTheDocument();
     expect(screen.getByText(/Ukupno u rezultatu: 1/)).toBeInTheDocument();
     expect(screen.getByText(/Top lista: 1/)).toBeInTheDocument();
+  });
+
+  it("does not show green health when the backend reports no sales or insufficient data", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
+      totalRevenue: 0,
+      orphanArticleCount: 0,
+      missingCostRevenueSharePct: 0,
+      unknownSupplierRevenueSharePct: 0,
+      scoreStatus: "good",
+      scoreSummary: "Nema prodaje u izabranom periodu.",
+      meta: {
+        success: true,
+        generatedAtUtc: "2026-07-01T08:00:00Z",
+        lastRefreshAtUtc: "2026-07-01T08:00:00Z",
+        dataQualityStatus: "insufficient_data",
+        emptyReason: "no_sales_in_period",
+      },
+    }));
+
+    renderPage();
+    await screen.findByText("Problematični artikli");
+
+    expect(screen.getByText("Nedovoljno podataka", { selector: ".data-quality-health-card strong" })).toBeInTheDocument();
+    expect(screen.queryByText("Podaci su u zelenoj zoni")).not.toBeInTheDocument();
+  });
+
+  it("renders a one-point trend as neutral instead of improving", async () => {
+    vi.mocked(getAnalyticsDataQualityTrend).mockResolvedValue(trend({
+      points: [
+        { date: "2026-06-25T00:00:00Z", missingCostRevenueSharePct: 20, unknownSupplierRevenueSharePct: 17, orphanArticleCount: 18 },
+      ],
+    }));
+
+    renderPage();
+    await screen.findByText("Problematični artikli");
+
+    const trendChart = screen.getByRole("img", { name: "Data quality trend chart" });
+    expect(trendChart.querySelector(".trend-line.neutral")).not.toBeNull();
+    expect(trendChart.querySelector(".trend-line.improving")).toBeNull();
+    expect(screen.getByText("Nedostajuća nabavna cena %").classList.contains("neutral")).toBe(true);
   });
 
   it("labels returned page rows separately from backend total count", async () => {

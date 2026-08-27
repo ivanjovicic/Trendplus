@@ -392,7 +392,8 @@ public sealed class DecisionBoardAggregationContractTests
         IReadOnlyList<string>? warningCodes = null,
         decimal? lostSalesEstimate = null,
         string? recommendationLabel = null,
-        string? recommendedAction = null)
+        string? recommendedAction = null,
+        bool recommendationAllowed = true)
     {
         return new ProductDecisionCenterRowDto
         {
@@ -421,6 +422,7 @@ public sealed class DecisionBoardAggregationContractTests
             ConfidenceScore = confidenceScore,
             ConfidencePct = confidenceScore ?? 0,
             ReliabilityPct = confidenceScore ?? 0,
+            RecommendationAllowed = recommendationAllowed,
             RecommendationStatus = recommendationStatus,
             RecommendationLabel = recommendationLabel ?? recommendationStatus,
             RecommendationReason = $"Razlog za {productId}",

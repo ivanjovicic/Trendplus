@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ73` DONE; `RQ95` DONE; next is `BCI05` re-entry)
+Current READY prompt: none in this addendum (`RQ73` DONE; `RQ75` DONE; `RQ76` DONE; `RQ95` DONE; next is `BCI05` re-entry)
 Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
 
 Use with:
@@ -22,8 +22,8 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | RQ72 | DONE | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
 | RQ73 | DONE | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
 | RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
-| RQ75 | WAITING | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
-| RQ76 | WAITING | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
+| RQ75 | DONE | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
+| RQ76 | DONE | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
 | RQ77 | DONE | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
 | RQ78 | DONE | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
 | RQ79 | WAITING | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
@@ -198,15 +198,16 @@ Choose one:
 
 ## RQ75 - Data Quality no-sales/insufficient health must not show green
 
-Status: WAITING
+Status: DONE
 Ready after: RQ04 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
 Feature family: data-quality-health-no-sales
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ75-<agent>.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `fix(analytics): avoid green data quality with no sales`
+Promotion note: 2026-08-25 - `RQ04` is DONE on current main, so this prompt was promoted to READY and claimed in this workspace.
 
 ### Why
 
@@ -232,19 +233,40 @@ Data Quality health backend can return meta `insufficient_data` / `no_sales_in_p
 
 - No-sales health cannot be presented as green data quality.
 
+### Completion note
+
+- Date: 2026-08-25
+- Status: DONE
+- Completion: Data Quality health now treats `insufficient_data`, `no_sales_in_period`, and zero-total-revenue as insufficient/no-data instead of green.
+- Changed files: `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+- Contract/runtime behavior changed: yes; the health card no longer reports "Podaci su u zelenoj zoni" for insufficient/no-sales evidence
+- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx` (pass, 7 tests)
+- Checks not run: full frontend build; full repo suites
+- Run log: `.ai/runs/2026-08-25-RQ75-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: none
+- Main commit SHA: pending
+- Main verification: not run - no commit to `main` in this turn
+- Missed: `RQ76` is now the next ready follow-up and still needs execution
+- Residual risk: other DataQualityPage summaries still rely on threshold logic for non-insufficient statuses
+- Follow-up: `RQ76 - Data Quality one-point trend no-baseline`
+- Prompt defect / scope repair: promoted `RQ75` from WAITING to READY because `RQ04` was DONE on current main
+- Next: `RQ76`
+
 ---
 
 ## RQ76 - Data Quality one-point trend no-baseline
 
-Status: WAITING
+Status: DONE
 Ready after: RQ75 or explicit unblocking
 Priority: P2
 Type: frontend-tests
 Feature family: data-quality-trend-no-baseline
 Parallel-safe: yes
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ76-<agent>.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `fix(analytics): show neutral one-point data quality trend`
+Promotion note: 2026-08-25 - `RQ75` is DONE on current main, so this prompt is now promoted to READY.
 
 ### Why
 
@@ -264,6 +286,26 @@ Commit suggestion: `fix(analytics): show neutral one-point data quality trend`
 ### Acceptance
 
 - Insufficient trend history does not display as improving.
+
+### Completion note
+
+- Date: 2026-08-25
+- Status: DONE
+- Completion: Data Quality trend now shows a neutral/no-baseline state for one-point history instead of marking it improving.
+- Changed files: `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.css`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`
+- Contract/runtime behavior changed: yes; one-point trend histories now render neutral tones for the chart and legend
+- Checks run: `git diff --check` (pass); `npm run test -- --run src/pages/DataQualityPage.spec.tsx` (pass, 8 tests)
+- Checks not run: full frontend build; full repo suites
+- Run log: `.ai/runs/2026-08-25-RQ76-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: none
+- Main commit SHA: pending
+- Main verification: not run - no commit to `main` in this turn
+- Missed: no next READY prompt promoted yet
+- Residual risk: the neutral legend/chart treatment is only applied to the DataQuality trend card
+- Follow-up: none
+- Prompt defect / scope repair: none
+- Next: none
 
 ---
 

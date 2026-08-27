@@ -611,6 +611,10 @@
   stroke: var(--error, #ef4444);
 }
 
+.trend-line.neutral {
+  stroke: var(--text-muted, #6b7280);
+}
+
 .data-quality-trend-legend,
 .data-quality-trend-labels,
 .data-quality-origin-main {
@@ -647,6 +651,11 @@
 .legend-chip.worsening {
   background: var(--error-soft, rgba(var(--error-rgb, 239, 68, 68), 0.12));
   color: var(--error, #ef4444);
+}
+
+.legend-chip.neutral {
+  background: var(--neutral-soft, rgba(107, 114, 128, 0.12));
+  color: var(--text-muted, #6b7280);
 }
 
 .data-quality-origin-main {
