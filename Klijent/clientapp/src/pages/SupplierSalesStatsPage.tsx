@@ -940,7 +940,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? data?.generatedAt ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 

@@ -42,6 +42,34 @@ public sealed class LostSalesValidationScopePostgresIntegrationTests : IClassFix
         Assert.NotEqual(imported.LostSalesEstimate, existing.LostSalesEstimate);
     }
 
+    [Fact]
+    public async Task BuildAdvancedDashboard_UsesSnakeCaseSalesOriginColumnForScopedFallbacks()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+        {
+            return;
+        }
+
+        await SeedScopeSplitDatasetAsync(db);
+        var fromUtc = DateTime.UtcNow.Date.AddDays(-5);
+        var toUtc = DateTime.UtcNow.Date.AddDays(1);
+
+        var snapshot = await CachedAnalyticsEndpoints.BuildAdvancedDashboardSnapshotAsync(
+            db,
+            fromUtc,
+            toUtc,
+            storeId: 1,
+            supplierId: null,
+            ct: CancellationToken.None,
+            dataScope: "imported");
+
+        var velocity = Assert.Single(snapshot.Cards, card => card.Key == "velocity");
+        Assert.Equal(3m, velocity.Value);
+        var pareto = Assert.Single(snapshot.Cards, card => card.Key == "pareto");
+        Assert.Equal(100m, pareto.Value);
+    }
+
     private async Task<TrendplusDbContext?> CreateDatabaseAsync()
     {
         var databaseName = $"lost-sales-scope-{Guid.NewGuid():N}";

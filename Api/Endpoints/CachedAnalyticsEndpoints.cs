@@ -3202,8 +3202,8 @@ public static class CachedAnalyticsEndpoints
                 AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {supplierPredicate}
-                AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal", DATE(p."datum_prodaje")
             ),
             agg AS (
@@ -3272,8 +3272,8 @@ public static class CachedAnalyticsEndpoints
                     AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
                     AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                     {supplierPredicate}
-                    AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                    AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                    AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                    AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
                   GROUP BY DATE(p."datum_prodaje")
                 )
                 SELECT
@@ -3376,8 +3376,8 @@ public static class CachedAnalyticsEndpoints
                 AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {supplierPredicate}
-                AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal"
             ),
             ordered AS (
@@ -3478,8 +3478,8 @@ public static class CachedAnalyticsEndpoints
                 AND (@toDate IS NULL OR p."datum_prodaje" <= @toDate)
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
-                AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal"
             ),
             previous_period AS (
@@ -3494,8 +3494,8 @@ public static class CachedAnalyticsEndpoints
                 AND p."datum_prodaje" < s.from_date
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {previousSupplierPredicate}
-                AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal"
             )
             SELECT
@@ -3594,7 +3594,7 @@ public static class CachedAnalyticsEndpoints
         }
     }
 
-    private static async Task<DashboardAdvancedSnapshotDto> BuildAdvancedDashboardSnapshotAsync(
+    internal static async Task<DashboardAdvancedSnapshotDto> BuildAdvancedDashboardSnapshotAsync(
         ITrendplusDbContext db,
         DateTime? fromDate,
         DateTime? toDate,

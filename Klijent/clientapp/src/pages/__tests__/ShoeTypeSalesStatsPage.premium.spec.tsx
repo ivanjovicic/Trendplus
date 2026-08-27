@@ -19,7 +19,21 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title }: { title: string }) => <div data-testid="analytics-trust-header">{title}</div>,
+  default: ({ title, periodFrom, periodTo, lastRefreshAt }: {
+    title: string;
+    periodFrom?: string | null;
+    periodTo?: string | null;
+    lastRefreshAt?: string | null;
+  }) => (
+    <div
+      data-testid="analytics-trust-header"
+      data-period-from={periodFrom ?? ""}
+      data-period-to={periodTo ?? ""}
+      data-last-refresh-at={lastRefreshAt ?? ""}
+    >
+      {title}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/ui/InfoTip", () => ({
@@ -135,6 +149,11 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     );
 
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po tipu obuće");
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-from", "2026-06-01T00:00:00Z");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-period-to", "2026-06-30T23:59:59Z");
+      expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:30:00Z");
+    });
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(within(controlBar).getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
     expect(within(controlBar).getByLabelText("Period")).toBeInTheDocument();

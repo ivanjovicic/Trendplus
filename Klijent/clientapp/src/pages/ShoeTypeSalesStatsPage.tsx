@@ -649,7 +649,7 @@ export default function ShoeTypeSalesStatsPage() {
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? data?.generatedAt ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
@@ -924,8 +924,8 @@ export default function ShoeTypeSalesStatsPage() {
       <AnalyticsTrustHeader
         title="Prodaja po tipu obuće"
         description="Podrška odluci sa asortimanskim fokusom po tipu obuće."
-        periodFrom={activeFilters.fromDate}
-        periodTo={activeFilters.toDate}
+        periodFrom={data?.fromDate ?? activeFilters.fromDate}
+        periodTo={data?.toDate ?? activeFilters.toDate}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustIsPartial ? "stale" : "unknown"}
         dataSource={`Sales facts analytics (scope: ${data?.dataScope ?? dataScope})`}
