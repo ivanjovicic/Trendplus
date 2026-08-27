@@ -1,4 +1,4 @@
-name: Manual: Deploy to Render (fallback)
+name: "Manual: Deploy to Render (fallback)"
 
 on:
   push:
