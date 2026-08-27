@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
 Main commit SHA: c3a43288420465fbe3258d3328d993ca5d450607
-Main verification: passed - local `main` contains c3a43288420465fbe3258d3328d993ca5d450607 after direct commit.
+Main verification: passed - `origin/main` is 14a49a4eec54b8ce7d5d20bbd0b726406507cc01 and contains c3a43288420465fbe3258d3328d993ca5d450607 after direct delivery.
 Evidence state: synchronized
 
 ## What was done
