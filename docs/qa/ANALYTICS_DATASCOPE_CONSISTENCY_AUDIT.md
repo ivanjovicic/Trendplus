@@ -42,8 +42,8 @@ If list / detail / export / action are presented as the same view, they must sha
 |---|---|---|---|---|---|---|---|---|---|
 | Cached dashboard sales summary / daily / category / gender / supplier / weekday / hour / payment | `CachedAnalyticsEndpoints` builders | n/a | sale header | yes | yes | Header `DataOrigin` | Keep sales-header | Low if UI labels “opseg prodaje” | — |
 | Top products advanced / velocity / Pareto | same | article join for attrs | sale header | yes | yes | Header scope; view path when `all` | Keep sales-header | Medium (view forced-all) | Q81 |
-| Lost-sales snapshot | `GetLostSalesSnapshotAsync` | article (OOS universe) | sale header (recent CTE) | yes | yes | Dual; validation often forced `all` | Dual OK + pass request scope | High on validation path | RQ05-F4 / Q81 |
-| Lost-sales validation endpoint | `/validation/lost-sales` | forced all | forced all | no | no | Defaults `dataScope=all` | Honor request scope | High fake-green risk if scoped UI | RQ05-F4 |
+| Lost-sales snapshot | `GetLostSalesSnapshotAsync` | article (OOS universe) | sale header (recent CTE) | yes | yes | Dual; validation route now threads request scope into fallback path | Dual OK + pass request scope | High on validation path | RQ05-F4 — resolved 2026-08-27 / Q81 |
+| Lost-sales validation endpoint | `/validation/lost-sales` | forced all | forced all | no | no | Defaults `dataScope=all` when omitted, but request scope is now honored in the live route | Honor request scope | High fake-green risk if scoped UI | RQ05-F4 — resolved 2026-08-27 |
 | Product Decision Center | `BuildProductDecisionCenterAsync` | article | sale header | yes | yes | **Dual-origin with explicit provenance contract** | Expose requested/effective scope and provenance, or align sales to header with article membership | Medium | RQ119 |
 | PDC inventory journal signals | `LoadInventorySignalWindowStatsFromJournalAsync` | journal `dataScope` | n/a | store | n/a | `dataScope` now filters `DnevnikPromena` rows and is threaded into the cache key | Keep journal scope aligned with request scope | Low | RQ05-Journal — resolved 2026-08-27 |
 | Inventory insights / store comparison (cached) | `/inventory/insights` | article scope | article scope | yes | yes | `dataScope` now passed through to the builder and cache key | Keep article scope, preserve metadata only for genuine fallbacks | Low | RQ05-F2 — resolved 2026-08-27 |
@@ -60,7 +60,7 @@ If list / detail / export / action are presented as the same view, they must sha
 
 1. **DQ top-offender `sales_30d` unscoped** — **fixed in RQ06**: `TopOffendersSql` now filters sale-header `DataOrigin`. Contract: `DataScopeConsistencyContractTests`. Residual resolved in RQ118: `GetDataQualityIssuesHandler` now filters the same sale-header scope.
 2. **PDC inventory journal signals** — `LoadInventorySignalWindowStatsFromJournalAsync` now filters journal rows by request `dataScope`, so the remaining gap is no longer this family.
-3. **PDC dual-origin is explicit, not silent** — Product Decision Center now exposes requested scope plus dual-origin provenance on the response, and inventory/Decision Board now honor article scope as well.
+3. **PDC dual-origin is explicit, not silent** — Product Decision Center now exposes requested scope plus dual-origin provenance on the response, inventory/Decision Board honor article scope, and lost-sales validation now threads request scope through its fallback path as well.
 
 ## Follow-up prompts
 
@@ -70,7 +70,7 @@ If list / detail / export / action are presented as the same view, they must sha
 | RQ05-F1 | PDC mismatched article vs sale-header origin contract/tests (+ optional align) | RQ05 — resolved by RQ119 |
 | RQ05-F2 | Inventory + Decision Board apply article `dataScope` or explicit forced-all meta | RQ05 — resolved 2026-08-27 |
 | RQ05-F3 | ShoeType/Color/Vendor list↔detail↔export scope lineage (overlaps RQ53/RQ54) | RQ05 |
-| RQ05-F4 | Lost-sales validation/bootstrap honor request `dataScope` | RQ05 / RQ03 |
+| RQ05-F4 | Lost-sales validation/bootstrap honor request `dataScope` | RQ05 / RQ03 — resolved 2026-08-27 |
 | Q81 | SQL helper store/supplier/`dataScope` consistency | Q69; reuse this matrix |
 
 ## Tests added in RQ05

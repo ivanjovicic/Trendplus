@@ -139,6 +139,24 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.Equal(
             AnalyticsCacheKeys.InventoryInsights(1, 2, null, null, "all"),
             AnalyticsCacheKeys.InventoryInsights(1, 2, null, null, "unknown"));
+        Assert.Equal(
+            AnalyticsCacheKeys.ValidationLostSales("all"),
+            AnalyticsCacheKeys.ValidationLostSales("unknown"));
+    }
+
+    [Fact]
+    public void ValidationLostSales_SeparatesImportedAndExistingCacheEntries()
+    {
+        var all = AnalyticsCacheKeys.ValidationLostSales("all");
+        var imported = AnalyticsCacheKeys.ValidationLostSales("imported");
+        var existing = AnalyticsCacheKeys.ValidationLostSales("existing");
+
+        Assert.NotEqual(all, imported);
+        Assert.NotEqual(all, existing);
+        Assert.NotEqual(imported, existing);
+        Assert.Contains("scope:all", all, StringComparison.Ordinal);
+        Assert.Contains("scope:imported", imported, StringComparison.Ordinal);
+        Assert.Contains("scope:existing", existing, StringComparison.Ordinal);
     }
 
     [Fact]

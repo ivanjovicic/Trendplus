@@ -2085,8 +2085,8 @@ public static class CachedAnalyticsEndpoints
                             "ValidationLostSales",
                             "P2",
                             async () => await cache.GetOrSetAsync(
-                                AnalyticsCacheKeys.ValidationLostSales,
-                                async () => await BuildLostSalesValidationAsync(db, ct),
+                                AnalyticsCacheKeys.ValidationLostSales(normalizedDataScope),
+                                async () => await BuildLostSalesValidationAsync(db, ct, normalizedDataScope),
                                 DashboardFastSectionTtl,
                                 ct),
                             "Lost-sales validacija nije dostupna.");
@@ -2377,15 +2377,14 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/validation/lost-sales", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var normalizedDataScope = NormalizeDataScope(dataScope);
             var result = await cache.GetOrSetAsync(
-                AnalyticsCacheKeys.ValidationLostSales,
+                AnalyticsCacheKeys.ValidationLostSales(normalizedDataScope),
                 async () =>
-                {
-                    var snapshot = await GetLostSalesSnapshotAsync(db, ct);
-                    return BuildLostSalesValidationFromSnapshot(snapshot);
-                },
+                    await BuildLostSalesValidationAsync(db, ct, normalizedDataScope),
                 AnalyticsCachePolicy.DataQuality.Ttl,
                 ct);
 
@@ -3089,8 +3088,8 @@ public static class CachedAnalyticsEndpoints
               WHERE p."datum_prodaje" >= NOW() - INTERVAL '30 days'
                 AND (@storeId IS NULL OR p."id_objekat" = @storeId)
                 {recentSupplierPredicate}
-                AND (@scope <> 'imported' OR p."DataOrigin" = 'access')
-                AND (@scope <> 'existing' OR p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = '')
+                AND (@scope <> 'imported' OR p."data_origin" = 'access')
+                AND (@scope <> 'existing' OR p."data_origin" = 'existing' OR p."data_origin" IS NULL OR p."data_origin" = '')
               GROUP BY ps."id_artikal"
             )
             SELECT
@@ -5291,11 +5290,12 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static async Task<DashboardValidationEndpointDto> BuildLostSalesValidationAsync(
+    internal static async Task<DashboardValidationEndpointDto> BuildLostSalesValidationAsync(
         ITrendplusDbContext db,
-        CancellationToken ct)
+        CancellationToken ct,
+        string dataScope = "all")
     {
-        var snapshot = await GetLostSalesSnapshotAsync(db, ct);
+        var snapshot = await GetLostSalesSnapshotAsync(db, ct, dataScope: dataScope);
         return BuildLostSalesValidationFromSnapshot(snapshot);
     }
 

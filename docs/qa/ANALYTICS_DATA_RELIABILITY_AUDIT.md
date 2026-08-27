@@ -149,14 +149,14 @@ Risk:
 - The same dashboard request can mean different datasets depending on the section.
 - Imported/existing comparisons can be inconsistent.
 
-Classification: audited in RQ05 (2026-08-04); runtime fixes deferred.
+Classification: audited in RQ05 (2026-08-04); lost-sales validation/runtime scope fix completed in RQ05-F4 (2026-08-27), while the broader R05 matrix remains the source of truth.
 
 Evidence:
 
 - Matrix + canonical rules: `docs/qa/ANALYTICS_DATASCOPE_CONSISTENCY_AUDIT.md`
 - Contract test locking offender SQL split: `Api.Tests/DataScopeConsistencyContractTests.cs`
 
-Recommended prompts: RQ06 (offenders), RQ05-F4 (lost-sales validation/bootstrap), RQ53/RQ54 (FE lineage), Q81 (SQL helpers). PDC dual-origin is explicitly covered by RQ119 and inventory, Decision Board, and journal-signal scope are resolved by RQ05-F2 / RQ05-Journal.
+Recommended prompts: RQ06 (offenders), RQ53/RQ54 (FE lineage), Q81 (SQL helpers). RQ05-F4 is resolved. PDC dual-origin is explicitly covered by RQ119 and inventory, Decision Board, journal-signal, and lost-sales validation scope are resolved by RQ05-F2 / RQ05-Journal / RQ05-F4.
 
 ### R06 - Data Quality top offenders 30d sales impact ignores sale-level dataScope
 

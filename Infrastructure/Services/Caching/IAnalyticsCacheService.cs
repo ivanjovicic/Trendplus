@@ -283,7 +283,8 @@ public static class AnalyticsCacheKeys
     // Validation endpoints
     public const string ValidationCompleteness = $"{Prefix}validation:completeness";
     public const string ValidationFreshness = $"{Prefix}validation:freshness";
-    public const string ValidationLostSales = $"{Prefix}validation:lost-sales";
+    public static string ValidationLostSales(string? dataScope = null) =>
+        $"{Prefix}validation:lost-sales:scope:{NormalizeDataScope(dataScope)}";
     public static string ValidationNegativeQty(DateTime? from, DateTime? to) =>
         $"{Prefix}validation:negative-qty:{FormatInstant(from)}:{FormatInstant(to)}";
 
