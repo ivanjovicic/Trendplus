@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
 Main commit SHA: df538b3b90b67cc165fbb41383f0046d236583bd
-Main verification: passed - local main contains the delivery commit; remote verification follows this evidence commit
+Main verification: passed - origin/main contains df538b3b90b67cc165fbb41383f0046d236583bd and this evidence record
 Evidence state: synchronized
 
 ## What was done
@@ -49,7 +49,7 @@ Evidence state: synchronized
 
 ## Risks
 - Existing solution warnings remain, including a duplicate `Microsoft.Data.SqlClient` package reference and analyzer warnings outside this scope.
-- Remote origin/main verification remains the final delivery step after this evidence commit.
+- Existing solution warnings remain outside this scope; remote delivery is verified.
 
 ## Next
 - none
