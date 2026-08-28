@@ -990,23 +990,23 @@ The Daily Sales page shows a shared trust header, but it currently feeds that he
 - Main commit SHA: 3d4088660a8126dd864d15b6b3c1712875cbed9f
 - Main verification: git branch --contains 3d4088660a8126dd864d15b6b3c1712875cbed9f -> * main
 - Missed: I did not broaden Daily Sales into a broader dashboard trust refactor
-- Follow-up: `RQ127` READY
+- Follow-up: historical at 2026-08-26 completion time: `RQ127` was the next READY prompt; current truth is `RQ127` DONE on main
 - Residual risk: warning classification is driven by the service’s existing quality-warning list; future semantics changes should stay backend-owned
-- Next: `RQ127`
+- Next: none current; historical next at completion time was `RQ127`
 - Prompt defect / scope repair: none
 
 ---
 
 ## RQ127 - Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0`
 
-Status: READY
+Status: DONE
 Ready after: `RQ125` is `DONE` or the owner explicitly promotes the stats margin-baseline lane
 Priority: P1
 Type: backend/tests
 Feature family: stats-margin-baseline-unavailable
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ127-<agent>.lock.md`
+Local lock: removed after DONE
 Commit suggestion: `fix(analytics): guard stats recommendation margin baseline`
 
 ### Problem
