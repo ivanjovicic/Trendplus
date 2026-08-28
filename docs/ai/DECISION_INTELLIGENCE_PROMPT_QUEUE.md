@@ -220,10 +220,10 @@ Slice 4 advisory calibration is frozen, but there is still no citeable gate that
 - Checks run: `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass); `node scripts/check-planning-architecture.mjs` (pass)
 - Checks not run: `dotnet build`, `dotnet test`, `npm run build`, `npm run check:analytics-guardrails` - docs/contracts only change
 - Run log: `.ai/runs/2026-08-28-RL11-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `62e14de2d2493940d350a7087eac2efdc960cafc`
+- Main verification: `passed - origin/main contains 62e14de2d2493940d350a7087eac2efdc960cafc`
 - Missed: no runtime advisory consumer was implemented; this prompt only froze the contract boundary
 - Follow-up: none until an owner promotes a dedicated runtime advisory consumer
 - Residual risk: future runtime work could still blur measurement-only versus advisory semantics if it bypasses this new gate contract
