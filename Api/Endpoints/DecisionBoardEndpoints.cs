@@ -535,7 +535,7 @@ public static class DecisionBoardEndpoints
                     "insufficient_data",
                     blockedDq == "good" ? "warning" : blockedDq,
                     warnings.Distinct(StringComparer.Ordinal).ToList(),
-                    score);
+                    null);
             }
 
             var level = ResolveConfidenceLevel(score);
@@ -730,9 +730,9 @@ public static class DecisionBoardEndpoints
                 SourceType: "action_outcome",
                 SourceKey: "action_outcome:summary",
                 Title: "Realizacija očekivanog uticaja",
-                Summary: $"Izmereno: {FmtRsd(outcomeSummary.Impact.MeasuredImpactRsd)} · Očekivano: {FmtRsd(outcomeSummary.Impact.ExpectedImpactRsd)} · Coverage: {FmtPct(outcomeSummary.Totals.OutcomeCoverageRate)}.",
+                Summary: $"Izmereno: {FmtRsd(outcomeSummary.Impact.MeasuredImpactRsd)} · Očekivano: {FmtRsd(outcomeSummary.Impact.ExpectedImpactRsd)} · Coverage: {FmtPct(outcomeSummary.Totals.OutcomeCoverageRate)} · Uzorak: {outcomeSummary.Meta.MeasuredSampleSize}.",
                 ConfidenceLevel: confidenceLevel,
-                ConfidenceScore: outcomeSummary.Meta.MeasuredSampleSize,
+                ConfidenceScore: null,
                 ReliabilityPct: null,
                 ExpectedImpactRsd: outcomeSummary.Impact.ExpectedImpactRsd,
                 MeasuredImpactRsd: outcomeSummary.Impact.MeasuredImpactRsd,

@@ -1,5 +1,6 @@
 using Application.Analytics;
 using Domain.Model.Analytics;
+using Infrastructure.Services.Analytics;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
 using Xunit;
@@ -157,6 +158,24 @@ public sealed class DecisionBoardAggregationContractTests
         Assert.True(response.Meta!.Success);
         Assert.True(response.Meta.IsPartial);
         Assert.Equal("BOARD_PARTIAL", response.Meta.WarningCode);
+    }
+
+    [Fact]
+    public void BuildResponse_OutcomeSummaryWithInsufficientSampleKeepsSampleContextButNotDecisionConfidence()
+    {
+        var response = Build(
+            productDecisionCenter: null,
+            outcomeSummary: OutcomeSummary(measuredSampleSize: 3, sampleSize: 8));
+
+        var outcomeCard = Assert.Single(response.Sections.Single(section => section.Key == "actionsOutcome").Cards);
+
+        Assert.Equal("insufficient_data", outcomeCard.ConfidenceLevel);
+        Assert.Null(outcomeCard.ConfidenceScore);
+        Assert.Contains("Uzorak: 3", outcomeCard.Summary);
+
+        var blockerCard = Assert.Single(response.Sections.Single(section => section.Key == "blockers").Cards);
+        Assert.Equal("blocker-outcome-sample", blockerCard.Id);
+        Assert.Null(blockerCard.ConfidenceScore);
     }
 
     [Fact]
@@ -329,7 +348,8 @@ public sealed class DecisionBoardAggregationContractTests
     private static DecisionBoardAggregateResponseDto Build(
         ProductDecisionCenterResponseDto? productDecisionCenter,
         IReadOnlyList<AnalyticsActionItem>? actions = null,
-        IReadOnlyList<string>? loadWarnings = null)
+        IReadOnlyList<string>? loadWarnings = null,
+        AnalyticsActionOutcomeSummaryDto? outcomeSummary = null)
     {
         return DecisionBoardEndpoints.BuildDecisionBoardResponse(
             generatedAtUtc: GeneratedAtUtc,
@@ -341,7 +361,7 @@ public sealed class DecisionBoardAggregationContractTests
             inventoryWorkflow: null,
             supplierSummary: null,
             actions: actions ?? [],
-            outcomeSummary: null,
+            outcomeSummary: outcomeSummary,
             refreshStatus: null,
             dataQualityHealth: null,
             loadWarnings: loadWarnings ?? [],
@@ -466,5 +486,60 @@ public sealed class DecisionBoardAggregationContractTests
             UpdatedAtUtc = GeneratedAtUtc.AddDays(-1),
             DueAtUtc = GeneratedAtUtc.AddDays(3)
         };
+    }
+
+    private static AnalyticsActionOutcomeSummaryDto OutcomeSummary(
+        int measuredSampleSize,
+        int sampleSize,
+        decimal? expectedImpactRsd = 12_000m,
+        decimal? measuredImpactRsd = 4_000m,
+        decimal? outcomeCoverageRate = 0.3750m,
+        IReadOnlyList<string>? warnings = null)
+    {
+        return new AnalyticsActionOutcomeSummaryDto(
+            Meta: new AnalyticsActionOutcomeSummaryMetaDto(
+                Success: true,
+                PeriodMode: "resolved",
+                CreatedFrom: PeriodFromUtc,
+                CreatedTo: PeriodToUtc,
+                ResolvedFrom: PeriodFromUtc,
+                ResolvedTo: PeriodToUtc,
+                MeasuredFrom: PeriodFromUtc,
+                MeasuredTo: PeriodToUtc,
+                GeneratedAtUtc: GeneratedAtUtc,
+                SampleSize: sampleSize,
+                MeasuredSampleSize: measuredSampleSize,
+                Warnings: warnings ?? [],
+                EmptyReason: null),
+            Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
+                CreatedCount: sampleSize,
+                ClosedCount: sampleSize,
+                OpenCount: 0,
+                MeasuredCount: measuredSampleSize,
+                MeasuredOutcomeCount: measuredSampleSize,
+                PendingOutcomeCount: Math.Max(sampleSize - measuredSampleSize, 0),
+                SuccessCount: measuredSampleSize,
+                NeutralCount: 0,
+                NegativeCount: 0,
+                NotMeasuredCount: Math.Max(sampleSize - measuredSampleSize, 0),
+                OutcomeCoverageRate: outcomeCoverageRate,
+                PositiveOutcomeRate: measuredSampleSize > 0 ? 1.0000m : null,
+                NegativeOutcomeRate: measuredSampleSize > 0 ? 0.0000m : null,
+                ClosedOutcomeCoverageRate: outcomeCoverageRate,
+                MeasuredPositiveOutcomeRate: measuredSampleSize > 0 ? 1.0000m : null,
+                MeasuredNegativeOutcomeRate: measuredSampleSize > 0 ? 0.0000m : null),
+            Impact: new AnalyticsActionOutcomeSummaryImpactDto(
+                ExpectedImpactRsd: expectedImpactRsd,
+                MeasuredImpactRsd: measuredImpactRsd,
+                RealizationRatio: expectedImpactRsd.HasValue && expectedImpactRsd != 0m && measuredImpactRsd.HasValue
+                    ? measuredImpactRsd.Value / expectedImpactRsd.Value
+                    : null,
+                MeasuredImpactSampleCount: measuredSampleSize),
+            BySourceType: [],
+            ByPriority: [],
+            ByOutcomeStatus: [],
+            ByDataQuality: [],
+            ByConfidenceBucket: [],
+            ByReliabilityBucket: []);
     }
 }

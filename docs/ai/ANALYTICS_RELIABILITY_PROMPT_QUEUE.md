@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ129` (`RQ128` remains WAITING on `STAB16` worker/freshness/reconciliation proof)
+Current READY prompt: none (`RQ128` remains WAITING on `STAB16` worker/freshness/reconciliation proof)
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -56,6 +56,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ123 | DONE | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
 | RQ124 | DONE | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
+| RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
 
 ---
 
@@ -2352,7 +2353,7 @@ The first 2026-08-27 production audit found PDC rows looking actionable under in
 
 ## RQ129 - Remove non-product fake confidence from blocked and insufficient Decision Board cards
 
-Status: READY
+Status: DONE
 Ready after: n/a
 Priority: P0
 Type: backend-contract/tests
@@ -2417,6 +2418,25 @@ The live Decision Board still exposes numeric confidence where the contract says
 
 - `RQ13` is historical DONE and may be refined here only within the same Decision Board confidence family.
 - No production mutation, worker configuration, or formula rewrite is authorized in this prompt.
+
+### Completion note
+
+- Date: 2026-08-28
+- Status: DONE
+- Completion: cleared fake Decision Board confidence on blocked inventory cards by nulling decision confidence/reliability when `recommendationAllowed=false`, separated outcome sample size from `confidenceScore`, and added focused backend regression coverage for blocked inventory and insufficient-sample outcome summaries.
+- Changed files: `Api/Endpoints/DecisionBoardEndpoints.cs`; `Api.Tests/DecisionBoardEndpointsTests.cs`; `Api.Tests/DecisionBoardAggregationContractTests.cs`; `docs/qa/INVENTORY_SIGNAL_CONFIDENCE_CONTRACT.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-08-28-RQ129-evidence.md`
+- Contract/runtime behavior changed: yes; blocked inventory Decision Board cards now keep `confidenceLevel=insufficient_data` while returning `confidenceScore=null` and `reliabilityPct=null`, and insufficient-sample `actionsOutcome` summaries keep sample context in copy instead of exposing numeric pseudo-confidence
+- Checks run: `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DecisionBoardEndpointsTests|FullyQualifiedName~DecisionBoardAggregationContractTests"` (pass); `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass); `node scripts/check-planning-architecture.mjs` (pass)
+- Checks not run: full solution build/test not run; live production recheck not run in this prompt
+- Run log: `.ai/runs/2026-08-28-RQ129-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no live redeploy/runtime verification was attempted here because this prompt only corrected the backend contract/tests/docs on current `main`
+- Follow-up: no additional RQ prompt is READY; `RQ128` remains `WAITING` on `STAB16`
+- Residual risk: the production API will continue showing the old numeric values until the updated backend runtime is deployed on the active Decision Board environment
+- Prompt defect / scope repair: historical completion-note blocks for earlier RQ prompts were already adjacent below this section before this claim; they were preserved to avoid a broader queue-structure rewrite inside this same-owner contract fix
 
 ### Completion note
 

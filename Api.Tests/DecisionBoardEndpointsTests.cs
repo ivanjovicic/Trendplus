@@ -1,4 +1,5 @@
 using Domain.Model.Analytics;
+using Infrastructure.Services.Analytics;
 using Trendplus2.Endpoints;
 using Trendplus2.Dtos;
 using Xunit;
@@ -657,7 +658,7 @@ public sealed class DecisionBoardEndpointsTests
         var resolved = DecisionBoardEndpoints.ResolveInventoryBoardConfidence(item);
         Assert.Equal("insufficient_data", resolved.Level);
         Assert.Equal("insufficient_data", resolved.DataQualityStatus);
-        Assert.Equal(72m, resolved.ConfidenceScore);
+        Assert.Null(resolved.ConfidenceScore);
         Assert.Contains("inventory_recommendation_blocked", resolved.WarningCodes);
         Assert.Contains("insufficient_sales_history", resolved.WarningCodes);
         Assert.DoesNotContain("confidence_workflow_status_only", resolved.WarningCodes);
@@ -832,6 +833,74 @@ public sealed class DecisionBoardEndpointsTests
         Assert.DoesNotContain("approved", inventoryCard.WarningCodes);
         Assert.DoesNotContain("confidence_workflow_status_only", inventoryCard.WarningCodes);
         Assert.Equal(["stock_below_minimum"], inventoryCard.WarningCodes);
+    }
+
+    [Fact]
+    public void BuildDecisionBoardResponse_InventoryBlockedCard_ClearsConfidenceAndReliability()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var productDecisionCenter = CreateProductDecisionCenter(generatedAtUtc);
+        var workflow = new InventoryActionWorkflowDto(
+            GeneratedAtUtc: generatedAtUtc,
+            PendingCount: 0,
+            ApprovedCount: 1,
+            DeferredCount: 0,
+            ClosedCount: 0,
+            Items:
+            [
+                new InventoryActionSuggestionDto(
+                    SuggestionKey: "dopuna:sku-blocked",
+                    ActionType: "dopuna",
+                    Priority: "critical",
+                    Label: "Blokirana dopuna",
+                    Reason: "Signal nije dovoljno pouzdan.",
+                    Status: "approved",
+                    ArtikalId: 31,
+                    PLU: "SKU-BLOCKED",
+                    Naziv: "Blokirani artikal",
+                    FromStoreName: "Store A",
+                    ToStoreName: null,
+                    SuggestedQty: 2,
+                    EstimatedValue: 25_000m,
+                    DaysSinceMovement: 8,
+                    Note: null,
+                    UpdatedAtUtc: generatedAtUtc,
+                    SignalConfidencePct: 72m,
+                    RecommendationAllowed: false,
+                    SignalDataQualityStatus: "insufficient_data",
+                    SignalReasonCodes: ["insufficient_sales_history"])
+            ]);
+
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            productDecisionCenter.PeriodFromUtc,
+            productDecisionCenter.PeriodToUtc,
+            lastRefreshAtUtc: generatedAtUtc,
+            productDecisionCenter,
+            inventoryInsights: null,
+            inventoryWorkflow: workflow,
+            supplierSummary: null,
+            actions: [],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var inventoryCard = Assert.Single(
+            response.Sections
+                .SelectMany(section => section.Cards)
+                .Where(card => card.Kind == "inventory")
+                .DistinctBy(card => card.Id));
+
+        Assert.False(inventoryCard.RecommendationAllowed);
+        Assert.Equal("insufficient_data", inventoryCard.ConfidenceLevel);
+        Assert.Null(inventoryCard.ConfidenceScore);
+        Assert.Null(inventoryCard.ReliabilityPct);
+        Assert.Contains("inventory_recommendation_blocked", inventoryCard.WarningCodes);
+        Assert.Contains("insufficient_sales_history", inventoryCard.WarningCodes);
     }
 
     private static DecisionBoardAggregateResponseDto BuildBoard(

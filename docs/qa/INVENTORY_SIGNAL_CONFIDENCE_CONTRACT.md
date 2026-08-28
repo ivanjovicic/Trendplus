@@ -24,13 +24,18 @@ Define what Decision Board inventory cards may claim as confidence, given workfl
 
 | Condition | Board `ConfidenceLevel` | Board `DataQualityStatus` | Notes |
 |---|---|---|---|
-| `RecommendationAllowed == false` | `insufficient_data` | signal DQ (or `warning` if signal DQ was `good`) | Warning `inventory_recommendation_blocked`; score preserved |
+| `RecommendationAllowed == false` | `insufficient_data` | signal DQ (or `warning` if signal DQ was `good`) | Warning `inventory_recommendation_blocked`; score and reliability stay `null` |
 | else | from `ResolveConfidenceLevel(SignalConfidencePct)` | `SignalDataQualityStatus` (fallback `warning` / `insufficient_data`) | No `confidence_workflow_status_only`; `SignalReasonCodes` copied to warnings |
 
 Also sets:
 
 - `ConfidenceScore` = `SignalConfidencePct`
 - `ReliabilityPct` = rounded/clamped score 0–100
+
+Blocked exception on Path A:
+
+- if `RecommendationAllowed == false`, `ConfidenceScore` = `null`
+- if `RecommendationAllowed == false`, `ReliabilityPct` = `null`
 
 ### Path B — no signal evidence (workflow fallback, RQ10)
 
