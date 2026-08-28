@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
 Main commit SHA: eb6222cf9108d60922f4ab8ae055f3ba3038dcc2
-Main verification: pending - await fresh origin/main verification after push
-Evidence state: pending
+Main verification: passed - origin/main contains eb6222cf9108d60922f4ab8ae055f3ba3038dcc2 as an ancestor (verified after push on 2026-08-28)
+Evidence state: synchronized
 
 ## What was done
 - Audited current analytics queue/routing docs plus inventory signal backend/frontend code for still-unproven trust and data-state handling gaps.
@@ -46,4 +46,4 @@ Evidence state: pending
 - New prompts are documentation only until an owner explicitly reprioritizes them for execution.
 
 ## Next
-- Push the direct-main delivery, verify `origin/main` contains `eb6222cf9108d60922f4ab8ae055f3ba3038dcc2`, then sync this run log from pending to synchronized evidence.
+- `RQ132` and `RQ133` are prepared as later WAITING follow-ups; `RQ128` remains the current blocked/live-gated RQ milestone behind `STAB16`.
