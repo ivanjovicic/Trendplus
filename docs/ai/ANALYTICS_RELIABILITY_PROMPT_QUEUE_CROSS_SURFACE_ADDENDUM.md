@@ -30,6 +30,8 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ125 | DONE | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
 | RQ126 | DONE | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
 | RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
+| RQ130 | WAITING | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
+| RQ131 | WAITING | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
 
 ---
 
@@ -1075,3 +1077,143 @@ Supplier, ShoeType, and Color recommendation builders compute an average known-m
 - Residual risk: any future recommendation family that computes a known-margin baseline with `DefaultIfEmpty(0d)` would need the same nullable-baseline treatment
 - Next: none
 - Prompt defect / scope repair: none
+
+---
+
+## RQ130 - Stop vendor pre/post recommendations from treating missing known-margin baseline as `0`
+
+Status: WAITING
+Ready after: `RQ128` is `DONE` or the owner explicitly promotes the vendor recommendation fake-zero lane
+Priority: P1
+Type: backend/tests
+Feature family: vendor-nivelacija-recommendation-baseline-unavailable
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ130-<agent>.lock.md`
+Commit suggestion: `fix(analytics): guard vendor recommendation margin baseline`
+
+### Problem
+
+Vendor pre/post recommendation inputs still compute an average known-margin baseline with `.DefaultIfEmpty(0d).Average()` across known vendors. When no trustworthy known-margin rows remain after unknown/no-data filtering, the recommendation engine receives `0` as if it were a real comparison baseline. That can turn “baseline unavailable” into a measured comparison against fake zero and overstate recommendation direction or confidence on the vendor nivelacija surface.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs` builds `averageKnownMarginPct` for vendor recommendations with `.Where(x => !x.IsUnknownVendor).Select(x => x.MarginSnapshot.MarginPct).DefaultIfEmpty(0d).Average()`.
+- The same vendor lane passes that computed value directly into `AnalyticsDecisionRecommendationEngine.Evaluate(...)` before populating `VendorSalesNivelacijaRecommendationDto`.
+- `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs` already supports a missing known-margin baseline via `missing_known_margin_baseline` and `insufficient_data`, so the safer contract exists but is bypassed by this caller.
+- `.ai/runs/2026-08-26-RQ127-evidence.md` and the `RQ127` completion note explicitly record vendor recommendation baseline handling as the remaining same-family fake-zero follow-up after supplier/shoe/color adopted the nullable-baseline flow.
+
+### Scope
+
+- vendor recommendation input handling in `Api/Endpoints/AllEndpoints.cs`;
+- the nearest backend tests that can prove vendor recommendation behavior when the known-margin baseline is absent or present;
+- only additive or conservative recommendation/degradation behavior needed to stop fake-zero comparison on the vendor lane;
+- no SQL rewrite, no vendor page copy redesign, and no unrelated recommendation scoring changes.
+
+### Read first
+
+- `.ai/runs/2026-08-26-RQ127-evidence.md`;
+- vendor recommendation section in `Api/Endpoints/AllEndpoints.cs`;
+- `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`;
+- `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`;
+- the `RQ127` completion note in this addendum.
+
+### Do
+
+1. Reproduce a vendor pre/post case with revenue rows but no trustworthy known-margin baseline after unknown/no-data filtering.
+2. Preserve a nullable/missing baseline through the vendor recommendation path instead of forcing `0`.
+3. Reuse the shared engine's existing degraded `missing_known_margin_baseline` contract rather than inventing vendor-only fallback scoring.
+4. Add focused regression coverage for at least:
+   - no-baseline vendor set;
+   - real-baseline vendor set;
+   - unknown-heavy vendor set that keeps degraded semantics explicit.
+5. Keep existing vendor scope, previous-comparison, and absolute-change-share semantics unchanged.
+
+### Tests
+
+- `git diff --check`;
+- focused backend tests for vendor recommendation baseline absence/presence;
+- governance validators if queue/docs metadata changes during execution.
+
+### Acceptance
+
+- Vendor pre/post recommendations no longer compare against fake zero when the known-margin baseline is absent.
+- Missing baseline produces explicit degraded/unavailable recommendation semantics.
+- Existing recommendation behavior remains stable when the baseline is genuinely available.
+
+### Dependencies
+
+- `RQ127` DONE.
+- `RQ128` stays the current higher-priority live-evidence gate; this prompt remains a later WAITING backend follow-up unless the owner explicitly promotes it.
+
+---
+
+## RQ131 - Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces
+
+Status: WAITING
+Ready after: `RQ130` is `DONE` or the owner explicitly promotes the vendor semantic-parity lane
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: vendor-nivelacija-zero-baseline-semantic-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ131-<agent>.lock.md`
+Commit suggestion: `fix(analytics): label vendor zero-baseline semantics`
+
+### Problem
+
+Q70 already added additive zero-baseline semantic fields to `vw_vendor_sales_nivelacija`, but the endpoint DTOs and frontend contracts still expose only legacy numeric `changePercent` values. A new-baseline or no-baseline vendor can therefore still look like an ordinary `+100%` or `0%` trend on pre/post surfaces even though the backend SQL now knows the baseline semantics are special.
+
+### Evidence
+
+- `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` and `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` record that Q70 added `has_qty_baseline`, `qty_baseline_reason`, `change_percent_qty_semantic`, `has_revenue_baseline`, `revenue_baseline_reason`, and `change_percent_revenue_semantic` so downstream consumers can distinguish zero-baseline uplift from ordinary percent change.
+- `Api/Models/VendorSalesNivelacijaModels.cs` still exposes only `ChangePercent` on the vendor/article/totals/category/price-direction DTOs and does not carry baseline flags or semantic-reason fields.
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts` still types only legacy `changePercent` fields and omits the additive Q70 semantic baseline vocabulary.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx` and `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx` format raw trend percentages from `changePercent`, so the surfaces cannot explain when a shown percentage actually means “new baseline” or “baseline unavailable”.
+
+### Scope
+
+- vendor nivelacija endpoint read-model/DTO mapping in `Api/Endpoints/AllEndpoints.cs` and `Api/Models/VendorSalesNivelacijaModels.cs`;
+- the shared frontend service contract in `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`;
+- the smallest consumer-surface updates and nearest tests for `ProdajaPrePostNivelacijePage.tsx` and the shared secondary vendor consumer if it still renders the same raw trend values;
+- no SQL view rewrite, no percent-math change, and no unrelated supplier/shoe/color redesign.
+
+### Read first
+
+- `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` (`Q70` completion note);
+- `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`;
+- `Api/Models/VendorSalesNivelacijaModels.cs`;
+- `Api/Endpoints/AllEndpoints.cs`;
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`;
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`;
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`.
+
+### Do
+
+1. Thread the additive Q70 semantic baseline fields through the vendor nivelacija endpoint and TypeScript contracts without breaking the legacy numeric percent fields.
+2. Prefer explicit new-baseline / baseline-unavailable labels or states over treating semantic sentinel values as ordinary signed trend.
+3. Add focused coverage for at least:
+   - normal baseline;
+   - `pre=0` / `post>0` new-baseline uplift;
+   - zero/no baseline that must stay explicitly labelled.
+4. Keep previous-period transport errors distinct from zero-baseline semantics; do not regress `RQ62`.
+5. Keep absolute-change-share wording intact; do not regress `RQ63`.
+
+### Tests
+
+- `git diff --check`;
+- focused backend contract coverage for semantic fields on the vendor nivelacija payload;
+- focused frontend tests for vendor pre/post trend labeling/rendering;
+- governance validators if queue/docs metadata changes during execution.
+
+### Acceptance
+
+- Vendor pre/post surfaces can distinguish ordinary trend from new/no baseline semantics using backend-owned fields.
+- Legacy numeric percent fields remain compatibility data, not the only trust signal.
+- Previous request failure, zero baseline, and healthy percent change remain distinct states.
+
+### Dependencies
+
+- `Q70` DONE.
+- `RQ62` and `RQ63` DONE.
+- `RQ130` DONE or explicit owner promotion if only additive contract/surface parity is selected.
