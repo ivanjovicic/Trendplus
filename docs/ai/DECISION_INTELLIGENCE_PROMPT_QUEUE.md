@@ -42,7 +42,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | none | `RL10` DONE; `RL11` WAITING |
+| RL - Recommendation Learning | none | `RL10` DONE; `RL11` DONE |
 
 
 
@@ -157,13 +157,14 @@ Operators can now review measurement-only statistics, but there is still no froz
 
 ## RL11 - Prepare advisory calibration runtime gate contract
 
-Status: WAITING
+Status: DONE
 Ready after: `RL10` is `DONE` and an owner explicitly promotes this additive docs slice
 Priority: future / planning
 Feature family: recommendation-learning-calibration-runtime-gate
 Parallel-safe: yes, docs/contracts only
-Owner: unassigned
-Local lock: `.ai/task-locks/RL11-<agent>.lock.md`
+Owner: root
+Local lock: removed after DONE
+Promotion note: 2026-08-28 - owner-promoted after higher-priority runtime programs had no active READY prompt and RL11 remained the only path-safe planning successor.
 
 ### Problem
 
@@ -208,6 +209,26 @@ Slice 4 advisory calibration is frozen, but there is still no citeable gate that
 ### Dependencies
 
 - RL10 DONE.
+
+### Completion note
+
+- Date: 2026-08-28
+- Status: DONE
+- Completion: froze the advisory calibration runtime gate so existing measurement-statistics surfaces remain calibration-free, future advisory hints are limited to a dedicated read-only consumer, and any live confidence/ranking mutation still requires a separate later approval contract.
+- Changed files: `docs/architecture/RECOMMENDATION_ADVISORY_CALIBRATION_RUNTIME_GATE_CONTRACT.md`; `docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md`; `docs/roadmaps/DECISION_INTELLIGENCE_ROADMAP.md`; `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-08-28-RL11-evidence.md`
+- Contract/runtime behavior changed: yes; the runtime-consumer boundary is now explicit, but current live runtime behavior remains measurement-only and no confidence mutation is authorized
+- Checks run: `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass); `node scripts/check-planning-architecture.mjs` (pass)
+- Checks not run: `dotnet build`, `dotnet test`, `npm run build`, `npm run check:analytics-guardrails` - docs/contracts only change
+- Run log: `.ai/runs/2026-08-28-RL11-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no runtime advisory consumer was implemented; this prompt only froze the contract boundary
+- Follow-up: none until an owner promotes a dedicated runtime advisory consumer
+- Residual risk: future runtime work could still blur measurement-only versus advisory semantics if it bypasses this new gate contract
+- Next: none
+- Prompt defect / scope repair: none
 
 ---
 

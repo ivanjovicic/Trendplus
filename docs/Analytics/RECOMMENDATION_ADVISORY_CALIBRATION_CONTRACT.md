@@ -13,6 +13,10 @@ Related rollout plan:
 
 - `docs/architecture/RECOMMENDATION_LEARNING_STATISTICS_ROLLOUT_PLAN.md`
 
+Related runtime gate:
+
+- `docs/architecture/RECOMMENDATION_ADVISORY_CALIBRATION_RUNTIME_GATE_CONTRACT.md`
+
 Related audit and review inputs:
 
 - `docs/qa/CONFIDENCE_CALIBRATION_AUDIT.md`
