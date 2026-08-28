@@ -2429,10 +2429,10 @@ The live Decision Board still exposes numeric confidence where the contract says
 - Checks run: `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~DecisionBoardEndpointsTests|FullyQualifiedName~DecisionBoardAggregationContractTests"` (pass); `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass); `node scripts/check-planning-architecture.mjs` (pass)
 - Checks not run: full solution build/test not run; live production recheck not run in this prompt
 - Run log: `.ai/runs/2026-08-28-RQ129-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `08abe2bff58c561f64e3c58ea231d249376c6af9`
+- Main verification: `passed - origin/main contains 08abe2bff58c561f64e3c58ea231d249376c6af9`
 - Missed: no live redeploy/runtime verification was attempted here because this prompt only corrected the backend contract/tests/docs on current `main`
 - Follow-up: no additional RQ prompt is READY; `RQ128` remains `WAITING` on `STAB16`
 - Residual risk: the production API will continue showing the old numeric values until the updated backend runtime is deployed on the active Decision Board environment
