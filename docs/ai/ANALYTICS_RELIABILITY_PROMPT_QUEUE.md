@@ -48,8 +48,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ115 | DONE | analytics-dashboard-seeded-proof | Isolate dashboard seeded-data proof left open by RQ110 |
 | RQ116 | DONE | decision-pulse-delivery-truth | Prove Pulse queued/sent/disabled states without claiming unverified delivery |
 | RQ117 | DONE | forecast-observed-pair-availability | Prove forecast/observed pairing availability and stale/missing semantics |
-| RQ118 | WAITING | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
-| RQ119 | WAITING | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
+| RQ118 | DONE | data-quality-issues-scope-lineage | Close the residual unscoped Data Quality issues sales window |
+| RQ119 | DONE | analytics-dual-origin-scope-contract | Resolve or explicitly expose PDC/inventory dual-origin scope behavior |
 | RQ120 | DONE | analytics-trust-metadata-ui-propagation | Surface source/denominator/provenance metadata in the first proven pilot UI |
 | RQ121 | DONE | analytics-dashboard-row-trust-payload | Expose per-row margin/recommendation trust payload in dashboard top-product tables |
 | RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |

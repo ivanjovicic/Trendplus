@@ -32,6 +32,8 @@ Purpose: queue follow-up fixes for inventory forecast/rebalance/alerts/size-curv
 | RQ97 | DONE | forecast-snapshot-provenance | Prove forecast snapshot ownership/materializer contract |
 | RQ98 | DONE | forecast-backtesting-baseline | Add deterministic forecast baseline and backtesting contract |
 | RQ99 | DONE | inventory-signal-reader-regression | Add provider-strict reader-position regression tests for signal total counts |
+| RQ132 | WAITING | inventory-signal-meta-contract-parity | Align forecast/alerts/rebalance/size-curve routes with the standard analytics meta contract |
+| RQ133 | WAITING | inventory-signal-panel-trust-parity | Make inventory signal panels consume backend trust state and keep missing evidence explicit |
 
 ---
 
@@ -937,6 +939,148 @@ Trendplus cannot yet prove predictive value because there is no canonical baseli
 - Residual risk: callers must treat EvaluationStatus=unavailable as non-authoritative; do not chart null aggregates as zeros
 - Prompt defect / scope repair: owner continue promoted RQ98 despite Ready-after comparison-window gate; delivered fail-closed contract instead of BLOCKED-only; limited basis documented (RQ96 stock exists, paired forecast series does not). Trailing mis-pasted RQ89 sections below RQ98 Dependencies are historical glue and not part of RQ98 acceptance.
 - Next: none (RQ Current READY none)
+
+---
+
+## RQ132 - Align cached inventory signal routes with the analytics meta contract
+
+Status: WAITING
+Ready after: explicit owner reprioritization after the current STAB/RQ live-proof gates
+Priority: P1
+Type: backend-contract/tests
+Feature family: inventory-signal-meta-contract-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ132-<agent>.lock.md`
+Commit suggestion: `fix(inventory): align signal routes with analytics meta contract`
+
+### Problem
+
+Cached inventory signal routes (`forecast`, `size-curve`, `rebalance-suggestions`, `alerts`) still rely on route-specific `snapshotAvailable`/`warning` fields instead of the standard analytics `meta` contract. That leaves these panels outside the shared backend-owned trust model for correlation id, explicit empty semantics, degraded/warning states, and true failure handling.
+
+### Evidence
+
+- `docs/ai/ANALYTICS_META_CONTRACT_AUDIT.md` explicitly records that the inventory family core routes are covered, while signal routes still use legacy warning fields and remain a lower-priority open gap.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` returns the four cached signal payloads via `Results.Ok(result)` with no route-level `AnalyticsResponseMetaFactory.*` wiring or correlation-id injection, unlike covered inventory routes such as balance/list/insights/store-comparison.
+- `Application/Analytics/Queries/GetInventoryForecast/GetInventoryForecastQuery.cs`, `GetInventoryAlerts/GetInventoryAlertsQuery.cs`, `GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`, and `GetRebalanceSuggestions/GetRebalanceSuggestionsQuery.cs` still define list DTOs with `SnapshotAvailable` + `Warning` but no additive `Meta`.
+- `Klijent/clientapp/src/types/analytics.ts` mirrors that backend gap, so signal trust currently lives outside the standard `AnalyticsResponseMeta` path already used elsewhere in analytics.
+
+### Scope
+
+- cached inventory signal endpoints in `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- signal list DTO/contracts for forecast/size-curve/rebalance/alerts
+- the smallest shared backend meta helper wiring needed to keep the contract consistent
+- focused backend contract tests for success/empty/warning/error/correlation-id semantics
+- additive TypeScript contract updates only where needed to preserve compatibility
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_META_CONTRACT_AUDIT.md`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Application/Analytics/Queries/GetInventoryForecast/*`
+- `Application/Analytics/Queries/GetInventoryAlerts/*`
+- `Application/Analytics/Queries/GetInventorySizeCurve/*`
+- `Application/Analytics/Queries/GetRebalanceSuggestions/*`
+- `Klijent/clientapp/src/types/analytics.ts`
+
+### Do
+
+1. Add the smallest backward-compatible `AnalyticsResponseMeta` coverage to the four cached inventory signal route payloads.
+2. Keep existing counts, truncation truth, provenance fields, `snapshotAvailable`, and legacy warning text compatible while moving trust-state ownership to the standard backend meta contract.
+3. Ensure signal routes can distinguish success with data, successful empty, degraded/warning, and true error without depending only on route-specific strings or raw 500 behavior.
+4. Reuse existing analytics meta factories/helpers; do not introduce a second trust contract for signal routes.
+5. Do not change forecasting/rebalance algorithms, forecast materializer ownership, or action-queue behavior in this prompt.
+
+### Tests
+
+- `git diff --check`
+- focused backend contract tests for forecast/alerts/rebalance/size-curve success, empty, unavailable snapshot, and error/meta branches
+- nearest focused `dotnet test` command covering touched signal endpoints/contracts
+- governance validators if queue/roadmap metadata changes during execution
+
+### Acceptance
+
+- Inventory signal routes expose additive backend-owned meta that distinguishes success, empty, warning/degraded, and error states.
+- Correlation id and explicit trust semantics are available on the cached signal family without breaking legacy consumers.
+- Missing or unavailable signal snapshots no longer depend only on legacy warning fields to communicate trust.
+
+### Dependencies
+
+- `RQ64`, `RQ71`, `RQ97`, and `RQ98` are DONE.
+- This prompt stays `WAITING` until an owner explicitly reprioritizes this lower-priority signal-contract follow-up after the current live-proof gates.
+
+---
+
+## RQ133 - Bring inventory signal panels onto backend-led trust and missing-evidence UI
+
+Status: WAITING
+Ready after: `RQ132` is `DONE`, or explicit owner promotion if the UI slice ships truthfully on existing fields alone
+Priority: P1
+Type: frontend-contract/tests
+Feature family: inventory-signal-panel-trust-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ133-<agent>.lock.md`
+Commit suggestion: `fix(inventory): align signal panels with trust metadata`
+
+### Problem
+
+Inventory signal panels still normalize trust locally. Missing forecast risk is filtered/sorted as `0`, the size-curve panel collapses unavailable snapshot and empty rows into the same copy, and the panels continue to branch on local `snapshotAvailable`/`warning`/error strings instead of the shared analytics trust helpers already used by the main inventory surface. That can make missing or degraded evidence look like “no risk”, “no data”, or a generic empty panel.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx` filters and sorts `probabilityOfOOSIn7d` / `overstockRisk` with `?? 0`, which pushes missing risk evidence into low/no-risk behavior instead of an explicit insufficient state.
+- The same forecast panel still derives its trust banners from `snapshotAvailable`, provenance, and `warning` rather than the shared analytics meta helpers.
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx` treats `!sizeCurve?.snapshotAvailable || items.length === 0` as the same “Nema size curve podataka” branch and never renders `sizeCurve.warning`.
+- `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx` and `RebalancingTable.tsx` likewise use local error/snapshot/warning branches instead of the same `AnalyticsResponseMeta` rendering path used by `Klijent/clientapp/src/pages/InventoryPage.tsx` for primary inventory panels.
+- Existing tests such as `Klijent/clientapp/src/pages/__tests__/InventorySignalNullEvidence.spec.tsx` cover null row fields, but they do not yet prove meta-driven warning/empty/unavailable panel parity or missing-risk ranking behavior.
+
+### Scope
+
+- `Klijent/clientapp/src/components/inventory/DemandForecastPanel.tsx`
+- `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`
+- `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- `Klijent/clientapp/src/types/analytics.ts`
+- focused frontend tests for signal trust/empty/warning/render semantics
+
+### Read first
+
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_META_CONTRACT_AUDIT.md`
+- `RQ64`, `RQ71`, and `RQ97` completion notes in this addendum
+- `Klijent/clientapp/src/utils/analyticsResponseMeta.ts`
+- the four inventory signal panel components above
+
+### Do
+
+1. Consume backend-led signal trust metadata through the shared analytics meta helpers instead of keeping route-specific truth branches inside each panel.
+2. Keep missing forecast risk/confidence explicit; null risk must not be ranked or labeled as stable/no-risk via `?? 0`.
+3. Distinguish unavailable snapshot, successful empty result, filtered-out view, warning/degraded state, and true error on the signal panels.
+4. Surface size-curve warning/unavailability truth instead of collapsing it into the same empty copy.
+5. If the page-level retry/reload flow touches signal loads, ensure a user-triggered retry does not leave stale signal panels looking freshly reloaded.
+6. Do not invent local business scoring, recommendation certainty, or new signal heuristics in the browser.
+
+### Tests
+
+- `git diff --check`
+- `npm run check:analytics-guardrails`
+- focused component/page tests for forecast missing-risk rendering, size-curve warning/empty distinction, and meta-driven alert/rebalance panel states
+- `npm run test -- --run <exact touched spec paths>`
+- `npm run build` if shared types/helper wiring changes
+
+### Acceptance
+
+- Inventory signal panels remain consumers of backend trust state and no longer flatten missing/degraded evidence into low-risk or generic empty copy.
+- Missing forecast risk/confidence stays visibly insufficient rather than being treated as `0`.
+- Size-curve, alerts, rebalance, and forecast panels distinguish unavailable, empty, warning/degraded, and error states truthfully.
+
+### Dependencies
+
+- `RQ132` is DONE, or the owner explicitly promotes a truthful UI-only subset.
+- `RQ64`, `RQ71`, `RQ97`, and `RQ98` remain the backend trust foundations for this lane.
 
 ### Historical note (mis-pasted RQ89 residual below — not RQ98 scope)
 

@@ -25,7 +25,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ60 | DONE | inventory-fake-zero-value | Preserve unknown inventory value when cost is missing |
 | RQ61 | DONE | inventory-freshness-lineage | Separate inventory panel freshness timestamps |
 | RQ62 | DONE | vendor-previous-comparison-failure | Warn when previous-period request fails |
-| RQ63 | WAITING | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
+| RQ63 | DONE | vendor-change-share-naming | Rename/clarify top5 share of absolute change |
 | RQ105 | DONE | analytics-operational-fallback-honesty | Daily sales and dashboard inventory operational fallback must stay visible |
 | RQ125 | DONE | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
 | RQ126 | DONE | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
