@@ -3,12 +3,12 @@ import {
   buildAnalyticsDetailSnapshot,
   formatDetailFieldValue,
   getAnalyticsDetailSnapshot,
-  getPrintPayload,
-  getPrintPayloadSnapshot,
+  getBrowserPreviewPayload,
+  getBrowserPreviewSnapshot,
   saveAnalyticsDetailSnapshot,
-  savePrintPayload,
+  saveBrowserPreviewPayload,
   resolveAnalyticsTablePayload,
-  ANALYTICS_PRINT_TTL_MS,
+  ANALYTICS_BROWSER_PREVIEW_TTL_MS,
 } from "../analyticsTableState";
 import type { AnalyticsTableColumn } from "../../types/analyticsTable";
 import { fmtNumber, fmtPct, fmtRsd, formatDate, formatDateTime } from "../../utils/analyticsFormatters";
@@ -91,7 +91,7 @@ describe("analyticsTableState", () => {
     ]);
   });
 
-  it("persists and expires print payloads by TTL", () => {
+  it("persists and expires browser preview payloads by TTL", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-01T10:00:00Z"));
 
@@ -101,17 +101,17 @@ describe("analyticsTableState", () => {
       columns,
       rows: [row],
     });
-    const key = savePrintPayload(payload);
-    const snapshot = getPrintPayloadSnapshot(key);
+    const key = saveBrowserPreviewPayload(payload);
+    const snapshot = getBrowserPreviewSnapshot(key);
 
-    expect(getPrintPayload(key)).toEqual(payload);
+    expect(getBrowserPreviewPayload(key)).toEqual(payload);
     expect(snapshot?.savedAtUtc).toBe("2026-07-01T10:00:00.000Z");
-    expect(snapshot?.ttlMs).toBe(ANALYTICS_PRINT_TTL_MS);
+    expect(snapshot?.ttlMs).toBe(ANALYTICS_BROWSER_PREVIEW_TTL_MS);
     expect(snapshot?.expiresAtUtc).toBe("2026-07-01T10:10:00.000Z");
 
     vi.setSystemTime(new Date("2026-07-01T10:11:00Z"));
-    expect(getPrintPayload(key)).toBeNull();
-    expect(getPrintPayloadSnapshot(key)).toBeNull();
+    expect(getBrowserPreviewPayload(key)).toBeNull();
+    expect(getBrowserPreviewSnapshot(key)).toBeNull();
     expect(localStorage.getItem(key)).toBeNull();
 
     vi.useRealTimers();

@@ -21,6 +21,7 @@ public interface ISourceDataSession : IAsyncDisposable
 
     Task TestConnectionAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default);
+    Task<IReadOnlyList<SourceColumnDefinition>> GetColumnDefinitionsAsync(string table, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetColumnsAsync(string table, CancellationToken ct = default);
     Task<SourceRowCountResult> TryGetRowCountAsync(string table, CancellationToken ct = default);
     IAsyncEnumerable<SourceDataRow> ReadRowsAsync(string table, CancellationToken ct = default);
@@ -60,6 +61,12 @@ public sealed record SourceRowCountResult(int Count, string Mode)
 
     public bool IsExact => string.Equals(Mode, "exact", StringComparison.OrdinalIgnoreCase);
 }
+
+public sealed record SourceColumnDefinition(
+    string Name,
+    string? SourceType,
+    bool? IsNullable,
+    int Ordinal);
 
 public sealed class SourceDataRow
 {

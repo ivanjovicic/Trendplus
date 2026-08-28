@@ -35,14 +35,26 @@ public sealed class AccessSourceDataSessionAdapter : ISourceDataSession
         Cancellation: true,
         Cdc: false);
 
-    public Task TestConnectionAsync(CancellationToken ct = default)
-        => _inner.GetTablesAsync(includeTemporaryTables: false, ct);
-
     public Task<IReadOnlyList<string>> GetTablesAsync(bool includeTemporaryTables = false, CancellationToken ct = default)
         => _inner.GetTablesAsync(includeTemporaryTables, ct);
 
+    public async Task TestConnectionAsync(CancellationToken ct = default)
+        => _ = await _inner.GetTablesAsync(includeTemporaryTables: false, ct);
+
     public Task<IReadOnlyList<string>> GetColumnsAsync(string table, CancellationToken ct = default)
         => _inner.GetColumnsAsync(table, ct);
+
+    public async Task<IReadOnlyList<SourceColumnDefinition>> GetColumnDefinitionsAsync(string table, CancellationToken ct = default)
+    {
+        var columns = await _inner.GetColumnsAsync(table, ct);
+        return columns
+            .Select((column, index) => new SourceColumnDefinition(
+                Name: column,
+                SourceType: null,
+                IsNullable: null,
+                Ordinal: index))
+            .ToArray();
+    }
 
     public async Task<SourceRowCountResult> TryGetRowCountAsync(string table, CancellationToken ct = default)
     {

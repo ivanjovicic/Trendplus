@@ -3,6 +3,7 @@ using Api.Models;
 using Api.Services.DataSources;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Trendplus2.Endpoints;
 
 namespace Api.Endpoints;
@@ -109,6 +110,7 @@ public static class AdminDataSourceEndpoints
         string profileName,
         HttpContext context,
         IConfiguration configuration,
+        ILoggerFactory loggerFactory,
         CancellationToken ct = default)
     {
         var denial = Authorize(context, configuration);
@@ -140,7 +142,9 @@ public static class AdminDataSourceEndpoints
 
         try
         {
-            await using var session = new SqlServerSourceDataSession(profile.ConnectionString!);
+            await using var session = new SqlServerSourceDataSession(
+                profile.ConnectionString!,
+                loggerFactory.CreateLogger<SqlServerSourceDataSession>());
             await session.TestConnectionAsync(ct);
             return TypedResults.Ok(new DataSourceConnectionTestResponse(
                 ProfileName: profile.Name,
@@ -159,6 +163,7 @@ public static class AdminDataSourceEndpoints
         string profileName,
         HttpContext context,
         IConfiguration configuration,
+        ILoggerFactory loggerFactory,
         CancellationToken ct = default)
     {
         var denial = Authorize(context, configuration);
@@ -168,7 +173,7 @@ public static class AdminDataSourceEndpoints
         if (!TryResolveProfile(configuration, profileName, out var profile, out var notFound))
             return notFound;
 
-        var session = CreateSession(profile);
+        var session = CreateSession(profile, loggerFactory);
         if (session is null)
             return sessionError(profile, "unsupported_provider", $"Provider '{profile.Provider}' is not supported by this discovery path.");
 
@@ -197,6 +202,7 @@ public static class AdminDataSourceEndpoints
         string profileName,
         HttpContext context,
         IConfiguration configuration,
+        ILoggerFactory loggerFactory,
         [FromQuery] string? schema,
         CancellationToken ct = default)
     {
@@ -210,7 +216,7 @@ public static class AdminDataSourceEndpoints
         if (string.IsNullOrWhiteSpace(schema))
             return TypedResults.BadRequest(new { error = "schema is required." });
 
-        var session = CreateSession(profile);
+        var session = CreateSession(profile, loggerFactory);
         if (session is null)
             return sessionError(profile, "unsupported_provider", $"Provider '{profile.Provider}' is not supported by this discovery path.");
 
@@ -247,6 +253,7 @@ public static class AdminDataSourceEndpoints
         string profileName,
         HttpContext context,
         IConfiguration configuration,
+        ILoggerFactory loggerFactory,
         [FromQuery] string? schema,
         [FromQuery] string? table,
         CancellationToken ct = default)
@@ -261,7 +268,7 @@ public static class AdminDataSourceEndpoints
         if (string.IsNullOrWhiteSpace(schema) || string.IsNullOrWhiteSpace(table))
             return TypedResults.BadRequest(new { error = "schema and table are required." });
 
-        var session = CreateSession(profile);
+        var session = CreateSession(profile, loggerFactory);
         if (session is null)
             return sessionError(profile, "unsupported_provider", $"Provider '{profile.Provider}' is not supported by this discovery path.");
 
@@ -283,6 +290,7 @@ public static class AdminDataSourceEndpoints
         string profileName,
         HttpContext context,
         IConfiguration configuration,
+        ILoggerFactory loggerFactory,
         [FromBody] SourceMappingPreviewRequest request,
         CancellationToken ct = default)
     {
@@ -315,7 +323,7 @@ public static class AdminDataSourceEndpoints
                 $"Provider '{profile.Provider}' is not supported by this preview path."));
         }
 
-        var session = CreateSession(profile);
+        var session = CreateSession(profile, loggerFactory);
         if (session is null)
         {
             return TypedResults.Ok(CreateUnavailableMappingPreviewResponse(
@@ -367,6 +375,7 @@ public static class AdminDataSourceEndpoints
         HttpContext context,
         IConfiguration configuration,
         [FromBody] SourceSyncBatchRequest request,
+        ILoggerFactory loggerFactory,
         SourceCheckpointSyncService syncService,
         CancellationToken ct = default)
     {
@@ -399,7 +408,7 @@ public static class AdminDataSourceEndpoints
         if (!string.Equals(request.Identity.ConnectionId, profile.Name, StringComparison.OrdinalIgnoreCase))
             return TypedResults.BadRequest(new { error = "identity.connectionId must match the profileName route." });
 
-        var session = CreateSession(profile);
+        var session = CreateSession(profile, loggerFactory);
         if (session is null)
         {
             return TypedResults.Ok(CreateUnavailableCheckpointSyncResult(
@@ -429,10 +438,12 @@ public static class AdminDataSourceEndpoints
         }
     }
 
-    private static ISourceDataSession? CreateSession(NamedDataSourceProfile profile)
+    private static ISourceDataSession? CreateSession(NamedDataSourceProfile profile, ILoggerFactory loggerFactory)
     {
         if (string.Equals(profile.Provider, "sqlserver", StringComparison.OrdinalIgnoreCase))
-            return new SqlServerSourceDataSession(profile.ConnectionString ?? string.Empty);
+            return new SqlServerSourceDataSession(
+                profile.ConnectionString ?? string.Empty,
+                loggerFactory.CreateLogger<SqlServerSourceDataSession>());
 
         return null;
     }

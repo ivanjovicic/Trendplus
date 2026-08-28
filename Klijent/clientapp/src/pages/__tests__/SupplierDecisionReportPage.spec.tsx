@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierDecisionReportPage from "../SupplierDecisionReportPage";
 
-const getPrintPayloadSnapshotMock = vi.fn();
 const resolveAnalyticsTablePayloadMock = vi.fn((payload) => payload);
 const getSupplierDecisionDurableReportMock = vi.fn();
 
@@ -11,7 +10,6 @@ vi.mock("../../services/analyticsTableState", async () => {
   const actual = await vi.importActual<typeof import("../../services/analyticsTableState")>("../../services/analyticsTableState");
   return {
     ...actual,
-    getPrintPayloadSnapshot: (...args: unknown[]) => getPrintPayloadSnapshotMock(...args),
     resolveAnalyticsTablePayload: (...args: unknown[]) => resolveAnalyticsTablePayloadMock(...args),
   };
 });
@@ -55,8 +53,32 @@ function legacySnapshot(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderPage(path = "/analytics/supplier/report?stateKey=test") {
-  render(
+function durableResponse() {
+  return {
+    payload: {
+      tableKey: "supplier-decision-report",
+      tableTitle: "Trendplus izveštaj dobavljača",
+      documentType: "supplier-decision-report",
+      templateName: "supplier-decision",
+      locale: "sr-RS",
+      columns: [{ key: "section", header: "Sekcija", dataType: "text" }],
+      rows: [{ section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" }],
+      filters: [],
+      metadata: [],
+    },
+  };
+}
+
+function storeBrowserPreview(key: string) {
+  const snapshot = legacySnapshot();
+  localStorage.setItem(key, JSON.stringify({
+    savedAtUtc: new Date().toISOString(),
+    payload: snapshot.payload,
+  }));
+}
+
+function renderPage(path = "/analytics/supplier/report") {
+  return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
@@ -66,21 +88,13 @@ function renderPage(path = "/analytics/supplier/report?stateKey=test") {
 }
 
 describe("SupplierDecisionReportPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
   it("forwards section query to durable endpoint and injects methodology keys", async () => {
-    getPrintPayloadSnapshotMock.mockReturnValueOnce(null);
-    getSupplierDecisionDurableReportMock.mockResolvedValueOnce({
-      payload: {
-        tableKey: "supplier-decision-report",
-        tableTitle: "Trendplus izveštaj dobavljača",
-        documentType: "supplier-decision-report",
-        templateName: "supplier-decision",
-        locale: "sr-RS",
-        columns: [{ key: "section", header: "Sekcija", dataType: "text" }],
-        rows: [{ section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" }],
-        filters: [],
-        metadata: [],
-      },
-    });
+    getSupplierDecisionDurableReportMock.mockResolvedValueOnce(durableResponse());
 
     renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&section=supplier_negotiation_pack");
 
@@ -109,10 +123,8 @@ describe("SupplierDecisionReportPage", () => {
     );
   });
 
-  it("renders filtered_out empty state with recovery actions when payload is missing", () => {
-    getPrintPayloadSnapshotMock.mockReturnValueOnce(null);
-
-    renderPage();
+  it("shows expired state only for a preview-only URL whose browser snapshot is missing", () => {
+    renderPage("/analytics/supplier/report?preview=browser&stateKey=missing");
 
     expect(screen.getByRole("heading", { name: "Pregled izveštaja je istekao" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vrati se na dobavljače" })).toBeInTheDocument();
@@ -120,11 +132,10 @@ describe("SupplierDecisionReportPage", () => {
     expect(screen.getAllByRole("link", { name: "Otvori Scorecard" }).length).toBeGreaterThan(0);
   });
 
-  it("watermarks local browser preview and disables export/print when backend fails", async () => {
-    getPrintPayloadSnapshotMock.mockReturnValue(legacySnapshot());
-    getSupplierDecisionDurableReportMock.mockRejectedValueOnce(new Error("Backend report down"));
+  it("uses browser state only for an explicitly requested preview", async () => {
+    storeBrowserPreview("test");
 
-    renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&stateKey=test");
+    renderPage("/analytics/supplier/report?preview=browser&stateKey=test");
 
     expect(await screen.findByTestId("local-preview-banner")).toBeInTheDocument();
     expect(screen.getByText(/LOKALNI BROWSER PREVIEW/i)).toBeInTheDocument();
@@ -133,33 +144,36 @@ describe("SupplierDecisionReportPage", () => {
     expect(screen.queryByRole("button", { name: "trigger-export-error" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Štampaj iz pregleda" })).not.toBeInTheDocument();
     expect(screen.getByText("report-body")).toBeInTheDocument();
+    expect(getSupplierDecisionDurableReportMock).not.toHaveBeenCalled();
   });
 
-  it("watermarks stateKey-only local preview without durable params", () => {
-    getPrintPayloadSnapshotMock.mockReturnValueOnce(legacySnapshot());
+  it("keeps stateKey-only links as backwards-compatible browser previews", () => {
+    storeBrowserPreview("legacy-preview");
 
-    renderPage();
+    renderPage("/analytics/supplier/report?stateKey=legacy-preview");
 
     expect(screen.getByTestId("local-preview-banner")).toBeInTheDocument();
     expect(screen.getByTestId("local-preview-export-disabled")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Štampaj iz pregleda" })).not.toBeInTheDocument();
   });
 
+  it("reloads a durable URL from the backend after remount and ignores a stale stateKey", async () => {
+    getSupplierDecisionDurableReportMock.mockResolvedValue(durableResponse());
+    const durableUrl = "/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30&stateKey=stale";
+
+    const first = renderPage(durableUrl);
+    expect(await screen.findByText("report-body")).toBeInTheDocument();
+    first.unmount();
+
+    renderPage(durableUrl);
+    expect(await screen.findByText("report-body")).toBeInTheDocument();
+
+    expect(getSupplierDecisionDurableReportMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("heading", { name: "Pregled izveštaja je istekao" })).not.toBeInTheDocument();
+  });
+
   it("shows export error state when actions report PDF failure on durable payload", async () => {
-    getPrintPayloadSnapshotMock.mockReturnValueOnce(null);
-    getSupplierDecisionDurableReportMock.mockResolvedValueOnce({
-      payload: {
-        tableKey: "supplier-decision-report",
-        tableTitle: "Trendplus izveštaj dobavljača",
-        documentType: "supplier-decision-report",
-        templateName: "supplier-decision",
-        locale: "sr-RS",
-        columns: [{ key: "section", header: "Sekcija", dataType: "text" }],
-        rows: [{ section: "Header", item: "Naziv izveštaja", value: "Trendplus izveštaj dobavljača" }],
-        filters: [],
-        metadata: [],
-      },
-    });
+    getSupplierDecisionDurableReportMock.mockResolvedValueOnce(durableResponse());
 
     renderPage("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30");
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierDecisionReportActions from "../SupplierDecisionReportActions";
 
@@ -8,6 +8,7 @@ const exportPdfMock = vi.fn(() => Promise.resolve());
 const printPreviewMock = vi.fn(() => Promise.resolve());
 const exportCsvMock = vi.fn(() => undefined);
 const buildSummaryMock = vi.fn(() => "summary");
+const saveBrowserPreviewPayloadMock = vi.fn(() => "browser-preview-key");
 const getAnalyticsActionSourceStatusesMock = vi.fn(() => Promise.resolve({ items: [] }));
 const upsertAnalyticsActionWithResultMock = vi.fn(() => Promise.resolve({
   item: { sourceKey: "supplier:signal_check:all:unknown-period:all" },
@@ -28,6 +29,10 @@ vi.mock("../../../services/supplierDecisionReport", () => ({
 vi.mock("../../../services/analyticsApi", () => ({
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: (...args: unknown[]) => upsertAnalyticsActionWithResultMock(...args),
+}));
+
+vi.mock("../../../services/analyticsTableState", () => ({
+  saveBrowserPreviewPayload: (...args: unknown[]) => saveBrowserPreviewPayloadMock(...args),
 }));
 
 const payload = {
@@ -108,6 +113,55 @@ describe("SupplierDecisionReportActions", () => {
     expect(screen.queryByRole("button", { name: "Izvezi CSV" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Izvezi Excel" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Izvezi PDF" })).not.toBeInTheDocument();
+  });
+
+  it("opens the durable URL as the canonical report path", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    function LocationProbe() {
+      const location = useLocation();
+      return <output data-testid="location">{location.pathname}{location.search}</output>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
+        <SupplierDecisionReportActions
+          payload={payload}
+          durableReportHref="/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30"
+        />
+        <Routes><Route path="*" element={<LocationProbe />} /></Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvori trajni izveštaj" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/analytics/supplier/report?fromDate=2026-04-01&toDate=2026-06-30");
+    });
+    expect(saveBrowserPreviewPayloadMock).not.toHaveBeenCalled();
+  });
+
+  it("marks browser snapshots as explicit previews", async () => {
+    vi.stubEnv("VITE_ENABLE_PDF_EXPORT", "false");
+
+    function LocationProbe() {
+      const location = useLocation();
+      return <output data-testid="location">{location.pathname}{location.search}</output>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
+        <SupplierDecisionReportActions payload={payload} />
+        <Routes><Route path="*" element={<LocationProbe />} /></Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Privremeni browser preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/analytics/supplier/report?preview=browser&stateKey=browser-preview-key");
+    });
+    expect(saveBrowserPreviewPayloadMock).toHaveBeenCalledWith(payload);
   });
 
   it("notifies caller on PDF export errors", async () => {

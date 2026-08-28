@@ -11,7 +11,7 @@ import {
   exportSupplierDecisionReportPdf,
   openSupplierDecisionPrintPreview,
 } from "../../services/supplierDecisionReport";
-import { savePrintPayload } from "../../services/analyticsTableState";
+import { saveBrowserPreviewPayload } from "../../services/analyticsTableState";
 
 type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
@@ -148,8 +148,8 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
     setStatus(null);
     try {
       if (type === "preview") {
-        const stateKey = savePrintPayload(payload);
-        navigate(`/analytics/supplier/report?stateKey=${encodeURIComponent(stateKey)}`);
+        const stateKey = saveBrowserPreviewPayload(payload);
+        navigate(`/analytics/supplier/report?preview=browser&stateKey=${encodeURIComponent(stateKey)}`);
         return;
       }
 
@@ -250,7 +250,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
           onClick={() => void run("durable")}
           disabled={durableActionDisabled}
         >
-          {busy === "durable" ? "Otvaram..." : "Trajni izveštaj"}
+          {busy === "durable" ? "Otvaram..." : "Otvori trajni izveštaj"}
         </button>
       ) : null}
       {payload ? (
@@ -269,7 +269,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
             onClick={() => void run("preview")}
             disabled={actionDisabled}
           >
-            {busy === "preview" ? "Otvaram..." : "Pregled u aplikaciji"}
+            {busy === "preview" ? "Otvaram..." : "Privremeni browser preview"}
           </button>
           <button
             type="button"

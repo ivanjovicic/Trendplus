@@ -5,10 +5,10 @@ import SupplierDecisionReportActions from "../components/analytics/SupplierDecis
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import {
-  ANALYTICS_PRINT_TTL_MS,
-  getPrintPayloadSnapshot,
+  ANALYTICS_BROWSER_PREVIEW_TTL_MS,
+  getBrowserPreviewSnapshot,
   resolveAnalyticsTablePayload,
-  type PrintPayloadSnapshot,
+  type BrowserPreviewSnapshot,
 } from "../services/analyticsTableState";
 import { AnalyticsMetaError, getSupplierDecisionDurableReport } from "../services/analyticsApi";
 import type { ResolvedAnalyticsTablePayload } from "../types/analyticsTable";
@@ -77,6 +77,7 @@ export default function SupplierDecisionReportPage() {
   const onlyHighConfidence = searchParams.get("onlyHighConfidence");
   const excludeOosBeforeMarkdown = searchParams.get("excludeOosBeforeMarkdown");
   const section = searchParams.get("section");
+  const previewMode = searchParams.get("preview");
 
   const parsedSupplierId = useMemo(() => parseOptionalNumber(supplierId), [supplierId]);
   const parsedStoreId = useMemo(() => parseOptionalNumber(storeId), [storeId]);
@@ -91,7 +92,7 @@ export default function SupplierDecisionReportPage() {
   const [reloadTick, setReloadTick] = useState(0);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const hasDurableParams = Boolean(
+  const hasDurableQueryValues = Boolean(
     fromDate
     || toDate
     || scope
@@ -106,11 +107,14 @@ export default function SupplierDecisionReportPage() {
     || excludeOosBeforeMarkdown
     || section
   );
+  // A stateKey only represents an intentionally opened browser preview. Durable URLs
+  // always reload the backend payload, including the default report URL with no filters.
+  const isBrowserPreview = Boolean(stateKey) && (previewMode === "browser" || !hasDurableQueryValues);
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!hasDurableParams) {
+    if (isBrowserPreview) {
       setBackendPayload(null);
       setBackendError(null);
       setLoading(false);
@@ -189,7 +193,7 @@ export default function SupplierDecisionReportPage() {
     excludeOosBeforeMarkdown,
     fromDate,
     gender,
-    hasDurableParams,
+    isBrowserPreview,
     minRevenue,
     onlyHighConfidence,
     parsedExcludeOosBeforeMarkdown,
@@ -207,13 +211,11 @@ export default function SupplierDecisionReportPage() {
     toDate,
   ]);
 
-  const legacySnapshot = useMemo((): PrintPayloadSnapshot | null => getPrintPayloadSnapshot(stateKey), [stateKey]);
-  const legacyPayload = legacySnapshot?.payload ?? null;
-  const hasLegacyFallback = Boolean(legacyPayload);
-  const isLocalBrowserPreview = Boolean(!backendPayload && legacyPayload);
-  const showLegacyBackendFallbackWarning = Boolean(backendError && hasDurableParams && hasLegacyFallback);
-  const showStatePreviewWarning = Boolean(!hasDurableParams && hasLegacyFallback);
-  const payload = backendPayload ?? legacyPayload;
+  const browserPreviewSnapshot = useMemo((): BrowserPreviewSnapshot | null => (
+    isBrowserPreview ? getBrowserPreviewSnapshot(stateKey) : null
+  ), [isBrowserPreview, stateKey]);
+  const browserPreviewPayload = browserPreviewSnapshot?.payload ?? null;
+  const payload = isBrowserPreview ? browserPreviewPayload : backendPayload;
 
   const durableReportHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -275,7 +277,7 @@ export default function SupplierDecisionReportPage() {
     );
   }
 
-  if (!payload) {
+  if (isBrowserPreview && !payload) {
     return (
       <div className="supplier-decision-report-page">
         <AnalyticsEmptyState
@@ -297,16 +299,35 @@ export default function SupplierDecisionReportPage() {
     );
   }
 
-  const previewSavedAtLabel = legacySnapshot
-    ? formatDateTime(legacySnapshot.savedAtUtc)
+  if (!payload) {
+    return (
+      <div className="supplier-decision-report-page">
+        <AnalyticsEmptyState
+          title="Trajni izveštaj nema podatke"
+          message="Backend nije vratio podatke za traženi kontekst izveštaja."
+          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte report."]}
+          actions={[
+            { label: "Vrati se na dobavljače", href: "/analytics/supplier" },
+            { label: "Otvori Scorecard", href: "/analytics/supplier?tab=scorecard" },
+          ]}
+          refreshStatusHref="/admin/configuration?panel=workers"
+          dataQualityHref="/analytics/data-quality"
+          variant="insufficient_data"
+        />
+      </div>
+    );
+  }
+
+  const previewSavedAtLabel = browserPreviewSnapshot
+    ? formatDateTime(browserPreviewSnapshot.savedAtUtc)
     : null;
-  const previewExpiresAtLabel = legacySnapshot
-    ? formatDateTime(legacySnapshot.expiresAtUtc)
+  const previewExpiresAtLabel = browserPreviewSnapshot
+    ? formatDateTime(browserPreviewSnapshot.expiresAtUtc)
     : null;
-  const previewTtlLabel = formatTtlMinutes(legacySnapshot?.ttlMs ?? ANALYTICS_PRINT_TTL_MS);
+  const previewTtlLabel = formatTtlMinutes(browserPreviewSnapshot?.ttlMs ?? ANALYTICS_BROWSER_PREVIEW_TTL_MS);
 
   return (
-    <div className={`supplier-decision-report-page${isLocalBrowserPreview ? " sdrp-local-preview" : ""}`}>
+    <div className={`supplier-decision-report-page${isBrowserPreview ? " sdrp-local-preview" : ""}`}>
       {exportError ? (
         <AnalyticsErrorState
           title="Izvoz izveštaja nije uspeo"
@@ -320,12 +341,12 @@ export default function SupplierDecisionReportPage() {
         />
       ) : null}
 
-      {isLocalBrowserPreview ? (
+      {isBrowserPreview ? (
         <div className="sdrp-local-preview-banner" role="status" data-testid="local-preview-banner">
           <strong className="sdrp-local-preview-badge">LOKALNI BROWSER PREVIEW</strong>
           <p>
             Ovo nije trajni backend izveštaj. Snapshot je sačuvan u browseru
-            {previewSavedAtLabel ? <> u <time dateTime={legacySnapshot!.savedAtUtc}>{previewSavedAtLabel}</time></> : null}
+             {previewSavedAtLabel ? <> u <time dateTime={browserPreviewSnapshot!.savedAtUtc}>{previewSavedAtLabel}</time></> : null}
             {" "}(TTL {previewTtlLabel}
             {previewExpiresAtLabel ? <>, ističe {previewExpiresAtLabel}</> : null}).
             Izvoz i štampa su onemogućeni dok ne otvorite trajni report.
@@ -333,26 +354,15 @@ export default function SupplierDecisionReportPage() {
         </div>
       ) : null}
 
-      {showLegacyBackendFallbackWarning && !isLocalBrowserPreview ? (
-        <div className="sdrp-warning-banner no-print" role="status">
-          Backend report trenutno nije dostupan. Prikazujemo privremeni browser preview.
-        </div>
-      ) : null}
-      {showStatePreviewWarning && !isLocalBrowserPreview ? (
-        <div className="sdrp-warning-banner no-print" role="status">
-          Prikazujemo privremeni browser preview. Za trajan dokument otvorite report kroz query parametre.
-        </div>
-      ) : null}
-
       <header className="sdrp-head no-print">
         <div>
           <h1>Trendplus izveštaj dobavljača</h1>
           <p>
-            {isLocalBrowserPreview
+            {isBrowserPreview
               ? "Privremeni browser snapshot — nije potvrđen kao trenutni backend izveštaj."
-              : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Ako je otvoren sa query parametrima, koristi trajni backend report payload."}
+              : "Pregled izveštaja u HTML formi spremnoj za štampu i izvoz. Trajni backend payload se ponovo učitava pri svakom otvaranju."}
           </p>
-          {isLocalBrowserPreview && previewSavedAtLabel ? (
+          {isBrowserPreview && previewSavedAtLabel ? (
             <p className="sdrp-preview-meta" data-testid="local-preview-meta">
               Sačuvano: {previewSavedAtLabel} · TTL: {previewTtlLabel}
               {previewExpiresAtLabel ? ` · Ističe: ${previewExpiresAtLabel}` : ""}
@@ -363,7 +373,7 @@ export default function SupplierDecisionReportPage() {
           <Link to="/analytics/supplier" className="sdrp-back">Vrati se na dobavljače</Link>
           <Link to="/analytics/supplier" className="sdrp-back">Ponovo generiši report</Link>
           <Link to="/analytics/supplier?tab=scorecard" className="sdrp-back">Otvori Scorecard</Link>
-          {isLocalBrowserPreview ? (
+          {isBrowserPreview ? (
             <p className="sdrp-export-disabled" data-testid="local-preview-export-disabled">
               Izvoz/štampa onemogućeni za lokalni preview. Otvorite trajni report preko Scorecard akcija.
             </p>

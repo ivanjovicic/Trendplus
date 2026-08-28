@@ -3,9 +3,10 @@ import path from "node:path";
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
 import { rest } from "msw";
+import * as analyticsApi from "../../services/analyticsApi";
 import AnalyticsDashboard from "../AnalyticsDashboard";
 import DataQualityPage from "../DataQualityPage";
 import InventoryPage from "../InventoryPage";
@@ -44,6 +45,14 @@ vi.mock("recharts", () => ({
 }));
 
 describe("Analytics sales-readiness regressions", () => {
+  beforeEach(() => {
+    // Align fetch signal checks with the browser AbortSignal used by app hooks.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).AbortSignal = window.AbortSignal;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).AbortController = window.AbortController;
+  });
+
   it("AnalyticsDashboard error path shows AnalyticsErrorState without fake KPI zeros", async () => {
     server.use(
       rest.get("/api/analytics/cached/dashboard/bootstrap", (_req, res, ctx) => res(ctx.status(500))),
@@ -63,70 +72,80 @@ describe("Analytics sales-readiness regressions", () => {
   });
 
   it("DataQuality empty issues render goes through EmptyState UX", async () => {
-    // jsdom/msw interop guard for fetch signal in this suite
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).AbortSignal = window.AbortSignal;
     vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
-    server.use(
-      rest.get("/api/analytics/data-quality/list", (_req, res, ctx) => res(ctx.status(200), ctx.json({
-        page: 1,
-        pageSize: 25,
-        total: 0,
-        items: [],
-        meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
-      }))),
-      rest.get("/api/analytics/data-quality/health", (_req, res, ctx) => res(ctx.status(200), ctx.json({
-        scoreStatus: "warning",
-        scoreValue: 55,
-        orphanArticleCount: 0,
-        thresholds: { orphanArticleCount: 5, missingCostRevenueSharePct: 5, unknownSupplierRevenueSharePct: 5 },
-        meta: { success: true },
-      }))),
-      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
-      rest.get("/api/analytics/data-quality/intake-report", (_req, res, ctx) => res(ctx.status(200), ctx.json({
-        readinessStatus: "warning",
-        readinessLabel: "Upozorenje",
-        readinessScore: 42,
-        generatedAtUtc: "2026-08-21T08:00:00Z",
-        lastImportAtUtc: "2026-08-21T07:45:00Z",
-        lastImportStatus: "success",
-        lastImportScope: "all",
-        lastRefreshAtUtc: "2026-08-21T07:50:00Z",
-        dataScope: "all",
-        loadedData: {
-          articlesCount: 0,
-          saleItemsCount: 0,
-          receiptsCount: 0,
-          suppliersCount: 0,
-          storesCount: 0,
-          firstSaleDate: null,
-          lastSaleDate: null,
-        },
-        issues: {
-          missingSupplierCount: 0,
-          missingCostCount: 0,
-          missingCategoryCount: 0,
-          missingColorCount: 0,
-          missingSizeCount: 0,
-          saleWithoutArticleCount: 0,
-          zeroOrNegativePriceCount: 0,
-          duplicateSkuCount: 0,
-          missingSupplierNameCount: 0,
-        },
-        impact: {
-          revenueWithoutCostPercent: 0,
-          articlesWithoutSupplierPercent: 0,
-          recommendationsBlockedCount: 0,
-          ignoredRowsCount: 0,
-          insufficientSignalCount: 0,
-        },
-        recommendedActions: [],
-        meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
-      }))),
-      rest.get("/api/analytics/reports/pilot-intake", (_req, res, ctx) => res(ctx.status(200), ctx.json({ rows: [], payload: { rows: [] }, meta: { success: true, emptyReason: "no_import" } }))),
-      rest.get("/api/analytics/data-quality/top-offenders", (_req, res, ctx) => res(ctx.status(200), ctx.json({ issueType: "missingSupplier", limit: 10, count: 0, items: [], meta: { success: true, emptyReason: "no_top_offenders" } }))),
-      rest.get("/api/analytics/data-quality/trend", (_req, res, ctx) => res(ctx.status(200), ctx.json({ days: 7, points: [], dataScope: "all", meta: { success: true } }))),
-    );
+    vi.spyOn(analyticsApi, "getDataQualityIssues").mockResolvedValue({
+      page: 1,
+      pageSize: 25,
+      total: 0,
+      items: [],
+      meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
+    } as never);
+    vi.spyOn(analyticsApi, "getAnalyticsDataQualityHealth").mockResolvedValue({
+      scoreStatus: "warning",
+      scoreValue: 55,
+      orphanArticleCount: 0,
+      thresholds: { orphanArticleCount: 5, missingCostRevenueSharePct: 5, unknownSupplierRevenueSharePct: 5 },
+      meta: { success: true },
+    } as never);
+    vi.spyOn(analyticsApi, "getAnalyticsRefreshStatus").mockResolvedValue({
+      isRunning: false,
+      jobs: [],
+      dataFreshnessStatus: "unknown",
+    } as never);
+    vi.spyOn(analyticsApi, "getPilotDataQualityIntakeReport").mockResolvedValue({
+      readinessStatus: "warning",
+      readinessLabel: "Upozorenje",
+      readinessScore: 42,
+      generatedAtUtc: "2026-08-21T08:00:00Z",
+      lastImportAtUtc: "2026-08-21T07:45:00Z",
+      lastImportStatus: "success",
+      lastImportScope: "all",
+      lastRefreshAtUtc: "2026-08-21T07:50:00Z",
+      dataScope: "all",
+      loadedData: {
+        articlesCount: 0,
+        saleItemsCount: 0,
+        receiptsCount: 0,
+        suppliersCount: 0,
+        storesCount: 0,
+        firstSaleDate: null,
+        lastSaleDate: null,
+      },
+      issues: {
+        missingSupplierCount: 0,
+        missingCostCount: 0,
+        missingCategoryCount: 0,
+        missingColorCount: 0,
+        missingSizeCount: 0,
+        saleWithoutArticleCount: 0,
+        zeroOrNegativePriceCount: 0,
+        duplicateSkuCount: 0,
+        missingSupplierNameCount: 0,
+      },
+      impact: {
+        revenueWithoutCostPercent: 0,
+        articlesWithoutSupplierPercent: 0,
+        recommendationsBlockedCount: 0,
+        ignoredRowsCount: 0,
+        insufficientSignalCount: 0,
+      },
+      recommendedActions: [],
+      meta: { success: true, emptyReason: "no_open_issues", dataQualityStatus: "insufficient_data" },
+    } as never);
+    vi.spyOn(analyticsApi, "getPilotIntakeDurableReport").mockResolvedValue(null as never);
+    vi.spyOn(analyticsApi, "getDataQualityTopOffenders").mockResolvedValue({
+      issueType: "missingSupplier",
+      limit: 10,
+      count: 0,
+      items: [],
+      meta: { success: true, emptyReason: "no_top_offenders" },
+    } as never);
+    vi.spyOn(analyticsApi, "getAnalyticsDataQualityTrend").mockResolvedValue({
+      days: 7,
+      points: [],
+      dataScope: "all",
+      meta: { success: true },
+    } as never);
 
     render(
       <MemoryRouter initialEntries={["/analytics/data-quality?view=issues"]}>
@@ -141,9 +160,6 @@ describe("Analytics sales-readiness regressions", () => {
   });
 
   it("Inventory API failure renders error state instead of hanging loader", async () => {
-    // jsdom/msw interop guard for fetch signal in this suite
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).AbortSignal = window.AbortSignal;
     server.use(
       rest.get("/api/analytics/cached/filters/stores", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
       rest.get("/api/analytics/cached/filters/suppliers", (_req, res, ctx) => res(ctx.status(200), ctx.json([]))),
@@ -170,11 +186,7 @@ describe("Analytics sales-readiness regressions", () => {
     expect(await screen.findByText(/Podaci trenutno nisu dostupni/i)).toBeInTheDocument();
   });
 
-  it("Pilot intake report without payload shows useful expired explanation", async () => {
-    server.use(
-      rest.get("/api/analytics/refresh-status", (_req, res, ctx) => res(ctx.status(200), ctx.json({ isRunning: false, jobs: [], dataFreshnessStatus: "unknown" }))),
-    );
-
+  it("Pilot intake report without preview state surfaces the durable empty state instead of an expired preview", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/reports/pilot-intake"]}>
         <Routes>
@@ -183,8 +195,8 @@ describe("Analytics sales-readiness regressions", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: /Pregled izveštaja je istekao/i })).toBeInTheDocument();
-    expect(screen.getByText(/privremeno u browseru/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Trajni izveštaj nema podatke/i })).toBeInTheDocument();
+    expect(screen.queryByText(/privremeno u browseru/i)).not.toBeInTheDocument();
   });
 
   it("ProductDecisionCenter API failure renders error state without fake zeros", async () => {

@@ -275,6 +275,13 @@ public sealed class DataSourceDiscoveryAuthorizationTests
             return Task.FromResult<IReadOnlyList<string>>(["Id", "Select", "User"]);
         }
 
+        public Task<IReadOnlyList<SourceColumnDefinition>> GetColumnDefinitionsAsync(string table, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<SourceColumnDefinition>>([
+                new("Id", null, null, 0),
+                new("Select", null, null, 1),
+                new("User", null, null, 2)
+            ]);
+
         public Task<SourceRowCountResult> TryGetRowCountAsync(string table, CancellationToken ct = default)
             => Task.FromResult(SourceRowCountResult.Exact(0));
 

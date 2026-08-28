@@ -273,6 +273,15 @@ public sealed class SourceMappingPreviewTests
         public Task<IReadOnlyList<string>> GetColumnsAsync(string table, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<string>>(["Id", "Select", "User", "Price", "UpdatedAt"]);
 
+        public Task<IReadOnlyList<SourceColumnDefinition>> GetColumnDefinitionsAsync(string table, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<SourceColumnDefinition>>([
+                new("Id", null, null, 0),
+                new("Select", null, null, 1),
+                new("User", null, null, 2),
+                new("Price", null, null, 3),
+                new("UpdatedAt", null, null, 4)
+            ]);
+
         public Task<SourceRowCountResult> TryGetRowCountAsync(string table, CancellationToken ct = default)
             => Task.FromResult(SourceRowCountResult.Exact(3));
 

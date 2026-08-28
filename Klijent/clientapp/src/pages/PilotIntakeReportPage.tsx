@@ -10,7 +10,7 @@ import {
   getAnalyticsRefreshStatus,
   getPilotIntakeDurableReport,
 } from "../services/analyticsApi";
-import { getPrintPayload } from "../services/analyticsTableState";
+import { getBrowserPreviewPayload } from "../services/analyticsTableState";
 import type {
   AnalyticsRefreshStatus,
   DurableReportRow,
@@ -161,6 +161,7 @@ export default function PilotIntakeReportPage() {
   const dataScope = searchParams.get("dataScope");
   const storeId = searchParams.get("storeId");
   const supplierId = searchParams.get("supplierId");
+  const previewMode = searchParams.get("preview");
 
   const parsedStoreId = useMemo(() => parseOptionalNumber(storeId), [storeId]);
   const parsedSupplierId = useMemo(() => parseOptionalNumber(supplierId), [supplierId]);
@@ -172,11 +173,15 @@ export default function PilotIntakeReportPage() {
   const [loading, setLoading] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
-  const hasDurableParams = Boolean(fromDate || toDate || scope || dataScope || storeId || supplierId);
-  const legacyPayload = useMemo(() => getPrintPayload(stateKey), [stateKey]);
-  const legacyDurableReport = useMemo(
-    () => (legacyPayload ? mapLegacyPayloadToDurable(legacyPayload, stateKey, { fromDate, toDate, scope, dataScope, storeId, supplierId }) : null),
-    [dataScope, fromDate, legacyPayload, scope, stateKey, storeId, supplierId, toDate]
+  const hasDurableQueryValues = Boolean(fromDate || toDate || scope || dataScope || storeId || supplierId);
+  const isBrowserPreview = Boolean(stateKey) && (previewMode === "browser" || !hasDurableQueryValues);
+  const browserPreviewPayload = useMemo(
+    () => (isBrowserPreview ? getBrowserPreviewPayload(stateKey) : null),
+    [isBrowserPreview, stateKey]
+  );
+  const browserPreviewReport = useMemo(
+    () => (browserPreviewPayload ? mapLegacyPayloadToDurable(browserPreviewPayload, stateKey, { fromDate, toDate, scope, dataScope, storeId, supplierId }) : null),
+    [browserPreviewPayload, dataScope, fromDate, scope, stateKey, storeId, supplierId, toDate]
   );
 
   useEffect(() => {
@@ -188,16 +193,16 @@ export default function PilotIntakeReportPage() {
     void (async () => {
       try {
         const refreshTask = getAnalyticsRefreshStatus();
-        const reportTask = hasDurableParams
-          ? getPilotIntakeDurableReport({
+        const reportTask = isBrowserPreview
+          ? Promise.resolve(null)
+          : getPilotIntakeDurableReport({
               fromDate,
               toDate,
               scope,
               dataScope,
               storeId: parsedStoreId,
               supplierId: parsedSupplierId,
-            })
-          : Promise.resolve(null);
+            });
 
         const [refreshResult, reportResult] = await Promise.allSettled([refreshTask, reportTask]);
         if (cancelled) return;
@@ -214,7 +219,7 @@ export default function PilotIntakeReportPage() {
           );
         }
 
-        if (!hasDurableParams) {
+        if (isBrowserPreview) {
           setDurableReport(null);
         } else if (reportResult.status === "fulfilled") {
           setDurableReport(reportResult.value);
@@ -255,7 +260,7 @@ export default function PilotIntakeReportPage() {
   }, [
     dataScope,
     fromDate,
-    hasDurableParams,
+    isBrowserPreview,
     parsedStoreId,
     parsedSupplierId,
     reloadTick,
@@ -263,9 +268,7 @@ export default function PilotIntakeReportPage() {
     toDate,
   ]);
 
-  const resolvedReport = durableReport ?? legacyDurableReport;
-  const showLegacyWarning = Boolean(backendError && hasDurableParams && legacyDurableReport);
-  const showStatePreviewWarning = Boolean(!hasDurableParams && legacyDurableReport);
+  const resolvedReport = isBrowserPreview ? browserPreviewReport : durableReport;
 
   if (loading && !resolvedReport) {
     return (
@@ -295,7 +298,7 @@ export default function PilotIntakeReportPage() {
     );
   }
 
-  if (!resolvedReport) {
+  if (isBrowserPreview && !resolvedReport) {
     return (
       <div className="pilot-intake-report-page">
         <AnalyticsEmptyState
@@ -310,6 +313,25 @@ export default function PilotIntakeReportPage() {
             { label: "Otvori Pilot Intake", href: "/analytics/reports/pilot-intake" },
           ]}
           variant="filtered_out"
+          dataQualityHref="/analytics/data-quality"
+          refreshStatusHref="/admin/configuration?panel=workers"
+        />
+      </div>
+    );
+  }
+
+  if (!resolvedReport) {
+    return (
+      <div className="pilot-intake-report-page">
+        <AnalyticsEmptyState
+          title="Trajni izveštaj nema podatke"
+          message="Backend nije vratio podatke za traženi kontekst izveštaja."
+          reasons={["Proverite period i aktivne filtere, pa ponovo učitajte report."]}
+          actions={[
+            { label: "Vrati se na Data Quality", href: "/analytics/data-quality" },
+            { label: "Otvori Pilot Intake", href: "/analytics/reports/pilot-intake" },
+          ]}
+          variant="insufficient_data"
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
         />
@@ -341,14 +363,9 @@ export default function PilotIntakeReportPage() {
 
       <AnalyticsRefreshStatusBanner status={refreshStatus} error={refreshStatusError} />
 
-      {showLegacyWarning ? (
+      {isBrowserPreview ? (
         <div className="pirp-warning-banner no-print" role="status">
-          Backend report trenutno nije dostupan. Prikazujemo privremeni browser preview.
-        </div>
-      ) : null}
-      {showStatePreviewWarning ? (
-        <div className="pirp-warning-banner no-print" role="status">
-          Prikazujemo privremeni browser preview. Za trajan dokument otvorite report kroz query parametre.
+          Prikazujemo privremeni browser preview. Za trajan dokument otvorite trajni report.
         </div>
       ) : null}
 

@@ -1,4 +1,4 @@
-﻿using Application.Artikli.Commands.CreateArtikal;
+using Application.Artikli.Commands.CreateArtikal;
 using Application.Artikli.Commands.UpdateArtikal;
 using Application.Artikli.Common.Interfaces;
 using Application.Behaviors;
@@ -37,9 +37,9 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
-using Api.Services.DataSources;
 using Api.Endpoints;
 using Api.Services.Access;
+using Api.Services.DataSources;
 using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
@@ -56,7 +56,7 @@ using System.Diagnostics;
 try
 {
     Console.WriteLine("Starting application...");
-    
+
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Services.Configure<HostOptions>(options =>
@@ -160,6 +160,7 @@ try
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
     builder.Services.Configure<AccessImportOptions>(builder.Configuration.GetSection(AccessImportOptions.Section));
     builder.Services.Configure<DataSourceConnectorOptions>(builder.Configuration.GetSection(DataSourceConnectorOptions.SectionName));
+    builder.Services.Configure<DataSourceOptions>(builder.Configuration.GetSection(DataSourceOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsDataQualityHealthOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>(
@@ -171,17 +172,9 @@ try
     builder.Services.Configure<DocumentExportOptions>(builder.Configuration.GetSection(DocumentExportOptions.Section));
     builder.Services.Configure<PerformanceLoggingOptions>(builder.Configuration.GetSection(PerformanceLoggingOptions.Section));
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
-    builder.Services.Configure<Application.Analytics.DecisionPulse.DecisionPulseOptions>(
-        builder.Configuration.GetSection(Application.Analytics.DecisionPulse.DecisionPulseOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
 
-    builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
-    builder.Services.AddSingleton<NamedSourceDiscoveryService>();
-    builder.Services.AddSingleton<SourceMappingPreviewService>();
-    builder.Services.AddSingleton<SourceCheckpointSyncEngine>();
-    builder.Services.AddScoped<ISourceSyncStore, EfSourceSyncStore>();
-    builder.Services.AddScoped<SourceCheckpointSyncService>();
     builder.Services.AddFileStorage(builder.Configuration);
     var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
         builder.Configuration[$"{StorageOptions.Section}:Provider"]);
@@ -423,7 +416,6 @@ builder.Services.AddScoped<IAnalyticsDetailReadService, AnalyticsDetailReadServi
 builder.Services.AddScoped<IDailySalesStatsService, DailySalesStatsService>();
 builder.Services.AddScoped<AnalyticsDataQualityHealthService>();
 builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
-builder.Services.AddScoped<IInventoryForecastSnapshotMaterializerService, Infrastructure.Services.Inventory.InventoryForecastSnapshotMaterializerService>();
 builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();
@@ -440,9 +432,6 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<IDocumentDownloadTokenService, DocumentDownloadTokenService>();
     builder.Services.AddScoped<IDocumentUserContextAccessor, DocumentUserContextAccessor>();
     builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-    builder.Services.AddScoped<Api.Services.Analytics.DecisionPulseService>();
-    builder.Services.AddScoped<Application.Common.Interfaces.IDecisionPulseScheduleService, Infrastructure.Services.Analytics.DecisionPulseScheduleService>();
-    builder.Services.AddScoped<Api.Services.Analytics.DecisionPulseDeliveryService>();
     builder.Services.AddScoped<IInventoryReportScheduleService, Infrastructure.Services.Inventory.InventoryReportScheduleService>();
     builder.Services.AddScoped<IInventoryActionDecisionService, Infrastructure.Services.Inventory.InventoryActionDecisionService>();
     builder.Services.AddScoped<Infrastructure.Services.Inventory.InventoryReportDeliveryService>();
@@ -457,7 +446,17 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<WorkerRegistryService>();
     builder.Services.AddScoped<AnalyticsRefreshStatusService>();
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
-    
+    builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
+    builder.Services.AddSingleton<NamedSourceDiscoveryService>();
+    builder.Services.AddSingleton<SourceMappingPreviewService>();
+    builder.Services.AddSingleton<SourceCheckpointSyncEngine>();
+    builder.Services.AddScoped<ISourceSyncStore, EfSourceSyncStore>();
+    builder.Services.AddScoped<SourceCheckpointSyncService>();
+    builder.Services.AddSingleton<IDataSourceProfileCatalog, DataSourceProfileCatalog>();
+    builder.Services.AddSingleton<ISourceDataSessionFactory, SourceDataSessionFactory>();
+    builder.Services.AddScoped<IDataSourceDiscoveryService, DataSourceDiscoveryService>();
+    builder.Services.AddScoped<IDataSourceMappingPreviewService, DataSourceMappingPreviewService>();
+
     // Embedding service for AI-powered image search
     var embeddingServiceSettings = EmbeddingServiceRuntimePolicy.Resolve(
         builder.Configuration,
@@ -493,7 +492,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     {
         client.Timeout = TimeSpan.FromSeconds(60); // Increased from 30s to 60s for cold start scenarios
     });
-    
+
     // Named HttpClient for scraper service (Python), configured from appsettings or env
     var scraperBase = builder.Configuration["ScraperService:BaseUrl"] ?? "http://localhost:8000";
     builder.Services.AddHttpClient("scraper", client =>
@@ -600,7 +599,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     });
 
     builder.Services.AddEndpointsApiExplorer();
-    
+
     // ===== IMPROVED SWAGGER CONFIGURATION =====
     builder.Services.AddSwaggerGen(c =>
     {
@@ -626,7 +625,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
         // Handle nullable reference types
         c.SupportNonNullableReferenceTypes();
-        
+
         // Custom schema IDs to avoid conflicts
         c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
     });
@@ -768,6 +767,11 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: GetClientPartitionKey(httpContext),
                 factory: _ => CreateWindowPolicy(60, 60)));
+
+        options.AddPolicy("source-discovery-tests", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetClientPartitionKey(httpContext),
+                factory: _ => CreateWindowPolicy(8, 60)));
 
         options.AddPolicy("analytics", httpContext =>
             RateLimitPartition.GetFixedWindowLimiter(
@@ -1211,7 +1215,6 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapAnalyticsRefreshStatusEndpoints();
     app.MapCachedAnalyticsEndpoints();
     app.MapDecisionBoardEndpoints();
-    app.MapDecisionPulseEndpoints();
     app.MapInventoryEndpoints();
     app.MapAnalyticsActionsEndpoints();
     app.MapAnalyticsIntelligenceEndpoints();
@@ -1220,11 +1223,12 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapPreNivelacijaPriorityEndpoints();
     app.MapAnalyticsReportsEndpoints();
     app.MapSupplierDecisionHubEndpoints();
+    app.MapDataSourceDiscoveryEndpoints();
+    app.MapDataSourceMappingPreviewEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();
     app.MapAccessImportEndpoints();
-    app.MapDataSourceDiscoveryEndpoints();
     app.MapAdminRepairEndpoints();
     app.MapAdminConfigEndpoints();
     app.MapAdminBackendRoutingEndpoints();
@@ -1238,13 +1242,13 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapDocumentEndpoints();
     // Transfer endpoints
     app.MapTransferEndpoints();
-    
+
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");
     Console.WriteLine($"Starting web host on port {port}...");
-    
+
     app.Run();
-    
+
     Console.WriteLine("Application stopped gracefully");
 }
 catch (HostAbortedException ex)
@@ -1260,15 +1264,15 @@ catch (Exception ex)
     Console.WriteLine($"Type: {ex.GetType().Name}");
     Console.WriteLine($"StackTrace:");
     Console.WriteLine(ex.StackTrace);
-    
+
     if (ex.InnerException != null)
     {
         Console.WriteLine($"\nInner Exception: {ex.InnerException.Message}");
         Console.WriteLine(ex.InnerException.StackTrace);
     }
-    
+
     Log.Fatal(ex, "Application terminated unexpectedly");
-    
+
     Environment.Exit(1);
 }
 finally

@@ -8,18 +8,20 @@ import type {
 } from "../types/analyticsTable";
 import { fmtNumber, fmtPct, fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 
-const PRINT_PREFIX = "analytics-print:";
+const BROWSER_PREVIEW_PREFIX = "analytics-preview:";
 const DETAIL_PREFIX = "analytics-detail:";
-/** Browser-stored print/report preview TTL (10 minutes). */
-export const ANALYTICS_PRINT_TTL_MS = 10 * 60 * 1000;
-const PRINT_TTL_MS = ANALYTICS_PRINT_TTL_MS;
+/** Browser-stored print/report preview TTL (10 minutes). Never use as durable report storage. */
+export const ANALYTICS_BROWSER_PREVIEW_TTL_MS = 10 * 60 * 1000;
+/** @deprecated Use ANALYTICS_BROWSER_PREVIEW_TTL_MS. */
+export const ANALYTICS_PRINT_TTL_MS = ANALYTICS_BROWSER_PREVIEW_TTL_MS;
+const PRINT_TTL_MS = ANALYTICS_BROWSER_PREVIEW_TTL_MS;
 
 type StoredPrintPayload = {
   savedAtUtc: string;
   payload: ResolvedAnalyticsTablePayload;
 };
 
-export type PrintPayloadSnapshot = {
+export type BrowserPreviewSnapshot = {
   payload: ResolvedAnalyticsTablePayload;
   savedAtUtc: string;
   expiresAtUtc: string;
@@ -173,8 +175,8 @@ export function buildAnalyticsDetailSnapshot<Row>(input: {
   };
 }
 
-export function savePrintPayload(payload: ResolvedAnalyticsTablePayload): string {
-  const key = `${PRINT_PREFIX}${crypto.randomUUID()}`;
+export function saveBrowserPreviewPayload(payload: ResolvedAnalyticsTablePayload): string {
+  const key = `${BROWSER_PREVIEW_PREFIX}${crypto.randomUUID()}`;
   const stored: StoredPrintPayload = {
     savedAtUtc: new Date().toISOString(),
     payload,
@@ -184,7 +186,7 @@ export function savePrintPayload(payload: ResolvedAnalyticsTablePayload): string
   return key;
 }
 
-export function getPrintPayloadSnapshot(key: string | null): PrintPayloadSnapshot | null {
+export function getBrowserPreviewSnapshot(key: string | null): BrowserPreviewSnapshot | null {
   if (!key) return null;
   const raw = localStorage.getItem(key);
   if (!raw) return null;
@@ -224,9 +226,16 @@ export function getPrintPayloadSnapshot(key: string | null): PrintPayloadSnapsho
   }
 }
 
-export function getPrintPayload(key: string | null): ResolvedAnalyticsTablePayload | null {
-  return getPrintPayloadSnapshot(key)?.payload ?? null;
+export function getBrowserPreviewPayload(key: string | null): ResolvedAnalyticsTablePayload | null {
+  return getBrowserPreviewSnapshot(key)?.payload ?? null;
 }
+
+/** @deprecated Use saveBrowserPreviewPayload. Kept for generic print routes. */
+export const savePrintPayload = saveBrowserPreviewPayload;
+/** @deprecated Use getBrowserPreviewSnapshot. Kept for generic print routes. */
+export const getPrintPayloadSnapshot = getBrowserPreviewSnapshot;
+/** @deprecated Use getBrowserPreviewPayload. Kept for generic print routes. */
+export const getPrintPayload = getBrowserPreviewPayload;
 
 export function saveAnalyticsDetailSnapshot(snapshot: AnalyticsDetailResponse): void {
   sessionStorage.setItem(`${DETAIL_PREFIX}${snapshot.table}:${snapshot.recordId}`, JSON.stringify(snapshot));

@@ -49,9 +49,13 @@
   grid-template-columns: repeat(6, minmax(130px, 1fr)) auto;
   gap: 0.75rem;
   align-items: end;
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--border-default);
   background-color: var(--surface-subtle, var(--surface-default));
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 @media (max-width: 1200px) {
@@ -70,6 +74,8 @@
   .supplier-consolidated-filters {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
     gap: 0.5rem;
+    position: static;
+    box-shadow: none;
   }
   
   .supplier-consolidated-actions {

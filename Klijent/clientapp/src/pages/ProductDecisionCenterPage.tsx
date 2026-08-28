@@ -1221,7 +1221,7 @@ export default function ProductDecisionCenterPage() {
       </header>
 
       {!hideKpiChrome ? (
-      <section className="product-decision-kpis" aria-label="KPI kartice">
+        <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>
           <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
@@ -1277,10 +1277,10 @@ export default function ProductDecisionCenterPage() {
           <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
           <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrim obrtom zalihe" />
         </article>
-      </section>
+        </section>
       ) : null}
 
-      <section className="product-decision-filters">
+      <section className="product-decision-filters" aria-label="Filteri perioda i opsega">
         <div className="filter-grid">
           <label>
             Period
@@ -1385,6 +1385,87 @@ export default function ProductDecisionCenterPage() {
           </label>
         </div>
       </section>
+
+      {showMetaWarning ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          Prikazani podaci su delimični ili fallback. {responseMetaMessage ?? "Proverite status osvežavanja analitike."}
+        </div>
+      ) : null}
+
+      <header className="product-decision-header">
+        <div>
+          <h1>Odluke o proizvodima</h1>
+          <p>{PRODUCT_DECISION_PAGE_EXPLANATION}</p>
+        </div>
+        <AnalyticsTableToolbar
+          tableKey="product-decision-center"
+          tableTitle="Odluke o proizvodima"
+          columns={TABLE_COLUMNS}
+          rows={sortedRows}
+          filters={tableFilters}
+          metadata={tableMetadata}
+        />
+      </header>
+
+      {!hasBlockingError ? (
+      <section className="product-decision-kpis" aria-label="KPI kartice">
+        <article className="kpi-card">
+          <span>Za dopunu</span>
+          <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
+        </article>
+        <article className="kpi-card">
+          <span>Za pojačanje</span>
+          <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
+        </article>
+        <article className="kpi-card">
+          <span>Za sniženje</span>
+          <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
+        </article>
+        <article className="kpi-card">
+          <span>Ne naručivati</span>
+          <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
+        </article>
+        <article className="kpi-card">
+          <span>Proveriti podatke</span>
+          <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
+        </article>
+        <article className="kpi-card">
+          <span>Procena izgubljene prodaje</span>
+          <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
+          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
+        </article>
+        <article className="kpi-card">
+          <span>Kapital u sporoj zalihi</span>
+          <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
+          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
+        </article>
+        <article className="kpi-card">
+          <span>Rizik pokrivenosti</span>
+          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
+        </article>
+        <article className="kpi-card">
+          <span>SKU sa niskom pokrivenošću</span>
+          <strong>{fmtNumber(kpis.lowCoverSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
+        </article>
+        <article className="kpi-card">
+          <span>SKU sa sporim obrtom</span>
+          <strong>{fmtNumber(kpis.slowStockSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
+        </article>
+        <article className="kpi-card">
+          <span>SKU sa dobrim obrtom</span>
+          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
+          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrim obrtom zalihe" />
+        </article>
+      </section>
+      ) : null}
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}
       {staleWarning ? <div className="product-decision-message product-decision-message-info">{staleWarning}</div> : null}

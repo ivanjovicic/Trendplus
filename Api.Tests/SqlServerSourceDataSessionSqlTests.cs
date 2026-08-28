@@ -57,13 +57,13 @@ public sealed class SqlServerSourceDataSessionSqlTests
             IdAliases = ["id"]
         };
 
-        var fragment = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
+        var (commandText, parameters) = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
             ["Id", "Select"],
             "[dbo].[Order]",
             query);
 
-        Assert.Equal("SELECT * FROM [dbo].[Order] WHERE [Id] > @p0 ORDER BY [Id]", fragment.CommandText);
-        Assert.Equal(("@p0", 42L), Assert.Single(fragment.Parameters));
+        Assert.Equal("SELECT * FROM [dbo].[Order] WHERE [Id] > @p0 ORDER BY [Id]", commandText);
+        Assert.Equal(("@p0", 42L), Assert.Single(parameters));
     }
 
     [Fact]
@@ -80,17 +80,17 @@ public sealed class SqlServerSourceDataSessionSqlTests
             IdAliases = ["id"]
         };
 
-        var fragment = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
+        var (commandText, parameters) = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
             ["Id", "UpdatedAt", "Price"],
             "[dbo].[Order]",
             query);
 
         Assert.Equal(
             "SELECT * FROM [dbo].[Order] WHERE ([UpdatedAt] > @p0 OR ([UpdatedAt] = @p1 AND [Id] > @p2)) ORDER BY [UpdatedAt], [Id]",
-            fragment.CommandText);
-        Assert.Equal(3, fragment.Parameters.Count);
-        Assert.Equal(cursorUtc.AddSeconds(-60), fragment.Parameters[0].Value);
-        Assert.Equal(1L, fragment.Parameters[2].Value);
+            commandText);
+        Assert.Equal(3, parameters.Count);
+        Assert.Equal(cursorUtc.AddSeconds(-60), parameters[0]);
+        Assert.Equal(1L, parameters[2]);
     }
 
     [Fact]
@@ -103,26 +103,26 @@ public sealed class SqlServerSourceDataSessionSqlTests
             IdAliases = ["id"]
         };
 
-        var fragment = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
+        var (commandText, parameters) = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
             ["Naziv", "Cena"],
             "[dbo].[NoId]",
             query);
 
-        Assert.Equal("SELECT * FROM [dbo].[NoId] ORDER BY [Naziv]", fragment.CommandText);
-        Assert.Empty(fragment.Parameters);
+        Assert.Equal("SELECT * FROM [dbo].[NoId] ORDER BY [Naziv]", commandText);
+        Assert.Empty(parameters);
     }
 
     [Fact]
     public void BuildSelectSql_MaxRows_UsesParameterizedTop()
     {
         var query = new SourceReadQuery { MaxRows = 25 };
-        var fragment = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
+        var (commandText, parameters) = SqlServerSourceDataSession.BuildSelectSqlFromColumns(
             ["Id"],
             "[dbo].[Order]",
             query);
 
-        Assert.StartsWith("SELECT TOP (@maxRows) * FROM [dbo].[Order]", fragment.CommandText, StringComparison.Ordinal);
-        Assert.Contains(fragment.Parameters, p => p.Name == "@maxRows" && Equals(p.Value, 25));
+        Assert.StartsWith("SELECT TOP (@maxRows) * FROM [dbo].[Order]", commandText, StringComparison.Ordinal);
+        Assert.Contains(25, parameters);
     }
 
     [Fact]
