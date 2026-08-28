@@ -4,9 +4,9 @@ Date: 2026-08-28
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 28ec31e1adfef3bdef9e2362d74a89a02e2a08dd
+Main verification: passed - origin/main contains 28ec31e1adfef3bdef9e2362d74a89a02e2a08dd
+Evidence state: synchronized
 
 ## What was done
 - Reconciled the cross-surface analytics reliability addendum so `RQ127` no longer appears startable after its earlier DONE delivery.
