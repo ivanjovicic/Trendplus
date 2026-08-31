@@ -17,6 +17,75 @@ services:
         value: http://0.0.0.0:8080
       - key: PROCESS_TYPE
         value: web
+      - key: Workers__Enabled
+        value: "false"
+      - key: AccessImport__WorkerEnabled
+        value: "false"
+      - key: AccessImport__RegisterWorkerInWebProcess
+        value: "false"
+      - key: Caching__UseRedis
+        value: "false"
+      - key: AnalyticsPrewarm__Enabled
+        value: "false"
+      - key: DOCUMENT_SIGNING_KEY
+        sync: false # Set in Render Dashboard (secret, at least 32 random bytes/chars)
+      - key: Database__CommandTimeoutSeconds
+        value: "12"
+      - key: Database__Npgsql__OpenTimeoutSeconds
+        value: "5"
+      - key: Database__Npgsql__EnableEfRetryOnFailure
+        value: "true"
+      - key: Database__Npgsql__EfRetry__MaxRetryCount
+        value: "1"
+      - key: Database__Npgsql__EfRetry__MaxRetryDelaySeconds
+        value: "1"
+      - key: Database__Npgsql__MaxPoolSize
+        value: "20"
+      # RabbitMQ (CloudAMQP)
+      - key: RabbitMq__HostName
+        value: cow.rmq2.cloudamqp.com
+      - key: RabbitMq__Port
+        value: 5671
+      - key: RabbitMq__UserName
+        sync: false # Set in Render Dashboard (secret)
+      - key: RabbitMq__Password
+        sync: false # Set in Render Dashboard (secret)
+      - key: RabbitMq__VirtualHost
+        value: jsvhgrbd
+      - key: RabbitMq__UseSsl
+        value: true
+      - key: RabbitMq__Enabled
+        value: true
+      # Database (set in Dashboard)
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: ConnectionStrings__AnalyticsConnection
+        sync: false
+
+  # Dedicated background worker for refresh and queue processing.
+  - type: worker
+    name: trendplus-worker
+    runtime: dotnet
+    plan: 0.5c-512mb
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: dotnet publish Api/Api.csproj -c Release -o out
+    startCommand: dotnet out/Api.dll
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      - key: PROCESS_TYPE
+        value: worker
+      - key: Workers__Enabled
+        value: "true"
+      - key: AccessImport__WorkerEnabled
+        value: "true"
+      - key: AccessImport__RegisterWorkerInWebProcess
+        value: "false"
       - key: Caching__UseRedis
         value: "false"
       - key: AnalyticsPrewarm__Enabled
