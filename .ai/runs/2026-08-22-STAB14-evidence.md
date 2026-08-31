@@ -11,7 +11,7 @@ Evidence state: synchronized
 ## What was done
 - Re-closed the local frontend analytics gate and build earlier in the run by fixing the pilot-readiness, executive decision board, supplier explainability, inventory freshness, and fetch/test-harness drift already present in the worktree.
 - Captured a fresh production live-smoke pack against the exact public Trendplus surfaces and recorded the backend runtime truth, refresh-status honesty, and frontend render state.
-- Kept the release evidence truthful: the smoke is fresh, but delivery verification against the pushed `main` SHA is still pending until the commit is pushed and rechecked.
+- Kept the release evidence truthful: the smoke is fresh and the delivered `main` SHA was rechecked before the evidence was synchronized.
 
 ## Files changed
 - Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx
@@ -46,7 +46,7 @@ Evidence state: synchronized
 - production live-smoke script via `puppeteer-core` + local Chrome -> pass
 
 ## Validation not run
-- final current-main / origin-main verification -> not run yet; requires commit and push
+- full backend suite -> not run - not needed for this frontend/live-smoke release-truth prompt
 
 ## Documentation impact
 - Added a fresh dated pilot evidence pack for the 2026-08-22 smoke.

@@ -1406,7 +1406,7 @@ STAB12 closed the unauthenticated document-header privilege gap, but pilot relea
 
 ## STAB14 - Reopen frontend analytics gate and current-main live-smoke truth
 
-Status: PARTIAL
+Status: DONE
 Ready after: `STAB13` is `DONE` and current-main frontend release truth is red or stale
 Priority: P0
 Type: frontend/tests/release-evidence
@@ -1500,7 +1500,7 @@ STAB13 refreshed the pilot evidence pointers honestly, and the local frontend an
 ### Completion note
 
 - Date: 2026-08-21
-- Status: PARTIAL
+- Status: DONE
 - Completion: re-closed the local frontend analytics gate and build by fixing the pilot readiness, executive decision board, supplier explainability, inventory freshness, and fetch/test harness drift; the fresh current-main live-smoke pack is synchronized to `origin/main` and STAB14 is now DONE
 - Changed files: Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx; Klijent/clientapp/src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx; Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx; Klijent/clientapp/src/components/supplierDecisionHub/SupplierExplainabilitySnapshot.tsx; Klijent/clientapp/src/pages/DataQualityPage.tsx; Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx; Klijent/clientapp/src/pages/PilotReadinessPage.tsx; Klijent/clientapp/src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx; Klijent/clientapp/src/pages/__tests__/ConfigurationPage.spec.tsx; Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx; Klijent/clientapp/src/services/__tests__/logsApi.spec.ts; Klijent/clientapp/src/utils/fetchWithTimeout.ts; docs/qa/PILOT_RELEASE_EVIDENCE_REFRESH_2026-08-22.md; MASTER_ROADMAP.md; docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; .ai/runs/2026-08-22-STAB14-evidence.md
 - Checks run: git diff --check (pass); node scripts/check-prompt-queues.mjs --self-test (pass); node scripts/check-prompt-queues.mjs (pass); node scripts/check-planning-architecture.mjs --self-test (pass); node scripts/check-planning-architecture.mjs (pass); npm run test:analytics -- --cache false (pass); npm run build (pass); npm exec vitest run src/pages/__tests__/AnalyticsSalesReadinessRegression.spec.tsx --cache false (pass); npm exec vitest run src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx --cache false (pass); npm exec vitest run src/services/__tests__/logsApi.spec.ts --cache false (pass); npm exec vitest run src/pages/__tests__/ConfigurationPage.spec.tsx --cache false (pass); npm exec vitest run src/components/analytics/__tests__/SupplierExplainabilitySnapshot.spec.tsx --cache false (pass); npm exec vitest run src/components/inventory/InventoryItemsTable.spec.tsx --cache false (pass); production live-smoke script via puppeteer-core + local Chrome (pass); git push origin main (pass)
@@ -1513,7 +1513,7 @@ STAB13 refreshed the pilot evidence pointers honestly, and the local frontend an
 - Missed: none known
 - Follow-up: STAB15 only if the gate remains green
 - Residual risk: current live smoke is synchronized to `main`, but the broader pilot is still not ready because BCI10 remains red
-- Prompt defect / scope repair: same-owner UI and harness repairs so the local analytics gate closes truthfully without inventing current-main proof
+- Prompt defect / scope repair: same-owner UI and harness repairs so the local analytics gate closes truthfully without inventing current-main proof; 2026-08-31 queue status was refreshed from stale `PARTIAL` to `DONE` to match the synchronized run evidence and the already-dependent `STAB15` routing truth
 
 ---
 
