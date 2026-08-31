@@ -1658,6 +1658,7 @@ The canonical production API now reports a runtime SHA contained in current `mai
 - `GET /api/analytics/refresh-status?dataScope=all` returned `workersEnabled=false`, process `web`, unknown freshness, in-memory-cache warning, and six job reasons equivalent to “Worker nije registrovan u web procesu.”
 - `Api/Config/WorkerRuntimeConfig.cs` and `Api/Program.cs` deliberately register heavy refresh workers only for `PROCESS_TYPE=worker`; enabling them inside the web process would violate the established runtime boundary.
 - `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` plus `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md` record the public observations and the still-missing direct database reconciliation/browser proof.
+- A read-only public recheck on 2026-08-31 returned HTTP 500 from `/health`, `/ready`, `/api/runtime/version`, `/api/analytics/refresh-status?dataScope=all`, and `/api/analytics/cached/dashboard/bootstrap?dataScope=all`, while `/` still returned the static SPA shell. The current production fault prevents a truthful conclusion that a visible `insufficient_data` state means the source data is absent; restore liveness and inspect provider logs before classifying data availability.
 
 ### Scope
 

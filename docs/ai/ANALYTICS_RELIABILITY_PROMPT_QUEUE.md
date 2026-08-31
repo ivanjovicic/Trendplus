@@ -57,6 +57,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ124 | DONE | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
+| RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 
 ---
 
@@ -2277,6 +2278,85 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 ### Dependencies
 
 - `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ132 - Explain Dashboard support-signal limits and the next safe operator step
+
+Status: WAITING
+Ready after: `STAB16` is DONE and the canonical production API has a healthy runtime/refresh-status proof
+Priority: P1
+Type: backend-frontend-contract/tests
+Feature family: dashboard-support-signal-explainability
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ132-<agent>.lock.md`
+Commit suggestion: `fix(analytics): explain dashboard support-signal limits`
+
+### Problem
+
+The Dashboard currently repeats the generic Serbian copy `Prikazani su pomoćni signali. Signal je ograničen zbog kvaliteta ili nedovoljno podataka.` when all displayed actions have `recommendationAllowed=false`. That condition proves only that the shown recommendations are blocked; it does **not** prove that the selected period/store has no source data. The backend often has a specific reason (`missing_cost`, `missing_supplier`, `insufficient_history`, critical/stale/unknown freshness, or a legacy action with unavailable trust payload), but the Dashboard does not turn it into a single operator-facing diagnosis, affected scope/count, and next safe action. A source/API failure must remain an error/partial state, never a support-signal explanation.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` sets `recommendationsBlocked` when every one of up to four prioritized actions has `recommendationAllowed === false`, then renders the same generic explanation both in the cockpit banner and on each blocked card.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` can build Product Decision action reasons from backend rows, including `FIX_DATA`, `INSUFFICIENT_DATA`, `DataQualityStatus`, `RecommendationReason`, and warning/reason codes, but `DashboardDecisionActionDto` does not expose a bounded, display-ready block-cause contract.
+- The existing Product Decision profile already distinguishes `missing_cost`, `missing_supplier`, `insufficient_history`, critical data quality, and stale/unknown input freshness. Those causes must remain backend-owned and must not be recreated by a frontend score heuristic.
+- The legacy advanced fallback can carry explicit trust metadata, or it can be an unavailable legacy helper payload. `RQ124` made the distinction representable, but the Dashboard still presents a generic limit sentence instead of explaining it to an operator.
+- On 2026-08-31 the public production API returned HTTP 500 even for liveness, runtime-version, refresh-status, and dashboard bootstrap routes. Until `STAB16` restores liveness, the live UI cannot establish whether a visible limit came from absent data, stale refresh, partial/fallback content, or a failed API call.
+
+### Scope
+
+- Dashboard action/trust DTO composition in `Api/Endpoints/CachedAnalyticsEndpoints.cs` and existing analytics response metadata only where the authoritative cause is already known;
+- `Klijent/clientapp/src/types/analytics.ts` and `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`;
+- focused backend and Dashboard regression tests;
+- the nearest Dashboard/Data Quality guidance only if it must describe the new operator-facing states.
+
+Do not change recommendation thresholds, financial calculations, Product Decision scoring, worker scheduling, or the Data Quality issue formulas. Do not make the frontend infer or count business causes from card text.
+
+### Read first
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` (`BuildDashboardDecisionActions`, Product Decision confidence/warning helpers, dashboard bootstrap metadata);
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`;
+- `Klijent/clientapp/src/types/analytics.ts`;
+- `Api.Tests/CachedAnalyticsDashboardActionTrustTests.cs`;
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx`;
+- `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` (`STAB16`);
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`.
+
+### Do
+
+1. Define the smallest additive, backend-owned Dashboard support-signal payload. It must state a normalized state such as `no_qualifying_data`, `data_quality_blocked`, `insufficient_history`, `stale_or_unrefreshed`, `legacy_trust_unavailable`, or `partial_or_failed`; include bounded reason codes, effective filter/period, and a safe next-step target when the backend can prove one.
+2. Keep these states visibly distinct:
+   - a successful empty requested window;
+   - rows with missing master/cost data;
+   - insufficient sales/history evidence;
+   - stale, unknown, or not-yet-refreshed input;
+   - legacy/helper content whose trust is unavailable;
+   - API/section failure or partial response.
+   Do not label any of the last four as “nema podataka” unless the response explicitly proves an empty source window.
+3. Render one concise, deduplicated diagnosis in the Dashboard cockpit. For each state, show what is missing or degraded, the selected period/scope, and the direct safe next step: correct source fields, inspect the affected Data Quality items, restore/await refresh, widen a genuinely empty date range, or contact support with a correlation ID for a failed response.
+4. Preserve the existing per-card reason as supporting detail, but do not repeat the generic warning on every card. Keep the Data Quality and worker/refresh links only where they correspond to the backend-owned cause.
+5. Add focused tests for: genuinely empty data, missing cost/supplier, insufficient history, stale/unknown refresh, legacy payload without trust data, and an API/partial failure. Verify no case renders fake zero, fake green, or an actionable recommendation.
+
+### Tests
+
+- `git diff --check`;
+- focused `CachedAnalyticsDashboardActionTrustTests` plus the smallest bootstrap/meta contract test;
+- focused `AnalyticsDashboard.operationalFallback.spec.tsx` or a dedicated Dashboard support-signal presentation test;
+- governance validators if queue/docs change.
+
+### Acceptance
+
+- An operator can tell whether there are truly no qualifying records, data is incomplete, history is too short, freshness is degraded, trust is unavailable, or the API failed.
+- Every non-error support-signal state has a truthful, scoped next step; failed/partial responses point to recovery/support rather than pretending a data-quality diagnosis.
+- The Dashboard uses backend-owned reason/status semantics and does not introduce frontend scoring or data-quality inference.
+- The generic support-signal sentence is not duplicated as the only explanation at both cockpit and card level.
+
+### Dependencies
+
+- `STAB16` DONE with current-main runtime, worker/freshness, and production liveness proof.
+- `RQ124` is DONE and supplies the legacy-action trust payload foundation.
 
 ---
 
