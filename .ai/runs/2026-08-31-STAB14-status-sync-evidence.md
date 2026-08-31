@@ -4,8 +4,8 @@ Date: 2026-08-31
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: 40dd850bca7670740aab29290b3994213d5bdf82
+Main verification: pending - await fresh origin/main verification after push
 Evidence state: pending
 
 ## What was done
@@ -44,4 +44,4 @@ Evidence state: pending
 - This is a metadata/evidence repair only; it does not unlock any blocked production authority or worker access by itself.
 
 ## Next
-- Run queue/planning validators, deliver the repair to `main`, verify the exact SHA on `origin/main`, and leave `STAB16` visibly blocked.
+- Push the repair, verify that `origin/main` contains `40dd850bca7670740aab29290b3994213d5bdf82`, then keep `STAB16` visibly blocked.
