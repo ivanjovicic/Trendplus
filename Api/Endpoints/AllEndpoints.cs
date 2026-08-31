@@ -1065,7 +1065,7 @@ public static class AllEndpoints
                     => supplierId.HasValue ? $"id:{supplierId.Value}" : "unknown";
 
                 static string BuildSupplierFootwearBucketKey(int? supplierId, int? footwearTypeId)
-                    => $"{BuildSupplierBucketKey(supplierId)}|type:{(footwearTypeId.HasValue ? footwearTypeId.Value.ToString() : "unknown")}";
+                    => $"{BuildSupplierBucketKey(supplierId)}|type:{(footwearTypeId.HasValue ? footwearTypeId.Value.ToString(CultureInfo.InvariantCulture) : "unknown")}";
 
                 static string NormalizeDataScope(string? rawScope)
                 {

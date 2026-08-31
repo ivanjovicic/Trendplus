@@ -366,7 +366,7 @@ public static class DecisionBoardEndpoints
 
     private static AnalyticsResponseMetaDto BuildDecisionBoardMeta(
         DecisionBoardAggregateResponseDto response,
-        IReadOnlyList<string> loadWarnings,
+        List<string> loadWarnings,
         string correlationId)
     {
         var meta = response.Meta ?? AnalyticsResponseMetaFactory.Success(
@@ -654,7 +654,7 @@ public static class DecisionBoardEndpoints
             .ToList();
     }
 
-    private static List<DecisionBoardCardDto> BuildActionCards(IReadOnlyList<AnalyticsActionItem> openActions)
+    private static List<DecisionBoardCardDto> BuildActionCards(List<AnalyticsActionItem> openActions)
     {
         if (openActions.Count == 0)
         {
@@ -946,7 +946,7 @@ public static class DecisionBoardEndpoints
             .ToList();
     }
 
-    private static IReadOnlyList<DecisionBoardCardDto> CombineSectionCards(
+    private static List<DecisionBoardCardDto> CombineSectionCards(
         string sectionKey,
         int maxItems,
         params IEnumerable<DecisionBoardCardDto>[] sources)
@@ -967,7 +967,7 @@ public static class DecisionBoardEndpoints
             .ToList();
     }
 
-    private static IReadOnlyList<string> BuildSectionWarnings(IReadOnlyList<DecisionBoardCardDto> cards)
+    private static List<string> BuildSectionWarnings(IReadOnlyList<DecisionBoardCardDto> cards)
         => cards.SelectMany(card => card.WarningCodes).Distinct(StringComparer.Ordinal).Take(8).ToList();
 
     private static IReadOnlyList<DecisionBoardSourceStateDto> BuildSourceStates(
@@ -1028,7 +1028,7 @@ public static class DecisionBoardEndpoints
             null);
     }
 
-    private static IReadOnlyList<string> BuildWarnings(
+    private static List<string> BuildWarnings(
         IReadOnlyList<string> loadWarnings,
         IReadOnlyList<DecisionBoardSourceStateDto> sourceStates,
         string? overallDataQualityStatus,
@@ -1042,7 +1042,7 @@ public static class DecisionBoardEndpoints
             .ToList();
     }
 
-    private static IReadOnlyList<string> BuildMetaWarnings(AnalyticsResponseMetaDto? meta)
+    private static List<string> BuildMetaWarnings(AnalyticsResponseMetaDto? meta)
     {
         if (meta is null)
         {
@@ -1068,7 +1068,7 @@ public static class DecisionBoardEndpoints
         return warnings.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    private static IReadOnlyList<string> BuildRefreshWarnings(AnalyticsRefreshStatusDto? refreshStatus)
+    private static List<string> BuildRefreshWarnings(AnalyticsRefreshStatusDto? refreshStatus)
     {
         if (refreshStatus is null)
         {
@@ -1182,7 +1182,7 @@ public static class DecisionBoardEndpoints
         return warningPenalty + overflowProgress * (1d - warningPenalty);
     }
 
-    private static IReadOnlyList<string> BuildHealthWarningCodes(AnalyticsDataQualityHealthSnapshot? health)
+    private static List<string> BuildHealthWarningCodes(AnalyticsDataQualityHealthSnapshot? health)
     {
         if (health is null)
         {
@@ -1214,7 +1214,7 @@ public static class DecisionBoardEndpoints
         return warnings.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    private static IReadOnlyList<string> BuildSupplierWarningCodes(ScorecardTrustMetadata? trust)
+    private static List<string> BuildSupplierWarningCodes(ScorecardTrustMetadata? trust)
     {
         if (trust is null)
         {
@@ -1303,7 +1303,7 @@ public static class DecisionBoardEndpoints
         return normalized.Date;
     }
 
-    private static IReadOnlyDictionary<string, ActionState> BuildActionStateMap(IReadOnlyList<AnalyticsActionItem> actions)
+    private static Dictionary<string, ActionState> BuildActionStateMap(IReadOnlyList<AnalyticsActionItem> actions)
     {
         var states = new Dictionary<string, ActionState>(StringComparer.OrdinalIgnoreCase);
 

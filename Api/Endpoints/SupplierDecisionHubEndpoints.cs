@@ -18,6 +18,7 @@ public static class SupplierDecisionHubEndpoints
     private const int DefaultPageSize = 25;
     private const int MaxPageSize = 100;
     private const decimal HighConfidenceThreshold = 60m;
+    private static readonly string[] InsufficientSignalReasonCodes = ["insufficient_signal"];
 
     private sealed class SupplierDecisionUnavailableException : Exception
     {
@@ -403,7 +404,7 @@ public static class SupplierDecisionHubEndpoints
                     async () =>
                     {
                         var dataset = await GetSupplierRowsCachedAsync(cache, analyticsConnectionString, activeFilters, ct);
-                        var supplier = dataset.Rows.FirstOrDefault();
+                        var supplier = dataset.Rows.Count > 0 ? dataset.Rows[0] : null;
                         if (supplier is null)
                         {
                             return new SupplierDecisionHubDetailsCacheEntry(false, null);
@@ -980,7 +981,7 @@ public static class SupplierDecisionHubEndpoints
             return null;
         }
 
-        var supplier = dataset.Rows.FirstOrDefault();
+        var supplier = dataset.Rows.Count > 0 ? dataset.Rows[0] : null;
         return supplier is null
             ? null
             : await BuildDetailsResponseAsync(analyticsConnectionString, filters, supplier, ct);
@@ -1030,7 +1031,7 @@ public static class SupplierDecisionHubEndpoints
             ["/analytics/data-quality", "/admin/configuration?panel=workers"]);
     }
 
-    private static IReadOnlyList<AnalyticsReportKpiDto> BuildSupplierDecisionReportKpis(
+    private static List<AnalyticsReportKpiDto> BuildSupplierDecisionReportKpis(
         SummaryResponse summary,
         SupplierRowsDataset dataset)
     {
@@ -1052,7 +1053,7 @@ public static class SupplierDecisionHubEndpoints
         };
     }
 
-    private static IReadOnlyList<AnalyticsReportActionDto> BuildSupplierDecisionReportActions(
+    private static List<AnalyticsReportActionDto> BuildSupplierDecisionReportActions(
         SummaryResponse summary,
         SupplierDecisionHubFilters filters,
         ScorecardTrustMetadata? trust,
@@ -1079,7 +1080,7 @@ public static class SupplierDecisionHubEndpoints
                 "high"));
         }
 
-        var topGrow = summary.TopGrowSuppliers.FirstOrDefault();
+        var topGrow = summary.TopGrowSuppliers.Count > 0 ? summary.TopGrowSuppliers[0] : null;
         if (topGrow is not null)
         {
             actions.Add(new AnalyticsReportActionDto(
@@ -1089,7 +1090,7 @@ public static class SupplierDecisionHubEndpoints
                 "medium"));
         }
 
-        var topRisk = summary.TopRiskSuppliers.FirstOrDefault();
+        var topRisk = summary.TopRiskSuppliers.Count > 0 ? summary.TopRiskSuppliers[0] : null;
         if (topRisk is not null)
         {
             actions.Add(new AnalyticsReportActionDto(
@@ -1114,13 +1115,13 @@ public static class SupplierDecisionHubEndpoints
             .ToList();
     }
 
-    private static IReadOnlyList<AnalyticsReportSectionDto> BuildSupplierDecisionReportSections(
+    private static List<AnalyticsReportSectionDto> BuildSupplierDecisionReportSections(
         SummaryResponse summary,
         SupplierRowsDataset dataset,
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo,
         SupplierDecisionDetailsResponse? details,
-        IReadOnlyList<AnalyticsReportActionDto> actions,
+        List<AnalyticsReportActionDto> actions,
         AnalyticsReportMethodologyDto methodology,
         bool hasData)
     {
@@ -1172,7 +1173,7 @@ public static class SupplierDecisionHubEndpoints
                 summary.KeyInsights.Count,
                 summary.KeyInsights.Count == 0 ? "Nema dostupnih signala za sažetak." : null));
 
-            var selectedSupplier = dataset.Rows.FirstOrDefault();
+            var selectedSupplier = dataset.Rows.Count > 0 ? dataset.Rows[0] : null;
             var supplierRows = (details is not null && selectedSupplier is not null)
                 ? new List<SummarySupplierItem>
                 {
@@ -1380,7 +1381,7 @@ public static class SupplierDecisionHubEndpoints
         return sections;
     }
 
-    private static IReadOnlyList<AnalyticsLegacyReportRowDto> BuildSupplierNegotiationPackRows(
+    private static List<AnalyticsLegacyReportRowDto> BuildSupplierNegotiationPackRows(
         SummaryResponse summary,
         SupplierRowsDataset dataset,
         ScorecardTrustMetadata? trust,
@@ -1576,7 +1577,7 @@ public static class SupplierDecisionHubEndpoints
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo,
         IReadOnlyList<AnalyticsReportKpiDto> kpis,
-        IReadOnlyList<AnalyticsReportActionDto> actions,
+        List<AnalyticsReportActionDto> actions,
         string methodologySummary,
         IReadOnlyList<string> warnings,
         bool hasData,
@@ -1746,7 +1747,7 @@ public static class SupplierDecisionHubEndpoints
         };
     }
 
-    private static IReadOnlyList<string> BuildSupplierDecisionWarnings(
+    private static List<string> BuildSupplierDecisionWarnings(
         AnalyticsResponseMetaDto? meta,
         ScorecardTrustMetadata? trust,
         ReportRefreshInfo? refreshInfo = null)
@@ -1991,7 +1992,7 @@ public static class SupplierDecisionHubEndpoints
 
                 // Do NOT fall back to a wider window when an explicit date range was given
                 // (30d / 90d / 180d period presets all set HasExplicitDateRange = true).
-                // Silently returning 180d data for a 30d request is misleading â€” show empty
+                // Silently returning 180d data for a 30d request is misleading - show empty
                 // results instead so the user knows there are no metrics for that period.
                 if (rows.Count == 0 && !filters.HasExplicitDateRange)
                 {
@@ -2242,7 +2243,7 @@ public static class SupplierDecisionHubEndpoints
                 0m,
                 "insufficient_data",
                 "Nedovoljno podataka za pouzdanu preporuku.",
-                new[] { "insufficient_signal" });
+                InsufficientSignalReasonCodes);
         }
 
         return new RecommendationSignal(

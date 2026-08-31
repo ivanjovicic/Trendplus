@@ -372,7 +372,7 @@ public static class AnalyticsActionsEndpoints
         item.RecommendationLifecycle = RecommendationLifecycleSemantics.Project(item);
     }
 
-    private static IReadOnlyList<AnalyticsActionEvidenceNodeSnapshot>? MapEvidenceNodes(
+    private static AnalyticsActionEvidenceNodeSnapshot[]? MapEvidenceNodes(
         IReadOnlyList<AnalyticsActionEvidenceNodeBody>? nodes)
     {
         if (nodes is null || nodes.Count == 0)

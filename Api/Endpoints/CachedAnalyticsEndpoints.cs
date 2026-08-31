@@ -6009,7 +6009,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static string ResolveDataQualityFromRows(IReadOnlyList<ProductDecisionCenterRowDto> rows)
+    private static string ResolveDataQualityFromRows(List<ProductDecisionCenterRowDto> rows)
     {
         if (rows.Count == 0)
         {
@@ -6310,8 +6310,8 @@ public static class CachedAnalyticsEndpoints
             SchemaVersion = 1,
             RecommendationId = row.RecommendationId,
             RecommendationType = row.RecommendationType,
-            PeriodFromUtc = periodFromUtc.ToString("yyyy-MM-dd"),
-            PeriodToUtc = periodToUtc.ToString("yyyy-MM-dd"),
+            PeriodFromUtc = periodFromUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            PeriodToUtc = periodToUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             DataQualityStatus = row.DataQualityStatus,
             ConfidenceLevel = row.ConfidenceLevel,
             ConfidenceScore = row.ConfidenceScore,
@@ -6327,7 +6327,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static IReadOnlyList<ProductDecisionDecisionTreeNodeDto> BuildProductDecisionDecisionTree(
+    private static List<ProductDecisionDecisionTreeNodeDto> BuildProductDecisionDecisionTree(
         ProductDecisionCenterRowDto row,
         string confidenceLevel,
         IReadOnlyCollection<string> warningCodes,
@@ -6441,7 +6441,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static IReadOnlyList<ProductDecisionEvidenceNodeDto> BuildProductDecisionEvidenceChain(
+    private static List<ProductDecisionEvidenceNodeDto> BuildProductDecisionEvidenceChain(
         ProductDecisionCenterRowDto row,
         string confidenceLevel,
         int? confidenceScore,
@@ -6573,7 +6573,7 @@ public static class CachedAnalyticsEndpoints
         return evidence;
     }
 
-    private static IReadOnlyList<ProductDecisionEvidenceNodeDto> BuildProductDecisionConfidenceBreakdown(
+    private static List<ProductDecisionEvidenceNodeDto> BuildProductDecisionConfidenceBreakdown(
         ProductDecisionCenterRowDto row,
         string confidenceLevel,
         int? confidenceScore,
@@ -6655,7 +6655,7 @@ public static class CachedAnalyticsEndpoints
         return breakdown;
     }
 
-    private static IReadOnlyList<ProductDecisionAlternativeRecommendationDto> BuildProductDecisionAlternativeRecommendations(
+    private static List<ProductDecisionAlternativeRecommendationDto> BuildProductDecisionAlternativeRecommendations(
         ProductDecisionCenterRowDto row,
         string selectedConfidenceLevel,
         int? selectedConfidenceScore,
@@ -6911,7 +6911,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static IReadOnlyList<string> BuildProductDecisionAlternativeReasonCodes(
+    private static List<string> BuildProductDecisionAlternativeReasonCodes(
         string recommendationStatus,
         ProductDecisionCenterRowDto row,
         IReadOnlyCollection<string> warningCodes)
@@ -7211,7 +7211,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static IReadOnlyList<string> BuildProductDecisionWarningCodes(ProductDecisionCenterRowDto row)
+    private static List<string> BuildProductDecisionWarningCodes(ProductDecisionCenterRowDto row)
     {
         var warnings = new List<string>();
 
@@ -7255,7 +7255,7 @@ public static class CachedAnalyticsEndpoints
         return warnings;
     }
 
-    private static IReadOnlyList<string> BuildProductDecisionPrimaryDrivers(
+    private static List<string> BuildProductDecisionPrimaryDrivers(
         ProductDecisionCenterRowDto row,
         IReadOnlyCollection<string> warningCodes)
     {
@@ -7476,7 +7476,7 @@ public static class CachedAnalyticsEndpoints
 
     private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsFromJournalAsync(
         ITrendplusDbContext db,
-        IReadOnlyCollection<int> articleIds,
+        int[] articleIds,
         int? storeId,
         DateTime fromUtc,
         DateTime toExclusiveUtc,
@@ -7484,7 +7484,7 @@ public static class CachedAnalyticsEndpoints
         CancellationToken ct)
     {
         var stats = new Dictionary<int, InventorySignalWindowStats>();
-        if (articleIds.Count == 0)
+        if (articleIds.Length == 0)
         {
             return stats;
         }

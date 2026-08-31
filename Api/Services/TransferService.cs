@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -838,16 +839,16 @@ namespace Api.Services
         {
             if (!string.IsNullOrWhiteSpace(sourceArticle.PLU))
             {
-                var plu = sourceArticle.PLU.Trim().ToLowerInvariant();
+                var plu = sourceArticle.PLU.Trim();
                 return await _db.Artikli
-                    .Where(x => x.IDObjekat == (int?)destinationId && x.PLU != null && x.PLU.ToLower() == plu)
+                    .Where(x => x.IDObjekat == (int?)destinationId && x.PLU != null && string.Equals(x.PLU, plu, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(x => x.Id)
                     .FirstOrDefaultAsync(ct);
             }
 
-            var naziv = (sourceArticle.Naziv ?? string.Empty).Trim().ToLowerInvariant();
+            var naziv = (sourceArticle.Naziv ?? string.Empty).Trim();
             return await _db.Artikli
-                .Where(x => x.IDObjekat == (int?)destinationId && x.Naziv != null && x.Naziv.ToLower() == naziv)
+                .Where(x => x.IDObjekat == (int?)destinationId && x.Naziv != null && string.Equals(x.Naziv, naziv, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Id)
                 .FirstOrDefaultAsync(ct);
         }
@@ -855,7 +856,7 @@ namespace Api.Services
         private async Task<Artikli> GetOrCreateDestinationArticleAsync(
             Transfer transfer,
             Artikli sourceArticle,
-            IDictionary<string, Artikli> destinationByKey,
+            Dictionary<string, Artikli> destinationByKey,
             string userId,
             CancellationToken ct)
         {

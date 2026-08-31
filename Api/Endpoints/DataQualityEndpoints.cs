@@ -15,6 +15,16 @@ namespace Trendplus2.Endpoints;
 
 public static class DataQualityEndpoints
 {
+    private static readonly string[] PilotIntakeRecommendations =
+    [
+        "Povezi dobavljace",
+        "Dopuni nabavne cene",
+        "Proveri artikle bez kategorije",
+        "Proveri redove prodaje bez artikla",
+        "Pokreni osvezavanje analitike",
+        "Proveri import mapu",
+    ];
+
     public static void MapDataQualityEndpoints(this WebApplication app)
     {
         app.MapGet("/api/analytics/data-quality/health", async (
@@ -411,7 +421,7 @@ public static class DataQualityEndpoints
         }
     }
 
-    private static IReadOnlyList<string> BuildPilotIntakeWarnings(
+    private static List<string> BuildPilotIntakeWarnings(
         PilotDataQualityIntakeReportDto report,
         bool recommendationAllowed)
     {
@@ -659,15 +669,7 @@ public static class DataQualityEndpoints
                 RecommendationsBlockedCount: blockedRecommendationsCount,
                 IgnoredRowsCount: ignoredRows,
                 InsufficientSignalCount: insufficientSignalCount),
-            new[]
-            {
-                "Povezi dobavljace",
-                "Dopuni nabavne cene",
-                "Proveri artikle bez kategorije",
-                "Proveri redove prodaje bez artikla",
-                "Pokreni osvezavanje analitike",
-                "Proveri import mapu",
-            },
+            PilotIntakeRecommendations,
             meta);
     }
 
@@ -913,7 +915,7 @@ public static class DataQualityEndpoints
             1);
     }
 
-    private static IReadOnlyList<AnalyticsReportKpiDto> BuildPilotIntakeKpis(PilotDataQualityIntakeReportDto report)
+    private static List<AnalyticsReportKpiDto> BuildPilotIntakeKpis(PilotDataQualityIntakeReportDto report)
     {
         return new List<AnalyticsReportKpiDto>
         {
@@ -926,7 +928,7 @@ public static class DataQualityEndpoints
         };
     }
 
-    private static IReadOnlyList<AnalyticsReportActionDto> BuildPilotIntakeActions(PilotDataQualityIntakeReportDto report)
+    private static List<AnalyticsReportActionDto> BuildPilotIntakeActions(PilotDataQualityIntakeReportDto report)
     {
         return report.RecommendedActions
             .Select(action => new AnalyticsReportActionDto(
@@ -938,9 +940,9 @@ public static class DataQualityEndpoints
             .ToList();
     }
 
-    private static IReadOnlyList<AnalyticsReportSectionDto> BuildPilotIntakeSections(
+    private static List<AnalyticsReportSectionDto> BuildPilotIntakeSections(
         PilotDataQualityIntakeReportDto report,
-        IReadOnlyList<AnalyticsReportActionDto> actions,
+        List<AnalyticsReportActionDto> actions,
         AnalyticsReportMethodologyDto methodology,
         bool hasData)
     {

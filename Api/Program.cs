@@ -76,11 +76,12 @@ try
 
     builder.Host.UseSerilog();
 
+    var reloadOnChange = builder.Environment.IsDevelopment();
     builder.Configuration
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-        .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true)
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: reloadOnChange)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reloadOnChange)
+        .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: reloadOnChange)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: reloadOnChange)
         .AddEnvironmentVariables();
 
     Console.WriteLine("Configuration loaded");
@@ -283,8 +284,11 @@ try
     Console.WriteLine($"AnalyticsConnection configured target: {AnalyticsConnectionResolver.SummarizeConnection(configuredAnalyticsConnection)}");
     Console.WriteLine($"AnalyticsConnection resolved target: {AnalyticsConnectionResolver.SummarizeConnection(analyticsConnection)}");
     Console.WriteLine($"AnalyticsConnection source: {analyticsConnectionResolution.Source} UsedFallback={analyticsConnectionResolution.UsedFallback}");
-    Console.WriteLine(
-        $"Npgsql tuning: OpenTimeout={dbOpenTimeoutSeconds}s CommandTimeout={dbCommandTimeoutSeconds}s KeepAlive={dbKeepAliveSeconds}s MaxPoolSize={(dbMaxPoolSize?.ToString() ?? "default")} MinPoolSize={(dbMinPoolSize?.ToString() ?? "default")} IdleLifetime={(dbConnectionIdleLifetimeSeconds?.ToString() ?? "default")}s PruningInterval={(dbConnectionPruningIntervalSeconds?.ToString() ?? "default")}s EfRetryEnabled={enableEfRetryOnFailure} EfRetryMaxCount={efRetryMaxCount} EfRetryMaxDelay={efRetryMaxDelaySeconds}s");
+    static string FormatOptionalInt(int? value)
+        => value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "default";
+
+    Console.WriteLine(FormattableString.Invariant(
+        $"Npgsql tuning: OpenTimeout={dbOpenTimeoutSeconds}s CommandTimeout={dbCommandTimeoutSeconds}s KeepAlive={dbKeepAliveSeconds}s MaxPoolSize={FormatOptionalInt(dbMaxPoolSize)} MinPoolSize={FormatOptionalInt(dbMinPoolSize)} IdleLifetime={FormatOptionalInt(dbConnectionIdleLifetimeSeconds)}s PruningInterval={FormatOptionalInt(dbConnectionPruningIntervalSeconds)}s EfRetryEnabled={enableEfRetryOnFailure} EfRetryMaxCount={efRetryMaxCount} EfRetryMaxDelay={efRetryMaxDelaySeconds}s"));
 
     // DbContext
     builder.Services.AddDbContextFactory<TrendplusDbContext>(options =>
@@ -828,14 +832,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     string ResolveRuntimeCommitSha()
     {
-        var commitSha = new[]
-        {
-            "RENDER_GIT_COMMIT",
-            "GIT_COMMIT_SHA",
-            "SOURCE_VERSION",
-            "Build:CommitSha",
-            "BUILD_COMMIT_SHA"
-        }
+        var commitSha = RuntimeMetadataKeys.CommitShaKeys
         .Select(key => builder.Configuration[key])
         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
@@ -844,12 +841,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 
     string ResolveRuntimeBuildTimeUtc()
     {
-        var rawBuildTime = new[]
-        {
-            builder.Configuration["BUILD_TIME_UTC"],
-            builder.Configuration["Build:TimeUtc"],
-            builder.Configuration["Runtime:BuildTimeUtc"]
-        }
+        var rawBuildTime = RuntimeMetadataKeys.BuildTimeKeys
+        .Select(key => builder.Configuration[key])
         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
         if (!string.IsNullOrWhiteSpace(rawBuildTime))
@@ -1282,3 +1275,22 @@ finally
 
 // Make Program class public for WebApplicationFactory in tests
 public partial class Program { }
+
+internal static class RuntimeMetadataKeys
+{
+    internal static readonly string[] CommitShaKeys =
+    [
+        "RENDER_GIT_COMMIT",
+        "GIT_COMMIT_SHA",
+        "SOURCE_VERSION",
+        "Build:CommitSha",
+        "BUILD_COMMIT_SHA"
+    ];
+
+    internal static readonly string[] BuildTimeKeys =
+    [
+        "BUILD_TIME_UTC",
+        "Build:TimeUtc",
+        "Runtime:BuildTimeUtc"
+    ];
+}

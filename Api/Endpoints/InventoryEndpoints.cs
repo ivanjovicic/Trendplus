@@ -934,12 +934,12 @@ public static class InventoryEndpoints
 
     private static async Task<Dictionary<int, int>> LoadSoldUnitsByArticleAsync(
         ITrendplusDbContext db,
-        IReadOnlyCollection<int> articleIds,
+        int[] articleIds,
         int? storeId,
         int lookbackDays,
         CancellationToken ct)
     {
-        if (articleIds.Count == 0)
+        if (articleIds.Length == 0)
         {
             return [];
         }
@@ -966,19 +966,19 @@ public static class InventoryEndpoints
 
     private static async Task<Dictionary<int, InventorySignalWindowStats>> LoadInventorySignalWindowStatsAsync(
         IAnalyticsDbContext analyticsDb,
-        IReadOnlyCollection<int> articleIds,
+        int[] articleIds,
         int? storeId,
         int lookbackDays,
         CancellationToken ct)
     {
-        if (articleIds.Count == 0)
+        if (articleIds.Length == 0)
         {
             return [];
         }
 
         var fromDate = DateTime.UtcNow.AddDays(-Math.Max(lookbackDays, 1));
         var inboundTypes = TipPromeneConstants.UlazTypes.ToArray();
-        var stats = new Dictionary<int, InventorySignalWindowStats>(articleIds.Count);
+        var stats = new Dictionary<int, InventorySignalWindowStats>(articleIds.Length);
 
         foreach (var batch in articleIds.Distinct().Chunk(MovementStatsBatchSize))
         {
@@ -1389,8 +1389,8 @@ public static class InventoryEndpoints
         string? toStoreName,
         int suggestedQty,
         decimal estimatedValue,
-        IReadOnlyDictionary<int, int> soldUnitsByArticle,
-        IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
+        Dictionary<int, int> soldUnitsByArticle,
+        Dictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
         decisions.TryGetValue(key, out var decision);
         var signalEvidence = ComputeInventorySignalEvidence(item,
@@ -1675,7 +1675,7 @@ public static class InventoryEndpoints
         };
     }
 
-    private static string? ResolveLookup(IReadOnlyDictionary<int, string> values, int? id)
+    private static string? ResolveLookup(Dictionary<int, string> values, int? id)
         => id.HasValue && values.TryGetValue(id.Value, out var value) ? value : null;
 
     private static DocumentGenerationRequest BuildDocumentRequest(

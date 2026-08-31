@@ -1,3 +1,4 @@
+using System.Globalization;
 using Api.Models;
 using Api.Services;
 using Infrastructure.DbContexts;
@@ -231,7 +232,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                     foreach (var a in artikli)
                     {
-                        var sku = !string.IsNullOrWhiteSpace(a.PLU) ? a.PLU.Trim() : a.Id.ToString();
+                        var sku = !string.IsNullOrWhiteSpace(a.PLU) ? a.PLU.Trim() : a.Id.ToString(CultureInfo.InvariantCulture);
                         var supplierName = ResolveSupplierName(a.SupplierId, suppliers);
                         var seasonName = ResolveSeasonName(a.SeasonId, seasons);
                         var footwearType = ResolveFootwearType(a.FootwearTypeId, footwearTypes);
