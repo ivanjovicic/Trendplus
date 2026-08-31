@@ -65,7 +65,7 @@ public static class AdminDataSourceEndpoints
             .Produces(StatusCodes.Status400BadRequest);
 
         group.MapPost("/{profileName}/mapping-preview", PreviewMapping)
-            .WithName("PreviewDataSourceMapping")
+            .WithName("PreviewAdminDataSourceMapping")
             .WithSummary("Preview a bounded mapping from a named source to a canonical entity")
             .RequireRateLimiting("db-heavy")
             .Produces<SourceMappingPreviewResponse>(StatusCodes.Status200OK)
