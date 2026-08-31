@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
 Main commit SHA: 40dd850bca7670740aab29290b3994213d5bdf82
-Main verification: pending - await fresh origin/main verification after push
-Evidence state: pending
+Main verification: passed - origin/main contains 40dd850bca7670740aab29290b3994213d5bdf82 as an ancestor (verified after push on 2026-08-31)
+Evidence state: synchronized
 
 ## What was done
 - Audited the current STAB queue state after the owner requested the next unfinished/promotion path.
@@ -44,4 +44,4 @@ Evidence state: pending
 - This is a metadata/evidence repair only; it does not unlock any blocked production authority or worker access by itself.
 
 ## Next
-- Push the repair, verify that `origin/main` contains `40dd850bca7670740aab29290b3994213d5bdf82`, then keep `STAB16` visibly blocked.
+- `STAB16` remains visibly BLOCKED; there is still no current READY prompt until provider worker access and the read-only audit connection exist.
