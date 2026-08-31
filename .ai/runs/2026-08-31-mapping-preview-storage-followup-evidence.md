@@ -4,9 +4,9 @@ Date: 2026-08-31
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 80a2888bd4420a403a2d5cd432fca3373b8f8021
+Main verification: pending until push
+Evidence state: pending until push
 
 ## What was done
 - Added an isolated in-process regression test that inspects both public and admin mapping-preview endpoint metadata.
