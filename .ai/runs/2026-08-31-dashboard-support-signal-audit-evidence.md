@@ -7,8 +7,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: 1c9a3b87dc1aec4e7181a25d06ab8f671692e24f
-Main verification: pending push verification
-Evidence state: pending
+Main verification: passed - `origin/main` contains `1c9a3b87dc1aec4e7181a25d06ab8f671692e24f`; audit evidence follow-up delivered in `3e5828b1634f09c0e6f5a48ddc38d862b0d2da48`
+Evidence state: synchronized
 
 ## What was done
 
