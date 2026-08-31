@@ -4,8 +4,8 @@ Date: 2026-08-31
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: 80a2888bd4420a403a2d5cd432fca3373b8f8021
-Main verification: passed - origin/main contains 80a2888bd4420a403a2d5cd432fca3373b8f8021
+Main commit SHA: 80a2888bdadcab2e53272b8b65750cad521f38d6
+Main verification: passed - origin/main contains 80a2888bdadcab2e53272b8b65750cad521f38d6
 Evidence state: synchronized
 
 ## What was done
