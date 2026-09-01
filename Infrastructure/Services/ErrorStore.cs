@@ -1,15 +1,19 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
 using Domain.Model;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 public class ErrorStore : IErrorStore
 {
     private readonly TrendplusDbContext _db;
+    private readonly IHostEnvironment? _environment;
 
-    public ErrorStore(TrendplusDbContext db)
+    public ErrorStore(TrendplusDbContext db, IHostEnvironment? environment = null)
     {
         _db = db;
+        _environment = environment;
     }
 
     public async Task<IReadOnlyList<ErrorRecord>> GetAllAsync(
@@ -67,6 +71,11 @@ public class ErrorStore : IErrorStore
         ErrorRecord error,
         CancellationToken cancellationToken = default)
     {
+        if (!OperationalLogPersistencePolicy.ShouldPersist(_environment))
+        {
+            return;
+        }
+
         _db.ErrorRecords.Add(error);
         await _db.SaveChangesAsync(cancellationToken);
     }

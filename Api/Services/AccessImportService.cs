@@ -15,9 +15,11 @@ using Domain.Model;
 using Domain.Model.Povracaj;
 using Infrastructure.DbContexts;
 using Infrastructure.Configuration;
+using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using NpgsqlTypes;
@@ -338,6 +340,7 @@ using NpgsqlTypes;
     private readonly IFileStorage? _fileStorage;
     private readonly string _storageProviderName;
     private readonly TimeSpan _storageUploadTimeout;
+    private readonly IHostEnvironment? _environment;
     private readonly string _incrementalLeaseOwner = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
     private ActiveIncrementalTableScope? _activeIncrementalScope;
     private readonly Dictionary<string, IncrementalTableSnapshot> _incrementalTableSnapshots = new(StringComparer.OrdinalIgnoreCase);
@@ -378,7 +381,8 @@ using NpgsqlTypes;
         IAccessImportJobQueue? jobQueue = null,
         IAccessImportCursorRepository? cursorRepository = null,
         IFileStorage? fileStorage = null,
-        IOptions<StorageOptions>? storageOptions = null)
+        IOptions<StorageOptions>? storageOptions = null,
+        IHostEnvironment? environment = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
@@ -393,6 +397,7 @@ using NpgsqlTypes;
         var effectiveStorageOptions = storageOptions?.Value ?? new StorageOptions();
         _storageProviderName = NormalizeStorageProviderName(effectiveStorageOptions.Provider);
         _storageUploadTimeout = TimeSpan.FromSeconds(Math.Max(5, effectiveStorageOptions.UploadTimeoutSeconds));
+        _environment = environment;
     }
 
     private IAccessDataReaderSession CreateReadSession(string accessFilePath)
@@ -9876,6 +9881,9 @@ using NpgsqlTypes;
     private void AddAccessImportLogEntry(long batchId, string tableName, int rowIndex, string severity, string message, string? sourceRowJson = null)
     {
         if (batchId <= 0)
+            return;
+
+        if (!OperationalLogPersistencePolicy.ShouldPersist(_environment))
             return;
 
         _trendDb.AccessImportLogs.Add(new AccessImportLog

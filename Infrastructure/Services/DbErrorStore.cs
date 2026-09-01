@@ -6,6 +6,7 @@ using Application.Common.Interfaces;
 using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services
@@ -21,11 +22,16 @@ namespace Infrastructure.Services
 
         private readonly IDbContextFactory<TrendplusDbContext> _dbFactory;
         private readonly ILogger<DbErrorStore> _logger;
+        private readonly IHostEnvironment? _environment;
 
-        public DbErrorStore(IDbContextFactory<TrendplusDbContext> dbFactory, ILogger<DbErrorStore> logger)
+        public DbErrorStore(
+            IDbContextFactory<TrendplusDbContext> dbFactory,
+            ILogger<DbErrorStore> logger,
+            IHostEnvironment? environment = null)
         {
             _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment;
         }
 
         public async Task<int> GetCountAsync(
@@ -75,6 +81,11 @@ namespace Infrastructure.Services
 
         public async Task SaveAsync(ErrorRecord record, CancellationToken cancellationToken)
         {
+            if (!OperationalLogPersistencePolicy.ShouldPersist(_environment))
+            {
+                return;
+            }
+
             try
             {
                 using var db = await _dbFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);

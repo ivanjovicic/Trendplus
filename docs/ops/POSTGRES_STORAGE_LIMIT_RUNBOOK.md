@@ -34,6 +34,16 @@ LIMIT 20;
 5. Prefer the provider-supported capacity increase or an approved retention/archive operation. Do not delete `ErrorRecords`, documents, snapshots or customer data without backup, retention and owner approval.
 6. After capacity is restored, verify `/health`, `/ready`, `/api/runtime/version` and the affected endpoint. Then confirm that a new error can be persisted and that the original failed operation has an explicit retry/recovery state.
 
+## Development Guardrail
+
+While we are still developing and testing outside production, durable operational writes are intentionally suppressed by default for:
+
+- `ErrorRecords`
+- access import row logs
+- access import batch log buffers
+
+This keeps the database smaller during local iterations and test runs. Production still persists these records normally.
+
 ## Application Boundary
 
 `DbErrorStore.SaveAsync` is a best-effort diagnostic path and must not turn an existing request failure into a second unhandled 500. A successful API response must never be inferred from the absence of a persisted error record. The routing fix for duplicate `mapping-preview` endpoint names is independent of SQLSTATE `53100` and does not resolve provider capacity.

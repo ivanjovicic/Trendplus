@@ -1,7 +1,9 @@
 using Api.Models;
 using Domain.Model;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace Api.Services;
@@ -33,17 +35,27 @@ public sealed class BatchLogService : IBatchLogService
 {
     private readonly TrendplusDbContext _db;
     private readonly ILogger<BatchLogService> _logger;
+    private readonly IHostEnvironment? _environment;
     private readonly List<AccessImportLog> _buffer = new(256);
     private readonly object _lock = new();
 
-    public BatchLogService(TrendplusDbContext db, ILogger<BatchLogService> logger)
+    public BatchLogService(
+        TrendplusDbContext db,
+        ILogger<BatchLogService> logger,
+        IHostEnvironment? environment = null)
     {
         _db = db;
         _logger = logger;
+        _environment = environment;
     }
 
     public void Log(long batchId, string tableName, int rowIndex, string severity, string message, string? sourceRowJson = null)
     {
+        if (!OperationalLogPersistencePolicy.ShouldPersist(_environment))
+        {
+            return;
+        }
+
         var entry = new AccessImportLog
         {
             BatchId = batchId,
@@ -63,6 +75,11 @@ public sealed class BatchLogService : IBatchLogService
 
     public async Task FlushAsync(CancellationToken ct = default)
     {
+        if (!OperationalLogPersistencePolicy.ShouldPersist(_environment))
+        {
+            return;
+        }
+
         List<AccessImportLog> snapshot;
         lock (_lock)
         {
