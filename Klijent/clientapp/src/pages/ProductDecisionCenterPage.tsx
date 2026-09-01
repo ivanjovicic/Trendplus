@@ -1407,7 +1407,7 @@ export default function ProductDecisionCenterPage() {
         />
       </header>
 
-      {!hasBlockingError ? (
+      {!hideKpiChrome ? (
       <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>

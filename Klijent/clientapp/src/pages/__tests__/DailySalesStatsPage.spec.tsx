@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { rest } from "msw";
+import { rest } from "../../mocks/mswCompat";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { server } from "../../mocks/server";
 import DailySalesStatsPage from "../DailySalesStatsPage";

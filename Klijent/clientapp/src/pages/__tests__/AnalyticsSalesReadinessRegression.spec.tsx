@@ -5,7 +5,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
-import { rest } from "msw";
+import { rest } from "../../mocks/mswCompat";
 import * as analyticsApi from "../../services/analyticsApi";
 import AnalyticsDashboard from "../AnalyticsDashboard";
 import DataQualityPage from "../DataQualityPage";

@@ -21,7 +21,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="3.10.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
-    <PackageReference Include="Testcontainers.MsSql" Version="3.10.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
   </ItemGroup>
 

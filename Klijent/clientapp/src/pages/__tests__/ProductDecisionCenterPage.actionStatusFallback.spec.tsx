@@ -148,7 +148,7 @@ describe("ProductDecisionCenterPage action status fallback", () => {
   });
 
   it("renders the shared empty state and hides KPI cards when no candidates are returned", async () => {
-    getProductDecisionCenterMock.mockResolvedValueOnce({
+    getProductDecisionCenterMock.mockResolvedValue({
       rows: [],
       summary: {
         replenishCount: 0,

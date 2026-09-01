@@ -94,7 +94,6 @@ describe("SupplierSalesStatsPage premium controls", () => {
         missingCostRevenueSharePct: 0,
         unknownSupplierRevenueSharePct: 0,
       },
-      meta: { success: true, dataQualityStatus: "good" },
     } as never);
   });
 
@@ -156,7 +155,6 @@ describe("SupplierSalesStatsPage premium controls", () => {
         missingCostRevenueSharePct: 0,
         unknownSupplierRevenueSharePct: 0,
       },
-      meta: { success: true, emptyReason: "no_supplier_sales", dataQualityStatus: "insufficient_data" },
     } as never);
 
     render(
@@ -235,7 +233,6 @@ describe("SupplierSalesStatsPage premium controls", () => {
         missingCostRevenueSharePct: 0,
         unknownSupplierRevenueSharePct: 0,
       },
-      meta: { success: true, emptyReason: "no_supplier_sales", dataQualityStatus: "insufficient_data" },
     } as never);
 
     render(

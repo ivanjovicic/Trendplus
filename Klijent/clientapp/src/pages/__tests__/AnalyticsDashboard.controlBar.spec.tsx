@@ -1,7 +1,7 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { rest } from "msw";
+import { rest } from "../../mocks/mswCompat";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
 import * as analyticsApi from "../../services/analyticsApi";

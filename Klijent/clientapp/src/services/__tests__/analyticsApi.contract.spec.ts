@@ -1,4 +1,4 @@
-import { rest } from "msw";
+import { rest } from "../../mocks/mswCompat";
 import { describe, expect, it } from "vitest";
 import { server } from "../../mocks/server";
 import {

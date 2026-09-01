@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { rest } from "msw";
+import { rest } from "../../mocks/mswCompat";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../../components/Toast";
 import { PingControlProvider } from "../../context/PingControlContext";
