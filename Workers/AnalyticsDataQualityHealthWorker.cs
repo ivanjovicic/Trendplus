@@ -1,4 +1,4 @@
-﻿using Infrastructure.Configuration;
+using Infrastructure.Configuration;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.DependencyInjection;
@@ -143,78 +143,7 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
 
             try
             {
-                await using var scope = _scopeFactory.CreateAsyncScope();
-                var service = scope.ServiceProvider.GetRequiredService<AnalyticsDataQualityHealthService>();
-                var historyService = scope.ServiceProvider.GetRequiredService<AnalyticsDataQualityHistoryService>();
-                var snapshot = await service.CaptureAsync(_options.LookbackDays, null, stoppingToken);
-                await historyService.SaveSnapshotAsync(snapshot, null, stoppingToken);
-
-                try
-                {
-                    var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
-                    if (cacheAdmin is not null)
-                    {
-                        var cacheState = await cacheAdmin.ClearFamiliesAsync(
-                            [AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily],
-                            stoppingToken);
-                        _logger.LogInformation(
-                            "Data quality refresh invalidated cache families {Families}. ReportCacheVersion={ReportCacheVersion} LastReportClearAtUtc={LastReportCacheClearAtUtc:O}",
-                            new[] { AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ReportsFamily },
-                            cacheState.ReportCacheVersion,
-                            cacheState.LastReportCacheClearAtUtc);
-                    }
-                }
-                catch (Exception cacheEx)
-                {
-                    _logger.LogWarning(cacheEx, "Data quality refresh cache invalidation failed.");
-                }
-
-                var summary =
-                    $"Lookback={snapshot.LookbackDays}d | OrphanArticles={snapshot.OrphanArticleCount} | " +
-                    $"MissingCostRevenueShare={snapshot.MissingCostRevenueSharePct:0.##}% | " +
-                    $"UnknownSupplierRevenueShare={snapshot.UnknownSupplierRevenueSharePct:0.##}%";
-
-                var hasWarnings =
-                    snapshot.OrphanArticleCount >= _options.WarningOrphanArticleCount
-                    || snapshot.MissingCostRevenueSharePct >= _options.WarningMissingCostRevenueSharePct
-                    || snapshot.UnknownSupplierRevenueSharePct >= _options.WarningUnknownSupplierRevenueSharePct;
-
-                if (hasWarnings)
-                {
-                    _logger.LogWarning(
-                        "Analytics data-quality health warning. {Summary} Window={WindowFrom:yyyy-MM-dd}..{WindowTo:yyyy-MM-dd}",
-                        summary,
-                        snapshot.WindowFromUtc,
-                        snapshot.WindowToUtc);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "Analytics data-quality health OK. {Summary} Window={WindowFrom:yyyy-MM-dd}..{WindowTo:yyyy-MM-dd}",
-                        summary,
-                        snapshot.WindowFromUtc,
-                        snapshot.WindowToUtc);
-                }
-
-                _healthService.ReportHealthy(WorkerName, summary);
-                if (hasWarnings)
-                {
-                    await UseRefreshRunRecorderAsync(recorder => recorder.MarkPartialAsync(
-                        runId,
-                        ["analytics_data_quality_history"],
-                        [],
-                        $"Data quality warning: {summary}",
-                        correlationId,
-                        stoppingToken));
-                }
-                else
-                {
-                    await UseRefreshRunRecorderAsync(recorder => recorder.MarkSucceededAsync(
-                        runId,
-                        ["analytics_data_quality_history"],
-                        correlationId,
-                        stoppingToken));
-                }
+                await RefreshDataQualityAsync(runId, correlationId, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -257,6 +186,95 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         _logger.LogInformation("{WorkerName} stopped.", WorkerName);
     }
 
+    private async Task RefreshDataQualityAsync(long? runId, string? correlationId, CancellationToken stoppingToken)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AnalyticsDataQualityHealthService>();
+        var historyService = scope.ServiceProvider.GetRequiredService<AnalyticsDataQualityHistoryService>();
+        var snapshot = await service.CaptureAsync(_options.LookbackDays, null, stoppingToken);
+        await historyService.SaveSnapshotAsync(snapshot, null, stoppingToken);
+
+        try
+        {
+            var cacheAdmin = scope.ServiceProvider.GetService<AnalyticsCacheAdminService>();
+            if (cacheAdmin is not null)
+            {
+                string[] invalidatedFamilies =
+                [
+                    AnalyticsCachePolicy.DashboardFamily,
+                    AnalyticsCachePolicy.ProductDecisionCenterFamily,
+                    AnalyticsCachePolicy.SupplierDecisionHubFamily,
+                    AnalyticsCachePolicy.InventoryFamily,
+                    AnalyticsCachePolicy.DataQualityFamily,
+                    AnalyticsCachePolicy.ReportsFamily
+                ];
+
+                var cacheState = await cacheAdmin.ClearFamiliesAsync(
+                    invalidatedFamilies,
+                    stoppingToken);
+                _logger.LogInformation(
+                    "Data quality refresh invalidated cache families {Families}. ReportCacheVersion={ReportCacheVersion} LastReportCacheClearAtUtc={LastReportCacheClearAtUtc:O}",
+                    invalidatedFamilies,
+                    cacheState.ReportCacheVersion,
+                    cacheState.LastReportCacheClearAtUtc);
+            }
+        }
+        catch (Exception cacheEx)
+        {
+            _logger.LogWarning(cacheEx, "Data quality refresh cache invalidation failed.");
+        }
+
+        var summary =
+            $"Lookback={snapshot.LookbackDays}d | OrphanArticles={snapshot.OrphanArticleCount} | " +
+            $"MissingCostRevenueShare={snapshot.MissingCostRevenueSharePct:0.##}% | " +
+            $"UnknownSupplierRevenueShare={snapshot.UnknownSupplierRevenueSharePct:0.##}%";
+
+        var hasWarnings =
+            snapshot.OrphanArticleCount >= _options.WarningOrphanArticleCount
+            || snapshot.MissingCostRevenueSharePct >= _options.WarningMissingCostRevenueSharePct
+            || snapshot.UnknownSupplierRevenueSharePct >= _options.WarningUnknownSupplierRevenueSharePct;
+
+        if (hasWarnings)
+        {
+            _logger.LogWarning(
+                "Analytics data-quality health warning. {Summary} Window={WindowFrom:yyyy-MM-dd}..{WindowTo:yyyy-MM-dd}",
+                summary,
+                snapshot.WindowFromUtc,
+                snapshot.WindowToUtc);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Analytics data-quality health OK. {Summary} Window={WindowFrom:yyyy-MM-dd}..{WindowTo:yyyy-MM-dd}",
+                summary,
+                snapshot.WindowFromUtc,
+                snapshot.WindowToUtc);
+        }
+
+        _healthService.ReportHealthy(WorkerName, summary);
+        if (runId.HasValue)
+        {
+            if (hasWarnings)
+            {
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkPartialAsync(
+                    runId,
+                    ["analytics_data_quality_history"],
+                    [],
+                    $"Data quality warning: {summary}",
+                    correlationId,
+                    stoppingToken));
+            }
+            else
+            {
+                await UseRefreshRunRecorderAsync(recorder => recorder.MarkSucceededAsync(
+                    runId,
+                    ["analytics_data_quality_history"],
+                    correlationId,
+                    stoppingToken));
+            }
+        }
+    }
+
     private async Task<T> UseRefreshRunRecorderAsync<T>(Func<AnalyticsRefreshRunRecorder, Task<T>> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
@@ -271,5 +289,3 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
         await action(recorder);
     }
 }
-
-

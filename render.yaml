@@ -23,6 +23,12 @@ services:
         value: "false"
       - key: AccessImport__RegisterWorkerInWebProcess
         value: "false"
+      - key: AccessImport__ArchiveDeletedRows
+        value: "false"
+      - key: AccessImport__ArchiveDeletedRowsMaxBytes
+        value: "16777216"
+      - key: AccessImport__ArchiveDeletedRowsMaxRows
+        value: "10000"
       - key: Caching__UseRedis
         value: "false"
       - key: AnalyticsPrewarm__Enabled
@@ -86,6 +92,12 @@ services:
         value: "true"
       - key: AccessImport__RegisterWorkerInWebProcess
         value: "false"
+      - key: AccessImport__ArchiveDeletedRows
+        value: "false"
+      - key: AccessImport__ArchiveDeletedRowsMaxBytes
+        value: "16777216"
+      - key: AccessImport__ArchiveDeletedRowsMaxRows
+        value: "10000"
       - key: Caching__UseRedis
         value: "false"
       - key: AnalyticsPrewarm__Enabled

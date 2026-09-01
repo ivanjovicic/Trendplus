@@ -3365,8 +3365,14 @@ using NpgsqlTypes;
         var storeDeleted = 0;
         var summaryDeleted = 0;
 
-        var trendArchiveEnabled = true;
-        var analyticsArchiveEnabled = true;
+        var trendArchiveEnabled = _options.ArchiveDeletedRows;
+        var analyticsArchiveEnabled = _options.ArchiveDeletedRows;
+
+        if (_options.ArchiveDeletedRows)
+        {
+            await EnsureArchiveBudgetAsync(_trendDb, "trendplus", ct);
+            await EnsureArchiveBudgetAsync(_analyticsDb, "analytics", ct);
+        }
 
         async Task ArchiveTrendAsync(string tableName, string sql, params object[] parameters)
         {
@@ -3788,6 +3794,29 @@ using NpgsqlTypes;
                 tableName,
                 operation);
             return false;
+        }
+    }
+
+    private async Task EnsureArchiveBudgetAsync(
+        DbContext dbContext,
+        string scope,
+        CancellationToken ct)
+    {
+        var snapshot = await Api.Services.ArchiveStorageBudgetGuard.ReadAsync(dbContext, ct);
+        if (snapshot is null)
+            return;
+
+        var decision = Api.Services.ArchiveStorageBudgetGuard.Evaluate(
+            snapshot,
+            _options.ArchiveDeletedRowsMaxBytes,
+            _options.ArchiveDeletedRowsMaxRows);
+        if (!decision.Allowed)
+        {
+            _logger.LogWarning(
+                "Archive budget preflight blocked batch deletion. Scope: {Scope}. Reason: {Reason}.",
+                scope,
+                decision.Reason);
+            throw new InvalidOperationException($"Archive storage budget blocked cleanup for {scope}: {decision.Reason}.");
         }
     }
 

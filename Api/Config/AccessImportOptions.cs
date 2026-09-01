@@ -26,6 +26,10 @@ public sealed class AccessImportOptions
     public bool EnableFastWritePath { get; set; } = true;
     public bool PreventConcurrentRuns { get; set; } = true;
     public bool SkipInvalidForeignKeys { get; set; } = true;
+    // Deleted-row rollback archives are opt-in so routine cleanup cannot grow storage silently.
+    public bool ArchiveDeletedRows { get; set; }
+    public long ArchiveDeletedRowsMaxBytes { get; set; } = 16 * 1024 * 1024;
+    public long ArchiveDeletedRowsMaxRows { get; set; } = 10000;
     // If true, the importer will attempt to insert missing `prodaja_zaglavlje` rows
     // found in the Access file before importing `prodaja_stavke`. Default: false (opt-in).
     public bool AutoInsertMissingParents { get; set; } = false;

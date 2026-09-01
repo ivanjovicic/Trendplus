@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Application.Artikli.Common.Interfaces;
+using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
@@ -8,73 +9,63 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Workers;
 using Xunit;
 
 namespace Api.Tests;
 
-public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresContainerFixture>
+public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<PostgresContainerFixture>
 {
     private readonly PostgresContainerFixture _fixture;
 
-    public AnalyticsAggregationWorkerTests(PostgresContainerFixture fixture)
+    public AnalyticsDataQualityHealthWorkerTests(PostgresContainerFixture fixture)
     {
         _fixture = fixture;
     }
 
     [Trait("Category", "Integration")]
     [Fact]
-    public async Task RefreshAnalyticsAsync_WhenSuccessful_InvalidatesDashboardAndAggregateBackedPrefixes()
+    public async Task RefreshDataQualityAsync_WhenSuccessful_InvalidatesTrustBearingFamiliesAndReports()
     {
         if (!_fixture.IsAvailable)
         {
             return;
         }
 
-        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_analytics_agg_{Guid.NewGuid():N}");
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_dq_worker_{Guid.NewGuid():N}");
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
 
-        await using var harness = CreateHarness(connectionString!, useInMemoryDatabase: false);
+        await using (var db = new TrendplusDbContext(
+            new DbContextOptionsBuilder<TrendplusDbContext>()
+                .UseNpgsql(connectionString!)
+                .Options))
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
 
-        await InvokeRefreshAnalyticsAsync(harness.Worker);
+        await using var harness = CreateHarness(connectionString!);
+
+        await InvokeRefreshDataQualityAsync(harness.Worker);
 
         Assert.Equal(ExpectedRemovedPrefixes(), harness.Cache.RemovedPrefixes);
 
         var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
-        Assert.Equal("dashboard,supplier-decision-hub", state.LastClearFamily);
+        Assert.Equal("dashboard,product-decision-center,supplier-decision-hub,inventory,data-quality,reports", state.LastClearFamily);
         Assert.NotNull(state.LastClearAtUtc);
         Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
-        Assert.Null(state.LastReportCacheClearAtUtc);
-        Assert.Equal(1, state.ReportCacheVersion);
+        Assert.NotNull(state.LastReportCacheClearAtUtc);
+        Assert.True(state.ReportCacheVersion >= 2);
     }
 
     [Trait("Category", "Unit")]
     [Fact]
-    public async Task RefreshAnalyticsAsync_WhenConnectionStringMissing_DoesNotInvalidateCache()
-    {
-        await using var harness = CreateHarness(connectionString: null, useInMemoryDatabase: true);
-
-        await InvokeRefreshAnalyticsAsync(harness.Worker);
-
-        Assert.Empty(harness.Cache.RemovedPrefixes);
-
-        var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
-        Assert.Null(state.LastClearAtUtc);
-        Assert.Null(state.LastClearFamily);
-        Assert.Null(state.LastAnalyticsCacheClearAtUtc);
-        Assert.Null(state.LastReportCacheClearAtUtc);
-        Assert.Equal(1, state.ReportCacheVersion);
-    }
-
-    [Trait("Category", "Unit")]
-    [Fact]
-    public async Task RefreshAnalyticsAsync_WhenRefreshFails_DoesNotInvalidateCache()
+    public async Task RefreshDataQualityAsync_WhenCaptureFails_DoesNotInvalidateCache()
     {
         await using var harness = CreateHarness(
-            connectionString: "Host=127.0.0.1;Port=1;Database=trendplus_agg_failure;Username=invalid;Password=invalid;Timeout=1;Command Timeout=1;Pooling=false",
-            useInMemoryDatabase: false);
+            "Host=127.0.0.1;Port=1;Database=trendplus_dq_worker_failure;Username=invalid;Password=invalid;Timeout=1;Command Timeout=1;Pooling=false");
 
-        await InvokeRefreshAnalyticsAsync(harness.Worker);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeRefreshDataQualityAsync(harness.Worker));
 
         Assert.Empty(harness.Cache.RemovedPrefixes);
 
@@ -89,29 +80,24 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     private static List<string> ExpectedRemovedPrefixes() =>
     [
         AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
+        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ProductDecisionCenterFamily),
         AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.SupplierDecisionHubFamily),
-        AnalyticsCacheKeys.DashboardBootstrapPrefix,
-        AnalyticsCacheKeys.DashboardAdvancedPrefix,
-        AnalyticsCacheKeys.SalesSummaryPrefix,
-        AnalyticsCacheKeys.DailySalesPrefix,
-        AnalyticsCacheKeys.CategoryDataPrefix,
-        AnalyticsCacheKeys.GenderDataPrefix,
-        AnalyticsCacheKeys.SupplierDataPrefix,
-        AnalyticsCacheKeys.TopProductsPrefix,
-        AnalyticsCacheKeys.TopProductsAdvancedPrefix
+        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.InventoryFamily),
+        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DataQualityFamily),
+        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ReportsFamily)
     ];
 
-    private static async Task InvokeRefreshAnalyticsAsync(AnalyticsAggregationWorker worker)
+    private static async Task InvokeRefreshDataQualityAsync(AnalyticsDataQualityHealthWorker worker)
     {
-        var method = typeof(AnalyticsAggregationWorker).GetMethod(
-            "RefreshAnalyticsAsync",
+        var method = typeof(AnalyticsDataQualityHealthWorker).GetMethod(
+            "RefreshDataQualityAsync",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
         try
         {
-            var task = (Task)method!.Invoke(worker, [CancellationToken.None])!;
+            var task = (Task)method!.Invoke(worker, [null, null, CancellationToken.None])!;
             await task;
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
@@ -121,7 +107,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         }
     }
 
-    private static WorkerHarness CreateHarness(string? connectionString, bool useInMemoryDatabase)
+    private static WorkerHarness CreateHarness(string connectionString)
     {
         var services = new ServiceCollection();
         var recordingCache = new RecordingAnalyticsCacheService();
@@ -132,27 +118,28 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         services.AddSingleton<WorkerHealthService>();
         services.AddSingleton(new WorkerRuntimeControlService(initialEnabled: true, runtimeToggleAllowed: true, initialSource: "tests"));
         services.AddSingleton<ILogger<AnalyticsCacheAdminService>>(NullLogger<AnalyticsCacheAdminService>.Instance);
-
-        if (useInMemoryDatabase)
-        {
-            services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase($"trendplus-agg-worker-{Guid.NewGuid():N}"));
-        }
-        else
-        {
-            services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString!));
-        }
-
+        services.AddScoped<AnalyticsDataQualityHealthService>();
+        services.AddScoped<AnalyticsDataQualityHistoryService>();
+        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
 
         var provider = services.BuildServiceProvider(validateScopes: true);
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
-        var worker = new AnalyticsAggregationWorker(
+        var worker = new AnalyticsDataQualityHealthWorker(
             scopeFactory,
-            NullLogger<AnalyticsAggregationWorker>.Instance,
+            NullLogger<AnalyticsDataQualityHealthWorker>.Instance,
             provider.GetRequiredService<WorkerHealthService>(),
             provider.GetRequiredService<WorkerRuntimeControlService>(),
-            new WorkerRuntimePolicyService(scopeFactory, NullLogger<WorkerRuntimePolicyService>.Instance));
+            new WorkerRuntimePolicyService(scopeFactory, NullLogger<WorkerRuntimePolicyService>.Instance),
+            Options.Create(new AnalyticsDataQualityHealthOptions
+            {
+                Enabled = true,
+                StartupDelaySeconds = 0,
+                PauseCheckSeconds = 0,
+                PollIntervalMinutes = 5,
+                LookbackDays = 30
+            }));
 
         return new WorkerHarness(
             provider,
@@ -165,7 +152,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     {
         public WorkerHarness(
             ServiceProvider provider,
-            AnalyticsAggregationWorker worker,
+            AnalyticsDataQualityHealthWorker worker,
             RecordingAnalyticsCacheService cache,
             AnalyticsCacheAdminService cacheAdmin)
         {
@@ -176,7 +163,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
         }
 
         public ServiceProvider Provider { get; }
-        public AnalyticsAggregationWorker Worker { get; }
+        public AnalyticsDataQualityHealthWorker Worker { get; }
         public RecordingAnalyticsCacheService Cache { get; }
         public AnalyticsCacheAdminService CacheAdmin { get; }
 

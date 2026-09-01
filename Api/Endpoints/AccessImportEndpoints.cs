@@ -569,10 +569,22 @@ public static class AccessImportEndpoints
 
                 var deleted = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
-                // Ensure archive table/index outside transaction; otherwise failed DDL
-                // can poison the transaction and trigger 25P02 downstream.
-                var trendArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(trendDb, logger, "trendplus", ct);
-                var analyticsArchiveEnabled = await EnsureDeletedRowsArchiveAvailableAsync(analyticsDb, logger, "analytics", ct);
+                // Rollback archives are opt-in; routine cleanup must not grow storage silently.
+                var archiveDeletedRows = configuration.GetValue<bool>("AccessImport:ArchiveDeletedRows");
+                var trendArchiveEnabled = archiveDeletedRows
+                    && await EnsureDeletedRowsArchiveAvailableAsync(trendDb, logger, "trendplus", ct);
+                var analyticsArchiveEnabled = archiveDeletedRows
+                    && await EnsureDeletedRowsArchiveAvailableAsync(analyticsDb, logger, "analytics", ct);
+
+                if (archiveDeletedRows)
+                {
+                    var maxBytes = configuration.GetValue<long?>("AccessImport:ArchiveDeletedRowsMaxBytes")
+                        ?? 16 * 1024 * 1024;
+                    var maxRows = configuration.GetValue<long?>("AccessImport:ArchiveDeletedRowsMaxRows")
+                        ?? 10000;
+                    await EnsureArchiveBudgetAsync(trendDb, maxBytes, maxRows, "trendplus", logger, ct);
+                    await EnsureArchiveBudgetAsync(analyticsDb, maxBytes, maxRows, "analytics", logger, ct);
+                }
 
                 await RetriableDbContextTransaction.ExecuteAsync(trendDb, async transactionCt =>
                 {
@@ -931,6 +943,32 @@ public static class AccessImportEndpoints
                     scope);
                 return false;
             }
+    }
+
+    private static async Task EnsureArchiveBudgetAsync(
+        DbContext dbContext,
+        long maxBytes,
+        long maxRows,
+        string scope,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        var snapshot = await ArchiveStorageBudgetGuard.ReadAsync(dbContext, ct);
+        if (snapshot is null)
+        {
+            logger.LogInformation("Archive budget preflight skipped because the archive table is absent. Scope: {Scope}.", scope);
+            return;
+        }
+
+        var decision = ArchiveStorageBudgetGuard.Evaluate(snapshot, maxBytes, maxRows);
+        if (!decision.Allowed)
+        {
+            logger.LogWarning(
+                "Archive budget preflight blocked cleanup. Scope: {Scope}. Reason: {Reason}.",
+                scope,
+                decision.Reason);
+            throw new InvalidOperationException($"Archive storage budget blocked cleanup for {scope}: {decision.Reason}.");
+        }
     }
 
     private static async Task TryArchiveRowsAsync(

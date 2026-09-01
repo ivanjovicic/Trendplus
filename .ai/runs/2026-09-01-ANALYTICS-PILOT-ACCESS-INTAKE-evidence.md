@@ -1,0 +1,23 @@
+# Analytics pilot access intake evidence
+
+- Date: 2026-09-01
+- Task: ANALYTICS-PILOT-ACCESS-INTAKE
+- Queue: direct-user-request
+- Owner: analytics pilot readiness / STAB16 dependency assessment
+- Interpreted outcome: capture operator-provided pilot scope and access/deployment facts without exposing credentials; decide whether any queue prompt can safely be promoted.
+- Files read: `AGENTS.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `MASTER_ROADMAP.md`, `render.yaml`, `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`, `docs/planning/ANALYTICS_PILOT_READINESS_PROMPT_PACK_2026-09-01.md`.
+- Files changed: `docs/qa/ANALYTICS_PILOT_READINESS_GAP_ASSESSMENT_2026-09-01.md`.
+- Facts recorded: one Trendplus pilot store `StoreId=2082886995` / `Trend PLUS 1`, source sales through 2026-08-05, proposed 2026-08-01..2026-08-31 window, Render `trendplus-api` live SHA `d38aafd405a9213a279bb76664cde4bf69ddf83b`, no worker service, Neon storage 0.54/0.5 GB.
+- Security: credentials were supplied in chat by the operator; treated as compromised and excluded from all files/output. Rotation is required before use.
+- Scope decision: no queue prompt promoted. STAB16 remains blocked on provider worker access, read-only audit access and Neon storage capacity; RQ128 remains dependency-gated. Direct local preparation may continue without production data or writes.
+- Validation: `git diff --check`, `node scripts/check-prompt-queues.mjs`, and `node scripts/check-planning-architecture.mjs` pass after the report/roadmap update.
+- Checks not run: no database connection, no Render mutation, no browser login, no production refresh, no live reconciliation.
+- Delivery mode: uncommitted working-tree documentation change.
+- Main commit SHA: not applicable.
+- Main verification: not applicable.
+- Additional measurement: `deleted_rows_archive` contains 582,788 rows dated 2026-04-04 through 2026-05-06 and occupies 198 MB; it is the leading cleanup candidate but no deletion is approved.
+- Additional measurement: 582,263 archive rows are linked to known cleanup batches and 525 have `batch_id IS NULL`; no rows are outside the cleanup-batch set. The unlinked rows remain a separate classification blocker.
+- Additional measurement: all 525 unlinked rows share timestamp `2026-04-04 10:21:42 UTC`, actor `neondb_owner` and reason `cleanup-non-access`; they cover 386 `prodaja_stavke`, 137 `prodaja_zaglavlje`, one return line and one return header. Archive-only cleanup remains the candidate; no business table deletion is approved.
+- Cleanup result: operator confirmed `remaining_archive_rows=0`; business counts remained non-zero (`prodaja_stavke=67,144`, `prodaja_zaglavlje=5,550`, `DnevnikPromena=67,629`). Only `public.deleted_rows_archive` was targeted.
+- Residual risk: source-to-analytics reconciliation, new Neon usage metric, read-only replacement credentials, browser test account and named signatories remain unverified.
+- Next: confirm Neon usage after cleanup; restore worker capacity/access; confirm owner-approved pilot window; verify worker and same deployed SHA; then execute STAB16 evidence path.

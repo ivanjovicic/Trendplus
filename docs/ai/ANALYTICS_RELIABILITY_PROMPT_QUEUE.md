@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ128` remains WAITING on `STAB16` worker/freshness/reconciliation proof)
+Current READY prompt: none
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -55,6 +55,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ122 | DONE | supplier-decision-recommendation-trust-payload | Surface backend-owned trust state on supplier summary/quadrant/header recommendations |
 | RQ123 | DONE | analytics-report-cache-generation-truth | Prove report-generation freshness/cache-version truth for pilot reports |
 | RQ124 | DONE | analytics-dashboard-action-trust-payload | Expose backend-owned trust payload on dashboard legacy/advanced action cards |
+| RQ134 | DONE | supplier-summary-aggregation-refresh-parity | Prove supplier summary freshness after successful aggregate refresh |
+| RQ135 | DONE | data-quality-trust-propagation-after-snapshot | Refresh trust-bearing analytics caches after data-quality snapshot |
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
@@ -2278,6 +2280,190 @@ Dashboard top-product tables still render margin rows with generic fallback copy
 ### Dependencies
 
 - `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ134 - Prove supplier summary freshness after successful aggregate refresh
+
+Status: DONE
+Ready after: `RQ111` is `DONE` and the owner explicitly promotes the supplier-summary cache-parity lane
+Priority: P1
+Type: backend/workers/cache/tests
+Feature family: supplier-summary-aggregation-refresh-parity
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ134-<agent>.lock.md`
+Commit suggestion: `fix(analytics): refresh supplier summary after aggregate worker`
+
+### Problem
+
+Supplier decision summary surfaces can remain on TTL-managed cache after `AnalyticsAggregationWorker` refreshes the aggregate tables they depend on. The worker already clears the dashboard family and dashboard aggregate-backed prefixes, but the supplier-decision-hub family is not part of the same invalidation path. That leaves supplier summary responses able to lag behind successful aggregate refreshes, which makes freshness look stronger or more current than the system can prove.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` says supplier summary cards that use aggregate tables can lag until TTL expiry and marks supplier-decision-hub as a P1 follow-up after aggregation-worker refresh.
+- `Workers/AnalyticsAggregationWorker.cs` currently clears `AnalyticsCachePolicy.DashboardFamily` plus dashboard aggregate-backed prefixes only.
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs` only asserts dashboard-prefix invalidation.
+- `AnalyticsCachePolicy.CoreFamilies` already includes `SupplierDecisionHubFamily`, so the family is first-class even though the aggregation worker does not currently touch it.
+
+### Scope
+
+- `Workers/AnalyticsAggregationWorker.cs`
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs` only if the shared cache contract needs a new assertion
+- `Api.Tests/SupplierDecisionHubContractTests.cs` or `Api/Endpoints/SupplierDecisionHubEndpoints.cs` only if freshness must be surfaced explicitly instead of being cleared
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+
+### Read first
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `Workers/AnalyticsAggregationWorker.cs`
+- `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+- the nearest supplier summary/cache contract tests
+
+### Do
+
+1. Decide the smallest truthful contract for supplier summary after a successful aggregate refresh: clear the supplier-decision-hub family, or expose an explicit stale/lag state if the family is intentionally TTL-bound.
+2. Prove the selected contract with focused tests for success and failure paths, including at least one counterexample that would have left stale supplier summary data visible before the fix.
+3. Keep dashboard bootstrap/report freshness behavior out of scope.
+4. If the prompt chooses explicit stale/lag state, add the smallest metadata path that tells the operator the summary is stale instead of letting TTL masquerade as freshness.
+5. Do not broaden into nightly refresh, report generation, or inventory signal panels.
+
+### Tests
+
+- `git diff --check`
+- focused `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsAggregationWorkerTests|FullyQualifiedName~SupplierDecisionHubContractTests"`
+- focused frontend test only if supplier summary rendering changes
+- governance validators if queue/docs change
+
+### Acceptance
+
+- Supplier summary freshness after aggregate refresh is either immediately cleared/refreshed or explicitly labeled as stale/lagging.
+- The worker/cache contract is proven by tests rather than inferred from TTL behavior.
+- Dashboard bootstrap and report freshness remain unchanged and out of scope.
+
+### Dependencies
+
+- `RQ111` DONE.
+- No live-production proof is required for the queue prompt itself.
+
+### Promotion note
+
+- Date: 2026-09-01
+- Status: READY
+- Promotion: owner-promoted after the cache invalidation audit identified supplier summary lag after successful aggregate refresh
+- Next: implement cache parity proof on the worker/test path
+
+### Completion note
+
+- Date: 2026-09-01
+- Status: DONE
+- Completion: supplier summary freshness now follows the aggregate refresh invalidation path because `AnalyticsAggregationWorker` clears the supplier-decision-hub family alongside the dashboard family
+- Changed files: `Workers/AnalyticsAggregationWorker.cs`; `Api.Tests/AnalyticsAggregationWorkerTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-01-RQ134-evidence.md`
+- Checks run: `git diff --check`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsAggregationWorkerTests|FullyQualifiedName~AnalyticsCacheAdminServiceTests"` (18 passed)
+- Checks not run: full solution build; wider frontend regression tests
+- Run log: `.ai/runs/2026-09-01-RQ134-evidence.md`
+- Delivery mode: local-workspace
+- Main commit SHA: uncommitted
+- Main verification: not verified; the work remains local in this workspace
+- Missed: none
+- Follow-up: `RQ128` once `STAB16` is resolved
+- Residual risk: other cache paths still use the existing TTL-based contract where the worker does not explicitly clear them
+
+---
+
+## RQ135 - Refresh trust-bearing analytics caches after data-quality snapshot
+
+Status: DONE
+Completed after: `RQ134` is `DONE` and the owner explicitly promoted the data-quality trust-propagation lane
+Priority: P1
+Type: backend/workers/cache/tests
+Feature family: data-quality-trust-propagation-after-snapshot
+Parallel-safe: no
+Owner: unassigned
+Local lock: `.ai/task-locks/RQ135-<agent>.lock.md`
+Commit suggestion: `fix(analytics): refresh trust caches after data quality snapshot`
+
+### Problem
+
+`AnalyticsDataQualityHealthWorker` captures a new quality snapshot, saves it durably, and then clears only the `data-quality` and `reports` cache families. The audit still records medium-risk lag on dashboard, product-decision-center, supplier-decision-hub, and inventory trust surfaces when only the quality snapshot changes, which means those operator-facing trust callouts can stay one TTL behind the newest evidence.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md` says `AnalyticsDataQualityHealthWorker` clears `data-quality` and `reports`, while dashboard/product-decision-center/supplier-decision-hub/inventory trust surfaces are not explicitly cleared and may lag until TTL expiry.
+- `Workers/AnalyticsDataQualityHealthWorker.cs` currently clears only `AnalyticsCachePolicy.DataQualityFamily` and `AnalyticsCachePolicy.ReportsFamily`.
+- `AnalyticsCachePolicy.CoreFamilies` already includes `DashboardFamily`, `ProductDecisionCenterFamily`, `SupplierDecisionHubFamily`, and `InventoryFamily`, so the trust-bearing families are first-class cache targets.
+- `AnalyticsCacheAdminServiceTests` already prove that report-family invalidation bumps the report cache version, so this follow-up should preserve that contract if reports remain in the clear set.
+
+### Scope
+
+- `Workers/AnalyticsDataQualityHealthWorker.cs`
+- `Api.Tests/AnalyticsDataQualityHealthWorkerTests.cs`
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs` only if the shared cache contract needs a new assertion
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- `MASTER_ROADMAP.md`
+
+### Read first
+
+- `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`
+- `Workers/AnalyticsDataQualityHealthWorker.cs`
+- `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`
+- `Infrastructure/Services/AnalyticsDataQualityHistoryService.cs`
+- `Api.Tests/AnalyticsDataQualityHealthServiceTests.cs`
+- `Api.Tests/AnalyticsAggregationWorkerTests.cs`
+- `Api.Tests/AnalyticsCacheAdminServiceTests.cs`
+
+### Do
+
+1. Decide the smallest truthful contract after a successful data-quality snapshot: clear the trust-bearing families that consume the snapshot, or expose an explicit stale/lag state if those families are intentionally TTL-bound.
+2. Prove the selected contract with focused tests for a successful snapshot refresh and a failure path that leaves cache state untouched.
+3. Keep aggregation-worker, nightly-refresh, and report-template behavior out of scope.
+4. Preserve the existing report-version bump behavior owned by the worker if reports remain in the clear set.
+5. Do not broaden into dashboard redesign or recommendation-scoring changes.
+
+### Tests
+
+- `git diff --check`
+- focused `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsDataQualityHealthWorkerTests|FullyQualifiedName~AnalyticsCacheAdminServiceTests"`
+- focused `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsDataQualityHealthServiceTests"` only if the snapshot contract needs a new counterexample
+- governance validators if queue/docs change
+
+### Acceptance
+
+- Successful data-quality snapshot refreshes do not leave dashboard, product-decision-center, supplier-decision-hub, or inventory trust surfaces one TTL behind the newest quality evidence.
+- Failure paths remain fail-closed and do not clear caches.
+- Report freshness semantics stay truthful and unchanged except for the existing data-quality worker behavior.
+
+### Completion note
+
+- Date: 2026-09-01
+- Status: DONE
+- Completion: `AnalyticsDataQualityHealthWorker` now clears the trust-bearing dashboard, product-decision-center, supplier-decision-hub, inventory, data-quality, and reports cache families after a successful snapshot refresh, so the operator trust surfaces no longer wait for TTL expiry.
+- Changed files: `Workers/AnalyticsDataQualityHealthWorker.cs`; `Api.Tests/AnalyticsDataQualityHealthWorkerTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `docs/qa/ANALYTICS_CACHE_INVALIDATION_AUDIT.md`; `.ai/runs/2026-09-01-RQ135-evidence.md`
+- Checks run: `git diff --check`; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsDataQualityHealthWorkerTests|FullyQualifiedName~AnalyticsCacheAdminServiceTests"` (17 passed)
+- Checks not run: full solution build; wider frontend regression tests
+- Run log: `.ai/runs/2026-09-01-RQ135-evidence.md`
+- Delivery mode: local-workspace
+- Main commit SHA: uncommitted
+- Main verification: not verified; the work remains local in this workspace
+- Missed: none
+- Follow-up: `RQ128` once `STAB16` is resolved
+- Residual risk: other cache paths still use the existing TTL-based contract where the worker does not explicitly clear them
+
+### Dependencies
+
+- `RQ134` DONE.
+- No production mutation or worker scheduling change is authorized outside this worker/test path.
+
+### Promotion note
+
+- Date: 2026-09-01
+- Status: READY
+- Promotion: owner-promoted after the cache invalidation audit identified medium-risk trust lag on dashboard/product/supplier/inventory surfaces after data-quality snapshot refresh
+- Next: implement trust-cache parity on the data-quality worker/test path
 
 ---
 

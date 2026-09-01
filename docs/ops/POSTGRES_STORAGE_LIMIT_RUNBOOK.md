@@ -36,6 +36,18 @@ LIMIT 20;
 
 ## Development Guardrail
 
+Deleted-row rollback archiving is opt-in through `AccessImport:ArchiveDeletedRows=true`. The default is `false` in code and Render configuration. A cleanup operation must not create `deleted_rows_archive` or write rollback payloads unless an operator has explicitly enabled this setting for the approved operation and recorded the retention/rollback decision.
+
+When archive writes are explicitly enabled, cleanup performs a read-only storage preflight:
+
+- `AccessImport__ArchiveDeletedRowsMaxBytes=16777216` (16 MiB);
+- `AccessImport__ArchiveDeletedRowsMaxRows=10000`;
+- cleanup fails closed if the existing archive exceeds either limit or a limit is invalid;
+- a missing archive table is treated as zero current archive usage;
+- this guard never deletes business tables.
+
+Keep archive writes disabled during normal operation. The preflight checks current archive usage, not the exact projected byte growth of the incoming batch, so an approved archive-enabled operation still requires a post-operation size check and evidence capture.
+
 While we are still developing and testing outside production, durable operational writes are intentionally suppressed by default for:
 
 - `ErrorRecords`

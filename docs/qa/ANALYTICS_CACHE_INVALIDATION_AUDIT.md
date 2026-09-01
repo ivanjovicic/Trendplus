@@ -19,6 +19,8 @@ The main remaining gap was:
 - that meant dashboard-family cached responses could stay stale until TTL expiry even when aggregate refresh had already finished
 - this did not fake success, but it could delay visibility of newer aggregate data
 
+A later follow-up closed the `AnalyticsDataQualityHealthWorker` trust-surface gap as well, so successful data-quality snapshots now refresh the trust-bearing dashboard, product-decision-center, supplier-decision-hub, inventory, data-quality, and reports cache families together.
+
 ## Final Decision
 
 `AnalyticsAggregationWorker` now clears the smallest safe set after a successful aggregate refresh:
@@ -62,7 +64,7 @@ Why:
   - `reports`
 - `AccessImportService` clears `CoreFamilies` after successful import and batch-delete analytics cleanup
 - `NightlyAnalyticsRefreshWorker` clears `CoreFamilies` after successful refresh
-- `AnalyticsDataQualityHealthWorker` clears `data-quality` and `reports`
+- `AnalyticsDataQualityHealthWorker` now clears `dashboard`, `product-decision-center`, `supplier-decision-hub`, `inventory`, `data-quality`, and `reports`
 - report routes use versioned report cache keys through `ReportCacheVersion`
 - action outcome summary currently has no dedicated `IAnalyticsCacheService` cache family in the inspected code
 
@@ -132,14 +134,14 @@ This trigger splits into two different worker behaviors.
 
 ### 4. Data quality recalculated
 
-`AnalyticsDataQualityHealthWorker` saves a snapshot and then clears `data-quality` and `reports`.
+`AnalyticsDataQualityHealthWorker` saves a snapshot and then clears the trust-bearing `dashboard`, `product-decision-center`, `supplier-decision-hub`, `inventory`, `data-quality`, and `reports` cache families.
 
 | Family | Current behavior | Missing invalidation risk | User impact | Priority |
 |---|---|---|---|---|
-| `dashboard` | Not explicitly cleared by data-quality worker | Medium | Dashboard trust callouts can remain older than the newest quality snapshot until TTL/import/nightly clear | P2 monitor |
-| `product-decision-center` | Not explicitly cleared by data-quality worker | Medium | Product decision trust chips can lag if only quality metadata changed | P2 monitor |
-| `supplier-decision-hub` | Not explicitly cleared by data-quality worker | Medium | Supplier trust surfaces can lag if only quality snapshot changed | P2 monitor |
-| `inventory` | Not explicitly cleared by data-quality worker | Medium | Inventory trust callouts can lag if only quality snapshot changed | P2 monitor |
+| `dashboard` | Cleared explicitly by data-quality worker | Low | Dashboard trust callouts now reflect the newest quality snapshot after success | P0 covered |
+| `product-decision-center` | Cleared explicitly by data-quality worker | Low | Product decision trust chips now reflect the newest quality snapshot after success | P0 covered |
+| `supplier-decision-hub` | Cleared explicitly by data-quality worker | Low | Supplier trust surfaces now reflect the newest quality snapshot after success | P0 covered |
+| `inventory` | Cleared explicitly by data-quality worker | Low | Inventory trust callouts now reflect the newest quality snapshot after success | P0 covered |
 | `data-quality` | Cleared explicitly | Low | Data-quality pages reflect new snapshot | P0 covered |
 | `reports` | Cleared explicitly with report version bump | Low | Pilot intake and supplier report trust sections can regenerate from new snapshot | P0 covered |
 | `action outcome summary` | No dedicated analytics cache layer found | Low | No separate cache family to clear | P3 none |
@@ -175,7 +177,7 @@ No dedicated analytics cache family was found for action outcome summary in the 
 ## Highest-Risk Findings
 
 1. Report generation does not rotate report cache version on its own; it still depends on import/nightly/data-quality/admin invalidation.
-2. Data-quality recalculation refreshes `data-quality` and `reports`, but not other trust-bearing cache families that may display older trust context until TTL expiry.
+2. Data-quality recalculation now refreshes the trust-bearing cache families together, so the remaining risk is only future cache-family drift if new trust surfaces are added without explicit invalidation.
 
 ## Recommended Minimal Follow-Up
 

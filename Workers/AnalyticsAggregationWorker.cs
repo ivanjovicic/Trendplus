@@ -242,7 +242,9 @@ public class AnalyticsAggregationWorker : BackgroundService
             var cacheAdmin = serviceProvider.GetService<AnalyticsCacheAdminService>();
             if (cacheAdmin is not null)
             {
-                await cacheAdmin.ClearFamiliesAsync([AnalyticsCachePolicy.DashboardFamily], ct);
+                await cacheAdmin.ClearFamiliesAsync(
+                    [AnalyticsCachePolicy.DashboardFamily, AnalyticsCachePolicy.SupplierDecisionHubFamily],
+                    ct);
                 dashboardFamilyCleared = true;
             }
         }
