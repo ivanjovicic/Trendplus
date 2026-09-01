@@ -18,6 +18,141 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
+Prepared later candidates (not runnable until explicitly promoted): `PERF17` bundle budget, `SEC08` reproducible dependency audit gate.
+
+---
+
+## PERF17 - Measure and enforce the frontend bundle budget without hiding regressions
+
+Status: WAITING
+Priority: future / planning
+Type: frontend performance/docs/guardrail
+Feature family: frontend-bundle-budget
+Parallel-safe: yes, scoped measurement and contract work only
+Owner: Codex
+Commit suggestion: `docs(perf): define frontend bundle budget gate`
+
+### Problem
+
+The frontend build is successful but still reports a large `recharts` chunk. The current build must remain truthful: increasing a warning threshold is not an optimization and must not be used to hide bundle growth.
+
+### Evidence
+
+- The current client build passes but reports a `recharts` chunk of approximately 548 kB, above the existing 500 kB warning threshold.
+- Existing manual chunk configuration already exists and must be measured before changing.
+- Analytics values and trust-state semantics are unrelated to this prompt.
+
+### Scope
+
+- `Klijent/clientapp/vite.config.*` and the actual route/component import paths responsible for the measured chunk;
+- one performance contract or evidence note under `docs/architecture/`, `docs/roadmaps/` or `docs/qa/`;
+- a deterministic bundle-budget check only if the existing toolchain supports it.
+
+Do not add a worker, change API contracts, alter analytics calculations, or raise the threshold without measured justification.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/roadmaps/PERFORMANCE_ROADMAP.md`
+- `Klijent/clientapp/vite.config.*`
+- the current client build output and package scripts
+
+### Do
+
+1. Capture a reproducible baseline with commit SHA, build command, chunk names and sizes.
+2. Trace the largest chunk to imports and route boundaries.
+3. Prefer route-level lazy loading or a narrow existing split point over broad refactoring.
+4. Add a deterministic budget check only when it fails on a demonstrable regression rather than normal tool noise.
+5. Record the before/after measurement and explain any remaining justified warning.
+
+### Tests
+
+- `cd Klijent/clientapp; npm run typecheck`
+- `cd Klijent/clientapp; npm run build`
+- the narrowest affected Vitest suite
+- `git diff --check`
+- queue and planning validators when queue/docs change
+
+### Acceptance
+
+- The bundle baseline and measurement method are durable and reproducible.
+- The largest avoidable chunk is reduced or a documented budget exception is approved with evidence.
+- No warning is hidden by simply increasing a limit.
+- No analytics behavior, API contract or worker/infrastructure requirement changes.
+
+### Dependencies
+
+- `PERF16` remains blocked on `MT10` for runtime/shared-SaaS performance claims.
+- This prompt is planning/measurement-only until an owner explicitly promotes it.
+
+---
+
+## SEC08 - Make dependency vulnerability checks reproducible across frontend workspaces
+
+Status: WAITING
+Priority: future / planning
+Type: security/CI/dependency governance
+Feature family: dependency-supply-chain-gate
+Parallel-safe: yes, scoped workflow and documentation work only
+Owner: Codex
+Commit suggestion: `ci(security): add reproducible frontend audit gate`
+
+### Problem
+
+The two frontend workspaces had a reported dependency vulnerability backlog which is now locally remediated, but the repository needs a repeatable gate so a future lockfile change cannot silently reintroduce production risk.
+
+### Evidence
+
+- The current dependency cleanup reduced the reported frontend audit findings to zero in both workspaces.
+- The main client lockfile and POS lockfile are separate and must be audited separately.
+- A local audit result is not GitHub Actions proof until a workflow executes the same commands.
+
+### Scope
+
+- frontend `package.json` and lockfiles only when required by the gate;
+- the narrowest existing frontend/security workflow;
+- security/dependency evidence documentation;
+- no secret values, production database access, runtime analytics changes or unrelated package upgrades.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/roadmaps/SECURITY_EVOLUTION_ROADMAP.md`
+- `docs/qa/FRONTEND_DEPENDENCY_VULNERABILITY_TRIAGE_2026-08-17.md`
+- both frontend package manifests, lockfiles and CI scripts
+
+### Do
+
+1. Identify the canonical install and audit command for each frontend workspace.
+2. Add or tighten a CI gate that runs against committed lockfiles and fails on the agreed severity threshold.
+3. Keep development-only and production dependency policy explicit; do not claim production safety from an incomplete workspace audit.
+4. Verify that the gate catches a deliberately introduced audit fixture without committing a vulnerable dependency.
+5. Record exact commands, workspace paths and result interpretation in durable evidence.
+
+### Tests
+
+- clean install using each committed lockfile;
+- audit command for each frontend workspace;
+- both frontend builds;
+- negative gate test or equivalent documented fixture;
+- `git diff --check`;
+- queue and planning validators.
+
+### Acceptance
+
+- Both frontend workspaces have one documented, reproducible audit command.
+- CI fails for a newly introduced vulnerability at the agreed threshold.
+- The gate does not depend on local caches or secrets.
+- No current zero result is overstated as a permanent guarantee; the gate proves future detection.
+
+### Dependencies
+
+- `SEC07` is DONE and supplies the remediation baseline.
+- `SEC05` remains waiting on `MT09`; this prompt must not be used to bypass that broader security/deployment gate.
+
 ---
 
 ---

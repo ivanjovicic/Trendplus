@@ -2964,3 +2964,71 @@ The dashboard still carries a thin legacy/advanced action contract. `DashboardAc
 ### Dependencies
 
 - `RQ120` DONE or explicit owner promotion.
+
+---
+
+## RQ136 - Preserve truth in analytics action messages and notifications
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: analytics-action-notification-truth
+Parallel-safe: no, shared action semantics require one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): align action messages with trust metadata`
+
+### Problem
+
+Analytics messages, notifications and action labels must describe the backend decision state that the data supports. A user must not receive an actionable or success-looking message when the result is empty, stale, degraded, fallback, insufficient or failed.
+
+### Evidence
+
+- Core analytics invariants require a strict distinction between error, empty, warning/degraded and actionable success.
+- Backend decision metadata is the source of truth; the frontend must not reconstruct confidence or recommendation status.
+- Existing queue work closed several page-level empty/error cases, but cross-surface action and notification wording still needs an explicit parity proof.
+
+### Scope
+
+- the owning backend response/meta contract for action state, reason, confidence/reliability and data quality;
+- the shared frontend mapping for action labels, toast/notification text and empty/error states;
+- focused backend and frontend tests plus one evidence note.
+
+Do not change recommendation formulas, introduce new notification channels, or add fake defaults for missing fields.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_PRIORITY_REVIEW.md`
+- the shared analytics response/meta contract
+- current action/notification mapping and nearest focused tests
+
+### Do
+
+1. Inventory every user-visible message for the selected action surface and map it to a backend state.
+2. Define explicit copy for actionable, insufficient, empty, stale/degraded, fallback and error states.
+3. Ensure unknown or missing decision metadata blocks actionable copy instead of falling back to zero, success or generic confidence.
+4. Keep Serbian text and established formatters intact; do not duplicate business scoring in React.
+5. Add counterexample tests for stale, empty, failed and insufficient payloads.
+
+### Tests
+
+- focused backend contract tests for each state;
+- focused Vitest tests for message/notification mapping;
+- analytics guardrail check;
+- typecheck and build when shared frontend code changes;
+- `git diff --check` and queue validators.
+
+### Acceptance
+
+- Every user-visible action message has a proven backend state mapping.
+- Error and unknown never render as valid zero or success.
+- Empty remains distinct from error, and degraded/fallback remains visible.
+- Tests cover both actionable and blocked/counterexample states.
+- No recommendation formula or worker/infrastructure change is introduced.
+
+### Dependencies
+
+- `STAB16` must provide production liveness/freshness evidence before this is claimed as live pilot proof.
+- `RQ128` remains the primary post-STAB actionability parity lane; reuse it rather than duplicating its live scope.
+- This prompt is a later focused contract candidate, not current `READY`.

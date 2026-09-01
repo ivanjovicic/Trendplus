@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (queue complete)
+Current READY prompt: none (queue complete; `P-UI-23` is a prepared WAITING hygiene follow-up)
 Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
 
 Use with:
@@ -28,6 +28,7 @@ Use with:
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
+| P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
 
 ---
 
@@ -529,7 +530,7 @@ Commit suggestion: `feat(ui): redesign analytics command center`
   - Reworked the analytics dashboard above-the-fold into a command center with a premium hero, KPI strip, weekly action cockpit, trust/freshness panel, and risk/loss preview.
   - Preserved the existing data loading, trust header, refresh banner, empty/error behavior, and action links while making the top fold easier to scan.
   - Added a regression test for the command center, KPI strip, trust panel, and risk preview so the layout does not drift back to scattered blocks.
-  - Remaining risk: no manual screenshot/pixel review was run in this session.
+- Remaining risk: no manual screenshot/pixel review was run in this session.
 - Next: none
 
 ---
@@ -1135,3 +1136,68 @@ After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and 
 - Main commit SHA: 0a703f78f159acf8904f77876294f91b2cf55338
 - Main verification: git rev-parse HEAD -> 0a703f78f159acf8904f77876294f91b2cf55338
 - Next: none
+
+---
+
+## P-UI-23 - Reduce frontend lint errors in bounded trust-sensitive slices
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests/hygiene
+Feature family: frontend-lint-baseline
+Parallel-safe: yes, only when the selected files do not overlap another active prompt
+Owner: Codex
+Commit suggestion: `chore(ui): reduce lint errors in bounded slice`
+
+### Problem
+
+The frontend lint command still reports a legacy backlog even though typecheck, build and focused analytics guardrails pass. A broad formatting pass would create noise and could obscure product changes, so the backlog must be reduced in small evidence-backed slices.
+
+### Evidence
+
+- The current lint run reports approximately 37 errors and 167 warnings.
+- The dependency/build cleanup is already complete and must not be mixed with an unrelated repository-wide lint rewrite.
+- Analytics correctness remains backend-owned; lint cleanup must not recreate scoring or fallback logic in the client.
+
+### Scope
+
+- one selected set of frontend files from the current lint report;
+- the nearest focused test files when a lint repair changes executable behavior;
+- no generated files, unrelated formatting, analytics formulas or global ESLint policy changes unless the selected error proves the policy is wrong.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/PROMPT_TOKEN_ECONOMY_AND_LINT.md`
+- the current lint configuration and package scripts
+- the exact lint output for the selected slice
+
+### Do
+
+1. Freeze a baseline with the exact command, file list and error/warning counts.
+2. Select one coherent file family, preferably a trust-state or shared analytics component.
+3. Fix errors with behavior-preserving changes; remove warnings only when the ownership and intent are clear.
+4. Do not add blanket disables, weaken rules, or reformat unrelated files.
+5. Record residual warnings and create a later slice rather than expanding scope.
+
+### Tests
+
+- lint on the selected files;
+- nearest focused Vitest suite;
+- `npm run typecheck`;
+- `npm run build`;
+- `npm run check:analytics-guardrails` when analytics surfaces are touched;
+- `git diff --check`.
+
+### Acceptance
+
+- The selected files have zero new lint errors and no unexplained warning increase.
+- Existing UI behavior and analytics trust semantics are unchanged unless a test proves the prior behavior was invalid.
+- The final note reports before/after counts and the next bounded slice.
+- The queue remains `Current READY: none` until explicitly promoted.
+
+### Dependencies
+
+- P-UI-22 is DONE.
+- This is a later hygiene follow-up and must not displace BCI/STAB/RQ work.
