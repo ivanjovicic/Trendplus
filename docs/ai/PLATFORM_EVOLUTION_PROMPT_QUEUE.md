@@ -100,8 +100,8 @@ Do not add a worker, change API contracts, alter analytics calculations, or rais
 - Run log: `.ai/runs/2026-09-02-PERF17-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until commit/push
+- Main commit SHA: `2407762d3b2a4bafaf46367910551395f157f369`
+- Main verification: `origin/main` contains `2407762d3b2a4bafaf46367910551395f157f369` after push
 - Missed: no import-level Recharts optimization; the safe route-level lazy loading and shared chunk remain unchanged
 - Follow-up: consider a separate runtime/browser-proven Recharts import split only if bundle growth exceeds the measured budget
 - Residual risk: Vite still prints its existing 500 kB warning for the intentional Recharts exception; the dedicated guardrail fails on growth beyond 560,000 bytes

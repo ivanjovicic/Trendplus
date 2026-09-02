@@ -4,9 +4,9 @@ Date: 2026-09-02
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending until commit/push
-Evidence state: pending
+Main commit SHA: 2407762d3b2a4bafaf46367910551395f157f369
+Main verification: origin/main contains 2407762d3b2a4bafaf46367910551395f157f369 after push
+Evidence state: synchronized
 
 ## What was done
 - Promoted and executed the prepared, parallel-safe PERF17 planning/measurement prompt.
