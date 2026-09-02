@@ -58,6 +58,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         Assert.Contains("/api/analytics/actions", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/cached/products/decision-center", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/decision-board", routes, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("/api/analytics/decision-pulse", routes, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -82,6 +83,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
         Assert.Contains("/api/analytics/actions", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/cached/products/decision-center", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/analytics/decision-board", routes, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("/api/analytics/decision-pulse", routes, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("/api/runtime/version", routes, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -237,6 +239,7 @@ public sealed class AnalyticsCriticalRouteMappingsTests
             app.MapAnalyticsActionsEndpoints();
             app.MapCachedAnalyticsEndpoints();
             app.MapDecisionBoardEndpoints();
+            app.MapDecisionPulseEndpoints();
 
             using (var scope = app.Services.CreateScope())
             {

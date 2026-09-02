@@ -1,7 +1,12 @@
 .analytics-error-state {
-  border: 1px solid var(--error, #d9534f);
-  background: color-mix(in srgb, var(--error, #d9534f) 8%, white);
+  --analytics-error-surface: color-mix(in srgb, var(--error, #d9534f) 14%, var(--surface-elevated, #ffffff) 86%);
+  --analytics-error-border: color-mix(in srgb, var(--error, #d9534f) 72%, var(--text-primary, #111827) 28%);
+  --analytics-error-heading: color-mix(in srgb, var(--text-primary, #111827) 78%, var(--error, #d9534f) 22%);
+  background: var(--analytics-error-surface);
+  border: 2px solid var(--analytics-error-border);
   border-radius: 14px;
+  color: var(--text-primary, #111827);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--analytics-error-border) 22%, transparent);
   padding: 1rem;
   margin: 1rem 0;
 }
@@ -9,19 +14,28 @@
 .analytics-error-state h2 {
   margin: 0 0 0.4rem;
   font-size: 1.05rem;
-  color: var(--error, #d9534f);
+  color: var(--analytics-error-heading);
 }
 
 .analytics-error-state p {
+  color: var(--text-primary, #111827);
   margin: 0.2rem 0;
 }
 
 .aes-code {
+  background: color-mix(in srgb, var(--surface-elevated, #ffffff) 78%, var(--error, #d9534f) 22%);
+  border: 1px solid color-mix(in srgb, var(--analytics-error-border) 54%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary, #111827) !important;
   font-size: 0.85rem;
-  opacity: 0.9;
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-weight: 700;
+  padding: 0.35rem 0.5rem;
+  overflow-wrap: anywhere;
 }
 
 .aes-suggestions {
+  color: var(--text-primary, #111827);
   margin: 0.6rem 0 0;
   padding-left: 1.2rem;
 }
@@ -35,15 +49,27 @@
 
 .aes-actions button,
 .aes-actions a {
-  border: 1px solid var(--error, #d9534f);
+  background: var(--surface-elevated, #ffffff);
+  border: 2px solid var(--analytics-error-border);
   border-radius: 999px;
+  color: var(--text-primary, #111827);
+  font-weight: 750;
   padding: 0.35rem 0.8rem;
   font-size: 0.85rem;
   text-decoration: none;
-  background: white;
-  color: var(--error, #d9534f);
 }
 
 .aes-actions button {
   cursor: pointer;
+}
+
+.aes-actions button:hover,
+.aes-actions a:hover {
+  background: color-mix(in srgb, var(--surface-elevated, #ffffff) 78%, var(--error, #d9534f) 22%);
+}
+
+.aes-actions button:focus-visible,
+.aes-actions a:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--analytics-error-border));
+  outline-offset: 2px;
 }

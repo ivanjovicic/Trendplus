@@ -282,6 +282,20 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionWindowedViewsAreVerifiedAndRepairedWhenStartupHistoryIsStale()
+    {
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+
+        Assert.Contains("EnsureSupplierDecisionWindowedViewsAsync", initializer);
+        Assert.Contains("DeleteAppliedStartupSqlHistoryAsync(connectionString, sqlFile)", initializer);
+        Assert.Contains("await ExecuteSqlFileAsync(connectionString, sqlFile, logger);", initializer);
+        Assert.Contains("remain unavailable after {sqlFile}", initializer);
+        Assert.Contains("EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, \"analytics\")", initializer);
+        Assert.Contains("EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, \"supplier-decision-repair\")", initializer);
+        Assert.Contains("share the same database", initializer);
+    }
+
+    [Fact]
     public void SupplierDecisionResponsesExposeAndPopulateTrustMetadata()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");

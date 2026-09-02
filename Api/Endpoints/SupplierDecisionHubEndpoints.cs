@@ -1981,7 +1981,7 @@ public static class SupplierDecisionHubEndpoints
             {
                 throw new SupplierDecisionUnavailableException(
                     "MISSING_TABLE",
-                    "Supplier decision cache nije dostupan. Pokusajte ponovo nakon osvezavanja analitike.");
+                    "Supplier decision cache nije dostupan. Pokušajte ponovo nakon osvežavanja analitike.");
             }
 
             var (precomputedSql, precomputedParameters) = BuildPrecomputedSupplierRowsSql(filters, capabilities);
@@ -2013,7 +2013,7 @@ public static class SupplierDecisionHubEndpoints
             {
                 throw new SupplierDecisionUnavailableException(
                     ex.SqlState == "42P01" ? "MISSING_TABLE" : "SQL_ERROR",
-                    "Supplier decision podaci trenutno nisu spremni. Pokusajte ponovo uskoro.",
+                    "Supplier decision podaci trenutno nisu spremni. Pokušajte ponovo uskoro.",
                     ex);
             }
         }
@@ -2034,7 +2034,7 @@ public static class SupplierDecisionHubEndpoints
         {
             throw new SupplierDecisionUnavailableException(
                 "MISSING_TABLE",
-                "Supplier decision podaci trenutno nisu spremni. Pokusajte ponovo uskoro.",
+                "Supplier decision podaci trenutno nisu spremni. Pokušajte ponovo uskoro.",
                 ex);
         }
         catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)

@@ -85,6 +85,7 @@
 }
 
 .supplier-decision-content {
+  min-width: 0;
   position: relative;
 }
 
@@ -370,6 +371,7 @@
   display: grid;
   gap: 12px;
   grid-template-columns: 1fr;
+  min-width: 0;
 }
 
 .supplier-decision-card {
@@ -378,6 +380,7 @@
   border-radius: 14px;
   box-shadow: 0 10px 24px rgba(1, 8, 14, 0.28);
   margin: 0 0 12px;
+  min-width: 0;
   padding: 14px;
 }
 
@@ -410,7 +413,9 @@
   border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
   border-radius: 12px;
   height: 300px;
+  min-width: 0;
   padding: 6px 6px 2px;
+  width: 100%;
 }
 
 .supplier-decision-empty {

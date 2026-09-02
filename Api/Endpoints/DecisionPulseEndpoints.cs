@@ -1,4 +1,5 @@
 using Api.Services.Analytics;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Trendplus2.Endpoints;
 
@@ -18,7 +19,7 @@ public static class DecisionPulseEndpoints
     }
 
     private static async Task<IResult> GetFeedAsync(
-        DecisionPulseService pulse,
+        [FromServices] DecisionPulseService pulse,
         DateTime? fromDate = null,
         DateTime? toDate = null,
         int? storeId = null,
@@ -31,7 +32,7 @@ public static class DecisionPulseEndpoints
     }
 
     private static async Task<IResult> SendEmailAsync(
-        DecisionPulseService pulse,
+        [FromServices] DecisionPulseService pulse,
         DateTime? fromDate = null,
         DateTime? toDate = null,
         int? storeId = null,

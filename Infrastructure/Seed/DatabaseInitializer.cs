@@ -139,6 +139,7 @@ public static class DatabaseInitializer
         if (unifiedDb)
         {
             logger.LogInformation("Analytics supplier decision schema repair skipped: analytics and trendplus share the same database.");
+            await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "supplier-decision-repair");
             return;
         }
 
@@ -162,6 +163,7 @@ public static class DatabaseInitializer
             "analytics",
             "supplier-decision-repair",
             allowHeavyRefresh: false);
+        await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "supplier-decision-repair");
 
         logger.LogInformation("Analytics supplier decision schema repair completed.");
     }
@@ -659,6 +661,50 @@ public static class DatabaseInitializer
             databaseLabel,
             windowed90Ready,
             windowed180Ready);
+    }
+
+    private static async Task EnsureSupplierDecisionWindowedViewsAsync(
+        string connectionString,
+        ILogger logger,
+        string mode)
+    {
+        const string sqlFile = "Database/Migrations/029_AddSupplierDecisionWindowedViews.sql";
+        var windowed90Ready = false;
+        var windowed180Ready = false;
+
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            windowed90Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_90d");
+            windowed180Ready = await IsPublicMaterializedViewAsync(connection, "mv_supplier_decision_score_cache_180d");
+        }
+
+        if (!windowed90Ready || !windowed180Ready)
+        {
+            logger.LogWarning(
+                "[{Mode}] Supplier decision windowed views are incomplete before startup SQL repair: 90dReady={Windowed90Ready} 180dReady={Windowed180Ready}. Forcing {SqlFile} to run even when its hash was recorded.",
+                mode,
+                windowed90Ready,
+                windowed180Ready,
+                sqlFile);
+            await DeleteAppliedStartupSqlHistoryAsync(connectionString, sqlFile);
+        }
+
+        await ExecuteSqlFileAsync(connectionString, sqlFile, logger);
+
+        await using var verificationConnection = new NpgsqlConnection(connectionString);
+        await verificationConnection.OpenAsync();
+        var repaired90Ready = await IsPublicMaterializedViewAsync(verificationConnection, "mv_supplier_decision_score_cache_90d");
+        var repaired180Ready = await IsPublicMaterializedViewAsync(verificationConnection, "mv_supplier_decision_score_cache_180d");
+        if (!repaired90Ready || !repaired180Ready)
+        {
+            throw new InvalidOperationException(
+                $"Supplier decision windowed views remain unavailable after {sqlFile}: 90dReady={repaired90Ready} 180dReady={repaired180Ready}.");
+        }
+
+        logger.LogInformation(
+            "[{Mode}] Supplier decision windowed views verified after startup SQL repair: 90d and 180d materialized views are present.",
+            mode);
     }
 
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)
@@ -2301,7 +2347,7 @@ public static class DatabaseInitializer
 
         // 029: Windowed materialized views for supplier decision scorecard (90d/180d accuracy fix)
         // Depends on core supplier decision views from 018 built above.
-        await ExecuteSqlFileAsync(connectionString, "Database/Migrations/029_AddSupplierDecisionWindowedViews.sql", logger);
+        await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "analytics");
 
         var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
         {

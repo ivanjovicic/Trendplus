@@ -38,11 +38,13 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Api.Services;
 using Api.Endpoints;
+using Api.Services.Analytics;
 using Api.Services.Access;
 using Api.Services.DataSources;
 using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
+using Application.Analytics.DecisionPulse;
 using Npgsql;
 using System.Threading.RateLimiting;
 using Application.Documents.Interfaces;
@@ -175,6 +177,7 @@ try
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsSnapshotOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.AnalyticsSnapshotOptions.Section));
+    builder.Services.Configure<DecisionPulseOptions>(builder.Configuration.GetSection(DecisionPulseOptions.Section));
 
     builder.Services.AddFileStorage(builder.Configuration);
     var fileStorageProvider = FileStorageServiceCollectionExtensions.ResolveProviderName(
@@ -439,6 +442,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IInventoryReportScheduleService, Infrastructure.Services.Inventory.InventoryReportScheduleService>();
     builder.Services.AddScoped<IInventoryActionDecisionService, Infrastructure.Services.Inventory.InventoryActionDecisionService>();
     builder.Services.AddScoped<Infrastructure.Services.Inventory.InventoryReportDeliveryService>();
+    builder.Services.AddScoped<DecisionPulseService>();
+    builder.Services.AddScoped<DecisionPulseDeliveryService>();
     builder.Services.AddSingleton<WorkerHealthService>(); // Worker health monitoring
     builder.Services.AddSingleton(sp =>
         new WorkerRuntimeControlService(
@@ -1215,6 +1220,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapInsightStudioV2Endpoints();
     app.MapPreNivelacijaPriorityEndpoints();
     app.MapAnalyticsReportsEndpoints();
+    app.MapDecisionPulseEndpoints();
     app.MapSupplierDecisionHubEndpoints();
     app.MapDataSourceDiscoveryEndpoints();
     app.MapDataSourceMappingPreviewEndpoints();
