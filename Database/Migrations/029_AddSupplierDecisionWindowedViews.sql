@@ -6,6 +6,8 @@
 --
 -- Each windowed view is a copy of the full vw_supplier_decision_score
 -- chain but with first_markdown_date filtered to a rolling window.
+-- Coverage columns added to an existing dependency view stay append-only so
+-- a partial prior run can safely re-apply this script.
 -- The NightlyAnalyticsRefreshWorker must be configured to REFRESH
 -- these MVs alongside the existing all-time cache.
 -- ==========================================================
