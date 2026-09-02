@@ -672,7 +672,7 @@ export default function ProductDecisionCenterPage() {
   const [staleWarning, setStaleWarning] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
-  const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string>>(new Set());
+  const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
   const [actionStatusWarning, setActionStatusWarning] = useState<string | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
 
@@ -828,7 +828,7 @@ export default function ProductDecisionCenterPage() {
 
     if (lookupItems.length === 0) {
       setActionStatusWarning(null);
-      setQueuedActionKeys((previous) => (previous.size === 0 ? previous : new Set()));
+      setQueuedActionKeys(new Set());
       setEvidenceSnapshotByProductId((previous) => (Object.keys(previous).length === 0 ? previous : {}));
       return () => {
         cancelled = true;
@@ -836,6 +836,8 @@ export default function ProductDecisionCenterPage() {
     }
 
     (async () => {
+      setActionStatusWarning(null);
+      setQueuedActionKeys(null);
       try {
         const statuses = await getAnalyticsActionSourceStatuses({
           items: lookupItems,
@@ -865,7 +867,7 @@ export default function ProductDecisionCenterPage() {
         setActionStatusWarning(null);
       } catch {
         if (!cancelled) {
-          setQueuedActionKeys(new Set());
+          setQueuedActionKeys(null);
           setEvidenceSnapshotByProductId({});
           setActionStatusWarning("Status akcija trenutno nije dostupan.");
         }
@@ -1058,7 +1060,7 @@ export default function ProductDecisionCenterPage() {
     const expectedImpactRsd = resolveExpectedImpactRsd(row);
     const inputFreshnessStatus = resolveInputFreshnessStatus(row);
 
-    if (queueBusyKeyRef.current === sourceKey || queuedActionKeys.has(sourceKey)) {
+    if (queueBusyKeyRef.current === sourceKey || queuedActionKeys?.has(sourceKey)) {
       return;
     }
 
@@ -1572,8 +1574,9 @@ export default function ProductDecisionCenterPage() {
                   const expanded = expandedProductId === row.productId;
                   const queueSpec = buildProductQueueSpec(row);
                   const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
-                  const isQueued = queuedActionKeys.has(sourceKey);
+                  const isQueued = queuedActionKeys?.has(sourceKey) ?? false;
                   const isQueueBusy = queueBusyKey === sourceKey;
+                  const actionStatusKnown = queuedActionKeys != null;
                   const whyPanel = buildProductDecisionWhyPanel(row);
                   const dataQuality = canonicalDataQualityStatus(whyPanel.dataQualityStatus);
                   const confidenceLevel = normalizeConfidenceLevel(whyPanel.confidenceLevel);
@@ -1670,7 +1673,11 @@ export default function ProductDecisionCenterPage() {
                               void addRowToCentralActions(row);
                             }}
                             disabled={isQueueBusy || isQueued}
-                            title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
+                            title={isQueued
+                              ? "Akcija je već u centralnom redu."
+                              : actionStatusKnown
+                                ? "Dodaj u centralni red akcija"
+                                : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                           >
                             {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                           </button>
@@ -2049,7 +2056,11 @@ export default function ProductDecisionCenterPage() {
                                   className={`btn-add-to-queue${isQueued ? " added" : ""}`}
                                   disabled={isQueueBusy || isQueued}
                                   onClick={() => void addRowToCentralActions(row)}
-                                  title={isQueued ? "Akcija je već u centralnom redu." : "Dodaj u centralni red akcija"}
+                                  title={isQueued
+                                    ? "Akcija je već u centralnom redu."
+                                    : actionStatusKnown
+                                      ? "Dodaj u centralni red akcija"
+                                      : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                                 >
                                   {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
                                 </button>

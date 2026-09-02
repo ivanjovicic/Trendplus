@@ -130,6 +130,10 @@ describe("ProductDecisionCenterPage action status fallback", () => {
     expect(await screen.findByText("Model X")).toBeInTheDocument();
     expect(await screen.findByText("Status akcija trenutno nije dostupan.")).toBeInTheDocument();
     expect(screen.getByText("Dopuni zalihe")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u akcije" })).toHaveAttribute(
+      "title",
+      "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan.",
+    );
     expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
   });
 
