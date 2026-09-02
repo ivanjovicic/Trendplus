@@ -261,6 +261,16 @@ public sealed class SupplierDecisionSchemaSqlTests
         var scoreCacheSql = sql[scoreCacheStart..];
         Assert.Contains("AS evidence_quality_status", scoreCacheSql);
         Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", scoreCacheSql);
+
+        var scoreCache180Start = sql.IndexOf("CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_180d AS", scoreCacheStart, StringComparison.Ordinal);
+        var signalRollup180Start = sql.IndexOf("signal_rollup AS (", scoreCache180Start, StringComparison.Ordinal);
+        Assert.True(scoreCache180Start > scoreCacheStart);
+        Assert.True(signalRollup180Start > scoreCache180Start);
+
+        var supplierTotals180Sql = sql[scoreCache180Start..signalRollup180Start];
+        Assert.Contains("post_signal_coverage", supplierTotals180Sql);
+        Assert.Contains("did_signal_coverage", supplierTotals180Sql);
+        Assert.Contains("cost_signal_coverage", supplierTotals180Sql);
     }
 
     [Fact]

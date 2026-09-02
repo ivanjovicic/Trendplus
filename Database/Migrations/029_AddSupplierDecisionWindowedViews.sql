@@ -403,15 +403,7 @@ decision_inputs AS (
         COALESCE(st.avg_did_qty, 0)::numeric(18,4) AS avg_did_qty,
         COALESCE(sr.stockout_article_share, 0) AS stockout_article_share,
         COALESCE(sr.stockout_before_markdown_flag, FALSE) AS stockout_before_markdown_flag,
-        COALESCE(scm.seasonal_category_share, 0) AS seasonal_category_share,
-        CASE
-            WHEN COALESCE(st.post_signal_coverage, 0) < 1
-              OR COALESCE(st.did_signal_coverage, 0) < 1
-              OR COALESCE(st.cost_signal_coverage, 0) < 1
-              OR COALESCE(si.sold_units_in_period, 0) = 0
-            THEN 'partial'
-            ELSE 'complete'
-        END AS evidence_quality_status
+        COALESCE(scm.seasonal_category_share, 0) AS seasonal_category_share
     FROM supplier_totals st
     JOIN signal_rollup sr ON sr.supplier_id = st.supplier_id
     LEFT JOIN category_focus cf ON cf.supplier_id = st.supplier_id
@@ -503,6 +495,9 @@ WITH supplier_totals AS (
         qty_pre_markdown, qty_post_markdown,
         markdown_revenue_share, avg_did_revenue, avg_did_qty,
         dead_stock_rate, unsold_stock_value,
+        post_signal_coverage,
+        did_signal_coverage,
+        cost_signal_coverage,
         CASE
             WHEN COALESCE(revenue_pre_markdown, 0) + COALESCE(revenue_post_markdown, 0) = 0 THEN 0::numeric
             ELSE revenue_pre_markdown / NULLIF(revenue_pre_markdown + revenue_post_markdown, 0)
