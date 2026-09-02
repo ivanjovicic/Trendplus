@@ -8,6 +8,7 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b && vite build",
     "typecheck": "tsc -b",
     "check:encoding": "node ./scripts/check-encoding.mjs",
+    "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs",
     "check:analytics-guardrails": "npm run check:encoding && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck",
     "lint": "eslint .",
     "preview": "vite preview",

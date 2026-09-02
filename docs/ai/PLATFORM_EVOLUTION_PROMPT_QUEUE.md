@@ -12,24 +12,25 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF16` BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF17` DONE; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
-Prepared later candidates (not runnable until explicitly promoted): `PERF17` bundle budget, `SEC08` reproducible dependency audit gate.
+Prepared later candidate (not promoted): `SEC08` reproducible dependency audit gate.
 
 ---
 
 ## PERF17 - Measure and enforce the frontend bundle budget without hiding regressions
 
-Status: WAITING
+Status: DONE
 Priority: future / planning
 Type: frontend performance/docs/guardrail
 Feature family: frontend-bundle-budget
 Parallel-safe: yes, scoped measurement and contract work only
 Owner: Codex
+Local lock: removed after DONE
 Commit suggestion: `docs(perf): define frontend bundle budget gate`
 
 ### Problem
@@ -85,7 +86,26 @@ Do not add a worker, change API contracts, alter analytics calculations, or rais
 ### Dependencies
 
 - `PERF16` remains blocked on `MT10` for runtime/shared-SaaS performance claims.
-- This prompt is planning/measurement-only until an owner explicitly promotes it.
+- This prompt was explicitly promoted for planning/measurement-only execution; `PERF16` remains independently blocked.
+
+### Completion note
+
+- Date: 2026-09-02
+- Status: DONE
+- Completion: captured the current frontend bundle baseline, traced the 548.04 kB shared Recharts chunk to chart-bearing routes, rejected an unsafe split experiment that emitted circular-dependency warnings, and added a deterministic post-build budget check with a documented measured exception.
+- Changed files: `Klijent/clientapp/package.json`; `Klijent/clientapp/scripts/check-bundle-budget.mjs`; `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`; `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`; `docs/roadmaps/PERFORMANCE_ROADMAP.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-02-PERF17-evidence.md`
+- Contract/runtime behavior changed: no analytics/API/worker runtime behavior; added frontend build guardrail only
+- Checks run: `npm run typecheck` (pass); `npm run build` with existing manual Recharts split (pass; 2,597 modules, `recharts` 548.04 kB / 164.13 kB gzip); `npm run check:bundle-budget` (pass); `npm run build` without manual split (pass with 13 circular-dependency warnings; rejected); `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass); `node scripts/check-planning-architecture.mjs` (pass)
+- Checks not run: affected Vitest suite (no source/component behavior changed); CI workflow execution (not wired by this planning-only prompt); browser/runtime smoke (not required for the guardrail-only change)
+- Run log: `.ai/runs/2026-09-02-PERF17-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until commit/push
+- Missed: no import-level Recharts optimization; the safe route-level lazy loading and shared chunk remain unchanged
+- Follow-up: consider a separate runtime/browser-proven Recharts import split only if bundle growth exceeds the measured budget
+- Residual risk: Vite still prints its existing 500 kB warning for the intentional Recharts exception; the dedicated guardrail fails on growth beyond 560,000 bytes
+- Prompt defect / scope repair: none
 
 ---
 
