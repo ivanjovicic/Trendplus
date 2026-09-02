@@ -4,14 +4,14 @@ Date: 2026-09-02
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: 137952c18c5c6eb5e042080f53764e0ab2dea84a
-Main verification: origin/main contains 137952c18c5c6eb5e042080f53764e0ab2dea84a
+Main commit SHA: 9d0cb082f22aece233e99d6700f8131a9561227e
+Main verification: origin/main contains 9d0cb082f22aece233e99d6700f8131a9561227e
 Evidence state: synchronized
 
 ## What was done
 - Confirmed `DecisionPulse` is registered, mapped at `/api/analytics/decision-pulse`, and live on Render with HTTP 200.
-- Fixed migration 029 so the 180-day dependency view exposes the coverage columns consumed by its score cache.
-- Kept the repaired 180-day columns append-only for safe re-application when a partial view already exists.
+- Fixed migration 029's repeat-safe dependency contract for both 90-day and 180-day supplier score caches.
+- Added the missing 180-day evidence-quality and supplier-total coverage columns, preserving append-only output ordering for safe re-application after a partial view.
 - Added a positive-size `ResizeObserver` guard before mounting the two Supplier Sales charts, with a visible preparation state.
 
 ## Files changed
@@ -19,18 +19,21 @@ Evidence state: synchronized
 - Api.Tests/SupplierDecisionSchemaSqlTests.cs
 - Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx
 - Klijent/clientapp/src/pages/SupplierSalesStatsPage.css
+- render.yaml
 - .ai/runs/2026-09-02-direct-decision-pulse-migration-chart-evidence.md
 
 ## Validation run
 - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests --no-restore` -> pass (25/25)
+- Disposable PostgreSQL replay of the actual `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` after the fixes -> pass; both `mv_supplier_decision_score_cache_90d` and `mv_supplier_decision_score_cache_180d` verified present (`t|t`), including repeat application over the partially-created schema.
 - `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests --no-restore --no-build` -> pass (25/25)
 - `npm run test:run -- src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx --reporter=dot` -> pass (4/4)
 - `npm run check:analytics-guardrails` -> pass
 - `npm run build` -> pass
 - `dotnet build Api/Api.csproj --no-restore` -> pass (0 errors; existing analyzer warnings)
-- Render `GET /api/analytics/decision-pulse?dataScope=all` -> HTTP 200; route mapping confirmed
-- Render supplier decision summary before final corrected deploy -> HTTP 200 with `MISSING_TABLE`; this confirmed the migration failure was still active in the old process
-- Render `/api/runtime/version` before final corrected deploy -> old deployed commit observed; latest pushed code was not yet active at audit time
+- GitHub workflow `33655606258` for `9d0cb082` -> failed in `Trigger Render Deploy`; public check details expose only exit code 1, while job logs require repository admin rights.
+- Production `/api/runtime/version` -> still `068e59a1`, so the final commit is not active on Render.
+- Production supplier summary -> HTTP 200 transport, but `meta.errorCode=MISSING_TABLE` and zero rows.
+- Production `GET /api/analytics/decision-pulse?dataScope=all` -> HTTP 200 with `PULSE_PARTIAL`; no actionable items because 124 candidates are suppressed for insufficient evidence and the supplier hub is unavailable.
 - `git diff --check` -> pass
 
 ## Validation not run
@@ -40,11 +43,10 @@ Evidence state: synchronized
 ## Documentation impact
 - This run log records the implementation, production observations, validation and the external Render deployment limitation.
 
-## What was missed
-- Final post-deploy confirmation that the Render Analytics database contains both `mv_supplier_decision_score_cache_90d` and `mv_supplier_decision_score_cache_180d` remains pending until Render activates the latest `main` deploy.
+## Root cause and residual blocker
+- The local SQL replay found and fixed the concrete migration defects: an ambiguous duplicate `evidence_quality_status` in the 90-day score-cache query, then missing coverage forwarding in the 180-day supplier totals, in addition to the earlier incomplete dependency projection.
+- The remaining production error cannot be declared resolved because Render did not activate the final deploy. A Render owner/admin must inspect the failed deploy log or redeploy `9d0cb082` (and verify the Analytics startup repair on the same database). No production data was mutated from this session.
 
-## Risks
-- Render was still serving the previous commit during the last smoke; `MISSING_TABLE` cannot be declared resolved until `/api/runtime/version` reports the latest pushed commit and the supplier summary no longer returns that code.
-
-## Next
-- Wait for Render to activate the latest `main` deploy, then repeat the supplier summary and DecisionPulse smoke checks.
+## Delivery
+- Commits pushed to `main`: `f9d07c01` (final migration/test fix) and `9d0cb082` (Render deploy trigger marker).
+- `origin/main` contains `9d0cb082`.
