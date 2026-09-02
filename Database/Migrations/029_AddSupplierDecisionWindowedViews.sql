@@ -193,6 +193,13 @@ WITH signal_base AS (
             END,
             0
         )::numeric(18,2) AS current_cost
+        , (vn.price_event_id IS NOT NULL) AS has_post_signal
+        , (nd.price_event_id IS NOT NULL) AS has_did_signal
+        , CASE
+            WHEN a."NabavnaCenaDin" > 0 THEN TRUE
+            WHEN a."NabavnaCena" > 0 THEN TRUE
+            ELSE FALSE
+          END AS has_cost_signal
     FROM vw_supplier_fullprice_signals_180d fs
     LEFT JOIN LATERAL (
         SELECT v.price_event_id, v.post_qty, v.post_revenue
@@ -212,6 +219,9 @@ aggregated AS (
         supplier_id, supplier_name, category,
         COUNT(*)::int AS articles_count,
         COUNT(*) FILTER (WHERE COALESCE(pre_qty_30d, 0) + COALESCE(post_qty_30d, 0) > 0)::int AS active_articles_count,
+        AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage,
+        AVG(CASE WHEN has_did_signal THEN 1::numeric ELSE 0::numeric END) AS did_signal_coverage,
+        AVG(CASE WHEN has_cost_signal THEN 1::numeric ELSE 0::numeric END) AS cost_signal_coverage,
         SUM(COALESCE(pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
         SUM(COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue_post_markdown,
         SUM(COALESCE(pre_qty_30d, 0))::numeric AS qty_pre_markdown,
@@ -245,6 +255,9 @@ aggregated AS (
 SELECT
     supplier_id, supplier_name, category,
     articles_count, active_articles_count,
+    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
+    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
+    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
     revenue_pre_markdown, revenue_post_markdown,
     qty_pre_markdown, qty_post_markdown,
     ROUND(COALESCE(markdown_revenue_share, 0), 4) AS markdown_revenue_share,

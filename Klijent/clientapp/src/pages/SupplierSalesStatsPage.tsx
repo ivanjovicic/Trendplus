@@ -475,6 +475,49 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
+function usePositiveChartContainer() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const updateSize = (width?: number, height?: number) => {
+      const rect = node.getBoundingClientRect();
+      const nextSize = {
+        width: Math.max(0, width ?? rect.width),
+        height: Math.max(0, height ?? rect.height),
+      };
+
+      setSize((current) => (
+        current.width === nextSize.width && current.height === nextSize.height
+          ? current
+          : nextSize
+      ));
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(([entry]) => {
+        updateSize(entry?.contentRect.width, entry?.contentRect.height);
+      });
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+
+    const handleWindowResize = () => updateSize();
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, []);
+
+  return {
+    containerRef,
+    ready: size.width > 0 && size.height > 0,
+  };
+}
+
 function supplierKey(supplier: { dobavljacId: number | null; dobavljacNaziv: string }): string {
   if (supplier.dobavljacId != null) return `id:${supplier.dobavljacId}`;
   return `name:${normalizeName(supplier.dobavljacNaziv)}`;
@@ -486,6 +529,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const detailSectionRef = useRef<HTMLElement>(null);
+  const concentrationChart = usePositiveChartContainer();
+  const comparisonChart = usePositiveChartContainer();
 
   const initialRange = useMemo(() => getPresetRange("30d"), []);
   const initialQueryFilters = useMemo(() => {
@@ -1516,8 +1561,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo ukupnog prometa nose najveći dobavljači. Koristi samo promet, bez tumačenja profita ili neto marže." /></h2>
               <p>Top udeo prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
-                <div className="supplier-decision-chart-wrap">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
+                  {concentrationChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
@@ -1537,7 +1582,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
               ) : (
                 <div className="supplier-decision-empty">Nema podataka za grafikon koncentracije.</div>
@@ -1548,8 +1593,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
               <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
-                <div className="supplier-decision-chart-wrap">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                <div ref={comparisonChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!comparisonChart.ready}>
+                  {comparisonChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
@@ -1569,7 +1614,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                       <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
                       <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
               ) : (
                 <div className="supplier-decision-empty">Nema podataka za poređenje.</div>

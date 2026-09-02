@@ -418,6 +418,15 @@
   width: 100%;
 }
 
+.supplier-decision-chart-placeholder {
+  align-items: center;
+  color: var(--dashboard-text-muted);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  min-width: 0;
+}
+
 .supplier-decision-empty {
   align-items: center;
   border: 1px dashed rgba(77, 255, 119, 0.28);

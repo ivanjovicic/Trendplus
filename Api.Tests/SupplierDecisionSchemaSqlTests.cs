@@ -241,6 +241,25 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecision180DayDependencyViewExposesCoverageColumnsConsumedByItsScoreCache()
+    {
+        var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+        var dependencyStart = sql.IndexOf("CREATE OR REPLACE VIEW vw_supplier_markdown_dependency_180d AS", StringComparison.Ordinal);
+        var scoreCacheStart = sql.IndexOf("CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_90d AS", StringComparison.Ordinal);
+
+        Assert.True(dependencyStart >= 0);
+        Assert.True(scoreCacheStart > dependencyStart);
+
+        var dependencySql = sql[dependencyStart..scoreCacheStart];
+        Assert.Contains("has_post_signal", dependencySql);
+        Assert.Contains("has_did_signal", dependencySql);
+        Assert.Contains("has_cost_signal", dependencySql);
+        Assert.Contains("AS post_signal_coverage", dependencySql);
+        Assert.Contains("AS did_signal_coverage", dependencySql);
+        Assert.Contains("AS cost_signal_coverage", dependencySql);
+    }
+
+    [Fact]
     public void SupplierDecisionHeavyRefreshIsNotOwnedByWebStartupRepair()
     {
         var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
