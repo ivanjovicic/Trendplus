@@ -784,6 +784,7 @@ export interface ExecutiveDataQualitySummary {
   ignoredRowsCount: number;
   zeroRevenueRowsCount?: number;
   freshnessStatus: string;
+  scopeLabel?: string;
 }
 
 export interface ExecutiveDashboardSnapshot {

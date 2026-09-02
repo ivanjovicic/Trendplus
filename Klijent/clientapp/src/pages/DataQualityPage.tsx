@@ -141,6 +141,21 @@ function trendTone(
   return selector(points[points.length - 1]) <= selector(points[0]) ? "improving" : "worsening";
 }
 
+function scoreStatusLabel(status: AnalyticsDataQualityHealth["scoreStatus"] | undefined): string {
+  switch (status) {
+    case "excellent":
+      return "Bez rizika u prometnom uzorku";
+    case "good":
+      return "Uglavnom pokriveno";
+    case "warning":
+      return "Potreban oprez";
+    case "critical":
+      return "Nije pouzdano";
+    default:
+      return "Nije dostupno";
+  }
+}
+
 function DataQualityPanelState({
   title,
   message,
@@ -681,7 +696,9 @@ export default function DataQualityPage() {
         ignoredRowsCount: intakeReport.impact.ignoredRowsCount,
       }
     : {
-        missingSupplierCount: health?.orphanArticleCount ?? null,
+        // Orphan count is a broken-reference count, not a catalog-wide
+        // missing-supplier count. Keep the summary empty rather than relabel it.
+        missingSupplierCount: null,
       };
 
   const changeView = (nextView: "issues" | "intake") => {
@@ -722,12 +739,15 @@ export default function DataQualityPage() {
         </div>
         <div className="data-quality-header-side">
           {health ? (
-            <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Data quality score">
-              <span className="data-quality-score-label">Skor kvaliteta podataka</span>
+            <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Prometni health signal">
+              <span className="data-quality-score-label">Prometni health signal</span>
               <strong>{health.score}</strong>
-              <span className="data-quality-score-status">{health.scoreStatus}</span>
+              <span className="data-quality-score-status">{scoreStatusLabel(health.scoreStatus)}</span>
+              <span className="data-quality-score-context">
+                Udeo rizika u prometu za poslednjih {health.lookbackDays} dana; nije isto što i spremnost za preporuke.
+              </span>
               <p>{health.scoreSummary}</p>
-              <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunat data quality score" />
+              <KpiExplainButton metricKey="revenueHealthScore" ariaLabel="Kako je izračunat prometni health signal" />
             </section>
           ) : null}
           <div className="data-quality-meta">

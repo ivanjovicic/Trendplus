@@ -79,6 +79,7 @@
 
 .data-quality-score-label,
 .data-quality-score-status {
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.78rem;
@@ -609,6 +610,12 @@
 
 .trend-line.worsening {
   stroke: var(--error, #ef4444);
+}
+
+.data-quality-score-context {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 .trend-line.neutral {

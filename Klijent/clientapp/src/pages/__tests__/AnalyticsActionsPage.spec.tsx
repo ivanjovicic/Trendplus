@@ -1056,7 +1056,7 @@ describe("AnalyticsActionsPage", () => {
     fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "inventory" } });
     fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P1" } });
 
-    const resetButton = await screen.findByRole("button", { name: "Resetuj summary filtere" });
+    const resetButton = await screen.findByRole("button", { name: "Resetuj filtere sažetka" });
     expect(resetButton).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Izvor: Zalihe" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Prioritet: P1" })).toBeInTheDocument();

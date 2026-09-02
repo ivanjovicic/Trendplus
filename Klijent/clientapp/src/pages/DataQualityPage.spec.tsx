@@ -271,7 +271,7 @@ describe("DataQualityPage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Provera kvaliteta podataka");
     await screen.findByText("Problematični artikli");
 
-    expect(screen.getByText("Skor kvaliteta podataka")).toBeInTheDocument();
+    expect(screen.getByText("Prometni health signal")).toBeInTheDocument();
     expect(screen.getByText("Postoje problemi koji blokiraju deo preporuka.")).toBeInTheDocument();
     expect(screen.getAllByText("Artikli bez dobavljača").length).toBeGreaterThan(0);
     expect(screen.getByText("Promet bez nabavne cene")).toBeInTheDocument();

@@ -11,7 +11,7 @@ public sealed class AnalyticsDataQualityHealthService
     /// Top-offender SQL contract (RQ06/RQ07).
     /// Article membership is scoped by <c>Artikli."DataOrigin"</c>;
     /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule).
-    /// <c>missingCost</c> uses article nabavna cena (null/&lt;=0), independent of supplier/name CASE priority.
+    /// <c>missingCost</c> uses the effective purchase price (sale-line override, then article price), where null and non-positive values are missing.
     /// </summary>
     public const string TopOffendersSql = """
             WITH sales_30d AS (
@@ -95,6 +95,11 @@ public sealed class AnalyticsDataQualityHealthService
         _db = db;
     }
 
+    public static bool IsMissingCost(decimal? value) => !value.HasValue || value.Value <= 0m;
+
+    public static bool IsMissingSupplier(int? supplierId, bool supplierExists)
+        => !supplierId.HasValue || supplierId.Value <= 0 || !supplierExists;
+
     public async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(int lookbackDays, string? dataScope, CancellationToken ct)
     {
         var safeLookbackDays = Math.Max(1, lookbackDays);
@@ -108,7 +113,9 @@ public sealed class AnalyticsDataQualityHealthService
             from a in _db.Artikli.AsNoTracking()
             join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
             from d in dj.DefaultIfEmpty()
-            where a.IDDobavljac.HasValue && d == null
+            // OrphanArticleCount is the broken-reference count. Articles without a
+            // supplier are reported separately as missing supplier data below.
+            where a.IDDobavljac.HasValue && a.IDDobavljac > 0 && d == null
                && (!importedOnly || a.DataOrigin == "access")
                && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
             select a.Id)
@@ -127,8 +134,17 @@ public sealed class AnalyticsDataQualityHealthService
             select new
             {
                 TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                MissingCostRevenue = g.Sum(x => (x.ps.NabavnaCena ?? x.a.NabavnaCena).HasValue ? 0m : x.ps.Kolicina * x.ps.Cena),
-                UnknownSupplierRevenue = g.Sum(x => !x.a.IDDobavljac.HasValue || x.d == null ? x.ps.Kolicina * x.ps.Cena : 0m)
+                MissingCostRevenue = g.Sum(x =>
+                    (x.ps.NabavnaCena ?? x.a.NabavnaCena) == null ||
+                    (x.ps.NabavnaCena ?? x.a.NabavnaCena) <= 0m
+                        ? x.ps.Kolicina * x.ps.Cena
+                        : 0m),
+                UnknownSupplierRevenue = g.Sum(x =>
+                    !x.a.IDDobavljac.HasValue ||
+                    x.a.IDDobavljac <= 0 ||
+                    x.d == null
+                        ? x.ps.Kolicina * x.ps.Cena
+                        : 0m)
             })
             .FirstOrDefaultAsync(ct);
 

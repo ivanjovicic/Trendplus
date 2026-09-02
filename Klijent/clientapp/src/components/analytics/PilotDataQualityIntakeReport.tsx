@@ -349,7 +349,7 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
       <div className="pilot-intake-head">
         <div>
           <h2>Pilot intake izveštaj</h2>
-          <p>Spremnost podataka za pouzdan demo, analitiku i preporuke.</p>
+          <p>Spremnost podataka za bezbedne preporuke, uz jasno označene rupe u katalogu i signalu.</p>
         </div>
         <div className="pilot-intake-score">
           <span>{report.readinessLabel}</span>

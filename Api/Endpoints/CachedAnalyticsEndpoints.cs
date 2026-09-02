@@ -3997,7 +3997,8 @@ public static class CachedAnalyticsEndpoints
                 InsufficientSignalCount = 0,
                 IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
                 ZeroRevenueRowsCount = 0,
-                FreshnessStatus = validationFreshness?.Status ?? "unknown"
+                FreshnessStatus = validationFreshness?.Status ?? "unknown",
+                ScopeLabel = "Nema redova u skupu odluka"
             };
             return snapshot;
         }
@@ -4015,7 +4016,8 @@ public static class CachedAnalyticsEndpoints
                 x.RecommendationStatus == "INSUFFICIENT_DATA" || x.RecommendationStatus == "FIX_DATA"),
             IgnoredRowsCount = productDecisionSnapshot?.IgnoredRowsCount ?? 0,
             ZeroRevenueRowsCount = rows.Count(x => x.Revenue <= 0m),
-            FreshnessStatus = validationFreshness?.Status ?? "unknown"
+            FreshnessStatus = validationFreshness?.Status ?? "unknown",
+            ScopeLabel = "Artikli u skupu odluka"
         };
 
         snapshot.TopSuppliers = rows
@@ -6029,20 +6031,37 @@ public static class CachedAnalyticsEndpoints
         return "good";
     }
 
-    private static string ResolveDashboardDataQualityStatus(AnalyticsDashboardBootstrapDto response)
+    internal static string ResolveDashboardDataQualityStatus(AnalyticsDashboardBootstrapDto response)
     {
-        var status = response.ValidationFreshness?.Status?.Trim().ToLowerInvariant();
-        if (status is "critical")
+        var statuses = new List<string?>
+        {
+            response.ValidationCompleteness?.Status,
+            response.ValidationFreshness?.Status,
+            response.Advanced?.Cards.FirstOrDefault(card => string.Equals(card.Key, "completeness", StringComparison.OrdinalIgnoreCase))?.Status,
+            response.Advanced?.Cards.FirstOrDefault(card => string.Equals(card.Key, "data_health", StringComparison.OrdinalIgnoreCase))?.Status,
+        };
+
+        if (response.Errors.Count > 0)
+        {
+            statuses.Add("warning");
+        }
+
+        var normalizedStatuses = statuses
+            .Where(status => !string.IsNullOrWhiteSpace(status))
+            .Select(status => status!.Trim().ToLowerInvariant())
+            .ToList();
+
+        if (normalizedStatuses.Contains("critical", StringComparer.Ordinal))
         {
             return "critical";
         }
 
-        if (status is "warning")
+        if (normalizedStatuses.Contains("warning", StringComparer.Ordinal) || normalizedStatuses.Contains("stale", StringComparer.Ordinal))
         {
             return "warning";
         }
 
-        if (status is "good" or "info")
+        if (normalizedStatuses.Contains("good", StringComparer.Ordinal) || normalizedStatuses.Contains("info", StringComparer.Ordinal))
         {
             return "good";
         }
@@ -8127,6 +8146,7 @@ public class ExecutiveDataQualitySummaryDto
     public int IgnoredRowsCount { get; set; }
     public int ZeroRevenueRowsCount { get; set; }
     public string FreshnessStatus { get; set; } = "unknown";
+    public string ScopeLabel { get; set; } = "Artikli u skupu odluka";
 }
 
 public class ExecutiveDashboardSnapshotDto

@@ -143,8 +143,8 @@ describe("Analytics methodology registry usage", () => {
     );
 
     expect(screen.getByText("Metodologija metrika")).toBeInTheDocument();
-    expect(screen.getAllByText("Spremnost podataka").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Spremnost za preporuke").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ponderisani skor kvaliteta master i transakcionih podataka, nedovoljnih signala i svežine/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Data quality checks/i).length).toBeGreaterThan(0);
   });
 

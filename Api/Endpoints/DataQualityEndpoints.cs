@@ -609,9 +609,15 @@ public static class DataQualityEndpoints
             zeroOrNegativePriceCount,
             ignoredRows,
             latestBatch?.RowsRead ?? 0,
+            insufficientSignalCount,
+            refreshStatus.DataFreshnessStatus,
             health);
 
-        var readiness = ResolveReadiness(readinessScore);
+        var readiness = ResolveReadiness(
+            readinessScore,
+            refreshStatus.DataFreshnessStatus,
+            insufficientSignalCount,
+            totalArticles);
         var blockedRecommendationsCount = missingSupplierCount + missingCostCount + missingSupplierNameCount + saleWithoutArticleCount;
         var latestImportAtUtc = latestBatch?.CompletedAtUtc ?? latestBatch?.StartedAtUtc ?? latestBatch?.QueuedAtUtc;
         var lastImportStatus = NormalizeImportBatchStatus(latestBatch?.Status);
@@ -759,7 +765,7 @@ public static class DataQualityEndpoints
         var normalizedScope = string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope;
         var methodology = BuildPilotIntakeMethodology();
         var hasData = string.IsNullOrWhiteSpace(intake.Meta?.EmptyReason);
-        var recommendationAllowed = hasData && intake.ReadinessScore >= 70;
+        var recommendationAllowed = hasData && (intake.ReadinessStatus is "excellent" or "good");
         var warnings = BuildPilotIntakeWarnings(intake, recommendationAllowed);
         var actions = BuildPilotIntakeActions(intake);
         var rows = hasData
@@ -917,9 +923,16 @@ public static class DataQualityEndpoints
 
     private static List<AnalyticsReportKpiDto> BuildPilotIntakeKpis(PilotDataQualityIntakeReportDto report)
     {
+        var readinessTone = report.ReadinessStatus switch
+        {
+            "excellent" => "positive",
+            "good" => "neutral",
+            _ => "warning"
+        };
+
         return new List<AnalyticsReportKpiDto>
         {
-            new("readinessScore", "Readiness score", report.ReadinessScore, "/100", report.ReadinessScore >= 90 ? "positive" : report.ReadinessScore >= 70 ? "neutral" : "warning", report.ReadinessLabel),
+            new("readinessScore", "Spremnost za preporuke", report.ReadinessScore, "/100", readinessTone, report.ReadinessLabel),
             new("articlesCount", "Artikli", report.LoadedData.ArticlesCount, null, report.LoadedData.ArticlesCount > 0 ? "positive" : "warning", null),
             new("saleItemsCount", "Stavke prodaje", report.LoadedData.SaleItemsCount, null, report.LoadedData.SaleItemsCount > 0 ? "positive" : "warning", null),
             new("missingCostCount", "Bez nabavne cene", report.Issues.MissingCostCount, null, report.Issues.MissingCostCount == 0 ? "positive" : "warning", null),
@@ -1306,7 +1319,7 @@ public static class DataQualityEndpoints
         return httpContext.TraceIdentifier;
     }
 
-    private static DataQualityScoreDto BuildScore(
+    internal static DataQualityScoreDto BuildScore(
         AnalyticsDataQualityHealthSnapshot snapshot,
         AnalyticsDataQualityHealthOptions options)
     {
@@ -1361,10 +1374,10 @@ public static class DataQualityEndpoints
 
         var summary = value switch
         {
-            >= 90 => "Analytics signal je pouzdan za odluke.",
-            >= 75 => $"Vecina KPI-jeva je pouzdana. Najveci rizik: {dominantRisk}.",
-            >= 50 => $"Postoje vidljivi problemi. Najveci rizik: {dominantRisk}.",
-            _ => $"Podaci traze hitnu korekciju. Najveci rizik: {dominantRisk}."
+            >= 90 => "Prometni pokazatelji nemaju izmeren rizik u ovom periodu; spremnost za preporuke proverava se odvojeno.",
+            >= 75 => $"Prometni pokazatelji su uglavnom pokriveni. Najveci rizik: {dominantRisk}; proverite spremnost za preporuke.",
+            >= 50 => $"Prometni pokazatelji imaju vidljive rupe. Najveci rizik: {dominantRisk}; preporuke su ogranicene.",
+            _ => $"Prometni podaci traze hitnu korekciju. Najveci rizik: {dominantRisk}; preporuke nisu bezbedne."
         };
 
         return new DataQualityScoreDto(value, status, summary);
@@ -1388,18 +1401,29 @@ public static class DataQualityEndpoints
         return warningPenalty + overflowProgress * (1d - warningPenalty);
     }
 
-    private static IntakeReadinessDto ResolveReadiness(int readinessScore)
+    internal static IntakeReadinessDto ResolveReadiness(
+        int readinessScore,
+        string? freshnessStatus = null,
+        int insufficientSignalCount = 0,
+        int totalArticles = 0)
     {
+        var signalRatio = totalArticles <= 0 ? 0d : (double)insufficientSignalCount / totalArticles;
+        var normalizedFreshness = (freshnessStatus ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalizedFreshness is "critical" || signalRatio >= 0.75d)
+        {
+            return new IntakeReadinessDto("critical", "Kritično — preporuke nisu bezbedne", "critical");
+        }
+
         return readinessScore switch
         {
-            >= 90 => new IntakeReadinessDto("excellent", "Spremno za pouzdanu analitiku", "good"),
+            >= 90 => new IntakeReadinessDto("excellent", "Spremno za odluke", "good"),
             >= 70 => new IntakeReadinessDto("good", "Upotrebljivo uz upozorenja", "warning"),
-            >= 40 => new IntakeReadinessDto("warning", "Pilot moze, ali preporuke ogranicene", "warning"),
-            _ => new IntakeReadinessDto("critical", "Prvo srediti podatke", "critical"),
+            >= 40 => new IntakeReadinessDto("warning", "Ograničeno — proveriti preporuke", "warning"),
+            _ => new IntakeReadinessDto("critical", "Kritično — preporuke nisu bezbedne", "critical"),
         };
     }
 
-    private static int CalculateIntakeScore(
+    internal static int CalculateIntakeScore(
         int totalArticles,
         int missingSupplierCount,
         int missingCostCount,
@@ -1412,6 +1436,8 @@ public static class DataQualityEndpoints
         int zeroOrNegativePriceCount,
         int ignoredRows,
         int rowsRead,
+        int insufficientSignalCount,
+        string? freshnessStatus,
         AnalyticsDataQualityHealthSnapshot health)
     {
         static double Ratio(int numerator, int denominator) => denominator <= 0 ? 0d : (double)numerator / denominator;
@@ -1432,6 +1458,13 @@ public static class DataQualityEndpoints
         penalty += Math.Min(20d, Ratio(ignoredRows, rowBase) * 20d);
         penalty += Math.Min(20d, Math.Max(0d, health.MissingCostRevenueSharePct) / 100d * 20d);
         penalty += Math.Min(15d, Math.Max(0d, health.UnknownSupplierRevenueSharePct) / 100d * 15d);
+        penalty += Math.Min(25d, Ratio(insufficientSignalCount, articleBase) * 25d);
+        penalty += (freshnessStatus ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "critical" => 25d,
+            "warning" or "stale" or "unknown" or "" => 10d,
+            _ => 0d
+        };
 
         return Math.Clamp((int)Math.Round(100d - penalty), 0, 100);
     }
@@ -1465,8 +1498,8 @@ public static class DataQualityEndpoints
         return DateTime.SpecifyKind(parsed.Date, DateTimeKind.Utc);
     }
 
-    private sealed record DataQualityScoreDto(int Value, string Status, string Summary);
-    private sealed record IntakeReadinessDto(string Code, string Label, string MetaStatus);
+    internal sealed record DataQualityScoreDto(int Value, string Status, string Summary);
+    internal sealed record IntakeReadinessDto(string Code, string Label, string MetaStatus);
     private sealed record IntakeBatchSnapshot
     {
         public long Id { get; init; }

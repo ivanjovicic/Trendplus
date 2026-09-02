@@ -1155,10 +1155,10 @@ public static class DecisionBoardEndpoints
 
         var summary = status switch
         {
-            "excellent" => "Analytics signal je pouzdan za odluke.",
-            "good" => $"Vecina KPI-jeva je pouzdana. Najveci rizik: {dominantRisk}.",
-            "warning" => $"Postoje vidljivi problemi. Najveci rizik: {dominantRisk}.",
-            _ => $"Podaci traze hitnu korekciju. Najveci rizik: {dominantRisk}."
+            "excellent" => "Prometni pokazatelji nemaju izmeren rizik u ovom periodu; spremnost za preporuke proverava se odvojeno.",
+            "good" => $"Prometni pokazatelji su uglavnom pokriveni. Najveci rizik: {dominantRisk}; proverite spremnost za preporuke.",
+            "warning" => $"Prometni pokazatelji imaju vidljive rupe. Najveci rizik: {dominantRisk}; preporuke su ogranicene.",
+            _ => $"Prometni podaci traze hitnu korekciju. Najveci rizik: {dominantRisk}; preporuke nisu bezbedne."
         };
 
         return (score, status, summary);

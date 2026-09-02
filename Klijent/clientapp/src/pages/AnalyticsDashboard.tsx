@@ -1587,6 +1587,7 @@ export default function AnalyticsDashboard() {
                         executive?.dataQualitySummary?.missingCostCount ?? null
                       }
                       readinessLabel={executiveReadinessLabel}
+                      dataQualityScopeLabel={executive?.dataQualitySummary?.scopeLabel}
                     />
                   </section>
                 </div>
@@ -1864,6 +1865,11 @@ export default function AnalyticsDashboard() {
                   </div>
                   <div className="analytics-mini-dq-meta">
                     <span>
+                      Obuhvat kvaliteta: <strong>{executive?.dataQualitySummary?.scopeLabel ?? "Artikli u skupu odluka"}</strong>
+                    </span>
+                  </div>
+                  <div className="analytics-mini-dq-meta">
+                    <span>
                       Svežina:{" "}
                       <strong>
                         {freshnessStatusLabel(refreshStatus?.dataFreshnessStatus)}
@@ -1878,7 +1884,7 @@ export default function AnalyticsDashboard() {
                   </div>
                   <div className="analytics-mini-dq-meta">
                     <span>
-                      Spremnost podataka:{" "}
+                      Spremnost za preporuke:{" "}
                       <strong>{executiveReadinessLabel}</strong>
                     </span>
                     {refreshStatus?.isRunning ? (

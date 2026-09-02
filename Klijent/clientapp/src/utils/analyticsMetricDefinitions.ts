@@ -6,6 +6,7 @@ export type AnalyticsMetricKey =
   | "stockCoverDays"
   | "lostSalesEstimate"
   | "dataReadinessScore"
+  | "revenueHealthScore"
   | "missingCostCount"
   | "missingSupplierCount"
   | "sellThrough"
@@ -60,6 +61,7 @@ export const canonicalMetricKeys = [
   "slowStockCapital",
   "lostSalesEstimate",
   "dataReadinessScore",
+  "revenueHealthScore",
   "missingCostCount",
   "missingSupplierCount",
   "sellThrough",
@@ -232,13 +234,23 @@ const baseMetrics = {
     relatedScreens: ["/analytics", "/analytics/products", "/analytics/inventory"],
   }),
   dataReadinessScore: defineMetric("dataReadinessScore", {
-    label: "Spremnost podataka",
-    shortDescription: "Kompozitni skor koji pokazuje koliko su podaci pogodni za pouzdane preporuke.",
-    formula: "Ponderisani skor kvaliteta master i transakcionih podataka",
+    label: "Spremnost za preporuke",
+    shortDescription: "Kompozitni skor koji pokazuje da li su obuhvat, kvalitet signala i svežina dovoljni za preporuke.",
+    formula: "Ponderisani skor kvaliteta master i transakcionih podataka, nedovoljnih signala i svežine",
     dataSource: "Data quality checks",
     interpretation: "Viši skor znači manji rizik pogrešne preporuke.",
     limitations: ["Visok skor ne garantuje da su sve pojedinačne metrike bez problema."],
     dataQualityDependencies: ["missing_cost", "missing_supplier", "insufficient_signal", "refresh_freshness"],
+    relatedScreens: ["/analytics/data-quality", "/analytics"],
+  }),
+  revenueHealthScore: defineMetric("revenueHealthScore", {
+    label: "Prometni health signal",
+    shortDescription: "Skor pokrivenosti prometnog uzorka za trošak i dobavljača u izabranom periodu.",
+    formula: "Ponderisani skor udela prometa bez nabavne cene, nepoznatog dobavljača i pokvarenih referenci",
+    dataSource: "Data quality health check",
+    interpretation: "Pokazuje da li je prometni uzorak dovoljno pokriven za tumačenje troška i dobavljača.",
+    limitations: ["Ne predstavlja spremnost celog kataloga niti samostalno odobrava preporuke."],
+    dataQualityDependencies: ["Pokrivenost nabavne cene", "Validan dobavljač", "Period prometa"],
     relatedScreens: ["/analytics/data-quality", "/analytics"],
   }),
   missingCostCount: defineMetric("missingCostCount", {
@@ -537,7 +549,7 @@ const metricAliasesByLabel: Partial<Record<AnalyticsMetricKey, string[]>> = {
   stockCoverDays: ["Pokrivenost zalihe", "Stock cover", "Days of supply"],
   slowStockCapital: ["Kapital u sporoj zalihi"],
   lostSalesEstimate: ["Procena izgubljene prodaje", "Izgubljena prodaja"],
-  dataReadinessScore: ["Spremnost podataka", "Data readiness", "Data quality score"],
+  dataReadinessScore: ["Spremnost za preporuke", "Spremnost podataka", "Data readiness", "Data quality score"],
   missingCostCount: ["Bez nabavne cene", "Redovi bez nabavne cene"],
   missingSupplierCount: ["Bez dobavljača", "Artikli bez dobavljača"],
   sellThrough: ["Sell-through"],

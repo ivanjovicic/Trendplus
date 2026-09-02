@@ -18,6 +18,7 @@ type Props = {
   missingSupplierCount: number | null;
   missingCostCount: number | null;
   readinessLabel?: string | null;
+  dataQualityScopeLabel?: string | null;
 };
 
 function MetricCard(props: { label: string; value: string; tone?: Tone; infoTip?: string; metricKey?: AnalyticsMetricKey }) {
@@ -81,14 +82,14 @@ export default function ExecutiveKpiRow(props: Props) {
       />
       <article className={`metric-card ${qualityCardTone}`}>
         <span className="metric-label">
-          <span>Spremnost podataka</span>
-          <InfoTip text="Sažetak kvaliteta podataka koji utiče na pouzdanost preporuka i signala." />
+          <span>Spremnost za preporuke</span>
+          <InfoTip text="Najlošiji status kompletnosti i svežine za skup podataka koji dashboard koristi za odluke." />
         </span>
         <strong>{props.readinessLabel ?? dataQualityStatusLabel(props.dataQualityStatus)}</strong>
         <small className="exec-dq-sub">
-          Bez dobavljača: {fmtNumber(props.missingSupplierCount, 0, "-")} | Bez cene: {fmtNumber(props.missingCostCount, 0, "-")}
+          Obuhvat: {props.dataQualityScopeLabel ?? "Artikli u skupu odluka"} · Bez dobavljača: {fmtNumber(props.missingSupplierCount, 0, "-")} | Bez cene: {fmtNumber(props.missingCostCount, 0, "-")}
         </small>
-        <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunata spremnost podataka" />
+        <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunata spremnost za preporuke" />
         <Link to="/analytics/data-quality" className="exec-dq-link">Otvori Data Quality</Link>
       </article>
     </div>
