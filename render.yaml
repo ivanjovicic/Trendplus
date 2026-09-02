@@ -2,7 +2,7 @@ services:
   # Core API
   - type: web
     name: trendplus-api
-    # Deploy latest main so startup repair can reconcile custom analytics SQL migrations.
+    # Deploy latest main so startup repair can reconcile custom analytics SQL migrations and quality gates.
     runtime: dotnet
     plan: free
     region: frankfurt
