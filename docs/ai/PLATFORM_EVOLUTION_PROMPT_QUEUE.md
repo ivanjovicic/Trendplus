@@ -14,11 +14,11 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 |---|---|---|
 | PERF - Performance | none | `PERF17` DONE; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
-| SEC - Security Evolution | none | frontend production audit triaged; SEC05 still WAITING on MT09 |
+| SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
 Only one prompt per program may be READY. These planning tasks never outrank higher-priority runtime gates in `MASTER_ROADMAP.md`.
 
-Prepared later candidate (not promoted): `SEC08` reproducible dependency audit gate.
+No additional SEC candidate is promoted.
 
 ---
 
@@ -111,12 +111,13 @@ Do not add a worker, change API contracts, alter analytics calculations, or rais
 
 ## SEC08 - Make dependency vulnerability checks reproducible across frontend workspaces
 
-Status: WAITING
+Status: DONE
 Priority: future / planning
 Type: security/CI/dependency governance
 Feature family: dependency-supply-chain-gate
 Parallel-safe: yes, scoped workflow and documentation work only
 Owner: Codex
+Local lock: removed after DONE
 Commit suggestion: `ci(security): add reproducible frontend audit gate`
 
 ### Problem
@@ -172,6 +173,25 @@ The two frontend workspaces had a reported dependency vulnerability backlog whic
 
 - `SEC07` is DONE and supplies the remediation baseline.
 - `SEC05` remains waiting on `MT09`; this prompt must not be used to bypass that broader security/deployment gate.
+
+### Completion note
+
+- Date: 2026-09-02
+- Status: DONE
+- Completion: added reproducible high-severity dependency audits for both frontend lockfiles to the existing GitHub Actions quality workflow, ensured POS UI source changes trigger the workflow, and documented the commands and gate ownership.
+- Changed files: `.github/workflows/analytics-quality-gates.yml`; `docs/ci/ANALYTICS_CI_GATES.md`; `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-02-SEC08-evidence.md`
+- Contract/runtime behavior changed: CI/security governance only; no package, runtime analytics or deployment behavior changed
+- Checks run: `npm ci` in `Klijent/clientapp` (pass; 464 packages, 0 vulnerabilities); `npm audit --audit-level=high` in `Klijent/clientapp` (pass; 0 vulnerabilities); `npm run build` in `Klijent/clientapp` (pass); `npm ci` in `Trendplus.POS.Ui` (pass; 178 packages, 0 vulnerabilities); `npm audit --audit-level=high` in `Trendplus.POS.Ui` (pass; 0 vulnerabilities); `npm run build` in `Trendplus.POS.Ui` (pass); temporary lodash 4.17.20 audit fixture (expected non-zero; 1 high vulnerability detected); `git diff --check` (pass); `node scripts/check-agent-instructions.mjs --self-test` (pass); `node scripts/check-agent-instructions.mjs` (pass); `node scripts/check-prompt-queues.mjs --self-test` (pass); `node scripts/check-prompt-queues.mjs` (pass); `node scripts/check-planning-architecture.mjs --self-test` (pass after routing repair); `node scripts/check-planning-architecture.mjs` (pass after routing repair)
+- Checks not run: GitHub Actions execution for the new workflow (requires remote run after push); root npm tooling audit and backend dependency audit (outside SEC08's two-frontend-workspace scope); full frontend test suite (no frontend source changed)
+- Run log: `.ai/runs/2026-09-02-SEC08-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending until commit/push
+- Missed: no dependency upgrades/remediation; CI enforcement is added but remote execution remains to be observed
+- Follow-up: inspect the first GitHub Actions run for the new clientapp/POS audit jobs; keep `SEC05` waiting on `MT09`
+- Residual risk: npm advisory availability failure is correctly non-PASS by policy but was not simulated separately; root-tooling and .NET audits remain owned by the broader policy/BCI follow-up
+- Prompt defect / scope repair: same-owner routing repair set current SEC pointer to `none` while `SEC08` was `IN_PROGRESS`, as required by the planning validator
 
 ---
 

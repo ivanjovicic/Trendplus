@@ -17,6 +17,8 @@ Ovaj dokument opisuje minimalne CI gate-ove za analytics i frontend guardrails.
 | JavaScript SDK pins | `node scripts/check-javascript-sdk-pins.mjs` | Yes | Yes (path-filtered) | Yes | Fails if any `.esproj` pins an unavailable `Microsoft.VisualStudio.JavaScript.Sdk` version. |
 | Frontend guardrails | `cd Klijent/clientapp && npm run check:analytics-guardrails` | Yes | Yes | Yes | Uključuje guardrail scan i `tsc -b` kroz postojeći npm script. |
 | Frontend build | `cd Klijent/clientapp && npm run build` | Yes | Yes | Yes | Hvata TypeScript/Vite regresije i bundle probleme. |
+| Client dependency audit | `cd Klijent/clientapp && npm ci && npm audit --audit-level=high` | Yes | Yes | Yes | SEC08; koristi committed `package-lock.json` i fail-closed high threshold. |
+| POS UI dependency audit | `cd Trendplus.POS.Ui && npm ci && npm audit --audit-level=high` | Yes | Yes | Yes | SEC08; pokriva odvojeni POS lockfile i ne zavisi od lokalnog cache-a. |
 
 ## Workflow reference
 
@@ -24,6 +26,7 @@ Ovaj dokument opisuje minimalne CI gate-ove za analytics i frontend guardrails.
 - `.github/workflows/analytics-quality-gates.yml`
 - Canonical build commands: `docs/ci/SOLUTION_AND_FRONTEND_BUILD_CONTRACT.md`
 - Backend filter: `Trendplus2.Backend.slnf`
+- Supply-chain policy: `docs/architecture/SUPPLY_CHAIN_ASSURANCE_POLICY.md`
 
 ## Backend workflow diagnostics (BCI02)
 

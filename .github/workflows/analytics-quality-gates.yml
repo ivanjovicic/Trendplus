@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/**'
       - 'Klijent/clientapp/**'
+      - 'Trendplus.POS.Ui/**'
       - 'Klijent/Klijent.esproj'
       - 'Trendplus.POS.Ui/Trendplus.POS.Ui.esproj'
       - 'scripts/check-javascript-sdk-pins.mjs'
@@ -55,6 +56,10 @@ jobs:
         working-directory: Klijent/clientapp
         run: npm ci
 
+      - name: Audit clientapp dependencies
+        working-directory: Klijent/clientapp
+        run: npm audit --audit-level=high
+
       - name: Run analytics tests
         working-directory: Klijent/clientapp
         run: npm run test:analytics
@@ -65,4 +70,31 @@ jobs:
 
       - name: Build clientapp
         working-directory: Klijent/clientapp
+        run: npm run build
+
+  pos-ui-supply-chain:
+    name: POS UI dependency audit and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Trendplus.POS.Ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Trendplus.POS.Ui
+        run: npm ci
+
+      - name: Audit POS UI dependencies
+        working-directory: Trendplus.POS.Ui
+        run: npm audit --audit-level=high
+
+      - name: Build POS UI
+        working-directory: Trendplus.POS.Ui
         run: npm run build
