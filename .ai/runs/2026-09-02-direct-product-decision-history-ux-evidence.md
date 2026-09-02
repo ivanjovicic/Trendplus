@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct push
 Main commit SHA: 3b5269d4e69a8db42454d63b80300924012a49cf
-Main verification: passed - origin/main resolves to 3b5269d4e69a8db42454d63b80300924012a49cf
-Evidence state: pending
+Main verification: passed - origin/main contains implementation 3b5269d4e69a8db42454d63b80300924012a49cf
+Evidence state: synchronized
 
 ## What was done
 - Confirmed the reported row is not a calculation/database error: the live Product Decision endpoint returns 2 sold units for SKU 3857 in the 30-day window, while the backend safety gate requires at least 3 units.
