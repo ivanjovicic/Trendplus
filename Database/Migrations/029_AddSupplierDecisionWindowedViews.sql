@@ -255,9 +255,6 @@ aggregated AS (
 SELECT
     supplier_id, supplier_name, category,
     articles_count, active_articles_count,
-    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
-    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
-    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
     revenue_pre_markdown, revenue_post_markdown,
     qty_pre_markdown, qty_post_markdown,
     ROUND(COALESCE(markdown_revenue_share, 0), 4) AS markdown_revenue_share,
@@ -267,7 +264,10 @@ SELECT
     ROUND(COALESCE(avg_did_qty, 0), 4) AS avg_did_qty,
     ROUND(COALESCE(oos_adjusted_markdown_dependency, 0), 4) AS oos_adjusted_markdown_dependency,
     ROUND(COALESCE(dead_stock_rate, 0), 4) AS dead_stock_rate,
-    unsold_stock_value
+    unsold_stock_value,
+    ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
+    ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
+    ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage
 FROM aggregated;
 
 -- SQL_BATCH_BREAK
