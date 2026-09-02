@@ -258,6 +258,29 @@ function getOutcomeSummaryWarningLabel(code: string): string {
   return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? code;
 }
 
+function getOutcomeSummaryEmptyState(summary: AnalyticsActionOutcomeSummaryResponse | null): {
+  kind: "no-rows" | "no-measurement";
+  title: string;
+  message: string;
+} {
+  const reason = summary?.meta.emptyReason?.trim().toLowerCase();
+  if (reason === "no_measured_outcomes" || reason === "no_measured_closed_outcomes") {
+    const actionCount = fmtNumber(summary?.totals.createdCount ?? 0, 0, "0");
+    const pendingCount = fmtNumber(summary?.totals.pendingOutcomeCount ?? 0, 0, "0");
+    return {
+      kind: "no-measurement",
+      title: "Analiza ishoda još nije spremna",
+      message: `U ovom uzorku ima ${actionCount} akcija, ali nema zatvorenih akcija sa izmerenim ishodom. ${pendingCount} ishoda čeka unos ili proveru. To nije greška: ne prikazujemo stope ni uticaj dok nema dovoljno dokaza.`,
+    };
+  }
+
+  return {
+    kind: "no-rows",
+    title: "Nema akcija za izabrani period ili filter sažetka",
+    message: "Proširite period ili uklonite filtere. Ovo nije greška i ne prikazujemo stope kao 0%. Lista ispod može sadržati starije akcije ili biti sužena statusom i pretragom, koje ovaj sažetak ne prati.",
+  };
+}
+
 function renderBucketRateLabel(rate: number | null | undefined): string {
   return fmtPctFromRatio(rate, 0, "N/A");
 }
@@ -366,6 +389,10 @@ function formatRecommendationTypeLabel(value: string | null | undefined): string
 
 function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
   const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
+  if (!outcomeStatus && item.measuredImpactRsd == null) {
+    return "Nije uneto";
+  }
+
   if (item.measuredImpactRsd != null) {
     return fmtRsd(item.measuredImpactRsd, 0, "-");
   }
@@ -383,7 +410,7 @@ function getMeasuredImpactLabel(item: AnalyticsActionItem): string {
 
 function getOutcomeStatusLabel(value: string | null | undefined): string {
   const normalized = normalizeOutcomeStatus(value);
-  return normalized ? OUTCOME_LABELS[normalized] : "Ishod nije evidentiran";
+  return normalized ? OUTCOME_LABELS[normalized] : "Čeka unos ishoda";
 }
 
 function hasConfirmedOutcomeEvidence(item: AnalyticsActionItem): boolean | null {
@@ -427,7 +454,7 @@ function getOutcomeStateMessage(item: AnalyticsActionItem): string {
   }
 
   if (!outcomeStatus && item.measuredImpactRsd == null) {
-    return "Ishod još nije evidentiran za ovu akciju.";
+    return "Ishod još nije unet. Proverite akciju, pa izaberite ishod kada bude poznat.";
   }
 
   if (item.measuredImpactRsd == null) {
@@ -875,11 +902,11 @@ export default function AnalyticsActionsPage() {
           <div>
             <h2 id="aaq-summary-title" className="aaq-summary-title">Sažetak ishoda akcija</h2>
             <p className="aaq-summary-subtitle">
-              Read-only pregled za {formatSummaryWindow(outcomeSummary)}. Sažetak prati izvor, prioritet i kvalitet podataka,
-              ali ne prati status liste ni tekstualnu pretragu.
+              Pregled za {formatSummaryWindow(outcomeSummary)}. Sažetak prati izvor, prioritet i kvalitet podataka;
+              status i tekstualna pretraga važe samo za listu akcija.
             </p>
             <p className="aaq-summary-hint">
-              Klik na red u sažetku primenjuje filter na listu akcija. Ponovni klik uklanja isti filter.
+              Klik na red primenjuje filter na listu akcija. Ponovni klik uklanja isti filter. „N/A“ znači da nema validnog dokaza za računanje.
             </p>
           </div>
         </div>
@@ -891,9 +918,25 @@ export default function AnalyticsActionsPage() {
             Sažetak ishoda trenutno nije dostupan. Lista akcija i dalje radi.
           </div>
         ) : outcomeSummary?.meta.emptyReason || outcomeSummary?.meta.sampleSize === 0 ? (
-          <div className="aaq-summary-empty">
-            Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.
-          </div>
+          (() => {
+            const emptyState = getOutcomeSummaryEmptyState(outcomeSummary);
+            return (
+              <div className={`aaq-summary-empty aaq-summary-empty--${emptyState.kind}`} role="status">
+                <strong className="aaq-summary-empty-title">{emptyState.title}</strong>
+                <p className="aaq-summary-empty-message">{emptyState.message}</p>
+                <div className="aaq-summary-empty-actions">
+                  {activeSummaryFilters.length > 0 && (
+                    <button type="button" className="aaq-summary-empty-action" onClick={clearSummaryFilters}>
+                      Ukloni filtere sažetka
+                    </button>
+                  )}
+                  <a className="aaq-summary-empty-action aaq-summary-empty-link" href="/analytics/data-quality">
+                    Proveri kvalitet podataka
+                  </a>
+                </div>
+              </div>
+            );
+          })()
         ) : outcomeSummary ? (
           <>
             {outcomeSummary.meta.warnings.length > 0 && (
@@ -1046,7 +1089,7 @@ export default function AnalyticsActionsPage() {
       </section>
 
       {activeSummaryFilters.length > 0 && (
-        <div className="aaq-active-summary-filters" aria-label="Aktivni summary filteri">
+        <div className="aaq-active-summary-filters" aria-label="Aktivni filteri sažetka">
           {activeSummaryFilters.length === 1 && (
             <button
               type="button"
@@ -1062,7 +1105,7 @@ export default function AnalyticsActionsPage() {
               className="aaq-filter-chip aaq-filter-chip-reset"
               onClick={clearSummaryFilters}
             >
-              Resetuj summary filtere
+              Resetuj filtere sažetka
             </button>
           )}
           {activeSummaryFilters.length > 1 && (
@@ -1195,6 +1238,8 @@ export default function AnalyticsActionsPage() {
                   const isDetailLoading = detailsLoadingId === item.id;
                   const notes = detailsItem.notes ?? [];
                   const outcomeStatus = normalizeOutcomeStatus(item.outcomeStatus);
+                  const displayedOutcomeStatus = outcomeStatus ?? "pending";
+                  const isOutcomeAwaitingInput = outcomeStatus == null;
                   const outcomeNotesPreview = formatOutcomeNotesPreview(item.outcomeNotes);
                   const hasOutcomeUpdate = outcomeStatus != null || item.measuredImpactRsd != null || outcomeNotesPreview != null;
                   const creationSnapshot = detailsItem.ledgerSnapshot?.creationSnapshot ?? null;
@@ -1226,25 +1271,28 @@ export default function AnalyticsActionsPage() {
                         <td className="td-num">{item.confidencePct != null ? `${fmtNumber(item.confidencePct, 0, "-")}%` : "-"}</td>
                         <td>
                           {item.dataQualityStatus ? (
-                            <span className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}>
+                            <span
+                              className={`dq-badge ${DATA_QUALITY_CSS[item.dataQualityStatus.toLowerCase()] ?? ""}`}
+                              title={getDataQualityLabel(item.dataQualityStatus) === "Nedovoljno podataka"
+                                ? "Ovaj red nema dovoljno pouzdanih ulaza za sigurnu procenu."
+                                : undefined}
+                            >
                               {getDataQualityLabel(item.dataQualityStatus)}
                             </span>
                           ) : "-"}
                         </td>
                         <td>
-                          {outcomeStatus ? (
-                            <div>
-                              <span className={OUTCOME_CSS[outcomeStatus]}>{OUTCOME_LABELS[outcomeStatus]}</span>
-                              <div className="td-desc">Izmereni uticaj: {getMeasuredImpactLabel(item)}</div>
-                              <div className="td-desc">Napomena: {outcomeNotesPreview ?? "-"}</div>
+                          <div>
+                            <span className={`${OUTCOME_CSS[displayedOutcomeStatus]}${isOutcomeAwaitingInput ? " badge-outcome-missing" : ""}`}>
+                              {isOutcomeAwaitingInput ? "Čeka unos ishoda" : OUTCOME_LABELS[displayedOutcomeStatus]}
+                            </span>
+                            <div className="td-desc">
+                              {isOutcomeAwaitingInput
+                                ? "Proverite akciju i izaberite ishod kada bude poznat."
+                                : `Izmereni uticaj: ${getMeasuredImpactLabel(item)}`}
                             </div>
-                          ) : (
-                            <div>
-                              <span>Ishod nije evidentiran</span>
-                              <div className="td-desc">Izmereni uticaj: {getMeasuredImpactLabel(item)}</div>
-                              <div className="td-desc">Napomena: {outcomeNotesPreview ?? "-"}</div>
-                            </div>
-                          )}
+                            {outcomeNotesPreview ? <div className="td-desc">Napomena: {outcomeNotesPreview}</div> : null}
+                          </div>
                         </td>
                         <td>
                           <span className={STATUS_CSS[item.status]}>{STATUS_LABELS[item.status]}</span>

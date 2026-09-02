@@ -478,7 +478,7 @@ describe("AnalyticsActionsPage", () => {
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
     expect(screen.getByText("Sažetak ishoda akcija")).toBeInTheDocument();
-    expect(screen.getByText(/Read-only pregled za akcije kreirane u poslednjih 90 dana/)).toBeInTheDocument();
+    expect(screen.getByText(/Pregled za akcije kreirane u poslednjih 90 dana/)).toBeInTheDocument();
     expect(screen.queryByText(/po datumu kreiranja/i)).not.toBeInTheDocument();
     expect(screen.getByText("Pokrivenost zatvorenih")).toBeInTheDocument();
     expect(screen.getByText("Pozitivan od izmerenih")).toBeInTheDocument();
@@ -665,6 +665,27 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getAllByText("Još nije izmereno").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Kalibracija poverenja/i)).not.toBeInTheDocument();
     expect(screen.queryByText("0 RSD")).not.toBeInTheDocument();
+  });
+
+  it("labels a missing outcome as awaiting input instead of an unexplained missing value", async () => {
+    getAnalyticsActionsMock.mockResolvedValueOnce({
+      items: [createActionItem({
+        outcomeStatus: null,
+        measuredImpactRsd: null,
+        outcomeNotes: null,
+      })],
+      totalCount: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    });
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(screen.getByText("Čeka unos ishoda")).toBeInTheDocument();
+    expect(screen.getByText("Proverite akciju i izaberite ishod kada bude poznat.")).toBeInTheDocument();
+    expect(screen.queryByText("Ishod nije evidentiran")).not.toBeInTheDocument();
   });
 
   it("shows unavailable measured impact when an outcome status exists without proof", async () => {
@@ -900,7 +921,8 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
-    expect(await screen.findByText("Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.")).toBeInTheDocument();
+    expect(await screen.findByText("Analiza ishoda još nije spremna")).toBeInTheDocument();
+    expect(screen.getByText(/nema zatvorenih akcija sa izmerenim ishodom/i)).toBeInTheDocument();
   });
 
   it("list error hides empty and fake measured impact", async () => {
@@ -988,7 +1010,7 @@ describe("AnalyticsActionsPage", () => {
     render(<AnalyticsActionsPage />);
 
     expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
-    expect(screen.getByText("Klik na red u sažetku primenjuje filter na listu akcija. Ponovni klik uklanja isti filter.")).toBeInTheDocument();
+    expect(screen.getByText(/Klik na red primenjuje filter na listu akcija/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Zalihe/i }));
     await waitFor(() => {

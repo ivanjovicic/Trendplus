@@ -750,6 +750,34 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task GetOutcomeSummaryAsync_MarksRowsWithoutMeasuredOutcomesAsNotReady()
+    {
+        await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_MarksRowsWithoutMeasuredOutcomesAsNotReady));
+        var service = CreateService(db);
+
+        await service.UpsertAsync(
+            CreateRequest("inventory", "summary-no-measured-outcome-1", expectedImpactRsd: 100m),
+            userId: "u1");
+
+        var summary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        Assert.Equal(1, summary.Meta.SampleSize);
+        Assert.Equal("no_measured_outcomes", summary.Meta.EmptyReason);
+        Assert.Equal(1, summary.Totals.PendingOutcomeCount);
+        Assert.Equal(0, summary.Totals.MeasuredCount);
+        Assert.Null(summary.Totals.PositiveOutcomeRate);
+    }
+
+    [Fact]
     public async Task GetOutcomeSummaryAsync_FiltersByResolvedWindow_AndDoesNotTreatMeasuredDateAsResolvedDate()
     {
         await using var db = CreateDbContext(nameof(GetOutcomeSummaryAsync_FiltersByResolvedWindow_AndDoesNotTreatMeasuredDateAsResolvedDate));

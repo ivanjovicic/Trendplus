@@ -262,6 +262,9 @@ public sealed class AnalyticsActionItemService
         }
 
         var totals = BuildSummaryAggregate("__all__", "Ukupno", items);
+        var emptyReason = totals.MeasuredCount == 0
+            ? "no_measured_outcomes"
+            : null;
         return new AnalyticsActionOutcomeSummaryDto(
             Meta: new AnalyticsActionOutcomeSummaryMetaDto(
                 Success: true,
@@ -276,7 +279,7 @@ public sealed class AnalyticsActionItemService
                 SampleSize: items.Count,
                 MeasuredSampleSize: totals.MeasuredCount,
                 Warnings: warningCodes,
-                EmptyReason: null
+                EmptyReason: emptyReason
             ),
             Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
                 CreatedCount: items.Count,

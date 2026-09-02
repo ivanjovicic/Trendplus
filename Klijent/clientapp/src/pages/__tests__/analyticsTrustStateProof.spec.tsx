@@ -291,7 +291,8 @@ describe("analytics trust-state header proof", () => {
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
     expect(screen.getByText("Izveštaj")).toBeInTheDocument();
-    expect(await screen.findByText("Nema dovoljno zatvorenih i izmerenih akcija za pregled ishoda u ovom uzorku.")).toBeInTheDocument();
+    expect(await screen.findByText("Analiza ishoda još nije spremna")).toBeInTheDocument();
+    expect(screen.getByText(/nema zatvorenih akcija sa izmerenim ishodom/i)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText("Izmereni uticaj")).not.toBeInTheDocument();
   });
