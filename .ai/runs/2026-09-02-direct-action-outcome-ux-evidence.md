@@ -31,21 +31,25 @@ Evidence state: synchronized
 - `npm run build` -> pass (existing chunk-size warning only)
 - `dotnet build Api/Api.csproj --no-restore` -> pass (0 warnings, 0 errors)
 - `git diff --check` -> pass
+- Render workflow `33657359806` for `0a29fb09` -> completed success.
+- Production `/api/runtime/version` -> active commit `0a29fb09`.
+- Production `/api/analytics/actions/outcomes/summary` -> HTTP 200 with explicit empty reason; no fake rates or impact.
+- Production `/api/analytics/suppliers/decision-hub/summary` -> HTTP 200 transport, but existing `MISSING_TABLE` remains in the supplier dependency.
+- Production `/api/analytics/decision-pulse?dataScope=all` -> HTTP 200 with explicit `PULSE_PARTIAL`; no actionable items while supplier hub is unavailable.
 
 ## Validation not run
 - Browser visual smoke -> not run - no authenticated browser session was available; component tests and production build passed.
-- Production API smoke after deploy -> not run - implementation is not yet deployed from this turn.
 
 ## Documentation impact
 - Added this run log; no product documentation contract needed to change because the existing backend pending/measurement semantics were clarified and preserved.
 
 ## What was missed
-- None known in the scoped action-outcome surface. Production confirmation remains pending delivery.
+- None known in the scoped action-outcome surface; the implementation is active in production.
 
 ## Risks
 - The action list and outcome summary intentionally have different filter scopes; the UI now states that explicitly, but a future shared period/filter control could reduce confusion further.
-- Render production still has the previously recorded deploy blocker; this change cannot be called live until the final commit is activated and smoke-tested.
+- The action-outcome implementation is live on Render, but the separate supplier decision dependency still returns `MISSING_TABLE`; this keeps DecisionPulse partial until that dependency is repaired.
 
 ## Next
 - Implementation committed and pushed to `main` as `0a29fb09`.
-- Redeploy and production smoke-test remain the next operational step; the existing Render deploy blocker is recorded in the earlier migration run log.
+- No branch merge is pending for this task: implementation was delivered directly to `main`. Supplier migration repair remains a separate operational follow-up because its production dependency still reports `MISSING_TABLE`.
