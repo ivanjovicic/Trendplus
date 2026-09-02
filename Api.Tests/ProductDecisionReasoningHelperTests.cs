@@ -99,6 +99,32 @@ public class ProductDecisionReasoningHelperTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
+    [Fact(DisplayName = "Small sales sample -> explicit history blockers")]
+    public void SmallSalesSample_ExplainsWhyRecommendationIsBlocked()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 12_780m,
+            UnitsSold: 2,
+            VelocityUnitsPerDay: 0.07m,
+            MarginPct: 36.7m,
+            MarginCoveragePct: 100m,
+            TrendPct: -60m,
+            StockGap: 0,
+            CurrentStock: 2,
+            MinStock: 0,
+            DaysSinceLastSale: 4));
+
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.LowSampleSize, result.ReasonCodes);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.NoSalesInPeriod, result.ReasonCodes);
+        Assert.Equal(3, ProductDecisionReasoningHelper.MinimumUnitsForRecommendation);
+    }
+
     [Fact]
     public void RecommendationLabel_MapsFamilyCodesForOperatorFacingScope()
     {

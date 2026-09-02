@@ -7024,6 +7024,9 @@ public static class CachedAnalyticsEndpoints
             "missing_cost" => "Nedostaje nabavna cena",
             "missing_supplier" => "Nedostaje dobavljač",
             "insufficient_history" => "Nedovoljno istorije",
+            "low_sample_size" => "Premali uzorak prodaje",
+            "no_sales_in_period" => "Nema prodaje u periodu",
+            "missing_last_sale" => "Nedostaje poslednja prodaja",
             "expected_impact_denominator_missing" => "Nedostaje ulaz za procenu uticaja",
             "product_recommendation_blocked" => "Preporuka proizvoda je blokirana",
             "data_quality_critical" => "Kvalitet podataka je kritičan",
@@ -7169,6 +7172,21 @@ public static class CachedAnalyticsEndpoints
     {
         if (string.Equals(confidenceLevel, "insufficient_data", StringComparison.OrdinalIgnoreCase))
         {
+            if (row.UnitsSold < ProductDecisionReasoningHelper.MinimumUnitsForRecommendation)
+            {
+                return $"U periodu je evidentirano {row.UnitsSold} prodatih komada; za osnovnu preporuku potrebna su najmanje {ProductDecisionReasoningHelper.MinimumUnitsForRecommendation}.";
+            }
+
+            if (row.Revenue <= 0m)
+            {
+                return "U izabranom periodu nema evidentirane prodaje.";
+            }
+
+            if (!row.DaysSinceLastSale.HasValue)
+            {
+                return "Nije pronađen datum poslednje prodaje, pa se svežina signala ne može proveriti.";
+            }
+
             return "Obavezni signali nisu kompletni.";
         }
 
@@ -7198,6 +7216,16 @@ public static class CachedAnalyticsEndpoints
 
         if (warningCodes.Contains("insufficient_data", StringComparer.OrdinalIgnoreCase))
         {
+            if (row.UnitsSold < ProductDecisionReasoningHelper.MinimumUnitsForRecommendation)
+            {
+                return "Kvalitet pojedinačnih ulaza može biti dobar, ali je istorijski uzorak prodaje premali za sigurnu odluku.";
+            }
+
+            if (row.Revenue <= 0m)
+            {
+                return "Nema prodaje u izabranom periodu, pa se poslovni signal ne može pouzdano proceniti.";
+            }
+
             return "Nedovoljno signala za stabilnu preporuku.";
         }
 
@@ -7226,12 +7254,18 @@ public static class CachedAnalyticsEndpoints
         if (row.ReasonCodes.Any(code =>
                 string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)))
+                || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)))
         {
             foreach (var code in row.ReasonCodes.Where(code =>
                          string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(code, "missing_supplier", StringComparison.OrdinalIgnoreCase)
-                         || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)))
+                         || string.Equals(code, "insufficient_history", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)))
             {
                 AddWarning(code);
             }
@@ -7422,9 +7456,37 @@ public static class CachedAnalyticsEndpoints
             "MARKDOWN" => $"Spora prodaja ({velocityUnitsPerDay:0.00}/dan), trend {trendText} i starost bez prodaje {staleText}.",
             "DO_NOT_ORDER" => $"Visoka zaliha ({currentStock}), slab trend {trendText} i marža {marginText}.",
             "FIX_DATA" => $"Kritični problemi kvaliteta podataka ({dataQualityStatus}) blokiraju pouzdanu preporuku.",
-            "INSUFFICIENT_DATA" => $"Nedovoljno signala: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.",
+            "INSUFFICIENT_DATA" => BuildInsufficientDataReason(
+                revenue,
+                unitsSold,
+                daysSinceLastSale,
+                staleText),
             _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
         };
+    }
+
+    private static string BuildInsufficientDataReason(
+        decimal revenue,
+        int unitsSold,
+        int? daysSinceLastSale,
+        string staleText)
+    {
+        if (unitsSold < ProductDecisionReasoningHelper.MinimumUnitsForRecommendation)
+        {
+            return $"Nedovoljno istorije za sigurnu preporuku: u izabranom periodu evidentirano je {unitsSold} prodatih komada, a potrebno je najmanje {ProductDecisionReasoningHelper.MinimumUnitsForRecommendation}. Ovo nije greška u izračunu — odluka je namerno blokirana zbog malog uzorka.";
+        }
+
+        if (revenue <= 0m)
+        {
+            return "U izabranom periodu nema evidentirane prodaje, pa preporuka nije moguća. Proverite uvoz prodaje ili proširite period analize.";
+        }
+
+        if (!daysSinceLastSale.HasValue)
+        {
+            return "Nije pronađen datum poslednje prodaje, pa se svežina signala ne može proveriti. Proverite istoriju prodaje.";
+        }
+
+        return $"Nedovoljno signala za sigurnu preporuku: promet {revenue:0.##} RSD, komadi {unitsSold}, poslednja prodaja {staleText}.";
     }
 
     private static int RecommendationPriority(string status) => status switch

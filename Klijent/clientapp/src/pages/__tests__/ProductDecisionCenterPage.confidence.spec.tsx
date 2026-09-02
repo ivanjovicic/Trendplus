@@ -1194,10 +1194,49 @@ describe("ProductDecisionCenterPage confidence contract", () => {
 
     render(<ProductDecisionCenterPage />);
 
-    expect(await screen.findByText("Nedovoljno podataka", { selector: ".confidence-pill" })).toBeInTheDocument();
-    expect(screen.getByText("Procena uticaja nije dostupna.")).toBeInTheDocument();
-    expect(screen.getByText("Upozorenje: nedostaje ulaz za procenu uticaja.")).toBeInTheDocument();
+    expect(await screen.findByText(/Blokirano — nedovoljno dokaza/i, { selector: ".confidence-pill" })).toBeInTheDocument();
+    expect(screen.getByText("Uticaj se ne procenjuje dok je preporuka blokirana.")).toBeInTheDocument();
     expect(screen.queryByText(/Visoka sigurnost/i)).not.toBeInTheDocument();
+  });
+
+  it("explains a small sales sample and offers a data-review next step", async () => {
+    getProductDecisionCenterMock.mockResolvedValueOnce(
+      buildResponse([
+        makeRow({
+          productId: 707,
+          productName: "Model Small Sample",
+          sku: "SKU-707",
+          revenue: 12780,
+          unitsSold: 2,
+          velocityUnitsPerDay: 0.07,
+          marginPct: 36.7,
+          marginCoveragePct: 100,
+          trendPct: -60,
+          recommendationAllowed: false,
+          confidenceLevel: "insufficient_data",
+          confidenceScore: null,
+          confidencePct: 35,
+          reliabilityPct: 45,
+          recommendationStatus: "INSUFFICIENT_DATA",
+          recommendationLabel: "Nedovoljno podataka",
+          recommendationReason: "Nedovoljno istorije za sigurnu preporuku: u izabranom periodu evidentirano je 2 prodata komada, a potrebno je najmanje 3. Ovo nije greška u izračunu — odluka je namerno blokirana zbog malog uzorka.",
+          explainabilityText: "Nedovoljno istorije za sigurnu preporuku: u izabranom periodu evidentirano je 2 prodata komada, a potrebno je najmanje 3. Ovo nije greška u izračunu — odluka je namerno blokirana zbog malog uzorka.",
+          reasonCodes: ["insufficient_history", "low_sample_size"],
+          warningCodes: ["insufficient_history", "low_sample_size", "insufficient_data", "expected_impact_denominator_missing"],
+          expectedImpactRsd: null,
+          recommendedAction: "Sačekaj dodatne podatke pre poslovne odluke.",
+        }),
+      ], "good"),
+    );
+
+    render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByTestId("decision-gate")).toHaveTextContent(/nije greška u izračunu/i);
+    expect(screen.getByTestId("decision-gate")).toHaveTextContent(/2 prodata komada/i);
+    expect(screen.getByTestId("decision-gate")).toHaveTextContent(/Proširite period na 60\/90 dana/i);
+    expect(screen.getByText("Pouzdanost signala: 45%", { selector: "td small" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj u proveru" })).toBeInTheDocument();
+    expect(screen.queryByText("Nedostaje ulaz za procenu očekivanog uticaja.")).not.toBeInTheDocument();
   });
 
   it("keeps stale stock freshness visible on expanded replenishment rows", async () => {

@@ -2,6 +2,8 @@ namespace Application.Analytics;
 
 public static class ProductDecisionReasoningHelper
 {
+    public const int MinimumUnitsForRecommendation = 3;
+
     public static class ReasonCodes
     {
         public const string HighVelocity = "high_velocity";
@@ -11,6 +13,9 @@ public static class ProductDecisionReasoningHelper
         public const string MissingCost = "missing_cost";
         public const string MissingSupplier = "missing_supplier";
         public const string InsufficientHistory = "insufficient_history";
+        public const string LowSampleSize = "low_sample_size";
+        public const string NoSalesInPeriod = "no_sales_in_period";
+        public const string MissingLastSale = "missing_last_sale";
         public const string ReplenishNeeded = "replenish_needed";
         public const string HighStockRisk = "high_stock_risk";
         public const string DataQualityBlocker = "data_quality_blocker";
@@ -48,7 +53,7 @@ public static class ProductDecisionReasoningHelper
         if (input.MissingSupplier || input.MissingCost || input.MissingCategory)
             return "FIX_DATA";
 
-        if (input.UnitsSold < 3 || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
+        if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
             return "INSUFFICIENT_DATA";
 
         var goodTrend = (input.TrendPct ?? 0m) >= 10m;
@@ -97,8 +102,19 @@ public static class ProductDecisionReasoningHelper
         if (input.DaysSinceLastSale.HasValue && input.DaysSinceLastSale.Value >= 45)
             codes.Add(ReasonCodes.StaleStock);
 
-        if (input.UnitsSold < 3 || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
+        if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
+        {
             codes.Add(ReasonCodes.InsufficientHistory);
+
+            if (input.UnitsSold < MinimumUnitsForRecommendation)
+                codes.Add(ReasonCodes.LowSampleSize);
+
+            if (input.Revenue <= 0m)
+                codes.Add(ReasonCodes.NoSalesInPeriod);
+
+            if (!input.DaysSinceLastSale.HasValue)
+                codes.Add(ReasonCodes.MissingLastSale);
+        }
 
         if (recommendationStatus == "REPLENISH")
             codes.Add(ReasonCodes.ReplenishNeeded);

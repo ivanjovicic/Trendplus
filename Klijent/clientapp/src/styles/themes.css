@@ -27,6 +27,7 @@
   --accent-text: var(--theme-color-bfdbfe, #bfdbfe);
   --error-text: var(--theme-color-fecaca, #fecaca);
   --warning: var(--theme-color-fbbf24, #fbbf24);
+  --warning-text: var(--theme-color-92400e, #92400e);
   --warning-10: var(--theme-color-rgba-251-191-36-0p1, rgba(251, 191, 36, 0.1));
   --info: var(--theme-color-60a5fa, #60a5fa);
   --info-10: var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12));
@@ -153,6 +154,7 @@
   --accent-text: var(--theme-color-93c5fd, #93c5fd);
   --error-text: var(--theme-color-ff9999, #ff9999);
   --warning: var(--theme-color-f59e0b, #f59e0b);
+  --warning-text: var(--theme-color-fde68a, #fde68a);
   --warning-10: var(--theme-color-rgba-245-158-11-0p2, rgba(245, 158, 11, 0.2));
   --info: var(--theme-color-60a5fa, #60a5fa);
   --info-10: var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12));
@@ -208,6 +210,7 @@
   --accent-text: var(--theme-color-94a3b8, #94a3b8);
   --error-text: var(--theme-color-fecaca, #fecaca);
   --warning: var(--theme-color-f59e0b, #f59e0b);
+  --warning-text: var(--theme-color-92400e, #92400e);
   --warning-10: var(--theme-color-rgba-245-158-11-0p08, rgba(245, 158, 11, 0.08));
   --info: var(--theme-color-3b82f6, #3b82f6);
   --info-10: var(--theme-color-rgba-59-130-246-0p08, rgba(59, 130, 246, 0.08));

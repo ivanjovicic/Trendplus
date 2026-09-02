@@ -141,6 +141,9 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   missing_cost: "Nedostaje nabavna cena.",
   missing_supplier: "Nedostaje dobavljač.",
   insufficient_history: "Nema dovoljno istorije za sigurnu preporuku.",
+  low_sample_size: "Uzorak prodaje je premali za sigurnu odluku.",
+  no_sales_in_period: "U izabranom periodu nema evidentirane prodaje.",
+  missing_last_sale: "Nedostaje datum poslednje prodaje.",
   replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
   high_stock_risk: "Postoji rizik od viška zalihe.",
   data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
@@ -202,12 +205,12 @@ const TABLE_COLUMNS: AnalyticsTableColumn<ProductDecisionCenterItem>[] = [
   { key: "stockCoverDays", header: "Pokrivenost zalihe", dataType: "number" },
   { key: "sellThroughRatio", header: "Obrt zalihe", dataType: "percent" },
   { key: "confidencePct", header: "Sigurnost preporuke", dataType: "number" },
-  { key: "dataQualityStatus", header: "Kvalitet podataka", dataType: "text" },
+  { key: "dataQualityStatus", header: "Kvalitet ulaza", dataType: "text" },
   { key: "recommendationLabel", header: "Preporuka", dataType: "text" },
 ];
 
 const PRODUCT_DECISION_PAGE_EXPLANATION =
-  "Ovaj ekran predlaže šta uraditi sa artiklima: dopuniti, pojačati, sniziti cenu, pratiti ili proveriti podatke. Preporuka je blokirana kada podaci nisu dovoljno pouzdani.";
+  "Ovaj ekran predlaže šta uraditi sa artiklima: dopuniti, pojačati, sniziti cenu, pratiti ili proveriti podatke. Dobra marža ili zdrava zaliha same po sebi nisu dovoljne — ako je uzorak prodaje mali, preporuka ostaje blokirana dok ne stigne više dokaza.";
 
 function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -259,6 +262,34 @@ function dataQualityClass(status: Exclude<DataQualityFilter, "all">): string {
 function translateReasonCode(code: string): string {
   const normalized = (code ?? "").trim().toLowerCase();
   return REASON_CODE_MESSAGES[normalized] ?? code;
+}
+
+function isDecisionBlocked(whyPanel: ProductDecisionWhyPanel): boolean {
+  return !whyPanel.recommendationAllowed || whyPanel.confidenceLevel === "insufficient_data";
+}
+
+function blockedDecisionNextStep(whyPanel: ProductDecisionWhyPanel): string {
+  const reasonCodes = new Set(whyPanel.reasonCodes.map((code) => code.trim().toLowerCase()));
+  if (reasonCodes.has("missing_cost") || reasonCodes.has("missing_supplier") || reasonCodes.has("data_quality_blocker")) {
+    return "Proverite kvalitet podataka i ponovite analizu.";
+  }
+  if (reasonCodes.has("insufficient_history") || reasonCodes.has("low_sample_size") || reasonCodes.has("no_sales_in_period")) {
+    return "Proširite period na 60/90 dana ili dopunite istoriju prodaje, pa pokušajte ponovo.";
+  }
+  if (reasonCodes.has("missing_last_sale") || whyPanel.inputFreshnessStatus !== "fresh") {
+    return "Osvežite ili proverite istoriju prodaje pre nove odluke.";
+  }
+  return "Proverite ulaze i ponovite analizu kada budu dostupni pouzdaniji podaci.";
+}
+
+function warningSummaryItems(items: Array<{ code: string; message: string }>): Array<{ code: string; message: string }> {
+  const secondaryCodes = new Set([
+    "insufficient_data",
+    "product_recommendation_blocked",
+    "expected_impact_denominator_missing",
+  ]);
+  const primary = items.filter((item) => !secondaryCodes.has(item.code.trim().toLowerCase()));
+  return (primary.length ? primary : items).slice(0, 2);
 }
 
 function normalizeConfidenceLevel(
@@ -1581,6 +1612,7 @@ export default function ProductDecisionCenterPage() {
                   const dataQuality = canonicalDataQualityStatus(whyPanel.dataQualityStatus);
                   const confidenceLevel = normalizeConfidenceLevel(whyPanel.confidenceLevel);
                   const confidenceScore = whyPanel.confidenceScore ?? null;
+                  const decisionBlocked = isDecisionBlocked(whyPanel);
                   const warningCodes = whyPanel.warningCodes;
                   const primaryDrivers = whyPanel.primaryDrivers;
                   const expectedImpactRsd = whyPanel.expectedImpactRsd ?? null;
@@ -1591,6 +1623,7 @@ export default function ProductDecisionCenterPage() {
                   const warningCodeItems = warningCodes.length
                     ? warningCodes.map((code) => ({ code, message: translateReasonCode(code) }))
                     : null;
+                  const warningSummaryCodeItems = warningCodeItems ? warningSummaryItems(warningCodeItems) : null;
                   const primaryDriverItems = primaryDrivers.length
                     ? primaryDrivers.map((driver) => ({ code: driver, label: primaryDriverLabel(driver) }))
                     : null;
@@ -1632,8 +1665,12 @@ export default function ProductDecisionCenterPage() {
                           <small>{row.sellThroughStatusLabel ?? sellThroughStatusLabel(row.sellThroughStatus)}</small>
                         </td>
                         <td>
-                          <span className={confidenceLevelClass(confidenceLevel)}>{confidenceScoreText(confidenceLevel, confidenceScore)}</span>
-                           <small>Pouzdanost: {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}</small>
+                          <span className={`${confidenceLevelClass(confidenceLevel)}${decisionBlocked ? " confidence-pill-blocked" : ""}`}>
+                            {decisionBlocked ? "Blokirano — nedovoljno dokaza" : confidenceScoreText(confidenceLevel, confidenceScore)}
+                          </span>
+                          <small title="Pouzdanost signala meri stabilnost i pokrivenost ulaza; ne znači da je preporuka spremna za akciju.">
+                            Pouzdanost signala: {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}
+                          </small>
                         </td>
                         <td>
                           <span className={dataQualityClass(dataQuality)}>{DATA_QUALITY_LABELS[dataQuality]}</span>
@@ -1642,9 +1679,16 @@ export default function ProductDecisionCenterPage() {
                           <span className={recommendationToneClass(row.recommendationStatus)}>
                             {displayRecommendationLabel(row)}
                           </span>
-                          {warningCodeItems?.length ? (
+                          {decisionBlocked ? (
+                            <div className="decision-gate decision-gate-blocked" data-testid="decision-gate" role="status">
+                              <strong>Preporuka blokirana — nije greška u izračunu</strong>
+                              <span>{whyPanel.explainabilityText ?? whyPanel.recommendationReason ?? "Nema dovoljno dokaza za sigurnu odluku."}</span>
+                              <small>Sledeći korak: {blockedDecisionNextStep(whyPanel)}</small>
+                            </div>
+                          ) : null}
+                          {warningSummaryCodeItems?.length ? (
                             <small className="recommendation-warning-summary">
-                              Upozorenja: {warningCodeItems.slice(0, 3).map((item) => item.message).join(" · ")}
+                              Upozorenja: {warningSummaryCodeItems.map((item) => item.message).join(" · ")}
                             </small>
                           ) : null}
                           <button
@@ -1661,8 +1705,12 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span>{row.recommendedAction}</span>
-                          <small>{expectedImpactRsd != null ? `Procena uticaja: ${fmtRsd(expectedImpactRsd, 0, "N/A")}` : "Procena uticaja nije dostupna."}</small>
-                          {expectedImpactRsd == null ? (
+                          <small>{expectedImpactRsd != null
+                            ? `Procena uticaja: ${fmtRsd(expectedImpactRsd, 0, "N/A")}`
+                            : decisionBlocked
+                              ? "Uticaj se ne procenjuje dok je preporuka blokirana."
+                              : "Procena uticaja nije dostupna."}</small>
+                          {expectedImpactRsd == null && !decisionBlocked ? (
                             <small className="recommendation-warning-summary">Upozorenje: nedostaje ulaz za procenu uticaja.</small>
                           ) : null}
                           <button
@@ -1679,7 +1727,13 @@ export default function ProductDecisionCenterPage() {
                                 ? "Dodaj u centralni red akcija"
                                 : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                           >
-                            {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
+                            {isQueueBusy
+                              ? "Dodavanje..."
+                              : isQueued
+                                ? "U akcijama"
+                                : queueSpec.recommendationStatus === "SIGNAL_REVIEW"
+                                  ? "Dodaj u proveru"
+                                  : "Dodaj u akcije"}
                           </button>
                         </td>
                       </tr>
@@ -2062,7 +2116,13 @@ export default function ProductDecisionCenterPage() {
                                       ? "Dodaj u centralni red akcija"
                                       : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
                                 >
-                                  {isQueueBusy ? "Dodavanje..." : isQueued ? "U akcijama" : "Dodaj u akcije"}
+                                  {isQueueBusy
+                                    ? "Dodavanje..."
+                                    : isQueued
+                                      ? "U akcijama"
+                                      : queueSpec.recommendationStatus === "SIGNAL_REVIEW"
+                                        ? "Dodaj u proveru"
+                                        : "Dodaj u akcije"}
                                 </button>
                                 {supplierUrl ? <Link className="reason-link-btn" to={supplierUrl}>Otvori dobavljača</Link> : null}
                                 {inventoryUrl ? <Link className="reason-link-btn" to={inventoryUrl}>Otvori zalihe</Link> : null}
