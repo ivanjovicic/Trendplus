@@ -597,6 +597,14 @@ decision_inputs AS (
             WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
             ELSE NULL
         END AS return_rate_missing_evidence_reason,
+        CASE
+            WHEN COALESCE(st.post_signal_coverage, 0) < 1
+              OR COALESCE(st.did_signal_coverage, 0) < 1
+              OR COALESCE(st.cost_signal_coverage, 0) < 1
+              OR COALESCE(si.sold_units_in_period, 0) = 0
+            THEN 'partial'
+            ELSE 'complete'
+        END AS evidence_quality_status,
         COALESCE(cf.category_focus_score, 0) AS category_focus_score,
         COALESCE(sr.repeat_winner_rate, 0) AS repeat_winner_rate,
         sr.article_count,

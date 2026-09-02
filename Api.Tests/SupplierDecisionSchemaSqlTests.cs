@@ -257,6 +257,10 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("AS post_signal_coverage", dependencySql);
         Assert.Contains("AS did_signal_coverage", dependencySql);
         Assert.Contains("AS cost_signal_coverage", dependencySql);
+
+        var scoreCacheSql = sql[scoreCacheStart..];
+        Assert.Contains("AS evidence_quality_status", scoreCacheSql);
+        Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", scoreCacheSql);
     }
 
     [Fact]
