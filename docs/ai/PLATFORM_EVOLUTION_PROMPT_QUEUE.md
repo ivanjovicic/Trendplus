@@ -186,8 +186,8 @@ The two frontend workspaces had a reported dependency vulnerability backlog whic
 - Run log: `.ai/runs/2026-09-02-SEC08-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending until commit/push
+- Main commit SHA: `1cb8cd804d3885397cea252d18566a85ae25c63e`
+- Main verification: `origin/main` contains `1cb8cd804d3885397cea252d18566a85ae25c63e` after push
 - Missed: no dependency upgrades/remediation; CI enforcement is added but remote execution remains to be observed
 - Follow-up: inspect the first GitHub Actions run for the new clientapp/POS audit jobs; keep `SEC05` waiting on `MT09`
 - Residual risk: npm advisory availability failure is correctly non-PASS by policy but was not simulated separately; root-tooling and .NET audits remain owned by the broader policy/BCI follow-up
