@@ -362,7 +362,7 @@ describe("PilotReadinessPage", () => {
     configureReady();
   });
 
-  it("renders a fully ready nine-step checklist from confirmed sources", async () => {
+  it("renders the eight decision signals without the duplicate bootstrap card", async () => {
     renderPage();
 
     expect(screen.getByTestId("refresh-banner")).toHaveTextContent("loading");
@@ -375,8 +375,9 @@ describe("PilotReadinessPage", () => {
     expect(getSupplierDecisionDurableReport).toHaveBeenCalledWith({});
 
     const checklist = screen.getByRole("region", { name: "Pilot readiness checklist" });
-    expect(within(checklist).getAllByRole("article")).toHaveLength(9);
-    expect(within(checklist).getAllByText("Spremno")).toHaveLength(9);
+    expect(within(checklist).getAllByRole("article")).toHaveLength(8);
+    expect(within(checklist).getAllByText("Spremno")).toHaveLength(8);
+    expect(within(checklist).queryByText("/analytics")).not.toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: good");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("partial: false");
     expect(screen.queryByTestId("analytics-empty-state")).not.toBeInTheDocument();
@@ -409,7 +410,8 @@ describe("PilotReadinessPage", () => {
     const qualityCard = screen.getByText("Kvalitet podataka proveren").closest("article");
     expect(qualityCard).not.toBeNull();
     expect(within(qualityCard as HTMLElement).getByText("Blokirano")).toBeInTheDocument();
-    expect(within(qualityCard as HTMLElement).getByText(/Blokirane preporuke: 12/i)).toBeInTheDocument();
+    expect(within(qualityCard as HTMLElement).getByText(/12 preporuka je blokirano/i)).toBeInTheDocument();
+    expect(screen.queryByText("Dostupni su delimični signali.")).not.toBeInTheDocument();
   });
 
   it("keeps partial source failures visible without collapsing confirmed cards", async () => {
@@ -419,14 +421,12 @@ describe("PilotReadinessPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Spremno uz upozorenja" })).toBeInTheDocument();
     expect(screen.getByText("Dostupni su delimični signali.")).toBeInTheDocument();
-    expect(screen.getByText(/Unknown ostaje unknown/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nepoznato ostaje nepoznato/i)).toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: warning");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("partial: true");
     expect(screen.queryByTestId("analytics-error-state")).not.toBeInTheDocument();
 
-    const loadedDataCard = screen.getByText("Podaci učitani").closest("article");
-    expect(loadedDataCard).not.toBeNull();
-    expect(within(loadedDataCard as HTMLElement).getByText("Spremno")).toBeInTheDocument();
+    expect(screen.getByText("Pregled prodaje dostupan")).toBeInTheDocument();
   });
 
   it("shows an explicit unknown empty state when every endpoint returns no confirmed source", async () => {
@@ -444,7 +444,7 @@ describe("PilotReadinessPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Spremnost nije potvrđena" })).toBeInTheDocument();
     expect(screen.getByTestId("analytics-empty-state")).toHaveTextContent("Nema potvrđenih readiness signala");
-    expect(screen.getByText(/Unknown nikad ne znači zeleno/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nepoznato nikad ne znači zeleno/i)).toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: insufficient_data");
   });
 

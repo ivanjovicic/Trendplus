@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPilotReadinessCards, type ReadinessPayload } from "../PilotReadinessPage";
 import type {
   AnalyticsActionCounts,
+  AnalyticsDataQualityHealth,
   AnalyticsRefreshStatus,
   PilotDataQualityIntakeReport,
   PilotIntakeDurableReport,
@@ -190,7 +191,60 @@ describe("Pilot readiness edge-state mapping", () => {
     const card = findCard(payload({ intakeReport: report }), "data-quality");
 
     expect(card.status).toBe("blocked");
-    expect(card.reason).toContain("Blokirane preporuke: 2");
+    expect(card.reason).toContain("2 preporuka je blokirano");
+  });
+
+  it("does not call a perfect score ready when the decision gate blocks recommendations", () => {
+    const report = intake({
+      readinessStatus: "good",
+      readinessLabel: "Spremno",
+      readinessScore: 100,
+      issues: { ...intake().issues, missingCostCount: 1087, missingCategoryCount: 12422 },
+      impact: { ...intake().impact, recommendationsBlockedCount: 1087, insufficientSignalCount: 12402 },
+    });
+
+    const card = findCard(payload({ intakeReport: report }), "data-quality");
+
+    expect(card.status).toBe("blocked");
+    expect(card.reason).toContain("Preporuke nisu bezbedne");
+    expect(card.reason).toContain("1.087");
+    expect(card.reason).not.toContain("Readiness: Spremno (100)");
+  });
+
+  it("keeps the intake decision score instead of replacing it with the traffic health score", () => {
+    const report = intake({ readinessScore: 42, readinessStatus: "critical", readinessLabel: "Kritično" });
+    const health = {
+      generatedAt: "2026-07-01T08:00:00Z",
+      lookbackDays: 90,
+      windowFrom: "2026-04-01T00:00:00Z",
+      windowTo: "2026-07-01T00:00:00Z",
+      orphanArticleCount: 0,
+      totalRevenue: 100,
+      missingCostRevenue: 0,
+      missingCostRevenueSharePct: 0,
+      unknownSupplierRevenue: 50,
+      unknownSupplierRevenueSharePct: 10,
+      score: 70,
+      scoreStatus: "warning",
+      scoreSummary: "Health signal",
+      thresholds: { orphanArticleCount: 10, missingCostRevenueSharePct: 5, unknownSupplierRevenueSharePct: 3 },
+      meta: { success: true, dataQualityStatus: "warning" },
+    } as AnalyticsDataQualityHealth;
+
+    const card = findCard(payload({ intakeReport: report, dataQualityHealth: health }), "data-quality");
+
+    expect(card.reason).toContain("skor 42");
+    expect(card.reason).not.toContain("(70)");
+  });
+
+  it("explains report quality in Serbian instead of exposing the backend code", () => {
+    const card = findCard(payload({
+      pilotReport: pilotReport({ dataQualityStatus: "warning" }),
+      supplierReport: supplierReport(),
+    }), "reports");
+
+    expect(card.meta).toContain("Kvalitet: Oprez");
+    expect(card.meta).not.toContain("warning");
   });
 
   it("blocks refresh when the last successful refresh is critically old", () => {

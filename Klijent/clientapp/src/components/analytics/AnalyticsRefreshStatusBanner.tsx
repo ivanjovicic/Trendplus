@@ -60,6 +60,7 @@ export default function AnalyticsRefreshStatusBanner({
   const refreshedObjects = status.refreshedObjects ?? [];
   const failedObjects = status.failedObjects ?? [];
   const showCriticalCopy = freshness === "critical";
+  const hasRecordedAttempt = Boolean(status.lastAttemptAtUtc || status.lastSuccessfulRefreshAtUtc || status.recentRuns?.length);
 
   return (
     <section className={`analytics-refresh-banner analytics-refresh-banner-${freshness}`} aria-live="polite">
@@ -107,7 +108,7 @@ export default function AnalyticsRefreshStatusBanner({
             <span>{latestCorrelationId}</span>
           </div>
         ) : null}
-        {status.durationSeconds != null ? (
+        {status.durationSeconds != null && hasRecordedAttempt && !status.isRunning ? (
           <div className="arb-row">
             <strong>Trajanje:</strong>
             <span>{Math.round(status.durationSeconds)} s</span>

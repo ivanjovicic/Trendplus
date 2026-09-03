@@ -116,5 +116,17 @@ describe("AnalyticsRefreshStatusBanner", () => {
 
     expect(screen.getByText(/Worker nije aktivan u ovom procesu/i)).toBeInTheDocument();
   });
-});
 
+  it("does not show zero duration when no refresh attempt has been recorded", () => {
+    renderBanner(buildStatus({
+      lastSuccessfulRefreshAtUtc: null,
+      lastAttemptAtUtc: null,
+      durationSeconds: 0,
+      generatedAtUtc: null,
+      dataFreshnessStatus: "unknown",
+    }));
+
+    expect(screen.getByText("Nema pokušaja u istoriji")).toBeInTheDocument();
+    expect(screen.queryByText("0 s")).not.toBeInTheDocument();
+  });
+});

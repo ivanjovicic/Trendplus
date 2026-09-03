@@ -444,7 +444,6 @@ function collectStatuses(payload: ReadinessPayload) {
 describe("buildPilotReadinessCards", () => {
   it("keeps every checklist item unknown when all sources are missing", () => {
     expect(collectStatuses(emptyPayload)).toEqual({
-      "loaded-data": "unknown",
       "data-quality": "unknown",
       refresh: "unknown",
       sales: "unknown",
@@ -458,7 +457,6 @@ describe("buildPilotReadinessCards", () => {
 
   it("marks the full pilot signal set as ready", () => {
     expect(collectStatuses(readyPayload)).toEqual({
-      "loaded-data": "ready",
       "data-quality": "ready",
       refresh: "ready",
       sales: "ready",

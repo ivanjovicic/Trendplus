@@ -27,6 +27,7 @@ import type {
   SupplierDecisionDurableReport,
 } from "../types/analytics";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { getAnalyticsMetaMessage, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
 import "./PilotReadinessPage.css";
 
@@ -143,25 +144,6 @@ function isTruthyNumber(value: number | null | undefined): boolean {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-function hasBootstrapData(bootstrap: AnalyticsDashboardBootstrap | null): boolean {
-  if (!bootstrap) return false;
-
-  return [
-    bootstrap.summary?.totalRevenue,
-    bootstrap.summary?.totalTransactions,
-    bootstrap.summary?.totalUnits,
-    bootstrap.inventory?.totalSkuCount,
-    bootstrap.inventory?.totalOnHand,
-    bootstrap.dailySales.length,
-    bootstrap.supplierData.length,
-    bootstrap.paymentData.length,
-    bootstrap.weekdayData.length,
-    bootstrap.hourData.length,
-    bootstrap.categoryData.length,
-    bootstrap.genderData.length,
-  ].some(isTruthyNumber);
-}
-
 function hasSupplierSignals(bootstrap: AnalyticsDashboardBootstrap | null): boolean {
   if (!bootstrap) return false;
   return bootstrap.supplierData.length > 0 || (bootstrap.executive?.topSuppliers?.length ?? 0) > 0;
@@ -194,57 +176,11 @@ function deriveOverallStatus(items: ReadinessCard[]): ReadinessStatus {
   return "ready";
 }
 
-function buildDataLoadedCard(bootstrap: AnalyticsDashboardBootstrap | null): ReadinessCard {
-  if (!bootstrap) {
-    return {
-      key: "loaded-data",
-      index: "01",
-      title: "Podaci učitani",
-      status: "unknown",
-      reason: "Dashboard bootstrap nije dostupan, pa ne možemo potvrditi da su osnovni podaci učitani.",
-      actionLabel: "Otvori Trendplus pregled",
-      href: "/analytics",
-      meta: "Izvor: dashboard bootstrap",
-    };
-  }
-
-  const hasData = hasBootstrapData(bootstrap);
-  const hasPartialSignals = (bootstrap.errors.length > 0) || Boolean(bootstrap.meta?.isPartial);
-  const summary = bootstrap.summary;
-  const inventory = bootstrap.inventory;
-  const supplierCount = bootstrap.supplierData.length;
-  const salesCount = bootstrap.dailySales.length;
-
-  if (!hasData) {
-    return {
-      key: "loaded-data",
-      index: "01",
-      title: "Podaci učitani",
-      status: "blocked",
-      reason: "Bootstrap je stigao, ali nema potvrđenih prodajnih, zališnih ili dobavljačkih signala.",
-      actionLabel: "Otvori Trendplus pregled",
-      href: "/analytics",
-      meta: "Izvor: dashboard bootstrap",
-    };
-  }
-
-  return {
-    key: "loaded-data",
-    index: "01",
-    title: "Podaci učitani",
-    status: hasPartialSignals ? "warning" : "ready",
-    reason: `Bootstrap je učitan: ${fmtRsd(summary?.totalRevenue, 0, "-")} prometa, ${formatLoadCount(summary?.totalTransactions)} transakcija, ${formatLoadCount(summary?.totalUnits)} komada, ${formatLoadCount(inventory?.totalSkuCount)} SKU i ${formatLoadCount(supplierCount)} dobavljača.`,
-    actionLabel: "Otvori Trendplus pregled",
-    href: "/analytics",
-    meta: salesCount > 0 ? `${formatLoadCount(salesCount)} prodajnih dana` : "bez dnevnog signala",
-  };
-}
-
 function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null, health: AnalyticsDataQualityHealth | null): ReadinessCard {
   if (!intakeReport && !health) {
     return {
       key: "data-quality",
-      index: "02",
+      index: "01",
       title: "Kvalitet podataka proveren",
       status: "unknown",
       reason: "Nije stigao pilot intake niti data quality health, pa kvalitet podataka ne možemo da potvrdimo.",
@@ -258,40 +194,30 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
   const healthStatus = health?.scoreStatus ?? "";
   const intakeMetaWarning = Boolean(intakeReport?.meta?.isPartial || isAnalyticsMetaWarning(intakeReport?.meta));
   const healthMetaWarning = Boolean(health?.meta?.isPartial || isAnalyticsMetaWarning(health?.meta));
-  const issueCounts = intakeReport
-    ? [
-      intakeReport.issues.missingSupplierCount,
-      intakeReport.issues.missingCostCount,
-      intakeReport.issues.missingCategoryCount,
-      intakeReport.issues.missingColorCount ?? 0,
-      intakeReport.issues.missingSizeCount ?? 0,
-      intakeReport.issues.saleWithoutArticleCount,
-      intakeReport.issues.zeroOrNegativePriceCount,
-      intakeReport.issues.duplicateSkuCount ?? 0,
-      intakeReport.issues.missingSupplierNameCount,
-    ]
-    : [];
-  const hasBlockingIssue = issueCounts.some((value) => value > 0)
-    && (
-      intakeReport?.impact.recommendationsBlockedCount ?? 0
-    ) > 0;
+  const blockedRecommendations = intakeReport?.impact.recommendationsBlockedCount ?? 0;
+  const hasBlockingIssue = blockedRecommendations > 0;
   const isCritical = readinessStatus === "critical" || healthStatus === "critical" || hasBlockingIssue;
   const isWarning = readinessStatus === "warning" || healthStatus === "warning" || intakeMetaWarning || healthMetaWarning;
-  const score = health?.score ?? intakeReport?.readinessScore ?? null;
+  // Intake readiness is the decision gate for this screen. Health score is a
+  // separate traffic-quality signal and must not silently replace it.
+  const score = intakeReport?.readinessScore ?? health?.score ?? null;
   const summary = intakeReport?.readinessLabel ?? health?.scoreSummary ?? "Kvalitet podataka je dostupan.";
+  const qualityReason = isCritical && intakeReport && blockedRecommendations > 0
+    ? `Preporuke nisu bezbedne za pilot: ${formatLoadCount(blockedRecommendations)} preporuka je blokirano zbog kvaliteta ulaznih podataka. Skor kvaliteta (${formatLoadCount(score)}) ne otključava preporuke.`
+    : intakeReport
+      ? `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Trenutno je blokirano ${formatLoadCount(blockedRecommendations)} preporuka; ignorisano je ${formatLoadCount(intakeReport.impact.ignoredRowsCount)} redova.`
+      : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Data quality health je učitan."}`;
 
   return {
     key: "data-quality",
-    index: "02",
+    index: "01",
     title: "Kvalitet podataka proveren",
     status: isCritical ? "blocked" : isWarning ? "warning" : "ready",
-    reason: intakeReport
-      ? `Readiness: ${summary} (${formatLoadCount(score)}). Blokirane preporuke: ${formatLoadCount(intakeReport.impact.recommendationsBlockedCount)}; ignorisani redovi: ${formatLoadCount(intakeReport.impact.ignoredRowsCount)}.`
-      : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Data quality health je učitan."}`,
+    reason: qualityReason,
     actionLabel: "Otvori Kvalitet podataka",
     href: "/analytics/data-quality",
     meta: intakeReport
-      ? `Bez dobavljača ${formatLoadCount(intakeReport.issues.missingSupplierCount)}, bez cene ${formatLoadCount(intakeReport.issues.missingCostCount)}, nedovoljni signali ${formatLoadCount(intakeReport.impact.insufficientSignalCount)}`
+      ? `Bez dobavljača: ${formatLoadCount(intakeReport.issues.missingSupplierCount)} · bez nabavne cene: ${formatLoadCount(intakeReport.issues.missingCostCount)} · bez kategorije: ${formatLoadCount(intakeReport.issues.missingCategoryCount)} · nedovoljni signali: ${formatLoadCount(intakeReport.impact.insufficientSignalCount)} · ignorisani redovi: ${formatLoadCount(intakeReport.impact.ignoredRowsCount)}`
       : null,
   };
 }
@@ -300,8 +226,8 @@ function buildRefreshCard(refreshStatus: AnalyticsRefreshStatus | null): Readine
   if (!refreshStatus) {
     return {
       key: "refresh",
-      index: "03",
-      title: "Analytics osvežen",
+      index: "02",
+      title: "Svežina analytics podataka",
       status: "unknown",
       reason: "Status osvežavanja nije dostupan, pa ne možemo da potvrdimo svežinu signala.",
       actionLabel: "Otvori worker panel",
@@ -324,22 +250,27 @@ function buildRefreshCard(refreshStatus: AnalyticsRefreshStatus | null): Readine
   const hasWorkerProblem = refreshStatus.workersEnabled === false || refreshStatus.processType === "worker" && refreshStatus.processMode === "web";
   const isCritical = freshness === "critical" || hasCriticalAge || (!lastSuccess && !refreshStatus.isRunning);
   const isWarning = freshness === "stale" || refreshStatus.isRunning || Boolean(refreshStatus.lastFailureAtUtc) || Boolean(refreshStatus.workerWarning || refreshStatus.workerProcessWarning) || hasWorkerProblem;
+  const hasAttemptHistory = Boolean(refreshStatus.lastAttemptAtUtc || refreshStatus.lastSuccessfulRefreshAtUtc || refreshStatus.recentRuns?.length);
 
   return {
     key: "refresh",
-    index: "03",
-    title: "Analytics osvežen",
+    index: "02",
+    title: "Svežina analytics podataka",
     status: isCritical ? "blocked" : isWarning ? "warning" : "ready",
     reason: refreshStatus.isRunning
       ? `Osvežavanje je u toku${refreshStatus.currentStep ? ` (${refreshStatus.currentStep})` : ""}.`
       : freshness === "fresh"
         ? `Poslednji uspešan refresh je ${formatDateTime(refreshStatus.lastSuccessfulRefreshAtUtc, "-")}.`
-        : freshness === "stale"
-          ? `Refresh je zastareo od ${formatDateTime(refreshStatus.lastSuccessfulRefreshAtUtc, "-")}.`
+      : freshness === "stale"
+        ? `Refresh je zastareo od ${formatDateTime(refreshStatus.lastSuccessfulRefreshAtUtc, "-")}.`
+        : !hasAttemptHistory && !refreshStatus.isRunning
+          ? "Nema zabeleženog uspešnog osvežavanja niti pokušaja u istoriji; svežina podataka nije potvrđena."
           : `Stanje osvežavanja nije potvrđeno. Poslednji uspešan refresh: ${formatDateTime(refreshStatus.lastSuccessfulRefreshAtUtc, "-")}.`,
     actionLabel: "Otvori worker panel",
     href: "/admin/configuration?panel=workers",
-    meta: refreshStatus.workerWarning ?? refreshStatus.workerProcessWarning ?? refreshStatus.processMode,
+    meta: refreshStatus.workerWarning
+      ?? refreshStatus.workerProcessWarning
+      ?? (refreshStatus.processMode === "web" ? "Proces: web (automatsko osvežavanje nije potvrđeno)" : null),
   };
 }
 
@@ -347,7 +278,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
   if (!bootstrap) {
     return {
       key: "sales",
-      index: "04",
+      index: "03",
       title: "Pregled prodaje dostupan",
       status: "unknown",
       reason: "Dashboard bootstrap nije dostupan, pa prodajni pregled ne možemo da potvrdimo.",
@@ -364,7 +295,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
   if (!hasSales) {
     return {
       key: "sales",
-      index: "04",
+      index: "03",
       title: "Pregled prodaje dostupan",
       status: "blocked",
       reason: "Bootstrap je stigao, ali nema potvrđenih prodajnih signala za pregled prodaje.",
@@ -376,7 +307,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
 
   return {
     key: "sales",
-    index: "04",
+    index: "03",
     title: "Pregled prodaje dostupan",
     status: hasWarnings ? "warning" : "ready",
     reason: `Prihod ${fmtRsd(summary?.totalRevenue ?? null, 0, "-")}, ${formatLoadCount(summary?.totalTransactions)} transakcija i ${formatLoadCount(summary?.totalUnits)} komada su dostupni u dashboard bootstrap-u.`,
@@ -390,7 +321,7 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
   if (!productDecisionCenter) {
     return {
       key: "products",
-      index: "05",
+      index: "04",
       title: "Odluke o proizvodima dostupne",
       status: "unknown",
       reason: "Product Decision Center nije dostupan, pa odluke o proizvodima ne možemo da potvrdimo.",
@@ -409,7 +340,7 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
 
   return {
     key: "products",
-    index: "05",
+    index: "04",
     title: "Odluke o proizvodima dostupne",
     status: isBlocked ? "blocked" : isWarning ? "warning" : "ready",
     reason: rows > 0
@@ -417,7 +348,7 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
       : meta?.emptyReason ?? metaMessage ?? "Product Decision Center je stigao bez redova za trenutni opseg.",
     actionLabel: "Otvori Odluke o proizvodima",
     href: "/analytics/products",
-    meta: `Bad data ${formatLoadCount(productDecisionCenter.summary.badDataCount)}, izgubljena prodaja ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}`,
+    meta: `Problematični redovi: ${formatLoadCount(productDecisionCenter.summary.badDataCount)} · procena izgubljene prodaje: ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}`,
   };
 }
 
@@ -425,7 +356,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
   if (!bootstrap) {
     return {
       key: "supplier",
-      index: "06",
+      index: "05",
       title: "Pregled dobavljača dostupan",
       status: "unknown",
       reason: "Dashboard bootstrap nije dostupan, pa ne možemo da potvrdimo dobavljačke signale.",
@@ -444,7 +375,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
   if (!hasSupplierData) {
     return {
       key: "supplier",
-      index: "06",
+      index: "05",
       title: "Pregled dobavljača dostupan",
       status: "blocked",
       reason: "Bootstrap je stigao, ali ne postoji potvrđen dobavljački signal za pregled dobavljača.",
@@ -456,7 +387,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
 
   return {
     key: "supplier",
-    index: "06",
+    index: "05",
     title: "Pregled dobavljača dostupan",
     status: hasWarnings ? "warning" : "ready",
     reason: topSupplier
@@ -472,7 +403,7 @@ function buildInventoryCard(bootstrap: AnalyticsDashboardBootstrap | null): Read
   if (!bootstrap) {
     return {
       key: "inventory",
-      index: "07",
+      index: "06",
       title: "Lager rizici dostupni",
       status: "unknown",
       reason: "Dashboard bootstrap nije dostupan, pa ne možemo da potvrdimo inventory rizike.",
@@ -493,7 +424,7 @@ function buildInventoryCard(bootstrap: AnalyticsDashboardBootstrap | null): Read
   if (!hasInventory) {
     return {
       key: "inventory",
-      index: "07",
+      index: "06",
       title: "Lager rizici dostupni",
       status: "blocked",
       reason: "Bootstrap ne sadrži potvrđen inventory signal, pa lager rizici nisu proverljivi.",
@@ -505,7 +436,7 @@ function buildInventoryCard(bootstrap: AnalyticsDashboardBootstrap | null): Read
 
   return {
     key: "inventory",
-    index: "07",
+    index: "06",
     title: "Lager rizici dostupni",
     status: hasWarnings ? "warning" : "ready",
     reason: hasRisk
@@ -524,7 +455,7 @@ function buildActionsCard(
   if (!actionCounts && !outcomeSummary) {
     return {
       key: "actions",
-      index: "08",
+      index: "07",
       title: "Akcije kreirane/aktivne",
       status: "unknown",
       reason: "Red akcija nije dostupan, pa ne možemo da potvrdimo kreirane ili aktivne akcije.",
@@ -549,7 +480,7 @@ function buildActionsCard(
 
   return {
     key: "actions",
-    index: "08",
+    index: "07",
     title: "Akcije kreirane/aktivne",
     status: hasActions ? (isWarning ? "warning" : "ready") : "warning",
     reason: hasActions
@@ -558,7 +489,7 @@ function buildActionsCard(
     actionLabel: "Otvori Centralne akcije",
     href: "/analytics/actions",
     meta: outcomeSummary
-      ? `Koveridž ${fmtPctFromRatio(outcomeSummary.totals.outcomeCoverageRate, 0, "-")}`
+      ? `Pokrivenost ishoda: ${fmtPctFromRatio(outcomeSummary.totals.outcomeCoverageRate, 0, "nije izračunata")}`
       : `${formatLoadCount(totalCount)} ukupno`,
   };
 }
@@ -570,7 +501,7 @@ function buildReportsCard(
   if (!pilotReport && !supplierReport) {
     return {
       key: "reports",
-      index: "09",
+      index: "08",
       title: "Izveštaji spremni",
       status: "unknown",
       reason: "Nijedan report endpoint nije stigao, pa readiness izveštaja ne možemo da potvrdimo.",
@@ -582,11 +513,16 @@ function buildReportsCard(
 
   const hasPilot = Boolean(pilotReport);
   const hasSupplier = Boolean(supplierReport);
-  const pilotWarning = Boolean(pilotReport && (pilotReport.usedFallback || pilotReport.recommendationAllowed === false || isAnalyticsMetaWarning(pilotReport.meta)));
-  const supplierWarning = Boolean(supplierReport && (supplierReport.usedFallback || supplierReport.recommendationAllowed === false || isAnalyticsMetaWarning(supplierReport.meta)));
+  const pilotQualityStatus = pilotReport?.dataQualityStatus?.trim().toLowerCase() ?? "";
+  const supplierQualityStatus = supplierReport?.dataQualityStatus?.trim().toLowerCase() ?? "";
+  const pilotWarning = Boolean(pilotReport && (pilotReport.usedFallback || pilotReport.recommendationAllowed === false || pilotQualityStatus === "warning" || isAnalyticsMetaWarning(pilotReport.meta)));
+  const supplierWarning = Boolean(supplierReport && (supplierReport.usedFallback || supplierReport.recommendationAllowed === false || supplierQualityStatus === "warning" || isAnalyticsMetaWarning(supplierReport.meta)));
   const pilotReady = Boolean(pilotReport && (pilotReport.rows.length > 0 || pilotReport.sections.length > 0));
   const supplierReady = Boolean(supplierReport && (supplierReport.rows.length > 0 || supplierReport.sections.length > 0));
-  const isCritical = Boolean(pilotReport?.dataQualityStatus === "critical" || supplierReport?.dataQualityStatus === "critical");
+  const isCritical = Boolean(
+    pilotQualityStatus === "critical" || pilotQualityStatus === "insufficient_data"
+      || supplierQualityStatus === "critical" || supplierQualityStatus === "insufficient_data",
+  );
   const status: ReadinessStatus = !hasPilot || !hasSupplier
     ? "warning"
     : isCritical
@@ -596,28 +532,32 @@ function buildReportsCard(
         : pilotReady && supplierReady
           ? "ready"
           : "unknown";
+  const qualityStatus = pilotReport?.dataQualityStatus ?? supplierReport?.dataQualityStatus ?? null;
+  const qualityLabel = dataQualityStatusLabel(qualityStatus);
+  const hasFallback = Boolean(pilotReport?.usedFallback || supplierReport?.usedFallback);
 
   return {
     key: "reports",
-    index: "09",
+    index: "08",
     title: "Izveštaji spremni",
     status,
     reason: pilotReport && supplierReport
-      ? `Pilot report (${pilotReport.reportTitle ?? pilotReport.title ?? "pilot-intake"}) i supplier report (${supplierReport.reportTitle ?? supplierReport.title ?? "supplier-decision"}) su dostupni.`
+      ? status === "blocked" || status === "warning"
+        ? `Pilot i supplier izveštaj postoje, ali kvalitet podataka je ${qualityLabel.toLowerCase()}${hasFallback ? " i korišćen je rezervni izvor" : ""}. ${status === "blocked" ? "Preporuke iz izveštaja ostaju blokirane." : "Proverite ih pre pilot prezentacije."}`
+        : `Pilot report (${pilotReport.reportTitle ?? pilotReport.title ?? "pilot-intake"}) i supplier report (${supplierReport.reportTitle ?? supplierReport.title ?? "supplier-decision"}) su dostupni.`
       : pilotReport
         ? `Pilot report je dostupan, ali supplier report još nije potvrđen.`
         : `Supplier report je dostupan, ali pilot report još nije potvrđen.`,
     actionLabel: "Otvori pilot izveštaj",
     href: "/analytics/reports/pilot-intake",
-    meta: pilotReport
-      ? `${pilotReport.dataQualityStatus}${pilotReport.usedFallback ? " / fallback" : ""}`
-      : supplierReport?.dataQualityStatus ?? null,
+    meta: qualityStatus
+      ? `Kvalitet: ${qualityLabel}${hasFallback ? " · rezervni izvor" : ""}`
+      : null,
   };
 }
 
 export function buildPilotReadinessCards(payload: ReadinessPayload): ReadinessCard[] {
   return [
-    buildDataLoadedCard(payload.bootstrap),
     buildDataQualityCard(payload.intakeReport, payload.dataQualityHealth),
     buildRefreshCard(payload.refreshStatus),
     buildSalesCard(payload.bootstrap),
@@ -643,7 +583,7 @@ function getSummarySummary(payload: ReadinessPayload, cards: ReadinessCard[]): s
   const ready = cards.filter((card) => card.status === "ready").length;
   const errors = payload.errors.length + (payload.bootstrap?.errors.length ?? 0);
 
-  return `Spremno ${ready}/9, upozorenja ${warning}, blokirano ${blocked}, nepoznato ${unknown}${errors > 0 ? `, signali sa greškom ${errors}` : ""}.`;
+  return `Spremno ${ready} od ${cards.length}; upozorenja ${warning}, blokirano ${blocked}, nepoznato ${unknown}${errors > 0 ? `, signali sa greškom ${errors}` : ""}.`;
 }
 
 export default function PilotReadinessPage() {
@@ -754,7 +694,16 @@ export default function PilotReadinessPage() {
     ?? payload.productDecisionCenter?.periodToUtc
     ?? null;
   const refreshErrors = payload.errors.filter((item) => item.key === "refreshStatus" || item.key === "bootstrap");
-  const hasPartialSignals = payload.errors.length > 0 || (payload.bootstrap?.errors.length ?? 0) > 0 || overallStatus !== "ready";
+  const hasPartialSignals = payload.errors.length > 0
+    || (payload.bootstrap?.errors.length ?? 0) > 0
+    || Boolean(payload.bootstrap?.meta?.isPartial)
+    || Boolean(payload.intakeReport?.meta?.isPartial)
+    || Boolean(payload.dataQualityHealth?.meta?.isPartial)
+    || Boolean(payload.productDecisionCenter?.meta?.isPartial)
+    || Boolean(payload.pilotReport?.meta?.isPartial)
+    || Boolean(payload.supplierReport?.meta?.isPartial)
+    || payload.refreshStatus?.dataFreshnessStatus === "stale"
+    || payload.refreshStatus?.dataFreshnessStatus === "critical";
 
   return (
     <div className="pilot-readiness-page">
@@ -791,7 +740,7 @@ export default function PilotReadinessPage() {
           <p className="pilot-readiness-overline">Pilot readiness checklist</p>
           <h2>{overallStatus === "ready" ? "Spremno za demo" : overallStatus === "warning" ? "Spremno uz upozorenja" : overallStatus === "blocked" ? "Pilot nije spreman" : "Spremnost nije potvrđena"}</h2>
           <p>
-            {summaryMessage} Unknown nikad ne znači zeleno.
+            {summaryMessage} Nepoznato nikad ne znači zeleno.
           </p>
         </div>
 
@@ -864,7 +813,7 @@ export default function PilotReadinessPage() {
         <section className="pilot-readiness-note" role="status">
           <strong>Dostupni su delimični signali.</strong>
           <span>
-            Prikazujemo samo potvrđene stavke. Unknown ostaje unknown dok API ne vrati validan signal.
+            Prikazujemo samo potvrđene stavke. Nepoznato ostaje nepoznato dok API ne vrati validan signal.
           </span>
         </section>
       ) : null}
@@ -896,7 +845,6 @@ export default function PilotReadinessPage() {
               <Link className="pilot-readiness-card-action" to={card.href}>
                 {card.actionLabel}
               </Link>
-              <span className="pilot-readiness-card-link">{card.href}</span>
             </div>
           </article>
         ))}
@@ -908,7 +856,7 @@ export default function PilotReadinessPage() {
           <p>Ready znači da je signal potvrđen i da postoji dovoljno podataka za demo ili pilot upotrebu.</p>
           <p>Warning znači da signal postoji, ali je delimičan, zastareo ili bez dovoljno potpunog uzorka.</p>
           <p>Blocked znači da ključni signal nije dovoljan za pouzdano predstavljanje ili da je dataset prazan.</p>
-          <p>Unknown znači da API nije potvrdio stanje. To nikad ne treba tumačiti kao uspeh.</p>
+          <p>Nepoznato znači da API nije potvrdio stanje. To nikad ne treba tumačiti kao uspeh.</p>
         </div>
       </details>
     </div>
