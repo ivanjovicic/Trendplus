@@ -3,6 +3,7 @@ import { calculateDashboardMovingStats } from "../AnalyticsDashboard";
 import { deriveAnalyticsDetailMetrics } from "../AnalyticsDetails";
 import { describePopMetric } from "../ColorSalesStatsPage";
 import { calculateAnomalyDeviation, calculateDeltaPct } from "../DailySalesStatsPage";
+import { formatPercent } from "../../components/inventory/inventoryUtils";
 
 describe("analytics indicator regression guards", () => {
   it("keeps moving averages unavailable when there is no daily history", () => {
@@ -48,5 +49,9 @@ describe("analytics indicator regression guards", () => {
   it("keeps a positive-vs-zero baseline change unknown instead of showing 0%", () => {
     expect(calculateDeltaPct(10, 0)).toBeNull();
     expect(calculateAnomalyDeviation(10, 0).deviationPct).toBeNull();
+  });
+
+  it("does not turn an empty inventory denominator into a valid percentage", () => {
+    expect(formatPercent(null)).toBe("Nije dostupno");
   });
 });

@@ -638,7 +638,10 @@ public static class DecisionBoardEndpoints
                     WarningCodes: BuildSupplierWarningCodes(trust),
                     ReasonCodes: item.ReasonCodes,
                     DataQualityStatus: dataQualityStatus,
-                    GeneratedAtUtc: trust?.LastRefreshAtUtc ?? supplierSummary.From,
+                    // The supplier period is not a generation timestamp. If the
+                    // refresh lineage is unknown, use the response generation
+                    // time rather than presenting a historical period boundary.
+                    GeneratedAtUtc: trust?.LastRefreshAtUtc ?? supplierSummary.Meta?.GeneratedAtUtc ?? DateTime.UtcNow,
                     PriorityScore: CapInsufficientDataPriority(
                         ComputeSupplierPriority(item, trust, recommendationAllowed),
                         confidenceLevel,

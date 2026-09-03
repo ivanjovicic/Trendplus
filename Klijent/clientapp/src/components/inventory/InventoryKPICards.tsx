@@ -4,9 +4,9 @@ type InventoryKPICardsProps = {
   totalSku: number | null | undefined;
   totalOnHand: number | null | undefined;
   lowStockCount: number | null | undefined;
-  lowStockShare: number;
-  avgUnitsPerSku: number;
-  totalValue: number;
+  lowStockShare: number | null;
+  avgUnitsPerSku: number | null;
+  totalValue: number | null;
 };
 
 type KpiTone = "cyan" | "green" | "amber" | "blue" | "value";
@@ -23,7 +23,7 @@ export function InventoryKPICards({
     { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala u izabranom opsegu.", tone: "cyan" },
     { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Ukupna pozitivna raspoloziva kolicina robe.", tone: "green" },
     { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} fonda je blizu minimuma.`, tone: "amber" },
-    { label: "Prosecno po SKU", value: formatNumber(avgUnitsPerSku, 1), note: "Srednja kolicina robe po artiklu.", tone: "blue" },
+    { label: "Prosecno po SKU", value: avgUnitsPerSku != null ? formatNumber(avgUnitsPerSku, 1) : "Nije dostupno", note: "Srednja kolicina robe po artiklu.", tone: "blue" },
     { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe.", tone: "value" },
   ];
 

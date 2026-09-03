@@ -10,7 +10,7 @@ type InventoryPriorityPanelsProps = {
   highestValueRows: InventoryRow[];
   chartData: Array<{ supplierName: string; totalValue: number }>;
   balance: InventoryBalance | null;
-  lowStockShare: number;
+  lowStockShare: number | null;
   totalCount: number;
   onOpenDetail: (row: InventoryRow) => void;
 };

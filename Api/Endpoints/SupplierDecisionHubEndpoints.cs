@@ -814,9 +814,14 @@ public static class SupplierDecisionHubEndpoints
         var generatedAtUtc = DateTime.UtcNow;
         var reportId = BuildSupplierDecisionReportId(filters);
         var stableQueryUrl = BuildSupplierDecisionStableQueryUrl(filters);
+        // When the caller did not provide dates, the precomputed scorecard is an
+        // all-history dataset. The filter defaults are only query bounds and must
+        // not be presented as the report's effective period.
+        var reportPeriodFrom = filters.HasExplicitDateRange ? filters.FromDate : summary.From;
+        var reportPeriodTo = filters.HasExplicitDateRange ? filters.ToDate : summary.To;
         var period = new AnalyticsReportPeriodDto(
-            filters.FromDate,
-            filters.ToDate,
+            reportPeriodFrom,
+            reportPeriodTo,
             BuildEffectivePeriodLabel(filters, ResolveEffectiveDataset(GetDecisionScoreWindowDays(filters))),
             trust?.RequestedDataset,
             trust?.EffectiveDataset,
@@ -841,8 +846,8 @@ public static class SupplierDecisionHubEndpoints
             "Trendplus izveštaj dobavljača",
             "supplier_decision",
             generatedAtUtc,
-            summary.From,
-            summary.To,
+            reportPeriodFrom,
+            reportPeriodTo,
             period,
             refreshInfo?.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc,
             refreshInfo?.DataFreshnessStatus,
@@ -2492,7 +2497,10 @@ SELECT
         var hasLowSampleSize = rows.Count > 0 && rows.Count < 3;
         var zeroRevenueRowsExcludedCount = dataset.ZeroRevenueRowsExcludedCount;
         var ignoredRowCount = dataset.IgnoredRowCount;
-        var lastRefreshAtUtc = dataset.GeneratedAtUtc;
+        // Dataset generation is request/cache time, not a successful analytics
+        // refresh. Keep freshness unknown until the refresh-status service proves
+        // a completed refresh.
+        DateTime? lastRefreshAtUtc = null;
         var dataCoverageStatus = !hasData
             ? "insufficient_data"
             : (missingSupplierNameCount > 0

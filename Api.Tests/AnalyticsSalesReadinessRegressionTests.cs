@@ -44,6 +44,60 @@ public sealed class AnalyticsSalesReadinessRegressionTests
     }
 
     [Fact]
+    public void Scorecard_QueryGenerationIsNotReportedAsSuccessfulRefresh()
+    {
+        var fromUtc = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var filters = CreateFilters(fromUtc, toUtc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "HOLD", 80m, 82m, 200000m, 400m, fromUtc, toUtc)],
+            0,
+            0,
+            DateTime.UtcNow);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+
+        Assert.Null(summary.TrustMetadata!.LastRefreshAtUtc);
+    }
+
+    [Fact]
+    public void AllHistoryReportUsesObservedPeriodInsteadOfSyntheticDefaultBounds()
+    {
+        var valid = SupplierDecisionHubEndpoints.TryCreateFilters(
+            fromDate: null,
+            toDate: null,
+            category: null,
+            gender: null,
+            seasonId: null,
+            minRevenue: null,
+            onlyHighConfidence: false,
+            excludeOosBeforeMarkdown: false,
+            supplierId: null,
+            storeId: null,
+            dataScope: "all",
+            out var filters,
+            out var validationErrors);
+
+        Assert.True(valid);
+        Assert.Null(validationErrors);
+        var observedFrom = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+        var observedTo = new DateTime(2026, 6, 29, 0, 0, 0, DateTimeKind.Utc);
+        var dataset = new SupplierDecisionHubEndpoints.SupplierRowsDataset(
+            [CreateSupplierRow(1, "Alpha", "HOLD", 80m, 82m, 200000m, 400m, observedFrom, observedTo)],
+            0,
+            0,
+            DateTime.UtcNow);
+
+        var summary = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters!);
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(summary, dataset, filters!);
+
+        Assert.Equal(observedFrom, report.PeriodFrom);
+        Assert.Equal(observedTo, report.PeriodTo);
+        Assert.Equal(observedFrom, report.Period.FromUtc);
+        Assert.Equal(observedTo, report.Period.ToUtc);
+    }
+
+    [Fact]
     public void EmptyDataset_ReturnsSuccessTrueWithEmptyReason()
     {
         var meta = AnalyticsResponseMetaFactory.Empty("no_rows_for_period", "Nema podataka.");

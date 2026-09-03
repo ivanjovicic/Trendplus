@@ -383,6 +383,7 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Contains("signal_check", blockedCard.SourceKey, StringComparison.Ordinal);
         Assert.Contains("Signal check", blockedCard.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Proveri pouzdanost", blockedCard.RecommendedNextAction, StringComparison.OrdinalIgnoreCase);
+        Assert.NotEqual(supplierSummary.From, blockedCard.GeneratedAtUtc);
 
         var impactSection = Assert.Single(response.Sections.Where(section => section.Key == "impact"));
         Assert.DoesNotContain(impactSection.Cards, card => card.Kind == "supplier");
@@ -428,6 +429,7 @@ public sealed class DecisionBoardEndpointsTests
         Assert.Equal("insufficient_data", card.DataQualityStatus);
         Assert.Equal(0m, card.ImpactScore);
         Assert.True(card.PriorityScore <= 40m);
+        Assert.NotEqual(supplierSummary.From, card.GeneratedAtUtc);
         Assert.Contains("supplier_recommendation_blocked", card.WarningCodes);
         Assert.Contains("signal_check", card.SourceKey, StringComparison.Ordinal);
 

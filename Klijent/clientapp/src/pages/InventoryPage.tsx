@@ -537,20 +537,26 @@ export default function InventoryPage() {
   const rows = useMemo(() => (pageData?.items ?? []).map((item) => buildInventoryRow(item, stores, suppliers)), [pageData, stores, suppliers]);
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const totalValue = balance?.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + (row.estimatedValueAmount ?? 0), 0);
-  const activeSkuShare = useMemo(() => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : 0), [balance]);
-  const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : 0), [balance]);
-  const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : 0), [balance]);
-  const inventoryHealthScore = useMemo(() => Math.max(0, Math.round(100 - (balance && balance.totalSku > 0 ? (balance.outOfStockCount / balance.totalSku) * 60 : 0) - (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 25 : 0))), [balance]);
+  const totalValue = balance
+    ? balance.estimatedInventoryValue ?? rows.reduce((sum, row) => sum + (row.estimatedValueAmount ?? 0), 0)
+    : null;
+  const activeSkuShare = useMemo(() => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : null), [balance]);
+  const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : null), [balance]);
+  const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : null), [balance]);
+  const inventoryHealthScore = useMemo(() => balance && balance.totalSku > 0
+    ? Math.max(0, Math.round(100 - (balance.outOfStockCount / balance.totalSku) * 60 - (balance.lowStockCount / balance.totalSku) * 25))
+    : null, [balance]);
   const healthTrendPoints = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    if (inventoryHealthScore == null || activeSkuShare == null || lowStockShare == null) return null;
     const slope = index - 6;
     const lowStockDrift = lowStockShare * 0.06 * slope;
     const activeSkuDrift = activeSkuShare * 0.018 * (6 - index);
     return Math.max(42, Math.min(99, +(inventoryHealthScore + activeSkuDrift - lowStockDrift).toFixed(1)));
-  }), [activeSkuShare, inventoryHealthScore, lowStockShare]);
+  }).filter((point): point is number => point != null), [activeSkuShare, inventoryHealthScore, lowStockShare]);
   const healthSparklinePath = useMemo(() => {
     const width = 60;
     const height = 24;
+    if (healthTrendPoints.length === 0) return "";
     const min = Math.min(...healthTrendPoints);
     const max = Math.max(...healthTrendPoints);
     return healthTrendPoints.map((point, index) => {
@@ -1119,11 +1125,11 @@ export default function InventoryPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
                 <svg width="60" height="24" viewBox="0 0 60 24" aria-hidden="true" className="shrink-0">
-                  <path d={healthSparklinePath} fill="none" stroke="var(--focus-ring)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  {healthSparklinePath ? <path d={healthSparklinePath} fill="none" stroke="var(--focus-ring)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> : null}
                 </svg>
               </div>
-              <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></div>
-              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kritičnih SKU." : "Povećan rizik od praznih polica."}</div>
+              <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore == null ? "Nije dostupno" : <>{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></>}</div>
+              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore == null ? "Nema SKU imenitelja za pouzdanu procenu." : inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kritičnih SKU." : "Povećan rizik od praznih polica."}</div>
               <KpiExplainButton metricKey="inventoryHealthScore" ariaLabel="Kako je izračunato: Stanje fonda" />
             </div>
           </div>

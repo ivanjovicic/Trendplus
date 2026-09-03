@@ -78,6 +78,7 @@ type ActiveFilters = {
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   absoluteChangeSharePct: number;
   sharePct: number;
+  sharePctAvailable: boolean;
   postSharePct: number;
   trendPct: number;
   reliabilityPct: number;
@@ -149,6 +150,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
     header: "Udeo u apsolutnoj promeni %",
     detailLabel: "Udeo u apsolutnoj promeni %",
     dataType: "percent",
+    getValue: (row) => row.sharePctAvailable ? row.absoluteChangeSharePct : null,
   },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
@@ -415,6 +417,7 @@ type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
   sharePct: number;
+  sharePctAvailable: boolean;
   trendPct: number;
   changeRevenue: number;
   reliabilityPct: number;
@@ -430,7 +433,8 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  const shareText = data.sharePctAvailable ? fmtPct(data.sharePct, 1) : "Nije dostupno";
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Udeo ${shareText} | Trend ${fmtSignedPct(data.trendPct, 1)} | Delta ${fmtRsd(data.changeRevenue)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function normalizeName(value: string | null | undefined): string {
@@ -622,6 +626,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const absoluteChangeSharePct = item.changeSharePercent ?? (
         totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
       );
+      const sharePctAvailable = item.changeSharePercent != null || totalAbsoluteChangeRevenue > 0;
       const sharePct = absoluteChangeSharePct;
       const postSharePct = item.postRevenueSharePercent ?? (
         totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
@@ -639,6 +644,7 @@ export default function ProdajaPrePostNivelacijePage() {
         ...item,
         absoluteChangeSharePct,
         sharePct,
+        sharePctAvailable,
         postSharePct,
         trendPct,
         reliabilityPct: normalizedReliabilityPct,
@@ -701,8 +707,8 @@ export default function ProdajaPrePostNivelacijePage() {
   const totalRevenue = data?.totals.postRevenue ?? 0;
   const totalAbsoluteChangeRevenue = data?.totals.absoluteChangeRevenue
     ?? sortedRows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
-  const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return 0;
+  const top5SharePct = useMemo<number | null>(() => {
+    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return null;
     const top5 = [...sortedRows]
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 5)
@@ -719,7 +725,7 @@ export default function ProdajaPrePostNivelacijePage() {
   const periodGrowthDisplay = useMemo(() => {
     if (previousComparisonError) return "Nedostupno";
     if (previousRevenue == null) return "N/A";
-    if (previousRevenue <= 0) return totalRevenue > 0 ? "Nova baza" : "0,0%";
+    if (previousRevenue <= 0) return totalRevenue > 0 ? "Nova baza" : "Bez baze";
     return fmtSignedPct(periodGrowthPct);
   }, [periodGrowthPct, previousComparisonError, previousRevenue, totalRevenue]);
 
@@ -1608,7 +1614,7 @@ const advancedSignals = useMemo(
                               </div>
                             </td>
                             <td className="align-right">{fmtRsd(row.postRevenue)}</td>
-                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="align-right">{row.sharePctAvailable ? fmtPct(row.sharePct, 2) : "Nije dostupno"}</td>
                             <td className={`align-right ${trendClass(row.changeRevenue)}`}>{fmtRsd(row.changeRevenue)}</td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
                             <td className="align-center">

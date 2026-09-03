@@ -35,7 +35,8 @@ export function formatCurrency(value: number | null | undefined, fallback = "Nij
   return value.toLocaleString("sr-RS", { style: "currency", currency: "RSD", maximumFractionDigits: 0 });
 }
 
-export function formatPercent(value: number) {
+export function formatPercent(value: number | null | undefined, fallback = "Nije dostupno") {
+  if (value == null || Number.isNaN(value)) return fallback;
   return `${value.toLocaleString("sr-RS", { maximumFractionDigits: 1 })}%`;
 }
 
