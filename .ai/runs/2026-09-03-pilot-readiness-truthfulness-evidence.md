@@ -4,9 +4,9 @@ Date: 2026-09-03
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 9efdbe3e028510a1e6ac1ad1e6af1ee9116860d2
+Main verification: passed - fresh fetch confirms HEAD and origin/main are both 9efdbe3e028510a1e6ac1ad1e6af1ee9116860d2
+Evidence state: synchronized
 
 ## What was done
 
@@ -57,8 +57,8 @@ Read-only production API verification on 2026-09-03 confirmed the displayed issu
 ## Risks
 
 - Dashboard bootstrap, intake and supplier report endpoints currently expose different periods/denominators. The page now avoids treating their scores as interchangeable, but the backend contracts should eventually expose one canonical effective period for all readiness signals.
-- Direct-main delivery still requires fresh verification after commit/push.
+- Delivered implementation is verified on `origin/main` at 9efdbe3e028510a1e6ac1ad1e6af1ee9116860d2.
 
 ## Next
 
-- Verify the delivered implementation SHA on `origin/main` after push; deploy/refresh worker configuration remains the operational follow-up.
+- Deploy/refresh worker configuration remains the operational follow-up; the UI now reports its absence safely.
