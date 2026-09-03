@@ -1,11 +1,37 @@
 import { Sparkles, TrendingUp } from "lucide-react";
+import InfoTip from "../ui/InfoTip";
 
 const TREND_MODELS = [
-  { id: "tm-1", title: "Trend model Alpha", score: 84, change: "+4.2%" },
-  { id: "tm-2", title: "Trend model Retail", score: 76, change: "+1.1%" },
-  { id: "tm-3", title: "Trend model Signals", score: 68, change: "-0.8%" },
-  { id: "tm-4", title: "Trend model Demand", score: 71, change: "+2.5%" },
-  { id: "tm-5", title: "Trend model Runtime", score: 89, change: "+6.7%" },
+  {
+    id: "tm-1",
+    title: "Trend model Alpha",
+    description: "Opšti trend signal za pregled promena u vremenu.",
+    explanation: "Naziv modela je vidljiv, ali trenutno nema povezanog backend skora, perioda ni validacionog izveštaja.",
+  },
+  {
+    id: "tm-2",
+    title: "Trend model Retail",
+    description: "Trend maloprodaje po prodaji i dostupnim poslovnim signalima.",
+    explanation: "Za pouzdan rezultat potrebni su izvorni podaci, izabrani period i poređenje sa stvarnim ishodom prodaje.",
+  },
+  {
+    id: "tm-3",
+    title: "Trend model Signals",
+    description: "Jačina i pokrivenost signala koji ulaze u analitiku.",
+    explanation: "Ovaj prikaz ne meri kvalitet signala. Data quality i validacioni endpointi su izvor istine kada budu povezani.",
+  },
+  {
+    id: "tm-4",
+    title: "Trend model Demand",
+    description: "Trend potražnje koji bi trebalo da koristi istoriju prodaje.",
+    explanation: "Bez istorijskog uzorka i backtest rezultata nije moguće reći da li model dobro predviđa potražnju.",
+  },
+  {
+    id: "tm-5",
+    title: "Trend model Runtime",
+    description: "Operativni status i izvršavanje trend modela.",
+    explanation: "Runtime status nije isto što i tačnost modela; ovde trenutno nema povezanog health ili evaluation endpointa.",
+  },
 ];
 
 export default function TrendModelList() {
@@ -13,7 +39,8 @@ export default function TrendModelList() {
     <section className="rounded-2xl border border-border bg-surface-elevated p-4">
       <div className="mb-3 flex items-center gap-2">
         <Sparkles size={16} className="text-info" />
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Trend Models</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Trend modeli</h3>
+        <InfoTip text="Ovaj panel trenutno opisuje modele, ali ne prikazuje izmišljenu tačnost. Skor je validan tek kada postoji backend izvor, period, uzorak i rezultat evaluacije." />
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {TREND_MODELS.map((model) => (
@@ -22,17 +49,19 @@ export default function TrendModelList() {
             className="rounded-xl border border-muted bg-surface-darker p-3 transition hover:border-info"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-contrast">{model.title}</p>
-              <TrendingUp size={14} className="text-info" />
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-contrast">{model.title}</p>
+                <InfoTip text={model.explanation} />
+              </div>
+              <TrendingUp size={14} className="text-muted" aria-hidden="true" />
             </div>
-            <div className="mt-3 flex items-end justify-between">
-              <p className="text-2xl font-bold text-contrast">{model.score}</p>
-              <p className={`text-xs font-semibold ${model.change.startsWith("-") ? "text-error" : "text-success"}`}>
-                {model.change}
-              </p>
+            <div className="mt-3">
+              <p className="text-sm font-semibold text-warning">Tačnost: nije dostupna</p>
+              <p className="mt-1 text-xs text-muted">{model.description}</p>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-surface">
-              <div className="h-1.5 rounded-full bg-info" style={{ width: `${model.score}%` }} />
+            <div className="mt-3 flex items-center justify-between text-xs text-muted">
+              <span>Validacija modela</span>
+              <span className="font-semibold text-warning">Nije povezana</span>
             </div>
           </article>
         ))}
