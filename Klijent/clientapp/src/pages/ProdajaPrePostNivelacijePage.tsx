@@ -82,7 +82,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   trendPct: number;
   reliabilityPct: number;
   reliabilityAvailable: boolean;
-  avgCoveragePost30: number;
+  avgCoveragePost30Available: boolean;
   confidencePct: number;
   confidenceAvailable: boolean;
   status: DecisionStatus;
@@ -627,7 +627,7 @@ export default function ProdajaPrePostNivelacijePage() {
         totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
       );
       const trendPct = item.changePercent;
-      const avgCoveragePost30 = (item.avgCoveragePost30 ?? 0) * 100;
+      const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : 0;
       const normalizedReliabilityPct = recommendationReliabilityPct ?? 0;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
@@ -644,6 +644,7 @@ export default function ProdajaPrePostNivelacijePage() {
         reliabilityPct: normalizedReliabilityPct,
         reliabilityAvailable: recommendationReliabilityPct != null,
         avgCoveragePost30,
+        avgCoveragePost30Available: item.avgCoveragePost30 != null,
         confidencePct: confidencePctValue ?? 0,
         confidenceAvailable: confidencePctValue != null,
         status,
@@ -808,13 +809,23 @@ export default function ProdajaPrePostNivelacijePage() {
     const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
     const vendorRows = decisionRows.length;
     const nonZeroChangeVendors = decisionRows.filter((row) => Math.abs(row.changeRevenue) > 0.0001).length;
-    const avgPostCoveragePct = (data?.dataQuality.avgCoveragePost30 ?? 0) * 100;
+    const avgPostCoveragePct = data?.dataQuality.avgCoveragePost30 != null
+      ? data.dataQuality.avgCoveragePost30 * 100
+      : null;
 
     if (analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue <= 0) {
       return {
         tone: "weak" as const,
         label: "Nema pouzdanog signala",
         details: "Nema dovoljno analiziranih promena za koncentraciju po dobavljačima.",
+      };
+    }
+
+    if (avgPostCoveragePct == null) {
+      return {
+        tone: "weak" as const,
+        label: "Pokrivenost nije potvrđena",
+        details: `Nema validnog podatka o post-window pokrivenosti za ${analyzedRows} analiziranih redova; koncentraciju ne treba tumačiti kao potvrđen signal.`,
       };
     }
 
@@ -1590,7 +1601,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`${analyticsMetricDescriptions.reliabilityPct} Aktivni artikli: ${row.activeArticlesCount}/${row.articleCount}. Post-window pokrivenost: ${fmtPct(row.avgCoveragePost30, 0)}.`} />
+                                    <InfoTip text={`${analyticsMetricDescriptions.reliabilityPct} Aktivni artikli: ${row.activeArticlesCount}/${row.articleCount}. Post-window pokrivenost: ${row.avgCoveragePost30Available ? fmtPct(row.avgCoveragePost30, 0) : "Nije dostupno"}.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>

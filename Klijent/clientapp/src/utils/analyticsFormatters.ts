@@ -37,14 +37,14 @@ export function fmtRsdCompact(value: number | null | undefined, digits = 1, fall
   return fmtRsd(value, 0, fallback);
 }
 
-export function fmtPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
+export function fmtPct(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+  if (value == null || Number.isNaN(value)) return fallback;
   return `${fmtNumber(value, digits)}%`;
 }
 
 export function fmtPctFromRatio(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
   if (value == null || Number.isNaN(value)) return fallback;
-  return fmtPct(value * 100, digits);
+  return fmtPct(value * 100, digits, fallback);
 }
 
 export function fmtSignedPct(value: number | null | undefined, digits = 1): string {

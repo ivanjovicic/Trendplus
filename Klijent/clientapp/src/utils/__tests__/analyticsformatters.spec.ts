@@ -29,6 +29,11 @@ describe("analyticsformatters", () => {
     expect(fmtPctFromRatio(0.125, 1, "-")).toBe("12,5%");
   });
 
+  it("keeps the caller's Serbian unavailable label for missing percentages", () => {
+    expect(fmtPct(null, 1, "Nije dostupno")).toBe("Nije dostupno");
+    expect(fmtPctFromRatio(null, 1, "Nije dostupno")).toBe("Nije dostupno");
+  });
+
   it("fmtQty appends unit", () => {
     expect(fmtQty(5)).toContain("kom");
   });

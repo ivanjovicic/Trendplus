@@ -135,7 +135,7 @@ type AnomalyPoint = {
   label: string;
   revenue: number;
   items: number;
-  deviationPct: number;
+  deviationPct: number | null;
   deviationValue: number;
 };
 
@@ -305,11 +305,18 @@ function getPreviousPeriodRange(filters: ActiveFilters): { fromDate: string; toD
   };
 }
 
-function calculateDeltaPct(currentValue: number, previousValue: number): number | null {
+export function calculateDeltaPct(currentValue: number, previousValue: number): number | null {
   if (previousValue === 0) {
     return currentValue === 0 ? 0 : null;
   }
   return ((currentValue - previousValue) / previousValue) * 100;
+}
+
+export function calculateAnomalyDeviation(currentValue: number, baselineValue: number): { deviationValue: number; deviationPct: number | null } {
+  return {
+    deviationValue: currentValue - baselineValue,
+    deviationPct: calculateDeltaPct(currentValue, baselineValue),
+  };
 }
 
 function truncateLabel(value: string, maxLength = 18): string {
@@ -830,8 +837,7 @@ export default function DailySalesStatsPage() {
   const anomalyRows = useMemo<AnomalyPoint[]>(() => {
     return trendData
       .map((point) => {
-        const deviationValue = point.totalRevenue - point.ma7Revenue;
-        const deviationPct = calculateDeltaPct(point.totalRevenue, point.ma7Revenue) ?? 0;
+        const { deviationValue, deviationPct } = calculateAnomalyDeviation(point.totalRevenue, point.ma7Revenue);
         return {
           date: point.date,
           label: point.fullLabel,
@@ -1855,7 +1861,7 @@ export default function DailySalesStatsPage() {
                     <span>{row.label}</span>
                     <span>{fmtRsdShort(row.revenue)}</span>
                     <span>{fmtNumber(row.items)}</span>
-                    <span className={row.deviationValue >= 0 ? "trend-up" : "trend-down"}>{fmtSignedPct(row.deviationPct, 1)}</span>
+                    <span className={row.deviationValue >= 0 ? "trend-up" : "trend-down"}>{row.deviationPct == null ? "Nije dostupno" : fmtSignedPct(row.deviationPct, 1)}</span>
                   </div>
                 ))}
               </div>

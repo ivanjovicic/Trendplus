@@ -62,6 +62,14 @@ const CHART_TOOLTIP_CONTENT_STYLE: CSSProperties = {
   boxShadow: "var(--tooltip-box-shadow)",
 };
 
+function formatChartValue(
+  value: number | string | undefined,
+  formatter: (value: number) => string,
+): string {
+  const numeric = typeof value === "number" ? value : value == null ? null : Number(value);
+  return numeric == null || !Number.isFinite(numeric) ? "Nije dostupno" : formatter(numeric);
+}
+
 export default function AnalyticsDashboardCharts(props: Props) {
   const {
     dailySales,
@@ -90,7 +98,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                 <Tooltip
                   contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                   formatter={(value: number | string | undefined, name?: string) => [
-                    name === "totalRevenue" ? formatCurrency(typeof value === "number" ? value : Number(value ?? 0)) : formatNumber(typeof value === "number" ? value : Number(value ?? 0)),
+                    name === "totalRevenue" ? formatChartValue(value, formatCurrency) : formatChartValue(value, formatNumber),
                     name === "totalRevenue" ? "Promet" : "Transakcije",
                   ]}
                 />
@@ -116,7 +124,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   </Pie>
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Legend />
                 </PieChart>
@@ -137,7 +145,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   </Pie>
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Legend />
                 </PieChart>
@@ -158,7 +166,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <YAxis type="category" dataKey="name" width={150} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--info)" />
                 </BarChart>
@@ -179,7 +187,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--success)" />
                 </BarChart>
@@ -206,7 +214,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Area type="monotone" dataKey="totalRevenue" stroke="var(--accent-info)" fill="url(#hourGradient)" strokeWidth={2.2} />
                 </AreaChart>
@@ -227,7 +235,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
-                    formatter={(value: number | string | undefined) => formatCurrency(typeof value === "number" ? value : Number(value ?? 0))}
+                    formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
                   <Bar dataKey="totalRevenue" fill="var(--warning)" radius={[8, 8, 0, 0]} />
                 </BarChart>

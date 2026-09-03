@@ -167,11 +167,11 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   return `${displayStatusLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokriće ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${fmtPct(data.reliabilityPct, 0)}`;
 }
 
-function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
+export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
   if (item.popRevenueChangePct != null && !Number.isNaN(item.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(item.popRevenueChangePct, 2),
-      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(item.previousPeriodRevenue ?? 0)}.`,
+      title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(item.previousPeriodRevenue, 0, "Nije dostupno")}.`,
       className: trendClass(item.popRevenueChangePct),
     };
   }

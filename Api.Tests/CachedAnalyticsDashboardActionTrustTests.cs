@@ -77,4 +77,61 @@ public sealed class CachedAnalyticsDashboardActionTrustTests
         Assert.Equal("Legacy dashboard action bez trust payloada.", legacy.StatusReason);
         Assert.Equal("Nastavite monitoring metrika i osvežavajte agregate dnevno.", legacy.Reason);
     }
+
+    [Fact]
+    public void BuildDashboardDecisionActions_DoesNotReenableBlockedProductSignal()
+    {
+        var fromDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toDate = new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc);
+        var snapshot = new ProductDecisionCenterResponseDto
+        {
+            Rows =
+            [
+                new ProductDecisionCenterRowDto
+                {
+                    ProductId = 1,
+                    Sku = "SKU-1",
+                    ProductName = "Blokiran artikal",
+                    Revenue = 12500m,
+                    UnitsSold = 12,
+                    VelocityUnitsPerDay = 0.4m,
+                    RecommendationStatus = "REPLENISH",
+                    RecommendationLabel = "Dopuni",
+                    RecommendationReason = "Nedostaje pouzdan trošak.",
+                    ConfidencePct = 82,
+                    ReliabilityPct = 24,
+                    RecommendationAllowed = false,
+                    DataQualityStatus = "critical",
+                },
+                new ProductDecisionCenterRowDto
+                {
+                    ProductId = 2,
+                    Sku = "SKU-2",
+                    ProductName = "Blokiran artikal 2",
+                    Revenue = 7500m,
+                    UnitsSold = 9,
+                    VelocityUnitsPerDay = 0.3m,
+                    RecommendationStatus = "REPLENISH",
+                    RecommendationLabel = "Dopuni",
+                    RecommendationReason = "Nedostaje pouzdan trošak.",
+                    ConfidencePct = 80,
+                    ReliabilityPct = 20,
+                    RecommendationAllowed = false,
+                    DataQualityStatus = "critical",
+                }
+            ]
+        };
+
+        var actions = CachedAnalyticsEndpoints.BuildDashboardDecisionActions(
+            snapshot,
+            null,
+            fromDate,
+            toDate,
+            null,
+            null);
+
+        var replenish = Assert.Single(actions.Where(action => action.RecommendationStatus == "REPLENISH"));
+        Assert.False(replenish.RecommendationAllowed);
+        Assert.Equal("critical", replenish.DataQualityStatus);
+    }
 }

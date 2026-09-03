@@ -1398,11 +1398,11 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Udeo u maržnom doprinosu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom maržnom doprinosu. Formula: maržni doprinos tipa / ukupan maržni doprinos svih tipova x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
-                  <strong>{fmtPct(totalMarginContribution > 0 ? (selectedRow.marginContribution / totalMarginContribution) * 100 : 0, 2)}</strong>
+                  <strong>{totalMarginContribution > 0 ? fmtPct((selectedRow.marginContribution / totalMarginContribution) * 100, 2) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Udeo u količini <InfoTip text="Procenat koji ovaj tip obuće čini u ukupno prodatoj količini." /></span>
-                  <strong>{fmtPct((data?.totals.ukupnaKolicina ?? 0) > 0 ? (selectedRow.ukupnaKolicina / (data?.totals.ukupnaKolicina ?? 1)) * 100 : 0, 2)}</strong>
+                  <strong>{(data?.totals.ukupnaKolicina ?? 0) > 0 ? fmtPct((selectedRow.ukupnaKolicina / data!.totals.ukupnaKolicina) * 100, 2) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Broj artikala <InfoTip text="Ukupan broj različitih artikala ovog tipa obuće koji su prodati." /></span>

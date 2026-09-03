@@ -3964,7 +3964,7 @@ public static class CachedAnalyticsEndpoints
                     "INSUFFICIENT_DATA" => false,
                     "FIX_DATA" => false,
                     null => action.RecommendationAllowed,
-                    _ => true
+                    _ => action.RecommendationAllowed
                 };
                 return action;
             })
@@ -4357,7 +4357,10 @@ public static class CachedAnalyticsEndpoints
             ImpactEstimateRsd = impactEstimateRsd,
             ConfidencePct = avgConfidence,
             ReliabilityPct = avgReliability,
-            RecommendationAllowed = recommendationStatus is not "INSUFFICIENT_DATA" and not "FIX_DATA",
+            // An action aggregates product rows; it is actionable only when every
+            // contributing row passed the same recommendation gate. The status
+            // label alone must never re-enable a blocked signal.
+            RecommendationAllowed = reliable.All(x => x.RecommendationAllowed),
             DataQualityStatus = string.IsNullOrWhiteSpace(exemplar.DataQualityStatus) ? "insufficient_data" : exemplar.DataQualityStatus,
             ActionUrl = actionUrl,
             Metadata = new Dictionary<string, object?>

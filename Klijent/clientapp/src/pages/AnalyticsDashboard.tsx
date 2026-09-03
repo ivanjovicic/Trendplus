@@ -117,7 +117,8 @@ const HELP: Record<string, string> = {
   velocity: "Prosečno prodata količina po danu.",
   oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
   pareto: "Koliko mali broj artikala pravi većinu prometa.",
-  ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend.",
+  ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend. Prikazuje se tek kada postoji svih 7 dnevnih tačaka.",
+  ma30: "30-dnevni pokretni prosek prikazuje se tek kada postoji svih 30 dnevnih tačaka; kraća istorija ostaje nedostupna umesto da se prikaže kao lažni MA30.",
   momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
   elasticnost: "Pokazuje koliko se tražnja menja kada se menja cena.",
   completeness: "Da li artikli imaju ključna polja (naziv, šifra, kategorija).",
@@ -125,6 +126,47 @@ const HELP: Record<string, string> = {
   margin: "Procenjeni uticaj na maržu (prodajna - nabavna cena).",
   trend: "Smer promene u odnosu na prethodni uporediv period.",
 };
+
+export type DashboardMovingStats = {
+  ma7Revenue: number | null;
+  ma30Revenue: number | null;
+  momentumPct: number | null;
+  elasticity: number | null;
+};
+
+export function calculateDashboardMovingStats(dailySales: DailySale[]): DashboardMovingStats {
+  if (dailySales.length === 0) {
+    return { ma7Revenue: null, ma30Revenue: null, momentumPct: null, elasticity: null };
+  }
+
+  const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
+  const last7 = sorted.slice(-7);
+  const last30 = sorted.slice(-30);
+  const prev7 = sorted.slice(-14, -7);
+  const sumRevenue = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalRevenue, 0);
+  const sumUnits = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalUnits, 0);
+  const lastRevenue = sumRevenue(last7);
+  const last30Revenue = sumRevenue(last30);
+  const prevRevenue = sumRevenue(prev7);
+  const lastUnits = sumUnits(last7);
+  const prevUnits = sumUnits(prev7);
+  const ma7Revenue = last7.length >= 7 ? lastRevenue / 7 : null;
+  const ma30Revenue = last30.length >= 30 ? last30Revenue / 30 : null;
+  const momentumPct = prevRevenue > 0
+    ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2))
+    : null;
+  const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : null;
+  const prevPrice = prevUnits > 0 ? prevRevenue / prevUnits : null;
+  const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : null;
+  const priceChange = prevPrice != null && prevPrice > 0 && lastPrice != null
+    ? (lastPrice - prevPrice) / prevPrice
+    : null;
+  const elasticity = prevUnits > 0 && priceChange != null && priceChange !== 0 && qtyChange != null
+    ? Number((qtyChange / priceChange).toFixed(2))
+    : null;
+
+  return { ma7Revenue, ma30Revenue, momentumPct, elasticity };
+}
 
 const DEFAULT_WEEKDAYS = [
   "Nedelja",
@@ -763,43 +805,7 @@ export default function AnalyticsDashboard() {
     setSelectedSupplier("");
   }, [selectedSupplier, supplierId, supplierOptions]);
 
-  const movingStats = useMemo(() => {
-    if (dailySales.length === 0)
-      return {
-        ma7Revenue: 0,
-        ma30Revenue: 0,
-        momentumPct: null as number | null,
-        elasticity: null as number | null,
-      };
-    const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
-    const last7 = sorted.slice(-7);
-    const last30 = sorted.slice(-30);
-    const prev7 = sorted.slice(-14, -7);
-    const sumRevenue = (items: DailySale[]) =>
-      items.reduce((acc, item) => acc + item.totalRevenue, 0);
-    const sumUnits = (items: DailySale[]) =>
-      items.reduce((acc, item) => acc + item.totalUnits, 0);
-    const lastRevenue = sumRevenue(last7);
-    const last30Revenue = sumRevenue(last30);
-    const prevRevenue = sumRevenue(prev7);
-    const lastUnits = sumUnits(last7);
-    const prevUnits = sumUnits(prev7);
-    const ma7Revenue = last7.length > 0 ? lastRevenue / last7.length : 0;
-    const ma30Revenue = last30.length > 0 ? last30Revenue / last30.length : 0;
-    const momentumPct =
-      prevRevenue > 0
-        ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2))
-        : null;
-    const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : 0;
-    const prevPrice = prevUnits > 0 ? prevRevenue / prevUnits : 0;
-    const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : 0;
-    const priceChange = prevPrice > 0 ? (lastPrice - prevPrice) / prevPrice : 0;
-    const elasticity =
-      prevUnits > 0 && prevPrice > 0 && priceChange !== 0
-        ? Number((qtyChange / priceChange).toFixed(2))
-        : null;
-    return { ma7Revenue, ma30Revenue, momentumPct, elasticity };
-  }, [dailySales]);
+  const movingStats = useMemo(() => calculateDashboardMovingStats(dailySales), [dailySales]);
 
   const derived = useMemo(() => {
     const totalSku = inventory?.totalSkuCount ?? 0;
@@ -807,10 +813,8 @@ export default function AnalyticsDashboard() {
     const low = inventory?.lowStockCount ?? 0;
     const available = Math.max(totalSku - out, 0);
     return {
-      revenuePerDay: summary ? summary.totalRevenue / selectedDays : 0,
-      transactionsPerDay: summary
-        ? summary.totalTransactions / selectedDays
-        : 0,
+      revenuePerDay: summary ? summary.totalRevenue / selectedDays : null,
+      transactionsPerDay: summary ? summary.totalTransactions / selectedDays : null,
       availablePct: totalSku > 0 ? (available / totalSku) * 100 : null,
       redZonePct: totalSku > 0 ? (low / totalSku) * 100 : null,
     };
@@ -2235,27 +2239,27 @@ export default function AnalyticsDashboard() {
                   />
                   <MetricCard
                     label="Promet po danu"
-                    value={fmtRsd(derived.revenuePerDay)}
+                    value={fmtRsd(derived.revenuePerDay, 0, "Nije dostupno")}
                   />
                   <MetricCard
                     label="Transakcije po danu"
-                    value={fmtNumber(derived.transactionsPerDay, 1)}
+                    value={fmtNumber(derived.transactionsPerDay, 1, "Nije dostupno")}
                   />
                   <MetricCard
                     label="Dostupnost SKU"
-                    value={fmtPct(derived.availablePct)}
+                    value={fmtPct(derived.availablePct, 1, "Nije dostupno")}
                     tone="good"
                     infoTip={HELP.sku}
                   />
                   <MetricCard
                     label="Crvena zona zaliha"
-                    value={fmtPct(derived.redZonePct)}
+                    value={fmtPct(derived.redZonePct, 1, "Nije dostupno")}
                     tone="warning"
                     infoTip={HELP.oos}
                   />
                   <MetricCard
                     label="MA7 + Momentum"
-                    value={fmtRsd(movingStats.ma7Revenue)}
+                    value={fmtRsd(movingStats.ma7Revenue, 0, "Nije dostupno")}
                     tone="good"
                     infoTip={HELP.ma7}
                   />
@@ -2294,7 +2298,7 @@ export default function AnalyticsDashboard() {
                   />
                   <MetricCard
                     label="Promet najboljeg dana"
-                    value={fmtRsd(quickInsights?.bestDayRevenue ?? 0)}
+                    value={fmtRsd(quickInsights?.bestDayRevenue, 0, "Nije dostupno")}
                     tone="good"
                   />
                   <MetricCard
@@ -2465,16 +2469,16 @@ export default function AnalyticsDashboard() {
               <section className="analytics-panel">
                 <h3 className="with-tip">
                   <span>Trend i promene</span>
-                  <InfoTip text="Brz pregled dinamike prodaje kroz MA7, MA30 i momentum poslednjih 7 dana." />
+                  <InfoTip text={`Brz pregled dinamike prodaje kroz MA7, MA30 i momentum poslednjih 7 dana. ${HELP.ma7} ${HELP.ma30}`} />
                 </h3>
                 <div className="trend-signal-grid">
                   <article className="trend-signal-card">
                     <span>MA7 promet</span>
-                    <strong>{fmtRsd(movingStats.ma7Revenue)}</strong>
+                    <strong>{fmtRsd(movingStats.ma7Revenue, 0, "Nije dostupno")}</strong>
                   </article>
                   <article className="trend-signal-card">
                     <span>MA30 promet</span>
-                    <strong>{fmtRsd(movingStats.ma30Revenue)}</strong>
+                    <strong>{fmtRsd(movingStats.ma30Revenue, 0, "Nije dostupno")}</strong>
                   </article>
                   <article className="trend-signal-card">
                     <span>Momentum 7d</span>
@@ -2486,7 +2490,7 @@ export default function AnalyticsDashboard() {
                           : "trend up"
                       }
                     >
-                      {fmtPct(movingStats.momentumPct)}
+                      {fmtPct(movingStats.momentumPct, 1, "Nije dostupno")}
                     </strong>
                   </article>
                   <article className="trend-signal-card">
