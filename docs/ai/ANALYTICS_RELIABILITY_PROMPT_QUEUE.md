@@ -3106,10 +3106,10 @@ Do not rewrite recommendation formulas, move worker ownership into the web proce
 - Checks run: `git diff --check`; `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `npm run test -- --run src/utils/__tests__/analyticsPeriodLineage.spec.ts src/pages/__tests__/PilotReadinessPage.edgeCases.spec.ts src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx src/services/__tests__/supplierDecisionReport.spec.ts`; `npm run check:analytics-guardrails`; `npm run build`; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsSalesReadinessRegressionTests|FullyQualifiedName~AnalyticsReportsContractTests"`
 - Checks not run: full solution `dotnet build`; full solution `dotnet test`; browser/live console smoke; production/live freshness verification from `STAB16`
 - Run log: `.ai/runs/2026-09-04-RQ137-evidence.md`
-- Evidence state: pending
-- Delivery mode: local-workspace
+- Evidence state: synchronized
+- Delivery mode: direct-main
 - Main commit SHA: 29a5943ad606c67721e931d73fd5906b49c9ade3
-- Main verification: not verified; the work remains local in this workspace
+- Main verification: passed - origin/main contains 29a5943ad606c67721e931d73fd5906b49c9ade3
 - Missed: delivery to `main` and live-runtime proof remain out of scope for this local queue execution
 - Follow-up: `STAB16` for live freshness proof, then `RQ128` for broader post-stabilization actionability parity
 - Residual risk: other analytics surfaces outside the selected dashboard/readiness/supplier-report path still rely on their own existing period contracts and were not revalidated here
@@ -3191,10 +3191,10 @@ Do not invent scores from frontend heuristics, backfill fake history, or mix sce
 - Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ForecastBaselineBacktestContractTests"`; `dotnet build .\Api\Api.csproj`; `npm run test -- --run src/components/dashboard/TrendModelList.spec.tsx`; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`
 - Checks not run: full solution `dotnet test`; browser/live console smoke; production/live model-evaluation proof
 - Run log: `.ai/runs/2026-09-04-RQ138-evidence.md`
-- Evidence state: pending
-- Delivery mode: local-workspace
+- Evidence state: synchronized
+- Delivery mode: direct-main
 - Main commit SHA: 29a5943ad606c67721e931d73fd5906b49c9ade3
-- Main verification: not verified; the work remains local in this workspace
+- Main verification: passed - origin/main contains 29a5943ad606c67721e931d73fd5906b49c9ade3
 - Missed: no authoritative measured `ready` payload is materialized from production data yet; the backend contract still truthfully defaults to unavailable until that runtime source exists
 - Follow-up: a later evaluation-materialization prompt can reuse this contract instead of inventing new dashboard semantics
 - Residual risk: the workspace contains unrelated in-flight analytics changes; this prompt proves only the trend-model evaluation contract path listed above
