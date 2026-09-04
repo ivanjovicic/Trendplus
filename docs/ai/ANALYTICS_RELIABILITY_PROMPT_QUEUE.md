@@ -3108,7 +3108,7 @@ Do not rewrite recommendation formulas, move worker ownership into the web proce
 - Run log: `.ai/runs/2026-09-04-RQ137-evidence.md`
 - Evidence state: pending
 - Delivery mode: local-workspace
-- Main commit SHA: uncommitted
+- Main commit SHA: 29a5943ad606c67721e931d73fd5906b49c9ade3
 - Main verification: not verified; the work remains local in this workspace
 - Missed: delivery to `main` and live-runtime proof remain out of scope for this local queue execution
 - Follow-up: `STAB16` for live freshness proof, then `RQ128` for broader post-stabilization actionability parity
@@ -3193,7 +3193,7 @@ Do not invent scores from frontend heuristics, backfill fake history, or mix sce
 - Run log: `.ai/runs/2026-09-04-RQ138-evidence.md`
 - Evidence state: pending
 - Delivery mode: local-workspace
-- Main commit SHA: uncommitted
+- Main commit SHA: 29a5943ad606c67721e931d73fd5906b49c9ade3
 - Main verification: not verified; the work remains local in this workspace
 - Missed: no authoritative measured `ready` payload is materialized from production data yet; the backend contract still truthfully defaults to unavailable until that runtime source exists
 - Follow-up: a later evaluation-materialization prompt can reuse this contract instead of inventing new dashboard semantics
