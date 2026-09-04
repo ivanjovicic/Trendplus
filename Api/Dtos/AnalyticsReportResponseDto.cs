@@ -34,7 +34,13 @@ public sealed record AnalyticsReportPeriodDto(
     string? RequestedDataset = null,
     string? EffectiveDataset = null,
     string? EffectivePeriodLabel = null,
-    string? Scope = null);
+    string? Scope = null,
+    DateTime? RequestedFromUtc = null,
+    DateTime? RequestedToUtc = null,
+    DateTime? EffectiveFromUtc = null,
+    DateTime? EffectiveToUtc = null,
+    DateTime? ObservedFromUtc = null,
+    DateTime? ObservedToUtc = null);
 
 public sealed record AnalyticsReportKpiDto(
     string Key,
@@ -42,7 +48,9 @@ public sealed record AnalyticsReportKpiDto(
     object? Value,
     string? Unit = null,
     string? Tone = null,
-    string? Note = null);
+    string? Note = null,
+    string? ValueStatus = null,
+    string? ValueReason = null);
 
 public sealed record AnalyticsReportSectionDto(
     string Key,

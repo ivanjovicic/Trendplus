@@ -60,6 +60,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ128 | WAITING | pdc-actionability-deploy-parity | Prove the PDC/Decision Board actionability gate on the exact production deployment |
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
+| RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
+| RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
 
 ---
 
@@ -3032,3 +3034,174 @@ Do not change recommendation formulas, introduce new notification channels, or a
 - `STAB16` must provide production liveness/freshness evidence before this is claimed as live pilot proof.
 - `RQ128` remains the primary post-STAB actionability parity lane; reuse it rather than duplicating its live scope.
 - This prompt is a later focused contract candidate, not current `READY`.
+
+---
+
+## RQ137 - Align requested, effective and observed period truth across analytics surfaces
+
+Status: PARTIAL
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: analytics-period-lineage-parity
+Parallel-safe: no, shared period semantics must stay under one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): align period lineage across trust surfaces`
+
+### Problem
+
+Dashboard bootstrap, Pilot Readiness / Pilot Intake, and Supplier Decision report surfaces still expose period truth through different fields and fallback rules. A user can therefore see a requested range in one place, an observed data window in another, and a generated/report period elsewhere without one explicit canonical lineage.
+
+### Evidence
+
+- `.ai/runs/2026-09-03-analytics-followup-audit-evidence.md` recorded that supplier all-history reports needed the observed data period instead of synthetic default bounds and that cross-endpoint period alignment remains a separate contract follow-up.
+- `.ai/runs/2026-09-03-pilot-readiness-truthfulness-evidence.md` recorded that dashboard bootstrap, intake, and supplier report endpoints currently expose different periods/denominators, so the UI must not treat them as interchangeable.
+- Core analytics invariants require requested/effective period truth, visible fallback state, and no fake “last refreshed” timestamp derived from query generation.
+
+### Scope
+
+- the smallest backend-owned period lineage contract across the selected analytics endpoints and DTOs;
+- the frontend trust/report surfaces that render requested, effective, observed, generated and last-successful-refresh facts;
+- focused backend/frontend regression tests and one evidence note.
+
+Do not rewrite recommendation formulas, move worker ownership into the web process, or merge unrelated data-quality scoring changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `.ai/runs/2026-09-03-analytics-followup-audit-evidence.md`
+- `.ai/runs/2026-09-03-pilot-readiness-truthfulness-evidence.md`
+- the current dashboard bootstrap, pilot intake/report, supplier report DTO/page contracts and nearest focused tests
+
+### Do
+
+1. Inventory the current requested/effective/observed/generated/refresh fields for the selected dashboard, readiness/report and supplier-report surfaces.
+2. Define one backend-owned lineage vocabulary: requested period, effective calculation period, observed data period when they differ, generated-at, and last successful refresh.
+3. Fail closed when the effective or observed range cannot be proven; show unknown/degraded/fallback explicitly instead of synthetic bounds or query-time refresh labels.
+4. Keep cards, details, table/export/report and trust headers on the same period contract for each chosen surface.
+5. Add counterexample tests for bounded vs all-history, wrong-scope/wrong-period fallback, missing refresh history, and generated-at vs refresh parity.
+
+### Tests
+
+- focused backend contract tests for the selected endpoints/DTOs;
+- focused Vitest/report page tests for visible period lineage and fallback copy;
+- analytics guardrail check;
+- frontend build if shared DTO/page contracts change;
+- `git diff --check` and queue validators.
+
+### Acceptance
+
+- Requested, effective and observed period facts are distinguishable and consistent across the changed analytics surfaces.
+- No report or trust header presents query generation time as the last successful refresh.
+- Unknown/fallback/partial period state remains visible and user-readable.
+- Export/report/detail surfaces do not drift from the visible page period contract.
+
+### Completion note
+
+- Date: 2026-09-04
+- Status: PARTIAL
+- Completion: dashboard bootstrap, pilot readiness/intake, and supplier decision report surfaces now share explicit requested/effective/observed period lineage fields, keep generated-at separate from last successful refresh, and render the observed-period explanation only when the backend proves it differs from the effective calculation window
+- Changed files: `Api/Dtos/AnalyticsResponseMetaDto.cs`; `Api/Dtos/AnalyticsReportResponseDto.cs`; `Api/Endpoints/CachedAnalyticsEndpoints.cs`; `Api/Endpoints/DataQualityEndpoints.cs`; `Api/Endpoints/SupplierDecisionHubEndpoints.cs`; `Api.Tests/AnalyticsSalesReadinessRegressionTests.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `Klijent/clientapp/src/utils/analyticsPeriodLineage.ts`; `Klijent/clientapp/src/utils/__tests__/analyticsPeriodLineage.spec.ts`; `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`; `Klijent/clientapp/src/pages/PilotReadinessPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PilotReadinessPage.edgeCases.spec.ts`; `Klijent/clientapp/src/components/analytics/SupplierDecisionReport.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx`; `Klijent/clientapp/src/services/supplierDecisionReport.ts`; `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-04-RQ137-evidence.md`
+- Contract/runtime behavior changed: yes - the selected analytics trust/report surfaces now expose backend-owned period lineage and no longer substitute query-generation time for refresh truth
+- Checks run: `git diff --check`; `node scripts/check-agent-instructions.mjs --self-test`; `node scripts/check-agent-instructions.mjs`; `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `npm run test -- --run src/utils/__tests__/analyticsPeriodLineage.spec.ts src/pages/__tests__/PilotReadinessPage.edgeCases.spec.ts src/components/analytics/__tests__/SupplierDecisionReport.spec.tsx src/services/__tests__/supplierDecisionReport.spec.ts`; `npm run check:analytics-guardrails`; `npm run build`; `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsSalesReadinessRegressionTests|FullyQualifiedName~AnalyticsReportsContractTests"`
+- Checks not run: full solution `dotnet build`; full solution `dotnet test`; browser/live console smoke; production/live freshness verification from `STAB16`
+- Run log: `.ai/runs/2026-09-04-RQ137-evidence.md`
+- Evidence state: pending
+- Delivery mode: local-workspace
+- Main commit SHA: uncommitted
+- Main verification: not verified; the work remains local in this workspace
+- Missed: delivery to `main` and live-runtime proof remain out of scope for this local queue execution
+- Follow-up: `STAB16` for live freshness proof, then `RQ128` for broader post-stabilization actionability parity
+- Residual risk: other analytics surfaces outside the selected dashboard/readiness/supplier-report path still rely on their own existing period contracts and were not revalidated here
+- Next: none
+- Prompt defect / scope repair: because the queue had no current `READY` prompt, `RQ137` was locally promoted as the smallest same-owner owner-bounded period-lineage repair candidate and is now returned to non-runnable `PARTIAL` truth after local proof
+
+### Dependencies
+
+- `STAB16` remains the live-runtime/deploy proof owner; do not duplicate production deploy verification here.
+- This prompt remains `PARTIAL` and non-runnable; live freshness/deployment proof stays with `STAB16`.
+
+---
+
+## RQ138 - Add an authoritative Trend Models evaluation contract before numeric claims return
+
+Status: PARTIAL
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: trend-model-evaluation-contract
+Parallel-safe: no, score semantics must remain backend-owned
+Owner: Codex
+Commit suggestion: `feat(analytics): add trend model evaluation contract`
+
+### Problem
+
+The dashboard Trend Models panel is now fail-closed, but there is still no authoritative endpoint or DTO that defines what a model score means, which period/sample it covers, or whether it is current enough to trust. Numeric model accuracy must not return until that contract exists.
+
+### Evidence
+
+- `.ai/runs/2026-09-03-trend-model-truthfulness-evidence.md` proved that the prior Trend Models values were hardcoded placeholders with no backend endpoint, period, sample, or evaluation result.
+- `RQ108`, `RQ117`, and the forecast/backtest chain already established foundation work for forecast materialization and observed pairing, but they do not yet expose a user-facing model evaluation contract on the dashboard.
+- Core analytics invariants require backend ownership for score/confidence/recommendation semantics and explicit freshness/limitations before display.
+
+### Scope
+
+- the smallest backend-owned registry/evaluation DTO and endpoint, if an authoritative evaluation source now exists;
+- the dashboard Trend Models UI mapping and tooltip/copy for available vs unavailable evaluation;
+- focused backend/frontend tests and one evidence note.
+
+Do not invent scores from frontend heuristics, backfill fake history, or mix scenario-planning/runtime forecast work beyond the chosen evaluation contract.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `.ai/runs/2026-09-03-trend-model-truthfulness-evidence.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` sections for `RQ108` and `RQ117`
+- the current Trend Models component and nearest focused tests
+
+### Do
+
+1. Confirm whether an authoritative backend evaluation source exists; if not, stop with a bounded docs/evidence update rather than recreating placeholder scores.
+2. When a source exists, define explicit fields for metric name, score/unit, evaluated sample/window, freshness, last evaluated at, and limitation/warning state.
+3. Keep unavailable evaluation fail-closed: no numeric accuracy, no percent delta, no fake confidence.
+4. Map the dashboard panel to the backend contract and keep explanatory copy user-readable in Serbian.
+5. Add tests for available evaluation, unavailable evaluation, stale evaluation and malformed/missing score payloads.
+
+### Tests
+
+- focused backend tests for the evaluation DTO/endpoint if one is added;
+- focused Vitest for the Trend Models component mapping;
+- analytics guardrail check;
+- frontend build and changed backend project build if the contract changes;
+- `git diff --check` and queue validators.
+
+### Acceptance
+
+- Trend Models show numeric evaluation only from an authoritative backend contract.
+- Period/sample/freshness/limitations are visible whenever a numeric score is shown.
+- Missing, stale or malformed evaluation remains explicitly unavailable instead of falling back to placeholder numbers.
+
+### Completion note
+
+- Date: 2026-09-04
+- Status: PARTIAL
+- Completion: Trend Models now consume the backend forecast backtest contract instead of hardcoded placeholders; the contract exposes freshness, last-evaluated, baseline label, and backend-owned metric metadata, while the dashboard keeps stale, unavailable, and malformed evaluation fail-closed and shows numerics only for `ready` + authoritative + non-stale payloads
+- Changed files: `Application/Analytics/Queries/GetForecastBaselineBacktest/ForecastBaselineBacktestContract.cs`; `Application/Analytics/Queries/GetForecastBaselineBacktest/GetForecastBaselineBacktestQuery.cs`; `Application/Analytics/Queries/GetForecastBaselineBacktest/GetForecastBaselineBacktestHandler.cs`; `Api.Tests/ForecastBaselineBacktestContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `Klijent/clientapp/src/services/analyticsApi.ts`; `Klijent/clientapp/src/components/dashboard/TrendModelList.tsx`; `Klijent/clientapp/src/components/dashboard/TrendModelList.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-04-RQ138-evidence.md`
+- Contract/runtime behavior changed: yes - Trend Models no longer present static descriptive placeholders as the only source of truth; they now render backend-owned evaluation state and fail closed when trust conditions are not met
+- Checks run: `dotnet test .\Api.Tests\Api.Tests.csproj --filter "FullyQualifiedName~ForecastBaselineBacktestContractTests"`; `dotnet build .\Api\Api.csproj`; `npm run test -- --run src/components/dashboard/TrendModelList.spec.tsx`; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs`
+- Checks not run: full solution `dotnet test`; browser/live console smoke; production/live model-evaluation proof
+- Run log: `.ai/runs/2026-09-04-RQ138-evidence.md`
+- Evidence state: pending
+- Delivery mode: local-workspace
+- Main commit SHA: uncommitted
+- Main verification: not verified; the work remains local in this workspace
+- Missed: no authoritative measured `ready` payload is materialized from production data yet; the backend contract still truthfully defaults to unavailable until that runtime source exists
+- Follow-up: a later evaluation-materialization prompt can reuse this contract instead of inventing new dashboard semantics
+- Residual risk: the workspace contains unrelated in-flight analytics changes; this prompt proves only the trend-model evaluation contract path listed above
+- Next: none
+- Prompt defect / scope repair: because the queue had no current `READY` prompt, `RQ138` was locally promoted as the smallest same-owner trend-evaluation contract follow-up and is now returned to non-runnable `PARTIAL` truth after local proof
+
+### Dependencies
+
+- Reuse the forecast/backtest foundation from `RQ108` and `RQ117`; do not duplicate that lower-layer provenance work.
+- This prompt remains `PARTIAL` and non-runnable until a real measured evaluation source is available.

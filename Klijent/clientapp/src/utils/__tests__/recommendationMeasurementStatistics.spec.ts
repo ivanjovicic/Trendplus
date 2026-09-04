@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMeasurementStatisticsExportCsv,
   canExportMeasurementStatistics,
+  formatMeasurementWarning,
   formatMeasurementRate,
   MEASUREMENT_RATE_UNAVAILABLE,
   resolveMeasurementStatisticsView,
@@ -89,6 +90,13 @@ describe("recommendationMeasurementStatistics", () => {
     expect(formatMeasurementRate(undefined)).toBe(MEASUREMENT_RATE_UNAVAILABLE);
     expect(formatMeasurementRate(null)).not.toBe("0%");
     expect(formatMeasurementRate(0)).toBe("0%");
+  });
+
+  it("maps unknown warning codes to safe user-facing copy", () => {
+    expect(formatMeasurementWarning("future_internal_warning")).toBe(
+      "Dodatno upozorenje merenja."
+    );
+    expect(formatMeasurementWarning("SMALL_SAMPLE")).toBe("Premali uzorak izdatih preporuka");
   });
 
   it("does not treat totals rates as the measurement success view", () => {
@@ -182,5 +190,8 @@ describe("recommendationMeasurementStatistics", () => {
     expect(csv).toMatch(/,1,0,1,0,0.5,/);
     expect(csv.split("\n")[1]).toContain(",,");
     expect(csv).not.toContain("0.9");
+    const safeWarningCsv = buildMeasurementStatisticsExportCsv(stats({ warningCodes: ["future_internal_warning"] }));
+    expect(safeWarningCsv).toContain("Dodatno upozorenje merenja.");
+    expect(safeWarningCsv).not.toContain("future_internal_warning");
   });
 });

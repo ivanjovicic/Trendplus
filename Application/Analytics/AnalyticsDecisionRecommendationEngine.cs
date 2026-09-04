@@ -26,6 +26,7 @@ public static class AnalyticsDecisionRecommendationEngine
         double ConfidencePct,
         double ReliabilityPct,
         string DataQualityStatus,
+        bool RecommendationAllowed,
         IReadOnlyList<string> ReasonCodes);
 
     public static RecommendationResult Evaluate(RecommendationInput input, double? averageMarginPct)
@@ -61,6 +62,8 @@ public static class AnalyticsDecisionRecommendationEngine
             ConfidencePct: confidence,
             ReliabilityPct: reliability,
             DataQualityStatus: dataQualityStatus,
+            RecommendationAllowed: status is not ("insufficient_data" or "do_not_trust")
+                && dataQualityStatus is not "critical",
             ReasonCodes: reasons.Distinct(StringComparer.Ordinal).ToArray());
     }
 

@@ -54,11 +54,11 @@ type ActiveFilters = {
 };
 
 type DecisionColor = ColorSalesStat & {
-  sharePct: number;
+  sharePct: number | null;
   marginContribution: number;
   reliabilityPct?: number;
-  coveragePct: number;
-  splitCoveragePct: number;
+  coveragePct: number | null;
+  splitCoveragePct: number | null;
   decisionScore: number | null;
   status: DecisionStatus;
   statusReason: string;
@@ -134,7 +134,7 @@ export function mapRecommendationStatus(status?: string | null): DecisionStatus 
 }
 
 function trendClass(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
@@ -143,7 +143,7 @@ function trendClass(value: number | null | undefined): string {
 type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
-  sharePct: number;
+  sharePct: number | null;
   marginPct: number;
   popRevenueChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
@@ -168,7 +168,7 @@ function buildStatusTooltip(data: StatusTooltipData): string {
 }
 
 export function describePopMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
-  if (item.popRevenueChangePct != null && !Number.isNaN(item.popRevenueChangePct)) {
+  if (item.popRevenueChangePct != null && Number.isFinite(item.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(item.popRevenueChangePct, 2),
       title: `PoP trend poredi ukupan promet sa prethodnim uporedivim periodom. Prethodni period: ${fmtRsd(item.previousPeriodRevenue, 0, "Nije dostupno")}.`,
@@ -323,15 +323,18 @@ export default function ColorSalesStatsPage() {
     const rows = data?.colors ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce((sum, item) => sum + item.ukupanPromet, 0);
+    const totalRevenue = rows.reduce(
+      (sum, item) => Number.isFinite(item.ukupanPromet) ? sum + item.ukupanPromet : sum,
+      0,
+    );
 
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
+      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : null;
       const marginContribution = item.marginContribution;
-      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? 0;
+      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? null;
       const coveragePct = item.brojArtikalaUkupno > 0
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
-        : 0;
+        : null;
 
       const backendStatus = mapRecommendationStatus(item.recommendation?.status);
       if (backendStatus) {
@@ -378,7 +381,7 @@ export default function ColorSalesStatsPage() {
       } else if (sortField === "ukupanPromet") {
         compare = a.ukupanPromet - b.ukupanPromet;
       } else if (sortField === "sharePct") {
-        compare = a.sharePct - b.sharePct;
+        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
       } else if (sortField === "popRevenueChangePct") {
@@ -418,9 +421,9 @@ export default function ColorSalesStatsPage() {
     }
   }, [selectedRow]);
 
-  const totalRevenue = data?.totals.ukupanPromet ?? 0;
+  const totalRevenue = data ? data.totals.ukupanPromet : null;
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
     const top5Revenue = [...sortedRows]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
@@ -429,7 +432,7 @@ export default function ColorSalesStatsPage() {
   }, [sortedRows, totalRevenue]);
 
   const totalMarginContribution = useMemo(
-    () => data?.totals.ukupanMarzniDoprinos ?? 0,
+    () => data ? data.totals.ukupanMarzniDoprinos : null,
     [data?.totals.ukupanMarzniDoprinos]
   );
 
@@ -438,7 +441,10 @@ export default function ColorSalesStatsPage() {
   const concentrationData = useMemo(() => {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
-    const ranked = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct);
+    const ranked = [...sortedRows]
+      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .sort((a, b) => b.sharePct - a.sharePct);
+    if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
       name: row.boja,
       sharePct: Number(row.sharePct.toFixed(2)),
@@ -556,12 +562,15 @@ export default function ColorSalesStatsPage() {
   const headerDataQualityStatus = useMemo(() => {
     if (!data) return null;
     if (sortedRows.length === 0) return "insufficient_data";
+    if (data.dataQuality.missingCostRevenueSharePct == null || data.dataQuality.revenueWithNivelacijaSplitSharePct == null) {
+      return "insufficient_data";
+    }
     return qualityNotes.length > 0 ? "warning" : "good";
   }, [data, qualityNotes.length, sortedRows.length]);
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? data?.generatedAt ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
@@ -884,7 +893,7 @@ export default function ColorSalesStatsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => value == null ? "N/A" : fmtPct(Number(value), 2)} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

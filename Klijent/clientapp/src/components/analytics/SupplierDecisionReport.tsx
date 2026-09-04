@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../../types/analyticsTable";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../../utils/analyticsQuality";
+import { buildPeriodLineageLabel } from "../../utils/analyticsPeriodLineage";
 import { findAnalyticsMetricKeyByLabel } from "../../utils/analyticsMetricDefinitions";
 import KpiExplainButton from "./KpiExplainButton";
 import MetricMethodologyPanel from "./MetricMethodologyPanel";
@@ -183,6 +184,13 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
     .filter(Boolean) ?? [];
   const effectiveDatasetRow = rowEntry(payload, "Header", "Efektivni dataset");
   const effectivePeriodLabel = scalarText(effectiveDatasetRow?.secondary) || metaValue(payload, "effectivePeriodLabel");
+  const observedPeriodLabel = rowValue(payload, "Header", "Posmatrani period") ?? buildPeriodLineageLabel({
+    effectivePeriodLabel,
+    effectiveFromUtc: metaValue(payload, "effectivePeriodFromUtc"),
+    effectiveToUtc: metaValue(payload, "effectivePeriodToUtc"),
+    observedFromUtc: metaValue(payload, "observedPeriodFromUtc"),
+    observedToUtc: metaValue(payload, "observedPeriodToUtc"),
+  });
   const provenanceBasis = metaValue(payload, "provenanceBasis");
   const usedFallback = metaBoolean(payload, "usedFallback");
   const fallbackRow = rowEntry(payload, "Header", "Korišćen fallback");
@@ -229,7 +237,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
         </div>
         <div className="sdr-badges">
           <span className={`sdr-badge dq-${normalizedDQ}`}>
-            {metaDQ ? `Kvalitet podataka: ${metaDQ}` : `Kvalitet podataka: ${dataQualityStatusLabel(metaDQ)}`}
+            {`Kvalitet podataka: ${dataQualityStatusLabel(metaDQ)}`}
           </span>
           {freshnessLabel ? <span className="sdr-badge neutral">Svežina podataka: {freshnessLabel}</span> : null}
           {recommendationAllowed != null ? (
@@ -243,6 +251,7 @@ export default function SupplierDecisionReport({ payload }: SupplierDecisionRepo
           <div className="sdr-meta-item"><span>Opseg podataka</span><strong>{dataScope}</strong></div>
           <div className="sdr-meta-item"><span>Datum izveštaja</span><strong>{reportDate}</strong></div>
           <div className="sdr-meta-item"><span>Poslednje osveženje</span><strong>{lastRefresh}</strong></div>
+          {observedPeriodLabel ? <div className="sdr-meta-item"><span>Efektivni i posmatrani period</span><strong>{observedPeriodLabel}</strong></div> : null}
         </div>
         {renderMetaChips(payload.filters, "sdr-chip-row")}
       </section>

@@ -23,6 +23,7 @@ import {
   formatDate,
   formatDateTime,
 } from "../utils/analyticsFormatters";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
 import {
@@ -37,6 +38,7 @@ import {
   shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import type {
   AnalyticsActionDataQualityStatus,
   AnalyticsActionSourceType,
@@ -261,7 +263,7 @@ function dataQualityClass(status: Exclude<DataQualityFilter, "all">): string {
 
 function translateReasonCode(code: string): string {
   const normalized = (code ?? "").trim().toLowerCase();
-  return REASON_CODE_MESSAGES[normalized] ?? code;
+  return REASON_CODE_MESSAGES[normalized] ?? recommendationReasonLabel(normalized);
 }
 
 function isDecisionBlocked(whyPanel: ProductDecisionWhyPanel): boolean {
@@ -515,10 +517,10 @@ function formatSignalMetricValue(value: number | null | undefined, status: strin
   }
 
   if (unit === "days") {
-    return `${fmtNumber(value, 1, "N/A")} dana`;
+    return formatMetricDisplayValue({ value, kind: "days" });
   }
 
-  return fmtPct(value * 100, 1);
+  return formatMetricDisplayValue({ value, kind: "ratioPercent" });
 }
 
 function buildSupplierDecisionUrl(supplierId: number): string {
@@ -925,8 +927,8 @@ export default function ProductDecisionCenterPage() {
     markdownCount: rows.filter((x) => x["recommendationStatus"] === "MARKDOWN").length,
     doNotOrderCount: rows.filter((x) => x["recommendationStatus"] === "DO_NOT_ORDER").length,
     fixDataCount: rows.filter((x) => x["recommendationStatus"] === "FIX_DATA").length,
-    lostSalesEstimate: payload?.summary.lostSalesEstimate ?? 0,
-    slowStockCapital: payload?.summary.slowStockCapital ?? 0,
+    lostSalesEstimate: payload ? payload.summary.lostSalesEstimate ?? null : null,
+    slowStockCapital: payload ? payload.summary.slowStockCapital ?? null : null,
     stockCoverRiskCount: rows.filter((x) => {
       const status = (x.stockCoverStatus ?? "").toLowerCase();
       return status === "low_cover" || status === "low" || status === "out_of_stock_risk" || status === "insufficient_data";
@@ -972,7 +974,7 @@ export default function ProductDecisionCenterPage() {
 
   const tableMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAtUtc", label: "Generisano", value: payload?.generatedAtUtc ?? "N/A" },
-    { key: "totalRows", label: "Ukupno redova", value: payload?.totalRows ?? 0 },
+    { key: "totalRows", label: "Ukupno redova", value: payload?.totalRows ?? null },
     { key: "filteredRows", label: "Prikazano redova", value: sortedRows.length },
   ], [payload?.generatedAtUtc, payload?.totalRows, sortedRows.length]);
 
@@ -1218,7 +1220,7 @@ export default function ProductDecisionCenterPage() {
         description="Pregled preporuka za dopunu, pojačanje, cenu, praćenje i proveru podataka po artiklu."
         periodFrom={payload?.periodFromUtc ?? fromDate}
         periodTo={payload?.periodToUtc ?? toDate}
-        lastRefreshAt={payload?.generatedAtUtc ?? null}
+        lastRefreshAt={responseMeta?.lastRefreshAtUtc ?? null}
         dataSource="Pregled odluka o proizvodima"
         dataQualityStatus={responseMeta?.dataQualityStatus ?? null}
         dataQualitySummary={trustQualitySummary}

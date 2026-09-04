@@ -29,7 +29,8 @@ export function formatMeasurementRate(rate: number | null | undefined): string {
 }
 
 export function formatMeasurementWarning(code: string): string {
-  return MEASUREMENT_WARNING_LABELS[code] ?? code;
+  const normalized = code.trim().toLowerCase();
+  return MEASUREMENT_WARNING_LABELS[normalized] ?? "Dodatno upozorenje merenja.";
 }
 
 export function csvCell(value: string | number | null | undefined): string {
@@ -94,7 +95,7 @@ export function buildMeasurementStatisticsExportCsv(
     stats.positiveOutcomeRate,
     stats.neutralOutcomeRate,
     stats.negativeOutcomeRate,
-    stats.warningCodes.join("|"),
+    stats.warningCodes.map(formatMeasurementWarning).join("|"),
     stats.emptyReason ?? "",
   ];
 

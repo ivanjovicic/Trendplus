@@ -98,6 +98,31 @@ public sealed class AnalyticsSalesReadinessRegressionTests
     }
 
     [Fact]
+    public void DashboardBootstrapMeta_PreservesRequestedAndObservedPeriods_WithoutFakeRefresh()
+    {
+        var requestedFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var requestedTo = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var bootstrap = new AnalyticsDashboardBootstrapDto
+        {
+            DailySales =
+            [
+                new DailySaleDto { Date = "2026-06-05", TotalRevenue = 100m, TransactionCount = 1, TotalUnits = 1 },
+                new DailySaleDto { Date = "2026-06-21", TotalRevenue = 100m, TransactionCount = 1, TotalUnits = 1 }
+            ]
+        };
+
+        var meta = CachedAnalyticsEndpoints.BuildDashboardBootstrapMeta(bootstrap, requestedFrom, requestedTo);
+
+        Assert.Equal(requestedFrom, meta.RequestedPeriodFromUtc);
+        Assert.Equal(requestedTo, meta.RequestedPeriodToUtc);
+        Assert.Equal(requestedFrom, meta.EffectivePeriodFromUtc);
+        Assert.Equal(requestedTo, meta.EffectivePeriodToUtc);
+        Assert.Equal(new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc), meta.ObservedPeriodFromUtc);
+        Assert.Equal(new DateTime(2026, 6, 21, 0, 0, 0, DateTimeKind.Utc), meta.ObservedPeriodToUtc);
+        Assert.Null(meta.LastRefreshAtUtc);
+    }
+
+    [Fact]
     public void EmptyDataset_ReturnsSuccessTrueWithEmptyReason()
     {
         var meta = AnalyticsResponseMetaFactory.Empty("no_rows_for_period", "Nema podataka.");

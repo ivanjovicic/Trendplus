@@ -712,7 +712,7 @@ export default function DataQualityPage() {
         description="Centralni pregled problema koji direktno utiču na pouzdanost analitike i preporuka."
         periodFrom={contextFromDate ?? health?.windowFrom ?? null}
         periodTo={contextToDate ?? health?.windowTo ?? null}
-        lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? health?.meta?.lastRefreshAtUtc ?? health?.generatedAt ?? null}
+        lastRefreshAt={refreshStatus?.lastSuccessfulRefreshAtUtc ?? health?.meta?.lastRefreshAtUtc ?? null}
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}

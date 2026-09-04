@@ -826,7 +826,13 @@ public static class SupplierDecisionHubEndpoints
             trust?.RequestedDataset,
             trust?.EffectiveDataset,
             trust?.EffectivePeriodLabel,
-            filters.DataScope);
+            filters.DataScope,
+            RequestedFromUtc: filters.HasExplicitDateRange ? filters.FromDate : null,
+            RequestedToUtc: filters.HasExplicitDateRange ? filters.ToDate : null,
+            EffectiveFromUtc: trust?.EffectiveFrom,
+            EffectiveToUtc: trust?.EffectiveTo,
+            ObservedFromUtc: summary.From,
+            ObservedToUtc: summary.To);
         var methodology = BuildSupplierDecisionMethodology(filters, trust, details is not null);
         var warnings = BuildSupplierDecisionWarnings(summary.Meta, trust, refreshInfo);
         var hasData = dataset.Rows.Count > 0;
@@ -883,7 +889,11 @@ public static class SupplierDecisionHubEndpoints
             ResolveRequestedDataset(filters),
             ResolveRequestedDataset(filters),
             BuildEffectivePeriodLabel(filters, ResolveRequestedDataset(filters)),
-            filters.DataScope);
+            filters.DataScope,
+            RequestedFromUtc: filters.FromDate,
+            RequestedToUtc: filters.ToDate,
+            EffectiveFromUtc: filters.FromDate,
+            EffectiveToUtc: filters.ToDate);
         var rows = new List<AnalyticsLegacyReportRowDto>
         {
             new("Status", "Greška", message, errorCode, null),
@@ -1045,16 +1055,20 @@ public static class SupplierDecisionHubEndpoints
         var marginContribution = dataset.Rows.Sum(x => x.Revenue * x.PreMarkdownMarginPct * x.FullPriceRevenueShare);
         var avgConfidence = dataset.Rows.Count == 0 ? 0m : Round2(dataset.Rows.Average(x => x.ConfidenceScore));
         var avgReliability = dataset.Rows.Count == 0 ? 0m : Round2(dataset.Rows.Average(x => x.ReliabilityPct));
+        var hasStableSignalSample = dataset.Rows.Count >= 3;
+        var signalSampleReason = hasStableSignalSample
+            ? null
+            : "Uzorak dobavljača je premali za stabilnu procenu sigurnosti i pouzdanosti signala.";
 
         return new List<AnalyticsReportKpiDto>
         {
-            new("revenue", "Prihod", Round2(totalRevenue), "RSD", totalRevenue > 0 ? "neutral" : "warning", "Ukupan prihod za traženi filter skup."),
-            new("marginContribution", "Maržni doprinos", Round2(marginContribution), "RSD", marginContribution >= 0 ? "positive" : "warning", "Procena doprinosa na osnovu full-price prihoda i pre-markdown marže."),
-            new("units", "Prodate jedinice", Round2(totalUnits), "kom", totalUnits > 0 ? "neutral" : "warning", null),
-            new("supplierCount", "Broj dobavljača", summary.SupplierCount, null, summary.SupplierCount >= 3 ? "positive" : "warning", null),
-            new("capitalAtRisk", "Kapital u riziku", summary.CapitalAtRisk, "RSD", summary.CapitalAtRisk > 0 ? "warning" : "positive", "Vrednost neprodate robe koja trenutno nosi najveći stock-risk signal."),
-            new("avgConfidence", "Pouzdanost signala", avgConfidence, "%", avgConfidence >= 70 ? "positive" : "warning", null),
-            new("avgReliability", "Pouzdanost preporuke", avgReliability, "%", avgReliability >= 70 ? "positive" : "warning", null)
+            new("revenue", "Prihod", Round2(totalRevenue), "RSD", totalRevenue > 0 ? "neutral" : "warning", "Ukupan prihod za traženi filter skup.", totalRevenue == 0m ? "valid_zero" : null),
+            new("marginContribution", "Maržni doprinos", Round2(marginContribution), "RSD", marginContribution >= 0 ? "positive" : "warning", "Procena doprinosa na osnovu full-price prihoda i pre-markdown marže.", marginContribution == 0m ? "valid_zero" : null),
+            new("units", "Prodate jedinice", Round2(totalUnits), "kom", totalUnits > 0 ? "neutral" : "warning", null, totalUnits == 0m ? "valid_zero" : null),
+            new("supplierCount", "Broj dobavljača", summary.SupplierCount, null, summary.SupplierCount >= 3 ? "positive" : "warning", null, summary.SupplierCount == 0 ? "valid_zero" : null),
+            new("capitalAtRisk", "Kapital u riziku", summary.CapitalAtRisk, "RSD", summary.CapitalAtRisk > 0 ? "warning" : "positive", "Vrednost neprodate robe koja trenutno nosi najveći stock-risk signal.", summary.CapitalAtRisk == 0m ? "valid_zero" : null),
+            new("avgConfidence", "Pouzdanost signala", avgConfidence, "%", hasStableSignalSample && avgConfidence >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgConfidence == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason),
+            new("avgReliability", "Pouzdanost preporuke", avgReliability, "%", hasStableSignalSample && avgReliability >= 70 ? "positive" : "warning", null, hasStableSignalSample ? (avgReliability == 0m ? "valid_zero" : null) : "insufficient_data", signalSampleReason)
         };
     }
 
@@ -1685,6 +1699,15 @@ public static class SupplierDecisionHubEndpoints
                 new("reportId", "Report ID", reportId),
                 new("generatedAtUtc", "Generisano", generatedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
                 new("lastRefreshAtUtc", "Poslednje osveženje", (refreshInfo?.LastRefreshAtUtc ?? trust?.LastRefreshAtUtc)?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("requestedPeriodFromUtc", "Traženi period od", period.RequestedFromUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("requestedPeriodToUtc", "Traženi period do", period.RequestedToUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("effectivePeriodFromUtc", "Efektivni period od", period.EffectiveFromUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("effectivePeriodToUtc", "Efektivni period do", period.EffectiveToUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("observedPeriodFromUtc", "Posmatrani period od", period.ObservedFromUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("observedPeriodToUtc", "Posmatrani period do", period.ObservedToUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+                new("requestedDataset", "Traženi dataset", trust?.RequestedDataset ?? string.Empty),
+                new("effectiveDataset", "Efektivni dataset", trust?.EffectiveDataset ?? string.Empty),
+                new("effectivePeriodLabel", "Efektivni period", trust?.EffectivePeriodLabel ?? string.Empty),
                 new("dataFreshnessStatus", "Svežina podataka", refreshInfo?.DataFreshnessStatus ?? string.Empty),
                 new("dataQualityStatus", "Kvalitet podataka", trust?.DataCoverageStatus ?? "insufficient_data"),
                 new("provenanceBasis", "Osnova generisanja", trust?.ProvenanceBasis ?? SelectDecisionScoreMv(GetDecisionScoreWindowDays(filters))),
@@ -1732,6 +1755,7 @@ public static class SupplierDecisionHubEndpoints
             WarningCode = source.WarningCode,
             WarningMessage = source.WarningMessage,
             DataQualityStatus = source.DataQualityStatus,
+            RecommendationAllowed = source.RecommendationAllowed,
             EmptyReason = source.EmptyReason,
             IsPartial = source.IsPartial,
             GeneratedAtUtc = source.GeneratedAtUtc,
@@ -1802,6 +1826,7 @@ public static class SupplierDecisionHubEndpoints
                 EmptyReason = "no_data_in_period",
                 Message = "Nema dovoljno podataka za Supplier scorecard u izabranom periodu.",
                 DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "insufficient_data",
+                RecommendationAllowed = false,
                 IsPartial = trustMetadata?.UsedFallback == true,
                 WarningCode = trustMetadata?.UsedFallback == true ? "FALLBACK_DATASET_USED" : null,
                 WarningMessage = fallbackWarningMessage,
@@ -1822,6 +1847,7 @@ public static class SupplierDecisionHubEndpoints
         {
             Success = true,
             DataQualityStatus = trustMetadata?.DataCoverageStatus ?? "good",
+            RecommendationAllowed = !recommendationGated,
             IsPartial = trustMetadata?.UsedFallback == true || recommendationGated,
             WarningCode = warningCode,
             WarningMessage = warningMessage,

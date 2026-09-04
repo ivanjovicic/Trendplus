@@ -71,7 +71,7 @@ type PeriodSummary = {
   offShiftItems: number;
   offShiftRevenue: number;
   offShiftSharePct: number;
-  unknownSupplierPct: number;
+  unknownSupplierPct: number | null;
   uniqueSuppliersInRange: number;
 };
 
@@ -358,7 +358,7 @@ function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummar
     offShiftItems,
     offShiftRevenue,
     offShiftSharePct: safeDivide(offShiftItems, totalItemsInRange) * 100,
-    unknownSupplierPct: response?.metadata.unknownSupplierPct ?? 0,
+    unknownSupplierPct: response?.metadata.unknownSupplierPct ?? null,
     uniqueSuppliersInRange: response?.metadata.uniqueSuppliersInRange ?? 0,
   };
 }
@@ -558,7 +558,7 @@ export default function DailySalesStatsPage() {
   }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, data, sortedRows.length]);
 
   const responseMeta = data?.meta ?? null;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustDataFreshnessStatus = responseMeta?.emptyReason
@@ -616,7 +616,7 @@ export default function DailySalesStatsPage() {
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
     { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(data?.requestedTo) ?? "" },
     { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
-    { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? 0 },
+    { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
@@ -855,8 +855,8 @@ export default function DailySalesStatsPage() {
     {
       key: "unknown",
       label: "Nepoznati dobavljac",
-      value: fmtPct(data?.metadata.unknownSupplierPct ?? 0, 1),
-      tone: (data?.metadata.unknownSupplierPct ?? 0) >= 5 ? "danger" : (data?.metadata.unknownSupplierPct ?? 0) > 0 ? "warning" : "good",
+      value: fmtPct(data?.metadata.unknownSupplierPct, 1, "Nije dostupno"),
+      tone: data?.metadata.unknownSupplierPct == null ? "info" : data.metadata.unknownSupplierPct >= 5 ? "danger" : data.metadata.unknownSupplierPct > 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
     },
     {
@@ -986,10 +986,10 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if ((data?.metadata.unknownSupplierPct ?? 0) >= 5 || mismatchCount > 0 || missingShiftCount > 0) {
+    if ((data?.metadata.unknownSupplierPct != null && data.metadata.unknownSupplierPct >= 5) || mismatchCount > 0 || missingShiftCount > 0) {
       insights.push({
         title: "Upozorenje: podaci zahtevaju pažnju",
-        detail: `Unknown share je ${fmtPct(data?.metadata.unknownSupplierPct ?? 0, 1)}, mismatch dana ${fmtNumber(mismatchCount)}, dana bez satnice ${fmtNumber(missingShiftCount)}.`,
+        detail: `Udeo nepoznatih dobavljača je ${fmtPct(data?.metadata.unknownSupplierPct, 1, "nije dostupan")}, mismatch dana ${fmtNumber(mismatchCount)}, dana bez satnice ${fmtNumber(missingShiftCount)}.`,
         tone: "warning",
       });
     }

@@ -9,6 +9,9 @@ public static class ForecastBaselineBacktestContract
     public const string EvaluationUnavailable = "unavailable";
     public const string EvaluationPartial = "partial";
     public const string EvaluationReady = "ready";
+    public const string FreshnessFresh = "fresh";
+    public const string FreshnessStale = "stale";
+    public const string FreshnessUnknown = "unknown";
 
     public const string BaselineNaiveLastPeriod = "naive_last_period";
     public const string BaselineSeasonalNaive = "seasonal_naive";
@@ -16,6 +19,9 @@ public static class ForecastBaselineBacktestContract
     public const string MetricWape = "wape";
     public const string MetricBias = "bias";
     public const string MetricMae = "mae";
+    public const string MetricDisplayPercent = "percent";
+    public const string MetricDisplaySignedPercent = "signed_percent";
+    public const string MetricDisplayNumber = "number";
 
     public const string CohortSufficientHistory = "sufficient_history";
     public const string CohortSparse = "sparse";
@@ -23,6 +29,7 @@ public static class ForecastBaselineBacktestContract
     public const string CohortNoHistory = "no_history";
 
     public const string ReasonMissingTrustedForecastMaterializer = "missing_trusted_forecast_materializer";
+    public const string ReasonMissingAuthoritativeEvaluationSnapshot = "missing_authoritative_evaluation_snapshot";
     public const string ReasonInsufficientObservedStockWindow = "insufficient_observed_stock_comparison_window";
     public const string ReasonNoPairedForecastOutcomeSeries = "no_paired_forecast_outcome_series";
 

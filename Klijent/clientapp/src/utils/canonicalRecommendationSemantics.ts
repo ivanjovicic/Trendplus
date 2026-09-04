@@ -32,6 +32,55 @@ export const RECOMMENDATION_RELIABILITY_TOOLTIP =
 export const RECOMMENDATION_CONFIDENCE_TOOLTIP =
   "Sigurnost preporuke % pokazuje koliko je backend preporuka upotrebljiva za odluku. Nije garancija poslovnog ishoda.";
 
+const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
+  high_velocity: "Artikal se brzo prodaje.",
+  low_stock: "Zaliha je ispod bezbednog nivoa.",
+  poor_margin: "Marža je ispod željenog nivoa.",
+  stale_stock: "Artikal dugo nema prodaju.",
+  missing_cost: "Nedostaje nabavna cena.",
+  missing_supplier: "Nedostaje dobavljač.",
+  insufficient_history: "Nema dovoljno istorije za sigurnu preporuku.",
+  low_sample_size: "Uzorak prodaje je premali za sigurnu odluku.",
+  no_sales_in_period: "U izabranom periodu nema evidentirane prodaje.",
+  missing_last_sale: "Nedostaje datum poslednje prodaje.",
+  replenish_needed: "Potrebna je dopuna da bi se izbegao gubitak prodaje.",
+  high_stock_risk: "Postoji rizik od viška zalihe.",
+  data_quality_blocker: "Kvalitet podataka blokira pouzdanu preporuku.",
+  data_quality_critical: "Kvalitet podataka je kritičan i traži proveru.",
+  expected_impact_denominator_missing: "Nedostaje ulaz za procenu očekivanog uticaja.",
+  missing_cost_coverage: "Marža je procena jer deo nabavne cene nije potvrđen.",
+  limited_nivelacija_coverage: "Pre/post poređenje nema dovoljno pokrića.",
+  previous_period_missing: "Nedostaje prethodni period za poređenje.",
+  no_previous_baseline: "Nema prethodne baze za poređenje.",
+  pop_unavailable: "Poređenje sa prethodnim periodom nije dostupno.",
+  insufficient_data: "Signal nije dovoljno jak za pouzdanu preporuku.",
+  positive_trend: "Trend podržava rast.",
+  weak_signal: "Signal je slab i traži oprez.",
+  monitor_only: "Potrebno je samo praćenje.",
+  confidence_monitor: "Pouzdanost sugeriše praćenje, ne agresivnu akciju.",
+  signal_gap: "Signal je previše ograničen za čvrstu odluku.",
+  selected_action_has_stronger_signal: "Odabrana preporuka ima jači signal.",
+  demand_not_weak_enough: "Potražnja još nije dovoljno slaba za sniženje.",
+  no_replenishment_gap: "Nema dovoljno razlike do minimalne zalihe.",
+  margin_support_missing: "Marža ne podržava jaču akciju.",
+  understock_risk: "Postoji rizik od premale zalihe.",
+  enough_signal_for_action: "Signal je dovoljan za aktivniju akciju.",
+  no_blocking_data_issue: "Nema blokirajućeg problema sa podacima.",
+  weak_demand: "Potražnja nije dovoljno jaka.",
+  negative_trend: "Trend nije povoljan.",
+  stock_gap: "Postoji rupa u zalihama.",
+  unknown_entity: "Entitet nije prepoznat.",
+  new_entity: "Entitet je nov i nema dovoljno istorije.",
+  tiny_sample: "Uzorak je premali za pouzdanu odluku.",
+  unstable_margin: "Marža je nestabilna.",
+  unknown_heavy_dataset: "Skup podataka sadrži previše nepoznatih vrednosti.",
+};
+
+export function recommendationReasonLabel(code: string | null | undefined): string {
+  const normalized = (code ?? "").trim().toLowerCase();
+  return RECOMMENDATION_REASON_LABELS[normalized] ?? "Dodatno ograničenje iz procene.";
+}
+
 export function isCanonicalRecommendationStatus(value: string | null | undefined): value is CanonicalRecommendationStatus {
   return value === "increase_focus"
     || value === "maintain"
@@ -107,13 +156,14 @@ export function recommendationQualityStyle(status: RecommendationQualityStatus):
 }
 
 export function recommendationReasonHintFromCode(code: string): string | null {
-  if (code === "missing_cost_coverage") {
+  const normalized = code.trim().toLowerCase();
+  if (normalized === "missing_cost_coverage") {
     return "Marza je procena jer deo nabavne cene nije istorijski potvrdjen.";
   }
-  if (code === "tiny_sample") {
+  if (normalized === "tiny_sample") {
     return "Preporuka nije pouzdana zbog malog uzorka.";
   }
-  if (code === "previous_period_missing" || code === "no_previous_baseline" || code === "pop_unavailable") {
+  if (normalized === "previous_period_missing" || normalized === "no_previous_baseline" || normalized === "pop_unavailable") {
     return "Nema prethodnog perioda za PoP poredjenje.";
   }
   return null;

@@ -1450,10 +1450,10 @@ public static class AllEndpoints
                                     marginPct = typeMarginSnapshot.MarginPct,
                                     shareOfSupplierRevenuePct = totalRevenue > 0m
                                         ? Math.Round((double)(typeRevenue / totalRevenue * 100m), 2)
-                                        : 0d,
+                                        : (double?)null,
                                     shareOfSupplierMarginContributionPct = supplierMarginContribution > 0m
                                         ? Math.Round((double)(typeMarginSnapshot.MarginContribution / supplierMarginContribution * 100m), 2)
-                                        : 0d,
+                                        : (double?)null,
                                     previousPeriodRevenue = hasPreviousComparablePeriod
                                         ? Math.Round(previousTypeRevenue, 2)
                                         : (decimal?)null,
@@ -1467,15 +1467,15 @@ public static class AllEndpoints
                                         ? Math.Round((typeQuantity - previousTypeUnits) / (double)previousTypeUnits * 100d, 2)
                                         : (double?)null,
                                     historicalCostRevenue = typeMarginSnapshot.HistoricalCostRevenue,
-                                    historicalCostCoveragePct = typeMarginSnapshot.HistoricalMarginCoveragePct ?? 0d,
+                                    historicalCostCoveragePct = typeMarginSnapshot.HistoricalMarginCoveragePct,
                                     estimatedCostRevenue = typeMarginSnapshot.EstimatedCostRevenue,
-                                    estimatedCostCoveragePct = typeMarginSnapshot.FallbackCostCoveragePct ?? 0d,
+                                    estimatedCostCoveragePct = typeMarginSnapshot.FallbackCostCoveragePct,
                                     snapshotCostRevenue = typeMarginSnapshot.SnapshotCostRevenue,
                                     snapshotCostCoveragePct = typeMarginSnapshot.SnapshotCostCoveragePct ?? 0d,
                                     noCostRevenue = Math.Round(typeRevenue - typeMarginSnapshot.RevenueWithCost, 2),
                                     noCostCoveragePct = typeRevenue > 0m
                                         ? Math.Round((double)((typeRevenue - typeMarginSnapshot.RevenueWithCost) / typeRevenue * 100m), 2)
-                                        : 0d,
+                                        : (double?)null,
                                     marginQualityLabel = typeMarginQuality.Label,
                                     marginQualityTier = typeMarginQuality.Tier,
                                     marginQualityShortLabel = typeMarginQuality.ShortLabel,
@@ -1507,14 +1507,14 @@ public static class AllEndpoints
                             // Cost quality breakdown
                             totalCost = marginSnapshot.TotalCost,
                             historicalCostRevenue = marginSnapshot.HistoricalCostRevenue,
-                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct ?? 0d,
-                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct ?? 0d,
+                            historicalCostCoveragePct = marginSnapshot.HistoricalMarginCoveragePct,
+                            estimatedCostCoveragePct = marginSnapshot.FallbackCostCoveragePct,
                             snapshotCostRevenue = marginSnapshot.SnapshotCostRevenue,
                             snapshotCostCoveragePct = marginSnapshot.SnapshotCostCoveragePct ?? 0d,
                             noCostRevenue = Math.Round(totalRevenue - marginSnapshot.RevenueWithCost, 2),
                             noCostCoveragePct = totalRevenue > 0m
                                 ? Math.Round((double)((totalRevenue - marginSnapshot.RevenueWithCost) / totalRevenue * 100m), 2)
-                                : 0d,
+                                : (double?)null,
                             isEstimatedMargin = (marginSnapshot.FallbackCostCoveragePct ?? 0) > (marginSnapshot.HistoricalMarginCoveragePct ?? 0),
                             marginQualityLabel = (marginSnapshot.HistoricalMarginCoveragePct ?? 0) >= 50
                                 ? (string?)null
@@ -1541,7 +1541,7 @@ public static class AllEndpoints
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
                             primaryFootwearType = footwearBreakdown.FirstOrDefault()?.tipObuceNaziv ?? "N/A",
-                            primaryFootwearTypeSharePct = footwearBreakdown.FirstOrDefault()?.shareOfSupplierRevenuePct ?? 0d,
+                            primaryFootwearTypeSharePct = footwearBreakdown.FirstOrDefault()?.shareOfSupplierRevenuePct,
                             footwearTypeCount = footwearBreakdown.Count,
                             footwearBreakdown,
                             // Legacy compatibility aliases (pre/post impact metric in old response shape)
@@ -1638,15 +1638,16 @@ public static class AllEndpoints
                 var suppliersWithRecommendation = suppliers
                     .Select(supplier =>
                     {
-                        var sharePct = totalRevenue > 0m
+                        var sharePctForDecision = totalRevenue > 0m
                             ? Math.Round((double)(supplier.ukupanPromet / totalRevenue * 100m), 2)
                             : 0d;
-                        var shareOfMarginContribution = totalMarginContribution > 0m
+                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
+                        double? shareOfMarginContribution = totalMarginContribution > 0m
                             ? Math.Round((double)(supplier.marginContribution / totalMarginContribution * 100m), 2)
-                            : 0d;
-                        var shareOfUnits = totalUnits > 0
+                            : null;
+                        double? shareOfUnits = totalUnits > 0
                             ? Math.Round((double)supplier.ukupnaKolicina / totalUnits * 100d, 2)
-                            : 0d;
+                            : null;
                         var hasPreviousPeriodWindow = supplier.previousPeriodRevenue is not null;
                         var isNewSupplier = hasPreviousPeriodWindow
                             && supplier.previousPeriodRevenue <= 0m
@@ -1657,7 +1658,7 @@ public static class AllEndpoints
                             TotalRevenue: supplier.ukupanPromet,
                             TotalUnits: supplier.ukupnaKolicina,
                             ItemCount: supplier.brojArtikalaUkupno,
-                            SharePct: sharePct,
+                            SharePct: sharePctForDecision,
                             MarginPct: supplier.marginPct,
                             MarginCoveragePct: supplier.marginDataCoveragePct,
                             SplitCoveragePct: supplier.prePostNivelacijaRevenueCoveragePct,
@@ -1727,6 +1728,7 @@ public static class AllEndpoints
                                 recommendation.ConfidencePct,
                                 recommendation.ReliabilityPct,
                                 recommendation.DataQualityStatus,
+                                recommendation.RecommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -1830,6 +1832,8 @@ public static class AllEndpoints
                         dataQuality.unknownSupplierRevenueSharePct,
                         dataQuality.revenueWithNivelacijaSplitSharePct,
                         generatedAtUtc),
+                    recommendationAllowed = suppliersWithRecommendation.Count > 0
+                        && suppliersWithRecommendation.All(x => x.recommendation.RecommendationAllowed),
                     sezone
                 };
 
@@ -2348,9 +2352,10 @@ public static class AllEndpoints
                 var shoeTypesWithRecommendation = shoeTypes
                     .Select(row =>
                     {
-                        var sharePct = totalRevenue > 0m
+                        var sharePctForDecision = totalRevenue > 0m
                             ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
                             : 0d;
+                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewType = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
@@ -2362,7 +2367,7 @@ public static class AllEndpoints
                             TotalRevenue: row.ukupanPromet,
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
-                            SharePct: sharePct,
+                            SharePct: sharePctForDecision,
                             MarginPct: row.marginPct,
                             MarginCoveragePct: row.marginDataCoveragePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
@@ -2425,6 +2430,7 @@ public static class AllEndpoints
                                 recommendation.ConfidencePct,
                                 recommendation.ReliabilityPct,
                                 recommendation.DataQualityStatus,
+                                recommendation.RecommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -2922,9 +2928,10 @@ public static class AllEndpoints
                 var colorsWithRecommendation = colors
                     .Select(row =>
                     {
-                        var sharePct = totalRevenue > 0m
+                        var sharePctForDecision = totalRevenue > 0m
                             ? Math.Round((double)(row.ukupanPromet / totalRevenue * 100m), 2)
                             : 0d;
+                        double? sharePct = totalRevenue > 0m ? sharePctForDecision : null;
                         var hasPreviousPeriodWindow = row.previousPeriodRevenue is not null;
                         var isNewColor = hasPreviousPeriodWindow
                             && row.previousPeriodRevenue <= 0m
@@ -2936,7 +2943,7 @@ public static class AllEndpoints
                             TotalRevenue: row.ukupanPromet,
                             TotalUnits: row.ukupnaKolicina,
                             ItemCount: row.brojArtikalaUkupno,
-                            SharePct: sharePct,
+                            SharePct: sharePctForDecision,
                             MarginPct: row.marginPct,
                             MarginCoveragePct: row.marginDataCoveragePct,
                             SplitCoveragePct: row.prePostNivelacijaRevenueCoveragePct,
@@ -2996,6 +3003,7 @@ public static class AllEndpoints
                                 recommendation.ConfidencePct,
                                 recommendation.ReliabilityPct,
                                 recommendation.DataQualityStatus,
+                                recommendation.RecommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -3971,7 +3979,9 @@ public static class AllEndpoints
                     AvgDidRevenue = avgDidRevenue,
                     AvgLostSalesOOS = avgLostSalesOos,
                     OOSRate = avgOosRate,
-                    MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal))
+                    MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal)),
+                    RecommendationAllowed = vendorStats.Count > 0
+                        && vendorStats.All(x => x.Recommendation?.RecommendationAllowed == true)
                 };
 
                 ApplyVendorSalesNivelacijaMeta(response, correlationId);
@@ -6485,6 +6495,7 @@ public static class AllEndpoints
         string correlationId)
     {
         response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
+        response.Meta.RecommendationAllowed = response.RecommendationAllowed;
         return response;
     }
 
@@ -6573,13 +6584,27 @@ public static class AllEndpoints
         {
             var emptyMeta = AnalyticsResponseMetaFactory.Empty(emptyReason, emptyMessage, "insufficient_data");
             emptyMeta.GeneratedAtUtc = generatedAtUtc;
-            emptyMeta.LastRefreshAtUtc = generatedAtUtc;
+            emptyMeta.RecommendationAllowed = false;
             return emptyMeta;
         }
 
-        var missingCostShare = missingCostRevenueSharePct ?? 0d;
-        var unknownShare = unknownRevenueSharePct ?? 0d;
-        var splitCoverage = comparableSplitCoveragePct ?? 100d;
+        // A missing denominator is unknown evidence, not a healthy zero/100% value.
+        if (!missingCostRevenueSharePct.HasValue
+            || !unknownRevenueSharePct.HasValue
+            || !comparableSplitCoveragePct.HasValue)
+        {
+            var unavailableMeta = AnalyticsResponseMetaFactory.Warning(
+                "STATS_TRUST_INSUFFICIENT",
+                "Nema dovoljno potvrđenih imenitelja za pouzdanu preporuku.",
+                "insufficient_data");
+            unavailableMeta.GeneratedAtUtc = generatedAtUtc;
+            unavailableMeta.RecommendationAllowed = false;
+            return unavailableMeta;
+        }
+
+        var missingCostShare = missingCostRevenueSharePct.Value;
+        var unknownShare = unknownRevenueSharePct.Value;
+        var splitCoverage = comparableSplitCoveragePct.Value;
 
         var isCritical = missingCostShare >= 50d || unknownShare >= 20d || splitCoverage < 40d;
         if (isCritical)
@@ -6587,9 +6612,9 @@ public static class AllEndpoints
             var criticalMeta = AnalyticsResponseMetaFactory.Warning(
                 "STATS_TRUST_CRITICAL",
                 "Kvalitet podataka je kritično degradiran; trust i dalje dolazi iz backenda.",
-                "critical",
-                generatedAtUtc);
+                "critical");
             criticalMeta.GeneratedAtUtc = generatedAtUtc;
+            criticalMeta.RecommendationAllowed = false;
             return criticalMeta;
         }
 
@@ -6599,14 +6624,15 @@ public static class AllEndpoints
             var warningMeta = AnalyticsResponseMetaFactory.Warning(
                 "STATS_TRUST_DEGRADED",
                 "Podaci imaju upozorenja o kvalitetu; prikaz je delimično oslabljen.",
-                "warning",
-                generatedAtUtc);
+                "warning");
             warningMeta.GeneratedAtUtc = generatedAtUtc;
+            warningMeta.RecommendationAllowed = true;
             return warningMeta;
         }
 
-        var successMeta = AnalyticsResponseMetaFactory.Success("good", generatedAtUtc);
+        var successMeta = AnalyticsResponseMetaFactory.Success("good");
         successMeta.GeneratedAtUtc = generatedAtUtc;
+        successMeta.RecommendationAllowed = true;
         return successMeta;
     }
 
@@ -6625,6 +6651,7 @@ public static class AllEndpoints
             GeneratedAtUtc = meta.GeneratedAtUtc,
             LastRefreshAtUtc = meta.LastRefreshAtUtc,
             DataQualityStatus = meta.DataQualityStatus,
+            RecommendationAllowed = meta.RecommendationAllowed,
             IsPartial = meta.IsPartial
         };
     }

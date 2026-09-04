@@ -146,6 +146,12 @@ public sealed class AnalyticsReportsContractTests
         Assert.True(report.Meta?.Success);
         Assert.True(report.RecommendationAllowed);
         Assert.Contains(report.Kpis, k => k.Key == "readinessScore");
+        Assert.Equal(period.Item1, report.Period.RequestedFromUtc);
+        Assert.Equal(period.Item2, report.Period.RequestedToUtc);
+        Assert.Equal(period.Item1, report.Period.EffectiveFromUtc);
+        Assert.Equal(period.Item2, report.Period.EffectiveToUtc);
+        Assert.Equal(intake.LoadedData.FirstSaleDate, report.Period.ObservedFromUtc);
+        Assert.Equal(intake.LoadedData.LastSaleDate, report.Period.ObservedToUtc);
     }
 
     [Fact]
@@ -256,8 +262,14 @@ public sealed class AnalyticsReportsContractTests
         Assert.True(report.GeneratedAtUtc > refreshInfo.LastRefreshAtUtc);
         Assert.Equal(refreshInfo.LastRefreshAtUtc, report.LastRefreshAtUtc);
         Assert.Equal("stale", report.DataFreshnessStatus);
+        Assert.Equal(fromUtc, report.Period.RequestedFromUtc);
+        Assert.Equal(toUtc, report.Period.RequestedToUtc);
+        Assert.Equal(summary.From, report.Period.ObservedFromUtc);
+        Assert.Equal(summary.To, report.Period.ObservedToUtc);
         Assert.Equal(refreshInfo.LastRefreshAtUtc!.Value.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "lastRefreshAtUtc").Value);
         Assert.Equal(report.GeneratedAtUtc.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "generatedAtUtc").Value);
+        Assert.Equal(summary.From.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "observedPeriodFromUtc").Value);
+        Assert.Equal(summary.To.ToString("O"), report.Payload.Metadata.Single(item => item.Key == "observedPeriodToUtc").Value);
     }
 
     [Fact]

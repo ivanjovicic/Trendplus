@@ -17,7 +17,14 @@ export interface AnalyticsResponseMeta {
   message?: string | null;
   generatedAtUtc?: string | null;
   lastRefreshAtUtc?: string | null;
+  requestedPeriodFromUtc?: string | null;
+  requestedPeriodToUtc?: string | null;
+  effectivePeriodFromUtc?: string | null;
+  effectivePeriodToUtc?: string | null;
+  observedPeriodFromUtc?: string | null;
+  observedPeriodToUtc?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
+  recommendationAllowed?: boolean | null;
   isPartial?: boolean;
 }
 
@@ -1016,6 +1023,8 @@ export interface DurableReportKpi {
   unit?: string | null;
   tone?: string | null;
   note?: string | null;
+  valueStatus?: string | null;
+  valueReason?: string | null;
 }
 
 export interface DurableReportAction {
@@ -1061,6 +1070,16 @@ export interface DurableReportPeriod {
   fromUtc: string;
   toUtc: string;
   label: string;
+  requestedDataset?: string | null;
+  effectiveDataset?: string | null;
+  effectivePeriodLabel?: string | null;
+  scope?: string | null;
+  requestedFromUtc?: string | null;
+  requestedToUtc?: string | null;
+  effectiveFromUtc?: string | null;
+  effectiveToUtc?: string | null;
+  observedFromUtc?: string | null;
+  observedToUtc?: string | null;
 }
 
 export interface ReportPeriod extends DurableReportPeriod {}
@@ -1073,6 +1092,8 @@ export interface ReportKpi {
   value: string;
   unit?: string | null;
   note?: string | null;
+  valueStatus?: string | null;
+  valueReason?: string | null;
 }
 
 export interface ReportAction {
@@ -1350,6 +1371,52 @@ export interface ForecastDto {
   items: ForecastRowDto[];
 }
 
+export interface ForecastBaselineBacktestMetricDto {
+  metricId: string;
+  label: string;
+  displayKind: "percent" | "signed_percent" | "number" | string;
+  unitLabel: string;
+  value?: number | null;
+  isAvailable: boolean;
+  limitation?: string | null;
+}
+
+export interface ForecastBaselineBacktestAggregatesDto {
+  wape?: number | null;
+  bias?: number | null;
+  mae?: number | null;
+  sampleCount?: number | null;
+}
+
+export interface ForecastBaselineBacktestCohortDto {
+  cohortId: string;
+  skuStoreCount: number;
+  aggregates?: ForecastBaselineBacktestAggregatesDto | null;
+  note?: string | null;
+}
+
+export interface ForecastBaselineBacktestDto {
+  generatedAtUtc: string;
+  evaluationStatus: "unavailable" | "partial" | "ready" | string;
+  isAuthoritativeMeasurement: boolean;
+  comparisonWindowStatus?: string | null;
+  evaluationFreshnessStatus?: "fresh" | "stale" | "unknown" | string | null;
+  lastEvaluatedAtUtc?: string | null;
+  windowStartUtc?: string | null;
+  windowEndUtc?: string | null;
+  horizonDays: number;
+  primaryBaselineId: string;
+  primaryBaselineLabel: string;
+  allowedBaselineIds: string[];
+  allowedMetricIds: string[];
+  allowedCohortIds: string[];
+  missingEvidenceReasons: string[];
+  metrics: ForecastBaselineBacktestMetricDto[];
+  cohorts: ForecastBaselineBacktestCohortDto[];
+  aggregates?: ForecastBaselineBacktestAggregatesDto | null;
+  warning?: string | null;
+}
+
 // ── Size Curve ────────────────────────────────────────────────────────────────
 
 export interface SizeCurvePointDto {
@@ -1618,8 +1685,8 @@ export interface AnalyticsActionDecisionEvidenceSnapshot {
   dataQualityStatus: string;
   confidenceLevel: string;
   confidenceScore?: number | null;
-  confidencePct: number;
-  reliabilityPct: number;
+  confidencePct?: number | null;
+  reliabilityPct?: number | null;
   inputFreshnessStatus: string;
   explainabilityText: string;
   reasonCodes: string[];

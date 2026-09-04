@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPilotReadinessCards, type ReadinessPayload } from "../PilotReadinessPage";
+import { buildPilotReadinessCards, resolveReadinessHeaderContext, type ReadinessPayload } from "../PilotReadinessPage";
 import type {
   AnalyticsActionCounts,
   AnalyticsDataQualityHealth,
@@ -302,5 +302,24 @@ describe("Pilot readiness edge-state mapping", () => {
 
     expect(fallback.status).toBe("warning");
     expect(critical.status).toBe("blocked");
+  });
+
+  it("keeps requested readiness period and separately labels observed data lineage", () => {
+    const context = resolveReadinessHeaderContext(payload({
+      intakeReport: intake({
+        periodFromUtc: "2026-06-01T00:00:00Z",
+        periodToUtc: "2026-06-30T00:00:00Z",
+        loadedData: {
+          ...intake().loadedData,
+          firstSaleDate: "2026-01-10T00:00:00Z",
+          lastSaleDate: "2026-06-29T00:00:00Z",
+        },
+      }),
+    }));
+
+    expect(context.periodFrom).toBe("2026-06-01T00:00:00Z");
+    expect(context.periodTo).toBe("2026-06-30T00:00:00Z");
+    expect(context.effectivePeriodLabel).toContain("Posmatrani podaci");
+    expect(context.effectivePeriodLabel).toContain("Efektivni");
   });
 });

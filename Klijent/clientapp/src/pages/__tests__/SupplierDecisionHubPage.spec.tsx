@@ -328,6 +328,44 @@ describe("SupplierDecisionHubPage", () => {
     expect((await screen.findAllByText(/backend nije dostavio confidence\/reliability signal/i)).length).toBeGreaterThan(0);
   });
 
+  it("keeps missing share and reliability unavailable across KPI, chart, table, tooltip, and details", async () => {
+    installFetchMock((url) => ({
+      page: Number(url.searchParams.get("page") ?? "1"),
+      pageSize: 100,
+      totalCount: 1,
+      items: [
+        rankingItemWithOverrides(1, 0, {
+          confidenceScore: null,
+          reliabilityPct: null,
+          recommendationCode: "HOLD",
+        }),
+      ],
+      dataNote: summaryResponse.dataNote,
+    }));
+
+    renderPage();
+
+    const top5Article = (await screen.findByText("Udeo top 5 dobavljača")).closest("article");
+    expect(top5Article).not.toBeNull();
+    expect(within(top5Article!).getByText("Nije dostupno")).toBeInTheDocument();
+
+    expect(screen.getByText("Nema podataka za grafikon koncentracije.")).toBeInTheDocument();
+
+    const supplierRow = (await screen.findByText("Dobavljač 1")).closest("tr");
+    expect(supplierRow).not.toBeNull();
+    expect(within(supplierRow!).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(supplierRow!).getByLabelText(/Udeo Nije dostupno/i)).toBeInTheDocument();
+
+    fireEvent.click(within(supplierRow!).getByRole("button", { name: "Detalji" }));
+
+    const confidenceArticle = (await screen.findByText("Confidence signala")).closest("article");
+    const reliabilityArticle = screen.getByText("Pouzdanost signala").closest("article");
+    expect(confidenceArticle).not.toBeNull();
+    expect(reliabilityArticle).not.toBeNull();
+    expect(within(confidenceArticle!).getByText(/nije dostup/i)).toBeInTheDocument();
+    expect(within(reliabilityArticle!).getByText(/nije dostup/i)).toBeInTheDocument();
+  });
+
   it("uses the shared premium table shell and numeric alignment on the ranking table", async () => {
     installFetchMock();
 

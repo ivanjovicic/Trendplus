@@ -38,6 +38,7 @@ import {
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
+  recommendationReasonLabel,
   recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
@@ -670,7 +671,7 @@ export default function PreNivelacijaPriorityPage() {
         description="Operativna podrška za odluke po SKU pre faze sniženja."
         periodFrom={null}
         periodTo={null}
-        lastRefreshAt={data?.generatedAtUtc ?? null}
+        lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
         dataSource="Nivelacija analytics"
         mode="recommendation"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
@@ -1077,7 +1078,7 @@ export default function PreNivelacijaPriorityPage() {
               {selectedRow.reasonCodes.length > 0 ? (
                 <div className="pnp-reason-code-list" aria-label="Kodovi signala">
                   {selectedRow.reasonCodes.map((reasonCode) => (
-                    <span key={reasonCode} className="pnp-reason-code-chip">{reasonCode}</span>
+                    <span key={reasonCode} className="pnp-reason-code-chip">{recommendationReasonLabel(reasonCode)}</span>
                   ))}
                 </div>
               ) : null}

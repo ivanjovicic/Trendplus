@@ -1,4 +1,5 @@
 import type { RecommendationCode } from "../../services/supplierDecisionHubApi";
+import { formatMetricDisplayValue, isFiniteMetricNumber } from "../../utils/analyticsMetricValue";
 
 export type RecommendationUiMeta = {
   label: string;
@@ -24,36 +25,28 @@ const dateFormatter = new Intl.DateTimeFormat("sr-RS", {
   year: "numeric",
 });
 
-export function formatCurrency(value: number): string {
-  return `${rsdFormatter.format(Number.isFinite(value) ? value : 0)} RSD`;
+export function formatCurrency(value: number | null | undefined): string {
+  return formatMetricDisplayValue({ value, kind: "currency" });
 }
 
-export function formatInteger(value: number): string {
-  return integerFormatter.format(Number.isFinite(value) ? value : 0);
+export function formatInteger(value: number | null | undefined): string {
+  return formatMetricDisplayValue({ value, kind: "number", digits: 0 });
 }
 
-export function formatNumber(value: number, digits = 1): string {
-  return new Intl.NumberFormat("sr-RS", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(Number.isFinite(value) ? value : 0);
+export function formatNumber(value: number | null | undefined, digits = 1): string {
+  return formatMetricDisplayValue({ value, kind: "number", digits });
 }
 
-export function formatRatioPercent(value: number, digits = 1): string {
-  return `${new Intl.NumberFormat("sr-RS", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format((Number.isFinite(value) ? value : 0) * 100)}%`;
+export function formatRatioPercent(value: number | null | undefined, digits = 1): string {
+  return formatMetricDisplayValue({ value, kind: "ratioPercent", digits });
 }
 
-export function formatPercentValue(value: number, digits = 1): string {
-  return `${new Intl.NumberFormat("sr-RS", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(Number.isFinite(value) ? value : 0)}%`;
+export function formatPercentValue(value: number | null | undefined, digits = 1): string {
+  return formatMetricDisplayValue({ value, kind: "percent", digits });
 }
 
-export function formatScore(value: number): string {
+export function formatScore(value: number | null | undefined): string {
+  if (!isFiniteMetricNumber(value)) return "Nije dostupno";
   return `${formatNumber(value, 1)}/100`;
 }
 
@@ -68,7 +61,8 @@ export function formatDateRange(from?: string | null, to?: string | null): strin
   return `${formatDate(from)} - ${formatDate(to)}`;
 }
 
-export function confidenceLabel(score: number): string {
+export function confidenceLabel(score: number | null | undefined): string {
+  if (!isFiniteMetricNumber(score)) return "Nije dostupno";
   if (score >= 75) return "Visoka";
   if (score >= 55) return "Srednja";
   return "Niža";

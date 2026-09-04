@@ -48,6 +48,10 @@ function buildPayload() {
       { key: "requestedDataset", label: "Traženi dataset", value: "90d" },
       { key: "effectiveDataset", label: "Efektivni dataset", value: "90d" },
       { key: "effectivePeriodLabel", label: "Efektivni period", value: "Poslednjih 90 dana" },
+      { key: "effectivePeriodFromUtc", label: "Efektivni period od", value: "2026-04-01T00:00:00Z" },
+      { key: "effectivePeriodToUtc", label: "Efektivni period do", value: "2026-06-30T00:00:00Z" },
+      { key: "observedPeriodFromUtc", label: "Posmatrani period od", value: "2026-01-10T00:00:00Z" },
+      { key: "observedPeriodToUtc", label: "Posmatrani period do", value: "2026-06-29T00:00:00Z" },
       { key: "provenanceBasis", label: "Osnova generisanja", value: "mv_supplier_decision_score_cache_90d" },
       { key: "usedFallback", label: "Korišćen fallback", value: false },
       { key: "recommendationAllowed", label: "Preporuka dozvoljena", value: true },
@@ -116,5 +120,19 @@ describe("SupplierDecisionReport", () => {
     expect(screen.getByText("Poslednje osveženje")).toBeInTheDocument();
     expect(screen.getByText("2026-07-31T05:30:00Z")).toBeInTheDocument();
     expect(screen.getByText("Svežina podataka: stale")).toBeInTheDocument();
+    expect(screen.getByText("Efektivni i posmatrani period")).toBeInTheDocument();
+    expect(screen.getByText(/Posmatrani podaci:/)).toBeInTheDocument();
+  });
+
+  it("shows localized data quality labels instead of raw backend codes", () => {
+    const payload = buildPayload();
+    payload.metadata = [
+      { key: "dataQualityStatus", label: "Kvalitet podataka", value: "insufficient_data" },
+    ];
+
+    render(<SupplierDecisionReport payload={payload} />);
+
+    expect(screen.getByText("Kvalitet podataka: Nedovoljno podataka")).toBeInTheDocument();
+    expect(screen.queryByText("Kvalitet podataka: insufficient_data")).not.toBeInTheDocument();
   });
 });

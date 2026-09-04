@@ -49,6 +49,7 @@ import {
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
+  recommendationReasonLabel,
   recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
@@ -82,15 +83,15 @@ type ActiveFilters = {
 };
 
 type DecisionShoeType = ShoeTypeSalesStat & {
-  sharePct: number;
-  totalCost: number;
+  sharePct: number | null;
+  totalCost: number | null;
   marginContribution: number;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   coveragePct: number;
-  splitCoveragePct: number;
-  confidencePct: number;
-  recommendationConfidencePct: number;
+  splitCoveragePct: number | null;
+  confidencePct: number | null;
+  recommendationConfidencePct: number | null;
   confidenceAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
@@ -205,7 +206,7 @@ function mapRecommendationStatus(status?: string | null): DecisionStatus | null 
 }
 
 function trendClass(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
@@ -214,15 +215,15 @@ function trendClass(value: number | null | undefined): string {
 type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
-  sharePct: number;
+  sharePct: number | null;
   marginPct: number;
   popRevenueChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
-  confidencePct: number;
+  confidencePct: number | null;
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
@@ -412,12 +413,15 @@ export default function ShoeTypeSalesStatsPage() {
     const rows = data?.shoeTypes ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce((sum, item) => sum + item.ukupanPromet, 0);
+    const totalRevenue = rows.reduce(
+      (sum, item) => Number.isFinite(item.ukupanPromet) ? sum + item.ukupanPromet : sum,
+      0,
+    );
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : 0;
-      const totalCost = item.totalCost ?? Math.max(0, item.revenueWithCost - item.marginContribution);
+      const sharePct = totalRevenue > 0 ? (item.ukupanPromet / totalRevenue) * 100 : null;
+      const totalCost = item.totalCost ?? null;
       const marginContribution = item.marginContribution;
-      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? 0;
+      const splitCoveragePct = item.prePostNivelacijaRevenueCoveragePct ?? null;
       const coveragePct = item.brojArtikalaUkupno > 0
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
@@ -434,12 +438,12 @@ export default function ShoeTypeSalesStatsPage() {
         sharePct: item.sharePct ?? sharePct,
         totalCost,
         marginContribution,
-        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityPct: reliabilityPctValue,
         reliabilityAvailable,
         coveragePct,
         splitCoveragePct,
-        confidencePct: confidencePctValue ?? 0,
-        recommendationConfidencePct: confidencePctValue ?? 0,
+        confidencePct: confidencePctValue,
+        recommendationConfidencePct: confidencePctValue,
         confidenceAvailable,
         status: backendStatus,
         statusReason,
@@ -461,9 +465,9 @@ export default function ShoeTypeSalesStatsPage() {
       } else if (sortField === "ukupnaKolicina") {
         compare = a.ukupnaKolicina - b.ukupnaKolicina;
       } else if (sortField === "totalCost") {
-        compare = a.totalCost - b.totalCost;
+        compare = (a.totalCost ?? -1) - (b.totalCost ?? -1);
       } else if (sortField === "sharePct") {
-        compare = a.sharePct - b.sharePct;
+        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
       } else if (sortField === "marginPct") {
@@ -476,7 +480,7 @@ export default function ShoeTypeSalesStatsPage() {
         compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       }
 
-      if (compare === 0) compare = a.recommendationConfidencePct - b.recommendationConfidencePct;
+      if (compare === 0) compare = (a.recommendationConfidencePct ?? -1) - (b.recommendationConfidencePct ?? -1);
       if (compare === 0) compare = a.ukupanPromet - b.ukupanPromet;
 
       return sortDir === "asc" ? compare : -compare;
@@ -504,9 +508,9 @@ export default function ShoeTypeSalesStatsPage() {
     return () => window.clearTimeout(timeoutId);
   }, [selectedRow]);
 
-  const totalRevenue = data?.totals.ukupanPromet ?? 0;
+  const totalRevenue = data ? data.totals.ukupanPromet : null;
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
     const top5Revenue = [...sortedRows]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
@@ -515,7 +519,7 @@ export default function ShoeTypeSalesStatsPage() {
   }, [sortedRows, totalRevenue]);
 
   const totalMarginContribution = useMemo(
-    () => data?.totals.ukupanMarzniDoprinos ?? 0,
+    () => data ? data.totals.ukupanMarzniDoprinos : null,
     [data?.totals.ukupanMarzniDoprinos]
   );
 
@@ -524,7 +528,10 @@ export default function ShoeTypeSalesStatsPage() {
   const concentrationData = useMemo(() => {
     if (sortedRows.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
-    const ranked = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct);
+    const ranked = [...sortedRows]
+      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .sort((a, b) => b.sharePct - a.sharePct);
+    if (ranked.length === 0) return [];
     const topRows = ranked.slice(0, 6).map((row) => ({
       name: row.tipObuceNaziv,
       sharePct: Number(row.sharePct.toFixed(2)),
@@ -539,27 +546,27 @@ export default function ShoeTypeSalesStatsPage() {
   }, [sortedRows]);
 
   const comparisonData = useMemo(() => {
-    if (sortedRows.length === 0 || totalMarginContribution <= 0)
+    if (sortedRows.length === 0 || totalMarginContribution == null || totalMarginContribution <= 0)
       return [] as Array<{ name: string; udeoPrometa: number; udeoMarznogDoprinosa: number }>;
 
-    const ranked = [...sortedRows].sort((a, b) => b.ukupanPromet - a.ukupanPromet);
+    const ranked = [...sortedRows]
+      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
 
     return ranked.slice(0, 8).map((row) => ({
       name: row.tipObuceNaziv,
       udeoPrometa: Number(row.sharePct.toFixed(1)),
       udeoMarznogDoprinosa: Number(
-        (totalMarginContribution > 0
-          ? (row.marginContribution / totalMarginContribution) * 100
-          : 0
-        ).toFixed(1)
+        ((row.marginContribution / totalMarginContribution) * 100).toFixed(1)
       ),
     }));
   }, [sortedRows, totalMarginContribution]);
 
   const avgMarginPct = useMemo(() => {
-    if (decisionRows.length === 0) return 0;
-    const sum = decisionRows.reduce((acc, row) => acc + row.marginPct, 0);
-    return sum / decisionRows.length;
+    const validRows = decisionRows.filter((row) => Number.isFinite(row.marginPct));
+    if (validRows.length === 0) return null;
+    const sum = validRows.reduce((acc, row) => acc + row.marginPct, 0);
+    return sum / validRows.length;
   }, [decisionRows]);
 
   const counts = useMemo(() => {
@@ -640,8 +647,9 @@ export default function ShoeTypeSalesStatsPage() {
   const headerDataQualityStatus = useMemo<"good" | "warning" | "critical" | "insufficient_data" | null>(() => {
     if (!data) return null;
     if ((data.shoeTypes ?? []).length === 0) return "insufficient_data";
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct ?? 0;
-    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct ?? 100;
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
+    const splitCoverage = data.dataQuality.revenueWithNivelacijaSplitSharePct;
+    if (missingCostShare == null || splitCoverage == null) return "insufficient_data";
     if (missingCostShare >= 50 || splitCoverage < 30) return "critical";
     if (qualityNotes.length > 0) return "warning";
     return "good";
@@ -649,7 +657,7 @@ export default function ShoeTypeSalesStatsPage() {
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? data?.generatedAt ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
@@ -1024,9 +1032,9 @@ export default function ShoeTypeSalesStatsPage() {
                 <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće u izabranom periodu." /></span>
                 <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
               </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe sa dostupnim ili procenjenim ulazom.">
+      <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe sa dostupnim ili procenjenim ulazom.">
                 <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
-                <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
+                <strong>{fmtRsd(data.totals.ukupanTrosak)}</strong>
               </article>
               <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto maržni doprinos po tipovima obuće.">
                 <span>Ukupan maržni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za sve stavke sa dostupnim troškom, grupisano po tipu obuće. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." /></span>
@@ -1037,10 +1045,10 @@ export default function ShoeTypeSalesStatsPage() {
                 >
                   {qualityTierIcon(data.totals.marginQualityTier)} {data.totals.marginQualityShortLabel ?? data.totals.marginQualityLabel}
                 </small>
-                {data.totals.isSnapshotActive && (data.totals.snapshotCostCoveragePct ?? 0) > 0 ? (
+                {data.totals.isSnapshotActive && data.totals.snapshotCostCoveragePct != null && data.totals.snapshotCostCoveragePct > 0 ? (
                   <small
                     className="shoetype-decision-kpi-badge quality-snapshot"
-                    title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct ?? 0, data.totals.snapshotGeneratedAtUtc, fmtPct)}
+                    title={buildSnapshotTooltip(data.totals.snapshotCostCoveragePct, data.totals.snapshotGeneratedAtUtc, fmtPct)}
                   >
                     ★ {buildSnapshotBadgeLabel(data.totals.snapshotGeneratedAtUtc)}
                   </small>
@@ -1084,7 +1092,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "N/A" : fmtPct(Number(value), 2)} />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} />
                     </BarChart>
@@ -1109,7 +1117,7 @@ export default function ShoeTypeSalesStatsPage() {
                         contentStyle={COMMAND_TOOLTIP_STYLE}
                         labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
                         cursor={CHART_CURSOR_STYLE}
-                        formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
+                        formatter={((value: any) => value == null ? "N/A" : fmtPct(Number(value), 1)) as any}
                       />
                       <Legend
                         wrapperStyle={CHART_LEGEND_STYLE}
@@ -1398,7 +1406,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Udeo u maržnom doprinosu <InfoTip text="Procenat koji ovaj tip obuće čini u ukupnom maržnom doprinosu. Formula: maržni doprinos tipa / ukupan maržni doprinos svih tipova x 100. Ovo nije udeo u profitu niti u neto zaradi." /></span>
-                  <strong>{totalMarginContribution > 0 ? fmtPct((selectedRow.marginContribution / totalMarginContribution) * 100, 2) : "Nije dostupno"}</strong>
+                  <strong>{totalMarginContribution != null && totalMarginContribution > 0 ? fmtPct((selectedRow.marginContribution / totalMarginContribution) * 100, 2) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Udeo u količini <InfoTip text="Procenat koji ovaj tip obuće čini u ukupno prodatoj količini." /></span>
@@ -1448,7 +1456,7 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Uporedivi artikli <InfoTip text="Broj artikala sa prodajom i pre i posle nivelacije (koristi se za proračun pre/post uticaja)." /></span>
-                  <strong>{selectedRow.prePostComparableArticleCount ?? 0}</strong>
+                  <strong>{selectedRow.prePostComparableArticleCount ?? "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Pre nivelacije promet <InfoTip text="Zbir vrednosti prodaja pre prvog datuma nivelacije (ažuriranja cene) za ovaj tip." /></span>
@@ -1502,7 +1510,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <span>Promet bez nabavne cene % <InfoTip text="Procenat prometa koji nema ni direktni ni procenjeni trosak, pa ne ulazi u obracun marznog doprinosa ni marze %. Formula: promet bez troska / ukupan promet x 100." /></span>
                   <strong>{fmtPct(selectedRow.noCostCoveragePct, 1)}</strong>
                 </article>
-                {(selectedRow.snapshotCostCoveragePct ?? 0) > 0 ? (
+                {selectedRow.snapshotCostCoveragePct != null && selectedRow.snapshotCostCoveragePct > 0 ? (
                   <article>
                     <span>Zamrznuta procena (snapshot) % <InfoTip text="Procenat prometa gde je trosak stabilizovan snapshot-om radi reproduktivnosti izvestaja. Ovo nije istorijska nabavna cena sa trenutka prodaje." /></span>
                     <strong>{fmtPct(selectedRow.snapshotCostCoveragePct, 1)}</strong>
@@ -1554,7 +1562,7 @@ export default function ShoeTypeSalesStatsPage() {
               </p>
               {selectedRow.reasonCodes.length > 0 ? (
                 <p className="shoetype-decision-reason">
-                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                  <strong>Razlozi:</strong> {selectedRow.reasonCodes.map(recommendationReasonLabel).join(" | ")}
                 </p>
               ) : null}
               {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (

@@ -16,13 +16,24 @@ public sealed class ForecastBaselineBacktestContractTests
         Assert.Equal(ForecastBaselineBacktestContract.EvaluationUnavailable, result.EvaluationStatus);
         Assert.False(result.IsAuthoritativeMeasurement);
         Assert.Equal("unavailable", result.ComparisonWindowStatus);
+        Assert.Equal(ForecastBaselineBacktestContract.FreshnessUnknown, result.EvaluationFreshnessStatus);
+        Assert.Null(result.LastEvaluatedAtUtc);
         Assert.Null(result.Aggregates);
         Assert.Null(result.WindowStartUtc);
         Assert.Null(result.WindowEndUtc);
         Assert.Equal(14, result.HorizonDays);
         Assert.Equal(ForecastBaselineBacktestContract.BaselineNaiveLastPeriod, result.PrimaryBaselineId);
-        Assert.Contains(ForecastBaselineBacktestContract.ReasonMissingTrustedForecastMaterializer, result.MissingEvidenceReasons);
-        Assert.Contains(ForecastBaselineBacktestContract.ReasonNoPairedForecastOutcomeSeries, result.MissingEvidenceReasons);
+        Assert.Equal("Naivni poslednji period", result.PrimaryBaselineLabel);
+        Assert.Contains(ForecastBaselineBacktestContract.ReasonMissingAuthoritativeEvaluationSnapshot, result.MissingEvidenceReasons);
+        Assert.DoesNotContain(ForecastBaselineBacktestContract.ReasonMissingTrustedForecastMaterializer, result.MissingEvidenceReasons);
+        Assert.Equal(ForecastBaselineBacktestContract.AllowedMetrics.Count, result.Metrics.Count);
+        Assert.All(result.Metrics, metric =>
+        {
+            Assert.False(metric.IsAvailable);
+            Assert.Null(metric.Value);
+            Assert.False(string.IsNullOrWhiteSpace(metric.Label));
+            Assert.False(string.IsNullOrWhiteSpace(metric.DisplayKind));
+        });
         Assert.Equal(ForecastBaselineBacktestContract.AllowedCohorts.Count, result.Cohorts.Count);
         Assert.All(result.Cohorts, cohort =>
         {
@@ -30,7 +41,7 @@ public sealed class ForecastBaselineBacktestContractTests
             Assert.Null(cohort.Aggregates);
         });
         Assert.DoesNotContain("0.0", result.Warning ?? string.Empty, StringComparison.Ordinal);
-        Assert.Contains("comparison window is unavailable", result.Warning, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("authoritative evaluation snapshot", result.Warning, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact(DisplayName = "Backtest contract clamps unknown horizons to the 14d default")]
@@ -55,5 +66,8 @@ public sealed class ForecastBaselineBacktestContractTests
         Assert.Contains(ForecastBaselineBacktestContract.CohortSparse, ForecastBaselineBacktestContract.AllowedCohorts);
         Assert.Contains(ForecastBaselineBacktestContract.CohortNewItem, ForecastBaselineBacktestContract.AllowedCohorts);
         Assert.Equal(new[] { 7, 14, 28 }, ForecastBaselineBacktestContract.HorizonDays);
+        Assert.Equal("percent", ForecastBaselineBacktestContract.MetricDisplayPercent);
+        Assert.Equal("signed_percent", ForecastBaselineBacktestContract.MetricDisplaySignedPercent);
+        Assert.Equal("number", ForecastBaselineBacktestContract.MetricDisplayNumber);
     }
 }

@@ -14,6 +14,13 @@ public class AnalyticsResponseMetaDto
     public string? Message { get; set; }
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastRefreshAtUtc { get; set; }
+    public DateTime? RequestedPeriodFromUtc { get; set; }
+    public DateTime? RequestedPeriodToUtc { get; set; }
+    public DateTime? EffectivePeriodFromUtc { get; set; }
+    public DateTime? EffectivePeriodToUtc { get; set; }
+    public DateTime? ObservedPeriodFromUtc { get; set; }
+    public DateTime? ObservedPeriodToUtc { get; set; }
     public string? DataQualityStatus { get; set; }
+    public bool? RecommendationAllowed { get; set; }
     public bool IsPartial { get; set; }
 }

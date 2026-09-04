@@ -25,7 +25,7 @@ public class AnalyticsStatsTrustMetaTests
         Assert.Equal("Nema podataka za prodaju po dobavljaču.", meta.Message);
         Assert.Equal("insufficient_data", meta.DataQualityStatus);
         Assert.False(meta.IsPartial);
-        Assert.Equal(generatedAt, meta.LastRefreshAtUtc);
+        Assert.Null(meta.LastRefreshAtUtc);
         Assert.Equal(generatedAt, meta.GeneratedAtUtc);
     }
 
@@ -47,7 +47,7 @@ public class AnalyticsStatsTrustMetaTests
         Assert.True(meta.IsPartial);
         Assert.Equal("STATS_TRUST_DEGRADED", meta.WarningCode);
         Assert.Equal("warning", meta.DataQualityStatus);
-        Assert.Equal(generatedAt, meta.LastRefreshAtUtc);
+        Assert.Null(meta.LastRefreshAtUtc);
         Assert.Equal(generatedAt, meta.GeneratedAtUtc);
     }
 
@@ -69,7 +69,7 @@ public class AnalyticsStatsTrustMetaTests
         Assert.True(meta.IsPartial);
         Assert.Equal("STATS_TRUST_CRITICAL", meta.WarningCode);
         Assert.Equal("critical", meta.DataQualityStatus);
-        Assert.Equal(generatedAt, meta.LastRefreshAtUtc);
+        Assert.Null(meta.LastRefreshAtUtc);
         Assert.Equal(generatedAt, meta.GeneratedAtUtc);
     }
 }

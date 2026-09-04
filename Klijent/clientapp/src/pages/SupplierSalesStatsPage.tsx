@@ -36,6 +36,8 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { getDataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -84,18 +86,18 @@ type ActiveFilters = {
   storeId: number | null;
 };
 
-type DecisionSupplier = SupplierSalesStat & {
-  sharePct: number;
+type DecisionSupplier = Omit<SupplierSalesStat, "sharePct" | "reliabilityPct" | "primaryFootwearTypeSharePct"> & {
+  sharePct: number | null;
   totalCost: number;
-  shareOfMarginContribution: number;
-  shareOfUnits: number;
-  reliabilityPct: number;
+  shareOfMarginContribution: number | null;
+  shareOfUnits: number | null;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
-  splitCoveragePct: number;
-  confidencePct: number;
+  splitCoveragePct: number | null;
+  confidencePct: number | null;
   confidenceAvailable: boolean;
   primaryFootwearType: string;
-  primaryFootwearTypeSharePct: number;
+  primaryFootwearTypeSharePct: number | null;
   footwearTypeCount: number;
   footwearBreakdown: SupplierFootwearBreakdown[];
   status: DecisionStatus;
@@ -136,7 +138,7 @@ const REASON_CODE_LABELS: Record<string, string> = {
   no_previous_baseline: "Nema prethodne baze",
   missing_cost_coverage: "Nedovoljno pokriće nabavne cene",
   limited_nivelacija_coverage: "Nizak pre/post split coverage",
-  unknown_heavy_dataset: "Unknown-heavy dataset",
+  unknown_heavy_dataset: "Skup podataka sadrži previše nepoznatih vrednosti",
   tiny_sample: "Premali uzorak",
   unstable_margin: "Nestabilna marža",
   pop_unavailable: "PoP nije dostupan",
@@ -268,22 +270,23 @@ type StatusTooltipData = {
   status: DecisionStatus;
   statusLabel: string;
   statusReason: string;
-  sharePct: number;
+  sharePct: number | null;
   marginPct: number;
   popRevenueChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
-  confidencePct: number;
+  confidencePct: number | null;
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
 };
 
 function formatReasonCode(code: string): string {
-  return REASON_CODE_LABELS[code] ?? code;
+  const normalized = code.trim().toLowerCase();
+  return REASON_CODE_LABELS[normalized] ?? recommendationReasonLabel(normalized);
 }
 
 function buildStatusTooltip(data: StatusTooltipData): string {
@@ -295,8 +298,12 @@ function buildStatusTooltip(data: StatusTooltipData): string {
   const impactText = data.prePostNivelacijaRevenueImpactPct != null
     ? fmtSignedPct(data.prePostNivelacijaRevenueImpactPct, 1)
     : "N/A";
-  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const reliabilityText = data.reliabilityAvailable
+    ? formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })
+    : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable
+    ? formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })
+    : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const reasonHints = data.reasonCodes
     .map((code) => recommendationReasonHintFromCode(code))
@@ -305,10 +312,10 @@ function buildStatusTooltip(data: StatusTooltipData): string {
     ? data.reasonCodes.map(formatReasonCode).join(", ")
     : "Nema dodatnih napomena";
   const hintText = reasonHints.length > 0 ? ` | Napomene: ${reasonHints.join(" | ")}` : "";
-  return `${data.statusLabel}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
+  return `${data.statusLabel}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent", digits: 1 })} | Marža ${fmtPct(data.marginPct, 1)} | PoP ${popText} | Nivelacija impact ${impactText} | Split pokrivanje ${fmtPct(data.splitCoveragePct, 1)} | Pouzdanost ${reliabilityText} | Sigurnost ${confidenceText} | Kvalitet ${qualityText} | Razlozi: ${reasons}${hintText}`;
 }
 
-function describePopMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct" | "previousPeriodRevenue" | "ukupanPromet">): { label: string; title: string; className: string } {
   if (supplier.popRevenueChangePct != null && !Number.isNaN(supplier.popRevenueChangePct)) {
     return {
       label: fmtSignedPct(supplier.popRevenueChangePct, 2),
@@ -332,7 +339,7 @@ function describePopMetric(supplier: SupplierSalesStat): { label: string; title:
   };
 }
 
-function describeNivelacijaImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaRevenueImpactPct" | "prePostNivelacijaRevenueCoveragePct" | "prePostSignalNote" | "preNivelacijePromet" | "posleNivelacijePromet">): { label: string; title: string; className: string } {
   if (supplier.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaRevenueImpactPct, 2),
@@ -375,7 +382,7 @@ function describeNivelacijaImpactMetric(supplier: SupplierSalesStat): { label: s
   };
 }
 
-function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnitsChangePct" | "previousPeriodUnits" | "ukupnaKolicina">): { label: string; title: string; className: string } {
   if (supplier.popUnitsChangePct != null && !Number.isNaN(supplier.popUnitsChangePct)) {
     return {
       label: fmtSignedPct(supplier.popUnitsChangePct, 2),
@@ -399,7 +406,7 @@ function describePopUnitsMetric(supplier: SupplierSalesStat): { label: string; t
   };
 }
 
-function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { label: string; title: string; className: string } {
+function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaUnitsImpactPct" | "prePostSignalNote" | "prePostNivelacijaRevenueCoveragePct" | "preNivelacijeKolicina" | "posleNivelacijeKolicina">): { label: string; title: string; className: string } {
   if (supplier.prePostNivelacijaUnitsImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaUnitsImpactPct)) {
     const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
@@ -441,7 +448,7 @@ function describeNivelacijaUnitsImpactMetric(supplier: SupplierSalesStat): { lab
 }
 
 function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearType" | "primaryFootwearTypeSharePct" | "footwearTypeCount">): string {
-  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A") {
+  if (supplier.footwearTypeCount <= 0 || supplier.primaryFootwearType === "N/A" || supplier.primaryFootwearTypeSharePct == null) {
     return "Nema dovoljno podataka o vrstama obuće za ovog dobavljača.";
   }
 
@@ -456,7 +463,8 @@ function describeFootwearMix(supplier: Pick<DecisionSupplier, "primaryFootwearTy
   return `Promet je raspoređen kroz ${supplier.footwearTypeCount} vrste obuće — nema jedne dominantne kategorije.`;
 }
 
-function footwearMixTone(sharePct: number): string {
+function footwearMixTone(sharePct: number | null | undefined): string {
+  if (sharePct == null) return "mix-balanced";
   if (sharePct >= 65) return "mix-high";
   if (sharePct >= 40) return "mix-medium";
   return "mix-balanced";
@@ -680,13 +688,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     const totalUnits = data?.totals.ukupnaKolicina ?? suppliers.reduce((sum, item) => sum + item.ukupnaKolicina, 0);
 
     return suppliers.map((supplier) => {
-      const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : 0);
+      const sharePct = supplier.sharePct ?? (totalRevenue > 0 ? (supplier.ukupanPromet / totalRevenue) * 100 : null);
       const totalCost = supplier.totalCost ?? Math.max(0, supplier.revenueWithCost - supplier.marginContribution);
       const shareOfMarginContribution = supplier.shareOfMarginContribution
         ?? supplier.shareOfProfit
-        ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : 0);
-      const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : 0);
-      const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? 0;
+        ?? (totalMarginContribution > 0 ? (supplier.marginContribution / totalMarginContribution) * 100 : null);
+      const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : null);
+      const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? null;
       const recommended = supplier.recommendation;
       const status = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
       const statusReason = recommended?.summary
@@ -697,10 +705,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const reliabilityPctValue = normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct);
       const confidenceAvailable = confidencePctValue != null;
       const reliabilityAvailable = reliabilityPctValue != null;
-      const normalizedConfidencePct = confidencePctValue ?? 0;
+      const normalizedConfidencePct = confidencePctValue ?? null;
       const reasonCodes = recommended?.reasonCodes ?? [];
       const dataQualityStatus = normalizeRecommendationQualityStatus(recommended?.dataQualityStatus);
-      const normalizedReliabilityPct = reliabilityPctValue ?? 0;
+      const normalizedReliabilityPct = reliabilityPctValue ?? null;
       const statusLabel = displaySignalLabel(status, reliabilityAvailable, dataQualityStatus);
       const footwearBreakdown = supplier.footwearBreakdown ?? [];
       const primaryFootwearType = supplier.primaryFootwearType
@@ -708,7 +716,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         ?? "N/A";
       const primaryFootwearTypeSharePct = supplier.primaryFootwearTypeSharePct
         ?? footwearBreakdown[0]?.shareOfSupplierRevenuePct
-        ?? 0;
+        ?? null;
       const footwearTypeCount = supplier.footwearTypeCount ?? footwearBreakdown.length;
 
       return {
@@ -753,13 +761,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       } else if (sortField === "totalCost") {
         compare = a.totalCost - b.totalCost;
       } else if (sortField === "sharePct") {
-        compare = a.sharePct - b.sharePct;
+        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       } else if (sortField === "marginContribution") {
         compare = a.marginContribution - b.marginContribution;
       } else if (sortField === "marginPct") {
         compare = a.marginPct - b.marginPct;
       } else if (sortField === "shareOfMarginContribution") {
-        compare = a.shareOfMarginContribution - b.shareOfMarginContribution;
+        compare = (a.shareOfMarginContribution ?? -1) - (b.shareOfMarginContribution ?? -1);
       } else if (sortField === "popRevenueChangePct") {
         compare = (a.popRevenueChangePct ?? -9999) - (b.popRevenueChangePct ?? -9999);
       } else if (sortField === "prePostNivelacijaRevenueImpactPct") {
@@ -769,7 +777,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       }
 
       if (compare === 0) {
-        compare = a.confidencePct - b.confidencePct;
+        compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
       }
 
       if (compare === 0) {
@@ -833,14 +841,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return () => window.clearTimeout(timeoutId);
   }, [selectedSupplier]);
 
-  const totalRevenue = data?.totals.ukupanPromet ?? 0;
+  const totalRevenue = data?.totals.ukupanPromet
+    ?? (data?.suppliers?.length ? data.suppliers.reduce((sum, row) => sum + row.ukupanPromet, 0) : null);
   const knownSuppliers = useMemo(
     () => visibleSuppliers.filter((row) => !row.isUnknown),
     [visibleSuppliers]
   );
 
   const top5SharePct = useMemo(() => {
-    if (knownSuppliers.length === 0 || totalRevenue <= 0) return 0;
+    if (knownSuppliers.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
     const top5Revenue = [...knownSuppliers]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
       .slice(0, 5)
@@ -849,8 +858,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   }, [knownSuppliers, totalRevenue]);
 
   const totalMarginContribution = useMemo(
-    () => data?.totals.ukupanMarzniDoprinos ?? 0,
-    [data?.totals.ukupanMarzniDoprinos]
+    () => data?.totals.ukupanMarzniDoprinos
+      ?? (knownSuppliers.length > 0 ? knownSuppliers.reduce((sum, row) => sum + row.marginContribution, 0) : null),
+    [data?.totals.ukupanMarzniDoprinos, knownSuppliers]
   );
 
   const periodGrowthPct = useMemo(() => {
@@ -861,14 +871,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     if (knownSuppliers.length === 0) return [] as Array<{ name: string; sharePct: number }>;
 
     const ranked = [...knownSuppliers]
-      .sort((a, b) => b.sharePct - a.sharePct);
+      .filter((row) => row.sharePct != null)
+      .sort((a, b) => (b.sharePct ?? -1) - (a.sharePct ?? -1));
 
     const topRows = ranked.slice(0, 6).map((row) => ({
       name: row.dobavljacNaziv,
-      sharePct: Number(row.sharePct.toFixed(2)),
+      sharePct: Number(row.sharePct!.toFixed(2)),
     }));
 
-    const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct, 0);
+    const remaining = ranked.slice(6).reduce((sum, row) => sum + row.sharePct!, 0);
     if (remaining > 0.1) {
       topRows.push({ name: "Ostali", sharePct: Number(remaining.toFixed(2)) });
     }
@@ -882,12 +893,15 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     const ranked = [...knownSuppliers]
       .sort((a, b) => b.ukupanPromet - a.ukupanPromet);
 
-    return ranked.slice(0, 8).map((row) => ({
+    return ranked
+      .filter((row) => row.sharePct != null && row.shareOfMarginContribution != null && Number.isFinite(row.marginPct))
+      .slice(0, 8)
+      .map((row) => ({
       name: row.dobavljacNaziv,
-      udeoPrometa: Number(row.sharePct.toFixed(1)),
-      udeoMarznogDoprinosa: Number(row.shareOfMarginContribution.toFixed(1)),
+      udeoPrometa: Number(row.sharePct!.toFixed(1)),
+      udeoMarznogDoprinosa: Number(row.shareOfMarginContribution!.toFixed(1)),
       marza: Number(row.marginPct.toFixed(1)),
-    }));
+      }));
   }, [knownSuppliers]);
 
   const supplierCounts = useMemo(() => {
@@ -976,8 +990,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const headerDataQualityStatus = useMemo(() => {
     if (!data) return null;
     if ((data.suppliers ?? []).length === 0) return "insufficient_data";
-    const missingCostShare = data.dataQuality.missingCostRevenueSharePct ?? 0;
-    const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct ?? 0;
+    const missingCostShare = data.dataQuality.missingCostRevenueSharePct;
+    const unknownShare = data.dataQuality.unknownSupplierRevenueSharePct;
+    if (missingCostShare == null || unknownShare == null) return "insufficient_data";
     if (missingCostShare >= 50 || unknownShare >= 20) return "critical";
     if (qualityNotes.length > 0) return "warning";
     return "good";
@@ -985,7 +1000,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   const responseMeta = data?.meta ?? null;
   const trustDataQualityStatus = responseMeta?.dataQualityStatus ?? headerDataQualityStatus;
-  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? responseMeta?.generatedAtUtc ?? data?.generatedAt ?? null;
+  const trustLastRefreshAt = responseMeta?.lastRefreshAtUtc ?? null;
   const trustIsPartial = responseMeta?.isPartial ?? false;
   const trustEmptyStateReason = responseMeta?.message ?? emptyStateHint;
 
@@ -1014,7 +1029,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       requestedDataset: formatSupplierDataScopeLabel(activeDataScope),
       effectiveDataset: formatSupplierDataScopeLabel(data.dataScope ?? activeDataScope),
       effectivePeriodLabel: formatEffectivePeriodLabel(data.dataWindowFrom, data.dataWindowTo),
-      recommendationAllowed: trustDataQualityStatus === "good" || trustDataQualityStatus === "warning",
+      recommendationAllowed: data.recommendationAllowed === true,
       recommendationNote: "Pregled je canonical decision surface za dobavljače. Preporuke dolaze iz backenda.",
       emptyStateReason: trustEmptyStateReason,
     });
@@ -1490,7 +1505,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             <section className="supplier-decision-kpis">
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
                 <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
-                <strong>{fmtRsd(totalRevenue)}</strong>
+                <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan promet" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izražen u komadima.">
@@ -1500,12 +1515,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
                 <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
-                <strong>{fmtRsd(data.totals.ukupanTrosak ?? 0)}</strong>
+                <strong>{formatMetricDisplayValue({ value: data.totals.ukupanTrosak ?? null, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="totalCost" ariaLabel="Kako je izračunata ukupna nabavna vrednost" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marže pre operativnih troškova.">
                 <span>{canonicalTerms.marginContribution.label} <InfoTip text={canonicalTerms.marginContribution.desc} /></span>
-                <strong>{fmtRsd(totalMarginContribution)}</strong>
+                <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                 <small
                   className={`supplier-decision-kpi-badge ${qualityTierClass(data.totals.marginQualityTier)}`}
@@ -1529,7 +1544,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija prometa na najjacim partnerima.">
                 <span>Udeo top 5 dobavljača <InfoTip text="Procenat ukupnog prometa koji dolazi od pet dobavljača sa najvećim prometom. Formula: promet top 5 / ukupan promet x 100." /></span>
-                <strong>{fmtPct(top5SharePct)}</strong>
+                <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
@@ -1577,7 +1592,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         contentStyle={COMMAND_TOOLTIP_STYLE}
                         labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
                         cursor={CHART_CURSOR_STYLE}
-                        formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`}
+                        formatter={(value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 })}
                       />
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo u prometu %" />
@@ -1603,7 +1618,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         contentStyle={COMMAND_TOOLTIP_STYLE}
                         labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
                         cursor={CHART_CURSOR_STYLE}
-                        formatter={((value: any) => `${fmtPct(Number(value ?? 0), 1)}`) as any}
+                        formatter={((value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 1 })) as any}
                       />
                       <Legend
                         wrapperStyle={CHART_LEGEND_STYLE}
@@ -1797,9 +1812,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
                         const contributionVsRevenueMismatch = !supplier.isUnknown
+                          && supplier.sharePct != null
+                          && supplier.shareOfMarginContribution != null
                           && supplier.sharePct > 5
                           && supplier.shareOfMarginContribution < supplier.sharePct * 0.5;
                         const highContributionLowRevenue = !supplier.isUnknown
+                          && supplier.sharePct != null
+                          && supplier.shareOfMarginContribution != null
                           && supplier.shareOfMarginContribution > supplier.sharePct * 1.5
                           && supplier.sharePct < 10;
                         return (
@@ -1943,7 +1962,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   <span>{selectedSupplier.statusReason}</span>
                   {selectedSupplier.reasonCodes.length > 0 ? (
                     <span className="supplier-detail-reason-codes">
-                      {selectedSupplier.reasonCodes.map(formatReasonCode).join(" ? ")}
+                      {selectedSupplier.reasonCodes.map(formatReasonCode).join(" | ")}
                     </span>
                   ) : null}
                 </div>
@@ -1998,7 +2017,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 <article>
                   <span>Udeo vodeće vrste <InfoTip text="Procenat ukupnog prometa dobavljača koji potiče od vodeće vrste obuće. Formula: promet vodeće vrste / ukupan promet dobavljača × 100. Udeo iznad 65% signal je koncentracije asortimana." /></span>
-                  <strong>{fmtPct(selectedSupplier.primaryFootwearTypeSharePct, 1)}</strong>
+                  <strong>{formatMetricDisplayValue({ value: selectedSupplier.primaryFootwearTypeSharePct, kind: "percent" })}</strong>
                 </article>
               </div>
 
@@ -2141,7 +2160,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 </article>
                 <article>
                   <span>Pouzdanost <InfoTip text="Indeks pouzdanosti preporuke (0–100%) — uzima u obzir pokriće troškom, dostupnost PoP podataka i konzistentnost signala." /></span>
-                  <strong>{selectedSupplier.reliabilityAvailable ? fmtPct(selectedSupplier.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{selectedSupplier.reliabilityAvailable ? formatMetricDisplayValue({ value: selectedSupplier.reliabilityPct, kind: "percent" }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Status kvaliteta podataka <InfoTip text="Good = zeleno i upotrebljivo. Warning = oprez. Critical = ne veruj bez rucne provere. Insufficient data = backend nije dostavio kompletan quality payload." /></span>
@@ -2167,7 +2186,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 ) : null}
                 <article>
                   <span>Sigurnost preporuke <InfoTip text="Ukupna sigurnost sistemske preporuke, bazirana na svim dostupnim signalima (0–100%)." /></span>
-                  <strong>{selectedSupplier.confidenceAvailable ? fmtPct(selectedSupplier.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{selectedSupplier.confidenceAvailable ? formatMetricDisplayValue({ value: selectedSupplier.confidencePct, kind: "percent", digits: 0 }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
               </div>
 

@@ -796,13 +796,13 @@ public sealed class AnalyticsActionItemService
             RecommendationType: request.RecommendationType?.Trim() ?? string.Empty,
             ExpectedImpactBasis: NormalizeOptionalText(request.ExpectedImpactBasis),
             ImpactWindowDays: request.ImpactWindowDays,
-            ConfidenceLevel: request.ConfidenceLevel?.Trim() ?? string.Empty,
+            ConfidenceLevel: request.ConfidenceLevel?.Trim() ?? "insufficient_data",
             WarningCodes: NormalizeStringList(request.WarningCodes),
             PrimaryDrivers: NormalizeStringList(request.PrimaryDrivers),
             DecisionReason: request.DecisionReason?.Trim() ?? string.Empty,
             RecommendedAction: request.RecommendedAction?.Trim() ?? string.Empty,
             GeneratedAtUtc: request.GeneratedAtUtc,
-            InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? string.Empty);
+            InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? "unknown");
     }
 
     private static AnalyticsActionDecisionEvidenceSnapshot? BuildDecisionEvidenceSnapshot(AnalyticsActionUpsertRequest request)
@@ -840,8 +840,8 @@ public sealed class AnalyticsActionItemService
                 ?? AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
             ConfidenceLevel: request.ConfidenceLevel?.Trim() ?? "insufficient_data",
             ConfidenceScore: request.ConfidenceScore ?? request.ConfidencePct,
-            ConfidencePct: request.ConfidencePct ?? 0,
-            ReliabilityPct: request.ReliabilityPct ?? 0,
+            ConfidencePct: request.ConfidencePct,
+            ReliabilityPct: request.ReliabilityPct,
             InputFreshnessStatus: request.InputFreshnessStatus?.Trim() ?? "unknown",
             ExplainabilityText: request.ExplainabilityText?.Trim()
                 ?? request.DecisionReason?.Trim()
@@ -998,10 +998,9 @@ public sealed class AnalyticsActionItemService
 
         if (string.IsNullOrWhiteSpace(sourceRecommendationId)
             || string.IsNullOrWhiteSpace(recommendationType)
-            || string.IsNullOrWhiteSpace(confidenceLevel)
             || string.IsNullOrWhiteSpace(decisionReason)
             || string.IsNullOrWhiteSpace(recommendedAction)
-            || string.IsNullOrWhiteSpace(inputFreshnessStatus))
+            || string.IsNullOrWhiteSpace(inputFreshnessStatus) && creationNode["inputFreshnessStatus"] is not null)
         {
             return null;
         }
@@ -1011,13 +1010,13 @@ public sealed class AnalyticsActionItemService
             recommendationType,
             NormalizeOptionalText(creationNode["expectedImpactBasis"]?.GetValue<string>()),
             creationNode["impactWindowDays"]?.GetValue<int?>(),
-            confidenceLevel,
+            confidenceLevel ?? "insufficient_data",
             ReadStringArray(creationNode["warningCodes"]),
             ReadStringArray(creationNode["primaryDrivers"]),
             decisionReason,
             recommendedAction,
             creationNode["generatedAtUtc"]?.GetValue<DateTime?>(),
-            inputFreshnessStatus);
+            inputFreshnessStatus ?? "unknown");
     }
 
     private static AnalyticsActionResolutionSnapshot? ParseResolutionSnapshot(JsonObject? resolutionNode)
@@ -1075,8 +1074,8 @@ public sealed class AnalyticsActionItemService
                 ?? AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
             ConfidenceLevel: NormalizeOptionalText(evidenceNode["confidenceLevel"]?.GetValue<string>()) ?? "insufficient_data",
             ConfidenceScore: evidenceNode["confidenceScore"]?.GetValue<int?>(),
-            ConfidencePct: evidenceNode["confidencePct"]?.GetValue<int?>() ?? 0,
-            ReliabilityPct: evidenceNode["reliabilityPct"]?.GetValue<int?>() ?? 0,
+            ConfidencePct: evidenceNode["confidencePct"]?.GetValue<int?>(),
+            ReliabilityPct: evidenceNode["reliabilityPct"]?.GetValue<int?>(),
             InputFreshnessStatus: NormalizeOptionalText(evidenceNode["inputFreshnessStatus"]?.GetValue<string>()) ?? "unknown",
             ExplainabilityText: NormalizeOptionalText(evidenceNode["explainabilityText"]?.GetValue<string>()) ?? string.Empty,
             ReasonCodes: ReadStringArray(evidenceNode["reasonCodes"]),

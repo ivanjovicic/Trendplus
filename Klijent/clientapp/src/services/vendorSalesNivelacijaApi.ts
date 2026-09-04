@@ -10,8 +10,9 @@ export interface VendorSalesNivelacijaRecommendation {
     label: string;
     summary: string;
     confidencePct: number;
-    reliabilityPct: number;
+    reliabilityPct: number | null;
     dataQualityStatus: string;
+    recommendationAllowed?: boolean | null;
     reasonCodes: string[];
 }
 
@@ -29,12 +30,12 @@ export interface VendorSalesNivelacijaVendorStat {
     changeSharePercent: number;
     postRevenueSharePercent: number;
     avgCoveragePre30: number;
-    avgCoveragePost30: number;
+    avgCoveragePost30: number | null;
     articleCount: number;
     activeArticlesCount: number;
     increasedPriceArticlesCount: number;
     decreasedPriceArticlesCount: number;
-    reliabilityPct: number;
+    reliabilityPct: number | null;
     recommendation?: VendorSalesNivelacijaRecommendation | null;
 }
 
@@ -154,6 +155,7 @@ export interface VendorSalesNivelacijaResponse {
     avgLostSalesOOS?: number | null;
     oosRate?: number | null;
     metricsStatus?: string | null;
+    recommendationAllowed?: boolean | null;
     meta?: AnalyticsResponseMeta | null;
 }
 

@@ -1822,6 +1822,12 @@ public static class CachedAnalyticsEndpoints
                 var profileSample = httpContext.Request.Query.TryGetValue("profileSample", out var profileSampleQuery)
                     ? profileSampleQuery.ToString()
                     : "n/a";
+                var requestedPeriodToUtc = toDate?.Date ?? DateTime.UtcNow.Date;
+                var requestedPeriodFromUtc = fromDate?.Date ?? requestedPeriodToUtc.AddDays(-29);
+                if (requestedPeriodFromUtc > requestedPeriodToUtc)
+                {
+                    (requestedPeriodFromUtc, requestedPeriodToUtc) = (requestedPeriodToUtc, requestedPeriodFromUtc);
+                }
 
                 var cacheKey = AnalyticsCacheKeys.DashboardBootstrap(fromDate, toDate, storeId, supplierId, normalizedDataScope);
                 var cacheResult = await GetOrSetWithPolicyAsync(
@@ -2091,23 +2097,7 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             "Lost-sales validacija nije dostupna.");
 
-                        var inventoryFallback = response.Inventory?.UsedOperationalFallback == true;
-                        var hasSectionErrors = response.Errors.Count > 0;
-                        response.Meta = BuildSuccessMeta(
-                            dataQualityStatus: inventoryFallback
-                                ? "warning"
-                                : ResolveDashboardDataQualityStatus(response),
-                            isPartial: hasSectionErrors || inventoryFallback,
-                            warningCode: inventoryFallback
-                                ? "inventory_status_operational_fallback"
-                                : hasSectionErrors ? "ANALYTICS_PARTIAL_DATA" : null,
-                            warningMessage: inventoryFallback
-                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
-                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
-                            message: inventoryFallback
-                                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
-                                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
-                            lastRefreshAtUtc: response.Advanced?.GeneratedAtUtc ?? response.ValidationFreshness?.LastImport);
+                        response.Meta = BuildDashboardBootstrapMeta(response, requestedPeriodFromUtc, requestedPeriodToUtc);
 
                         return response;
                     },
@@ -7485,6 +7475,59 @@ public static class CachedAnalyticsEndpoints
                 staleText),
             _ => $"Stabilan signal bez hitne akcije. Trend {trendText}, marža {marginText}, velocity {velocityUnitsPerDay:0.00}/dan."
         };
+    }
+
+    internal static AnalyticsResponseMetaDto BuildDashboardBootstrapMeta(
+        AnalyticsDashboardBootstrapDto response,
+        DateTime requestedPeriodFromUtc,
+        DateTime requestedPeriodToUtc)
+    {
+        var inventoryFallback = response.Inventory?.UsedOperationalFallback == true;
+        var hasSectionErrors = response.Errors.Count > 0;
+        var observedWindow = ResolveObservedDailySalesWindow(response.DailySales);
+        var meta = BuildSuccessMeta(
+            dataQualityStatus: inventoryFallback
+                ? "warning"
+                : ResolveDashboardDataQualityStatus(response),
+            isPartial: hasSectionErrors || inventoryFallback,
+            warningCode: inventoryFallback
+                ? "inventory_status_operational_fallback"
+                : hasSectionErrors ? "ANALYTICS_PARTIAL_DATA" : null,
+            warningMessage: inventoryFallback
+                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+            message: inventoryFallback
+                ? "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna."
+                : hasSectionErrors ? "Deo dashboard sekcija nije trenutno dostupan." : null,
+            lastRefreshAtUtc: null);
+        meta.RequestedPeriodFromUtc = requestedPeriodFromUtc;
+        meta.RequestedPeriodToUtc = requestedPeriodToUtc;
+        meta.EffectivePeriodFromUtc = requestedPeriodFromUtc;
+        meta.EffectivePeriodToUtc = requestedPeriodToUtc;
+        meta.ObservedPeriodFromUtc = observedWindow?.FromUtc;
+        meta.ObservedPeriodToUtc = observedWindow?.ToUtc;
+        return meta;
+    }
+
+    private static (DateTime FromUtc, DateTime ToUtc)? ResolveObservedDailySalesWindow(IReadOnlyList<DailySaleDto> rows)
+    {
+        DateTime? minUtc = null;
+        DateTime? maxUtc = null;
+
+        foreach (var row in rows)
+        {
+            if (!DateTime.TryParse(row.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+            {
+                continue;
+            }
+
+            minUtc = !minUtc.HasValue || parsed < minUtc.Value ? parsed : minUtc;
+            maxUtc = !maxUtc.HasValue || parsed > maxUtc.Value ? parsed : maxUtc;
+        }
+
+        return minUtc.HasValue && maxUtc.HasValue
+            ? (minUtc.Value, maxUtc.Value)
+            : null;
     }
 
     private static string BuildInsufficientDataReason(

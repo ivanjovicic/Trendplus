@@ -50,6 +50,7 @@ import {
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
+  recommendationReasonLabel,
   recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
@@ -76,15 +77,15 @@ type ActiveFilters = {
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
-  absoluteChangeSharePct: number;
-  sharePct: number;
+  absoluteChangeSharePct: number | null;
+  sharePct: number | null;
   sharePctAvailable: boolean;
-  postSharePct: number;
+  postSharePct: number | null;
   trendPct: number;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   avgCoveragePost30Available: boolean;
-  confidencePct: number;
+  confidencePct: number | null;
   confidenceAvailable: boolean;
   status: DecisionStatus;
   statusReason: string;
@@ -100,7 +101,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
 
 type ConcentrationDatum = {
   name: string;
-  sharePct: number;
+  sharePct: number | null;
   changeRevenue: number;
   articleCount: number;
   vendorKey: string | null;
@@ -228,7 +229,7 @@ function statusDisplayLabel(status: DecisionStatus): string {
 }
 
 function trendClass(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "trend-neutral";
+  if (value == null || !Number.isFinite(value)) return "trend-neutral";
   if (value > 0) return "trend-up";
   if (value < 0) return "trend-down";
   return "trend-neutral";
@@ -416,12 +417,12 @@ function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
 type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
-  sharePct: number;
+  sharePct: number | null;
   sharePctAvailable: boolean;
   trendPct: number;
   changeRevenue: number;
-  reliabilityPct: number;
-  confidencePct: number;
+  reliabilityPct: number | null;
+  confidencePct: number | null;
   reliabilityAvailable: boolean;
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
@@ -609,10 +610,13 @@ export default function ProdajaPrePostNivelacijePage() {
     const rows = data?.vendorStats ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
+    const totalRevenue = rows.reduce(
+      (sum, item) => Number.isFinite(item.postRevenue) ? sum + item.postRevenue : sum,
+      0,
+    );
     const totalAbsoluteChangeRevenue =
       data?.totals.absoluteChangeRevenue ??
-      rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
+      rows.reduce((sum, item) => Number.isFinite(item.changeRevenue) ? sum + Math.abs(item.changeRevenue) : sum, 0);
 
 
     return rows.map((item) => {
@@ -624,16 +628,16 @@ export default function ProdajaPrePostNivelacijePage() {
       const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
       const absoluteChangeSharePct = item.changeSharePercent ?? (
-        totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : 0
+        totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : null
       );
       const sharePctAvailable = item.changeSharePercent != null || totalAbsoluteChangeRevenue > 0;
       const sharePct = absoluteChangeSharePct;
       const postSharePct = item.postRevenueSharePercent ?? (
-        totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0
+        totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : null
       );
       const trendPct = item.changePercent;
-      const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : 0;
-      const normalizedReliabilityPct = recommendationReliabilityPct ?? 0;
+      const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
+      const normalizedReliabilityPct = recommendationReliabilityPct;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
       const volatility = previousComparisonError
@@ -651,7 +655,7 @@ export default function ProdajaPrePostNivelacijePage() {
         reliabilityAvailable: recommendationReliabilityPct != null,
         avgCoveragePost30,
         avgCoveragePost30Available: item.avgCoveragePost30 != null,
-        confidencePct: confidencePctValue ?? 0,
+        confidencePct: confidencePctValue,
         confidenceAvailable: confidencePctValue != null,
         status,
         statusReason,
@@ -677,7 +681,7 @@ export default function ProdajaPrePostNivelacijePage() {
       } else if (sortField === "postRevenue") {
         compare = a.postRevenue - b.postRevenue;
       } else if (sortField === "sharePct") {
-        compare = a.sharePct - b.sharePct;
+        compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       } else if (sortField === "changeRevenue") {
         compare = a.changeRevenue - b.changeRevenue;
       } else if (sortField === "trendPct") {
@@ -689,11 +693,11 @@ export default function ProdajaPrePostNivelacijePage() {
       }
 
       if (compare === 0) {
-        compare = a.confidencePct - b.confidencePct;
+        compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
       }
 
       if (compare === 0) {
-        compare = a.reliabilityPct - b.reliabilityPct;
+        compare = (a.reliabilityPct ?? -1) - (b.reliabilityPct ?? -1);
       }
 
       return sortDir === "asc" ? compare : -compare;
@@ -704,28 +708,29 @@ export default function ProdajaPrePostNivelacijePage() {
     return sortedRows.filter((row) => focusFilterMatches(row, focusFilter));
   }, [focusFilter, sortedRows]);
 
-  const totalRevenue = data?.totals.postRevenue ?? 0;
+  const totalRevenue = data ? data.totals.postRevenue : null;
   const totalAbsoluteChangeRevenue = data?.totals.absoluteChangeRevenue
     ?? sortedRows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
   const top5SharePct = useMemo<number | null>(() => {
     if (sortedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return null;
     const top5 = [...sortedRows]
+      .filter((item): item is typeof item & { sharePct: number } => item.sharePct != null && Number.isFinite(item.sharePct))
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 5)
       .reduce((sum, item) => sum + item.sharePct, 0);
     return top5;
   }, [sortedRows, totalAbsoluteChangeRevenue]);
 
-  const totalChangeRevenue = data?.totals.changeRevenue ?? 0;
+  const totalChangeRevenue = data ? data.totals.changeRevenue : null;
   const periodGrowthPct = useMemo(() => {
-    if (previousRevenue == null || previousRevenue <= 0) return null;
+    if (previousRevenue == null || previousRevenue <= 0 || totalRevenue == null) return null;
     return ((totalRevenue - previousRevenue) / previousRevenue) * 100;
   }, [previousRevenue, totalRevenue]);
 
   const periodGrowthDisplay = useMemo(() => {
     if (previousComparisonError) return "Nedostupno";
     if (previousRevenue == null) return "N/A";
-    if (previousRevenue <= 0) return totalRevenue > 0 ? "Nova baza" : "Bez baze";
+    if (previousRevenue <= 0) return totalRevenue != null && totalRevenue > 0 ? "Nova baza" : "Bez baze";
     return fmtSignedPct(periodGrowthPct);
   }, [periodGrowthPct, previousComparisonError, previousRevenue, totalRevenue]);
 
@@ -907,6 +912,7 @@ const advancedSignals = useMemo(
     if (focusedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return [] as ConcentrationDatum[];
 
     const top = [...focusedRows]
+      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 7)
       .map((row) => ({
@@ -1238,7 +1244,7 @@ const advancedSignals = useMemo(
         description="Event-window analiza: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
-        lastRefreshAt={data?.generatedAt ?? null}
+        lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
         dataSource={`Nivelacija analytics (scope: ${dataScope}${activeFilters.storeId != null ? `, store: ${activeFilters.storeId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
@@ -1762,7 +1768,7 @@ const advancedSignals = useMemo(
               </p>
               {selectedRow.reasonCodes.length > 0 ? (
                 <p className="ppn-decision-reason">
-                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                  <strong>Razlozi:</strong> {selectedRow.reasonCodes.map(recommendationReasonLabel).join(" | ")}
                 </p>
               ) : null}
               {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (

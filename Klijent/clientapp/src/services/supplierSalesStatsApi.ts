@@ -8,6 +8,7 @@ export interface AnalyticsRecommendation {
   confidencePct: number;
   reliabilityPct: number;
   dataQualityStatus: "good" | "warning" | "critical";
+  recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }
 
@@ -86,10 +87,10 @@ export interface SupplierSalesStat {
   footwearTypeCount?: number;
   footwearBreakdown?: SupplierFootwearBreakdown[];
   sharePct?: number;
-  shareOfMarginContribution?: number;
+  shareOfMarginContribution?: number | null;
   /** @deprecated Use shareOfMarginContribution. */
   shareOfProfit?: number;
-  shareOfUnits?: number;
+  shareOfUnits?: number | null;
   reliabilityPct?: number;
   recommendation?: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)
@@ -168,6 +169,7 @@ export interface SupplierSalesStatsResponse {
   storeId: number | null;
   dataScope?: string | null;
   provenanceBasis?: string | null;
+  recommendationAllowed?: boolean | null;
   suppliers: SupplierSalesStat[];
   totals: SupplierSalesTotals;
   dataQuality: SupplierSalesDataQuality;

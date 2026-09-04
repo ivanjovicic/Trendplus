@@ -1,9 +1,7 @@
 import type { SummaryResponse } from "../../services/supplierDecisionHubApi";
+import { formatMetricDisplayValue } from "../../utils/analyticsMetricValue";
 import {
-  formatCurrency,
   formatInteger,
-  formatRatioPercent,
-  formatScore,
 } from "./utils";
 
 type SupplierDecisionKpisProps = {
@@ -37,40 +35,62 @@ export default function SupplierDecisionKpis({
   loading = false,
 }: SupplierDecisionKpisProps) {
   const supplierCount = summary?.supplierCount ?? 0;
+  const leadingQualityIndex = summary?.topGrowSuppliers[0]?.supplierQualityIndex;
 
   const cards = [
     {
       label: "Udeo prihoda bez sniženja",
-      value: formatRatioPercent(summary?.fullPriceRevenueShare ?? 0),
+      value: formatMetricDisplayValue({
+        value: summary?.fullPriceRevenueShare ?? null,
+        kind: "ratioPercent",
+        status: summary ? null : "unavailable",
+      }),
       note: `Uzorak: ${formatInteger(supplierCount)} dobavljača`,
     },
     {
       label: "Sell-through bez sniženja",
-      value: formatRatioPercent(summary?.fullPriceSellthrough ?? 0),
+      value: formatMetricDisplayValue({
+        value: summary?.fullPriceSellthrough ?? null,
+        kind: "ratioPercent",
+        status: summary ? null : "unavailable",
+      }),
       note: "Koliko robe odlazi pre prvog spuštanja cene",
     },
     {
       label: "Zavisnost od sniženja",
-      value: formatRatioPercent(summary?.markdownRevenueShare ?? 0),
+      value: formatMetricDisplayValue({
+        value: summary?.markdownRevenueShare ?? null,
+        kind: "ratioPercent",
+        status: summary ? null : "unavailable",
+      }),
       note: "Veći procenat znači veću zavisnost od prodaje na sniženju",
     },
     {
       label: "Marža pre sniženja",
-      value: formatRatioPercent(summary?.preMarkdownMarginPct ?? 0),
+      value: formatMetricDisplayValue({
+        value: summary?.preMarkdownMarginPct ?? null,
+        kind: "ratioPercent",
+        status: summary ? null : "unavailable",
+      }),
       note: "Marža ostvarena dok je roba još na punoj ceni",
     },
     {
       label: "Indeks kvaliteta dobavljača",
-      value: formatScore(
-        supplierCount > 0
-          ? (summary?.topGrowSuppliers[0]?.supplierQualityIndex ?? 0)
-          : 0
-      ),
+      value: formatMetricDisplayValue({
+        value: supplierCount > 0 ? leadingQualityIndex ?? null : null,
+        kind: "number",
+        digits: 1,
+        status: supplierCount > 0 ? null : "insufficient_data",
+      }) + (supplierCount > 0 && leadingQualityIndex != null ? "/100" : ""),
       note: "Prikazan je vodeći kvalitet u trenutnom filteru",
     },
     {
       label: "Kapital u riziku",
-      value: formatCurrency(summary?.capitalAtRisk ?? 0),
+      value: formatMetricDisplayValue({
+        value: summary?.capitalAtRisk ?? null,
+        kind: "currency",
+        status: summary ? null : "unavailable",
+      }),
       note: "Vrednost robe koja ostaje zaključana u sporo pokretnim zalihama",
     },
   ];

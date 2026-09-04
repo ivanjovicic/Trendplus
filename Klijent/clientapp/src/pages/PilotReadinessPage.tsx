@@ -27,6 +27,7 @@ import type {
   SupplierDecisionDurableReport,
 } from "../types/analytics";
 import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { buildPeriodLineageLabel, resolveLineagePeriod } from "../utils/analyticsPeriodLineage";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { getAnalyticsMetaMessage, isAnalyticsMetaWarning } from "../utils/analyticsResponseMeta";
 import "./PilotReadinessPage.css";
@@ -569,6 +570,68 @@ export function buildPilotReadinessCards(payload: ReadinessPayload): ReadinessCa
   ];
 }
 
+export function resolveReadinessHeaderContext(payload: ReadinessPayload) {
+  const requestedFromUtc =
+    payload.intakeReport?.periodFromUtc ??
+    payload.pilotReport?.period.requestedFromUtc ??
+    payload.bootstrap?.meta?.requestedPeriodFromUtc ??
+    payload.productDecisionCenter?.periodFromUtc ??
+    null;
+  const requestedToUtc =
+    payload.intakeReport?.periodToUtc ??
+    payload.pilotReport?.period.requestedToUtc ??
+    payload.bootstrap?.meta?.requestedPeriodToUtc ??
+    payload.productDecisionCenter?.periodToUtc ??
+    null;
+  const effectiveFromUtc =
+    payload.pilotReport?.period.effectiveFromUtc ??
+    payload.intakeReport?.periodFromUtc ??
+    payload.bootstrap?.meta?.effectivePeriodFromUtc ??
+    payload.productDecisionCenter?.periodFromUtc ??
+    null;
+  const effectiveToUtc =
+    payload.pilotReport?.period.effectiveToUtc ??
+    payload.intakeReport?.periodToUtc ??
+    payload.bootstrap?.meta?.effectivePeriodToUtc ??
+    payload.productDecisionCenter?.periodToUtc ??
+    null;
+  const observedFromUtc =
+    payload.pilotReport?.period.observedFromUtc ??
+    payload.intakeReport?.loadedData.firstSaleDate ??
+    payload.bootstrap?.meta?.observedPeriodFromUtc ??
+    null;
+  const observedToUtc =
+    payload.pilotReport?.period.observedToUtc ??
+    payload.intakeReport?.loadedData.lastSaleDate ??
+    payload.bootstrap?.meta?.observedPeriodToUtc ??
+    null;
+  const period = resolveLineagePeriod(
+    requestedFromUtc,
+    requestedToUtc,
+    effectiveFromUtc,
+    effectiveToUtc,
+    observedFromUtc,
+    observedToUtc,
+  );
+
+  return {
+    lastRefreshAt:
+      payload.refreshStatus?.lastSuccessfulRefreshAtUtc
+      ?? payload.intakeReport?.lastRefreshAtUtc
+      ?? payload.pilotReport?.lastRefreshAtUtc
+      ?? payload.bootstrap?.meta?.lastRefreshAtUtc
+      ?? null,
+    periodFrom: period.periodFrom,
+    periodTo: period.periodTo,
+    effectivePeriodLabel: buildPeriodLineageLabel({
+      effectiveFromUtc,
+      effectiveToUtc,
+      observedFromUtc,
+      observedToUtc,
+    }),
+  };
+}
+
 function getHeaderDataQualityStatus(overallStatus: ReadinessStatus): "good" | "warning" | "critical" | "insufficient_data" {
   if (overallStatus === "ready") return "good";
   if (overallStatus === "warning") return "warning";
@@ -682,17 +745,7 @@ export default function PilotReadinessPage() {
         ignoredRowsCount: payload.bootstrap.executive.dataQualitySummary.ignoredRowsCount,
       }
       : undefined;
-  const lastRefreshAt = payload.refreshStatus?.lastSuccessfulRefreshAtUtc
-    ?? payload.intakeReport?.lastRefreshAtUtc
-    ?? payload.pilotReport?.lastRefreshAtUtc
-    ?? payload.bootstrap?.meta?.lastRefreshAtUtc
-    ?? null;
-  const periodFrom = payload.pilotReport?.periodFrom
-    ?? payload.productDecisionCenter?.periodFromUtc
-    ?? null;
-  const periodTo = payload.pilotReport?.periodTo
-    ?? payload.productDecisionCenter?.periodToUtc
-    ?? null;
+  const headerContext = resolveReadinessHeaderContext(payload);
   const refreshErrors = payload.errors.filter((item) => item.key === "refreshStatus" || item.key === "bootstrap");
   const hasPartialSignals = payload.errors.length > 0
     || (payload.bootstrap?.errors.length ?? 0) > 0
@@ -711,14 +764,15 @@ export default function PilotReadinessPage() {
         title="Pilot spremnost"
         description="Kontrolni ekran pokazuje da li su ključni analytics signali spremni za demo ili pilot upotrebu."
         mode="report"
-        periodFrom={periodFrom}
-        periodTo={periodTo}
-        lastRefreshAt={lastRefreshAt}
+        periodFrom={headerContext.periodFrom}
+        periodTo={headerContext.periodTo}
+        lastRefreshAt={headerContext.lastRefreshAt}
         dataFreshnessStatus={payload.refreshStatus?.dataFreshnessStatus ?? "unknown"}
         refreshIsRunning={payload.refreshStatus?.isRunning ?? false}
         refreshCurrentStep={payload.refreshStatus?.currentStep ?? null}
         isPartial={hasPartialSignals}
         dataSource="Postojeći analytics endpointi"
+        effectivePeriodLabel={headerContext.effectivePeriodLabel}
         dataQualityStatus={overallDataQualityStatus}
         dataQualitySummary={overallDataQualitySummary}
         dataQualityHref="/analytics/data-quality"

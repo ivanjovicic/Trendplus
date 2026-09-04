@@ -8,6 +8,7 @@ export interface AnalyticsRecommendation {
   confidencePct: number;
   reliabilityPct: number;
   dataQualityStatus: "good" | "warning" | "critical";
+  recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }
 
@@ -31,7 +32,7 @@ export interface ShoeTypeSalesStat {
   fallbackCostCoveragePct: number | null;
   marginPct: number;
   // Cost quality breakdown
-  totalCost?: number;
+  totalCost?: number | null;
   historicalCostRevenue?: number;
   historicalCostCoveragePct?: number;
   estimatedCostCoveragePct?: number;
@@ -52,8 +53,8 @@ export interface ShoeTypeSalesStat {
   prePostNivelacijaRevenueCoveragePct: number | null;
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
-  sharePct?: number;
-  reliabilityPct?: number;
+  sharePct?: number | null;
+  reliabilityPct?: number | null;
   isUnknown?: boolean;
   recommendation?: AnalyticsRecommendation;
   // Legacy compatibility aliases (deprecated)

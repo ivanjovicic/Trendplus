@@ -37,6 +37,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import type { Sezona } from "../types/Sezona";
 import { formatDate, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -52,6 +53,7 @@ import {
   normalizeRecommendationQualityStatus,
   recommendationQualityLabel,
   recommendationQualityStyle,
+  recommendationReasonLabel,
   recommendationReasonHints,
   recommendationStatusLabel,
   recommendationStatusTone,
@@ -79,14 +81,14 @@ type ActiveFilters = {
 };
 
 export type DecisionRow = RankingItem & {
-  sharePct: number;
+  sharePct: number | null;
   marginContribution: number;
   qualityTrendPct: number;
   status: DecisionStatus;
   statusReason: string;
-  normalizedConfidence: number;
+  normalizedConfidence: number | null;
   confidenceAvailable: boolean;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
   reasonCodes: string[];
@@ -153,11 +155,17 @@ function recommendationToStatus(code: RecommendationCode): DecisionStatus {
 }
 
 function buildStatusTooltip(row: DecisionRow): string {
-  const confidenceText = row.confidenceAvailable ? fmtPct(row.normalizedConfidence, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const reliabilityText = row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = row.confidenceAvailable
+    ? formatMetricDisplayValue({ value: row.normalizedConfidence, kind: "percent", digits: 0 })
+    : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const reliabilityText = row.reliabilityAvailable
+    ? formatMetricDisplayValue({ value: row.reliabilityPct, kind: "percent", digits: 0 })
+    : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const shareText = formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 1 });
+  const marginText = formatMetricDisplayValue({ value: toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), kind: "percent", digits: 1 });
   const qualityText = recommendationQualityLabel(row.dataQualityStatus);
   const hintText = recommendationReasonHints(row.reasonCodes).join(" | ");
-  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${fmtPct(row.sharePct, 1)} | Marza ${fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 1)} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(row.status)}: ${recommendationStatusTooltipBrief(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marza ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Data quality ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
@@ -383,11 +391,11 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     const totalRevenue = rows.reduce((sum, item) => sum + item.revenue, 0);
 
     return rows.map((item) => {
-      const sharePct = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0;
+      const sharePct = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : null;
       const marginContribution = item.revenue * item.preMarkdownMarginPct;
       const qualityTrendPct = (item.fullPriceRevenueShare - item.markdownRevenueShare) * 100;
       const confidencePctValue = normalizeRecommendationPct(item.confidenceScore);
-      const normalizedConfidence = confidencePctValue ?? 0;
+      const normalizedConfidence = confidencePctValue ?? null;
 
       const status = recommendationAllowed
         ? recommendationToStatus(item.recommendationCode)
@@ -408,7 +416,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         statusReason,
         normalizedConfidence,
         confidenceAvailable: confidencePctValue != null,
-        reliabilityPct: reliabilityPctValue ?? 0,
+        reliabilityPct: reliabilityPctValue ?? null,
         reliabilityAvailable: recommendationAllowed && reliabilityPctValue != null,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.dataQualityStatus),
         reasonCodes: item.reasonCodes ?? [],
@@ -422,18 +430,18 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
       let compare = 0;
       if (sortField === "supplierName") compare = a.supplierName.localeCompare(b.supplierName, "sr");
       else if (sortField === "revenue") compare = a.revenue - b.revenue;
-      else if (sortField === "sharePct") compare = a.sharePct - b.sharePct;
+      else if (sortField === "sharePct") compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       else if (sortField === "preMarkdownMarginPct") compare = a.preMarkdownMarginPct - b.preMarkdownMarginPct;
       else if (sortField === "qualityTrendPct") compare = a.qualityTrendPct - b.qualityTrendPct;
       else if (sortField === "status") compare = RECOMMENDATION_STATUS_PRIORITY[a.status] - RECOMMENDATION_STATUS_PRIORITY[b.status];
-      if (compare === 0) compare = a.normalizedConfidence - b.normalizedConfidence;
+      if (compare === 0) compare = (a.normalizedConfidence ?? -1) - (b.normalizedConfidence ?? -1);
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
 
   const totalRevenue = useMemo(() => sortedRows.reduce((sum, row) => sum + row.revenue, 0), [sortedRows]);
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    if (sortedRows.length === 0 || totalRevenue <= 0) return null;
     const top5 = [...sortedRows].sort((a, b) => b.revenue - a.revenue).slice(0, 5).reduce((sum, row) => sum + row.revenue, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
@@ -586,7 +594,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     zeroStateExplanation,
   ]);
   const concentrationData = useMemo(() => {
-    const top = [...sortedRows].sort((a, b) => b.sharePct - a.sharePct).slice(0, 8).map((row) => ({ name: row.supplierName, sharePct: row.sharePct }));
+    const top = [...sortedRows]
+      .filter((row) => row.sharePct != null)
+      .sort((a, b) => (b.sharePct ?? -1) - (a.sharePct ?? -1))
+      .slice(0, 8)
+      .map((row) => ({ name: row.supplierName, sharePct: row.sharePct ?? 0 }));
+    if (top.length === 0) return [];
     const topShare = top.reduce((sum, row) => sum + row.sharePct, 0);
     const rest = clamp(100 - topShare, 0, 100);
     return rest > 0.1 ? [...top, { name: "Ostali", sharePct: rest }] : top;
@@ -610,8 +623,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "summaryFrom", label: "Sažetak od", value: summary?.from ?? "" },
     { key: "summaryTo", label: "Sažetak do", value: summary?.to ?? "" },
-    { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? 0 },
-    { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? 0 },
+    { key: "supplierCount", label: "Dobavljača", value: summary?.supplierCount ?? null },
+    { key: "capitalAtRisk", label: "Kapital u riziku", value: summary?.capitalAtRisk ?? null },
   ], [summary?.capitalAtRisk, summary?.from, summary?.supplierCount, summary?.to]);
 
   const resolvedDecisionColumns = useMemo<AnalyticsTableColumn<DecisionRow>[]>(() => (
@@ -772,8 +785,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         recommendationStatus: nextRecommendationStatus,
         priority: mapSupplierActionPriority(row, recommendationAllowed),
         impactEstimateRsd: row.unsoldStockValue > 0 ? row.unsoldStockValue : undefined,
-        confidencePct: row.confidenceAvailable ? Math.round(row.normalizedConfidence) : undefined,
-        reliabilityPct: row.reliabilityAvailable ? Math.round(row.reliabilityPct) : undefined,
+        confidencePct: row.confidenceAvailable && row.normalizedConfidence != null ? Math.round(row.normalizedConfidence) : undefined,
+        reliabilityPct: row.reliabilityAvailable && row.reliabilityPct != null ? Math.round(row.reliabilityPct) : undefined,
         dataQualityStatus: toActionDataQualityStatus(row.dataQualityStatus),
         actionUrl: `/analytics/supplier?tab=scorecard&supplierId=${row.supplierId}`,
         metadataJson: JSON.stringify({
@@ -1054,7 +1067,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 Ukupan prihod
                 <InfoTip text="Zbir prihoda za sve učitane scorecard dobavljače. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
               </span>
-              <strong>{fmtRsd(totalRevenue)}</strong>
+              <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan prihod" />
             </article>
             <article className="sdh-decision-kpi">
@@ -1062,7 +1075,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 Udeo top 5 dobavljača
                 <InfoTip text="Udeo prihoda koji donosi pet najvećih dobavljača u scorecard skupu. Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera." />
               </span>
-              <strong>{fmtPct(top5SharePct)}</strong>
+              <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
               <KpiExplainButton metricKey="topSupplierRevenueShare" />
             </article>
             <article className="sdh-decision-kpi">
@@ -1070,7 +1083,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 Ukupan maržni doprinos
                 <InfoTip text="Procena maržnog doprinosa za prikazane dobavljače: prihod ponderisan pre-markdown maržom. Viša vrednost je bolja, ali je proveri zajedno sa rizikom zaliha." />
               </span>
-              <strong>{fmtRsd(totalMarginContribution)}</strong>
+              <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat ukupan maržni doprinos" />
             </article>
             <article className="sdh-decision-kpi">
@@ -1078,7 +1091,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 Kapital u riziku
                 <InfoTip text="Procena vrednosti neprodate ili sporo rotirajuće zalihe kod prikazanih dobavljača. Niža vrednost je bolja; visoka vrednost traži proveru nabavke i zaliha." />
               </span>
-              <strong className="trend-down">{fmtRsd(summary.capitalAtRisk)}</strong>
+              <strong className="trend-down">{formatMetricDisplayValue({ value: summary.capitalAtRisk ?? null, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
             </article>
             <article className="sdh-decision-kpi">
@@ -1106,7 +1119,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                         contentStyle={CHART_TOOLTIP_STYLE}
                         labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                         wrapperStyle={{ zIndex: 20, maxWidth: "min(320px, calc(100vw - 32px))" }}
-                        formatter={(value: number | string | undefined) => [`${fmtPct(Number(value ?? 0), 2)}`, "Udeo prihoda"]}
+                        formatter={(value: number | string | undefined) => [formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 }), "Udeo prihoda"]}
                       />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
@@ -1217,7 +1230,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                           <tr key={row.supplierId} className={`analytics-data-table__row--interactive ${expanded ? "expanded-row" : ""}`}>
                             <td className="font-semibold text-contrast">{row.supplierName}</td>
                             <td className="analytics-data-table__numeric text-secondary">{fmtRsd(row.revenue)}</td>
-                            <td className="analytics-data-table__numeric text-secondary">{fmtPct(row.sharePct, 2)}</td>
+                            <td className="analytics-data-table__numeric text-secondary">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td className="analytics-data-table__numeric text-secondary">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
                             <td className={`analytics-data-table__numeric text-secondary ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
                             <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span></td>
@@ -1304,12 +1317,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 </article>
                 <article>
                   <span>Confidence signala <InfoTip text="Backend confidence signal za scorecard signal. Ovo nije isto što i lokalni heuristic score." /></span>
-                  <strong>{selectedRow.confidenceAvailable ? fmtPct(selectedRow.normalizedConfidence, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{selectedRow.confidenceAvailable ? formatMetricDisplayValue({ value: selectedRow.normalizedConfidence, kind: "percent", digits: 1 }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                   <KpiExplainButton metricKey="confidencePct" ariaLabel="Kako je izračunata sigurnost preporuke" />
                 </article>
                 <article>
                   <span>Pouzdanost signala</span>
-                  <strong>{selectedRow.reliabilityAvailable ? fmtPct(selectedRow.reliabilityPct, 1) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
+                  <strong>{selectedRow.reliabilityAvailable ? formatMetricDisplayValue({ value: selectedRow.reliabilityPct, kind: "percent", digits: 1 }) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                   <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                 </article>
                 <article>
@@ -1322,7 +1335,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
               </p>
               {selectedRow.reasonCodes.length > 0 ? (
                 <p className="sdh-decision-reason">
-                  <strong>Reason codes:</strong> {selectedRow.reasonCodes.join(" | ")}
+                  <strong>Razlozi:</strong> {selectedRow.reasonCodes.map(recommendationReasonLabel).join(" | ")}
                 </p>
               ) : null}
               {recommendationReasonHints(selectedRow.reasonCodes).map((hint) => (

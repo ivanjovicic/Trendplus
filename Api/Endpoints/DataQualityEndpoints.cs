@@ -785,7 +785,17 @@ public static class DataQualityEndpoints
             intake.GeneratedAtUtc,
             period.FromUtc,
             period.ToUtc,
-            new AnalyticsReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake", Scope: normalizedScope),
+            new AnalyticsReportPeriodDto(
+                period.FromUtc,
+                period.ToUtc,
+                "Pilot intake",
+                Scope: normalizedScope,
+                RequestedFromUtc: period.FromUtc,
+                RequestedToUtc: period.ToUtc,
+                EffectiveFromUtc: period.FromUtc,
+                EffectiveToUtc: period.ToUtc,
+                ObservedFromUtc: intake.LoadedData.FirstSaleDate,
+                ObservedToUtc: intake.LoadedData.LastSaleDate),
             intake.LastRefreshAtUtc,
             intake.DataFreshnessStatus,
             intake.Meta?.DataQualityStatus ?? "insufficient_data",
@@ -824,7 +834,15 @@ public static class DataQualityEndpoints
             generatedAtUtc,
             period.FromUtc,
             period.ToUtc,
-            new AnalyticsReportPeriodDto(period.FromUtc, period.ToUtc, "Pilot intake", Scope: normalizedScope),
+            new AnalyticsReportPeriodDto(
+                period.FromUtc,
+                period.ToUtc,
+                "Pilot intake",
+                Scope: normalizedScope,
+                RequestedFromUtc: period.FromUtc,
+                RequestedToUtc: period.ToUtc,
+                EffectiveFromUtc: period.FromUtc,
+                EffectiveToUtc: period.ToUtc),
             null,
             null,
             "insufficient_data",
@@ -929,15 +947,26 @@ public static class DataQualityEndpoints
             "good" => "neutral",
             _ => "warning"
         };
+        var readinessValueStatus =
+            report.Meta?.Success == false ? "error"
+            : report.DataFreshnessStatus is "critical" or "stale" ? "stale"
+            : string.Equals(report.Meta?.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase) ? "insufficient_data"
+            : report.ReadinessScore == 0 ? "valid_zero"
+            : null;
+        var readinessReason =
+            report.Meta?.Success == false ? (report.Meta?.Message ?? "Readiness signal nije potvrđen.")
+            : report.DataFreshnessStatus is "critical" or "stale" ? "Readiness score je izračunat nad zastarelim refresh signalom."
+            : string.Equals(report.Meta?.DataQualityStatus, "insufficient_data", StringComparison.OrdinalIgnoreCase) ? "Nema dovoljno potvrđenih podataka za pouzdanu readiness procenu."
+            : null;
 
         return new List<AnalyticsReportKpiDto>
         {
-            new("readinessScore", "Spremnost za preporuke", report.ReadinessScore, "/100", readinessTone, report.ReadinessLabel),
-            new("articlesCount", "Artikli", report.LoadedData.ArticlesCount, null, report.LoadedData.ArticlesCount > 0 ? "positive" : "warning", null),
-            new("saleItemsCount", "Stavke prodaje", report.LoadedData.SaleItemsCount, null, report.LoadedData.SaleItemsCount > 0 ? "positive" : "warning", null),
-            new("missingCostCount", "Bez nabavne cene", report.Issues.MissingCostCount, null, report.Issues.MissingCostCount == 0 ? "positive" : "warning", null),
-            new("blockedRecommendations", "Blokirane preporuke", report.Impact.RecommendationsBlockedCount, null, report.Impact.RecommendationsBlockedCount == 0 ? "positive" : "warning", null),
-            new("revenueWithoutCost", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent, "ratio", report.Impact.RevenueWithoutCostPercent < 0.10d ? "positive" : "warning", null)
+            new("readinessScore", "Spremnost za preporuke", report.ReadinessScore, "/100", readinessTone, report.ReadinessLabel, readinessValueStatus, readinessReason),
+            new("articlesCount", "Artikli", report.LoadedData.ArticlesCount, null, report.LoadedData.ArticlesCount > 0 ? "positive" : "warning", null, report.LoadedData.ArticlesCount == 0 ? "valid_zero" : null),
+            new("saleItemsCount", "Stavke prodaje", report.LoadedData.SaleItemsCount, null, report.LoadedData.SaleItemsCount > 0 ? "positive" : "warning", null, report.LoadedData.SaleItemsCount == 0 ? "valid_zero" : null),
+            new("missingCostCount", "Bez nabavne cene", report.Issues.MissingCostCount, null, report.Issues.MissingCostCount == 0 ? "positive" : "warning", null, report.Issues.MissingCostCount == 0 ? "valid_zero" : null),
+            new("blockedRecommendations", "Blokirane preporuke", report.Impact.RecommendationsBlockedCount, null, report.Impact.RecommendationsBlockedCount == 0 ? "positive" : "warning", null, report.Impact.RecommendationsBlockedCount == 0 ? "valid_zero" : null),
+            new("revenueWithoutCost", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent, "ratio", report.Impact.RevenueWithoutCostPercent < 0.10d ? "positive" : "warning", null, report.Impact.RevenueWithoutCostPercent == 0d ? "valid_zero" : null)
         };
     }
 
@@ -1125,6 +1154,7 @@ public static class DataQualityEndpoints
                 WarningCode = meta.WarningCode,
                 WarningMessage = meta.WarningMessage,
                 DataQualityStatus = meta.DataQualityStatus,
+                RecommendationAllowed = meta.RecommendationAllowed,
                 EmptyReason = meta.EmptyReason,
                 IsPartial = meta.IsPartial,
                 GeneratedAtUtc = meta.GeneratedAtUtc,

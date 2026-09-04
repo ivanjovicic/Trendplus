@@ -475,11 +475,11 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             .Where(x => x.IsUnknown)
             .Sum(x => x.TotalQty);
 
-        var unknownSupplierPct = totalItemsInRange > 0
+        decimal? unknownSupplierPct = totalItemsInRange > 0
             ? decimal.Round(unknownSupplierItems * 100m / totalItemsInRange, 2, MidpointRounding.AwayFromZero)
-            : 0m;
+            : null;
 
-        if (unknownSupplierPct >= 20m)
+        if (unknownSupplierPct is >= 20m)
         {
             warnings.Add("Veliki udeo prodaje ima nepoznatog dobavljaca (20%+).");
         }
@@ -586,7 +586,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         {
             var emptyMeta = AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.");
             emptyMeta.GeneratedAtUtc = generatedAtUtc;
-            emptyMeta.LastRefreshAtUtc = generatedAtUtc;
             return emptyMeta;
         }
 
@@ -595,16 +594,13 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             var warningMeta = AnalyticsResponseMetaFactory.Warning(
                 "DAILY_SALES_WARNINGS",
                 "Dnevna prodaja ima upozorenja o kvalitetu podataka.",
-                "warning",
-                generatedAtUtc);
+                "warning");
             warningMeta.GeneratedAtUtc = generatedAtUtc;
-            warningMeta.LastRefreshAtUtc = generatedAtUtc;
             return warningMeta;
         }
 
-        var successMeta = AnalyticsResponseMetaFactory.Success("good", generatedAtUtc);
+        var successMeta = AnalyticsResponseMetaFactory.Success("good");
         successMeta.GeneratedAtUtc = generatedAtUtc;
-        successMeta.LastRefreshAtUtc = generatedAtUtc;
         return successMeta;
     }
 

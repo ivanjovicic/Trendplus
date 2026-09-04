@@ -337,6 +337,51 @@ public class AnalyticsActionItemServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_PreservesNullConfidenceAndReliabilityInEvidenceSnapshot()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_PreservesNullConfidenceAndReliabilityInEvidenceSnapshot));
+        var service = CreateService(db);
+
+        var created = await service.UpsertAsync(
+            new AnalyticsActionUpsertRequest(
+                SourceType: AnalyticsActionConstants.SourceTypes.Supplier,
+                SourceKey: "supplier-null-confidence-1",
+                SourceId: 9001,
+                Title: "Proveri signal dobavljača",
+                Description: "Nedovoljno podataka za sigurnu preporuku.",
+                RecommendationStatus: "INSUFFICIENT_DATA",
+                Priority: AnalyticsActionConstants.Priorities.P2,
+                ImpactEstimateRsd: null,
+                DueAtUtc: null,
+                ExpectedImpactRsd: null,
+                ConfidencePct: null,
+                ReliabilityPct: null,
+                DataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.InsufficientData,
+                ActionUrl: "/analytics/supplier",
+                SourceRecommendationId: "supplier:9001:insufficient",
+                RecommendationType: "REVIEW_SIGNAL",
+                ExpectedImpactBasis: "insufficient_history",
+                ImpactWindowDays: null,
+                ConfidenceLevel: null,
+                WarningCodes: new[] { "INSUFFICIENT_HISTORY" },
+                PrimaryDrivers: new[] { "sample_size" },
+                DecisionReason: "Uzorak nije dovoljan.",
+                RecommendedAction: "Proveri podatke",
+                GeneratedAtUtc: new DateTime(2026, 9, 3, 9, 0, 0, DateTimeKind.Utc),
+                InputFreshnessStatus: "fresh",
+                MetadataJson: null),
+            userId: "u1");
+
+        var snapshot = AnalyticsActionItemService.GetLedgerSnapshot(created.MetadataJson);
+        Assert.NotNull(snapshot?.CreationSnapshot);
+        Assert.NotNull(snapshot!.EvidenceSnapshot);
+        Assert.Null(created.ConfidencePct);
+        Assert.Null(created.ReliabilityPct);
+        Assert.Null(snapshot.EvidenceSnapshot!.ConfidencePct);
+        Assert.Null(snapshot.EvidenceSnapshot.ReliabilityPct);
+    }
+
+    [Fact]
     public async Task UpdateOutcomeAsync_PersistsOutcomeFields()
     {
         await using var db = CreateDbContext(nameof(UpdateOutcomeAsync_PersistsOutcomeFields));

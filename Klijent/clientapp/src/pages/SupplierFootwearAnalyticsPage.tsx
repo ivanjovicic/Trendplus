@@ -19,6 +19,7 @@ import {
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
@@ -33,12 +34,12 @@ type SuggestedRange = { fromDate: string; toDate: string; label: string };
 type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" | null;
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
-  sharePct: number;
+  sharePct: number | null;
   trendPct: number;
   topFootwearType: string;
-  topFootwearTypeSharePct: number;
+  topFootwearTypeSharePct: number | null;
   avgElasticity: number | null;
-  confidencePct: number;
+  confidencePct: number | null;
   status: DecisionStatus;
   statusReason: string;
 };
@@ -101,10 +102,19 @@ function trendClass(value: number | null | undefined): string {
   return "trend-neutral";
 }
 
-type StatusTooltipData = { status: DecisionStatus; statusReason: string; sharePct: number; trendPct: number; topFootwearType: string; topFootwearTypeSharePct: number; reliabilityPct: number; confidencePct: number };
+type StatusTooltipData = {
+  status: DecisionStatus;
+  statusReason: string;
+  sharePct: number | null;
+  trendPct: number;
+  topFootwearType: string;
+  topFootwearTypeSharePct: number | null;
+  reliabilityPct: number | null;
+  confidencePct: number | null;
+};
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${fmtPct(data.sharePct, 1)} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${fmtPct(data.topFootwearTypeSharePct, 1)}) | Pouzdanost ${fmtPct(data.reliabilityPct, 0)} | Poverenje ${fmtPct(data.confidencePct, 0)}`;
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })}) | Pouzdanost ${formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })} | Poverenje ${formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })}`;
 }
 function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
@@ -117,7 +127,8 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   articleStats.forEach((row) => {
     const vKey = row.vendorId != null ? `id:${row.vendorId}` : `name:${normalizeName(row.vendorName)}`;
     const category = (row.category ?? "").trim() || "N/A";
-    const revenue = Number.isFinite(row.postRevenue) ? row.postRevenue : 0;
+    const revenue = normalizeMetricNumber(row.postRevenue);
+    if (revenue == null) return;
     if (!vendorCategoryRevenue.has(vKey)) vendorCategoryRevenue.set(vKey, new Map());
     const categoryMap = vendorCategoryRevenue.get(vKey)!;
     categoryMap.set(category, (categoryMap.get(category) ?? 0) + revenue);
@@ -128,13 +139,13 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
     globalCategoryRevenue.set(category, (globalCategoryRevenue.get(category) ?? 0) + revenue);
   });
 
-  const byVendor = new Map<string, { topType: string; topTypeSharePct: number; avgElasticity: number | null }>();
+  const byVendor = new Map<string, { topType: string; topTypeSharePct: number | null; avgElasticity: number | null }>();
   vendorCategoryRevenue.forEach((categoryMap, key) => {
     let total = 0;
     let topType = "N/A";
     let topRevenue = 0;
     categoryMap.forEach((value, category) => { total += value; if (value > topRevenue) { topRevenue = value; topType = category; } });
-    const topTypeSharePct = total > 0 ? (topRevenue / total) * 100 : 0;
+    const topTypeSharePct = total > 0 ? (topRevenue / total) * 100 : null;
     const categoryElasticities = vendorCategoryElasticities.get(key)?.get(topType) ?? [];
     const avgElasticity = categoryElasticities.length > 0 ? categoryElasticities.reduce((sum, value) => sum + value, 0) / categoryElasticities.length : null;
     byVendor.set(key, { topType, topTypeSharePct, avgElasticity });
@@ -142,7 +153,9 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
 
   const globalTopTypes = [...globalCategoryRevenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   const globalTotal = globalTopTypes.reduce((sum, item) => sum + item[1], 0);
-  const globalTypeShare = globalTopTypes.map(([name, revenue]) => ({ name, sharePct: globalTotal > 0 ? (revenue / globalTotal) * 100 : 0 }));
+  const globalTypeShare = globalTotal > 0
+    ? globalTopTypes.map(([name, revenue]) => ({ name, sharePct: (revenue / globalTotal) * 100 }))
+    : [];
   return { byVendor, globalTypeShare };
 }
 
@@ -340,11 +353,11 @@ export default function SupplierFootwearAnalyticsPage({
 
       const key = vendorKey(item);
       const typeInsight = typeInsights.byVendor.get(key);
-      const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : 0;
+      const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : null;
       const trendPct = item.changePercent;
 
       const topFootwearType = typeInsight?.topType ?? "N/A";
-      const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? 0;
+      const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? null;
       const avgElasticity = typeInsight?.avgElasticity ?? null;
 
       return [{
@@ -354,7 +367,7 @@ export default function SupplierFootwearAnalyticsPage({
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
-        confidencePct: recommendation.confidencePct,
+        confidencePct: normalizeMetricNumber(recommendation.confidencePct),
         status: recommendation.status,
         statusReason: recommendation.summary,
       }];
@@ -367,25 +380,26 @@ export default function SupplierFootwearAnalyticsPage({
       let compare = 0;
       if (sortField === "vendorName") compare = a.vendorName.localeCompare(b.vendorName, "sr");
       else if (sortField === "postRevenue") compare = a.postRevenue - b.postRevenue;
-      else if (sortField === "sharePct") compare = a.sharePct - b.sharePct;
+      else if (sortField === "sharePct") compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       else if (sortField === "topFootwearType") compare = a.topFootwearType.localeCompare(b.topFootwearType, "sr");
       else if (sortField === "trendPct") compare = a.trendPct - b.trendPct;
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
-      if (compare === 0) compare = a.confidencePct - b.confidencePct;
-      if (compare === 0) compare = a.reliabilityPct - b.reliabilityPct;
+      if (compare === 0) compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
+      if (compare === 0) compare = (a.reliabilityPct ?? -1) - (b.reliabilityPct ?? -1);
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
 
-  const totalRevenue = data?.totals.postRevenue ?? 0;
+  const totalRevenue = data?.totals.postRevenue
+    ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + row.postRevenue, 0) : null);
   const top5SharePct = useMemo(() => {
-    if (sortedRows.length === 0 || totalRevenue <= 0) return 0;
+    if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
     const top5 = [...sortedRows].sort((a, b) => b.postRevenue - a.postRevenue).slice(0, 5).reduce((sum, item) => sum + item.postRevenue, 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
-  const totalChangeRevenue = data?.totals.changeRevenue ?? 0;
+  const totalChangeRevenue = data?.totals.changeRevenue ?? null;
   const periodGrowthPct = useMemo(() => (
-    previousRevenue == null || previousRevenue <= 0
+    previousRevenue == null || previousRevenue <= 0 || totalRevenue == null
       ? data?.totals.changePercent ?? null
       : ((totalRevenue - previousRevenue) / previousRevenue) * 100
   ), [data?.totals.changePercent, previousRevenue, totalRevenue]);
@@ -407,7 +421,7 @@ export default function SupplierFootwearAnalyticsPage({
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
   const showEmptyState = !loading && !error && ((data?.vendorStats.length ?? 0) === 0 && (data?.articleStats.length ?? 0) === 0);
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
-  const recommendationAllowed = dataQualityStatus === "good" || dataQualityStatus === "warning";
+  const recommendationAllowed = data?.recommendationAllowed === true;
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(() => [
     {
       key: "period",
@@ -528,7 +542,7 @@ export default function SupplierFootwearAnalyticsPage({
     onTrustMetadataChange({
       periodFrom: activeFilters.fromDate,
       periodTo: activeFilters.toDate,
-      lastRefreshAt: data.meta?.lastRefreshAtUtc ?? data.generatedAt ?? null,
+      lastRefreshAt: data.meta?.lastRefreshAtUtc ?? null,
       dataFreshnessStatus: data.meta?.isPartial || data.meta?.warningCode ? "stale" : data.generatedAt ? "fresh" : "unknown",
       dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
       dataQualityStatus: dataQualityStatus ?? (showMetaWarning ? "warning" : "good"),
@@ -608,7 +622,7 @@ export default function SupplierFootwearAnalyticsPage({
           description="Ovaj ekran prikazuje dodatni analitički signal za dobavljače i dominantne tipove obuće, uz isti period i kvalitet podataka koji koristi i konsolidovani dobavljački pregled."
           periodFrom={activeFilters.fromDate}
           periodTo={activeFilters.toDate}
-          lastRefreshAt={data?.meta?.lastRefreshAtUtc ?? data?.generatedAt ?? null}
+          lastRefreshAt={data?.meta?.lastRefreshAtUtc ?? null}
           dataFreshnessStatus={showMetaWarning || dataMeta?.isPartial ? "stale" : data?.generatedAt ? "fresh" : "unknown"}
           dataSource="Supplier sales nivelacija"
           dataQualityStatus={dataQualityStatus}
@@ -681,9 +695,9 @@ export default function SupplierFootwearAnalyticsPage({
           )}
 
           <section className="sf-decision-kpis">
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{fmtRsd(totalRevenue)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{fmtPct(top5SharePct)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drzi pet najjacih dobavljaca."><span>Udeo top 5 dobavljaca</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuce koji trenutno nosi najveci deo prometa."><span>Dominantan tip obuce</span><strong>{dominantTypeSummary}</strong></article>
           </section>
@@ -698,7 +712,7 @@ export default function SupplierFootwearAnalyticsPage({
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
-                      <Tooltip formatter={(value: number | string | undefined) => `${fmtPct(Number(value ?? 0), 2)}`} />
+                      <Tooltip formatter={(value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 })} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -738,8 +752,8 @@ export default function SupplierFootwearAnalyticsPage({
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.vendorName || "Nepoznat dobavljač"}</td>
                             <td className="align-right">{fmtRsd(row.postRevenue)}</td>
-                            <td className="align-right">{fmtPct(row.sharePct, 2)}</td>
-                            <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{fmtPct(row.topFootwearTypeSharePct, 1)} udela kod dobavljača</div></td>
+                            <td className="align-right">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
+                            <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{formatMetricDisplayValue({ value: row.topFootwearTypeSharePct, kind: "percent" })} udela kod dobavljača</div></td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
                             <td><span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status)}</span></td>
                             <td className="align-center"><button type="button" className="sf-decision-detail-btn" onClick={() => setExpandedVendorKey(expanded ? null : rowId)}>{expanded ? "Sakrij" : "Detalji"}</button></td>
@@ -762,11 +776,11 @@ export default function SupplierFootwearAnalyticsPage({
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(selectedRow.postRevenue)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({fmtPct(selectedRow.topFootwearTypeSharePct, 1)})</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({formatMetricDisplayValue({ value: selectedRow.topFootwearTypeSharePct, kind: "percent" })})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{fmtPct(selectedRow.reliabilityPct, 1)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{fmtPct(selectedRow.confidencePct, 1)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{formatMetricDisplayValue({ value: selectedRow.reliabilityPct, kind: "percent" })}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{formatMetricDisplayValue({ value: selectedRow.confidencePct, kind: "percent" })}</strong></article>
               </div>
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>

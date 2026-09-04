@@ -16,17 +16,31 @@ public sealed record ForecastBaselineBacktestDto(
     string EvaluationStatus,
     bool IsAuthoritativeMeasurement,
     string? ComparisonWindowStatus,
+    string EvaluationFreshnessStatus,
+    DateTime? LastEvaluatedAtUtc,
     DateTime? WindowStartUtc,
     DateTime? WindowEndUtc,
     int HorizonDays,
     string PrimaryBaselineId,
+    string PrimaryBaselineLabel,
     IReadOnlyList<string> AllowedBaselineIds,
     IReadOnlyList<string> AllowedMetricIds,
     IReadOnlyList<string> AllowedCohortIds,
     IReadOnlyList<string> MissingEvidenceReasons,
+    IReadOnlyList<ForecastBaselineBacktestMetricDto> Metrics,
     IReadOnlyList<ForecastBaselineBacktestCohortDto> Cohorts,
     ForecastBaselineBacktestAggregatesDto? Aggregates,
     string? Warning
+);
+
+public sealed record ForecastBaselineBacktestMetricDto(
+    string MetricId,
+    string Label,
+    string DisplayKind,
+    string UnitLabel,
+    decimal? Value,
+    bool IsAvailable,
+    string? Limitation
 );
 
 public sealed record ForecastBaselineBacktestCohortDto(

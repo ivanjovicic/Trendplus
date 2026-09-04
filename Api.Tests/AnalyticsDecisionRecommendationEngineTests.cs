@@ -30,6 +30,7 @@ public class AnalyticsDecisionRecommendationEngineTests
 
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 20d);
         Assert.Equal("do_not_trust", res.Status);
+        Assert.False(res.RecommendationAllowed);
         Assert.Contains("unknown_entity", res.ReasonCodes);
     }
 
@@ -55,6 +56,7 @@ public class AnalyticsDecisionRecommendationEngineTests
 
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 10d);
         Assert.Equal("insufficient_data", res.Status);
+        Assert.False(res.RecommendationAllowed);
         Assert.Contains("tiny_sample", res.ReasonCodes);
     }
 
@@ -107,6 +109,7 @@ public class AnalyticsDecisionRecommendationEngineTests
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: null);
 
         Assert.Equal("insufficient_data", res.Status);
+        Assert.False(res.RecommendationAllowed);
         Assert.Contains("missing_known_margin_baseline", res.ReasonCodes);
         Assert.Contains("baseline is missing", res.Summary, StringComparison.OrdinalIgnoreCase);
     }
@@ -133,6 +136,7 @@ public class AnalyticsDecisionRecommendationEngineTests
 
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
         Assert.Equal("increase_focus", res.Status);
+        Assert.True(res.RecommendationAllowed);
     }
 
     [Fact(DisplayName = "Low margin -> review")]
@@ -181,6 +185,7 @@ public class AnalyticsDecisionRecommendationEngineTests
 
         var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
         Assert.Equal("do_not_trust", res.Status);
+        Assert.False(res.RecommendationAllowed);
         Assert.Contains("missing_cost_coverage", res.ReasonCodes);
     }
 

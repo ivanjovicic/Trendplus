@@ -84,12 +84,13 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(0m, dayThree.TotalRevenue);
 
         Assert.Equal(2, result.Metadata.OffShiftItems);
-        Assert.True(result.Metadata.UnknownSupplierPct > 20m);
+        Assert.True(result.Metadata.UnknownSupplierPct.HasValue);
+        Assert.True(result.Metadata.UnknownSupplierPct.Value > 20m);
         Assert.Contains(result.Metadata.Warnings, x => x.Contains("van smena", StringComparison.OrdinalIgnoreCase));
         Assert.Equal("warning", result.Meta.DataQualityStatus);
         Assert.True(result.Meta.IsPartial);
         Assert.Equal("DAILY_SALES_WARNINGS", result.Meta.WarningCode);
-        Assert.NotNull(result.Meta.LastRefreshAtUtc);
+        Assert.Null(result.Meta.LastRefreshAtUtc);
     }
 
     [Fact]
@@ -135,7 +136,7 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal("imported", imported.DataScope);
         Assert.Equal("warning", imported.Meta.DataQualityStatus);
         Assert.True(imported.Meta.IsPartial);
-        Assert.NotNull(imported.Meta.LastRefreshAtUtc);
+        Assert.Null(imported.Meta.LastRefreshAtUtc);
     }
 
     [Fact]
@@ -250,7 +251,8 @@ public sealed class DailySalesStatsServiceTests
         });
         Assert.Equal("insufficient_data", result.Meta.DataQualityStatus);
         Assert.Equal("no_data_in_period", result.Meta.EmptyReason);
-        Assert.NotNull(result.Meta.LastRefreshAtUtc);
+        Assert.Null(result.Metadata.UnknownSupplierPct);
+        Assert.Null(result.Meta.LastRefreshAtUtc);
         Assert.Null(result.Meta.WarningCode);
         Assert.False(result.Meta.IsPartial);
     }

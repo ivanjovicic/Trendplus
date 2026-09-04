@@ -40,7 +40,7 @@ public sealed class DailySalesMetadata
 {
     public int TotalDays { get; set; }
     public int UniqueSuppliersInRange { get; set; }
-    public decimal UnknownSupplierPct { get; set; }
+    public decimal? UnknownSupplierPct { get; set; }
     public int UnknownSupplierItems { get; set; }
     public int OffShiftItems { get; set; }
     public decimal OffShiftRevenue { get; set; }

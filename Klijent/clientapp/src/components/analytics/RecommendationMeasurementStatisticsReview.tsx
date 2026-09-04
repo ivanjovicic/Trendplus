@@ -132,7 +132,7 @@ export default function RecommendationMeasurementStatisticsReview({
             description={`Izdato: ${fmtNumber(view.stats.issuedCount, 0, "0")}. Obim toka (kreirano): ${fmtNumber(summary.meta.sampleSize, 0, "0")}. Period: ${summary.meta.periodMode}.`}
             periodFrom={period.from}
             periodTo={period.to}
-            lastRefreshAt={summary.meta.generatedAtUtc}
+            lastRefreshAt={null}
             dataSource="GET /api/analytics/actions/outcomes/summary measurementStatistics"
             mode="report"
             emptyStateReason={view.stats.emptyReason ?? summary.meta.emptyReason ?? null}
@@ -227,7 +227,7 @@ export default function RecommendationMeasurementStatisticsReview({
             <span>Kreirano: {fmtNumber(summary.totals.createdCount, 0, "0")}</span>
             <span>Zatvoreno: {fmtNumber(summary.totals.closedCount, 0, "0")}</span>
             <span>Otvoreno: {fmtNumber(summary.totals.openCount, 0, "0")}</span>
-            <span>Osveženo: {formatDateTime(summary.meta.generatedAtUtc, "-")}</span>
+            <span>Poslednji uspešan refresh: nije potvrđen za ovaj izvor</span>
           </div>
         </>
       ) : null}

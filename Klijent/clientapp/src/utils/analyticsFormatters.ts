@@ -6,7 +6,7 @@ import {
 type DateLikeValue = string | Date | null | undefined;
 
 export function fmtNumber(value: number | null | undefined, digits = 0, fallback = "N/A"): string {
-  if (value == null || Number.isNaN(value)) return fallback;
+  if (value == null || !Number.isFinite(value)) return fallback;
   return value.toLocaleString("sr-RS", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -23,7 +23,7 @@ export function fmtRsdShort(value: number | null | undefined): string {
 }
 
 export function fmtRsdCompact(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
-  if (value == null || Number.isNaN(value)) return fallback;
+  if (value == null || !Number.isFinite(value)) return fallback;
 
   const absolute = Math.abs(value);
   if (absolute >= 1_000_000) {
@@ -38,17 +38,17 @@ export function fmtRsdCompact(value: number | null | undefined, digits = 1, fall
 }
 
 export function fmtPct(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
-  if (value == null || Number.isNaN(value)) return fallback;
+  if (value == null || !Number.isFinite(value)) return fallback;
   return `${fmtNumber(value, digits)}%`;
 }
 
 export function fmtPctFromRatio(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
-  if (value == null || Number.isNaN(value)) return fallback;
+  if (value == null || !Number.isFinite(value)) return fallback;
   return fmtPct(value * 100, digits, fallback);
 }
 
 export function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
+  if (value == null || !Number.isFinite(value)) return "N/A";
   const sign = value > 0 ? "+" : "";
   return `${sign}${fmtPct(value, digits)}`;
 }

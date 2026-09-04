@@ -12,6 +12,9 @@ import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/a
 import type { SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
 import { fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
+import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
+import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 
 type ScorecardTrustMetadata = {
   lastRefreshAtUtc?: string | null;
@@ -39,15 +42,15 @@ export type SupplierDecisionReportRow = {
   supplierName: string;
   revenue: number;
   units?: number;
-  sharePct: number;
+  sharePct: number | null;
   preMarkdownMarginPct: number;
   markdownRevenueShare?: number;
   marginContribution: number;
   status: string;
   statusReason: string;
-  normalizedConfidence: number;
+  normalizedConfidence: number | null;
   confidenceAvailable: boolean;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   dataQualityStatus: string;
   reasonCodes: string[];
@@ -68,7 +71,7 @@ export type SupplierDecisionReportBuildInput = {
   scorecardMeta: AnalyticsResponseMeta | null;
   totalRevenue: number;
   totalMarginContribution: number;
-  top5SharePct: number;
+  top5SharePct: number | null;
   supplierCounts: {
     boost: number;
     keep: number;
@@ -106,22 +109,37 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const totalStockRisk = input.rows.reduce((sum, row) => sum + row.unsoldStockValue, 0);
   const weightedMarkdownDependencyPct = input.totalRevenue > 0
     ? input.rows.reduce((sum, row) => sum + ((row.markdownRevenueShare ?? 0) * row.revenue), 0) / input.totalRevenue
-    : 0;
+    : null;
   const confidenceRows = input.rows.filter((row) => row.confidenceAvailable);
   const avgConfidencePct = confidenceRows.length > 0
-    ? confidenceRows.reduce((sum, row) => sum + row.normalizedConfidence, 0) / confidenceRows.length
+    ? confidenceRows.reduce((sum, row) => sum + (row.normalizedConfidence ?? 0), 0) / confidenceRows.length
     : null;
   const reliabilityRows = input.rows.filter((row) => row.reliabilityAvailable);
   const avgReliabilityPct = reliabilityRows.length > 0
-    ? reliabilityRows.reduce((sum, row) => sum + row.reliabilityPct, 0) / reliabilityRows.length
+    ? reliabilityRows.reduce((sum, row) => sum + (row.reliabilityPct ?? 0), 0) / reliabilityRows.length
     : null;
-  const reasonCodePreview = Array.from(new Set(input.rows.flatMap((row) => row.reasonCodes ?? []).filter((code) => Boolean(String(code).trim())))).slice(0, 8);
+  const reasonCodePreview = Array.from(new Set(input.rows.flatMap((row) => row.reasonCodes ?? []).filter((code) => Boolean(String(code).trim()))))
+    .slice(0, 8)
+    .map(recommendationReasonLabel);
   const topRevenueRows = [...input.rows].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   const riskRows = [...input.rows]
     .sort((a, b) => (b.unsoldStockValue + b.deadStockRate * 1000) - (a.unsoldStockValue + a.deadStockRate * 1000))
     .slice(0, 5);
   const reduceRows = input.rows.filter((row) => row.status === "do_not_trust").slice(0, 5);
   const boostRows = input.rows.filter((row) => row.status === "increase_focus").slice(0, 5);
+  const observedFromUtc = input.summary?.from ?? null;
+  const observedToUtc = input.summary?.to ?? null;
+  const requestedFromUtc = trust?.requestedPeriodFrom ?? trust?.requestedFrom ?? `${input.fromDate}T00:00:00Z`;
+  const requestedToUtc = trust?.requestedPeriodTo ?? trust?.requestedTo ?? `${input.toDate}T00:00:00Z`;
+  const effectiveFromUtc = input.summary?.from ?? null;
+  const effectiveToUtc = input.summary?.to ?? null;
+  const periodLineageLabel = buildPeriodLineageLabel({
+    effectivePeriodLabel: trust?.effectivePeriodLabel ?? input.periodLabel,
+    effectiveFromUtc,
+    effectiveToUtc,
+    observedFromUtc,
+    observedToUtc,
+  });
 
   const detailRows = [
     buildSectionRow("Header", "Naziv izveštaja", "Trendplus izveštaj dobavljača", "", ""),
@@ -133,6 +151,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("Header", "Kvalitet podataka", dataQualityStatusLabel(meta?.dataQualityStatus), trust?.dataCoverageStatus ?? "", ""),
     buildSectionRow("Header", "Traženi period", `${safeDate(trust?.requestedPeriodFrom ?? trust?.requestedFrom)} - ${safeDate(trust?.requestedPeriodTo ?? trust?.requestedTo)}`, trust?.requestedDataset ?? "nije dostupno", ""),
     buildSectionRow("Header", "Efektivni dataset", trust?.effectiveDataset ?? "nije dostupno", trust?.effectivePeriodLabel ?? "", ""),
+    buildSectionRow("Header", "Posmatrani period", periodLineageLabel ?? "nije dostupno", "", ""),
     buildSectionRow("Header", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", trust?.fallbackReason ?? "", ""),
     buildSectionRow("Header", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", trust?.dataCoverageStatus ?? "", ""),
     buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
@@ -140,10 +159,10 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
     buildSectionRow("KPI", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "", ""),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
-    buildSectionRow("KPI", "Zavisnost od nivelacija", fmtPct(weightedMarkdownDependencyPct * 100, 1), "", ""),
-    buildSectionRow("KPI", "Sigurnost signala", avgConfidencePct == null ? "nije dostupno" : fmtPct(avgConfidencePct, 1), "", ""),
-    buildSectionRow("KPI", "Pouzdanost signala", avgReliabilityPct == null ? "nije dostupno" : fmtPct(avgReliabilityPct, 1), "", ""),
-    buildSectionRow("KPI", "Top 5 udeo", fmtPct(input.top5SharePct, 1), "", ""),
+    buildSectionRow("KPI", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "", ""),
+    buildSectionRow("KPI", "Sigurnost signala", formatMetricDisplayValue({ value: avgConfidencePct, kind: "percent" }), "", ""),
+    buildSectionRow("KPI", "Pouzdanost signala", formatMetricDisplayValue({ value: avgReliabilityPct, kind: "percent" }), "", ""),
+    buildSectionRow("KPI", "Top 5 udeo", formatMetricDisplayValue({ value: input.top5SharePct, kind: "percent" }), "", ""),
     buildSectionRow(
       "Preporuke",
       "Raspodela",
@@ -167,15 +186,15 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   }
 
   for (const row of riskRows) {
-    detailRows.push(buildSectionRow("Rizik zalihe", row.supplierName, fmtRsd(row.unsoldStockValue), `Dead stock ${fmtPct(row.deadStockRate * 100, 1)}`, row.reasonCodes.join(", ")));
+    detailRows.push(buildSectionRow("Rizik zalihe", row.supplierName, fmtRsd(row.unsoldStockValue), `Dead stock ${fmtPct(row.deadStockRate * 100, 1)}`, row.reasonCodes.map(recommendationReasonLabel).join(", ")));
   }
 
   for (const row of boostRows) {
-    detailRows.push(buildSectionRow("Pojačaj", row.supplierName, fmtRsd(row.revenue), `Pouzdanost ${row.reliabilityAvailable ? fmtPct(row.reliabilityPct, 0) : "nije dostupno"}`, row.statusReason));
+    detailRows.push(buildSectionRow("Pojačaj", row.supplierName, fmtRsd(row.revenue), `Pouzdanost ${row.reliabilityAvailable ? formatMetricDisplayValue({ value: row.reliabilityPct, kind: "percent", digits: 0, fallback: "nije dostupno" }) : "nije dostupno"}`, row.statusReason));
   }
 
   for (const row of reduceRows) {
-    detailRows.push(buildSectionRow("Smanji", row.supplierName, fmtRsd(row.revenue), `Sigurnost ${row.confidenceAvailable ? fmtPct(row.normalizedConfidence, 0) : "nije dostupno"}`, row.statusReason));
+    detailRows.push(buildSectionRow("Smanji", row.supplierName, fmtRsd(row.revenue), `Sigurnost ${row.confidenceAvailable ? formatMetricDisplayValue({ value: row.normalizedConfidence, kind: "percent", digits: 0, fallback: "nije dostupno" }) : "nije dostupno"}`, row.statusReason));
   }
 
   const topMarginRows = [...input.rows]
@@ -200,7 +219,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("supplier_negotiation_pack", "Maržni doprinos", fmtRsd(input.totalMarginContribution), "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Prodate jedinice", totalUnits.toLocaleString("sr-RS"), "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Lager u riziku", fmtRsd(totalStockRisk), "Sažetak", ""),
-    buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", fmtPct(weightedMarkdownDependencyPct * 100, 1), "Sažetak", ""),
+    buildSectionRow("supplier_negotiation_pack", "Zavisnost od nivelacija", formatMetricDisplayValue({ value: weightedMarkdownDependencyPct, kind: "ratioPercent" }), "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Preporuka dozvoljena", trust?.recommendationAllowed ? "Da" : "Ne", "Sažetak", ""),
     buildSectionRow("supplier_negotiation_pack", "Korišćen fallback", trust?.usedFallback ? "Da" : "Ne", "Sažetak", trust?.effectivePeriodLabel ?? ""),
     buildSectionRow("supplier_negotiation_pack", "Status kvaliteta podataka", trust?.dataCoverageStatus ?? normalizeDataQualityStatus(meta?.dataQualityStatus), "Sažetak", "")
@@ -356,6 +375,13 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "reliabilityPct", label: "Pouzdanost signala", value: avgReliabilityPct },
     { key: "requestedDataset", label: "Traženi dataset", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni dataset", value: trust?.effectiveDataset ?? null },
+    { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },
+    { key: "requestedPeriodToUtc", label: "Traženi period do", value: requestedToUtc },
+    { key: "effectivePeriodFromUtc", label: "Efektivni period od", value: effectiveFromUtc },
+    { key: "effectivePeriodToUtc", label: "Efektivni period do", value: effectiveToUtc },
+    { key: "observedPeriodFromUtc", label: "Posmatrani period od", value: observedFromUtc },
+    { key: "observedPeriodToUtc", label: "Posmatrani period do", value: observedToUtc },
+    { key: "effectivePeriodLabel", label: "Efektivni period", value: trust?.effectivePeriodLabel ?? input.periodLabel },
     { key: "provenanceBasis", label: "Osnova generisanja", value: trust?.provenanceBasis ?? null },
     { key: "usedFallback", label: "Korišćen fallback", value: trust?.usedFallback ?? false },
     { key: "fallbackReason", label: "Razlog fallback-a", value: trust?.fallbackReason ?? null },

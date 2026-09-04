@@ -22,7 +22,7 @@ export interface DailySalesRow {
 export interface DailySalesMetadata {
   totalDays: number;
   uniqueSuppliersInRange: number;
-  unknownSupplierPct: number;
+  unknownSupplierPct: number | null;
   unknownSupplierItems: number;
   offShiftItems: number;
   offShiftRevenue: number;

@@ -17,6 +17,7 @@ import type {
   DashboardAdvancedSnapshot,
   DashboardValidationEndpoint,
   ForecastDto,
+  ForecastBaselineBacktestDto,
   GenderData,
   HourData,
   InventoryAlertListDto,
@@ -1581,6 +1582,23 @@ export async function getForecast(options?: {
     "/api/analytics/cached/inventory/forecast",
     params,
     "Greska pri ucitavanju forecast podataka"
+  );
+}
+
+export async function getForecastBaselineBacktest(options?: {
+  storeId?: number | null;
+  supplierId?: number | null;
+  horizonDays?: number;
+}): Promise<ForecastBaselineBacktestDto> {
+  const params = new URLSearchParams();
+  if (options?.storeId != null) params.append("storeId", String(options.storeId));
+  if (options?.supplierId != null) params.append("supplierId", String(options.supplierId));
+  if (options?.horizonDays != null) params.append("horizonDays", String(options.horizonDays));
+
+  return fetchJson(
+    "/api/analytics/cached/inventory/forecast/backtest",
+    params,
+    "Evaluacija trend modela trenutno nije dostupna"
   );
 }
 

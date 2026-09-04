@@ -70,6 +70,7 @@ import {
 import {
   normalizeRecommendationPct,
   normalizeRecommendationQualityStatus,
+  recommendationReasonLabel,
 } from "../utils/canonicalRecommendationSemantics";
 import {
   fmtNumber,
@@ -77,6 +78,10 @@ import {
   fmtRsd,
   formatDateTime,
 } from "../utils/analyticsFormatters";
+import {
+  buildPeriodLineageLabel,
+  resolveLineagePeriod,
+} from "../utils/analyticsPeriodLineage";
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import {
   getAnalyticsMetaMessage,
@@ -240,7 +245,9 @@ function topProductTrustLabel(row: Pick<TopProductAdvancedItem, "marginQualityLa
 function topProductTrustDetail(row: Pick<TopProductAdvancedItem, "marginQualityTooltip" | "statusReason" | "reasonCodes" | "dataQualityStatus" | "marginImpact">): string | null {
   if (row.marginQualityTooltip?.trim()) return row.marginQualityTooltip.trim();
   if (row.statusReason?.trim()) return row.statusReason.trim();
-  if (row.reasonCodes?.length) return `Razlozi: ${row.reasonCodes.join(", ")}`;
+  if (row.reasonCodes?.length) {
+    return `Razlozi: ${row.reasonCodes.map(recommendationReasonLabel).join(", ")}`;
+  }
   if (row.marginImpact == null || row.dataQualityStatus === "insufficient_data") {
     return "Nabavna cena nije dostupna, pa margin signal nije potvrđen.";
   }
@@ -952,10 +959,23 @@ export default function AnalyticsDashboard() {
     ].filter((item) => item.value > 0);
   }, [executive?.dataQualitySummary, refreshStatus?.dataFreshnessStatus]);
   const dashboardLastRefreshAt =
+    dashboardMeta?.lastRefreshAtUtc ??
     refreshStatus?.lastSuccessfulRefreshAtUtc ??
-    advanced?.generatedAtUtc ??
-    validFreshness?.lastImport ??
     null;
+  const dashboardPeriod = resolveLineagePeriod(
+    dashboardMeta?.requestedPeriodFromUtc ?? fromDate,
+    dashboardMeta?.requestedPeriodToUtc ?? toDate,
+    dashboardMeta?.effectivePeriodFromUtc ?? fromDate,
+    dashboardMeta?.effectivePeriodToUtc ?? toDate,
+    dashboardMeta?.observedPeriodFromUtc ?? null,
+    dashboardMeta?.observedPeriodToUtc ?? null,
+  );
+  const dashboardEffectivePeriodLabel = buildPeriodLineageLabel({
+    effectiveFromUtc: dashboardMeta?.effectivePeriodFromUtc ?? fromDate,
+    effectiveToUtc: dashboardMeta?.effectivePeriodToUtc ?? toDate,
+    observedFromUtc: dashboardMeta?.observedPeriodFromUtc ?? null,
+    observedToUtc: dashboardMeta?.observedPeriodToUtc ?? null,
+  });
   const executiveReadinessLabel = useMemo(() => {
     if (dashboardMeta?.dataQualityStatus)
       return dataQualityStatusLabel(dashboardMeta.dataQualityStatus);
@@ -1401,13 +1421,14 @@ export default function AnalyticsDashboard() {
       <AnalyticsTrustHeader
         title="Pregled poslovanja"
         description="Ključni pregled prodaje i profita: prihod, maržni doprinos, rizici i prioritetne odluke za izabrani period."
-        periodFrom={fromDate}
-        periodTo={toDate}
+        periodFrom={dashboardPeriod.periodFrom}
+        periodTo={dashboardPeriod.periodTo}
         lastRefreshAt={dashboardLastRefreshAt}
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
         dataSource="Keširani analytics pregled"
+        effectivePeriodLabel={dashboardEffectivePeriodLabel}
         dataQualityStatus={
           dashboardMeta?.dataQualityStatus ??
           (validFreshness?.status === "good" ||
@@ -2661,7 +2682,7 @@ export default function AnalyticsDashboard() {
                 )}
                 <p className="section-note">
                   {topAdvanced.marginMessage ??
-                    "Kvalitet marže po artiklu nije dostupan na ovom dashboard pogledu; backend još ne vraća cost coverage / margin quality tier po redu."}{" "}
+                    "Kvalitet marže po artiklu nije potvrđen na ovom dashboard pogledu."}{" "}
                   <Link to="/analytics/data-quality">Kvalitet podataka</Link>
                 </p>
                 {topRows.length === 0 ? (

@@ -48,6 +48,7 @@ public sealed class VendorSalesNivelacijaRecommendationDto
     public double ConfidencePct { get; set; }
     public double ReliabilityPct { get; set; }
     public string DataQualityStatus { get; set; } = "critical";
+    public bool RecommendationAllowed { get; set; }
     public IReadOnlyList<string> ReasonCodes { get; set; } = [];
 }
 
@@ -167,6 +168,7 @@ public sealed class VendorSalesNivelacijaResponseDto
     public decimal? AvgLostSalesOOS { get; set; }
     public decimal? OOSRate { get; set; }
     public string? MetricsStatus { get; set; } // null if all metrics valid, else reason
+    public bool RecommendationAllowed { get; set; }
     public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 

@@ -9,7 +9,7 @@ import type { ShoeTypeSalesStat, ShoeTypeSalesStatsResponse } from "../../servic
 
 vi.mock("recharts", () => ({
   Bar: () => null,
-  BarChart: ({ children }: { children?: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: () => <div data-testid="bar-chart" />,
   CartesianGrid: () => null,
   Legend: () => null,
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div data-testid="responsive-container">{children}</div>,
@@ -125,6 +125,11 @@ function response(overrides: Partial<ShoeTypeSalesStatsResponse> = {}): ShoeType
       unknownTypeRevenueSharePct: 0,
       revenueWithNivelacijaSplit: 100000,
       revenueWithNivelacijaSplitSharePct: 75,
+    },
+    meta: {
+      success: true,
+      dataQualityStatus: "good",
+      lastRefreshAtUtc: "2026-07-01T08:30:00Z",
     },
     sezone: [],
     ...overrides,

@@ -4,6 +4,7 @@ import {
   recommendationStatusLabel,
   recommendationStatusTone,
   recommendationStatusTooltipBrief,
+  recommendationReasonLabel,
   RECOMMENDATION_STATUS_PRIORITY,
 } from "../canonicalRecommendationSemantics";
 
@@ -26,5 +27,12 @@ describe("canonicalrecommendationsemantics", () => {
     expect(RECOMMENDATION_STATUS_PRIORITY.increase_focus).toBeGreaterThan(
       RECOMMENDATION_STATUS_PRIORITY.do_not_trust
     );
+  });
+
+  it("never exposes an unknown backend reason code", () => {
+    expect(recommendationReasonLabel("unmapped_internal_reason")).toBe(
+      "Dodatno ograničenje iz procene."
+    );
+    expect(recommendationReasonLabel("missing_cost")).toBe("Nedostaje nabavna cena.");
   });
 });

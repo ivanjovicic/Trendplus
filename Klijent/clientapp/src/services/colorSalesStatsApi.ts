@@ -8,6 +8,7 @@ export interface AnalyticsRecommendation {
   confidencePct: number;
   reliabilityPct: number;
   dataQualityStatus: "good" | "warning" | "critical";
+  recommendationAllowed?: boolean | null;
   reasonCodes: string[];
 }
 
@@ -52,7 +53,7 @@ export interface ColorSalesStat {
   prePostNivelacijaRevenueCoveragePct: number | null;
   prePostSignalNote?: string | null;
   prePostComparableArticleCount?: number;
-  sharePct?: number;
+  sharePct?: number | null;
   reliabilityPct?: number;
   isUnknown?: boolean;
   recommendation?: AnalyticsRecommendation;

@@ -675,7 +675,7 @@ export default function InventoryPage() {
     [actionWorkflow?.generatedAtUtc, alerts?.generatedAtUtc, forecast?.generatedAtUtc, rebalance?.generatedAtUtc, storeComparison?.generatedAtUtc],
   );
   const primaryRefreshAt = useMemo(
-    () => resolveLatestTimestamp(primaryInventoryMetas.map((meta) => meta.lastRefreshAtUtc ?? meta.generatedAtUtc ?? null)),
+    () => resolveLatestTimestamp(primaryInventoryMetas.map((meta) => meta.lastRefreshAtUtc ?? null)),
     [primaryInventoryMetas],
   );
   const primaryMeta = primaryInventoryMetas[0] ?? null;

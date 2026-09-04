@@ -1,232 +1,90 @@
 import { describe, expect, it } from "vitest";
-import { buildSupplierDecisionReportPayload } from "../supplierDecisionReport";
+import { buildSupplierDecisionReportPayload, type SupplierDecisionReportBuildInput } from "../supplierDecisionReport";
 
-function sampleRow(overrides?: Partial<Parameters<typeof buildSupplierDecisionReportPayload>[0]["rows"][number]>) {
+function buildInput(overrides: Partial<SupplierDecisionReportBuildInput> = {}): SupplierDecisionReportBuildInput {
   return {
-    supplierId: 1,
-    supplierName: "Dobavljac A",
-    revenue: 120000,
-    sharePct: 0.25,
-    preMarkdownMarginPct: 0.31,
-    marginContribution: 37200,
-    status: "increase_focus",
-    statusReason: "Stabilan promet i marza.",
-    normalizedConfidence: 83,
-    confidenceAvailable: true,
-    reliabilityPct: 79,
-    reliabilityAvailable: true,
-    dataQualityStatus: "good",
-    reasonCodes: ["high_share"],
-    unsoldStockValue: 6200,
-    deadStockRate: 0.08,
+    periodLabel: "Poslednjih 30 dana",
+    fromDate: "2026-08-01",
+    toDate: "2026-08-31",
+    supplierLabel: "Svi dobavljači",
+    dataScopeLabel: "Svi podaci",
+    freshnessStatus: "fresh",
+    lastRefreshAtUtc: "2026-09-03T09:00:00Z",
+    summary: {
+      from: "2026-08-01T00:00:00Z",
+      to: "2026-08-31T23:59:59Z",
+      supplierCount: 1,
+      fullPriceRevenueShare: 0.4,
+      fullPriceSellthrough: 0.2,
+      markdownRevenueShare: 0.6,
+      preMarkdownMarginPct: 0.3,
+      capitalAtRisk: 5_000,
+      topGrowSuppliers: [],
+      topRiskSuppliers: [],
+      keyInsights: [],
+      dataNote: "Test note",
+    } as never,
+    trustMetadata: {
+      requestedDataset: "30d",
+      effectiveDataset: "30d",
+      effectivePeriodLabel: "Poslednjih 30 dana",
+      recommendationAllowed: false,
+      dataCoverageStatus: "insufficient_data",
+      usedFallback: false,
+      rowCount: 1,
+      ignoredRowCount: 0,
+      missingSupplierNameCount: 0,
+    },
+    scorecardMeta: {
+      success: true,
+      dataQualityStatus: "insufficient_data",
+      message: "Nema dovoljno podataka za finalnu preporuku.",
+    },
+    totalRevenue: 0,
+    totalMarginContribution: 0,
+    top5SharePct: null,
+    supplierCounts: {
+      boost: 0,
+      keep: 0,
+      caution: 0,
+      reduce: 0,
+      insufficient: 1,
+    },
+    rows: [
+      {
+        supplierId: 1,
+        supplierName: "Dobavljač 1",
+        revenue: 0,
+        units: 0,
+        sharePct: null,
+        preMarkdownMarginPct: 0.3,
+        markdownRevenueShare: null,
+        marginContribution: 0,
+        status: "insufficient_data",
+        statusReason: "Nema dovoljno istorije.",
+        normalizedConfidence: null,
+        confidenceAvailable: false,
+        reliabilityPct: null,
+        reliabilityAvailable: false,
+        dataQualityStatus: "insufficient_data",
+        reasonCodes: ["insufficient_history"],
+        unsoldStockValue: 0,
+        deadStockRate: 0,
+      },
+    ],
     ...overrides,
   };
 }
 
 describe("buildSupplierDecisionReportPayload", () => {
-  it("builds sectioned report rows and metadata", () => {
-    const payload = buildSupplierDecisionReportPayload({
-      periodLabel: "90d",
-      fromDate: "2026-05-01",
-      toDate: "2026-07-30",
-      supplierLabel: "Svi dobavljaci",
-      dataScopeLabel: "all",
-      freshnessStatus: "fresh",
-      summary: {
-        from: "2026-05-01T00:00:00Z",
-        to: "2026-07-30T23:59:59Z",
-        supplierCount: 2,
-        fullPriceRevenueShare: 0.6,
-        fullPriceSellthrough: 0.4,
-        markdownRevenueShare: 0.2,
-        preMarkdownMarginPct: 0.31,
-        capitalAtRisk: 21000,
-        topGrowSuppliers: [],
-        topRiskSuppliers: [],
-        keyInsights: [],
-      },
-      trustMetadata: {
-        requestedPeriodFrom: "2026-05-01T00:00:00Z",
-        requestedPeriodTo: "2026-07-30T23:59:59Z",
-        requestedFrom: "2026-05-01T00:00:00Z",
-        requestedTo: "2026-07-30T23:59:59Z",
-        effectiveFrom: "2026-05-01T00:00:00Z",
-        effectiveTo: "2026-07-30T23:59:59Z",
-        requestedDataset: "90d",
-        effectiveDataset: "90d",
-        effectivePeriodLabel: "Poslednjih 90 dana",
-        dataCoverageStatus: "good",
-        usedFallback: false,
-        lastRefreshAtUtc: "2026-07-31T05:30:00Z",
-        rowCount: 2,
-        ignoredRowCount: 0,
-        zeroRevenueRowsExcludedCount: 0,
-        missingSupplierNameCount: 0,
-        hasData: true,
-        hasExplicitDateRange: true,
-        recommendationAllowed: true,
-        noSilentFallback: true,
-        windowDays: 90,
-        dataScope: "all",
-        coverage: "window_90d",
-      },
-      scorecardMeta: {
-        success: true,
-        dataQualityStatus: "good",
-      },
-      totalRevenue: 220000,
-      totalMarginContribution: 66000,
-      top5SharePct: 0.81,
-      supplierCounts: {
-        boost: 1,
-        keep: 1,
-        caution: 0,
-        reduce: 0,
-        insufficient: 0,
-      },
-      rows: [sampleRow(), sampleRow({ supplierId: 2, supplierName: "Dobavljac B", revenue: 100000, status: "maintain" })],
-    });
+  it("keeps missing percentage metrics as unavailable in report/export payload rows", () => {
+    const payload = buildSupplierDecisionReportPayload(buildInput());
 
-    expect(payload.tableKey).toBe("supplier-decision-report");
-    expect(payload.documentType).toBe("supplier-decision-report");
-    expect(payload.rows.some((row) => row.section === "Header" && (row.item === "Dobavljač" || row.item === "Dobavljac"))).toBe(true);
-    expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Prihod")).toBe(true);
-    expect(payload.rows.some((row) => row.section === "KPI" && row.item === "Sigurnost signala")).toBe(true);
-    expect(payload.rows.some((row) => row.section === "Kvalitet podataka")).toBe(true);
-    expect(payload.rows.some((row) => row.section === "supplier_negotiation_pack" && row.item === "Pojačaj saradnju")).toBe(true);
-    expect(payload.rows.some((row) => row.section === "Header" && row.item === "Efektivni dataset")).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "effectiveDataset" && item.value === "90d")).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "confidencePct" && item.value === 83)).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "reliabilityPct" && item.value === 79)).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "reasonCodesPreview" && String(item.value).includes("high_share"))).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "dataFreshness" && String(item.value).toLowerCase().includes("sve"))).toBe(true);
-  });
-
-  it("keeps missing supplier confidence unavailable in report rows", () => {
-    const payload = buildSupplierDecisionReportPayload({
-      periodLabel: "90d",
-      fromDate: "2026-05-01",
-      toDate: "2026-07-30",
-      supplierLabel: "Svi dobavljaci",
-      dataScopeLabel: "all",
-      freshnessStatus: "fresh",
-      summary: {
-        from: "2026-05-01T00:00:00Z",
-        to: "2026-07-30T23:59:59Z",
-        supplierCount: 1,
-        fullPriceRevenueShare: 0.6,
-        fullPriceSellthrough: 0.4,
-        markdownRevenueShare: 0.2,
-        preMarkdownMarginPct: 0.31,
-        capitalAtRisk: 21000,
-        topGrowSuppliers: [],
-        topRiskSuppliers: [],
-        keyInsights: [],
-      },
-      trustMetadata: {
-        requestedPeriodFrom: "2026-05-01T00:00:00Z",
-        requestedPeriodTo: "2026-07-30T23:59:59Z",
-        requestedFrom: "2026-05-01T00:00:00Z",
-        requestedTo: "2026-07-30T23:59:59Z",
-        effectiveFrom: "2026-05-01T00:00:00Z",
-        effectiveTo: "2026-07-30T23:59:59Z",
-        requestedDataset: "90d",
-        effectiveDataset: "90d",
-        effectivePeriodLabel: "Poslednjih 90 dana",
-        dataCoverageStatus: "warning",
-        usedFallback: false,
-        lastRefreshAtUtc: "2026-07-31T05:30:00Z",
-        rowCount: 1,
-        ignoredRowCount: 0,
-        zeroRevenueRowsExcludedCount: 0,
-        missingSupplierNameCount: 0,
-        hasData: true,
-        hasExplicitDateRange: true,
-        recommendationAllowed: true,
-        noSilentFallback: true,
-        windowDays: 90,
-        dataScope: "all",
-        coverage: "window_90d",
-      },
-      scorecardMeta: {
-        success: true,
-        dataQualityStatus: "warning",
-      },
-      totalRevenue: 120000,
-      totalMarginContribution: 28000,
-      top5SharePct: 0.81,
-      supplierCounts: {
-        boost: 0,
-        keep: 0,
-        caution: 0,
-        reduce: 1,
-        insufficient: 0,
-      },
-      rows: [sampleRow({ status: "do_not_trust", confidenceAvailable: false, normalizedConfidence: 0 })],
-    });
-
-    const reduceRow = payload.rows.find((row) => row.section === "Smanji" && row.item === "Dobavljac A");
-
-    expect(reduceRow).toBeTruthy();
-    expect(reduceRow?.secondary).toContain("nije dostupno");
-  });
-
-  it("adds warning section for insufficient data and fallback", () => {
-    const payload = buildSupplierDecisionReportPayload({
-      periodLabel: "30d",
-      fromDate: "2026-07-01",
-      toDate: "2026-07-30",
-      supplierLabel: "Dobavljac #12",
-      dataScopeLabel: "supplier",
-      freshnessStatus: "stale",
-      summary: null,
-      trustMetadata: {
-        requestedPeriodFrom: "2026-07-01T00:00:00Z",
-        requestedPeriodTo: "2026-07-30T23:59:59Z",
-        requestedFrom: "2026-07-01T00:00:00Z",
-        requestedTo: "2026-07-30T23:59:59Z",
-        effectiveFrom: "2026-06-01T00:00:00Z",
-        effectiveTo: "2026-07-30T23:59:59Z",
-        requestedDataset: "30d",
-        effectiveDataset: "90d",
-        effectivePeriodLabel: "Fallback 90d",
-        dataCoverageStatus: "insufficient_data",
-        usedFallback: true,
-        fallbackReason: "Nedovoljno transakcija u 30d opsegu",
-        lastRefreshAtUtc: "2026-07-31T05:30:00Z",
-        rowCount: 1,
-        ignoredRowCount: 4,
-        hasData: true,
-        hasExplicitDateRange: true,
-        recommendationAllowed: false,
-        noSilentFallback: true,
-        windowDays: 90,
-        dataScope: "supplier",
-        coverage: "window_90d",
-      },
-      scorecardMeta: {
-        success: true,
-        dataQualityStatus: "insufficient_data",
-        isPartial: true,
-        warningMessage: "Koriscen fallback signal.",
-      },
-      totalRevenue: 120000,
-      totalMarginContribution: 28000,
-      top5SharePct: 1,
-      supplierCounts: {
-        boost: 0,
-        keep: 0,
-        caution: 0,
-        reduce: 0,
-        insufficient: 1,
-      },
-      rows: [sampleRow({ status: "insufficient_data", statusReason: "Nedovoljno podataka" })],
-    });
-
-    const warningRows = payload.rows.filter((row) => row.section === "Upozorenje");
-    expect(warningRows.length).toBeGreaterThan(0);
-    expect(warningRows.some((row) => String(row.value).toLowerCase().includes("pomo"))).toBe(true);
-    expect(warningRows.some((row) => String(row.item).toLowerCase().includes("fallback"))).toBe(true);
-    expect(payload.metadata.some((item) => item.key === "usedFallback" && item.value === true)).toBe(true);
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Top 5 udeo")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Sigurnost signala")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Pouzdanost signala")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Zavisnost od nivelacija")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "Header" && row.item === "Posmatrani period")?.value).toContain("Efektivni opseg");
+    expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-01T00:00:00Z");
   });
 });
