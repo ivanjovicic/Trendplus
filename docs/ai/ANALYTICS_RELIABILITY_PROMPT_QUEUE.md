@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ153
+Current READY prompt: none
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -77,7 +77,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
-| RQ153 | READY | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
+| RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 
 ---
 
@@ -4270,7 +4270,7 @@ Commit suggestion: `fix(analytics): preserve derived intelligence evidence state
 
 ## RQ153 - Build the offline analytics route lineage matrix
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: audit/docs/tests
 Feature family: analytics-lineage-static-matrix
@@ -4328,3 +4328,23 @@ Commit suggestion: `docs(analytics): map offline route lineage`
 
 - Reuse `RQ137`, `RQ139` and `RQ140` vocabulary; do not wait for their live residuals to complete the static inventory.
 - `STAB16` remains the owner of live provider/worker/browser proof; this prompt is documentation/static validation only.
+
+### Completion note
+
+- Date: 2026-09-05
+- Status: DONE
+- Completion: Created the versioned offline route lineage matrix for all requested analytics routes and sales/trend/forecast/pre-post families, including static ownership, trust fields, duplicate owners and explicit runtime proof boundaries.
+- Changed files: `docs/qa/ANALYTICS_ROUTE_LINEAGE_MATRIX_2026-09-05.md`; `scripts/check-analytics-lineage-matrix.mjs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-05-RQ153-evidence.md`.
+- Contract/runtime behavior changed: no product runtime behavior changed. The matrix and checker make unproven period, scope, freshness, quality, cache, refresh, schema and browser facts explicit; the checker prevents required routes/families or trust fields from disappearing silently.
+- Checks run: `node scripts/check-analytics-lineage-matrix.mjs` passed with 17 analytics route/family rows and all required trust fields; `git diff --check` passed; agent-instruction, queue and planning validators passed before delivery.
+- Checks not run: frontend/backend build/tests, live database/schema/migration/404/refresh, deployed worker proof, browser console/theme/chart smoke and export/table/chart/report runtime parity; these are explicitly outside this static prompt and remain unproven. The repository encoding check was run but failed on six pre-existing mojibake findings in unrelated historical `docs/qa` files; the new matrix was not among them.
+- Run log: `.ai/runs/2026-09-05-RQ153-evidence.md`.
+- Evidence state: pending.
+- Delivery mode: direct-main pending.
+- Main commit SHA: pending.
+- Main verification: pending.
+- Missed: no production call, schema mutation, forecast calculation, Shopify work or runtime claim was made.
+- Follow-up: keep `RQ141`/`RQ145`/`RQ146` and live `STAB16` work waiting behind their declared dependencies; no next RQ prompt is promoted.
+- Residual risk: static lineage can identify owners and gaps but cannot prove deployed response parity, applied migrations, cache contents, refresh success or browser behavior.
+- Next: `STAB16` for live provider/worker/browser proof; then promote the next dependency-satisfied RQ prompt.
+- Prompt defect / scope repair: `RQ153` was correctly narrowed to the offline/static half of `RQ141`; live proof was intentionally not pulled into this task.
