@@ -6,9 +6,9 @@ Date: 2026-09-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending until commit and origin/main verification
-Evidence state: pending
+Main commit SHA: 9cc5f823e969dc3cec38f12bc9138efc35149b98
+Main verification: passed - origin/main contains 9cc5f823e969dc3cec38f12bc9138efc35149b98
+Evidence state: synchronized
 
 ## What was done
 
