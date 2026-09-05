@@ -4257,10 +4257,10 @@ Commit suggestion: `fix(analytics): preserve derived intelligence evidence state
 - Checks run: focused `analyticsIntelligenceDerived` suite passed 11/11; `npm run check:analytics-guardrails` passed including encoding, analytics guardrails and typecheck; `npm run build` passed; `git diff --check` passed.
 - Checks not run: backend build/tests, live database/schema/migration/refresh worker, browser console smoke and cross-route export/report parity; this prompt is limited to the frontend derived service and its focused tests.
 - Run log: `.ai/runs/2026-09-05-RQ152-evidence.md`.
-- Evidence state: pending.
-- Delivery mode: direct-main pending.
-- Main commit SHA: pending.
-- Main verification: pending.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `4b47affc`.
+- Main verification: `git merge-base --is-ancestor 4b47affc origin/main` passed; current `main` contains the delivered implementation commit.
 - Missed: no forecast calibration, Shopify, backend formula, recommendation engine or live refresh work was included.
 - Follow-up: `RQ153` is promoted to `READY` for the offline route lineage matrix; `STAB16` remains the owner of live provider/worker/browser proof.
 - Residual risk: derived result types are local nullable extensions of legacy DTO shapes and are not yet a cross-route trust metadata contract; broader parity and runtime proof remain outside this prompt.
