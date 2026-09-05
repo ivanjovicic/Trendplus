@@ -4173,10 +4173,10 @@ Commit suggestion: `fix(analytics): map unknown action warnings safely`
 - Checks run: failing-first unknown-code test reproduced the defect; focused RQ151 regression passed; full `AnalyticsActionsPage.spec.tsx` passed 20/20; `npm run check:analytics-guardrails` passed; `npm run build` passed; `git diff --check` passed; queue/planning validators passed before delivery.
 - Checks not run: backend tests/build, live database/refresh worker, browser console smoke, and full cross-route export/report parity; no backend/runtime contract changed in this prompt.
 - Run log: `.ai/runs/2026-09-05-RQ151-evidence.md`.
-- Evidence state: pending until final delivery SHA is synchronized.
-- Delivery mode: direct-main, pending final commit/push.
-- Main commit SHA: pending.
-- Main verification: pending.
+- Evidence state: synchronized.
+- Delivery mode: direct-main; implementation commit `7c6c46b75f118aecbb7643e7df11fc145f8e82f7` was pushed to `origin/main`.
+- Main commit SHA: `7c6c46b75f118aecbb7643e7df11fc145f8e82f7`.
+- Main verification: `git merge-base --is-ancestor 7c6c46b75f118aecbb7643e7df11fc145f8e82f7 origin/main` passed; current main contains the delivered SHA.
 - Missed: broader unknown reason/status mappings outside this page remain in `RQ136`/`RQ145`; forecast/Shopify/live-worker work remains excluded.
 - Follow-up: `RQ152` is promoted as the next bounded numeric-state prompt; `RQ153` remains WAITING.
 - Residual risk: unknown codes in other analytics pages can still require the broader safe-messaging parity prompt.
