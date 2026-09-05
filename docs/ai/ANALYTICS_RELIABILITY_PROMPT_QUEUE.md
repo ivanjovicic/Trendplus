@@ -3,7 +3,7 @@
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-RQ139 is PARTIAL; a follow-up is required before the next reliability prompt can be promoted.
+RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -64,7 +64,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
-| RQ140 | WAITING | pre-post-nivelacija-causal-comparability | Prove pre/post nivelacija effects are comparable and separate from availability/composition effects |
+| RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local comparability and recommendation gates are hardened; live database/refresh/browser proof remains with STAB16 |
 | RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
 | RQ143 | WAITING | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
@@ -3308,17 +3308,19 @@ Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume 
 - Main verification: `git rev-parse origin/main -> da18187c30e8f91b29b0f036138c63a027895888`; implementation commit is contained in `origin/main`
 - Missed: `analyticsIntelligenceDerived.ts` still contains legacy fallback arithmetic; pre/post raw vendor SQL/reader remains owned by `Q83`; full recommendationAllowed parity remains for follow-up prompts.
 - Follow-up: keep `RQ140`-`RQ146` WAITING; create a bounded follow-up for derived-intelligence null states and complete pre/post/parity proof before promoting the next reliability prompt.
+- Residual risk: live refresh proof, raw vendor nivelacija SQL ownership and full recommendationAllowed parity remain external or follow-up work.
 
 ---
 
 ## RQ140 - Prove pre/post nivelacija effects are comparable and not availability artifacts
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/SQL/contract/frontend/tests
 Feature family: pre-post-nivelacija-causal-comparability
 Parallel-safe: no, pre/post semantics are shared by sales and decision screens
 Owner: Codex
+Promotion note: 2026-09-05 - owner-promoted after RQ139/Q83 semantic hardening; live database, refresh and deployed-runtime proof remain external and must not be inferred.
 Commit suggestion: `fix(analytics): harden pre-post nivelacija comparability`
 
 ### Problem
@@ -3379,6 +3381,26 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 - `Q83` is the separate SQL owner for raw nivelacija nullability/baseline behavior; reuse its result instead of duplicating SQL formula work here.
 - Reuse existing `RQ107` scenario vocabulary and `RQ112` reconciliation work; do not create a second pre/post formula owner.
 - Production event/refresh proof remains subject to `STAB16`; local deterministic evidence is not live deployment proof.
+
+### Completion note
+
+- Date: 2026-09-05
+- Status: PARTIAL
+- Completion: Backend pre/post nivelacija snapshots now expose a comparable-signal contract, preserve missing change evidence as null in the vendor article DTO, and gate recommendation score/confidence/reliability on valid revenue and quantity impact. Supplier, shoe-type and color aggregate endpoints reuse the same backend split result and fail closed when comparability is missing. Vendor pre/post, supplier footwear, color, shoe-type and supplier sales frontends preserve valid zero, reject non-finite values, suppress unproven pre/post numbers and hide action-like statuses/confidence when `recommendationAllowed=false`.
+- Changed files: `Application/Analytics/AnalyticsNivelacijaSplitPolicy.cs`; `Api/Endpoints/AllEndpoints.cs`; `Api/Models/VendorSalesNivelacijaModels.cs`; `Api.Tests/AnalyticsNivelacijaSplitPolicyTests.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; affected pre/post frontend pages, API contracts and focused regression specs; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-09-05-RQ140-evidence.md`.
+- Contract/runtime behavior changed: missing/partial/non-comparable pre/post evidence remains unavailable; a measured zero is preserved; recommendation status is neutralized in the UI when the backend denies actionability; backend-owned decision signals are not recreated by frontend arithmetic.
+- Checks run: `git diff --check` (pass); focused frontend specs (26/26 pass); focused backend tests (31/31 pass); `npm run check:analytics-guardrails` (pass); `dotnet build` (0 errors, existing warnings); `npm run build` (pass); full backend test (`Api.Tests`, 1099 passed, 16 failed on existing SQL Server/Neon/config/runtime dependencies).
+- Checks not run: live database query, production refresh event, deployed browser console smoke, actual missing-table/migration execution and complete route-by-route export/report parity; these require the external `STAB16`/runtime proof path and were not inferred from local tests.
+- Run log: `.ai/runs/2026-09-05-RQ140-evidence.md`
+- Evidence state: fallback live database/refresh/browser runtime unavailable; local contract evidence synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `570a31e8471a0c98ea43cd3a2e8089fea4bba98c`
+- Main verification: pending push verification; implementation commit is local and will be verified in `origin/main`
+- Missed: live STAB16 proof and full analytics route/export/report matrix remain outside this local bounded prompt execution.
+- Follow-up: keep `RQ141`-`RQ146` WAITING; restore live runtime proof through `STAB16`, then promote `RQ141` for full lineage/scope/cache/refresh parity.
+- Residual risk: production SQL/view availability, refresh freshness and browser runtime behavior are not proven by deterministic local tests; full backend suite still has 16 unrelated environment/config failures.
+- Next: `STAB16` live proof, then `RQ141`.
+- Prompt defect / scope repair: Q83 remains the raw vendor SQL/nullability owner; RQ140 consumed its contract and did not duplicate SQL formula work. Full parity and deployed-runtime proof were explicitly left external rather than falsely marked complete.
 
 ---
 
