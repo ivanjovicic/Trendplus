@@ -71,6 +71,10 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ144 | WAITING | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
 | RQ145 | WAITING | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
 | RQ146 | WAITING | analytics-schema-runtime-proof | Prove endpoint, EF/SQL, relation/migration, 404 and refresh-failure behavior on current runtime |
+| RQ147 | WAITING | analytics-metric-evidence-registry | Make the proof level, decision use and limitation of every KPI backend-owned and portable |
+| RQ148 | WAITING | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
+| RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
+| RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
 
 ---
 
@@ -3812,3 +3816,263 @@ Analytics code references EF entities, raw SQL relations, views and startup repa
 
 - `RQ141` lineage matrix and `RQ139` numeric-state contract are prerequisites.
 - `STAB16` remains the owner of provider/live worker registration and production refresh proof; local integration tests cannot replace that evidence.
+
+---
+
+## RQ147 - Make KPI evidence, decision use and limitations backend-owned
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/export/report/tests
+Feature family: analytics-metric-evidence-registry
+Parallel-safe: no, metric semantics are a shared analytics contract
+Owner: Codex
+Commit suggestion: `feat(analytics): expose metric evidence and decision tiers`
+
+### Problem
+
+`analyticsMetricDefinitions.ts` gives useful frontend methodology text, but it is not the authoritative proof of a value returned by an API. A card can name a formula without declaring whether its value is directly observed, derived, modelled or causally measured; which source generation and denominator produced it; or whether it is valid for an action. This permits a modeled estimate, heuristic confidence or incomplete coverage KPI to read like an observed financial fact.
+
+### Evidence
+
+- `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts` centralizes labels/formulas and blocked states, but it is a client asset rather than an API-owned metric contract.
+- `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md` confirms formulas for selected KPIs but leaves GMROI as a future contract and does not assign evidence or decision tiers.
+- `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` records historical runtime evidence where freshness was unknown and PDC actionability contradicted insufficient evidence; a methodology label alone is not a live proof.
+- Tableau propagates data-quality warnings from upstream assets to downstream dashboards, while Shopify connects metric cards to detailed reports. Trendplus needs the equivalent metric-level provenance to stay consistent across its own card, detail, export and report surfaces.
+
+### Scope
+
+- A small backend-owned, versioned metric-evidence contract reused by analytics DTOs and report/export projections.
+- The priority KPI families: revenue, units, gross margin/margin contribution, data quality/readiness, sell-through, stock cover, inventory turnover, stock-at-risk, lost sales, forecast/trend evaluation, pre/post effect, confidence/reliability and supplier decision metrics.
+- Presentation-only mapping in shared frontend methodology/trust components; no duplicate frontend classification or scoring.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ143`, `RQ145` and their evidence
+- `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`
+- `Klijent/clientapp/src/components/analytics/MetricMethodologyPanel.tsx`
+- `Api/Dtos/AnalyticsResponseMetaDto.cs` and nearest analytics DTOs
+- `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md`
+
+### Do
+
+1. Define a backward-compatible contract for `metricKey`, unit, aggregation, requested/effective/observed period, scope, source generation, numerator/denominator availability, freshness, data quality, coverage and limitation reason.
+2. Classify every surfaced KPI as exactly one of `observed`, `derived`, `modelled`, `causal` or `unavailable`; define a separate backend-owned decision-use tier. Do not call a modeled estimate, score or confidence causal.
+3. Require action-bearing/display-confidence eligibility to be explicit. Missing coverage, stale/unknown freshness, fallback, partial result or unproven denominator must downgrade or suppress the claim rather than inventing `0`, `100%` or a positive confidence.
+4. Reuse the same serialized evidence object for card, table, chart tooltip, detail, export and report. The frontend may translate it but must not reclassify it.
+5. Keep scope bounded: do not rewrite raw KPI formulas, introduce a generic metadata platform, or add a second recommendation engine.
+
+### Tests
+
+- Contract tests for every priority metric covering observed valid zero, missing/null input, missing denominator, stale/unknown freshness, fallback/partial source, NaN/Infinity and unavailable source.
+- Tests that a modeled or unavailable metric cannot acquire `causal` classification, numeric confidence or recommendation action through export/report projection.
+- Fixture parity tests proving card/table/chart/detail/export/report carry the same key, unit, evidence class, period/scope and limitation.
+- Frontend tests for clear Serbian copy and dark/light/soft-gray states without raw internal codes.
+- Focused backend/frontend tests, `npm run check:analytics-guardrails`, changed builds, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- Every priority KPI has one backend-owned evidence class, decision-use tier and limitation reason that survive every consumer.
+- A metric without sufficient proof is visibly a signal or unavailable, never an observed fact or actionable recommendation.
+- Frontend methodology text remains a translation of backend truth instead of an independent source of KPI semantics.
+
+### Dependencies
+
+- `RQ141` provides lineage/freshness fields, `RQ143` owns backend decision status and `RQ145` proves consumer parity.
+- `RQ139` supplies null/zero/non-finite semantics. This prompt must wait until its declared dependencies are complete.
+
+---
+
+## RQ148 - Prove the gross/net/return/cost basis of sales and margin KPIs
+
+Status: WAITING
+Priority: P0
+Type: audit/backend/EF-SQL/contract/export/report/tests
+Feature family: sales-margin-returns-measurement-basis
+Parallel-safe: no, finance-facing metric meaning has one canonical owner
+Owner: Codex
+Commit suggestion: `fix(analytics): make sales and margin basis explicit`
+
+### Problem
+
+Revenue is currently described as a sales-line sum and margin contribution as revenue less available cost. That is useful descriptive context, but it does not prove whether each route includes returns, cancellations, tax, discounts, shipping, markdowns, cost fallback or incomplete cost coverage. A number called "prihod" or "marža" can therefore be internally consistent yet commercially misleading, especially when used in supplier or markdown recommendations.
+
+### Evidence
+
+- `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts` documents revenue as `SUM(prodajna_vrednost_stavke)` and margin contribution as available-cost margin; neither definition is a route-specific net/gross/returns proof.
+- `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md` identifies return quantity as optional input, so absence of return history cannot be silently interpreted as zero returns.
+- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md` lists return/refund impact as a future metric with risks including unlinked refunds and duplicate records.
+- `RQ146` already owns schema and migration failure semantics; this task consumes that work to distinguish missing return/cost evidence from a valid zero.
+
+### Scope
+
+- Revenue, net sales, discount/markdown contribution, gross margin percentage, margin contribution, return/refund impact and supplier margin/revenue slices used by `/analytics`, products, supplier, reports and nivelacija surfaces.
+- Endpoint/service/query/view/EF inventory for each metric basis, plus consistent DTO metadata and export/report projection.
+- No accounting ledger, tax engine, invoice mutation or source-system write-back.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ146`, `RQ147` and `RQ145`
+- `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- current sales, supplier, report and nivelacija queries/DTOs and their nearest tests
+
+### Do
+
+1. Produce a route-by-route measurement-basis matrix: gross versus net, sale/return/cancellation inclusion, discount/markdown treatment, tax/shipping treatment, cost source/coverage and period/scope.
+2. Add additive backend metadata naming the basis and coverage. Return `unknown`, `partial` or `unavailable` when the source cannot prove an element; do not substitute zero returns or complete cost coverage.
+3. Ensure KPI labels distinguish gross sales, net sales, margin contribution and accounting profit. Do not call partial-cost margin "net profit".
+4. Gate financial recommendations and confidence on the declared cost/return coverage policy; preserve descriptive values where useful but label their limitation.
+5. Reconcile one seeded fixture across card/table/chart/detail/export/report; explicitly document any legal/accounting distinction rather than hiding it in a formatter.
+
+### Tests
+
+- Valid no-return zero; missing return relation/history; return linked to original sale; duplicate/unlinked return; cancellation; discount/markdown; tax/shipping present versus unavailable; complete/partial/missing/fallback cost coverage.
+- Wrong period/scope and cache-key tests for financial slices; missing table/migration and refresh failure must be degraded/error, not empty successful revenue.
+- Export/report parity for basis, amount, unit, coverage and limitation; no raw backend codes in UI.
+- Focused integration/contract/frontend tests, migration inspection, changed builds, guardrail and queue/planning validators.
+
+### Acceptance
+
+- Every displayed finance-facing metric says what it includes and what it cannot prove.
+- A missing return, cancellation or cost source cannot increase trust by becoming zero or complete coverage.
+- Financial recommendation surfaces preserve the same measurement basis and limitation in UI, export and report.
+
+### Dependencies
+
+- `RQ141`, `RQ145`, `RQ146` and `RQ147` are prerequisites.
+- Source-system accounting policy remains external: where it is not supplied, the result must remain descriptive/limited rather than guessed.
+
+---
+
+## RQ149 - Establish inventory economic evidence before GMROI or demand-value claims
+
+Status: WAITING
+Priority: P1
+Type: backend/EF-SQL/contract/frontend/export/report/tests
+Feature family: inventory-economic-metric-evidence
+Parallel-safe: no, inventory value and demand evidence are shared decision inputs
+Owner: Codex
+Commit suggestion: `feat(analytics): expose inventory economic evidence`
+
+### Problem
+
+Trendplus correctly blocks selected sell-through and stock-cover denominators, but the commercial interpretation remains weaker than the formula: daily stock history is limited, current on-hand can censor observed sales, and average inventory cost value needed for GMROI is not a stable runtime contract. Without an explicit observed-versus-reconstructed inventory basis, low sales can be mistaken for low demand and modeled lost sales or turnover can be mistaken for accounting-grade value.
+
+### Evidence
+
+- `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md` marks GMROI as a future contract and warns that cost-based and unit-based turnover are not interchangeable.
+- `docs/analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md` confirms denominator guards for stock cover and sell-through, but not a full historical stock/economic valuation basis.
+- `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` identifies persisted historical inventory as a major foundation gap for average inventory, GMROI, OOS duration, lost sales and forecast validation.
+- Retail inventory products expose reorder parameters such as trailing sales period, forecast period and supplier lead time; Trendplus must expose whether its own inventory economics has the required observed inputs rather than only displaying a recommendation.
+
+### Scope
+
+- Sell-through, stock cover, inventory turnover, stock-at-risk/slow-stock capital, OOS/lost-sales evidence and future GMROI eligibility across inventory, Product Decision Center, Decision Board, supplier and reports.
+- Backend measurement-basis/coverage state and frontend presentation reuse; no new optimizer, reorder algorithm or retroactive stock reconstruction.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ96`, `RQ117`, `RQ119`, `RQ141`, `RQ144`, `RQ147`
+- `docs/analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md`
+- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- inventory snapshot/foundation queries, DTOs, cache policies and nearest tests
+
+### Do
+
+1. Define one backend evidence basis for each inventory KPI: observed daily snapshot, current-state proxy, reconstructed history, modelled demand or unavailable. Preserve stock snapshot time, SKU/store scope, cost coverage and inbound/transfer/reservation treatment.
+2. Distinguish observed sales from demand censored by stockout. Lost sales, OOS duration and demand-adjusted turnover must remain modeled/unavailable unless matching observed inventory and demand assumptions exist.
+3. Define GMROI eligibility strictly as gross-margin value divided by observed average inventory at cost over an explicit window. Do not expose GMROI-lite as GMROI; return unavailable with a clear reason until requirements are met.
+4. Keep true zero stock, true zero sales and true zero inbound distinct from missing/reconstructed source facts and denominator failure.
+5. Reuse basis/coverage/limitation unchanged across the inventory list, details, PDC, Decision Board, supplier rollups, exports and reports.
+
+### Tests
+
+- Observed zero stock/sales/inbound; missing opening snapshot; stale snapshot; wrong SKU/store/day; transfer/reservation; partial cost coverage; missing velocity denominator; stockout-censored sales; reconstructed-only history; modelled lost sales; GMROI eligible and ineligible fixtures.
+- Parity tests for unit/currency basis, source classification, status/recommendationAllowed and limitation across all consumers.
+- Cache/refresh tests proving a failed inventory snapshot refresh cannot publish a newly trusted valuation or last-success time.
+- Focused backend/frontend tests, analytics guardrail, affected builds, migration inspection where touched and queue/planning validators.
+
+### Acceptance
+
+- Inventory value and demand claims visibly identify whether they are observed, reconstructed, modelled or unavailable.
+- GMROI is absent until its exact observed cost-basis contract is satisfied.
+- No inventory recommendation can present censored sales or fallback valuation as a proven economic outcome.
+
+### Dependencies
+
+- `RQ96`/`RQ117` foundations, `RQ119` scope contract, `RQ141` lineage, `RQ144` denominator status and `RQ147` evidence registry are prerequisites.
+- `STAB16` retains live refresh and source reconciliation proof ownership.
+
+---
+
+## RQ150 - Calibrate forecast usefulness by cohort and decision cost
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/export/report/tests
+Feature family: forecast-decision-calibration
+Parallel-safe: no, evaluation and forecast confidence must have one backend owner
+Owner: Codex
+Commit suggestion: `feat(analytics): calibrate forecast decision value`
+
+### Problem
+
+`RQ142` will materialize the first measured forecast/trend evaluation, but a headline WAPE/MAE/bias alone does not establish that a forecast is useful for replenishment. Accuracy varies by SKU/store/lifecycle, intermittent demand and horizon; point accuracy also does not validate an uncertainty range or the asymmetric cost of understocking versus overstocking. A numeric forecast confidence must therefore remain unavailable until it is calibrated against measured cohorts and an explicit decision-loss policy.
+
+### Evidence
+
+- `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md` intentionally keeps WAPE/bias/MAE unavailable until a paired authoritative window exists and requires cohorts such as sufficient history, sparse, new item and no history.
+- `RQ142` owns measured pairing, baseline, horizon and safe chart states, but does not define forecast interval calibration or business cost of a miss.
+- Amazon Forecast evaluates multiple backtest windows and supports WAPE/MASE/RMSE plus quantile loss; it explicitly treats WAPE as undefined when the observed denominator is near zero and uses quantiles for asymmetric under- versus over-prediction costs.
+
+### Scope
+
+- A post-`RQ142` backend calibration layer over the measured forecast evaluation contract.
+- Cohort-specific forecast performance, baseline comparison, interval coverage/quantile loss when intervals exist, decision-loss policy and strict recommendation/confidence eligibility.
+- Forecast/trend/inventory consumers and their export/report presentation; no ML replacement, optimizer, live score mutation or source-data write-back.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ108`, `RQ117`, `RQ138`, `RQ142`, `RQ147`, `RQ149`
+- `docs/qa/FORECAST_BASELINE_BACKTEST_CONTRACT_2026-08-20.md`
+- current forecast materializer/backtest DTOs, report/export projections and nearest tests
+
+### Do
+
+1. Define fixed evaluation cohorts at least by SKU/store scope, horizon, sufficient-history/sparse/new-item/no-history, availability state and lifecycle; headline aggregates must name their cohort composition and exclusions.
+2. Compare the candidate forecast to the declared naive baseline on the same cutoff/window/cohort. Do not promote model confidence if it does not beat or cannot be compared to the baseline.
+3. Preserve WAPE/MAE/bias denominator truth; add interval coverage/quantile-loss only when the backend emits a real interval. An all-zero or missing observed denominator is unavailable, not zero error.
+4. Define a bounded, visible loss policy for under- versus over-forecasting. It may classify a forecast as decision-ineligible; it must not invent purchasing quantities or money outcomes.
+5. Expose calibration period, sample, freshness, drift/change status, baseline result and limitation in the same contract used by chart, table, detail, export and report. Frontend cannot recompute confidence or calibration.
+
+### Tests
+
+- Perfect forecast, valid zero demand, all-zero observed denominator, missing actual, missing forecast, wrong cutoff/scope, stale/partial horizon, sparse/new/no-history, stockout-censored demand, baseline worse/equal/better and NaN/Infinity.
+- Calibrated versus uncalibrated interval fixtures; no interval must not become a fake coverage percentage.
+- Asymmetric-loss fixtures proving a point forecast cannot become an action without an explicit backend policy and eligibility.
+- Table/chart/detail/export/report parity, invalid chart dimensions `0`/`-1`, clear Serbian states and no browser console warning/error in focused rendering tests.
+- Focused backend/frontend tests, analytics guardrail, changed builds and queue/planning validators.
+
+### Acceptance
+
+- Forecast confidence or recommendation appears only with measured, cohort-specific, fresh and baseline-comparable evidence.
+- A forecast can be numerically accurate yet decision-ineligible when availability, sample, uncertainty or loss-policy evidence is missing; that distinction is visible everywhere.
+- Zero/missing denominators, stale data and partial horizons never become zero error or calibrated certainty.
+
+### Dependencies
+
+- `RQ142` measured evaluation and `RQ147` evidence registry must be DONE; `RQ149` provides inventory availability/economic basis where replenishment interpretation is requested.
+- This prompt does not replace `RQ142` and must not be promoted early.

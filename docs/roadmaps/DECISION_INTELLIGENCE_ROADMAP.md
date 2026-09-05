@@ -132,7 +132,7 @@ Authoritative planning outputs:
 - `docs/Analytics/RECOMMENDATION_ADVISORY_CALIBRATION_CONTRACT.md`
 - `docs/architecture/RECOMMENDATION_ADVISORY_CALIBRATION_RUNTIME_GATE_CONTRACT.md`
 
-Current queue READY: none for DEX/RL/DT. `DEX20` DONE = cross-family alternatives contract on main. `DT09` DONE = first-class timestamp contract on main. `DT10` DONE = derived-clock honesty on main. `RL11` DONE = advisory calibration runtime gate contract. `RL10` DONE = Slice 4 advisory calibration. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DEX19` DONE = Executive Board explainability runtime. `RL08` remains OBSOLETE.
+Current queue READY: none for DEX/RL/DT. `DEX20` DONE = cross-family alternatives contract on main. `DT09` DONE = first-class timestamp contract on main. `DT10` DONE = derived-clock honesty on main. `RL11` DONE = advisory calibration runtime gate contract. `RL12` is WAITING for the causal outcome-comparison planning gate and does not authorize runtime calibration or impact claims. `RL10` DONE = Slice 4 advisory calibration. `DT08` DONE = Slice-5 timeline export hardening. `RL09` DONE = measurement-statistics review surface runtime. `DEX19` DONE = Executive Board explainability runtime. `RL08` remains OBSOLETE.
 
 ## Decision Engine evolution
 

@@ -42,7 +42,7 @@ Purpose: planning/contracts only until later roadmap gates explicitly authorize 
 
 
 
-| RL - Recommendation Learning | none | `RL10` DONE; `RL11` DONE |
+| RL - Recommendation Learning | none | `RL10` DONE; `RL11` DONE; `RL12` WAITING behind measured outcome and analytics-lineage proof |
 
 
 
@@ -69,6 +69,70 @@ Only one prompt per program may be READY. A READY prompt in this file does not o
 
 
 
+
+---
+
+---
+
+## RL12 - Define causal outcome-comparison gate for recommendation value claims
+
+Status: WAITING
+Priority: future / planning
+Feature family: recommendation-outcome-causal-comparison
+Parallel-safe: yes, docs/contracts only while no runtime owner is promoted
+Owner: Codex
+Commit suggestion: `docs(learning): define causal outcome comparison gate`
+
+### Problem
+
+The recommendation lifecycle, outcome eligibility and measurement-only statistics are intentionally conservative, but they still describe observed outcomes rather than incremental impact. A before/after change, accepted recommendation or positive realized margin can be caused by seasonality, availability, assortment, traffic or operator selection. Trendplus must not call it "impact", "uplift" or calibration evidence without a comparable control/baseline and explicit treatment assignment.
+
+### Evidence
+
+- `RL04`, `RL06`, `RL09`, `RL10` and `RL11` keep lifecycle, measured coverage and advisory calibration separate from live confidence mutation, but do not define causal comparability.
+- `RQ140` proves that price pre/post effects must separate price from availability and require a control/comparable cohort; the same rule is required for recommendation-outcome claims.
+- `docs/analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md` already prohibits frontend derivation of realization/calibration from incomplete data, but lacks a cross-family causal comparison gate.
+
+### Scope
+
+- Documentation/contract only for a future read-only causal-comparison dataset over recommendation/action/outcome history.
+- Treatment/control eligibility, assignment timestamp, pre-period, measurement window, matching dimensions, confounders, outcome source, attrition, sample threshold and reasons for `not_causally_measured`.
+- Explicit language rules for observed outcome, descriptive association and causal incremental impact.
+- No runtime experiment, randomized assignment, model training, score mutation, schema migration or action workflow rewrite.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RL01`, `RL04`, `RL06`, `RL09`, `RL10`, `RL11`
+- `RQ140`, `RQ141`, `RQ147`, `RQ148`, `RQ149`
+- `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
+- `docs/analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+
+### Do
+
+1. Freeze a vocabulary that distinguishes `observed_outcome`, `descriptive_comparison`, `causal_estimate` and `not_causally_measured`; only the future backend may assign these states.
+2. Specify the minimum evidence for a causal estimate: immutable recommendation/action snapshot, treatment timestamp, same-scope comparable control or pre-specified counterfactual, outcome source, availability/stock state, common period and confounder handling.
+3. Require an explicit attrition/coverage report and null result when control, denominator, outcome, period/scope or sample is insufficient. Never derive success from acceptance, execution or a favorable after value.
+4. Define permitted future operator copy: observed outcomes may inform review; only a qualified causal estimate may be called incremental impact. Recommendations, confidence and rankings remain unchanged.
+5. Add a promotion gate for a later bounded runtime prompt, including privacy/tenant review and a deterministic seeded proof plan.
+
+### Tests
+
+- Contract examples for accepted-but-not-executed, executed-but-not-measured, valid zero outcome, missing denominator, missing control, scope/period mismatch, stockout confounder, seasonal confounder, partial attrition and stale source.
+- Documentation/queue validators ensure no live confidence mutation or automatic recommendation action is authorized by this planning prompt.
+
+### Acceptance
+
+- A future outcome-comparison implementation has a fail-closed, evidence-first definition of causal value.
+- Existing observed outcome statistics remain accurately labeled and cannot be relabeled as uplift or impact by a frontend/report consumer.
+- No runtime behavior changes under this prompt.
+
+### Dependencies
+
+- `RL11` is DONE; `RQ140` provides the pre/post comparability vocabulary.
+- Any runtime successor waits for `RQ141`, `RQ147`-`RQ149` where its metric inputs are required, plus explicit owner promotion.
 
 ---
 
