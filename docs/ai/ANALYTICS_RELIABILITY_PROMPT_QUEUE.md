@@ -81,6 +81,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ154 | READY | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
 | RQ155 | WAITING | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
 | RQ156 | WAITING | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
+| RQ157 | WAITING | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
+| RQ158 | WAITING | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
+| RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
+| RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
+| RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
 
 ---
 
@@ -4567,3 +4572,356 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 - `RQ140` remains the owner of causal comparability and backend pre/post semantics.
 - `RQ145` remains the owner of complete cross-surface parity.
 - `RQ146` and `STAB16` retain schema, migration, refresh and deployed-runtime proof.
+
+---
+
+## RQ157 - Preserve missing Product Decision baseline and coverage evidence
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/tests
+Feature family: pdc-baseline-coverage-state
+Parallel-safe: no, Product Decision backend is the owner of recommendation evidence
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve missing pdc evidence`
+
+### Problem
+
+Product Decision Center can turn missing evidence into measured values. A missing previous-revenue baseline can be represented as zero and produce `trendPct=100` for a product with positive current revenue. Null trend, margin or coverage can also enter decision/reasoning paths as zero, allowing a recommendation or reason to be produced without the required denominator evidence.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:5702-5709` defaults a missing previous-revenue dictionary value to `0` and emits `100%` growth when current revenue is positive.
+- `Application/Analytics/ProductDecisionReasoningHelper.cs:59-62,99` uses `(input.TrendPct ?? 0m)` and `(input.MarginPct ?? 0m)` in decision and reason logic.
+- `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs:36-38,49,108-109` maps missing margin/split coverage to zero; unknown split coverage can therefore avoid its warning and quality downgrade.
+- Existing engine/reasoning tests do not prove that an otherwise actionable row with null trend, margin or split coverage fails closed.
+
+### Scope
+
+- `Application/Analytics/ProductDecisionReasoningHelper.cs`
+- `Application/Analytics/AnalyticsDecisionRecommendationEngine.cs`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` only the Product Decision Center builder and its baseline/coverage mapping
+- `Api.Tests/AnalyticsDecisionRecommendationEngineTests.cs`
+- `Api.Tests/ProductDecisionReasoningHelperTests.cs`
+- `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`
+
+Do not change frontend ranking, forecast logic, Shopify/vendor integrations or unrelated margin-basis policy. `RQ148` remains the owner of the wider sales-margin measurement basis.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/qa/ANALYTICS_STABILITY_AUDIT_2026-09-05.md`
+- `RQ143`, `RQ145`, `RQ148` and the current PDC response/meta contract
+- the listed backend implementations and nearest tests
+
+### Do
+
+1. Add failing-first tests for missing previous baseline, a true previous revenue of zero, null trend, null margin and null split/margin coverage.
+2. Preserve unavailable/insufficient state when a denominator or baseline is absent; never synthesize `+100%`, `0%` margin or `0%` coverage from missing evidence.
+3. Keep a true finite zero distinct from null/missing/invalid evidence. Non-finite values must fail closed at the contract boundary.
+4. Set backend-owned recommendation status/allowed state, data quality and reason consistently when decision-required evidence is missing. Do not let unknown coverage silently pass because it was coalesced to zero.
+5. Keep response metadata and safe user-facing reason mapping compatible with existing consumers.
+
+### Tests
+
+- Failing-first unit and integration tests for missing baseline, true zero baseline, missing margin/trend/coverage, valid zero and non-finite values where the DTO path permits them.
+- Assert no actionable recommendation is allowed when required evidence is unavailable, and that no fake confidence/reliability is emitted.
+- Assert empty, partial/fallback and error metadata remain distinct from measured zero.
+- Run focused backend tests, analytics guardrails, `git diff --check` and the selected build/test commands from `docs/ai/VALIDATION_SELECTOR.md`.
+
+### Acceptance
+
+- Missing or invalid baseline never becomes `trendPct=100`.
+- Missing trend, margin or coverage is unavailable/insufficient and cannot influence a measured decision as zero.
+- A genuine finite zero remains a valid measured zero where the domain contract permits it.
+- Backend remains the sole owner of recommendation, score, confidence/reliability, reason and allowed status.
+- No raw backend codes or misleading numeric fallbacks are exposed to users.
+
+### Dependencies
+
+- Queue order is after `RQ154`-`RQ156`; keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ143` remains the end-to-end decision/ranking ownership gate.
+- `RQ145` remains the complete table/chart/detail/export/report parity gate.
+- `RQ148` remains the broader sales-margin/returns measurement-basis follow-up.
+- `STAB16` remains the live refresh/browser proof owner.
+
+---
+
+## RQ158 - Keep null inventory stock evidence unavailable
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: inventory-null-stock-state
+Parallel-safe: no, inventory status has one backend/frontend contract owner
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve null inventory stock state`
+
+### Problem
+
+Inventory quantity and minimum-stock fields are nullable, but the aggregate handler, endpoint projections and frontend utility coalesce null to zero. This counts unknown quantity as measured out-of-stock and can label positive stock as stable when the minimum threshold is missing.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs:22-27` uses `(Kolicina ?? 0)` for total, low-stock and OOS counts.
+- `Api/Endpoints/InventoryEndpoints.cs:43-51,208` repeats null-to-zero balance and detail projections.
+- `Klijent/clientapp/src/components/inventory/inventoryUtils.ts:214-231` maps null quantity and minimum to zero before stock-status and coverage logic.
+- Existing inventory tests cover true zero and insufficient evidence, but do not cover nullable quantity/minimum in aggregate, list, detail and UI state together.
+
+### Scope
+
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs`
+- `Api/Endpoints/InventoryEndpoints.cs` inventory balance/list/detail projections only
+- `Api/Dtos/InventoryListItemDto.cs` and `Api/Dtos/InventoryExperienceDtos.cs` only if an additive state field is needed
+- `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
+- nearest backend and frontend inventory regression tests
+
+Do not add forecast calculations or change forecast endpoints. Do not invent historical demand from a stock snapshot.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ149`, `RQ145`, `RQ146` and the inventory DTO/meta contract
+- `Api.Tests/InventorySignalCalculatorTests.cs`
+- `Api.Tests/InventoryListEndpointIntegrationTests.cs`
+- `Klijent/clientapp/src/pages/__tests__/InventoryPage.fakeZeroValue.spec.ts`
+- the listed handler, endpoint and utility
+
+### Do
+
+1. Add failing-first fixtures for empty data, null quantity, true quantity zero, positive quantity with null minimum, valid minimum zero/positive and missing cost evidence.
+2. Preserve null/missing quantity as unknown or insufficient; never count it as OOS or as a measured total of zero.
+3. Preserve true quantity zero as measured OOS when the backend has an authoritative zero.
+4. Keep missing minimum from becoming a stable-stock classification; make the limitation visible and recommendation status fail closed when the decision requires it.
+5. Keep estimated inventory value unavailable when required quantity or cost evidence is missing. Preserve empty/error/partial metadata and table/detail parity.
+
+### Tests
+
+- Backend handler/endpoint tests for null versus true zero quantity and minimum, including OOS and low-stock counts.
+- Frontend utility/page tests for null, true zero, valid positive stock, invalid non-finite numeric values and missing cost.
+- Export/detail parity assertions for the affected inventory fields where adapters exist.
+- Run focused inventory tests, analytics guardrails, `git diff --check` and the selected frontend/backend validation.
+
+### Acceptance
+
+- Null/missing quantity is never displayed or counted as valid OOS zero.
+- Null/missing minimum is never treated as a valid threshold or stable-stock proof.
+- Genuine zero quantity remains distinguishable and is classified according to the backend contract.
+- Backend owns inventory status and recommendation allowance; frontend only renders supplied state.
+- Empty is a valid empty state, while partial/fallback/error/stale states are visible and not converted to zero.
+
+### Dependencies
+
+- Queue order is after `RQ157`; keep this prompt `WAITING` behind the single `READY` invariant.
+- `RQ149` remains the owner of inventory economics and availability-censored demand evidence.
+- `RQ145` remains the parity owner, and `RQ146` the runtime schema/404/migration owner.
+- `STAB16` retains live refresh/browser proof.
+
+---
+
+## RQ159 - Correct inventory decision summary counts and wording
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: inventory-decision-summary-counts
+Parallel-safe: no, the summary card and inventory balance contract must share one metric meaning
+Owner: Codex
+Commit suggestion: `fix(analytics): align inventory decision summary counts`
+
+### Problem
+
+`DecisionSummaryBar` subtracts the out-of-stock count from the low-stock count even though the backend low-stock predicate excludes OOS rows. It also labels current counts as `P1 OOS 7d`, although no seven-day OOS-risk measurement is supplied. This can create negative or semantically false decision counts.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/inventory/DecisionSummaryBar.tsx:25-26` computes `lowStockCount - outOfStockCount`.
+- `GetInventoryStatusHandler` defines low stock as positive quantity at or below threshold and OOS separately.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:1278-1283` passes current balance counts directly to the summary.
+- `DecisionSummaryBar.spec.tsx` covers trust copy but not count arithmetic or the seven-day label.
+
+### Scope
+
+- `Klijent/clientapp/src/components/inventory/DecisionSummaryBar.tsx`
+- `Klijent/clientapp/src/components/inventory/DecisionSummaryBar.spec.tsx`
+- `Klijent/clientapp/src/pages/InventoryPage.tsx` wiring and metric labels only if required
+- additive backend DTO field only if a measured seven-day risk already exists and is authoritative
+
+Do not invent a seven-day risk from current counts, a snapshot or a forecast. If no authoritative seven-day metric exists, remove or relabel the card to describe current stock state.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ149`, `RQ145`, `RQ143` and inventory metric definitions
+- `DecisionSummaryBar.tsx`, `InventoryPage.tsx` and the nearest specs
+
+### Do
+
+1. Add a failing-first fixture with `lowStockCount=10` and `outOfStockCount=5`; prove the current implementation is wrong/negative or mislabeled.
+2. Align the card with the backend metric definitions: show separate current low-stock and current OOS counts, or consume an explicitly backend-measured seven-day risk field.
+3. Treat null counts as unavailable, not zero; prevent negative derived counts.
+4. Keep recommendation/action eligibility backend-owned and preserve the same values in card, table, chart, details and export.
+5. Use safe user-facing wording that states current versus observed-window semantics.
+
+### Tests
+
+- Unit tests for low-only, OOS-only, both, zero, null and partial counts.
+- Regression test asserting no negative count and no `7d` label for a current snapshot.
+- Table/card/export parity test if the same count is exported.
+- Focused frontend tests and analytics guardrails; no forecast test is a substitute for measured inventory risk.
+
+### Acceptance
+
+- No subtraction of mutually exclusive low-stock and OOS counts.
+- No current snapshot count is labelled as seven-day risk.
+- Null/partial counts render unavailable/degraded state rather than valid zero.
+- The card uses the backend metric meaning and cannot create a different decision from the backend.
+
+### Dependencies
+
+- Queue order is after `RQ158` because nullable stock semantics must be settled first.
+- `RQ143` remains the recommendation/action ownership gate.
+- `RQ145` remains the cross-surface parity gate.
+
+---
+
+## RQ160 - Remove synthetic inventory health trend or make it observed
+
+Status: WAITING
+Priority: P0
+Type: frontend/backend-contract/tests
+Feature family: inventory-health-observed-series
+Parallel-safe: no, health score provenance needs one metric owner
+Owner: Codex
+Commit suggestion: `fix(analytics): stop fabricating inventory health trend`
+
+### Problem
+
+`InventoryPage` computes a local weighted health score from one current snapshot and fabricates seven sparkline points by applying fixed drift. The result looks like an observed historical trend although no historical observations or backend-owned score are supplied.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:543-556` calculates `inventoryHealthScore` locally and creates seven `healthTrendPoints` from fixed drift.
+- Existing page tests mock the summary bar but do not assert that a single snapshot cannot produce an observed trend.
+- The backend inventory contract does not expose a provenance-bearing historical health series for this page.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx`
+- inventory types/API only if an additive backend-owned historical score/series is already supported by the owning service
+- nearest InventoryPage tests and metric/explainability documentation if needed
+
+Do not introduce a forecast, heuristic trend or frontend recommendation formula. Prefer removing the score/sparkline and stating snapshot-only evidence when an authoritative observed series is unavailable.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ147`, `RQ149`, `RQ145` and current inventory DTOs
+- `InventoryPage.tsx` and nearest page tests
+
+### Do
+
+1. Add a failing-first test proving one snapshot cannot yield seven observed trend points.
+2. Either consume a backend-owned historical score/series with requested/effective/observed period, source, freshness and quality metadata, or remove the score/sparkline and render an explicit snapshot-only limitation.
+3. Preserve valid zero versus unknown semantics and guard non-finite values.
+4. Do not let the frontend recompute a score, confidence or recommendation that the backend owns.
+5. Keep all remaining inventory values aligned across card, table, chart, detail, export and report surfaces.
+
+### Tests
+
+- Page tests for one snapshot, empty data, true zero, null and non-finite inputs.
+- Regression test that no synthetic seven-point series is rendered without observed backend points and provenance.
+- Theme and chart initial-size tests remain green, including width/height `0` and `-1` behavior.
+- Focused frontend tests, analytics guardrails and build/type validation selected by the canonical validator.
+
+### Acceptance
+
+- A single snapshot is never presented as an observed historical trajectory.
+- Any displayed health score/series has backend ownership and explicit period/source/freshness/quality.
+- Otherwise the UI clearly says snapshot-only/no historical trend instead of fabricating points.
+- No forecast or frontend decision logic is introduced.
+
+### Dependencies
+
+- Queue order is after `RQ159`; keep `RQ160` `WAITING` until its metric ownership is available.
+- `RQ147` remains the KPI evidence registry owner.
+- `RQ149` remains the inventory economic/availability evidence owner.
+- `RQ145` and `STAB16` retain parity and live proof ownership.
+
+---
+
+## RQ161 - Fail closed on Analytics Details periods and unknown trends
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: analytics-details-period-state
+Parallel-safe: no, details period and ranking display must match shared analytics period semantics
+Owner: Codex
+Commit suggestion: `fix(analytics): validate details periods and unknown trends`
+
+### Problem
+
+`AnalyticsDetails` clamps a reversed date range to one day and can produce `NaN` for invalid dates. It also ranks and direction-labels missing trends as zero. Users can therefore see plausible per-day values for an invalid period and a neutral/up trend for unavailable evidence.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:39-45` uses `Math.max(1, ...)`; invalid dates produce `NaN` and reversed periods become one day.
+- `AnalyticsDetails.tsx:235-244` ranks gainers/losers with `(x.trendPct ?? 0)`.
+- `AnalyticsDetails.tsx:413,491` uses `(row.trendPct ?? 0) >= 0` for direction styling.
+- `Klijent/clientapp/src/pages/__tests__/analyticsIndicatorRegression.spec.ts` covers missing summary and valid zero but not reversed/invalid periods or non-finite detail trends.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`
+- `Klijent/clientapp/src/pages/__tests__/analyticsIndicatorRegression.spec.ts`
+- nearest Analytics Details tests and shared period helper only if the change remains a compatibility-preserving validation fix
+
+Do not change backend ranking ownership, forecast logic, Shopify/vendor work or cross-route parity contracts owned by `RQ137`/`RQ145`.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ143`, `RQ145` and shared analytics period semantics
+- the listed page and nearest regression tests
+
+### Do
+
+1. Add failing-first tests for reversed, invalid, empty and valid date ranges.
+2. Fail closed for invalid/reversed periods with a clear user-facing message and no fetch or no derived KPI, according to the existing page contract.
+3. Keep exact inclusive day count for valid ranges and reject non-finite date-derived values.
+4. Exclude null/missing/non-finite trends from gain/loss ranking and direction labels; retain true finite zero as neutral.
+5. Preserve backend-owned decisions and safe wording; do not expose raw error codes.
+
+### Tests
+
+- Period tests for valid one-day/multi-day, reversed and invalid dates, with fetch behavior asserted.
+- Trend tests for null, missing, NaN, Infinity, negative, positive and true zero.
+- Empty, partial/fallback and error response tests remain distinct.
+- Focused frontend tests, analytics guardrails, build/type validation and `git diff --check`.
+
+### Acceptance
+
+- Invalid/reversed period cannot produce plausible KPI data or a one-day fallback.
+- Valid period day count is exact and finite.
+- Unknown/non-finite trends are visibly unavailable and not ranked or direction-labelled.
+- Genuine zero trend remains neutral.
+- No frontend decision, confidence or recommendation is recomputed.
+
+### Dependencies
+
+- Queue order is after `RQ160`; keep this prompt `WAITING` behind the single `READY` item.
+- `RQ137` remains the period-lineage owner.
+- `RQ143` remains the backend decision/ranking owner.
+- `RQ145` remains the parity and safe-messaging owner.
