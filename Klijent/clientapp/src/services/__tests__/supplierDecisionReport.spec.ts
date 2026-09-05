@@ -87,4 +87,26 @@ describe("buildSupplierDecisionReportPayload", () => {
     expect(payload.rows.find((row) => row.section === "Header" && row.item === "Posmatrani period")?.value).toContain("Efektivni opseg");
     expect(payload.metadata.find((row) => row.key === "observedPeriodFromUtc")?.value).toBe("2026-08-01T00:00:00Z");
   });
+
+  it("fails closed when report trust metadata is missing", () => {
+    const base = buildInput();
+    const payload = buildSupplierDecisionReportPayload({
+      ...base,
+      trustMetadata: { ...base.trustMetadata, recommendationAllowed: undefined },
+      scorecardMeta: { success: true, dataQualityStatus: "good" },
+      rows: [{
+        ...base.rows[0],
+        status: "increase_focus",
+        normalizedConfidence: 90,
+        confidenceAvailable: true,
+        reliabilityPct: 80,
+        reliabilityAvailable: true,
+      }],
+    });
+
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Sigurnost signala")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Pouzdanost signala")?.value).toBe("Nije dostupno");
+    expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Finalni savet")?.value)
+      .toContain("Pomoćni signal");
+  });
 });

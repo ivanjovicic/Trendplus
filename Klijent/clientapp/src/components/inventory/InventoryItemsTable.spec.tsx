@@ -66,6 +66,7 @@ describe("Inventory signal presentation", () => {
   it("maps insufficient_data to explicit no-signal text", () => {
     expect(buildSignalText("insufficient_data", "good")).toBe("Nedovoljno podataka");
     expect(buildSignalText("healthy", "insufficient_data")).toBe("Nedovoljno podataka");
+    expect(buildSignalText("healthy", "good", undefined)).toBe("Nedovoljno podataka");
   });
 
   it("exposes readable stock cover and sell-through status labels", () => {

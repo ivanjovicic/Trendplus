@@ -165,7 +165,7 @@ export default function AnalyticsTrustHeader({
   const effectiveLabel = effectivePeriodLabel?.trim() || null;
   const provenanceLabel = provenanceBasis?.trim() || null;
   const showFallbackBanner = Boolean(usedFallback);
-  const showGatedBanner = recommendationAllowed === false && !showFallbackBanner;
+  const showGatedBanner = recommendationAllowed !== true && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";

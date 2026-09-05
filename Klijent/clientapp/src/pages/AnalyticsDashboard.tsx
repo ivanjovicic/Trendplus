@@ -364,7 +364,8 @@ function buildAnalyticsActionFromDashboardAction(
     supplierId: filters.supplierId ?? "all",
   };
 
-  const recommendationAllowed = action.recommendationAllowed !== false;
+  // Missing trust metadata is not permission to persist a recommendation.
+  const recommendationAllowed = action.recommendationAllowed === true;
   const resolvedTitle = recommendationAllowed
     ? action.title
     : (sourceType === "data_quality"
@@ -913,7 +914,7 @@ export default function AnalyticsDashboard() {
     () =>
       prioritizedDecisionActions.length > 0 &&
       prioritizedDecisionActions.every(
-        (action) => action.recommendationAllowed === false,
+        (action) => action.recommendationAllowed !== true,
       ),
     [prioritizedDecisionActions],
   );
@@ -1714,9 +1715,9 @@ export default function AnalyticsDashboard() {
                                     {action.priority || "P3"}
                                   </span>
                                   <span
-                                    className={`decision-kind-badge${action.recommendationAllowed === false ? " limited" : ""}`}
+                                    className={`decision-kind-badge${action.recommendationAllowed !== true ? " limited" : ""}`}
                                   >
-                                    {action.recommendationAllowed === false
+                                    {action.recommendationAllowed !== true
                                       ? "Pomoćni signal"
                                       : "Preporuka sistema"}
                                   </span>
@@ -1762,9 +1763,9 @@ export default function AnalyticsDashboard() {
                                     )}
                                   </span>
                                   <small
-                                    className={`decision-status-reason${action.recommendationAllowed === false ? " decision-status-warning" : " decision-status-ok"}`}
+                                    className={`decision-status-reason${action.recommendationAllowed !== true ? " decision-status-warning" : " decision-status-ok"}`}
                                   >
-                                    {action.recommendationAllowed === false
+                                    {action.recommendationAllowed !== true
                                       ? "Signal je ograničen zbog kvaliteta ili nedovoljno podataka."
                                       : "Preporuka je dozvoljena za akciju."}
                                   </small>

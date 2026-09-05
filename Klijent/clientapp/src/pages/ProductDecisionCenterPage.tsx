@@ -602,7 +602,7 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
   const dueAtUtc = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
 
-  if (normalizedCover === "insufficient_data" || row.recommendationAllowed === false) {
+  if (normalizedCover === "insufficient_data" || row.recommendationAllowed !== true) {
     return {
       sourceType: "product",
       actionKind: "signal_check",

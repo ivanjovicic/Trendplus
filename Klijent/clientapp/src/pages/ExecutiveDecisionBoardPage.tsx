@@ -232,7 +232,7 @@ function capInsufficientDataPriority(
 }
 
 function confidenceLabelFromProduct(item: ProductDecisionCenterItem): { label: string; tone: BoardTone; score: number | null } {
-  if (item.recommendationAllowed === false || item.confidenceLevel === "insufficient_data") {
+  if (item.recommendationAllowed !== true || item.confidenceLevel === "insufficient_data") {
     return {
       label: "Nedovoljno podataka",
       tone: "insufficient",
@@ -424,10 +424,11 @@ export function buildExecutiveFallbackProductCards(
     })
     .slice(0, 12)
     .map((row, index) => {
+      const recommendationAllowed = row.recommendationAllowed === true;
       const confidence = confidenceLabelFromProduct(row);
       const actionState = resolveActionState(row.sourceType ?? "product", row.sourceKey ?? `product:${row.productId}`, states);
       // Do not promote lostSalesEstimate into expected impact — PDC is source of truth.
-      const expectedImpact = row.expectedImpactRsd ?? null;
+      const expectedImpact = recommendationAllowed ? row.expectedImpactRsd ?? null : null;
       const warnings = recommendationWarningCodes(row);
       const confidenceSource =
         row.recommendationStatus === "FIX_DATA"
@@ -453,7 +454,9 @@ export function buildExecutiveFallbackProductCards(
         measuredImpactRsd: null,
         realizationRatio: null,
         riskIfIgnored: row.riskIfIgnored ?? row.recommendationReason,
-        recommendedNextAction: row.recommendedAction,
+        recommendedNextAction: recommendationAllowed
+          ? row.recommendedAction
+          : "Proveri pouzdanost signala pre odluke.",
         actionCta: openActionStateLabel(actionState === "none" ? "none" : actionState),
         sourceLink: sourceScreenLink("product"),
         actionHref: sourceActionLink("product"),
@@ -470,7 +473,7 @@ export function buildExecutiveFallbackProductCards(
           row.dataQualityStatus,
         ),
         impactScore: expectedImpact ?? 0,
-        recommendationAllowed: row.recommendationAllowed ?? null,
+        recommendationAllowed,
       };
     });
 }
@@ -536,7 +539,10 @@ export function buildInventoryCards(
 
     const actionSpec = buildInventorySignalActionSpec(row);
     const actionState = resolveActionState("inventory", actionSpec.sourceKey, states);
-    const confidence = confidenceLabelFromValue(row.signalConfidencePct, row.recommendationAllowed === false ? "Nedovoljno podataka" : "Nedovoljno podataka");
+    const recommendationAllowed = row.recommendationAllowed === true;
+    const confidence = recommendationAllowed
+      ? confidenceLabelFromValue(row.signalConfidencePct)
+      : "Nedovoljno podataka";
     const impact =
       actionSpec.recommendationStatus === "SIGNAL_REVIEW"
         ? null
@@ -553,8 +559,8 @@ export function buildInventoryCards(
       title: row.naziv,
       summary: `${row.stockCoverStatusLabel}. ${row.sellThroughStatusLabel}.`,
       confidenceLabel: confidence,
-      confidenceTone: confidenceToneFromValue(row.signalConfidencePct),
-      confidenceScore: row.signalConfidencePct,
+      confidenceTone: recommendationAllowed ? confidenceToneFromValue(row.signalConfidencePct) : "insufficient",
+      confidenceScore: recommendationAllowed ? row.signalConfidencePct : null,
       expectedImpactRsd: impact,
       measuredImpactRsd: null,
       realizationRatio: null,
@@ -1041,7 +1047,7 @@ function confidencePresentationFromBoardCard(
   const normalizedScore = normalizeRecommendationPct(card.confidenceScore);
   const level = (card.confidenceLevel ?? "").trim().toLowerCase();
 
-  if (card.recommendationAllowed === false || level === "insufficient_data" || card.dataQualityStatus === "insufficient_data") {
+  if (card.recommendationAllowed !== true || level === "insufficient_data" || card.dataQualityStatus === "insufficient_data") {
     return { label: "Nedovoljno podataka", tone: "insufficient", score: null };
   }
 

@@ -98,7 +98,7 @@ export default function SupplierConsolidatedPage() {
     || "Aktivni dataset nije posebno označen";
   const trustHeadline = trustPayload?.usedFallback
     ? "Fallback ili sužen dataset je aktivan"
-    : trustPayload?.recommendationAllowed === false
+    : trustPayload?.recommendationAllowed !== true
       ? "Signal je informativan i traži proveru"
       : currentTab === "overview"
         ? "Pregled je glavni izvor preporuke"
@@ -116,7 +116,7 @@ export default function SupplierConsolidatedPage() {
   const trustToneClass = trustPayload?.dataQualityStatus === "error"
     ? "critical"
     : (trustPayload?.usedFallback
-      || trustPayload?.recommendationAllowed === false
+      || trustPayload?.recommendationAllowed !== true
       || trustPayload?.dataQualityStatus === "warning"
       || trustPayload?.dataQualityStatus === "insufficient_data")
       ? "warning"

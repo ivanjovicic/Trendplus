@@ -105,16 +105,17 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
   const nowUtc = new Date().toISOString();
   const trust = input.trustMetadata;
   const meta = input.scorecardMeta;
+  const recommendationAllowed = trust?.recommendationAllowed === true;
   const totalUnits = input.rows.reduce((sum, row) => sum + (row.units ?? 0), 0);
   const totalStockRisk = input.rows.reduce((sum, row) => sum + row.unsoldStockValue, 0);
   const weightedMarkdownDependencyPct = input.totalRevenue > 0
     ? input.rows.reduce((sum, row) => sum + ((row.markdownRevenueShare ?? 0) * row.revenue), 0) / input.totalRevenue
     : null;
-  const confidenceRows = input.rows.filter((row) => row.confidenceAvailable);
+  const confidenceRows = recommendationAllowed ? input.rows.filter((row) => row.confidenceAvailable) : [];
   const avgConfidencePct = confidenceRows.length > 0
     ? confidenceRows.reduce((sum, row) => sum + (row.normalizedConfidence ?? 0), 0) / confidenceRows.length
     : null;
-  const reliabilityRows = input.rows.filter((row) => row.reliabilityAvailable);
+  const reliabilityRows = recommendationAllowed ? input.rows.filter((row) => row.reliabilityAvailable) : [];
   const avgReliabilityPct = reliabilityRows.length > 0
     ? reliabilityRows.reduce((sum, row) => sum + (row.reliabilityPct ?? 0), 0) / reliabilityRows.length
     : null;
@@ -173,7 +174,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow(
       "Preporuke",
       "Preporuka",
-      trust?.recommendationAllowed === false
+      !recommendationAllowed
         ? "Finalna preporuka je blokirana; prikazan je pomoćni scorecard signal."
         : "Finalna preporuka aktivna",
       trust?.dataCoverageStatus ?? "",
@@ -257,17 +258,17 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow(
       "supplier_negotiation_pack",
       "Finalni savet",
-      trust?.recommendationAllowed === false
+      !recommendationAllowed
         ? "Pomoćni signal - proveriti podatke pre odluke"
         : (input.supplierCounts.boost >= input.supplierCounts.reduce ? "Pojačaj saradnju" : "Smanji narednu narudžbinu"),
       "Predlog razgovora",
-      trust?.recommendationAllowed === false
+      !recommendationAllowed
         ? "Finalni savet je blokiran jer recommendationAllowed=false."
         : "Koristiti kao polazni predlog razgovora sa dobavljačem."
     )
   );
 
-  if (trust?.recommendationAllowed === false) {
+  if (!recommendationAllowed) {
     detailRows.push(buildSectionRow("supplier_negotiation_pack", "Pomoćni signal", "Pomoćni signal - proveriti podatke pre odluke", "Upozorenja", "Finalna preporuka nije dozvoljena za ovaj signal."));
   }
   if (trust?.usedFallback) {
@@ -311,7 +312,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     );
   }
 
-  if (meta?.dataQualityStatus === "insufficient_data" || trust?.recommendationAllowed === false) {
+  if (meta?.dataQualityStatus === "insufficient_data" || !recommendationAllowed) {
     detailRows.push(
       buildSectionRow(
         "Upozorenje",
@@ -323,7 +324,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     );
   }
 
-  if (trust?.recommendationAllowed === false) {
+  if (!recommendationAllowed) {
     detailRows.push(
       buildSectionRow(
         "Upozorenje",
@@ -518,7 +519,9 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
   const effectiveDataset = payload.metadata.find((m) => m.key === "effectiveDataset")?.value ?? null;
   const usedFallback = payload.metadata.find((m) => m.key === "usedFallback")?.value ?? null;
   const fallbackReason = payload.metadata.find((m) => m.key === "fallbackReason")?.value ?? null;
-  const recommendationAllowed = payload.metadata.find((m) => m.key === "recommendationAllowed")?.value ?? null;
+  const recommendationAllowedValue = payload.metadata.find((m) => m.key === "recommendationAllowed")?.value ?? null;
+  const recommendationAllowed = recommendationAllowedValue === true
+    || ["true", "da"].includes(String(recommendationAllowedValue).trim().toLowerCase());
 
   const lines = [
     `Trendplus izveštaj dobavljača`,
@@ -536,8 +539,10 @@ export function buildSupplierDecisionReportSummaryText(payload: ResolvedAnalytic
     effectiveDataset != null ? `Efektivni dataset: ${String(effectiveDataset)}` : null,
     usedFallback != null ? `Fallback aktivan: ${String(usedFallback)}` : null,
     fallbackReason != null && String(fallbackReason).trim() ? `Fallback razlog: ${String(fallbackReason)}` : null,
-    recommendationAllowed != null ? `Preporuke dozvoljene: ${String(recommendationAllowed)}` : null,
-    recommendationAllowed === false ? "Report prikazuje pomoćni scorecard signal, ne finalnu preporuku." : null,
+    recommendationAllowedValue != null ? `Preporuke dozvoljene: ${String(recommendationAllowedValue)}` : null,
+    !recommendationAllowed
+      ? "Report prikazuje pomoćni scorecard signal, ne finalnu preporuku."
+      : null,
   ].filter((line): line is string => Boolean(line && line.trim()));
 
   return lines.join("\n");

@@ -389,6 +389,34 @@ describe("ExecutiveDecisionBoardPage model", () => {
     expect(cards[0].impactScore).toBe(0);
   });
 
+  it("fails closed for an inventory row that omits recommendationAllowed", () => {
+    const row = baseInventoryRow({
+      id: 203,
+      naziv: "Nepotvrđena zaliha",
+      stockCoverStatus: "low_cover",
+      stockCoverStatusLabel: "Niska pokrivenost",
+      sellThroughStatus: "good",
+      recommendationAllowed: undefined,
+    });
+
+    const cards = buildInventoryCards(
+      {
+        ...baseInventoryInsights(),
+        topAgedItems: [{ ...baseInventoryInsight({ id: 203, naziv: "Nepotvrđena zaliha" }) }],
+        topCapitalLockedItems: [],
+      },
+      [row],
+      new Map(),
+    );
+
+    expect(cards[0]).toMatchObject({
+      confidenceLabel: "Nedovoljno podataka",
+      confidenceScore: null,
+      expectedImpactRsd: null,
+    });
+    expect(cards[0].recommendedNextAction).toContain("Proveri signal zalihe");
+  });
+
   it("still preserves expected impact for actionable inventory rows", () => {
     const row = baseInventoryInsight({
       id: 202,
@@ -510,6 +538,7 @@ function productRow(
     recommendationReason: "Test razlog.",
     reasonCodes: [],
     recommendedAction: "Proveri.",
+    recommendationAllowed: true,
     ...overrides,
   };
 }
@@ -533,6 +562,30 @@ function productCenter(rows: ProductDecisionCenterItem[]): ProductDecisionCenter
 }
 
 describe("buildExecutiveFallbackProductCards (RQ72)", () => {
+  it("fails closed when a compatibility product row omits recommendationAllowed", () => {
+    const cards = buildExecutiveFallbackProductCards(
+      productCenter([
+        productRow({
+          productId: 99,
+          productName: "Nepotvrđen signal",
+          recommendationStatus: "REPLENISH",
+          expectedImpactRsd: 90_000,
+          confidencePct: 92,
+          recommendationAllowed: undefined,
+        }),
+      ]),
+    );
+
+    expect(cards[0]).toMatchObject({
+      recommendationAllowed: false,
+      confidenceLabel: "Nedovoljno podataka",
+      confidenceScore: null,
+      expectedImpactRsd: null,
+      recommendedNextAction: "Proveri pouzdanost signala pre odluke.",
+      impactScore: 0,
+    });
+  });
+
   it("preserves recommendationAllowed and confidenceSource for product cards", () => {
     const cards = buildExecutiveFallbackProductCards(
       productCenter([

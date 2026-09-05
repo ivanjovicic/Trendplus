@@ -113,7 +113,7 @@ export function buildInventorySignalActionSpec(row: InventoryRow): {
   const normalizedCover = (row.stockCoverStatus ?? "").trim().toLowerCase();
   const normalizedSellThrough = (row.sellThroughStatus ?? "").trim().toLowerCase();
 
-  if (row.recommendationAllowed === false || normalizedCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
+  if (row.recommendationAllowed !== true || normalizedCover === "insufficient_data" || normalizedSellThrough === "insufficient_data") {
     return {
       sourceKey: `inventory:signal_check:${row.id}:${row.idObjekat ?? "all"}`,
       title: `Proveri signal zalihe: ${row.naziv}`,

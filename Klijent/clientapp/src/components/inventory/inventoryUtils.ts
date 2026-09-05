@@ -179,7 +179,7 @@ export function buildSignalText(stockCoverStatus: string, sellThroughStatus: str
   const normalizedStockCover = (stockCoverStatus ?? "").trim().toLowerCase();
   const normalizedSellThrough = (sellThroughStatus ?? "").trim().toLowerCase();
 
-  if (recommendationAllowed === false) {
+  if (recommendationAllowed !== true) {
     return "Nedovoljno podataka";
   }
 
