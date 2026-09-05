@@ -3696,9 +3696,9 @@ Data Quality health uses revenue shares as decision signals. When the sales deno
 - Checks run: backend focused tests 22/22; `DataQualityPage.spec.tsx` 9/9; isolated Dashboard, Data Quality empty and Inventory regressions passed; analytics guardrails and typecheck passed; `dotnet build .\Api\Api.csproj --no-restore --configuration Release` passed with 0 warnings and 0 errors; `git diff --check` passed.
 - Checks not run: full backend suite, live database/refresh worker/browser console, and full cross-route export/report parity. The broader sales-readiness regression spec was attempted but the Pilot intake test emitted existing MSW unhandled-request warnings and hung, so it is not claimed as passed.
 - Run log: `.ai/runs/2026-09-05-RQ144-evidence.md`.
-- Delivery mode: direct-main delivery, with commit and remote verification recorded after push.
-- Main commit SHA: pending commit.
-- Main verification: pending push and `git ls-remote` verification.
+- Delivery mode: direct-main delivery; commit `196266cb35055d6f4cfe82d135bec0bf32608ba5` was pushed to `origin/main`.
+- Main commit SHA: `196266cb35055d6f4cfe82d135bec0bf32608ba5`.
+- Main verification: `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin refs/heads/main` all returned `196266cb35055d6f4cfe82d135bec0bf32608ba5`.
 - Missed: live refresh/runtime proof and complete cross-surface parity remain outside this bounded prompt and require `STAB16`/`RQ141`/`RQ145`.
 - Residual risk: deployed frontend/backend compatibility and the HTTP 503 health-failure path require live runtime proof; forecast prompt `RQ150` remains WAITING by explicit user instruction.
 
