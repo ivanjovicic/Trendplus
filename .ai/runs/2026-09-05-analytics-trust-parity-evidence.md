@@ -4,8 +4,8 @@ Date: 2026-09-05
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending final commit and push
+Main commit SHA: a84d8a42974e4228840ef07e3f0e9f5d03a4068c
+Main verification: implementation commit a84d8a42974e4228840ef07e3f0e9f5d03a4068c pushed to origin/main; final metadata commit follows
 Evidence state: synchronized
 
 ## What was done
@@ -71,4 +71,3 @@ Evidence state: synchronized
 
 ## Next
 - Restore valid analytics DB credentials/run access, apply or verify the affected view/migration contract, run the refresh worker, then repeat the all-route browser smoke and export/report parity checks with real data.
-

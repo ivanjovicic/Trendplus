@@ -1119,8 +1119,8 @@ The vendor nivelacija endpoint has compatibility SQL that coalesces missing pre/
 - Run log: `.ai/runs/2026-09-05-analytics-trust-parity-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending final commit and push
+- Main commit SHA: a84d8a42974e4228840ef07e3f0e9f5d03a4068c
+- Main verification: implementation commit a84d8a42974e4228840ef07e3f0e9f5d03a4068c is on `origin/main`; queue metadata follows in the next direct-main commit.
 - Missed: live schema and successful refresh proof.
 - Follow-up: restore valid DB access and repeat migration/view/refresh verification; RQ140 remains the consumer for cross-layer comparability.
 - Residual risk: production schema may still be missing the additive semantic columns until migration/view deployment is verified.
