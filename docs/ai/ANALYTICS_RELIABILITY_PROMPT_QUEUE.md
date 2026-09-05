@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ152
+Current READY prompt: RQ153
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -76,8 +76,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
 | RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
-| RQ152 | READY | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
-| RQ153 | WAITING | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
+| RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
+| RQ153 | READY | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 
 ---
 
@@ -4186,7 +4186,7 @@ Commit suggestion: `fix(analytics): map unknown action warnings safely`
 
 ## RQ152 - Preserve unknown and missing evidence in derived intelligence builders
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-derived-numeric-state
@@ -4247,11 +4247,30 @@ Commit suggestion: `fix(analytics): preserve derived intelligence evidence state
 - RQ139's bounded numeric vocabulary is accepted as the semantic baseline; unresolved RQ139 live/parity residuals are not pulled into this prompt.
 - Queue order: promote after `RQ151` is complete; do not promote forecast/Shopify or live-worker work under this prompt.
 
+### Completion note
+
+- Date: 2026-09-05
+- Status: DONE
+- Completion: Derived intelligence builders now preserve missing/unknown numeric evidence instead of converting it to trusted zero, reject non-finite and invalid inputs, preserve valid zero values, and keep derived reorder output non-actionable.
+- Changed files: `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`; `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-05-RQ152-evidence.md`.
+- Contract/runtime behavior changed: category derivation requires measured inventory velocity and finite non-negative price; price bands reject invalid/overflow evidence without contaminating valid aggregates; aging keeps missing cost as `null` and reports an unavailable critical value when evidence is incomplete; depletion keeps empty risk totals as `null` and preserves measured zero risk; derived reorder remains empty/non-actionable. Backend-owned primary merge paths are unchanged.
+- Checks run: focused `analyticsIntelligenceDerived` suite passed 11/11; `npm run check:analytics-guardrails` passed including encoding, analytics guardrails and typecheck; `npm run build` passed; `git diff --check` passed.
+- Checks not run: backend build/tests, live database/schema/migration/refresh worker, browser console smoke and cross-route export/report parity; this prompt is limited to the frontend derived service and its focused tests.
+- Run log: `.ai/runs/2026-09-05-RQ152-evidence.md`.
+- Evidence state: pending.
+- Delivery mode: direct-main pending.
+- Main commit SHA: pending.
+- Main verification: pending.
+- Missed: no forecast calibration, Shopify, backend formula, recommendation engine or live refresh work was included.
+- Follow-up: `RQ153` is promoted to `READY` for the offline route lineage matrix; `STAB16` remains the owner of live provider/worker/browser proof.
+- Residual risk: derived result types are local nullable extensions of legacy DTO shapes and are not yet a cross-route trust metadata contract; broader parity and runtime proof remain outside this prompt.
+- Next: execute `RQ153`.
+
 ---
 
 ## RQ153 - Build the offline analytics route lineage matrix
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: audit/docs/tests
 Feature family: analytics-lineage-static-matrix
