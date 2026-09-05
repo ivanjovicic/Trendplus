@@ -3303,9 +3303,9 @@ Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume 
 - Checks not run: browser console smoke, live provider/refresh proof, complete route-by-route table/chart/export/report parity, and full analytics formula inventory.
 - Run log: `.ai/runs/2026-09-05-RQ139-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: local commit/push pending after lock removal and evidence write.
-- Main commit SHA: pending
-- Main verification: pending
+- Delivery mode: direct-main
+- Main commit SHA: `da18187c30e8f91b29b0f036138c63a027895888`
+- Main verification: `git rev-parse origin/main -> da18187c30e8f91b29b0f036138c63a027895888`; implementation commit is contained in `origin/main`
 - Missed: `analyticsIntelligenceDerived.ts` still contains legacy fallback arithmetic; pre/post raw vendor SQL/reader remains owned by `Q83`; full recommendationAllowed parity remains for follow-up prompts.
 - Follow-up: keep `RQ140`-`RQ146` WAITING; create a bounded follow-up for derived-intelligence null states and complete pre/post/parity proof before promoting the next reliability prompt.
 
