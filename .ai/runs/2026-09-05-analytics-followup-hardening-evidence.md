@@ -4,8 +4,8 @@ Date: 2026-09-05
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending final commit and push
+Main commit SHA: 4179062216f2615a7df7a5ae25c58b1377ddd701
+Main verification: current main and origin/main contain implementation commit 4179062216f2615a7df7a5ae25c58b1377ddd701 as an ancestor; final branch SHA is recorded in the delivery response
 Evidence state: synchronized
 
 ## What was done
@@ -55,4 +55,3 @@ Evidence state: synchronized
 
 ## Next
 - Restore valid Neon credentials, verify migration/view application and refresh success, then repeat all-route browser console and export/report parity smoke with real data.
-
