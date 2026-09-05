@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ151
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -75,6 +75,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ148 | WAITING | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
 | RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
 | RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
+| RQ151 | READY | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
+| RQ152 | WAITING | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
+| RQ153 | WAITING | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 
 ---
 
@@ -4095,3 +4098,195 @@ Commit suggestion: `feat(analytics): calibrate forecast decision value`
 
 - `RQ142` measured evaluation and `RQ147` evidence registry must be DONE; `RQ149` provides inventory availability/economic basis where replenishment interpretation is requested.
 - This prompt does not replace `RQ142` and must not be promoted early.
+
+---
+
+## RQ151 - Remove raw unknown action warning codes from user-facing messages
+
+Status: READY
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-action-safe-messaging
+Parallel-safe: no, action message mapping has one page owner
+Owner: Codex
+Promotion note: 2026-09-05 - extracted from the independently executable safe-messaging slice of `RQ136`/`RQ145`; no forecast, Shopify, vendor-comparison, live-worker or recommendation-formula scope is included.
+Commit suggestion: `fix(analytics): map unknown action warnings safely`
+
+### Problem
+
+`AnalyticsActionsPage` maps known outcome warning codes to Serbian copy but falls back to rendering the raw backend code when the code is unknown. That violates the user-facing text safety rule and makes backend vocabulary changes visible as opaque technical strings. This can be fixed locally without changing action semantics or waiting for live runtime proof.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:258` returns `OUTCOME_SUMMARY_WARNING_LABELS[code] ?? code`.
+- The same page already has an explicit safe-label pattern for known action, quality and recommendation codes.
+- `RQ136` and `RQ145` leave cross-surface message parity as broader follow-up, but this unknown-code leak is a bounded page-owned defect.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx` warning/reason/status presentation helpers and the nearest page tests.
+- Only user-facing mapping and regression coverage; preserve backend values in technical/audit payloads where an existing channel requires them.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ136` and `RQ145` safe-messaging sections
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.spec.tsx`
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`
+
+### Do
+
+1. Replace raw-code fallback in every user-visible outcome warning/reason/status path owned by this page with clear Serbian copy that states the data or measurement limitation.
+2. Preserve known mappings and backend-owned status/action semantics; do not invent a new recommendation or confidence rule.
+3. Keep raw codes only in an explicitly technical/audit path if one already exists; never expose them in cards, tooltips, toasts, exports or reports owned by this page.
+4. Add a regression test for an unknown warning code, plus known-code, empty, stale/degraded and failed-summary states.
+
+### Tests
+
+- Focused `AnalyticsActionsPage` specs for unknown and known warning codes, empty measured outcomes, stale/degraded summary and summary failure.
+- Verify no raw backend code appears in rendered user-facing text.
+- `npm run check:analytics-guardrails`, typecheck/build when shared mapping changes, `git diff --check` and queue validators.
+
+### Acceptance
+
+- Unknown backend warning/reason/status codes never appear verbatim in user-facing analytics action text.
+- Known Serbian labels remain unchanged.
+- Empty, stale, degraded and failed states remain distinct and do not become success, zero or actionable copy.
+- No backend score, confidence, recommendation status or formula is recreated in React.
+
+### Dependencies
+
+- No runtime dependency; this is a bounded presentation-mapping repair and must not wait for `STAB16`, forecast materialization or Shopify work.
+- Reuse the existing backend state and shared formatters; do not make `RQ136` a second owner.
+
+---
+
+## RQ152 - Preserve unknown and missing evidence in derived intelligence builders
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: analytics-derived-numeric-state
+Parallel-safe: no, derived signal semantics have one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve derived intelligence evidence states`
+
+### Problem
+
+`analyticsIntelligenceDerived.ts` still contains legacy derived builders that convert non-finite values to zero, use synthetic denominator guards, and calculate approximate revenue, stock value, depletion risk or reorder-related outputs from fallback-filled signals. Even where the current merge path keeps a legacy backend result primary, these builders remain a future regression path and their numeric contracts are not proven.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts:23-25` returns `0` from `round` for non-finite input.
+- `:184-196`, `:231-258`, `:321-328` and `:356-370` use synthetic denominator guards or fallback numeric values while constructing derived outputs.
+- `RQ139` explicitly records this file as a remaining residual, while `RQ143` requires frontend-derived ranking/reorder semantics to remain non-actionable without backend evidence.
+
+### Scope
+
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts` and its focused service tests only.
+- Define state-preserving return behavior for unknown, missing, insufficient and valid-zero inputs; keep these builders non-authoritative and non-actionable.
+- No forecast calibration, Shopify integration, backend formula rewrite, recommendation engine, or live refresh work.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139` completion note and `RQ143` residual evidence
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`
+- `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`
+- the DTO contracts imported by this service
+
+### Do
+
+1. Inventory each derived output's unit, numerator, denominator, source fields, valid-zero rule and minimum evidence before changing types.
+2. Reject NaN/Infinity and missing denominators as unknown/unavailable or omit the derived item; never convert them to a trusted zero, positive scenario or healthy status.
+3. Preserve measured zero stock, zero sales, zero revenue and zero discount where their denominators and source evidence are valid.
+4. Ensure derived values cannot be used to create recommendation/action/ranking semantics; existing backend-owned results remain authoritative.
+5. Add failing-first tests for empty, null, valid zero, missing denominator, NaN, Infinity and mixed valid/invalid signal sets.
+
+### Tests
+
+- Focused `analyticsIntelligenceDerived` tests for all listed numeric counterexamples and mixed valid/unknown rows.
+- Prove no derived fallback creates a positive reorder/depletion/action value from missing evidence.
+- `npm run check:analytics-guardrails`, typecheck/build, `git diff --check` and queue validators.
+
+### Acceptance
+
+- Unknown/missing/non-finite derived evidence remains unavailable or explicitly degraded, never a valid zero.
+- Valid zero remains zero.
+- Derived builders do not create actionable recommendation, confidence or ranking semantics.
+- Existing primary backend data paths remain unchanged.
+
+### Dependencies
+
+- RQ139's bounded numeric vocabulary is accepted as the semantic baseline; unresolved RQ139 live/parity residuals are not pulled into this prompt.
+- Queue order: promote after `RQ151` is complete; do not promote forecast/Shopify or live-worker work under this prompt.
+
+---
+
+## RQ153 - Build the offline analytics route lineage matrix
+
+Status: WAITING
+Priority: P1
+Type: audit/docs/tests
+Feature family: analytics-lineage-static-matrix
+Parallel-safe: no, the matrix is the single cross-screen inventory owner
+Owner: Codex
+Commit suggestion: `docs(analytics): map offline route lineage`
+
+### Problem
+
+`RQ141` correctly requires a complete route/source/cache/refresh matrix, but its live refresh and broad contract scope cannot be completed honestly while `STAB16` is unresolved. The static portion can be extracted and completed independently: map the current React page, client, endpoint, DTO, service/query, schema and existing tests, explicitly marking runtime-only facts as unproven.
+
+### Evidence
+
+- `RQ137` and `RQ140` completion notes identify remaining cross-route period, scope, parity and live-refresh gaps.
+- `RQ141` requires a matrix for `/analytics`, products, supplier, inventory, actions, decision-board, data-quality, reports and sales/trend/forecast/nivelacija families.
+- `STAB16` owns provider worker registration and live refresh/browser proof; static code inspection must not claim that evidence.
+
+### Scope
+
+- A versioned offline matrix under `docs/qa/` covering every requested route and named analytics family.
+- Static code/test mapping for React page/component, API client, endpoint, DTO, backend service, SQL/EF query, table/view/migration, cache identity/invalidation and refresh owner.
+- For each row, record requested/effective/observed period, scope, generated time, last successful refresh, freshness, quality, empty/partial/error state, recommendation allowance and limitation; mark unknown/runtime-only values explicitly.
+- No production calls, schema mutation, forecast calculation or Shopify work.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ139`, `RQ140` and `RQ141`
+- `docs/qa/` period, production and data-reliability evidence notes
+- route/page/client/endpoint sources named by `RQ141`
+
+### Do
+
+1. Build the matrix from current code and nearest tests, with file/line references and an explicit confirmation basis.
+2. Separate confirmed static ownership from unproven runtime freshness, refresh success, migration presence and browser behavior.
+3. Identify duplicate or conflicting source owners and create narrowly bounded follow-up references without editing their formulas.
+4. Add a lightweight completeness check or contract test so new required routes cannot silently disappear from the matrix.
+
+### Tests
+
+- Matrix completeness/static validation for all required routes and families.
+- `git diff --check` and queue/planning validators.
+- No live/runtime claim without `STAB16`; no forecast metric validation under this prompt.
+
+### Acceptance
+
+- The offline matrix covers every requested route/family and every required trust field.
+- Each field is confirmed by source/test or explicitly marked unproven with owner and next proof.
+- The document cannot be read as proof of live refresh, production schema or browser console behavior.
+
+### Dependencies
+
+- Reuse `RQ137`, `RQ139` and `RQ140` vocabulary; do not wait for their live residuals to complete the static inventory.
+- `STAB16` remains the owner of live provider/worker/browser proof; this prompt is documentation/static validation only.
