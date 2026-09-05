@@ -17,7 +17,7 @@ public record TrendMomentumDto(
     string   ProductName,
     string   Brand,
     DateOnly SnapshotDate,
-    double   MomentumScore,
+    double?  MomentumScore,
     double   ScoreDelta,
     int      RankDelta,
     bool     IsNewEntry,

@@ -79,69 +79,19 @@ public class GetInventoryRecommendationsHandler
         }
         else
         {
-            // Fallback: on-the-fly iz trend snapshots + inventory_movement_facts
+            // No reliable sales/stock denominator exists here. Never manufacture
+            // velocity=1 and stock=0 because that creates an actionable fake order.
             _logger.LogWarning(
-                "Nema precomputed inventory preporuka za {Date}, računam on-the-fly.", targetDate);
-
-            var snapshots = await _db.TrendProductSnapshots
-                .AsNoTracking()
-                .Where(s => s.SnapshotDate == targetDate)
-                .ToListAsync(ct);
-
-            var momentumMap = await _db.TrendProductMomentums
-                .AsNoTracking()
-                .Where(m => m.SnapshotDate == targetDate)
-                .ToDictionaryAsync(m => m.CanonicalKey, m => m.MomentumScore, ct);
-
-            // Normalise trend scores to [0,1]
-            double maxScore = snapshots.Any() ? snapshots.Max(s => s.Score) : 1.0;
-            if (maxScore <= 0) maxScore = 1.0;
-
-            var onTheFly = snapshots
-                .Select(s =>
-                {
-                    double trendNorm = s.Score / maxScore;
-                    double momentum  = momentumMap.GetValueOrDefault(s.CanonicalKey, 0.0);
-
-                    // Bez real sales data koristimo dummy velocity = 1.0 / dan
-                    double velocity = 1.0;
-                    int    stock    = 0;
-
-                    int qty = TrendScoringService.ComputeRecommendedOrderQty(
-                        trendNorm, momentum, velocity, stock,
-                        leadTimeDays: 14, targetCoverageDays: 30);
-
-                    if (qty < request.MinQty) return null;
-
-                    if (!string.IsNullOrWhiteSpace(request.Brand)
-                        && !string.Equals(s.Brand, request.Brand, StringComparison.OrdinalIgnoreCase))
-                        return null;
-
-                    if (!string.IsNullOrWhiteSpace(request.Category)
-                        && !string.Equals(s.Category, request.Category, StringComparison.OrdinalIgnoreCase))
-                        return null;
-
-                    return new InventoryRecommendationDto(
-                        0L,
-                        s.SnapshotDate,
-                        s.CanonicalKey,
-                        s.Brand,
-                        s.Category,
-                        velocity,
-                        stock,
-                        trendNorm,
-                        momentum,
-                        qty);
-                })
-                .Where(d => d is not null)
-                .Cast<InventoryRecommendationDto>()
-                .OrderByDescending(d => d.RecommendedQty)
-                .Take(request.Top)
-                .ToList();
-
-            items = onTheFly;
+                "Nema precomputed inventory preporuka za {Date}; rezultat ostaje neakcionabilan.", targetDate);
+            items = [];
         }
 
-        return new InventoryRecommendationsResult(targetDate, items.Count, items);
+        return new InventoryRecommendationsResult(
+            targetDate,
+            items.Count,
+            items,
+            hasPrecomputed ? "good" : "insufficient_data",
+            hasPrecomputed && items.Count > 0,
+            UsedFallback: !hasPrecomputed);
     }
 }

@@ -61,9 +61,9 @@ public sealed class AnalyticsDataQualityHistoryService
             new NpgsqlParameter("lookbackDays", snapshot.LookbackDays),
             new NpgsqlParameter("orphanArticleCount", snapshot.OrphanArticleCount),
             new NpgsqlParameter("missingCostRevenue", snapshot.MissingCostRevenue),
-            new NpgsqlParameter("missingCostRevenueSharePct", snapshot.MissingCostRevenueSharePct),
+            new NpgsqlParameter("missingCostRevenueSharePct", snapshot.MissingCostRevenueSharePct is { } missingCostShare ? missingCostShare : DBNull.Value),
             new NpgsqlParameter("unknownSupplierRevenue", snapshot.UnknownSupplierRevenue),
-            new NpgsqlParameter("unknownSupplierRevenueSharePct", snapshot.UnknownSupplierRevenueSharePct),
+            new NpgsqlParameter("unknownSupplierRevenueSharePct", snapshot.UnknownSupplierRevenueSharePct is { } unknownSupplierShare ? unknownSupplierShare : DBNull.Value),
             new NpgsqlParameter("dataScope", NormalizeDataScope(dataScope))
         };
 
@@ -108,8 +108,8 @@ public sealed class AnalyticsDataQualityHistoryService
             {
                 points.Add(new DataQualityTrendPointDto(
                     reader.GetDateTime(0),
-                    reader.IsDBNull(1) ? 0d : reader.GetDouble(1),
-                    reader.IsDBNull(2) ? 0d : reader.GetDouble(2),
+                    reader.IsDBNull(1) ? null : reader.GetDouble(1),
+                    reader.IsDBNull(2) ? null : reader.GetDouble(2),
                     reader.IsDBNull(3) ? 0 : reader.GetInt32(3)));
             }
 
@@ -147,9 +147,9 @@ public sealed class AnalyticsDataQualityHistoryService
                     lookback_days INTEGER NOT NULL,
                     orphan_article_count INTEGER NOT NULL DEFAULT 0,
                     missing_cost_revenue NUMERIC(18, 2) NOT NULL DEFAULT 0,
-                    missing_cost_revenue_share_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    missing_cost_revenue_share_pct DOUBLE PRECISION NULL,
                     unknown_supplier_revenue NUMERIC(18, 2) NOT NULL DEFAULT 0,
-                    unknown_supplier_revenue_share_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    unknown_supplier_revenue_share_pct DOUBLE PRECISION NULL,
                     data_scope VARCHAR(20) NOT NULL DEFAULT 'all'
                 );
 
@@ -158,6 +158,11 @@ public sealed class AnalyticsDataQualityHistoryService
 
                 CREATE INDEX IF NOT EXISTS ix_analytics_data_quality_history_scope_date
                     ON analytics_data_quality_history (data_scope, snapshot_date_utc DESC);
+
+                ALTER TABLE analytics_data_quality_history
+                    ALTER COLUMN missing_cost_revenue_share_pct DROP NOT NULL;
+                ALTER TABLE analytics_data_quality_history
+                    ALTER COLUMN unknown_supplier_revenue_share_pct DROP NOT NULL;
                 """;
 
             await _db.Database.ExecuteSqlRawAsync(sql, ct);
@@ -178,6 +183,6 @@ public sealed class AnalyticsDataQualityHistoryService
 
 public sealed record DataQualityTrendPointDto(
     DateTime Date,
-    double MissingCostRevenueSharePct,
-    double UnknownSupplierRevenueSharePct,
+    double? MissingCostRevenueSharePct,
+    double? UnknownSupplierRevenueSharePct,
     int OrphanArticleCount);

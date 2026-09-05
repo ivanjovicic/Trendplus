@@ -48,4 +48,24 @@ public sealed class PreNivelacijaScoringServiceTests
         Assert.True(markdown.EffectivePrice > 0m);
         Assert.Contains(confidence, new[] { "Low", "Medium", "High" });
     }
+
+    [Fact]
+    public void SimulateScenarios_WithNoStock_DoesNotInventOneExpectedUnit()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var (highlight, markdown, _) = service.SimulateScenarios(
+            stockUnits: 0,
+            units180: 180,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            sellingPrice: 5200m,
+            purchasePrice: 2600m,
+            preNivelacijaScore: 78m);
+
+        Assert.Equal(0, highlight.ExpectedUnits30d);
+        Assert.Equal(0, markdown.ExpectedUnits30d);
+        Assert.Equal(0m, highlight.ExpectedRevenue30d);
+        Assert.Equal(0m, markdown.ExpectedRevenue30d);
+    }
 }

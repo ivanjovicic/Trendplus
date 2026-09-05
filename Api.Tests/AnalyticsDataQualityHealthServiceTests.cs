@@ -118,7 +118,7 @@ public sealed class AnalyticsDataQualityHealthServiceTests
     }
 
     [Fact]
-    public async Task CaptureAsync_NoSalesReturnsZeroSharesInsteadOfNaNOrInfinity()
+    public async Task CaptureAsync_NoSalesReturnsUnknownSharesInsteadOfFakeZeroOrNaN()
     {
         await using var db = CreateContext();
         db.Artikli.Add(new Artikli
@@ -139,10 +139,8 @@ public sealed class AnalyticsDataQualityHealthServiceTests
         Assert.False(snapshot.HasRevenueEvidence);
         Assert.Equal(0m, snapshot.MissingCostRevenue);
         Assert.Equal(0m, snapshot.UnknownSupplierRevenue);
-        Assert.Equal(0d, snapshot.MissingCostRevenueSharePct);
-        Assert.Equal(0d, snapshot.UnknownSupplierRevenueSharePct);
-        Assert.False(double.IsNaN(snapshot.MissingCostRevenueSharePct));
-        Assert.False(double.IsInfinity(snapshot.UnknownSupplierRevenueSharePct));
+        Assert.Null(snapshot.MissingCostRevenueSharePct);
+        Assert.Null(snapshot.UnknownSupplierRevenueSharePct);
     }
 
     [Fact]

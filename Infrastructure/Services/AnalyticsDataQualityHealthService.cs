@@ -164,11 +164,11 @@ public sealed class AnalyticsDataQualityHealthService
             MissingCostRevenue = Math.Round(missingCostRevenue, 2),
             MissingCostRevenueSharePct = totalRevenue > 0m
                 ? Math.Round((double)(missingCostRevenue / totalRevenue * 100m), 2)
-                : 0d,
+                : null,
             UnknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
             UnknownSupplierRevenueSharePct = totalRevenue > 0m
                 ? Math.Round((double)(unknownSupplierRevenue / totalRevenue * 100m), 2)
-                : 0d
+                : null
         };
     }
 
@@ -265,9 +265,9 @@ public sealed class AnalyticsDataQualityHealthSnapshot
     /// <summary>False when the lookback window has no sales revenue. Share-based health must not look green.</summary>
     public bool HasRevenueEvidence { get; set; }
     public decimal MissingCostRevenue { get; set; }
-    public double MissingCostRevenueSharePct { get; set; }
+    public double? MissingCostRevenueSharePct { get; set; }
     public decimal UnknownSupplierRevenue { get; set; }
-    public double UnknownSupplierRevenueSharePct { get; set; }
+    public double? UnknownSupplierRevenueSharePct { get; set; }
 }
 
 public sealed record DataQualityTopOffenderDto(

@@ -670,7 +670,9 @@ public static class DataQualityEndpoints
                 DuplicateSkuCount: duplicateSkuCount,
                 MissingSupplierNameCount: missingSupplierNameCount),
             new PilotDataQualityIntakeImpactDto(
-                RevenueWithoutCostPercent: Math.Max(0d, health.MissingCostRevenueSharePct) / 100d,
+                RevenueWithoutCostPercent: health.MissingCostRevenueSharePct is { } missingCostShare
+                    ? Math.Max(0d, missingCostShare) / 100d
+                    : null,
                 ArticlesWithoutSupplierPercent: articlesWithoutSupplierPercent,
                 RecommendationsBlockedCount: blockedRecommendationsCount,
                 IgnoredRowsCount: ignoredRows,
@@ -725,7 +727,7 @@ public static class DataQualityEndpoints
             new("Problemi", "Bez dobavljaca", report.Issues.MissingSupplierCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Bez nabavne cene", report.Issues.MissingCostCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Prodaja bez artikla", report.Issues.SaleWithoutArticleCount.ToString(CultureInfo.InvariantCulture)),
-            new("Uticaj", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent.ToString("0.####", CultureInfo.InvariantCulture)),
+            new("Uticaj", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent?.ToString("0.####", CultureInfo.InvariantCulture) ?? "n/a"),
             new("Uticaj", "Blokirane preporuke", report.Impact.RecommendationsBlockedCount.ToString(CultureInfo.InvariantCulture)),
             new("Metodologija", "Opis", methodology),
         };
@@ -1238,7 +1240,7 @@ public static class DataQualityEndpoints
         int MissingSupplierNameCount);
 
     public sealed record PilotDataQualityIntakeImpactDto(
-        double RevenueWithoutCostPercent,
+        double? RevenueWithoutCostPercent,
         double ArticlesWithoutSupplierPercent,
         int RecommendationsBlockedCount,
         int IgnoredRowsCount,
@@ -1323,9 +1325,9 @@ public static class DataQualityEndpoints
         int OrphanArticleCount,
         decimal TotalRevenue,
         decimal MissingCostRevenue,
-        double MissingCostRevenueSharePct,
+        double? MissingCostRevenueSharePct,
         decimal UnknownSupplierRevenue,
-        double UnknownSupplierRevenueSharePct,
+        double? UnknownSupplierRevenueSharePct,
         int Score,
         string ScoreStatus,
         string ScoreSummary,
@@ -1353,6 +1355,14 @@ public static class DataQualityEndpoints
         AnalyticsDataQualityHealthSnapshot snapshot,
         AnalyticsDataQualityHealthOptions options)
     {
+        if (!snapshot.HasRevenueEvidence || snapshot.TotalRevenue <= 0m)
+        {
+            return new DataQualityScoreDto(
+                0,
+                "insufficient_data",
+                "Nema dovoljno prometnog dokaza za pouzdan health skor u ovom periodu.");
+        }
+
         static double Clamp01(double value) => Math.Max(0d, Math.Min(1d, value));
 
         var warningPenalty = Clamp01(options.ScorePenaltyAtWarning);
@@ -1413,14 +1423,14 @@ public static class DataQualityEndpoints
         return new DataQualityScoreDto(value, status, summary);
     }
 
-    private static double CalculatePenalty(double metricValue, double warningThreshold, double warningPenalty, double criticalMultiplier)
+    private static double CalculatePenalty(double? metricValue, double warningThreshold, double warningPenalty, double criticalMultiplier)
     {
-        if (warningThreshold <= 0d)
+        if (metricValue is null || !double.IsFinite(metricValue.Value) || warningThreshold <= 0d)
         {
             return 0d;
         }
 
-        var normalized = Math.Max(0d, metricValue) / warningThreshold;
+        var normalized = Math.Max(0d, metricValue.Value) / warningThreshold;
         if (normalized <= 1d)
         {
             return normalized * warningPenalty;
@@ -1486,8 +1496,11 @@ public static class DataQualityEndpoints
         penalty += Math.Min(15d, Ratio(saleWithoutArticleCount, rowBase) * 15d);
         penalty += Math.Min(10d, Ratio(zeroOrNegativePriceCount, rowBase) * 10d);
         penalty += Math.Min(20d, Ratio(ignoredRows, rowBase) * 20d);
-        penalty += Math.Min(20d, Math.Max(0d, health.MissingCostRevenueSharePct) / 100d * 20d);
-        penalty += Math.Min(15d, Math.Max(0d, health.UnknownSupplierRevenueSharePct) / 100d * 15d);
+        if (health.HasRevenueEvidence)
+        {
+            penalty += Math.Min(20d, Math.Max(0d, health.MissingCostRevenueSharePct ?? 0d) / 100d * 20d);
+            penalty += Math.Min(15d, Math.Max(0d, health.UnknownSupplierRevenueSharePct ?? 0d) / 100d * 15d);
+        }
         penalty += Math.Min(25d, Ratio(insufficientSignalCount, articleBase) * 25d);
         penalty += (freshnessStatus ?? string.Empty).Trim().ToLowerInvariant() switch
         {

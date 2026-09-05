@@ -331,40 +331,28 @@ public sealed class TrendIngestionWorker : BackgroundService
         var momentums = new List<TrendProductMomentum>(todaySnaps.Count);
         foreach (var snap in todaySnaps)
         {
-            TrendProductMomentum m;
             if (yesterdayByKey.TryGetValue(snap.CanonicalKey, out var prev))
             {
                 var score = TrendScoringService.ComputeMomentum(
                     snap.Score, prev.Score,
                     snap.RankGlobal, prev.RankGlobal);
 
-                m = new TrendProductMomentum
+                if (score is null)
+                {
+                    continue;
+                }
+
+                momentums.Add(new TrendProductMomentum
                 {
                     SnapshotDate  = today,
                     CanonicalKey  = snap.CanonicalKey,
-                    MomentumScore = score,
+                    MomentumScore = score.Value,
                     ScoreDelta    = snap.Score - prev.Score,
                     RankDelta     = prev.RankGlobal - snap.RankGlobal, // positive = climbed
                     IsNewEntry    = false,
                     CreatedAt     = DateTimeOffset.UtcNow,
-                };
+                });
             }
-            else
-            {
-                // Brand-new entry — treat as maximum upward momentum
-                m = new TrendProductMomentum
-                {
-                    SnapshotDate  = today,
-                    CanonicalKey  = snap.CanonicalKey,
-                    MomentumScore = 1.0,
-                    ScoreDelta    = snap.Score,
-                    RankDelta     = 0,
-                    IsNewEntry    = true,
-                    CreatedAt     = DateTimeOffset.UtcNow,
-                };
-            }
-
-            momentums.Add(m);
         }
 
         await db.TrendProductMomentums.AddRangeAsync(momentums, ct);
@@ -397,7 +385,7 @@ public sealed class TrendIngestionWorker : BackgroundService
         var records = new List<TrendplusIndexRecord>();
 
         // Global index
-        records.Add(BuildIndexRecord(today, "global", "all", snaps, momentumByKey));
+        AddIndexRecord(records, today, "global", "all", snaps, momentumByKey);
 
         // Per-market index
         var byMarket = snaps
@@ -409,7 +397,7 @@ public sealed class TrendIngestionWorker : BackgroundService
         foreach (var marketGroup in byMarket)
         {
             var marketSnaps = marketGroup.Select(x => x.Snap).ToList();
-            records.Add(BuildIndexRecord(today, "market", marketGroup.Key, marketSnaps, momentumByKey));
+            AddIndexRecord(records, today, "market", marketGroup.Key, marketSnaps, momentumByKey);
         }
 
         // Per-brand index (only brands with ≥5 products)
@@ -419,14 +407,15 @@ public sealed class TrendIngestionWorker : BackgroundService
 
         foreach (var brandGroup in byBrand)
         {
-            records.Add(BuildIndexRecord(today, "brand", brandGroup.Key, brandGroup.ToList(), momentumByKey));
+            AddIndexRecord(records, today, "brand", brandGroup.Key, brandGroup.ToList(), momentumByKey);
         }
 
         await db.TrendplusIndexRecords.AddRangeAsync(records, ct);
         await db.SaveChangesAsync(ct);
     }
 
-    private static TrendplusIndexRecord BuildIndexRecord(
+    private static void AddIndexRecord(
+        List<TrendplusIndexRecord> records,
         DateOnly date,
         string scopeType,
         string scopeValue,
@@ -434,29 +423,39 @@ public sealed class TrendIngestionWorker : BackgroundService
         Dictionary<string, TrendProductMomentum> momentumByKey)
     {
         var scores = snaps.Select(s => s.Score).ToList();
-        var momentums = snaps.Select(s =>
-            momentumByKey.TryGetValue(s.CanonicalKey, out var m) ? m.MomentumScore : 0.0).ToList();
+        var momentums = snaps
+            .Where(s => momentumByKey.ContainsKey(s.CanonicalKey))
+            .Select(s => momentumByKey[s.CanonicalKey].MomentumScore)
+            .Where(double.IsFinite)
+            .ToList();
 
-        var avgSocial = snaps
+        var socialValues = snaps
             .Where(s => s.SocialScore.HasValue)
-            .Select(s => s.SocialScore!.Value / 100.0)
-            .DefaultIfEmpty(0.0)
-            .Average();
+            .Select(s => s.SocialScore!.Value)
+            .ToList();
+        double? avgSocial = socialValues.Count == 0 ? null : socialValues.Average();
 
         var (indexVal, baseVal, momentumVal, socialVal) =
             TrendScoringService.ComputeExtendedTrendIndex(scores, momentums, avgSocial);
 
-        return new TrendplusIndexRecord
+        if (indexVal is null || baseVal is null || momentumVal is null || socialVal is null)
+        {
+            // The storage contract is non-nullable for these components. Do not
+            // persist a synthetic zero; the API will expose the degraded fallback.
+            return;
+        }
+
+        records.Add(new TrendplusIndexRecord
         {
             SnapshotDate       = date,
             ScopeType          = scopeType,
             ScopeValue         = scopeValue,
-            IndexValue         = Math.Round(indexVal,    2),
-            BaseComponent      = Math.Round(baseVal,     2),
-            MomentumComponent  = Math.Round(momentumVal, 2),
-            SocialComponent    = Math.Round(socialVal,   2),
+            IndexValue         = Math.Round(indexVal.Value, 2),
+            BaseComponent      = Math.Round(baseVal.Value, 2),
+            MomentumComponent  = Math.Round(momentumVal.Value, 2),
+            SocialComponent    = Math.Round(socialVal.Value, 2),
             CreatedAt          = DateTimeOffset.UtcNow,
-        };
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

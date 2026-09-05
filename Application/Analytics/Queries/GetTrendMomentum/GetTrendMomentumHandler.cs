@@ -80,7 +80,7 @@ public class GetTrendMomentumHandler : IRequestHandler<GetTrendMomentumQuery, Tr
                         snap?.ProductName ?? m.CanonicalKey,
                         brand,
                         m.SnapshotDate,
-                        m.MomentumScore,
+                        double.IsFinite(m.MomentumScore) ? m.MomentumScore : null,
                         m.ScoreDelta,
                         m.RankDelta,
                         m.IsNewEntry,
@@ -112,7 +112,7 @@ public class GetTrendMomentumHandler : IRequestHandler<GetTrendMomentumQuery, Tr
                 {
                     yesterdaySnaps.TryGetValue(today.CanonicalKey, out var yest);
 
-                    double momentum = TrendScoringService.ComputeMomentum(
+                    double? momentum = TrendScoringService.ComputeMomentum(
                         today.Score,
                         yest?.Score,
                         today.RankGlobal,
@@ -144,8 +144,12 @@ public class GetTrendMomentumHandler : IRequestHandler<GetTrendMomentumQuery, Tr
 
         // ── Sort + Top N ─────────────────────────────────────────────────────
         items = request.Rising
-            ? items.OrderByDescending(d => d.MomentumScore).Take(request.Top).ToList()
-            : items.OrderBy(d => d.MomentumScore).Take(request.Top).ToList();
+            ? items.OrderByDescending(d => d.MomentumScore.HasValue)
+                .ThenByDescending(d => d.MomentumScore)
+                .Take(request.Top).ToList()
+            : items.OrderByDescending(d => d.MomentumScore.HasValue)
+                .ThenBy(d => d.MomentumScore)
+                .Take(request.Top).ToList();
 
         return new TrendMomentumResult(targetDate, items.Count, items);
     }

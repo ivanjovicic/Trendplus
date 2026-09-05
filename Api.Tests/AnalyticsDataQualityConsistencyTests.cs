@@ -13,6 +13,23 @@ namespace Api.Tests;
 public sealed class AnalyticsDataQualityConsistencyTests
 {
     [Fact]
+    public void HealthScore_NoRevenueEvidence_IsInsufficientAndNotGreen()
+    {
+        var result = DataQualityEndpoints.BuildScore(
+            new AnalyticsDataQualityHealthSnapshot
+            {
+                TotalRevenue = 0m,
+                HasRevenueEvidence = false,
+                MissingCostRevenueSharePct = null,
+                UnknownSupplierRevenueSharePct = null,
+            },
+            new AnalyticsDataQualityHealthOptions());
+
+        Assert.Equal(0, result.Value);
+        Assert.Equal("insufficient_data", result.Status);
+        Assert.Contains("Nema dovoljno", result.Summary, StringComparison.OrdinalIgnoreCase);
+    }
+    [Fact]
     public void MissingCostRule_TreatsNullAndNonPositiveValuesAsMissing()
     {
         Assert.True(AnalyticsDataQualityHealthService.IsMissingCost(null));

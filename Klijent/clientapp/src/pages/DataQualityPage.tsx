@@ -114,31 +114,35 @@ function scoreTone(status: AnalyticsDataQualityHealth["scoreStatus"] | undefined
   }
 }
 
-function buildLinePath(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number, width: number, height: number) {
+function buildLinePath(points: DataQualityTrendPoint[], selector: (point: DataQualityTrendPoint) => number | null, width: number, height: number) {
   const padding = 14;
-  const values = points.map(selector);
+  const values = points.map(selector).filter((value): value is number => value != null && Number.isFinite(value));
+  if (values.length === 0) return "";
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
 
   return points
-    .map((point, index) => {
+    .reduce((path, point, index) => {
+      const value = selector(point);
+      if (value == null || !Number.isFinite(value)) return path;
       const x = points.length === 1
         ? width / 2
         : padding + ((width - padding * 2) * index) / (points.length - 1);
-      const value = selector(point);
       const y = height - padding - ((value - min) / range) * (height - padding * 2);
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
+      return `${path}${path ? " L" : "M"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }, "");
 }
 
 function trendTone(
   points: DataQualityTrendPoint[],
-  selector: (point: DataQualityTrendPoint) => number,
+  selector: (point: DataQualityTrendPoint) => number | null,
 ): "neutral" | "improving" | "worsening" {
   if (points.length < 2) return "neutral";
-  return selector(points[points.length - 1]) <= selector(points[0]) ? "improving" : "worsening";
+  const first = selector(points[0]);
+  const last = selector(points[points.length - 1]);
+  if (first == null || last == null || !Number.isFinite(first) || !Number.isFinite(last)) return "neutral";
+  return last <= first ? "improving" : "worsening";
 }
 
 function scoreStatusLabel(status: AnalyticsDataQualityHealth["scoreStatus"] | undefined): string {
@@ -151,6 +155,8 @@ function scoreStatusLabel(status: AnalyticsDataQualityHealth["scoreStatus"] | un
       return "Potreban oprez";
     case "critical":
       return "Nije pouzdano";
+    case "insufficient_data":
+      return "Nedovoljno podataka";
     default:
       return "Nije dostupno";
   }
@@ -654,8 +660,10 @@ export default function DataQualityPage() {
 
     const hasWarning =
       health.orphanArticleCount >= health.thresholds.orphanArticleCount ||
-      (health.missingCostRevenueSharePct ?? 0) >= health.thresholds.missingCostRevenueSharePct ||
-      (health.unknownSupplierRevenueSharePct ?? 0) >= health.thresholds.unknownSupplierRevenueSharePct;
+      health.missingCostRevenueSharePct == null ||
+      health.unknownSupplierRevenueSharePct == null ||
+      health.missingCostRevenueSharePct >= health.thresholds.missingCostRevenueSharePct ||
+      health.unknownSupplierRevenueSharePct >= health.thresholds.unknownSupplierRevenueSharePct;
 
     return hasWarning
       ? { label: "Potrebna je korekcija podataka", tone: "warning" as const }
@@ -741,7 +749,7 @@ export default function DataQualityPage() {
           {health ? (
             <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Prometni health signal">
               <span className="data-quality-score-label">Prometni health signal</span>
-              <strong>{health.score}</strong>
+              <strong>{health.scoreStatus === "insufficient_data" ? "Nije dostupno" : health.score}</strong>
               <span className="data-quality-score-status">{scoreStatusLabel(health.scoreStatus)}</span>
               <span className="data-quality-score-context">
                 Udeo rizika u prometu za poslednjih {health.lookbackDays} dana; nije isto što i spremnost za preporuke.

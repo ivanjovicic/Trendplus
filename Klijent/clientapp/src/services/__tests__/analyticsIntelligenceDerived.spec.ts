@@ -125,7 +125,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     );
   });
 
-  it("returns 0 revShare when total revenue is zero", () => {
+  it("returns unknown revShare when the revenue denominator is zero", () => {
     const result = buildCategoryIntelligenceFromSignals(
       [priceItem({ articleId: 1, category: "Empty", netPrice: 100 })],
       [inventoryItem({ articleId: 1, category: "Empty", avgDailySales30d: 0 })],
@@ -133,7 +133,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     );
 
     expect(result.byCategory).toHaveLength(1);
-    expect(result.byCategory[0].revShare).toBe(0);
+    expect(result.byCategory[0].revShare).toBeNull();
     expect(result.byCategory[0].totalRevenue).toBe(0);
   });
 

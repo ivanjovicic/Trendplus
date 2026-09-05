@@ -207,10 +207,15 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
 
     private static int CalculateScenarioUnits(decimal baselineUnits, int stockUnits, decimal boost)
     {
+        if (stockUnits <= 0 || baselineUnits <= 0m || boost <= 0m)
+        {
+            return 0;
+        }
+
         return (int)Math.Clamp(
             Math.Round((double)(baselineUnits * 30m * boost), MidpointRounding.AwayFromZero),
-            1,
-            Math.Max(1, stockUnits));
+            0,
+            stockUnits);
     }
 
     private static string CalculateConfidence(int units180, int stockUnits)

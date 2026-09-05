@@ -109,12 +109,13 @@ public static class TrendScoringService
     ///
     /// Python: compute_trend_groups – korak 3
     /// </summary>
-    public static double GroupFinalScore(
+    public static double? GroupFinalScore(
         double baseScore,
         int uniqueSources,
         int uniqueMarkets,
         Dictionary<string, int> sourceCounts)
     {
+        if (!double.IsFinite(baseScore)) return null;
         if (baseScore <= 0) return 0.0;
 
         // Cross-source: svaki dodatni izvor dodaje 40%
@@ -175,11 +176,14 @@ public static class TrendScoringService
     ///
     /// Python: apply_social_boost(groups, social_scores_by_brand)
     /// </summary>
-    public static double ApplySocialBoost(
+    public static double? ApplySocialBoost(
         double finalScore,
         double socialScore,
         double socialWeight = MaxSocialWeight)
     {
+        if (!double.IsFinite(finalScore) || !double.IsFinite(socialScore) || !double.IsFinite(socialWeight))
+            return null;
+
         double norm   = Math.Max(0.0, Math.Min(1.0, socialScore / 100.0));
         double factor = 1.0 + socialWeight * norm;
         return finalScore * factor;
@@ -206,15 +210,17 @@ public static class TrendScoringService
     ///
     /// Python: analytics/trend_momentum_engine.py::compute_momentum()
     /// </summary>
-    public static double ComputeMomentum(
+    public static double? ComputeMomentum(
         double? todayScore,
         double? yesterdayScore,
         int?    todayRank       = null,
         int?    yesterdayRank   = null)
     {
         // Novi ulaz u sistem
-        if (yesterdayScore is null || todayScore is null)
-            return 1.0;
+        if (yesterdayScore is null || todayScore is null
+            || !double.IsFinite(yesterdayScore.Value)
+            || !double.IsFinite(todayScore.Value))
+            return null;
 
         const double epsilon = 1e-6;
 
@@ -252,17 +258,24 @@ public static class TrendScoringService
     ///
     /// Python: analytics/trendplus_index.py::compute_trendplus_index()
     /// </summary>
-    public static double ComputeTrendIndex(
+    public static double? ComputeTrendIndex(
         IEnumerable<double> scores,
         int topK = 50)
     {
-        var list = scores
-            .Where(s => s > 0)
+        var finiteScores = scores
+            .Where(double.IsFinite)
+            .ToList();
+
+        if (finiteScores.Count == 0)
+            return null;
+
+        var list = finiteScores
+            .Where(s => s >= 0)
             .OrderByDescending(s => s)
             .Take(topK)
             .ToList();
 
-        if (list.Count == 0) return 0.0;
+        if (list.Count == 0) return null;
 
         double maxScore = list.Max();
         if (maxScore <= 0) return 0.0;
@@ -283,19 +296,19 @@ public static class TrendScoringService
     ///
     /// Python: analytics/trendplus_index.py::compute_trendplus_index(products)
     /// </summary>
-    public static (double Index, double Base, double Momentum, double Social)
+    public static (double? Index, double? Base, double? Momentum, double? Social)
         ComputeExtendedTrendIndex(
             IEnumerable<double> scores,
             IEnumerable<double>? momentums = null,
             double? avgSocialScore = null,
             int topK = 50)
     {
-        double baseComponent = ComputeTrendIndex(scores, topK);
+        double? baseComponent = ComputeTrendIndex(scores, topK);
 
-        double momentumComponent = 0.0;
+        double? momentumComponent = null;
         if (momentums is not null)
         {
-            var mList = momentums.ToList();
+            var mList = momentums.Where(double.IsFinite).ToList();
             if (mList.Count > 0)
             {
                 double avgMom = mList.Average();
@@ -304,15 +317,33 @@ public static class TrendScoringService
             }
         }
 
-        double socialComponent = Math.Max(0.0, Math.Min(100.0, avgSocialScore ?? 0.0));
+        double? socialComponent = avgSocialScore is { } social && double.IsFinite(social)
+            ? Math.Max(0.0, Math.Min(100.0, social))
+            : null;
 
-        // Weighted kombinacija
-        double index = 0.65 * baseComponent
-                     + 0.25 * momentumComponent
-                     + 0.10 * socialComponent;
+        if (baseComponent is null)
+            return (null, null, momentumComponent, socialComponent);
 
-        return (Math.Round(index, 4), Math.Round(baseComponent, 4),
-                Math.Round(momentumComponent, 4), Math.Round(socialComponent, 4));
+        // Missing components are excluded and the remaining weights are normalized.
+        // This prevents an unavailable signal from becoming a trusted zero.
+        double weightedTotal = 0.65 * baseComponent.Value;
+        double weightTotal = 0.65;
+        if (momentumComponent is { } momentum)
+        {
+            weightedTotal += 0.25 * momentum;
+            weightTotal += 0.25;
+        }
+        if (socialComponent is { } socialValue)
+        {
+            weightedTotal += 0.10 * socialValue;
+            weightTotal += 0.10;
+        }
+
+        double index = weightedTotal / weightTotal;
+
+        return (Math.Round(index, 4), Math.Round(baseComponent.Value, 4),
+                momentumComponent is { } momentumValue ? Math.Round(momentumValue, 4) : null,
+                socialComponent is { } socialValue2 ? Math.Round(socialValue2, 4) : null);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -336,7 +367,7 @@ public static class TrendScoringService
     ///
     /// Python: analytics/inventory_intelligence_model.py::compute_inventory_recommendations
     /// </summary>
-    public static int ComputeRecommendedOrderQty(
+    public static int? ComputeRecommendedOrderQty(
         double trendScore,
         double momentumScore,
         double salesVelocityPerDay,
@@ -344,6 +375,11 @@ public static class TrendScoringService
         int    leadTimeDays       = 14,
         int    targetCoverageDays = 30)
     {
+        if (!double.IsFinite(trendScore)
+            || !double.IsFinite(momentumScore)
+            || !double.IsFinite(salesVelocityPerDay))
+            return null;
+
         if (salesVelocityPerDay <= 0)
             return 0;
 

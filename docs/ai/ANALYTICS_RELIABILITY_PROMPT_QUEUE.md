@@ -2,7 +2,8 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ139
+Current READY prompt: none
+RQ139 is PARTIAL; a follow-up is required before the next reliability prompt can be promoted.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -62,7 +63,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
-| RQ139 | READY | analytics-denominator-null-zero-contract | Prove every analytics numerator/denominator and prevent missing values becoming trusted zeroes |
+| RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
 | RQ140 | WAITING | pre-post-nivelacija-causal-comparability | Prove pre/post nivelacija effects are comparable and separate from availability/composition effects |
 | RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
@@ -3218,7 +3219,7 @@ Do not invent scores from frontend heuristics, backfill fake history, or mix sce
 
 ## RQ139 - Prove analytics denominator, null and zero semantics across every decision surface
 
-Status: READY
+Status: PARTIAL
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: analytics-denominator-null-zero-contract
@@ -3290,6 +3291,23 @@ Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume 
 - `Q83` is independently promoted for the raw vendor nivelacija SQL path; `RQ139` must not edit those SQL/reader files in parallel.
 - `STAB16` remains the owner of production worker/live refresh access. This prompt may use deterministic fixtures and current runtime contracts but must not claim live proof without that evidence.
 - Later prompts `RQ140`-`RQ146` must reuse this numeric-state vocabulary rather than creating local exceptions.
+
+### Completion note
+
+- Date: 2026-09-05
+- Status: PARTIAL
+- Completion: Delivered the bounded backend/frontend numeric-state hardening that was provable without taking ownership of Q83: missing/non-finite trend momentum and index components remain unknown, inventory fallback cannot create an order from dummy velocity, Data Quality revenue shares preserve missing denominators as null, and pre-nivelacija zero-stock scenarios remain zero instead of inventing one unit.
+- Changed files: trend scoring queries/worker, Data Quality health/history/API/UI, pre-nivelacija scenario guard, focused regression tests.
+- Contract/runtime behavior changed: null/unknown is preserved through the Data Quality health/trend response; empty or degraded trend/inventory results are not promoted to actionable numeric values; valid zero remains zero.
+- Checks run: `dotnet build Trendplus2.sln --no-restore` (0 errors; existing analyzer warnings), focused backend tests (30/30), frontend guardrails (pass), focused frontend tests (12/12), `git diff --check` (pass).
+- Checks not run: browser console smoke, live provider/refresh proof, complete route-by-route table/chart/export/report parity, and full analytics formula inventory.
+- Run log: `.ai/runs/2026-09-05-RQ139-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: local commit/push pending after lock removal and evidence write.
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: `analyticsIntelligenceDerived.ts` still contains legacy fallback arithmetic; pre/post raw vendor SQL/reader remains owned by `Q83`; full recommendationAllowed parity remains for follow-up prompts.
+- Follow-up: keep `RQ140`-`RQ146` WAITING; create a bounded follow-up for derived-intelligence null states and complete pre/post/parity proof before promoting the next reliability prompt.
 
 ---
 

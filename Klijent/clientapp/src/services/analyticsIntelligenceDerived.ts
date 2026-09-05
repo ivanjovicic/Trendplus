@@ -187,7 +187,7 @@ export function buildCategoryIntelligenceFromSignals(
       marginPct: round(bucket.marginSum / Math.max(bucket.skuIds.size, 1), 1),
       profitLift: round(bucket.profitLiftSum / Math.max(bucket.skuIds.size, 1), 1),
       // CategoryStat.revShare contract: percent units (25 = 25%), matching legacy InsightStudioEndpoints.
-      revShare: totalRevenue > 0 ? round((bucket.approxRevenue / totalRevenue) * 100, 2) : 0,
+      revShare: totalRevenue > 0 ? round((bucket.approxRevenue / totalRevenue) * 100, 2) : null,
       velocity: round(bucket.velocitySum / Math.max(bucket.skuIds.size, 1), 3),
       uniqueSKU: bucket.skuIds.size,
     }))

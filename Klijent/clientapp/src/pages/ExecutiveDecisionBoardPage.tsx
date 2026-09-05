@@ -868,7 +868,7 @@ function buildBlockerCards(
   }
 
   if (intake) {
-    if (intake.issues.missingCostCount > 0 || intake.impact.revenueWithoutCostPercent > 0) {
+    if (intake.issues.missingCostCount > 0 || (intake.impact.revenueWithoutCostPercent ?? 0) > 0) {
       cards.push({
         id: "blocker-cost",
         sectionKey: "blockers",

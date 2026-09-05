@@ -28,5 +28,8 @@ public record InventoryRecommendationDto(
 public record InventoryRecommendationsResult(
     DateOnly                       Date,
     int                            TotalItems,
-    List<InventoryRecommendationDto> Items
+    List<InventoryRecommendationDto> Items,
+    string                         DataQualityStatus = "insufficient_data",
+    bool                           RecommendationAllowed = false,
+    bool                           UsedFallback = false
 );

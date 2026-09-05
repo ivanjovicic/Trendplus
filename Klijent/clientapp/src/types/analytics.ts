@@ -866,7 +866,7 @@ export interface AnalyticsDataQualityHealth {
   unknownSupplierRevenue: number;
   unknownSupplierRevenueSharePct: number | null;
   score: number;
-  scoreStatus: "excellent" | "good" | "warning" | "critical";
+  scoreStatus: "excellent" | "good" | "warning" | "critical" | "insufficient_data";
   scoreSummary: string;
   thresholds: {
     orphanArticleCount: number;
@@ -898,8 +898,8 @@ export interface DataQualityTopOffendersResult {
 
 export interface DataQualityTrendPoint {
   date: string;
-  missingCostRevenueSharePct: number;
-  unknownSupplierRevenueSharePct: number;
+  missingCostRevenueSharePct: number | null;
+  unknownSupplierRevenueSharePct: number | null;
   orphanArticleCount: number;
 }
 
@@ -950,7 +950,7 @@ export interface PilotDataQualityIntakeImpactItem {
 }
 
 export interface PilotDataQualityIntakeImpact {
-  revenueWithoutCostPercent: number;
+  revenueWithoutCostPercent: number | null;
   articlesWithoutSupplierPercent: number;
   recommendationsBlockedCount: number;
   ignoredRowsCount: number;

@@ -15,10 +15,10 @@ public record TrendIndexDto(
     DateOnly SnapshotDate,
     string   ScopeType,
     string   ScopeValue,
-    double   IndexValue,
-    double   BaseComponent,
-    double   MomentumComponent,
-    double   SocialComponent
+    double?  IndexValue,
+    double?  BaseComponent,
+    double?  MomentumComponent,
+    double?  SocialComponent
 );
 
 public record TrendIndexResult(

@@ -106,7 +106,7 @@ export interface CategoryStat {
   marginPct: number;
   profitLift: number;
   /** Revenue share in percent units (25 = 25%). Not a 0–1 ratio. */
-  revShare: number;
+  revShare: number | null;
   velocity: number;
   uniqueSKU: number;
 }

@@ -1167,14 +1167,14 @@ public static class DecisionBoardEndpoints
         return (score, status, summary);
     }
 
-    private static double CalculatePenalty(double metricValue, double warningThreshold, double warningPenalty, double criticalMultiplier)
+    private static double CalculatePenalty(double? metricValue, double warningThreshold, double warningPenalty, double criticalMultiplier)
     {
-        if (warningThreshold <= 0d)
+        if (metricValue is null || !double.IsFinite(metricValue.Value) || warningThreshold <= 0d)
         {
             return 0d;
         }
 
-        var normalized = Math.Max(0d, metricValue) / warningThreshold;
+        var normalized = Math.Max(0d, metricValue.Value) / warningThreshold;
         if (normalized <= 1d)
         {
             return normalized * warningPenalty;

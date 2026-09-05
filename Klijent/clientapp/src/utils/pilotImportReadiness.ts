@@ -90,7 +90,9 @@ export function computePilotImportReadiness(
   const supplierCount = report.loadedData.suppliersCount;
   const firstSaleDate = report.loadedData.firstSaleDate;
   const lastSaleDate = report.loadedData.lastSaleDate;
-  const missingCostRevenueSharePct = Math.max(0, report.impact.revenueWithoutCostPercent * 100);
+  const missingCostRevenueSharePct = report.impact.revenueWithoutCostPercent == null
+    ? null
+    : Math.max(0, report.impact.revenueWithoutCostPercent * 100);
   const missingSupplierSharePct = Math.max(0, report.impact.articlesWithoutSupplierPercent * 100);
 
   const hardBlockers = [
@@ -108,7 +110,11 @@ export function computePilotImportReadiness(
     supplierCount <= 0 ? "Nema dobavljača u pilot paketu." : null,
     report.issues.missingSupplierCount > 0 ? `${formatCount(report.issues.missingSupplierCount)} artikala nema dobavljača.` : null,
     report.issues.missingCostCount > 0 ? `${formatCount(report.issues.missingCostCount)} stavki nema nabavnu cenu.` : null,
-    report.impact.revenueWithoutCostPercent > 0 ? `${formatPercent(missingCostRevenueSharePct)} prihoda nema nabavnu cenu.` : null,
+    report.impact.revenueWithoutCostPercent == null
+      ? "Udeo prihoda bez nabavne cene nije moguće izračunati bez prometnog imenitelja."
+      : report.impact.revenueWithoutCostPercent > 0
+        ? `${formatPercent(missingCostRevenueSharePct!)} prihoda nema nabavnu cenu.`
+        : null,
     report.impact.articlesWithoutSupplierPercent > 0 ? `${formatPercent(missingSupplierSharePct)} artikala nema dobavljača.` : null,
     report.impact.insufficientSignalCount > 0 ? `${formatCount(report.impact.insufficientSignalCount)} artikala nema dovoljno signala.` : null,
     report.impact.ignoredRowsCount > 0 ? `${formatCount(report.impact.ignoredRowsCount)} redova je ignorisano pri importu.` : null,

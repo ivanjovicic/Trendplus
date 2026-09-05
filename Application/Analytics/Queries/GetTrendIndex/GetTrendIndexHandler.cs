@@ -85,7 +85,11 @@ public class GetTrendIndexHandler : IRequestHandler<GetTrendIndexQuery, TrendInd
                 .ToDictionaryAsync(m => m.CanonicalKey, m => m.MomentumScore, ct);
 
             var scores    = filtered.Select(s => s.Score);
-            var momentums = filtered.Select(s => momentumMap.GetValueOrDefault(s.CanonicalKey, 0.0));
+            var momentums = filtered
+                .Select(s => momentumMap.TryGetValue(s.CanonicalKey, out var momentum)
+                    && double.IsFinite(momentum) ? (double?)momentum : null)
+                .Where(momentum => momentum.HasValue)
+                .Select(momentum => momentum!.Value);
             double? avgSocial = filtered.Any(s => s.SocialScore.HasValue)
                 ? filtered.Where(s => s.SocialScore.HasValue).Average(s => s.SocialScore!.Value)
                 : null;
