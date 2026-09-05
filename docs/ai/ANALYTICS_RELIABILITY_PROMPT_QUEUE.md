@@ -91,6 +91,10 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | WAITING | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
 | RQ166 | WAITING | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
+| RQ167 | WAITING | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
+| RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
+| RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
+| RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 
 ---
 
@@ -5267,4 +5271,268 @@ Do not alter action outcome measurement, recommendation ownership, forecast/tren
 
 - `RQ137` remains the shared period-lineage owner.
 - `RQ145` remains the parity and safe-messaging owner.
+
+---
+
+## RQ167 - Do not serialize failed sales/inventory KPI responses as valid-looking zero values
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/tests
+Feature family: analytics-error-kpi-state
+Parallel-safe: no, error payload semantics must be consistent across core KPI consumers
+Owner: Codex
+Commit suggestion: `fix(analytics): keep failed KPI payloads unavailable`
+
+### Problem
+
+Several cached analytics failure branches return HTTP 200 bodies containing zero-valued sales or inventory KPIs together with an error meta object. Although the frontend may hide some of these values, the API response itself makes failure indistinguishable from a valid zero to exports, alternate clients, reports or future consumers. An existing failure test codifies this shape instead of asserting that failed numeric evidence is unavailable.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:150-196` returns `TotalRevenue=0`, transaction/unit counts and averages equal to zero for missing relation, timeout and database failure paths while `meta.success=false`.
+- `Api.Tests/CachedAnalyticsFailureContractTests.cs:18-30` currently asserts zero KPI values for the inventory balance failure contract; no sales-summary failure test asserts null/unavailable KPI semantics.
+- `Api/Endpoints/InventoryEndpoints.cs:66-78` has the same zero-valued error body for the non-cached inventory balance route.
+- `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs:67-83` correctly distinguishes successful empty data from an error, so the new contract must preserve valid empty zeros while changing only failure payload semantics.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` sales summary and cached inventory balance error branches only
+- `Api/Endpoints/InventoryEndpoints.cs` inventory balance error branch only
+- `Api.Tests/CachedAnalyticsFailureContractTests.cs`
+- nearest analytics DTO/serialization tests if nullable KPI fields are required
+
+Do not change successful empty-result semantics, recommendation scoring, trend/forecast/Shopify behavior or unrelated list pagination payloads.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ145`, the no-fake-zero invariant and `AnalyticsResponseMetaFactory`
+- the cached failure and critical endpoint tests listed above
+
+### Do
+
+1. Add failing-first tests that distinguish a valid empty result (`success=true`, explicit empty reason, genuine zero totals) from a failed result (`success=false`, no numeric KPI evidence).
+2. Make failed sales/inventory KPI fields nullable or remove them from the failure representation without breaking compatible consumers; do not encode unavailable as zero.
+3. Preserve correlation, safe user-facing error text and HTTP compatibility according to the existing endpoint contract.
+4. Verify frontend cards, table/detail, export and report consumers do not reinterpret failed nulls as zeros.
+
+### Tests
+
+- Failure tests for missing relation, timeout, database exception and cancellation behavior.
+- Empty-success tests for zero sales and zero inventory scope.
+- Serialization/parity tests proving error values are unavailable and valid zeros remain valid.
+- Focused backend tests, analytics guardrails where frontend handling changes, and `git diff --check`.
+
+### Acceptance
+
+- A failed KPI response cannot be consumed as a valid zero by any client.
+- A successful empty scope still exposes genuine zero totals with an explicit empty state.
+- Error, empty and partial states remain distinct across cached and direct inventory/sales routes.
+- No raw backend error code is used as user-facing copy.
+
+### Dependencies
+
+- `RQ139` remains the shared numeric-state owner; this is the residual error-payload contract.
+- `RQ145` remains the cross-surface parity and safe-messaging owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ168 - Keep partial cost coverage out of confirmed top-product margin ranking
+
+Status: WAITING
+Priority: P0
+Type: backend/SQL/tests
+Feature family: top-products-margin-coverage
+Parallel-safe: no, margin availability, ranking and trust labels share the same cost evidence
+Owner: Codex
+Commit suggestion: `fix(analytics): expose top-product margin coverage`
+
+### Problem
+
+The advanced top-products SQL marks margin as available when at least one sale line has a positive cost. The `SUM((price-cost) * quantity)` expression then ignores missing-cost rows, so a partially covered product can be labelled `good`, included in margin ranking and described as confirmed without a coverage percentage or limitation.
+
+### Evidence
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:3438-3463` sets `margin_impact` to null only when no row has a resolved positive cost; one known-cost row is enough to calculate a partial sum.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:3527-3560` maps any non-null partial sum to `marginQualityTier="good"`, `dataQualityStatus="good"` and `reasonCodes=["margin_available"]`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:3564-3574` includes every non-null result in `byMarginImpact`, so partial evidence can affect ranking.
+- `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs:174-285` tests already-materialized DTO trust fields, not a product with mixed known and missing sale-line costs.
+- `AnalyticsMarginPolicy.BuildPositiveCostSql` and the existing `marginQuality` frontend vocabulary already distinguish confirmed/partial/estimated/no-data states, but this endpoint does not expose that distinction.
+
+### Scope
+
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` advanced top-products SQL and DTO mapping
+- `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`
+- nearest backend contract tests and shared margin-quality mapping only if required for the additive payload
+
+Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend, forecast, Shopify or unrelated supplier/pre-nivelacija margin paths.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ148`, `RQ147`, `AnalyticsMarginPolicy` and `src/utils/marginQuality.ts`
+- the advanced top-products SQL and tests listed above
+
+### Do
+
+1. Add failing-first fixtures for all costs known, no costs known, mixed cost coverage, valid zero margin and negative/invalid cost.
+2. Carry cost-covered revenue/units and a coverage status/percentage from SQL to the DTO; do not infer “good” from a non-null partial sum.
+3. Exclude insufficient/partial rows from confirmed margin ranking or label/rank them only according to the explicit backend evidence tier.
+4. Preserve valid fully covered zero margin and keep margin impact unavailable when no valid cost exists.
+5. Prove dashboard table, margin tab, detail and export/report parity without frontend recalculation.
+
+### Tests
+
+- SQL/DTO tests for 100%, partial, 0% and invalid cost coverage.
+- Ranking tests proving partial rows cannot appear as confirmed margin winners.
+- Serialization and frontend display tests if the additive coverage fields are consumed.
+- Focused backend tests, analytics guardrails, and `git diff --check`.
+
+### Acceptance
+
+- A product with mixed cost evidence is visibly partial/estimated, not confirmed good.
+- Margin ranking uses only the evidence tier allowed by the backend contract.
+- Fully covered genuine zero margin remains measurable; no-cost margin remains unavailable.
+- All consumers show the same coverage and limitation state.
+
+### Dependencies
+
+- `RQ148` remains the broad financial-basis owner.
+- `RQ147` remains the metric evidence registry owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ169 - Keep empty intake data from receiving a numeric readiness score or green label
+
+Status: WAITING
+Priority: P0
+Type: backend/tests
+Feature family: data-quality-empty-readiness
+Parallel-safe: no, intake score, readiness status and report messaging must share one empty-data contract
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on empty intake readiness`
+
+### Problem
+
+The pilot intake report calculates a numeric readiness score even when there are no articles or no import rows. `CalculateIntakeScore` clamps empty denominators to one and `ResolveReadiness` can then classify an empty dataset from the numeric score/freshness alone. This can present a clean or usable readiness label for a dataset with no decision evidence.
+
+### Evidence
+
+- `Api/Endpoints/DataQualityEndpoints.cs:149-153` clamps `totalArticles` and `rowsRead` to one, causing zero-count penalties to remain zero.
+- `BuildPilotDataQualityIntakeReportAsync:509-620` passes empty counts into `CalculateIntakeScore` and then resolves readiness instead of forcing an insufficient state.
+- `Api/Endpoints/DataQualityEndpoints.cs:622-640` can return a readiness score and label alongside `meta.emptyReason="no_import"`.
+- `Api.Tests/AnalyticsDataQualityConsistencyTests.cs:113-143` covers a critical insufficient-signal case but has no zero-article/zero-import readiness regression.
+
+### Scope
+
+- `Api/Endpoints/DataQualityEndpoints.cs`
+- `Api.Tests/AnalyticsDataQualityConsistencyTests.cs`
+- `Api.Tests/AnalyticsReportsContractTests.cs` only if report serialization/state mapping changes
+- `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx` only if it currently renders a numeric empty score instead of backend state
+
+Do not change the separate traffic health score contract owned by `RQ144`, refresh worker ownership, trend, forecast or Shopify behavior.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ144`, `RQ147`, the pilot intake report contract and current consistency tests
+- the report builder and frontend intake component
+
+### Do
+
+1. Add failing-first cases for zero articles, zero import rows, no import batch, valid populated zero-issue data and populated critical data.
+2. Define empty intake as `insufficient_data` with no trusted numeric readiness score, or an explicit non-decision sentinel that existing DTOs can represent without looking green.
+3. Keep valid populated data with zero detected issues measurable and distinguish it from no evidence.
+4. Ensure readiness, recommendation-block count, health score and report/export messaging do not silently substitute zeros for missing evidence.
+
+### Tests
+
+- Unit tests for empty, valid zero-issue, partial and critical intake states.
+- Backend/report serialization tests for score/status/meta parity.
+- Frontend report tests if rendering changes, plus analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- No articles/import evidence cannot produce a green or decision-ready readiness score.
+- Populated data with genuinely zero issues remains a valid zero-risk result.
+- Health, intake report, UI and export distinguish empty, insufficient, partial and error states.
+
+### Dependencies
+
+- `RQ144` remains the health denominator owner.
+- `RQ147` remains the evidence-tier owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ170 - Reject invalid pilot-intake report periods instead of silently swapping or defaulting them
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: data-quality-report-period-state
+Parallel-safe: no, report period, query URL and exported metadata must remain identical
+Owner: Codex
+Commit suggestion: `fix(analytics): validate pilot intake report periods`
+
+### Problem
+
+The pilot intake report period resolver silently swaps reversed dates and silently substitutes the default 30-day period for invalid date text. The response can therefore be internally consistent while describing a period the user did not request.
+
+### Evidence
+
+- `Api/Endpoints/DataQualityEndpoints.cs:1533-1545` swaps `fromUtc` and `toUtc` when reversed instead of returning an invalid-period state.
+- `Api/Endpoints/DataQualityEndpoints.cs:1547-1559` returns null for invalid date text, which makes the caller fall back to the default period.
+- `Api/Endpoints/DataQualityEndpoints.cs:644-660` emits the resolved period and readiness metadata as if it were the requested report scope.
+- `Api.Tests/AnalyticsReportsContractTests.cs` covers report shape, but no test asserts reversed/invalid period rejection or requested/effective period distinction.
+
+### Scope
+
+- `Api/Endpoints/DataQualityEndpoints.cs` pilot-intake period parsing and response metadata
+- `Api.Tests/AnalyticsReportsContractTests.cs`
+- `Klijent/clientapp/src/pages/PilotIntakeReportPage.tsx` only if the page must render the explicit invalid-period state
+
+Do not duplicate `RQ166` action-timeline validation or change valid default-period behavior when parameters are genuinely absent; do not touch trend, forecast or Shopify.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ145`, `RQ166` and the pilot intake report contract
+- the resolver, report endpoint and current report tests
+
+### Do
+
+1. Add failing-first tests for absent dates, valid equal/range dates, reversed dates, invalid dates and non-finite/ambiguous input.
+2. Preserve the default period only when both dates are absent; reject or explicitly mark invalid user-supplied dates without querying a substituted period.
+3. Preserve requested, effective and observed period truth in report DTO, export and stable query URL.
+4. Keep empty valid periods distinct from invalid request and backend error states with safe user-facing messages.
+
+### Tests
+
+- Focused backend report tests for all period cases and metadata parity.
+- Export/query-link tests if those projections use the report period.
+- Frontend report state tests if rendering changes, plus analytics guardrails and `git diff --check`.
+
+### Acceptance
+
+- Reversed or invalid user-supplied dates cannot silently produce a report for another period.
+- Absent dates still use the documented default period.
+- Report, export, stable link and UI display the same requested/effective/observed period state.
+
+### Dependencies
+
+- `RQ137` remains the shared period-lineage owner.
+- `RQ145` remains the parity and safe-messaging owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
 - Keep this prompt `WAITING` behind the single `READY` item.
