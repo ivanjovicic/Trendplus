@@ -3318,7 +3318,7 @@ Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume 
 
 ## RQ140 - Prove pre/post nivelacija effects are comparable and not availability artifacts
 
-Status: READY
+Status: PARTIAL
 Priority: P0
 Type: backend/SQL/contract/frontend/tests
 Feature family: pre-post-nivelacija-causal-comparability
@@ -3405,6 +3405,11 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 - Residual risk: production SQL/view availability, refresh freshness and browser runtime behavior are not proven by deterministic local tests; full backend suite still has 16 unrelated environment/config failures.
 - Next: `STAB16` live proof, then `RQ141`.
 - Prompt defect / scope repair: Q83 remains the raw vendor SQL/nullability owner; RQ140 consumed its contract and did not duplicate SQL formula work. Full parity and deployed-runtime proof were explicitly left external rather than falsely marked complete.
+
+### Routing correction
+
+- Date: 2026-09-05
+- The prompt was already locally executed and has a synchronized `PARTIAL` completion note above. The stale per-prompt `READY` marker was corrected to `PARTIAL`; no later `WAITING` prompt was promoted because `RQ139` and `STAB16` gates are not complete.
 
 ---
 
