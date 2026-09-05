@@ -3697,8 +3697,8 @@ Data Quality health uses revenue shares as decision signals. When the sales deno
 - Checks not run: full backend suite, live database/refresh worker/browser console, and full cross-route export/report parity. The broader sales-readiness regression spec was attempted but the Pilot intake test emitted existing MSW unhandled-request warnings and hung, so it is not claimed as passed.
 - Run log: `.ai/runs/2026-09-05-RQ144-evidence.md`.
 - Delivery mode: direct-main delivery; implementation and evidence sync commits were pushed to `origin/main`.
-- Main commit SHA: `f929e6fa92e570fea51ff4ffd6ab0ccf32372b87`.
-- Main verification: `git rev-parse HEAD`, `git rev-parse origin/main` and `git ls-remote origin refs/heads/main` all returned `f929e6fa92e570fea51ff4ffd6ab0ccf32372b87`.
+- Main commit SHA: `f929e6fa92e570fea51ff4ffd6ab0ccf32372b87` (implementation and evidence delivery baseline).
+- Main verification: `git merge-base --is-ancestor f929e6fa92e570fea51ff4ffd6ab0ccf32372b87 origin/main` passed; current main contains the delivered SHA.
 - Missed: live refresh/runtime proof and complete cross-surface parity remain outside this bounded prompt and require `STAB16`/`RQ141`/`RQ145`.
 - Residual risk: deployed frontend/backend compatibility and the HTTP 503 health-failure path require live runtime proof; forecast prompt `RQ150` remains WAITING by explicit user instruction.
 
