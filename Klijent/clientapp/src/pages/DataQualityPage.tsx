@@ -649,10 +649,11 @@ export default function DataQualityPage() {
 
     const metaStatus = (health.meta?.dataQualityStatus ?? "").trim().toLowerCase();
     const emptyReason = (health.meta?.emptyReason ?? "").trim().toLowerCase();
+    const hasRevenueEvidence = health.hasRevenueEvidence ?? health.totalRevenue > 0;
     const hasInsufficientEvidence =
       metaStatus === "insufficient_data" ||
       emptyReason === "no_sales_in_period" ||
-      health.totalRevenue <= 0;
+      !hasRevenueEvidence;
 
     if (hasInsufficientEvidence) {
       return { label: "Nedovoljno podataka", tone: "warning" as const };

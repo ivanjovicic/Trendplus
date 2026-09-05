@@ -29,6 +29,24 @@ public sealed class AnalyticsDataQualityConsistencyTests
         Assert.Equal("insufficient_data", result.Status);
         Assert.Contains("Nema dovoljno", result.Summary, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void HealthScore_MissingRevenueShares_IsInsufficientAndNotGreen()
+    {
+        var result = DataQualityEndpoints.BuildScore(
+            new AnalyticsDataQualityHealthSnapshot
+            {
+                TotalRevenue = 100_000m,
+                HasRevenueEvidence = true,
+                MissingCostRevenueSharePct = null,
+                UnknownSupplierRevenueSharePct = 0d,
+            },
+            new AnalyticsDataQualityHealthOptions());
+
+        Assert.Equal(0, result.Value);
+        Assert.Equal("insufficient_data", result.Status);
+        Assert.Contains("nedostaju", result.Summary, StringComparison.OrdinalIgnoreCase);
+    }
     [Fact]
     public void MissingCostRule_TreatsNullAndNonPositiveValuesAsMissing()
     {

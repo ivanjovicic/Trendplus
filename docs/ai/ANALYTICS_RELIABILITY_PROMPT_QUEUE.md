@@ -68,7 +68,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
 | RQ143 | WAITING | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
-| RQ144 | WAITING | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
+| RQ144 | DONE | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
 | RQ145 | WAITING | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
 | RQ146 | WAITING | analytics-schema-runtime-proof | Prove endpoint, EF/SQL, relation/migration, 404 and refresh-failure behavior on current runtime |
 | RQ147 | WAITING | analytics-metric-evidence-registry | Make the proof level, decision use and limitation of every KPI backend-owned and portable |
@@ -3628,12 +3628,13 @@ Backend ownership of recommendation status, score and confidence is not enough i
 
 ## RQ144 - Make Data Quality health distinguish no evidence from a valid zero
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: data-quality-health-denominator-contract
 Parallel-safe: no, health status gates trust everywhere
 Owner: Codex
+Promotion note: 2026-09-05 - owner-promoted as the smallest independent Data Quality continuation; RQ139 supplied the shared null/zero vocabulary and RQ118 is DONE. Forecast, vendor-comparison and live-worker work remain out of scope.
 Commit suggestion: `fix(analytics): preserve data-quality denominator truth`
 
 ### Problem
@@ -3687,6 +3688,19 @@ Data Quality health uses revenue shares as decision signals. When the sales deno
 
 - `RQ139` numeric-state vocabulary and `RQ118` scope contract are prerequisites.
 - Reuse `RQ135` cache invalidation/freshness work.
+
+### Completion note
+
+- Completion: 100% of the bounded local denominator/error contract; no forecast, Shopify, vendor-comparison or live-worker scope was promoted.
+- Changed files: `Api/Endpoints/DataQualityEndpoints.cs`; `Api.Tests/AnalyticsDataQualityConsistencyTests.cs`; `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `Klijent/clientapp/src/types/analytics.ts`; queue and roadmap files.
+- Checks run: backend focused tests 22/22; `DataQualityPage.spec.tsx` 9/9; isolated Dashboard, Data Quality empty and Inventory regressions passed; analytics guardrails and typecheck passed; `dotnet build .\Api\Api.csproj --no-restore --configuration Release` passed with 0 warnings and 0 errors; `git diff --check` passed.
+- Checks not run: full backend suite, live database/refresh worker/browser console, and full cross-route export/report parity. The broader sales-readiness regression spec was attempted but the Pilot intake test emitted existing MSW unhandled-request warnings and hung, so it is not claimed as passed.
+- Run log: `.ai/runs/2026-09-05-RQ144-evidence.md`.
+- Delivery mode: direct-main delivery, with commit and remote verification recorded after push.
+- Main commit SHA: pending commit.
+- Main verification: pending push and `git ls-remote` verification.
+- Missed: live refresh/runtime proof and complete cross-surface parity remain outside this bounded prompt and require `STAB16`/`RQ141`/`RQ145`.
+- Residual risk: deployed frontend/backend compatibility and the HTTP 503 health-failure path require live runtime proof; forecast prompt `RQ150` remains WAITING by explicit user instruction.
 
 ---
 

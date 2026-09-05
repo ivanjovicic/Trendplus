@@ -861,6 +861,7 @@ export interface AnalyticsDataQualityHealth {
   windowTo: string;
   orphanArticleCount: number;
   totalRevenue: number;
+  hasRevenueEvidence: boolean;
   missingCostRevenue: number;
   missingCostRevenueSharePct: number | null;
   unknownSupplierRevenue: number;

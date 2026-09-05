@@ -115,6 +115,7 @@ function health(overrides: Partial<AnalyticsDataQualityHealth> = {}): AnalyticsD
     windowTo: "2026-07-01T00:00:00Z",
     orphanArticleCount: 14,
     totalRevenue: 1_200_000,
+    hasRevenueEvidence: true,
     missingCostRevenue: 220_000,
     missingCostRevenueSharePct: 18.3,
     unknownSupplierRevenue: 180_000,
@@ -302,6 +303,24 @@ describe("DataQualityPage", () => {
         dataQualityStatus: "insufficient_data",
         emptyReason: "no_sales_in_period",
       },
+    }));
+
+    renderPage();
+    await screen.findByText("Problematični artikli");
+
+    expect(screen.getByText("Nedovoljno podataka", { selector: ".data-quality-health-card strong" })).toBeInTheDocument();
+    expect(screen.queryByText("Podaci su u zelenoj zoni")).not.toBeInTheDocument();
+  });
+
+  it("does not trust a positive revenue total when the backend denies revenue evidence", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
+      totalRevenue: 100_000,
+      hasRevenueEvidence: false,
+      missingCostRevenueSharePct: 0,
+      unknownSupplierRevenueSharePct: 0,
+      scoreStatus: "good",
+      score: 95,
+      meta: { success: true, dataQualityStatus: "good" },
     }));
 
     renderPage();

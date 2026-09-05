@@ -49,6 +49,7 @@ public static class DataQualityEndpoints
                     snapshot.WindowToUtc,
                     snapshot.OrphanArticleCount,
                     snapshot.TotalRevenue,
+                    snapshot.HasRevenueEvidence,
                     snapshot.MissingCostRevenue,
                     snapshot.MissingCostRevenueSharePct,
                     snapshot.UnknownSupplierRevenue,
@@ -65,7 +66,7 @@ public static class DataQualityEndpoints
                         Success = true,
                         CorrelationId = correlationId,
                         GeneratedAtUtc = DateTime.UtcNow,
-                        LastRefreshAtUtc = snapshot.GeneratedAtUtc,
+                        LastRefreshAtUtc = null,
                         DataQualityStatus = score.Status switch
                         {
                             "critical" => "critical",
@@ -73,23 +74,28 @@ public static class DataQualityEndpoints
                             "good" or "excellent" => "good",
                             _ => "insufficient_data"
                         },
-                        Message = snapshot.TotalRevenue <= 0 ? "Nema dovoljno podataka za score data quality-ja u ovom prozoru." : null,
-                        EmptyReason = snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : null,
+                        Message = score.Status == "insufficient_data"
+                            ? snapshot.TotalRevenue <= 0
+                                ? "Nema dovoljno prometnog dokaza u ovom prozoru."
+                                : "Nedostaje dokaz za sve prometne pokazatelje kvaliteta u ovom prozoru."
+                            : null,
+                        EmptyReason = score.Status == "insufficient_data"
+                            ? snapshot.TotalRevenue <= 0 ? "no_sales_in_period" : "missing_revenue_quality_evidence"
+                            : null,
                         IsPartial = false
                     }));
             }
             catch (Exception)
             {
-                return Results.Ok(new DataQualityHealthResponse(
-                    DateTime.UtcNow, 0,
-                    DateTime.UtcNow, DateTime.UtcNow,
-                    0, 0m, 0m, 0d, 0m, 0d,
-                    0, "error", "Data quality health nije dostupan.",
-                    new DataQualityHealthThresholds(0, 0d, 0d),
-                    AnalyticsResponseMetaFactory.Error(
-                        "data_quality_health_error",
-                        "Data quality health nije dostupan zbog greske.",
-                        correlationId)));
+                return Results.Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Data quality health nije dostupan.",
+                    detail: "Health pregled trenutno nije dostupan zbog greske u izvoru podataka.",
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["correlationId"] = correlationId,
+                        ["code"] = "data_quality_health_error"
+                    });
             }
         })
         .WithTags("Analytics")
@@ -1324,6 +1330,7 @@ public static class DataQualityEndpoints
         DateTime WindowTo,
         int OrphanArticleCount,
         decimal TotalRevenue,
+        bool HasRevenueEvidence,
         decimal MissingCostRevenue,
         double? MissingCostRevenueSharePct,
         decimal UnknownSupplierRevenue,
@@ -1361,6 +1368,17 @@ public static class DataQualityEndpoints
                 0,
                 "insufficient_data",
                 "Nema dovoljno prometnog dokaza za pouzdan health skor u ovom periodu.");
+        }
+
+        if (snapshot.MissingCostRevenueSharePct is null
+            || snapshot.UnknownSupplierRevenueSharePct is null
+            || !double.IsFinite(snapshot.MissingCostRevenueSharePct.Value)
+            || !double.IsFinite(snapshot.UnknownSupplierRevenueSharePct.Value))
+        {
+            return new DataQualityScoreDto(
+                0,
+                "insufficient_data",
+                "Nedostaju prometni denominatori za pouzdan health skor u ovom periodu.");
         }
 
         static double Clamp01(double value) => Math.Max(0d, Math.Min(1d, value));
