@@ -1,6 +1,6 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-06-28
+Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
@@ -62,6 +62,14 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
+| RQ139 | WAITING | analytics-denominator-null-zero-contract | Prove every analytics numerator/denominator and prevent missing values becoming trusted zeroes |
+| RQ140 | WAITING | pre-post-nivelacija-causal-comparability | Prove pre/post nivelacija effects are comparable and separate from availability/composition effects |
+| RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
+| RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
+| RQ143 | WAITING | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
+| RQ144 | WAITING | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
+| RQ145 | WAITING | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
+| RQ146 | WAITING | analytics-schema-runtime-proof | Prove endpoint, EF/SQL, relation/migration, 404 and refresh-failure behavior on current runtime |
 
 ---
 
@@ -3205,3 +3213,559 @@ Do not invent scores from frontend heuristics, backfill fake history, or mix sce
 
 - Reuse the forecast/backtest foundation from `RQ108` and `RQ117`; do not duplicate that lower-layer provenance work.
 - This prompt remains `PARTIAL` and non-runnable until a real measured evaluation source is available.
+
+---
+
+## RQ139 - Prove analytics denominator, null and zero semantics across every decision surface
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: analytics-denominator-null-zero-contract
+Parallel-safe: no, this is the shared numeric trust contract
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on missing numeric evidence`
+
+### Problem
+
+Several analytics paths still use a numeric zero as a compatibility/default value when the underlying signal is missing. This can turn missing cost, missing velocity, missing margin, missing supplier/stock coverage or a missing denominator into a valid-looking KPI, score, forecast, ranking value or action. The contract must distinguish a real zero from unknown, not applicable, insufficient evidence and calculation failure.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts:155-191` derives approximate units/revenue and averages with `?? 0` and `Math.max(..., 1)`; `:217-260`, `:280-310`, `:325-350` and `:377-418` repeat this for price, aging, depletion and reorder outputs.
+- `Application/Analytics/Services/TrendScoringService.cs:216-217` returns momentum `1.0` when either score is missing, and `:265-271` returns index `0.0` for an empty/positive-score-free input.
+- `Application/Analytics/Services/TrendScoringService.cs:307-315` treats missing social input as zero and `:347-362` returns recommended order quantity zero for non-positive velocity without distinguishing true zero demand from unavailable/invalid velocity.
+- `Api/Services/PreNivelacijaScoringService.cs:63-79`, `:198-205` and `:223-240` use zero/midpoint fallbacks for zero normalization spans and unknown confidence; `:208-214` clamps scenario units to at least one, so no evidence can create a positive scenario.
+- `Api/Endpoints/AllEndpoints.cs:3338-3346`, `:3401-3409` and `:3510-3517` coalesce pre/post quantity, revenue, coverage and change percent to zero before the response is built.
+- Existing RQ work fixed selected Daily Sales, supplier and shoe-type cases, but `RQ137` explicitly records that other analytics surfaces were not revalidated and `RQ138` records that measured evaluation data is still unavailable.
+
+### Scope
+
+- A canonical numeric-state contract for currency, quantity, ratios/percentages, rates, scores, confidence/reliability and dates.
+- Backend DTO/meta fields that preserve `unknown`, `missing`, `insufficient`, `not_applicable`, `error` and `valid_zero` without overloading numeric zero.
+- Frontend shared mapping/formatting for all analytics pages, cards, tables, charts, details, action lists, exports and reports.
+- The affected sales, trend, forecast, inventory, supplier, data-quality and pre/post nivelacija calculations; do not silently limit the repair to one page.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` sections `RQ02`, `RQ03`, `RQ04`, `RQ10`, `RQ137` and `RQ138`
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`
+- `Application/Analytics/Services/TrendScoringService.cs`
+- `Api/Services/PreNivelacijaScoringService.cs`
+- nearest backend/frontend tests for each changed calculation
+
+### Do
+
+1. Build a formula inventory with metric name, unit, numerator, denominator, source fields, valid-zero rule, missing rule, minimum evidence and owner. Include every `?? 0`, `?? 100`, `|| 0`, `Math.max(..., 1)`, epsilon and synthetic sentinel found on the mapped surfaces.
+2. Replace only semantics-proven fallbacks. A missing denominator must produce null/unknown/insufficient metadata, never a share of zero or 100. A true measured zero must remain zero. NaN and Infinity must be rejected before serialization/rendering.
+3. Remove frontend reconstruction of trusted revenue, margin, forecast, risk, score and recommendation values where a backend contract exists. If a legacy fallback must remain, label it degraded and keep it out of recommendation/actionable ranking.
+4. Preserve empty-success separately from backend error; keep stale, fallback, partial and insufficient states visible and user-readable.
+5. Keep backward compatibility only through additive nullable/meta fields or an explicitly versioned contract. Do not hide a changed business meaning behind the old numeric field.
+
+### Tests
+
+- Backend unit/contract tests for empty result, null input, a genuine valid zero, missing denominator, NaN, Infinity, negative/invalid input and zero normalization span.
+- Frontend tests for the same cases through card, table, chart, detail, action, export and report adapters.
+- Tests proving no unavailable value becomes a score, confidence, reliability, forecast, revenue share, reorder quantity or recommendation.
+- Tests for stale and unknown freshness, partial/fallback response, wrong period and wrong scope where the numeric state is displayed.
+- `npm run test -- --run <changed analytics specs>`; the nearest targeted `dotnet test`; analytics guardrail; `git diff --check` and queue validators.
+
+### Acceptance
+
+- Every audited metric has an explicit numerator/denominator and state contract.
+- `null`, unknown, missing, insufficient, NaN and Infinity cannot render as a trusted zero or produce an allowed recommendation.
+- A valid zero remains visible as zero and is not confused with no evidence.
+- Backend values and states are identical across card, table, chart, details, export and report for the same query.
+- Focused regression tests fail against the pre-fix behavior for all required counterexamples.
+
+### Dependencies
+
+- `RQ137` and `RQ138` remain partial/non-runnable and provide existing period/evaluation contracts; reuse them.
+- `STAB16` remains the owner of production worker/live refresh access. This prompt may use deterministic fixtures and current runtime contracts but must not claim live proof without that evidence.
+- Later prompts `RQ140`-`RQ146` must reuse this numeric-state vocabulary rather than creating local exceptions.
+
+---
+
+## RQ140 - Prove pre/post nivelacija effects are comparable and not availability artifacts
+
+Status: WAITING
+Priority: P0
+Type: backend/SQL/contract/frontend/tests
+Feature family: pre-post-nivelacija-causal-comparability
+Parallel-safe: no, pre/post semantics are shared by sales and decision screens
+Owner: Codex
+Commit suggestion: `fix(analytics): harden pre-post nivelacija comparability`
+
+### Problem
+
+Pre/post nivelacija screens expose revenue, units, margin and impact signals, but a delta after a price change is not evidence of a price effect when the article set, stock availability, observation window, cost coverage or event timing differs. Current SQL compatibility branches also coalesce missing coverage/change fields to zero and may fall back from revenue change to quantity change. This can present an unproven effect as a measured recommendation input.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:3227-3232` selects `change_percent_revenue` when available but falls back to `change_percent_qty`; `:3338-3346` and `:3401-3409` coalesce coverage and change fields to zero.
+- `Api/Endpoints/AllEndpoints.cs:2240-2285`, `:2821-2861` build split, cost and margin snapshots for shoe type/color families, while `:2373-2422` and `:2949-2995` pass split coverage and impact into recommendation inputs. This is a high-risk boundary because coverage and recommendation are coupled.
+- `Api/Endpoints/AllEndpoints.cs:2485-2489` and `:3050-3054` return null for prior-period changes when the denominator is not positive, but the same semantic distinction is not proven for every pre/post SQL response path.
+- `Api/Services/PreNivelacijaScoringService.cs:106-152` uses smoothed scenario units and minimum-one-unit clamping without an observed comparable cohort or availability adjustment.
+
+### Scope
+
+- `/analytics` sales/trend surfaces, `/analytics/products`, `/analytics/supplier`, `/analytics/inventory`, `/analytics/actions`, `/analytics/decision-board`, `/analytics/data-quality`, `/analytics/reports`, and all vendor/color/shoe-type/pre/post nivelacija screens that consume the split.
+- Backend/SQL view contract for event date, pre/post windows, comparable article cohort, stock/availability, revenue, quantity, cost/margin coverage and control/test evidence.
+- Frontend explanation, recommendation gate and export/report parity for the same split payload.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- the installed `analytics-nivelacija` skill instructions
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` sections for `RQ107`, `RQ112`, `RQ119`, `RQ137` and `RQ139`
+- `Api/Endpoints/AllEndpoints.cs` vendor/color/shoe-type nivelacija handlers
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`
+- `Api.Tests/AnalyticsResponseMetaContractTests.cs` and nearest nivelacija tests
+
+### Do
+
+1. Define pre-window, event boundary, post-window, timezone and effective/observed period semantics as half-open dates; prove the same article/cohort and scope are used in both periods.
+2. Separate price effect from stock availability, OOS, assortment/composition, seasonality and traffic effects. If a control group or comparable cohort is unavailable, return an unproven/insufficient state and suppress recommendation.
+3. Keep revenue deltas, quantity deltas, price metrics, margin/profit metrics and coverage as separate fields with units and denominators. Never substitute quantity percentage for revenue percentage without an explicit backend status and user-facing explanation.
+4. Remove SQL/reader coalescing that hides missing coverage or change evidence. Preserve a true zero only when the source proves the measured value is zero.
+5. Ensure recommendation status, score, confidence/reliability and `recommendationAllowed` are computed by the backend from the same validated split and reused unchanged by every frontend consumer.
+
+### Tests
+
+- Deterministic fixtures for: no event, event with no pre sales, event with no post sales, true zero delta, missing denominator, partial article cohort, stockout in post window, different scope, wrong period, duplicate event rows and control/test mismatch.
+- SQL/view and endpoint tests proving revenue and quantity denominators are not interchangeable and missing coverage is not zero.
+- Backend tests for margin with historical cost, estimated cost and no cost; recommendation suppression when comparability or coverage is insufficient.
+- Frontend tests for visible explanation and no action when `recommendationAllowed=false`, including export/table/chart parity.
+- `dotnet test` nearest nivelacija filters, focused frontend specs, analytics guardrail and `git diff --check`.
+
+### Acceptance
+
+- Every pre/post number states its window, cohort/scope, denominator, coverage and whether the effect is measured or only descriptive.
+- Price, availability and composition effects are not silently conflated.
+- Missing/partial/insufficient comparability never becomes zero effect, positive effect, confidence or an allowed action.
+- The same backend split payload drives page, table, chart, detail, export and report without frontend recomputation.
+
+### Dependencies
+
+- `RQ139` numeric-state contract is the required semantic baseline.
+- `Q83` is the separate SQL owner for raw nivelacija nullability/baseline behavior; reuse its result instead of duplicating SQL formula work here.
+- Reuse existing `RQ107` scenario vocabulary and `RQ112` reconciliation work; do not create a second pre/post formula owner.
+- Production event/refresh proof remains subject to `STAB16`; local deterministic evidence is not live deployment proof.
+
+---
+
+## RQ141 - Map full analytics lineage, scope, cache and refresh parity
+
+Status: WAITING
+Priority: P0
+Type: audit/backend/contract/frontend/tests
+Feature family: analytics-lineage-scope-cache-refresh-parity
+Parallel-safe: no, this is the cross-screen source-of-truth map
+Owner: Codex
+Commit suggestion: `fix(analytics): align full lineage and refresh provenance`
+
+### Problem
+
+The existing period-lineage repair covers selected dashboard/readiness/report paths only. The remaining analytics pages can still disagree about requested/effective/observed period, data scope, generated time, successful refresh, cache version or fallback source. A query timestamp must not be shown as data freshness, and a cache hit or fallback must not look like a fresh authoritative result.
+
+### Evidence
+
+- `RQ137` completion note explicitly records residual risk for analytics surfaces outside the selected dashboard/readiness/supplier-report path.
+- `Api/Endpoints/AllEndpoints.cs:4058-4103` redirects legacy analytics routes to cached routes, creating a compatibility/cache boundary that needs route-by-route proof.
+- `Api/Endpoints/AllEndpoints.cs:3187-3211` keys vendor nivelacija cache by request parameters and applies response metadata on cache hits; the full set of cache inputs, invalidation and last-successful-refresh behavior is not proven for all families.
+- `Infrastructure/Seed/DatabaseInitializer.cs:458-478` explicitly keeps heavy analytics refresh out of startup and assigns it to `NightlyAnalyticsRefreshWorker`, while `:2102-2107` logs migration failure and continues. These paths require visible degraded/runtime truth rather than optimistic freshness.
+
+### Scope
+
+Produce and implement a matrix for every listed route and all sales, trend, forecast and pre/post nivelacija screens. Each row must map React page/component, API client, endpoint, DTO/response, backend service, SQL/EF query, table/view/migration, cache key/invalidation, refresh owner/source, existing tests and these facts:
+
+- requested period;
+- effective calculation period;
+- observed data period;
+- data scope;
+- generated-at;
+- last successful refresh;
+- freshness status;
+- data-quality status;
+- empty/partial/error state;
+- recommendation allowed;
+- limitation/reason.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` sections `RQ111`, `RQ113`, `RQ120`, `RQ123`, `RQ135`, `RQ137` and `RQ139`
+- `Api/Dtos/AnalyticsResponseMetaDto.cs`
+- `Api/Services/AnalyticsRefreshStatusService.cs`
+- `Infrastructure/Services/AnalyticsRefreshRunRecorder.cs`
+- `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`
+- all route clients/pages named in Scope
+
+### Do
+
+1. Build the matrix before changing behavior and record every unresolved source-of-truth or schema gap.
+2. Standardize backend lineage fields and ensure every cache hit, fallback, partial result and stale result carries its real source and status.
+3. Keep generated-at separate from last successful refresh. If refresh history is missing, return unknown, not the current query time.
+4. Validate all period and scope parameters at the endpoint boundary and include normalized values in cache identity. Wrong period/scope must not reuse a trusted-looking cache entry.
+5. Ensure empty success, endpoint 404, missing table/migration, refresh failure and true server error have distinct API and user-facing states.
+6. Reconcile one seeded data fixture across page/card/table/chart/detail/export/report and document any intentional aggregation conversion.
+
+### Tests
+
+- Matrix completeness check covering all required routes and all sales/trend/forecast/nivelacija families.
+- Endpoint/client tests for wrong period, wrong scope, cache-key collision, stale and unknown freshness, fallback/partial response, failed refresh, endpoint 404 and missing relation/migration.
+- Tests proving generated-at is not displayed as last successful refresh and empty success is not server error.
+- Frontend route tests for dark/light/soft-gray theme and user-readable messages without raw backend codes.
+- `npm run check:analytics-guardrails`, focused frontend/backend tests, `dotnet build`/test for changed backend contracts, `npm run build`, `git diff --check` and planning/queue validators.
+
+### Acceptance
+
+- A complete, current matrix exists for every requested screen and each field is either confirmed by code/test or explicitly marked unproven.
+- Period, scope, provenance, freshness and quality cannot drift between cached and uncached responses.
+- Last successful refresh is sourced from refresh history, never from request generation time.
+- 404, missing schema, refresh failure, partial/fallback, empty and stale states are distinguishable and visible.
+
+### Dependencies
+
+- `RQ137`, `RQ139` and existing cache/refresh prompts are prerequisites for vocabulary and compatibility.
+- `STAB16` owns provider/live worker access; this prompt must label live proof as pending when unavailable.
+
+---
+
+## RQ142 - Materialize measured forecast and trend evaluation with safe chart states
+
+Status: WAITING
+Priority: P1
+Type: backend/SQL/contract/frontend/tests
+Feature family: forecast-trend-measured-evaluation
+Parallel-safe: no, evaluation semantics must remain backend-owned
+Owner: Codex
+Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
+
+### Problem
+
+`RQ138` added a fail-closed Trend Models contract, but its completion note states that no measured `ready` evaluation source is materialized from production data. Forecast/trend screens therefore still lack proven actual-vs-forecast pairing, horizon, cut-off, baseline and error metrics. A score, confidence or reliability claim without these facts is not evidence.
+
+### Evidence
+
+- `RQ138` completion note: the contract is present, but numeric values remain unavailable until a real measured evaluation source exists.
+- `RQ108` and `RQ117` provide forecast materialization/observed-pairing foundations but do not by themselves prove the user-facing evaluation sample and metrics.
+- `Application/Analytics/Services/TrendScoringService.cs:245-271` computes a normalized index from positive scores and returns zero for no usable scores without a sample/quality state.
+- Frontend chart coverage includes `TrendModelList`, dashboard analytics charts, supplier/shoe-type charts and `SupplierSalesStatsPage`’s positive-size gate; all require explicit handling of initial width/height `0` or `-1`.
+
+### Scope
+
+- Authoritative forecast/trend evaluation materializer and DTO/endpoint.
+- Actual/forecast pair identity, cutoff, horizon, baseline, sample, missing pairs, WAPE/MAE/bias or explicitly selected metrics, units and denominator rules.
+- Trend Models/dashboard/sales/inventory forecast consumers plus chart/table/export/report parity and zero-dimension safety.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ108`, `RQ117`, `RQ138` and their evidence notes
+- current forecast backtest query/handler/contract
+- current `TrendModelList` and forecast/chart components
+
+### Do
+
+1. Prove the actual and forecast rows belong to the same entity, scope, cutoff and observed period; exclude leakage from future actuals.
+2. Define each metric’s numerator/denominator, zero-demand behavior, missing-pair treatment, minimum sample and rounding. Do not emit measured accuracy for insufficient or stale samples.
+3. Make baseline, horizon, last evaluated time, freshness, data quality and limitations mandatory when a numeric result is available.
+4. Keep unavailable/stale/partial evaluation fail-closed; no frontend score or percent reconstruction.
+5. Make every chart render a stable empty/blocked state while width or height is `0`, negative, NaN or not yet measured; never pass invalid dimensions to the chart library.
+
+### Tests
+
+- Pairing fixtures for perfect forecast, valid zero demand, no actual, no forecast, missing denominator, all-zero actuals, partial horizon, stale evaluation, leakage/wrong cutoff and wrong scope.
+- Metric tests for WAPE/MAE/bias (or the chosen authoritative set), NaN/Infinity and minimum sample.
+- Frontend tests for unavailable/stale/partial states, chart dimensions `0` and `-1`, table/chart/export parity and dark/light/soft-gray themes.
+- Focused backend/frontend tests, analytics guardrail, changed project builds and `git diff --check`.
+
+### Acceptance
+
+- Numeric forecast/trend evaluation appears only from a measured backend source with explicit sample, period, baseline, horizon, freshness and limitations.
+- Missing, zero-denominator, stale, partial or wrong-scope evaluation is visibly unavailable, not zero accuracy.
+- Charts never receive invalid initial dimensions and do not generate console warnings/errors in the tested states.
+
+### Dependencies
+
+- `RQ138` contract, `RQ108` materializer foundation and `RQ117` observed-pair semantics are prerequisites.
+- `RQ139` supplies the shared missing/zero/finite-number contract.
+
+---
+
+## RQ143 - Remove frontend decision and ranking invention from analytics surfaces
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: backend-decision-ranking-ownership
+Parallel-safe: no, actionability has one source of truth
+Owner: Codex
+Commit suggestion: `fix(analytics): keep ranking and recommendation backend-owned`
+
+### Problem
+
+Backend ownership of recommendation status, score and confidence is not enough if pages still derive local thresholds, confidence tones, priority scores, urgency, reorder probability or ranking fallbacks. The same item can then be actionable in one surface and blocked in another, especially when impact/confidence is null or data quality is insufficient.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx:782-786`, `:821-825` use `?? 0` for expected impact and locally compute/sort priority and impact values.
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx:778-784` derives data-quality status from measured sample size and warning-code counts in the page, which can diverge from backend status.
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts:380-425` computes reorder need, urgency, reorder probability and expected profit on the frontend from fallback-filled inputs.
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ColorSalesStatsPage.tsx` and `DailySalesStatsPage.tsx` contain local quality/coverage thresholds that must be classified as presentation-only or moved to backend-owned status fields.
+- `Api/Services/PreNivelacijaScoringService.cs:155-193` and `:234-280` show backend decision semantics already exist for one family, making frontend reimplementation especially risky.
+
+### Scope
+
+- Decision Board, Product Decision, supplier, inventory, actions, pre/nivelacija and all cards/tables/details/exports/reports with recommendation or ranking.
+- Backend DTOs for status, decision score, expected impact, confidence/reliability, reason codes, data quality and `recommendationAllowed`.
+- Frontend adapters and display-only sorting/filtering that must not change business decisions.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ01`, `RQ08`, `RQ10`, `RQ12`, `RQ13`, `RQ121`, `RQ122`, `RQ124`, `RQ129`, `RQ139`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`
+- backend decision/recommendation DTOs and nearest tests
+
+### Do
+
+1. Inventory every frontend threshold, score, fallback, sort key and action visibility condition. Classify it as harmless presentation formatting or business logic.
+2. Move business logic to the backend or consume an existing backend field. The frontend may sort by a backend-provided rank for presentation but may not invent rank from null-as-zero impact/confidence.
+3. Enforce `recommendationAllowed=false` as a hard no-action rule across buttons, links, bulk actions, exports and reports.
+4. Do not display confidence/reliability without valid backend basis; do not infer quality from sample length or warning count when backend already owns it.
+5. Map reason/warning codes to safe Serbian user-facing copy, preserving raw codes only in an explicitly technical/audit channel.
+
+### Tests
+
+- Backend/frontend parity fixtures for allowed, blocked, insufficient, stale, partial, fallback, null impact, null confidence and true zero impact.
+- Tests proving no action appears when `recommendationAllowed=false` and no ranking promotion occurs from missing values.
+- Tests proving local threshold changes do not alter backend decision status.
+- Table/card/detail/export/report parity and safe unknown-code mapping tests.
+- Focused backend/frontend tests, analytics guardrail, frontend build and `git diff --check`.
+
+### Acceptance
+
+- Business decision, score, confidence/reliability, quality status, reason and actionability have one backend owner.
+- Frontend never converts missing impact/confidence into zero for a trusted ranking or recommendation.
+- Blocked recommendations expose explanation and limitation, but no executable action.
+- All changed surfaces use the same backend payload and user-readable reason mapping.
+
+### Dependencies
+
+- `RQ139` is required for null/zero semantics.
+- Reuse completed `RQ121`, `RQ122`, `RQ124` and `RQ129`; do not duplicate their contracts.
+
+---
+
+## RQ144 - Make Data Quality health distinguish no evidence from a valid zero
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: data-quality-health-denominator-contract
+Parallel-safe: no, health status gates trust everywhere
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve data-quality denominator truth`
+
+### Problem
+
+Data Quality health uses revenue shares as decision signals. When the sales denominator is zero or unavailable, a share of zero is not evidence that quality is healthy. The page currently applies thresholds through `?? 0`, while the backend snapshot exposes non-null share fields that cannot tell no revenue from a measured zero share.
+
+### Evidence
+
+- `Infrastructure/Services/AnalyticsDataQualityHealthService.cs:145-171` sets `HasRevenueEvidence`, but `MissingCostRevenueSharePct` and `UnknownSupplierRevenueSharePct` become `0d` when `totalRevenue <= 0`.
+- `Klijent/clientapp/src/pages/DataQualityPage.tsx:655-662` evaluates missing-cost and unknown-supplier health thresholds through `?? 0`, which can make unavailable health look green.
+- `Klijent/clientapp/src/pages/DataQualityPage.tsx:401`, `:625` defaults issue totals to zero; this must remain distinct from a successful empty query versus unavailable issue data.
+- Existing RQ04/RQ118/RQ135 work improved selected health/scope paths, but this specific backend nullable denominator contract is not proven across all consumers.
+
+### Scope
+
+- Data Quality health DTO/service/page, issue list and trend chart.
+- Dashboard, Decision Board and supplier/product surfaces that consume health status.
+- Period/scope, freshness, refresh and empty/error metadata for the health snapshot.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ04`, `RQ05`, `RQ07`, `RQ118`, `RQ135`, `RQ139` and their evidence
+- `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+- `Klijent/clientapp/src/pages/DataQualityPage.tsx`
+- `Api.Tests/AnalyticsResponseMetaContractTests.cs` and Data Quality tests
+
+### Do
+
+1. Make share fields nullable or stateful and define: valid zero with positive denominator, unknown/no denominator, insufficient evidence, stale, partial and error.
+2. Keep `HasRevenueEvidence` and denominator facts backend-owned; frontend must not infer health from null-coalesced values or local thresholds.
+3. Distinguish successful empty issue list (`total=0`) from failed/unavailable issue query; show a user-readable explanation for both.
+4. Carry exact health period, scope, generated-at, last successful refresh, freshness and data-quality status into every consumer.
+
+### Tests
+
+- Backend/frontend tests for empty sales window, null share, valid zero share with positive denominator, nonzero share, missing health payload, stale/unknown freshness and partial response.
+- Issue-list tests for successful empty, filtered empty, endpoint error and missing relation.
+- Dashboard/Decision Board tests proving no green/healthy recommendation from missing denominator.
+- Focused tests, analytics guardrail, changed builds and `git diff --check`.
+
+### Acceptance
+
+- No-revenue/no-denominator health is not rendered as a measured zero or green state.
+- A real zero share with a positive denominator remains zero and can be healthy.
+- Health status and explanation are identical across Data Quality, dashboard, board, export and report consumers.
+
+### Dependencies
+
+- `RQ139` numeric-state vocabulary and `RQ118` scope contract are prerequisites.
+- Reuse `RQ135` cache invalidation/freshness work.
+
+---
+
+## RQ145 - Prove analytics card/table/chart/detail/export/report parity and safe messaging
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: analytics-surface-parity-and-safe-messaging
+Parallel-safe: no, parity requires one fixture and one semantic adapter
+Owner: Codex
+Commit suggestion: `test(analytics): prove cross-surface metric parity`
+
+### Problem
+
+Even when an endpoint is correct, analytics trust fails if cards, tables, charts, details, exports and reports use different values, fallback rules, rounding, period labels or warning text. Unknown backend codes can also leak into user-facing action/measurement messages.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts` creates separate derived structures for category, price, aging, depletion and reorder views, so parity cannot be assumed from one API response.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx` contains `OUTCOME_SUMMARY_WARNING_LABELS[code] ?? code`, an explicit raw-code fallback risk.
+- `RQ112`, `RQ120`, `RQ123`, `RQ136` and `RQ137` closed selected parity/provenance paths but do not establish one fixture-based parity proof for every required route/family.
+- Chart components include both fixed heights and responsive containers; initial zero/negative measurement states need a common safe adapter rather than per-page behavior.
+
+### Scope
+
+- All routes listed by the user and all sales, trend, forecast and pre/post nivelacija surfaces.
+- Shared formatters, metric adapters, warning/reason mappings, export/report builders and chart state wrappers.
+- One deterministic fixture manifest with exact expected values/states for card/table/chart/detail/export/report.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ112`, `RQ120`, `RQ123`, `RQ136`, `RQ139`, `RQ141` and their evidence
+- `Klijent/clientapp/src/utils/analyticsFormatters.ts`
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`
+- existing analytics export/report/chart tests
+
+### Do
+
+1. Select representative fixtures for valid zero, null/unknown, stale, partial/fallback, empty, error and valid nonzero results.
+2. Assert that all surfaces consume the same backend metric/state and only apply documented presentation formatting; no surface may recreate a decision or denominator.
+3. Centralize safe Serbian labels for unknown warning/reason/status codes. Never fall back to the raw code in a user-facing label, tooltip, export or report.
+4. Add a common chart guard for width/height `0`, `-1`, NaN and Infinity, preserving an accessible empty/preparing state and avoiding console warnings.
+5. Verify dark, light and soft-gray themes using semantic tokens; do not fix parity by hardcoding a new unrelated theme.
+
+### Tests
+
+- Fixture-based exact parity tests for card/table/chart/detail/export/report values, units, rounding, period, scope, freshness, quality, fallback and recommendation status.
+- Unknown-code mapping tests and no-raw-code assertions for page, export and report text.
+- Chart tests for dimensions `0` and `-1`, empty data, NaN/Infinity point values and responsive initial render.
+- Dark/light/soft-gray visual or DOM-state tests, focused frontend suite, analytics guardrail and `npm run build`.
+
+### Acceptance
+
+- One fixture produces semantically identical values and states everywhere it is shown.
+- Exports/reports cannot silently restore a value hidden or blocked on the page.
+- User-facing messages contain clear Serbian explanation, not internal backend codes.
+- No chart warning/error is introduced by initial invalid dimensions or invalid metric values.
+
+### Dependencies
+
+- `RQ139`, `RQ141` and the completed parity/provenance prompts are prerequisites.
+- This prompt consumes backend truth; it must not add frontend business formulas to repair a mismatch.
+
+---
+
+## RQ146 - Prove analytics endpoint, schema, migration and refresh-failure behavior
+
+Status: WAITING
+Priority: P1
+Type: backend/integration/EF/SQL/tests
+Feature family: analytics-schema-runtime-proof
+Parallel-safe: no, runtime schema is an owner boundary
+Owner: Codex
+Commit suggestion: `test(analytics): prove schema and refresh failure states`
+
+### Problem
+
+Analytics code references EF entities, raw SQL relations, views and startup repair scripts across multiple databases. A missing table/view/migration, 404 route, failed refresh or partially applied schema can currently be reported as an empty or fallback result unless each path has a tested error contract. The user must never trust an empty dataset caused by a schema/runtime failure.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:3227-3232` probes relation columns and selects a compatibility expression; `:3338-3346`, `:3401-3409` then coalesce missing fields, making schema/column drift a numeric-trust boundary.
+- `Infrastructure/Seed/DatabaseInitializer.cs:2102-2107` catches analytics migration failures and continues, while `:150-168` performs supplier/nivelacija schema repair. This requires explicit readiness/failure propagation to analytics responses.
+- `Api/Endpoints/AllEndpoints.cs:4058-4103` maintains legacy redirect routes, so endpoint 404/redirect parity must be tested rather than inferred.
+- Existing `AnalyticsDbInfrastructureTests` and response-meta tests cover selected contracts, not a complete endpoint-to-relation/migration proof for all requested analytics families.
+
+### Scope
+
+- Endpoint inventory and 404/redirect behavior for all required analytics routes.
+- EF/SQL query, relation/view/table, migration and startup repair mapping for sales, trend, forecast, inventory, supplier, Data Quality and nivelacija.
+- Refresh worker/recorder, cache invalidation and API meta behavior for successful, failed, partial and skipped refreshes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ111`, `RQ113`, `RQ135`, `RQ141` and their evidence
+- `Infrastructure/Seed/DatabaseInitializer.cs`
+- `Infrastructure/Services/AnalyticsRefreshRunRecorder.cs`
+- `Api/Services/AnalyticsRefreshStatusService.cs`
+- analytics migrations/views and nearest infrastructure tests
+
+### Do
+
+1. Generate an endpoint-to-service-to-query-to-relation/migration inventory and mark every edge confirmed or unproven.
+2. Add deterministic integration/contract tests for missing table/view, missing column, unapplied migration, endpoint 404, failed refresh, skipped worker and stale cache.
+3. Ensure missing schema and failed refresh return an explicit degraded/error/readiness state with safe user copy; never return successful empty data without an empty reason.
+4. Verify migration listing and current model/view compatibility for the analytics context. Do not perform destructive production schema repair in this prompt.
+5. Prove cache invalidation/versioning after successful and failed refresh; a failed refresh must not advance the last-successful-refresh timestamp.
+
+### Tests
+
+- Endpoint route/redirect tests including 404 and wrong method/path.
+- EF/SQL integration tests for missing table/view/column and migration mismatch, with safe classification and no fake zero rows.
+- Refresh recorder/status tests for success, failure, retry, skipped/unregistered worker and partial family refresh.
+- Cache tests proving failed refresh does not publish fresh metadata and successful refresh invalidates all dependent families.
+- `dotnet ef migrations list` for the affected context, focused `dotnet test`, backend build, analytics guardrail if contract changes, `git diff --check` and queue validators.
+
+### Acceptance
+
+- Every requested analytics endpoint has a confirmed route, query and schema/migration owner or an explicit blocker.
+- Missing schema, 404 and refresh failure are visible as failures/degraded states, never as trusted empty/zero analytics.
+- Last successful refresh changes only after a confirmed successful refresh and cache metadata agrees with it.
+- The proof is reproducible on current main without destructive database operations.
+
+### Dependencies
+
+- `RQ141` lineage matrix and `RQ139` numeric-state contract are prerequisites.
+- `STAB16` remains the owner of provider/live worker registration and production refresh proof; local integration tests cannot replace that evidence.

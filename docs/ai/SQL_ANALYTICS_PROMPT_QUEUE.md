@@ -1,6 +1,6 @@
 # SQL Analytics Prompt Queue
 
-Date: 2026-06-28
+Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
 
@@ -37,6 +37,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q80 | WAITING | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | WAITING | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | WAITING | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
+| Q83 | WAITING | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
 
 ---
 
@@ -1029,3 +1030,79 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
   - No runtime behavior changed; the audit only makes the current split timeout model explicit.
 - Next:
   - none
+
+---
+
+## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
+
+Status: WAITING
+Priority: P0
+Type: SQL/backend/tests
+Feature family: nivelacija-sql-nullability-and-baseline
+Parallel-safe: no, this is the SQL owner for pre/post change semantics
+Owner: Codex
+Commit suggestion: `fix(sql): preserve nivelacija evidence states`
+
+### Problem
+
+The vendor nivelacija endpoint has compatibility SQL that coalesces missing pre/post quantity, revenue, coverage and change fields to zero. It also falls back from a revenue change column to a quantity change column when the revenue column is unavailable. That can make absent evidence look like a measured zero and can expose a quantity effect under a revenue metric name.
+
+### Evidence
+
+- `Api/Endpoints/AllEndpoints.cs:3227-3232` chooses `change_percent_revenue` when present and otherwise uses `change_percent_qty`.
+- `Api/Endpoints/AllEndpoints.cs:3338-3346` and `:3401-3409` apply `COALESCE(..., 0)` to pre/post quantity, revenue, coverage and change fields.
+- `Api/Endpoints/AllEndpoints.cs:3510-3517` reads missing numeric columns as zero and determines `HasSalesWindow` from those values, losing the distinction between missing relation data and a measured empty sales window.
+- Existing Q69/Q70/Q71/Q76/Q77 work covered earlier SQL trust cases, but this raw endpoint compatibility branch is not yet proven with a missing-column/nullability matrix.
+
+### Scope only
+
+- `Api/Endpoints/AllEndpoints.cs` vendor-sales-nivelacija raw SQL and reader mapping
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`
+- focused SQL/backend tests and an optional SQL audit note
+
+### Do not touch
+
+- frontend pages/components
+- recommendation thresholds or scenario/business interpretation
+- cache/refresh worker ownership
+- unrelated analytics formulas
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` section `RQ140`
+- `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md`
+- `docs/qa/ANALYTICS_SQL_SECOND_PASS_REVIEW.md`
+- `Api/Endpoints/AllEndpoints.cs` vendor-sales-nivelacija handler
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`
+
+### Do
+
+1. Define the SQL contract for each field: source column, unit, denominator, measured-zero condition and missing/unknown condition.
+2. Stop using quantity percent as an implicit revenue percent. If compatibility requires a fallback, return an explicit source/status field and mark the result degraded; otherwise fail closed.
+3. Preserve nullable coverage/change values through SQL and the reader. `HasSalesWindow` must distinguish a proven empty window from missing/unreadable relation data.
+4. Prove whether absent pre/post rows, absent columns, view drift and no denominator should return empty, warning/degraded or error metadata; do not decide from numeric zero alone.
+5. Add a bounded SQL audit note if the view and endpoint cannot be proven together without a live database; record the exact missing evidence rather than inferring it.
+
+### Checks
+
+- `git diff --check`
+- focused SQL fragment/view contract tests for null, valid zero, missing denominator, missing column/view and revenue-vs-quantity fallback
+- nearest `dotnet test` filter for changed SQL/backend tests
+- `dotnet ef migrations list` for the affected context when a migration/view contract changes
+
+### Acceptance
+
+- Raw nivelacija SQL no longer hides missing coverage or change evidence as zero.
+- Revenue and quantity effects are never silently interchangeable.
+- Missing relation/column/migration and true empty sales window produce distinct tested states.
+- SQL changes remain bounded to the SQL owner; frontend/business interpretation is handed back to `RQ140`.
+
+### Dependencies
+
+- `Q69`, `Q70`, `Q71`, `Q76` and `Q77` are historical prerequisites and must be reused.
+- `RQ139` supplies the shared numeric-state vocabulary; `RQ140` consumes this SQL contract for cross-layer comparability.
+- Live database/schema proof may remain `PARTIAL` or `BLOCKED` when the required runtime relation is unavailable; do not claim production proof from static SQL tests.
