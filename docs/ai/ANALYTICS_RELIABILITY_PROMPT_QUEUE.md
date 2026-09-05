@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ154
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -78,6 +78,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
+| RQ154 | READY | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
+| RQ155 | WAITING | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
+| RQ156 | WAITING | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
 
 ---
 
@@ -4348,3 +4351,219 @@ Commit suggestion: `docs(analytics): map offline route lineage`
 - Residual risk: static lineage can identify owners and gaps but cannot prove deployed response parity, applied migrations, cache contents, refresh success or browser behavior.
 - Next: `STAB16` for live provider/worker/browser proof; then promote the next dependency-satisfied RQ prompt.
 - Prompt defect / scope repair: `RQ153` was correctly narrowed to the offline/static half of `RQ141`; live proof was intentionally not pulled into this task.
+
+---
+
+## RQ154 - Keep Daily Sales unknown numeric evidence unavailable
+
+Status: READY
+Priority: P0
+Type: frontend/contract/tests
+Feature family: daily-sales-numeric-state
+Parallel-safe: no, Daily Sales chart and summary state has one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve daily sales unknown values`
+
+### Problem
+
+The Daily Sales page has several local numeric fallbacks that can turn unknown, missing, empty-window or non-finite evidence into a trusted zero. The most visible cases are chart tooltip formatters, the seven-day rolling average and `safeDivide`. The API client also declares all row and metadata numbers as non-null, so a partial JSON response can bypass the intended unavailable state at the type boundary.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:327-332` returns `0` for an empty rolling window and adds every accessor result without rejecting unknown/non-finite values.
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:1651`, `:1690`, `:1738` and `:1791` use `Number(value ?? 0)` in Recharts tooltip formatters.
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:347-349` returns zero from `safeDivide` when the denominator is zero, and `:865-921` uses `?? 0` for trust/quality metadata without proving that metadata is present.
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts` declares row and metadata measures as required numbers even though runtime partial/null payloads are not represented by the client contract.
+- The nearest `DailySalesStatsPage.spec.tsx` tests title and controls only; it does not fail for null, missing denominator, NaN, Infinity or a genuine zero alongside unavailable evidence.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts` only if additive nullable DTO typing is required
+- `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.spec.tsx`, `DailySalesStatsPage.premium.spec.tsx` or a focused helper spec
+- The Daily Sales table, trend chart, shift-mix chart, weekday chart, supplier concentration and local summary/quality cards for the same response
+
+Do not change backend business formulas, recommendation scoring, cache/refresh behavior, SQL, migrations, forecast logic or the broad cross-route parity owned by `RQ145`.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/qa/ANALYTICS_STABILITY_AUDIT_2026-09-05.md`
+- `RQ139`, `RQ144`, `RQ152` and `RQ153` completion notes
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`
+- `Klijent/clientapp/src/services/dailySalesStatsApi.ts`
+- nearest Daily Sales tests and shared analytics formatters
+
+### Do
+
+1. Add failing-first tests for an empty successful response, `null`/missing row values, a genuine measured zero, missing denominators, `NaN`, `Infinity` and a partial metadata payload.
+2. Make the smallest state-preserving change so unknown/missing/insufficient/non-finite values render as the established unavailable text and are not included as zero in rolling averages, anomaly selection, shares or summaries.
+3. Preserve a genuine valid zero as `0`; do not infer unknown from zero and do not remove a valid zero from charts or tables.
+4. Keep empty success distinct from request error and keep existing stale/partial/fallback trust metadata visible.
+5. Prove that the same daily row retains the same value/state in table, chart tooltip, local detail/export adapter and summary where those adapters exist. Do not create frontend recommendation or confidence semantics.
+6. If the API DTO must become nullable, make the change additive and document the runtime assumption; do not claim that typing alone proves backend payload correctness.
+
+### Tests
+
+- Focused Daily Sales tests that fail before the fix for null/missing, valid zero, missing denominator, NaN and Infinity.
+- Empty response remains a user-facing empty state and not an error or a zero-valued chart.
+- Partial/fallback metadata remains visibly degraded/unavailable; no query time is shown as last refresh.
+- `npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx` or the smallest equivalent focused set.
+- `npm run check:analytics-guardrails`, typecheck/build if types change, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- Null, missing, unknown, insufficient, NaN and Infinity never render or calculate as trusted zero on the scoped Daily Sales surfaces.
+- A genuine measured zero remains zero.
+- A zero denominator produces unavailable/degraded state, not a ratio of zero.
+- Empty success, partial/fallback and request error remain visibly distinct with safe user-facing messages.
+- Focused regression tests reproduce the old behavior before the fix and pass after it.
+- No backend decision, recommendation status, confidence or cross-route parity claim is invented by this prompt.
+
+### Dependencies
+
+- None for the scoped frontend contract/test repair; reuse the numeric-state vocabulary established by `RQ139` and `RQ152`.
+- `RQ145` remains the owner of complete table/chart/detail/export/report parity across all analytics routes.
+- `STAB16` remains the owner of deployed worker, live refresh and browser-console proof; this prompt must not infer those facts.
+- Do not promote forecast, Shopify, vendor comparison or recommendation-ranking work under this prompt.
+
+---
+
+## RQ155 - Keep unknown Dashboard trends visible and non-ranked
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: dashboard-trend-unknown-visibility
+Parallel-safe: no, Dashboard top-row ranking has one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): keep dashboard unknown trends visible`
+
+### Problem
+
+Dashboard top gainers and losers use `trendPct ?? 0` for both filtering and sorting. A missing trend is therefore silently treated as neutral and excluded from both lists. This makes an incomplete ranking look complete and hides the distinction between a measured zero trend and no comparable trend evidence.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:868-878` filters and sorts `topAdvanced.byRevenue` with `(row.trendPct ?? 0)`.
+- `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx` covers positive and negative trends but has no null/unknown trend assertion.
+- Existing RQ139/RQ143 contracts require unavailable metrics to stay unavailable and backend-owned ranking/decision semantics not to be recreated in the frontend.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`
+- nearest Dashboard table/ranking regression spec and shared analytics display helper only if needed
+
+Do not change the backend trend formula, backend ordering contract, recommendation status, score, confidence, forecast, inventory ranking or weekday/hour zero-fill behavior in this prompt.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/qa/ANALYTICS_STABILITY_AUDIT_2026-09-05.md`
+- `RQ139`, `RQ143` and `RQ145`
+- `AnalyticsDashboard.tsx` and `AnalyticsDashboard.tableSystem.spec.tsx`
+
+### Do
+
+1. Add a failing-first fixture containing a positive trend, negative trend, genuine `0` trend and `null`/missing/non-finite trend.
+2. Keep only finite measured positive values in gainers and finite measured negative values in losers; do not rank unknown values as zero.
+3. Make unknown trend evidence visible in the existing table/detail context as the established unavailable state or an explicit safe count/message, without inventing an actionable recommendation.
+4. Preserve backend-provided ordering/decision fields and keep export/table values consistent for the same row.
+
+### Tests
+
+- Dashboard regression test proving `null`, missing, NaN and Infinity are not silently ranked as neutral zero.
+- Regression test proving genuine zero remains a measured neutral value and is not mislabeled as unavailable.
+- Existing table/export parity test remains green.
+- Focused frontend test, analytics guardrails, typecheck/build if changed, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- Unknown/non-finite trend is visible as unavailable/degraded and is absent from gainers/losers ranking.
+- Genuine zero trend remains visible as measured neutral zero.
+- No frontend ranking, action, confidence or recommendation decision is created beyond the backend contract.
+- No raw backend code is shown to the user.
+
+### Dependencies
+
+- Queue order is after `RQ154`; no backend dependency is required for the bounded page-owned fix.
+- `RQ143` remains the owner of end-to-end backend decision/ranking ownership.
+- `RQ145` remains the owner of complete cross-route parity and safe messaging.
+- `STAB16` remains the owner of live browser/refresh evidence.
+
+---
+
+## RQ156 - Keep unknown pre/post coverage distinct from measured zero
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: pre-post-coverage-unknown-state
+Parallel-safe: no, supplier/category pre/post wording has one presentation owner
+Owner: Codex
+Commit suggestion: `fix(analytics): distinguish unknown pre-post coverage`
+
+### Problem
+
+Supplier, Color and Shoe Type pages coalesce a missing pre/post revenue coverage percentage to zero before selecting the display branch. A response with unknown coverage can therefore follow the same branch as measured zero coverage. Existing tests include some null payloads, but they do not prove that the user-facing state and any detail/export value preserve unknown versus true zero.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:363,428` use `(prePostNivelacijaRevenueCoveragePct ?? 0) <= 0`.
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx:204` and `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx:293` use the same null-to-zero branch.
+- `SupplierSalesStatsPage.premium.spec.tsx` provides null pre/post fixtures, while Color tests primarily prove confidence/reliability do not fall back to coverage; no shared null-versus-zero coverage assertion spans the three pages.
+- `RQ140` owns the causal/comparability contract and `RQ145` owns broad parity; this prompt is only a bounded presentation-state repair.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`
+- nearest existing page tests; shared display helper only if it remains presentation-only
+
+Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calculation, backend recommendation status, confidence/reliability or live refresh behavior.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/qa/ANALYTICS_STABILITY_AUDIT_2026-09-05.md`
+- `RQ139`, `RQ140`, `RQ145` and the pre/post contract notes
+- the three page implementations and their nearest specs
+
+### Do
+
+1. Add failing-first tests with coverage `null`/missing, measured `0`, positive coverage, invalid non-finite coverage and an explicit low-signal note.
+2. Branch on unknown before numeric comparison so unknown coverage renders the established unavailable/low-signal explanation rather than a measured zero-coverage claim.
+3. Preserve true `0%` coverage as a measured zero only when the backend explicitly supplies finite zero and the page labels it unambiguously.
+4. Keep pre/post impact, units and recommendation status backend-owned; the frontend may only map the supplied state and safe explanation.
+5. Verify table/detail/export values on each affected page do not turn unknown coverage into zero.
+
+### Tests
+
+- Focused Supplier, Color and Shoe Type tests for null, genuine zero, positive, NaN and Infinity coverage.
+- Existing `prePostSignalNote` and low-signal behavior remains unchanged.
+- Export/detail parity tests for the affected coverage field where those adapters exist.
+- Focused frontend tests, analytics guardrails, typecheck/build if changed, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- Unknown/missing/non-finite pre/post coverage is visibly unavailable or low-signal, never measured `0%`.
+- Genuine finite `0%` remains distinguishable from unknown.
+- No pre/post formula, causal claim, recommendation, confidence or reliability is recomputed in the frontend.
+- User-facing messages are safe and explain the limitation without raw backend codes.
+
+### Dependencies
+
+- Queue order is after `RQ155`; this bounded UI test/fix does not wait for live database proof.
+- `RQ140` remains the owner of causal comparability and backend pre/post semantics.
+- `RQ145` remains the owner of complete cross-surface parity.
+- `RQ146` and `STAB16` retain schema, migration, refresh and deployed-runtime proof.
