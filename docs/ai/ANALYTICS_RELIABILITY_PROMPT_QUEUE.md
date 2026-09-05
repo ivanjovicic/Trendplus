@@ -4259,8 +4259,8 @@ Commit suggestion: `fix(analytics): preserve derived intelligence evidence state
 - Run log: `.ai/runs/2026-09-05-RQ152-evidence.md`.
 - Evidence state: synchronized.
 - Delivery mode: direct-main.
-- Main commit SHA: `4b47affc`.
-- Main verification: `git merge-base --is-ancestor 4b47affc origin/main` passed; current `main` contains the delivered implementation commit.
+- Main commit SHA: `4b47affc4b3b81ccf9591d080d648c47972141df`.
+- Main verification: `git merge-base --is-ancestor 4b47affc4b3b81ccf9591d080d648c47972141df origin/main` passed; current `main` contains the delivered implementation commit.
 - Missed: no forecast calibration, Shopify, backend formula, recommendation engine or live refresh work was included.
 - Follow-up: `RQ153` is promoted to `READY` for the offline route lineage matrix; `STAB16` remains the owner of live provider/worker/browser proof.
 - Residual risk: derived result types are local nullable extensions of legacy DTO shapes and are not yet a cross-route trust metadata contract; broader parity and runtime proof remain outside this prompt.
