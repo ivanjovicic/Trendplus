@@ -4,8 +4,8 @@ Date: 2026-09-05
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: 7b19448ce393538988a99aa736f21a6b43315fac
-Main verification: current main and origin/main both resolve to 7b19448ce393538988a99aa736f21a6b43315fac; implementation commit a84d8a42974e4228840ef07e3f0e9f5d03a4068c is an ancestor
+Main commit SHA: a84d8a42974e4228840ef07e3f0e9f5d03a4068c
+Main verification: current main and origin/main contain implementation commit a84d8a42974e4228840ef07e3f0e9f5d03a4068c as an ancestor; final branch SHA is recorded in the delivery response
 Evidence state: synchronized
 
 ## What was done
