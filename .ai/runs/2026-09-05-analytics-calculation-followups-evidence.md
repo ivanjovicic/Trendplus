@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct-main
 Main commit SHA: 8293684d6ce2dbd679b45b9c782068649a46e143
-Main verification: passed - `origin/main` equals `8293684d6ce2dbd679b45b9c782068649a46e143` and contains the delivered commit
+Main verification: passed - current `origin/main` contains delivered implementation commit `8293684d6ce2dbd679b45b9c782068649a46e143` (evidence-sync commit is also on `main`)
 Evidence state: synchronized
 
 ## What was done
