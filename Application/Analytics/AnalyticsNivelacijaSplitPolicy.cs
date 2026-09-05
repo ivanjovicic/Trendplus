@@ -15,6 +15,7 @@ public readonly record struct NivelacijaSplitSnapshot(
     double? ComparableRevenueCoveragePct,
     double? RevenueImpactPct,
     double? UnitsImpactPct,
+    bool HasComparableSignal,
     string? SignalNote);
 
 public static class AnalyticsNivelacijaSplitPolicy
@@ -141,6 +142,7 @@ public static class AnalyticsNivelacijaSplitPolicy
             ComparableRevenueCoveragePct: comparableRevenueCoveragePct,
             RevenueImpactPct: revenueImpactPct,
             UnitsImpactPct: unitsImpactPct,
+            HasComparableSignal: revenueImpactPct.HasValue && unitsImpactPct.HasValue,
             SignalNote: signalNote);
     }
 }

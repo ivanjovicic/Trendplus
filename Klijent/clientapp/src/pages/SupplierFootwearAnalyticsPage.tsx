@@ -21,6 +21,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
+import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
 
@@ -59,7 +60,7 @@ function comparableMetric(value: number | null | undefined, comparable: boolean)
 }
 
 function rowHasComparableEvidence(row: VendorSalesNivelacijaVendorStat): boolean {
-  return row.hasComparableSalesWindow !== false && comparableMetric(row.postRevenue, true) != null;
+  return hasComparablePrePostEvidence(row) && comparablePrePostMetric(row.postRevenue, row) != null;
 }
 
 export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
@@ -139,7 +140,7 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   const globalCategoryRevenue = new Map<string, number>();
 
   articleStats.forEach((row) => {
-    if (row.hasComparableSalesWindow === false) return;
+    if (!hasComparablePrePostEvidence(row)) return;
     const vKey = row.vendorId != null ? `id:${row.vendorId}` : `name:${normalizeName(row.vendorName)}`;
     const category = (row.category ?? "").trim() || "N/A";
     const revenue = normalizeMetricNumber(row.postRevenue);
@@ -340,7 +341,12 @@ export default function SupplierFootwearAnalyticsPage({
 
       setData(currentData);
       setExpandedVendorKey(null);
-      setPreviousRevenue(previousData?.totals.postRevenue ?? null);
+      setPreviousRevenue(
+        comparablePrePostMetric(
+          previousData?.totals.postRevenue,
+          { hasComparableSalesWindow: previousData?.totals.hasComparableSalesWindow },
+        ),
+      );
     } catch (reason) {
       if (requestId !== requestIdRef.current) return;
       setData(null);
@@ -412,10 +418,10 @@ export default function SupplierFootwearAnalyticsPage({
 
   const hasUntrustedRows = data?.vendorStats?.some((row) => !rowHasComparableEvidence(row)) ?? false;
   const serverTotalRevenue = normalizeMetricNumber(data?.totals.postRevenue);
-  const totalRevenue = hasUntrustedRows
-    ? null
-    : serverTotalRevenue
-      ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + (comparableMetric(row.postRevenue, true) ?? 0), 0) : null);
+  const totalRevenue = data?.totals.hasComparableSalesWindow === true && !hasUntrustedRows
+    ? serverTotalRevenue
+      ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + (comparableMetric(row.postRevenue, rowHasComparableEvidence(row)) ?? 0), 0) : null)
+    : null;
   const top5SharePct = useMemo(() => {
     if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
     const top5 = [...sortedRows].sort((a, b) => (comparableMetric(b.postRevenue, rowHasComparableEvidence(b)) ?? -1) - (comparableMetric(a.postRevenue, rowHasComparableEvidence(a)) ?? -1)).slice(0, 5).reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);

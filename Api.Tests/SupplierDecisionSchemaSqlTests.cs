@@ -100,6 +100,21 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaEndpointFailsClosedForMissingComparabilityEvidence()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("&& hasQtyBaseline", source);
+        Assert.Contains("&& hasRevenueBaseline", source);
+        Assert.DoesNotContain("ChangePercent = changePercentRevenue ?? 0m", source);
+        Assert.Contains("ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null", source);
+        Assert.Contains("ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null", source);
+        Assert.Contains("HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)", source);
+        Assert.Equal(3, source.Split("var hasComparableNivelacijaSignal =", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, source.Split("recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
     public void SupplierDecisionViewsExposeMissingEvidenceFlagsAndConservativeGuardrails()
     {
         var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");

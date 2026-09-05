@@ -93,6 +93,7 @@ type DecisionShoeType = ShoeTypeSalesStat & {
   confidencePct: number | null;
   recommendationConfidencePct: number | null;
   confidenceAvailable: boolean;
+  recommendationAllowed: boolean;
   status: DecisionStatus;
   statusReason: string;
   dataQualityStatus: RecommendationQualityStatus;
@@ -426,8 +427,14 @@ export default function ShoeTypeSalesStatsPage() {
         ? (item.brojArtikalaSaNivelacijom / item.brojArtikalaUkupno) * 100
         : 0;
       const backendStatus = mapRecommendationStatus(item.recommendation?.status) ?? "insufficient_data";
-      const reliabilityPctValue = normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct);
-      const confidencePctValue = normalizeRecommendationPct(item.recommendation?.confidencePct);
+      const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
+      const displayStatus = recommendationAllowed ? backendStatus : "insufficient_data";
+      const reliabilityPctValue = recommendationAllowed
+        ? normalizeRecommendationPct(item.recommendation?.reliabilityPct ?? item.reliabilityPct)
+        : null;
+      const confidencePctValue = recommendationAllowed
+        ? normalizeRecommendationPct(item.recommendation?.confidencePct)
+        : null;
       const statusReason = item.recommendation?.summary
         ?? "Backend recommendation payload nedostaje; red ostaje informativan bez lokalnog izvodjenja preporuke.";
       const reliabilityAvailable = reliabilityPctValue != null;
@@ -445,8 +452,11 @@ export default function ShoeTypeSalesStatsPage() {
         confidencePct: confidencePctValue,
         recommendationConfidencePct: confidencePctValue,
         confidenceAvailable,
-        status: backendStatus,
-        statusReason,
+        recommendationAllowed,
+        status: displayStatus,
+        statusReason: recommendationAllowed
+          ? statusReason
+          : `Automatska preporuka nije dozvoljena: ${statusReason}`,
         dataQualityStatus: normalizeRecommendationQualityStatus(item.recommendation?.dataQualityStatus),
         reasonCodes: item.recommendation?.reasonCodes ?? [],
       };
@@ -1460,19 +1470,19 @@ export default function ShoeTypeSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre nivelacije promet <InfoTip text="Zbir vrednosti prodaja pre prvog datuma nivelacije (ažuriranja cene) za ovaj tip." /></span>
-                  <strong>{fmtRsd(selectedRow.preNivelacijePromet)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.preNivelacijePromet) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet <InfoTip text="Zbir vrednosti prodaja od prvog datuma nivelacije (ažuriranja cene) nadalje." /></span>
-                  <strong>{fmtRsd(selectedRow.posleNivelacijePromet)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.posleNivelacijePromet) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Pre nivo količina <InfoTip text="Ukupan broj prodanih komada pre prvog datuma nivelacije." /></span>
-                  <strong>{fmtQty(selectedRow.preNivelacijeKolicina)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.preNivelacijeKolicina) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Posle nivo količina <InfoTip text="Ukupan broj prodanih komada od prvog datuma nivelacije nadalje." /></span>
-                  <strong>{fmtQty(selectedRow.posleNivelacijeKolicina)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.posleNivelacijeKolicina) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom <InfoTip text="Broj artikala sa registrovnom nivelacijom / ukupan broj artikala ovog tipa." /></span>

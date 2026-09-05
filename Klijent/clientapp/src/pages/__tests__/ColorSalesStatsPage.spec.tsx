@@ -56,7 +56,7 @@ vi.mock("../../services/colorSalesStatsApi", async () => {
 });
 
 function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
-  return {
+  const base: ColorSalesStat = {
     boja: "Crna",
     preNivelacijePromet: 90000,
     preNivelacijeKolicina: 9,
@@ -105,9 +105,16 @@ function color(overrides: Partial<ColorSalesStat> = {}): ColorSalesStat {
       confidencePct: 88,
       reliabilityPct: 82,
       dataQualityStatus: "good",
+      recommendationAllowed: true,
       reasonCodes: ["strong_pop_growth"],
     },
+  };
+  return {
+    ...base,
     ...overrides,
+    recommendation: overrides.recommendation
+      ? { recommendationAllowed: true, ...overrides.recommendation }
+      : overrides.recommendation,
   };
 }
 
@@ -422,6 +429,34 @@ describe("ColorSalesStatsPage", () => {
     expect(displayStatusLabel("NedovoljnoPodataka")).toBe("Nedovoljno podataka");
     expect(mapRecommendationStatus("maintain")).toBe("Zadrzi");
     expect(mapRecommendationStatus("increase_focus")).toBe("Pojacaj");
+  });
+
+  it("hides an action when the backend recommendation is not allowed", async () => {
+    vi.mocked(getColorSalesStats).mockResolvedValue(response({
+      colors: [color({
+        recommendation: {
+          status: "increase_focus",
+          label: "Increase focus",
+          summary: "Pre/post signal nije uporediv.",
+          confidencePct: null,
+          reliabilityPct: null,
+          dataQualityStatus: "warning",
+          recommendationAllowed: false,
+          reasonCodes: ["insufficient_data"],
+        },
+      })],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista boja");
+
+    expect(screen.getByText(/Nedovoljno podataka: 1/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pojačaj: 1/)).not.toBeInTheDocument();
+    const table = getDecisionTable();
+    const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Crna"));
+    expect(row).toBeDefined();
+    expect(row).toHaveTextContent("Nedovoljno podataka");
+    expect(row).not.toHaveTextContent("Pojačaj");
   });
 
   it("does not invent a business recommendation when backend recommendation is missing", async () => {

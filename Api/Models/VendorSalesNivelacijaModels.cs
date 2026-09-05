@@ -21,7 +21,7 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public decimal PostRevenue { get; set; }
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
-    public decimal ChangePercent { get; set; }
+    public decimal? ChangePercent { get; set; }
     public decimal CoveragePre30 { get; set; }
     public decimal CoveragePost30 { get; set; }
     public bool HasSalesWindow { get; set; }
@@ -56,8 +56,8 @@ public sealed class VendorSalesNivelacijaRecommendationDto
     public string Status { get; set; } = "insufficient_data";
     public string Label { get; set; } = "Insufficient data";
     public string Summary { get; set; } = string.Empty;
-    public double ConfidencePct { get; set; }
-    public double ReliabilityPct { get; set; }
+    public double? ConfidencePct { get; set; }
+    public double? ReliabilityPct { get; set; }
     public string DataQualityStatus { get; set; } = "critical";
     public bool RecommendationAllowed { get; set; }
     public IReadOnlyList<string> ReasonCodes { get; set; } = [];
@@ -83,7 +83,7 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int ActiveArticlesCount { get; set; }
     public int IncreasedPriceArticlesCount { get; set; }
     public int DecreasedPriceArticlesCount { get; set; }
-    public double ReliabilityPct { get; set; }
+    public double? ReliabilityPct { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
@@ -106,6 +106,7 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public decimal AbsoluteChangeRevenue { get; set; }
     public decimal AvgCoveragePre30 { get; set; }
     public decimal AvgCoveragePost30 { get; set; }
+    public bool HasComparableSalesWindow { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaDataQualityDto
@@ -134,6 +135,7 @@ public sealed class VendorSalesNivelacijaCategoryStatDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
+    public bool HasComparableSalesWindow { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaPriceDirectionStatDto
@@ -144,6 +146,7 @@ public sealed class VendorSalesNivelacijaPriceDirectionStatDto
     public decimal AvgPriceChangePercent { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal ChangePercent { get; set; }
+    public bool HasComparableSalesWindow { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaInsightDto

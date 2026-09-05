@@ -34,6 +34,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(1, snapshot.ComparableArticleCount);
         Assert.Null(snapshot.RevenueImpactPct);
         Assert.Null(snapshot.UnitsImpactPct);
+        Assert.False(snapshot.HasComparableSignal);
         Assert.Contains("premala", snapshot.SignalNote ?? string.Empty);
     }
 
@@ -67,6 +68,42 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(1_250m, snapshot.ComparableRevenueWithSplit);
         Assert.Equal(50d, snapshot.RevenueImpactPct);
         Assert.Equal(20d, snapshot.UnitsImpactPct);
+        Assert.True(snapshot.HasComparableSignal);
         Assert.Null(snapshot.SignalNote);
+    }
+
+    [Fact]
+    public void Build_DistinguishesEmptyOrMissingEventFromAValidZeroImpact()
+    {
+        var rows = new[]
+        {
+            new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 500m, 5),
+            new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 500m, 5)
+        };
+
+        var noEvent = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime>(),
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+        var validZero = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime>
+            {
+                [1] = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+            },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+        Assert.False(noEvent.HasComparableSignal);
+        Assert.Null(noEvent.RevenueImpactPct);
+        Assert.True(validZero.HasComparableSignal);
+        Assert.Equal(0d, validZero.RevenueImpactPct);
+        Assert.Equal(0d, validZero.UnitsImpactPct);
     }
 }

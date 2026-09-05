@@ -53,10 +53,11 @@ type ActiveFilters = {
   storeId: number | null;
 };
 
-type DecisionColor = ColorSalesStat & {
+type DecisionColor = Omit<ColorSalesStat, "reliabilityPct"> & {
   sharePct: number | null;
   marginContribution: number;
-  reliabilityPct?: number;
+  reliabilityPct: number | null;
+  recommendationAllowed: boolean;
   coveragePct: number | null;
   splitCoveragePct: number | null;
   decisionScore: number | null;
@@ -149,7 +150,7 @@ type StatusTooltipData = {
   prePostNivelacijaRevenueImpactPct: number | null;
   previousPeriodRevenue: number | null;
   splitCoveragePct: number | null;
-  reliabilityPct?: number;
+  reliabilityPct: number | null;
 };
 
 const MISSING_BACKEND_RECOMMENDATION_REASON =
@@ -338,19 +339,26 @@ export default function ColorSalesStatsPage() {
 
       const backendStatus = mapRecommendationStatus(item.recommendation?.status);
       if (backendStatus) {
+        const recommendationAllowed = item.recommendation?.recommendationAllowed === true;
+        const displayStatus = recommendationAllowed ? backendStatus : "NedovoljnoPodataka";
         return {
           ...item,
           sharePct: item.sharePct ?? sharePct,
           marginContribution,
-          reliabilityPct: item.recommendation?.reliabilityPct ?? item.reliabilityPct,
+          reliabilityPct: recommendationAllowed
+            ? item.recommendation?.reliabilityPct ?? item.reliabilityPct ?? null
+            : null,
+          recommendationAllowed,
           coveragePct,
           splitCoveragePct,
-          decisionScore: item.recommendation?.confidencePct == null
+          decisionScore: !recommendationAllowed || item.recommendation?.confidencePct == null
             ? null
             : Math.round(item.recommendation.confidencePct),
-          status: backendStatus,
-          statusReason: item.recommendation?.summary
-            ?? (backendStatus === "NedovoljnoPodataka"
+          status: displayStatus,
+          statusReason: !recommendationAllowed
+            ? `Automatska preporuka nije dozvoljena: ${item.recommendation?.summary ?? "pre/post signal nije uporediv."}`
+            : item.recommendation?.summary
+            ?? (displayStatus === "NedovoljnoPodataka"
               ? "Nedovoljno podataka za pouzdanu preporuku; ne tretirati kao Zadrži."
               : "Backend recommendation summary nije dostupan."),
         };
@@ -361,7 +369,8 @@ export default function ColorSalesStatsPage() {
         ...item,
         sharePct: item.sharePct ?? sharePct,
         marginContribution,
-        reliabilityPct: item.reliabilityPct,
+        reliabilityPct: null,
+        recommendationAllowed: false,
         coveragePct,
         splitCoveragePct,
         decisionScore: null,
@@ -1050,19 +1059,19 @@ export default function ColorSalesStatsPage() {
                 </article>
                 <article>
                   <span>Pre nivelacije promet</span>
-                  <strong>{fmtRsd(selectedRow.preNivelacijePromet)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.preNivelacijePromet) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet</span>
-                  <strong>{fmtRsd(selectedRow.posleNivelacijePromet)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtRsd(selectedRow.posleNivelacijePromet) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Pre nivo kolicina</span>
-                  <strong>{fmtQty(selectedRow.preNivelacijeKolicina)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.preNivelacijeKolicina) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Posle nivo kolicina</span>
-                  <strong>{fmtQty(selectedRow.posleNivelacijeKolicina)}</strong>
+                  <strong>{selectedRow.prePostNivelacijaRevenueImpactPct != null ? fmtQty(selectedRow.posleNivelacijeKolicina) : "Nije dostupno"}</strong>
                 </article>
                 <article>
                   <span>Artikli sa nivelacijom</span>

@@ -67,6 +67,7 @@ function vendor(overrides: Partial<VendorSalesNivelacijaVendorStat> = {}): Vendo
     postRevenueSharePercent: 100,
     avgCoveragePre30: 0.8,
     avgCoveragePost30: 0.9,
+    hasComparableSalesWindow: true,
     articleCount: 4,
     activeArticlesCount: 4,
     increasedPriceArticlesCount: 2,
@@ -115,6 +116,7 @@ function response(overrides: Partial<VendorSalesNivelacijaResponse> = {}): Vendo
       avgPriceChangePercent: 5,
       avgCoveragePre30: 0.8,
       avgCoveragePost30: 0.9,
+      hasComparableSalesWindow: true,
     },
     dataQuality: {
       rawRows: 4,
@@ -285,6 +287,24 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(await screen.findByText(/80% signal/)).toBeInTheDocument();
     expect(screen.queryByText(/Visoko signal/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Srednje signal/)).not.toBeInTheDocument();
+  });
+
+  it("does not render legacy zero placeholders when comparability evidence is missing", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [vendor({ hasComparableSalesWindow: undefined })],
+        totals: { ...response().totals, hasComparableSalesWindow: undefined },
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+
+    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    const vendorRow = within(table).getByText("Vendor A").closest("tr");
+    expect(vendorRow).not.toBeNull();
+    expect(within(vendorRow!).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("100.000 RSD")).not.toBeInTheDocument();
   });
 
   it("shows an error alert and hides KPI cards when the vendor sales load fails", async () => {

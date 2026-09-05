@@ -9,7 +9,7 @@ export interface VendorSalesNivelacijaRecommendation {
     status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
     label: string;
     summary: string;
-    confidencePct: number;
+    confidencePct: number | null;
     reliabilityPct: number | null;
     dataQualityStatus: string;
     recommendationAllowed?: boolean | null;
@@ -57,7 +57,7 @@ export interface VendorSalesNivelacijaArticleStat {
     postRevenue: number;
     changeQty: number;
     changeRevenue: number;
-    changePercent: number;
+    changePercent: number | null;
     coveragePre30: number;
     coveragePost30: number;
     hasSalesWindow: boolean;
@@ -127,6 +127,7 @@ export interface VendorSalesNivelacijaCategoryStat {
     changeQty: number;
     changeRevenue: number;
     changePercent: number;
+    hasComparableSalesWindow?: boolean;
 }
 
 export interface VendorSalesNivelacijaPriceDirectionStat {
@@ -136,6 +137,7 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     avgPriceChangePercent: number;
     changeRevenue: number;
     changePercent: number;
+    hasComparableSalesWindow?: boolean;
 }
 
 export interface VendorSalesNivelacijaInsight {

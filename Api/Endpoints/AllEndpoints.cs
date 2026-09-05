@@ -1670,6 +1670,9 @@ public static class AllEndpoints
                             IsNewEntity: isNewSupplier,
                             UnknownBucketSharePct: unknownSupplierSharePct),
                             averageKnownMarginPct);
+                        var hasComparableNivelacijaSignal = supplier.prePostNivelacijaRevenueImpactPct.HasValue
+                            && supplier.prePostNivelacijaUnitsImpactPct.HasValue;
+                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
 
                         return new
                         {
@@ -1719,16 +1722,16 @@ public static class AllEndpoints
                             shareOfMarginContribution,
                             shareOfProfit = shareOfMarginContribution,
                             shareOfUnits,
-                            reliabilityPct = recommendation.ReliabilityPct,
+                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                             recommendation = new
                             {
                                 recommendation.Status,
                                 recommendation.Label,
                                 recommendation.Summary,
-                                recommendation.ConfidencePct,
-                                recommendation.ReliabilityPct,
+                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
+                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                                 recommendation.DataQualityStatus,
-                                recommendation.RecommendationAllowed,
+                                RecommendationAllowed = recommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -2379,6 +2382,9 @@ public static class AllEndpoints
                             IsNewEntity: isNewType,
                             UnknownBucketSharePct: unknownTypeSharePct),
                             averageMarginPct);
+                        var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
+                            && row.prePostNivelacijaUnitsImpactPct.HasValue;
+                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
 
                         return new
                         {
@@ -2421,16 +2427,16 @@ public static class AllEndpoints
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
-                            reliabilityPct = recommendation.ReliabilityPct,
+                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                             recommendation = new
                             {
                                 recommendation.Status,
                                 recommendation.Label,
                                 recommendation.Summary,
-                                recommendation.ConfidencePct,
-                                recommendation.ReliabilityPct,
+                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
+                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                                 recommendation.DataQualityStatus,
-                                recommendation.RecommendationAllowed,
+                                RecommendationAllowed = recommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -2955,6 +2961,9 @@ public static class AllEndpoints
                             IsNewEntity: isNewColor,
                             UnknownBucketSharePct: unknownColorSharePct),
                             averageMarginPct);
+                        var hasComparableNivelacijaSignal = row.prePostNivelacijaRevenueImpactPct.HasValue
+                            && row.prePostNivelacijaUnitsImpactPct.HasValue;
+                        var recommendationAllowed = recommendation.RecommendationAllowed && hasComparableNivelacijaSignal;
 
                         return new
                         {
@@ -2994,16 +3003,16 @@ public static class AllEndpoints
                             row.prePostSignalNote,
                             row.prePostComparableArticleCount,
                             sharePct,
-                            reliabilityPct = recommendation.ReliabilityPct,
+                            reliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                             recommendation = new
                             {
                                 recommendation.Status,
                                 recommendation.Label,
                                 recommendation.Summary,
-                                recommendation.ConfidencePct,
-                                recommendation.ReliabilityPct,
+                                ConfidencePct = recommendationAllowed ? (double?)recommendation.ConfidencePct : null,
+                                ReliabilityPct = recommendationAllowed ? (double?)recommendation.ReliabilityPct : null,
                                 recommendation.DataQualityStatus,
-                                recommendation.RecommendationAllowed,
+                                RecommendationAllowed = recommendationAllowed,
                                 reasonCodes = recommendation.ReasonCodes
                             },
                             // Legacy compatibility aliases (deprecated)
@@ -3557,6 +3566,9 @@ public static class AllEndpoints
                         var hasRevenueBaseline = !reader.IsDBNull(22) && reader.GetBoolean(22);
                         var revenueBaselineReason = reader.IsDBNull(23) ? null : reader.GetString(23);
                         var semanticChangePercentRevenue = reader.IsDBNull(24) ? (decimal?)null : reader.GetDecimal(24);
+                        var hasComparableSalesWindow = preQtyEvidence.HasValue && postQtyEvidence.HasValue
+                            && preRevenueEvidence.HasValue && postRevenueEvidence.HasValue
+                            && hasQtyBaseline && hasRevenueBaseline;
 
                         var preQty = preQtyEvidence.HasValue ? (int)preQtyEvidence.Value : 0;
                         var preRevenue = preRevenueEvidence ?? 0m;
@@ -3599,7 +3611,7 @@ public static class AllEndpoints
                             PostRevenue = postRevenue,
                             ChangeQty = changeQty,
                             ChangeRevenue = changeRevenue,
-                            ChangePercent = changePercentRevenue ?? 0m,
+                            ChangePercent = changePercentRevenue,
                             CoveragePre30 = coveragePre30,
                             CoveragePost30 = coveragePost30,
                             HasSalesWindow = hasSalesWindow,
@@ -3607,8 +3619,7 @@ public static class AllEndpoints
                             PriceChangePercent = priceChangePercent,
                             HasPreSalesEvidence = preQtyEvidence.HasValue || preRevenueEvidence.HasValue,
                             HasPostSalesEvidence = postQtyEvidence.HasValue || postRevenueEvidence.HasValue,
-                            HasComparableSalesWindow = preQtyEvidence.HasValue && postQtyEvidence.HasValue
-                                && preRevenueEvidence.HasValue && postRevenueEvidence.HasValue,
+                            HasComparableSalesWindow = hasComparableSalesWindow,
                             HasQtyBaseline = hasQtyBaseline,
                             QtyBaselineReason = qtyBaselineReason,
                             HasRevenueBaseline = hasRevenueBaseline,
@@ -3727,7 +3738,8 @@ public static class AllEndpoints
                     AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2),
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
-                    AvgCoveragePost30 = avgCoveragePost30
+                    AvgCoveragePost30 = avgCoveragePost30,
+                    HasComparableSalesWindow = analyzedRows > 0 && analyzed.All(x => x.HasComparableSalesWindow)
                 };
 
                 var productCostsByArticleId = new Dictionary<int, (decimal? ProductCostRsd, decimal? ProductCostLegacy)>();
@@ -3823,7 +3835,7 @@ public static class AllEndpoints
                                     .Count(),
                                 IncreasedPriceArticlesCount = increased,
                                 DecreasedPriceArticlesCount = decreased,
-                                HasComparableSalesWindow = g.All(x => x.HasComparableSalesWindow)
+                                HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
@@ -3867,14 +3879,16 @@ public static class AllEndpoints
                             UnknownBucketSharePct: unknownVendorSharePct),
                             averageKnownMarginPct);
 
-                        row.Vendor.ReliabilityPct = recommendation.ReliabilityPct;
+                        row.Vendor.ReliabilityPct = row.Vendor.HasComparableSalesWindow
+                            ? recommendation.ReliabilityPct
+                            : null;
                         row.Vendor.Recommendation = new VendorSalesNivelacijaRecommendationDto
                         {
                             Status = recommendation.Status,
                             Label = recommendation.Label,
                             Summary = recommendation.Summary,
-                            ConfidencePct = recommendation.ConfidencePct,
-                            ReliabilityPct = recommendation.ReliabilityPct,
+                            ConfidencePct = row.Vendor.HasComparableSalesWindow ? recommendation.ConfidencePct : null,
+                            ReliabilityPct = row.Vendor.HasComparableSalesWindow ? recommendation.ReliabilityPct : null,
                             DataQualityStatus = recommendation.DataQualityStatus,
                             RecommendationAllowed = recommendation.RecommendationAllowed && row.Vendor.HasComparableSalesWindow,
                             ReasonCodes = recommendation.ReasonCodes
@@ -3917,7 +3931,8 @@ public static class AllEndpoints
                             PostRevenue = postRev,
                             ChangeQty = g.Sum(x => x.ChangeQty),
                             ChangeRevenue = g.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev)
+                            ChangePercent = Pct(preRev, postRev),
+                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
                         };
                     })
                     .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
@@ -3946,7 +3961,8 @@ public static class AllEndpoints
                             VendorsCount = g.Select(x => x.VendorId).Distinct().Count(),
                             AvgPriceChangePercent = Math.Round(avgPct, 2),
                             ChangeRevenue = g.Sum(x => x.ChangeRevenue),
-                            ChangePercent = Pct(preRev, postRev)
+                            ChangePercent = Pct(preRev, postRev),
+                            HasComparableSalesWindow = g.Any() && g.All(x => x.HasComparableSalesWindow)
                         };
                     })
                     .OrderByDescending(x => x.ArticlesCount)

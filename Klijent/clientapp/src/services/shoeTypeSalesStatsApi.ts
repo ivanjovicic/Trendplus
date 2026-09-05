@@ -5,8 +5,8 @@ export interface AnalyticsRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
   label: "Increase focus" | "Maintain" | "Review" | "Do not trust" | "Insufficient data";
   summary: string;
-  confidencePct: number;
-  reliabilityPct: number;
+  confidencePct: number | null;
+  reliabilityPct: number | null;
   dataQualityStatus: "good" | "warning" | "critical";
   recommendationAllowed?: boolean | null;
   reasonCodes: string[];

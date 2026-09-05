@@ -96,6 +96,7 @@ type DecisionSupplier = Omit<SupplierSalesStat, "sharePct" | "reliabilityPct" | 
   splitCoveragePct: number | null;
   confidencePct: number | null;
   confidenceAvailable: boolean;
+  recommendationAllowed: boolean;
   primaryFootwearType: string;
   primaryFootwearTypeSharePct: number | null;
   footwearTypeCount: number;
@@ -696,13 +697,22 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       const shareOfUnits = supplier.shareOfUnits ?? (totalUnits > 0 ? (supplier.ukupnaKolicina / totalUnits) * 100 : null);
       const splitCoveragePct = supplier.prePostNivelacijaRevenueCoveragePct ?? null;
       const recommended = supplier.recommendation;
-      const status = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
-      const statusReason = recommended?.summary
+      const recommendationAllowed = recommended?.recommendationAllowed === true;
+      const backendStatus = (recommended?.status ?? (supplier.isUnknown ? "do_not_trust" : "insufficient_data")) as DecisionStatus;
+      const status = recommendationAllowed ? backendStatus : "insufficient_data" as DecisionStatus;
+      const backendStatusReason = recommended?.summary
         ?? (supplier.isUnknown
           ? "Dobavljač je nepoznat u master podacima; signal nije pouzdan za odluku."
           : "Nedovoljno podataka za pouzdanu preporuku.");
-      const confidencePctValue = normalizeRecommendationPct(recommended?.confidencePct);
-      const reliabilityPctValue = normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct);
+      const statusReason = recommendationAllowed
+        ? backendStatusReason
+        : `Automatska preporuka nije dozvoljena: ${backendStatusReason}`;
+      const confidencePctValue = recommendationAllowed
+        ? normalizeRecommendationPct(recommended?.confidencePct)
+        : null;
+      const reliabilityPctValue = recommendationAllowed
+        ? normalizeRecommendationPct(recommended?.reliabilityPct ?? supplier.reliabilityPct)
+        : null;
       const confidenceAvailable = confidencePctValue != null;
       const reliabilityAvailable = reliabilityPctValue != null;
       const normalizedConfidencePct = confidencePctValue ?? null;
@@ -730,6 +740,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         splitCoveragePct,
         confidencePct: normalizedConfidencePct,
         confidenceAvailable,
+        recommendationAllowed,
         primaryFootwearType,
         primaryFootwearTypeSharePct,
         footwearTypeCount,

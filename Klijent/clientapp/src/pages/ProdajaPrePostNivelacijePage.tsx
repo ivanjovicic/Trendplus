@@ -58,6 +58,7 @@ import {
   type RecommendationQualityStatus,
 } from "../utils/canonicalRecommendationSemantics";
 import { getDataScope, type DataScope } from "../utils/dataScope";
+import { comparablePrePostMetric, comparablePrePostTotal, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
 import "./ProdajaPrePostNivelacijePage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -81,7 +82,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number | null;
   sharePctAvailable: boolean;
   postSharePct: number | null;
-  trendPct: number;
+  trendPct: number | null;
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   avgCoveragePost30Available: boolean;
@@ -375,11 +376,15 @@ function buildConfidenceMeta(
   return { label: fmtPct(reliabilityPct, 0), tone };
 }
 
-function buildVolatilityMeta(currentRevenue: number, previousRevenue: number | null): {
+function buildVolatilityMeta(currentRevenue: number | null, previousRevenue: number | null): {
   pct: number | null;
   label: string;
   tone: VolatilityTone;
 } {
+  if (currentRevenue == null) {
+    return { pct: null, label: "Nedostupno", tone: "neutral" };
+  }
+
   if (previousRevenue == null) {
     return { pct: null, label: "Bez baze", tone: "neutral" };
   }
@@ -419,8 +424,8 @@ type StatusTooltipData = {
   statusReason: string;
   sharePct: number | null;
   sharePctAvailable: boolean;
-  trendPct: number;
-  changeRevenue: number;
+  trendPct: number | null;
+  changeRevenue: number | null;
   reliabilityPct: number | null;
   confidencePct: number | null;
   reliabilityAvailable: boolean;
@@ -445,6 +450,10 @@ function normalizeName(value: string | null | undefined): string {
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string {
   if (vendor.vendorId != null) return `id:${vendor.vendorId}`;
   return `name:${normalizeName(vendor.vendorName)}`;
+}
+
+function trustedMetric(value: number | null | undefined, row: { hasComparableSalesWindow?: boolean | null }): number | null {
+  return comparablePrePostMetric(value, row);
 }
 
 function buildStoreLabel(store: StoreOption): string {
@@ -568,7 +577,10 @@ export default function ProdajaPrePostNivelacijePage() {
 
       if (previousResult.status === "fulfilled") {
         setPreviousData(previousResult.value);
-        setPreviousRevenue(previousResult.value.totals.postRevenue);
+        setPreviousRevenue(comparablePrePostTotal(
+          previousResult.value.totals.postRevenue,
+          previousResult.value.totals.hasComparableSalesWindow,
+        ));
         setPreviousComparisonError(null);
       } else {
         setPreviousData(null);
@@ -601,7 +613,8 @@ export default function ProdajaPrePostNivelacijePage() {
   const previousRevenueByVendorKey = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of previousData?.vendorStats ?? []) {
-      map.set(vendorKey(row), row.postRevenue);
+      const value = trustedMetric(row.postRevenue, row);
+      if (value != null) map.set(vendorKey(row), value);
     }
     return map;
   }, [previousData?.vendorStats]);
@@ -610,13 +623,15 @@ export default function ProdajaPrePostNivelacijePage() {
     const rows = data?.vendorStats ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce(
-      (sum, item) => Number.isFinite(item.postRevenue) ? sum + item.postRevenue : sum,
-      0,
+    const totalRevenue = comparablePrePostTotal(
+      data?.totals.postRevenue,
+      data?.totals.hasComparableSalesWindow,
     );
     const totalAbsoluteChangeRevenue =
-      data?.totals.absoluteChangeRevenue ??
-      rows.reduce((sum, item) => Number.isFinite(item.changeRevenue) ? sum + Math.abs(item.changeRevenue) : sum, 0);
+      comparablePrePostTotal(data?.totals.absoluteChangeRevenue, data?.totals.hasComparableSalesWindow)
+      ?? (rows.some((item) => !hasComparablePrePostEvidence(item))
+        ? null
+        : rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0));
 
 
     return rows.map((item) => {
@@ -627,22 +642,28 @@ export default function ProdajaPrePostNivelacijePage() {
       const confidencePctValue = normalizeRecommendationPct(backendRecommendation?.confidencePct);
       const recommendationReliabilityPct = normalizeRecommendationPct(backendRecommendation?.reliabilityPct ?? item.reliabilityPct);
 
-      const absoluteChangeSharePct = item.changeSharePercent ?? (
-        totalAbsoluteChangeRevenue > 0 ? (Math.abs(item.changeRevenue) / totalAbsoluteChangeRevenue) * 100 : null
-      );
-      const sharePctAvailable = item.changeSharePercent != null || totalAbsoluteChangeRevenue > 0;
+      const trustedChangeRevenue = trustedMetric(item.changeRevenue, item);
+      const absoluteChangeSharePct = hasComparablePrePostEvidence(item) && item.changeSharePercent != null
+        ? item.changeSharePercent
+        : trustedChangeRevenue != null && totalAbsoluteChangeRevenue != null && totalAbsoluteChangeRevenue > 0
+          ? (Math.abs(trustedChangeRevenue) / totalAbsoluteChangeRevenue) * 100
+          : null;
+      const sharePctAvailable = absoluteChangeSharePct != null;
       const sharePct = absoluteChangeSharePct;
-      const postSharePct = item.postRevenueSharePercent ?? (
-        totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : null
-      );
-      const trendPct = item.changePercent;
+      const trustedPostRevenue = trustedMetric(item.postRevenue, item);
+      const postSharePct = hasComparablePrePostEvidence(item) && item.postRevenueSharePercent != null
+        ? item.postRevenueSharePercent
+        : trustedPostRevenue != null && totalRevenue != null && totalRevenue > 0
+          ? (trustedPostRevenue / totalRevenue) * 100
+          : null;
+      const trendPct = trustedMetric(item.changePercent, item);
       const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
       const normalizedReliabilityPct = recommendationReliabilityPct;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorKey(item)) ?? null;
       const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
       const volatility = previousComparisonError
         ? { pct: null, label: "Nedostupno", tone: "neutral" as const }
-        : buildVolatilityMeta(item.postRevenue, previousPostRevenue);
+        : buildVolatilityMeta(trustedPostRevenue, previousPostRevenue);
 
       return {
         ...item,
@@ -679,13 +700,13 @@ export default function ProdajaPrePostNivelacijePage() {
       if (sortField === "vendorName") {
         compare = a.vendorName.localeCompare(b.vendorName, "sr");
       } else if (sortField === "postRevenue") {
-        compare = a.postRevenue - b.postRevenue;
+        compare = (trustedMetric(a.postRevenue, a) ?? -1) - (trustedMetric(b.postRevenue, b) ?? -1);
       } else if (sortField === "sharePct") {
         compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       } else if (sortField === "changeRevenue") {
-        compare = a.changeRevenue - b.changeRevenue;
+        compare = (trustedMetric(a.changeRevenue, a) ?? -1) - (trustedMetric(b.changeRevenue, b) ?? -1);
       } else if (sortField === "trendPct") {
-        compare = a.trendPct - b.trendPct;
+        compare = (a.trendPct ?? -1) - (b.trendPct ?? -1);
       } else if (sortField === "volatilityPct") {
         compare = (a.volatilityPct ?? Number.NEGATIVE_INFINITY) - (b.volatilityPct ?? Number.NEGATIVE_INFINITY);
       } else if (sortField === "status") {
@@ -708,11 +729,13 @@ export default function ProdajaPrePostNivelacijePage() {
     return sortedRows.filter((row) => focusFilterMatches(row, focusFilter));
   }, [focusFilter, sortedRows]);
 
-  const totalRevenue = data ? data.totals.postRevenue : null;
-  const totalAbsoluteChangeRevenue = data?.totals.absoluteChangeRevenue
-    ?? sortedRows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0);
+  const totalRevenue = comparablePrePostTotal(data?.totals.postRevenue, data?.totals.hasComparableSalesWindow);
+  const totalAbsoluteChangeRevenue = comparablePrePostTotal(
+    data?.totals.absoluteChangeRevenue,
+    data?.totals.hasComparableSalesWindow,
+  );
   const top5SharePct = useMemo<number | null>(() => {
-    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return null;
+    if (sortedRows.length === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) return null;
     const top5 = [...sortedRows]
       .filter((item): item is typeof item & { sharePct: number } => item.sharePct != null && Number.isFinite(item.sharePct))
       .sort((a, b) => b.sharePct - a.sharePct)
@@ -721,7 +744,7 @@ export default function ProdajaPrePostNivelacijePage() {
     return top5;
   }, [sortedRows, totalAbsoluteChangeRevenue]);
 
-  const totalChangeRevenue = data ? data.totals.changeRevenue : null;
+  const totalChangeRevenue = comparablePrePostTotal(data?.totals.changeRevenue, data?.totals.hasComparableSalesWindow);
   const periodGrowthPct = useMemo(() => {
     if (previousRevenue == null || previousRevenue <= 0 || totalRevenue == null) return null;
     return ((totalRevenue - previousRevenue) / previousRevenue) * 100;
@@ -819,12 +842,15 @@ export default function ProdajaPrePostNivelacijePage() {
   const concentrationQuality = useMemo(() => {
     const analyzedRows = data?.dataQuality.analyzedRows ?? 0;
     const vendorRows = decisionRows.length;
-    const nonZeroChangeVendors = decisionRows.filter((row) => Math.abs(row.changeRevenue) > 0.0001).length;
+    const nonZeroChangeVendors = decisionRows.filter((row) => {
+      const changeRevenue = trustedMetric(row.changeRevenue, row);
+      return changeRevenue != null && Math.abs(changeRevenue) > 0.0001;
+    }).length;
     const avgPostCoveragePct = data?.dataQuality.avgCoveragePost30 != null
       ? data.dataQuality.avgCoveragePost30 * 100
       : null;
 
-    if (analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue <= 0) {
+    if (analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) {
       return {
         tone: "weak" as const,
         label: "Nema pouzdanog signala",
@@ -869,12 +895,16 @@ export default function ProdajaPrePostNivelacijePage() {
   ]);
 
   const leadingCategory = useMemo(() => {
-    const rows = [...(data?.categoryStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
+    const rows = [...(data?.categoryStats ?? [])]
+      .filter((row) => row.hasComparableSalesWindow === true)
+      .sort((left, right) => right.changeRevenue - left.changeRevenue);
     return rows[0] ?? null;
   }, [data?.categoryStats]);
 
   const leadingPriceDirection = useMemo(() => {
-    const rows = [...(data?.priceDirectionStats ?? [])].sort((left, right) => right.changeRevenue - left.changeRevenue);
+    const rows = [...(data?.priceDirectionStats ?? [])]
+      .filter((row) => row.hasComparableSalesWindow === true)
+      .sort((left, right) => right.changeRevenue - left.changeRevenue);
     return rows[0] ?? null;
   }, [data?.priceDirectionStats]);
 
@@ -909,16 +939,16 @@ const advancedSignals = useMemo(
   );
 
   const concentrationData = useMemo(() => {
-    if (focusedRows.length === 0 || totalAbsoluteChangeRevenue <= 0) return [] as ConcentrationDatum[];
+    if (focusedRows.length === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) return [] as ConcentrationDatum[];
 
     const top = [...focusedRows]
-      .filter((row): row is typeof row & { sharePct: number } => row.sharePct != null && Number.isFinite(row.sharePct))
+      .filter((row): row is typeof row & { sharePct: number } => hasComparablePrePostEvidence(row) && row.sharePct != null && Number.isFinite(row.sharePct))
       .sort((a, b) => b.sharePct - a.sharePct)
       .slice(0, 7)
       .map((row) => ({
         name: row.vendorName,
         sharePct: row.sharePct,
-        changeRevenue: row.changeRevenue,
+        changeRevenue: trustedMetric(row.changeRevenue, row) ?? 0,
         articleCount: row.articleCount,
         vendorKey: vendorKey(row),
         selected: expandedVendorKey === vendorKey(row),
@@ -940,13 +970,16 @@ const advancedSignals = useMemo(
   const selectedDriverSummary = useMemo<DetailDriverSummary | null>(() => {
     if (!selectedRow || !data) return null;
 
-    const vendorArticles = data.articleStats.filter((item) => vendorKey(item) === vendorKey(selectedRow));
+    const vendorArticles = data.articleStats.filter((item) =>
+      vendorKey(item) === vendorKey(selectedRow) && hasComparablePrePostEvidence(item));
     if (vendorArticles.length === 0) return null;
 
     const dominantCategoryMap = new Map<string, number>();
     const metricReasonCounts = new Map<string, number>();
     for (const article of vendorArticles) {
-      dominantCategoryMap.set(article.category || "N/A", (dominantCategoryMap.get(article.category || "N/A") ?? 0) + article.changeRevenue);
+      const changeRevenue = trustedMetric(article.changeRevenue, article);
+      if (changeRevenue == null) continue;
+      dominantCategoryMap.set(article.category || "N/A", (dominantCategoryMap.get(article.category || "N/A") ?? 0) + changeRevenue);
       if (article.metricReason) {
         metricReasonCounts.set(article.metricReason, (metricReasonCounts.get(article.metricReason) ?? 0) + 1);
       }
@@ -964,9 +997,9 @@ const advancedSignals = useMemo(
       dominantCategory: dominantCategoryEntry[0],
       dominantCategoryRevenue: dominantCategoryEntry[1],
       topWinnerLabel: topWinner ? `${topWinner.sku || "-"} • ${topWinner.articleName}` : "N/A",
-      topWinnerRevenue: topWinner?.changeRevenue ?? 0,
+      topWinnerRevenue: trustedMetric(topWinner?.changeRevenue, topWinner) ?? 0,
       topRiskLabel: topRisk ? `${topRisk.sku || "-"} • ${topRisk.articleName}` : "N/A",
-      topRiskRevenue: topRisk?.changeRevenue ?? 0,
+      topRiskRevenue: trustedMetric(topRisk?.changeRevenue, topRisk) ?? 0,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
       avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
       avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
@@ -1619,9 +1652,9 @@ const advancedSignals = useMemo(
                                 </div>
                               </div>
                             </td>
-                            <td className="align-right">{fmtRsd(row.postRevenue)}</td>
+                            <td className="align-right">{fmtRsd(trustedMetric(row.postRevenue, row))}</td>
                             <td className="align-right">{row.sharePctAvailable ? fmtPct(row.sharePct, 2) : "Nije dostupno"}</td>
-                            <td className={`align-right ${trendClass(row.changeRevenue)}`}>{fmtRsd(row.changeRevenue)}</td>
+                            <td className={`align-right ${trendClass(trustedMetric(row.changeRevenue, row))}`}>{fmtRsd(trustedMetric(row.changeRevenue, row))}</td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
                             <td className="align-center">
                               <span className={volatilityClass(row.volatilityTone)} title={fmtSignedPct(row.volatilityPct, 1)}>
@@ -1672,19 +1705,19 @@ const advancedSignals = useMemo(
               <div className="ppn-decision-detail-grid">
                 <article>
                   <span>Pre nivelacije promet</span>
-                  <strong>{fmtRsd(selectedRow.preRevenue)}</strong>
+                  <strong>{fmtRsd(trustedMetric(selectedRow.preRevenue, selectedRow))}</strong>
                 </article>
                 <article>
                   <span>Posle nivelacije promet</span>
-                  <strong>{fmtRsd(selectedRow.postRevenue)}</strong>
+                  <strong>{fmtRsd(trustedMetric(selectedRow.postRevenue, selectedRow))}</strong>
                 </article>
                 <article>
                   <span>Pre nivo kolicina</span>
-                  <strong>{fmtQty(selectedRow.preQty)}</strong>
+                  <strong>{fmtQty(trustedMetric(selectedRow.preQty, selectedRow))}</strong>
                 </article>
                 <article>
                   <span>Posle nivo kolicina</span>
-                  <strong>{fmtQty(selectedRow.postQty)}</strong>
+                  <strong>{fmtQty(trustedMetric(selectedRow.postQty, selectedRow))}</strong>
                 </article>
                 <article>
                   <span>Aktivni artikli</span>
