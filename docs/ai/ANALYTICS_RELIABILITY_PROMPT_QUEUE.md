@@ -3395,7 +3395,7 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 - Evidence state: fallback live database/refresh/browser runtime unavailable; local contract evidence synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `570a31e8471a0c98ea43cd3a2e8089fea4bba98c`
-- Main verification: pending push verification; implementation commit is local and will be verified in `origin/main`
+- Main verification: passed - `git rev-parse origin/main -> d77af73b86a064a6458537144be7cbf56a7016dd`; implementation commit `570a31e8471a0c98ea43cd3a2e8089fea4bba98c` is contained in `origin/main`
 - Missed: live STAB16 proof and full analytics route/export/report matrix remain outside this local bounded prompt execution.
 - Follow-up: keep `RQ141`-`RQ146` WAITING; restore live runtime proof through `STAB16`, then promote `RQ141` for full lineage/scope/cache/refresh parity.
 - Residual risk: production SQL/view availability, refresh freshness and browser runtime behavior are not proven by deterministic local tests; full backend suite still has 16 unrelated environment/config failures.
