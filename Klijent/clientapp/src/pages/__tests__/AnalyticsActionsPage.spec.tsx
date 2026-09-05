@@ -835,6 +835,18 @@ describe("AnalyticsActionsPage", () => {
     expect(screen.getAllByText("Pozitivan ishod").length).toBeGreaterThan(0);
   });
 
+  it("does not expose unknown backend warning codes in user-facing summary text", async () => {
+    const payload = buildOutcomeSummaryResponse(6, 1);
+    payload.meta.warnings = ["unknown_backend_warning"];
+    getAnalyticsActionOutcomeSummaryMock.mockResolvedValueOnce(payload);
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    expect(screen.getByText("Upozorenje o kvalitetu ili merenju nije detaljnije mapirano.")).toBeInTheDocument();
+    expect(screen.queryByText("unknown_backend_warning")).not.toBeInTheDocument();
+  });
+
   it("shows the shared error state and does not fall through to the empty list copy when list loading fails", async () => {
     getAnalyticsActionsMock.mockRejectedValueOnce(new Error("list down"));
 

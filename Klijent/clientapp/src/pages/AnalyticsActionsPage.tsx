@@ -255,7 +255,7 @@ function formatSummaryWindow(summary: AnalyticsActionOutcomeSummaryResponse | nu
 }
 
 function getOutcomeSummaryWarningLabel(code: string): string {
-  return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? code;
+  return OUTCOME_SUMMARY_WARNING_LABELS[code] ?? "Upozorenje o kvalitetu ili merenju nije detaljnije mapirano.";
 }
 
 function getOutcomeSummaryEmptyState(summary: AnalyticsActionOutcomeSummaryResponse | null): {

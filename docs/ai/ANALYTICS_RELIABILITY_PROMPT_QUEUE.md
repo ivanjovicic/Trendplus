@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ151
+Current READY prompt: RQ152
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -75,8 +75,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ148 | WAITING | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
 | RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
 | RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
-| RQ151 | READY | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
-| RQ152 | WAITING | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
+| RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
+| RQ152 | READY | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
 | RQ153 | WAITING | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 
 ---
@@ -4103,7 +4103,7 @@ Commit suggestion: `feat(analytics): calibrate forecast decision value`
 
 ## RQ151 - Remove raw unknown action warning codes from user-facing messages
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: analytics-action-safe-messaging
@@ -4163,11 +4163,30 @@ Commit suggestion: `fix(analytics): map unknown action warnings safely`
 - No runtime dependency; this is a bounded presentation-mapping repair and must not wait for `STAB16`, forecast materialization or Shopify work.
 - Reuse the existing backend state and shared formatters; do not make `RQ136` a second owner.
 
+### Completion note
+
+- Date: 2026-09-05
+- Status: DONE
+- Completion: 100% of the bounded unknown outcome-warning mapping repair.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-05-RQ151-evidence.md`.
+- Contract/runtime behavior changed: unknown outcome warning codes now render a clear Serbian limitation message and never appear verbatim in user-facing summary text; known mappings and backend action semantics are unchanged.
+- Checks run: failing-first unknown-code test reproduced the defect; focused RQ151 regression passed; full `AnalyticsActionsPage.spec.tsx` passed 20/20; `npm run check:analytics-guardrails` passed; `npm run build` passed; `git diff --check` passed; queue/planning validators passed before delivery.
+- Checks not run: backend tests/build, live database/refresh worker, browser console smoke, and full cross-route export/report parity; no backend/runtime contract changed in this prompt.
+- Run log: `.ai/runs/2026-09-05-RQ151-evidence.md`.
+- Evidence state: pending until final delivery SHA is synchronized.
+- Delivery mode: direct-main, pending final commit/push.
+- Main commit SHA: pending.
+- Main verification: pending.
+- Missed: broader unknown reason/status mappings outside this page remain in `RQ136`/`RQ145`; forecast/Shopify/live-worker work remains excluded.
+- Follow-up: `RQ152` is promoted as the next bounded numeric-state prompt; `RQ153` remains WAITING.
+- Residual risk: unknown codes in other analytics pages can still require the broader safe-messaging parity prompt.
+- Next: execute `RQ152`; keep `STAB16` before live proof.
+
 ---
 
 ## RQ152 - Preserve unknown and missing evidence in derived intelligence builders
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-derived-numeric-state
