@@ -1,6 +1,6 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-05
+Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: RQ154
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
@@ -86,6 +86,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
+| RQ162 | WAITING | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
+| RQ163 | WAITING | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
+| RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
+| RQ165 | WAITING | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
+| RQ166 | WAITING | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 
 ---
 
@@ -4925,3 +4930,341 @@ Do not change backend ranking ownership, forecast logic, Shopify/vendor work or 
 - `RQ137` remains the period-lineage owner.
 - `RQ143` remains the backend decision/ranking owner.
 - `RQ145` remains the parity and safe-messaging owner.
+
+---
+
+## RQ162 - Keep partially missing sell-through denominator evidence unavailable
+
+Status: WAITING
+Priority: P0
+Type: backend/tests
+Feature family: inventory-sellthrough-denominator-state
+Parallel-safe: no, denominator semantics must be shared by inventory list, detail and decision payloads
+Owner: Codex
+Commit suggestion: `fix(analytics): block partial inventory sell-through denominators`
+
+### Problem
+
+`InventorySignalCalculator.CalculateSellThrough` only blocks when both denominator inputs are null, then converts either single missing input to zero. If the contract requires both opening stock and inbound units, a partial denominator can therefore produce a plausible sell-through ratio, status and confidence from incomplete evidence. This is separate from RQ158, which covers null stock/minimum rendering.
+
+### Evidence
+
+- `Api/Endpoints/InventorySignalCalculator.cs:137-151` rejects only the both-null case and calculates with `openingStockUnits ?? 0` plus `inboundUnits ?? 0`.
+- `Api.Tests/InventorySignalCalculatorTests.cs:99-114` covers both inputs missing, but has no regression for exactly one missing input.
+- `Api/Endpoints/InventoryEndpoints.cs:131-145`, `332-345` and `1441-1455` wire the signal into inventory decision payloads, so a calculator contract change must be checked at all call sites.
+
+### Scope
+
+- `Api/Endpoints/InventorySignalCalculator.cs`
+- `Api/Endpoints/InventoryEndpoints.cs` only if caller evidence wiring must change
+- `Api.Tests/InventorySignalCalculatorTests.cs`
+- nearest inventory endpoint/integration tests for response parity
+
+Do not touch forecast, trend, Shopify/vendor work or unrelated inventory null-stock behavior owned by `RQ158`.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ149`, `RQ158` and the inventory stock-cover/sell-through contract
+- the calculator and all current callers/tests listed above
+
+### Do
+
+1. Add failing-first tests for opening-only missing, inbound-only missing, both missing, both zero, valid positive denominator with genuinely zero sold units, and negative/non-finite boundary inputs where the DTO boundary permits them.
+2. Confirm whether both denominator components are required by the established business contract. If one component is intentionally optional, document that rule and prove it instead of applying a blanket null block.
+3. When required evidence is partial, return a null ratio, `insufficient_data`, a clear reason and `recommendationAllowed=false`; never substitute zero.
+4. Preserve a genuine zero denominator and genuine zero sold-units result as distinct states.
+5. Keep score, confidence, reliability and recommendation ownership on the backend and verify list/detail/card parity.
+
+### Tests
+
+- Focused calculator tests for every missing/zero/non-finite counterexample.
+- Inventory endpoint/integration parity tests for the same payload through list and detail paths.
+- `git diff --check`, analytics guardrails and the narrow backend build/test selected by `VALIDATION_SELECTOR.md`.
+
+### Acceptance
+
+- A single missing required denominator component cannot produce a numeric sell-through ratio or actionable recommendation.
+- A real zero remains visibly zero, while missing/insufficient evidence remains unavailable.
+- Inventory list, detail, card and export payloads preserve the same backend-owned state.
+- No frontend formula recreates the decision.
+
+### Dependencies
+
+- `RQ158` remains the owner of null inventory quantity/minimum semantics.
+- `RQ149` remains the owner of inventory economic/availability evidence.
+- `RQ145` remains the parity and safe-messaging owner.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ163 - Prevent absent post-nivelacija observations from becoming measured zero
+
+Status: WAITING
+Priority: P0
+Type: backend/SQL/tests
+Feature family: supplier-post-observation-state
+Parallel-safe: no, supplier ratios, scores and recommendations share the post-observation contract
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve supplier post observation state`
+
+### Problem
+
+The supplier decision SQL left-joins post-nivelacija observations and immediately coalesces missing `post_qty` and `post_revenue` to zero. That makes “no post observation matched” indistinguishable from a measured post-period zero, then feeds full-price share, markdown dependency, dead-stock rate, confidence and recommendation branches. Existing materialized-view tests prove that a coverage column exists in one cache family, but do not prove the direct supplier query and every article/detail path use it to gate decisions.
+
+### Evidence
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:2794-2816` maps an unmatched `vw_vendor_sales_nivelacija` row to `post_qty_30d=0` and `post_revenue_30d=0`.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:2829-2867` aggregates those values into revenue shares, sell-through, markdown dependency and dead-stock metrics.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:2936-2979` coalesces derived ratios to zero and calculates confidence from the resulting rows.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:3011-3045` and `3058-3070` can still emit recommendation codes; `BuildScorecardTrustMetadata` at `2530-2588` does not include post-observation coverage in its recommendation gate.
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs:252-313` verifies coverage in windowed cache SQL, but `Api.Tests/SupplierDecisionHubContractTests.cs` has no absent-post-vs-real-zero regression.
+
+### Scope
+
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+- `Api.Tests/SupplierDecisionHubContractTests.cs`
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+- related supplier SQL/migration only if the existing view cannot expose an unambiguous observation state
+
+Do not duplicate the full causal-comparability redesign owned by `RQ140`; do not touch trend, forecast, Shopify or unrelated supplier ranking formulas.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ145`, `RQ147`, `RQ156` and the supplier decision schema/migration contract
+- the direct and precomputed supplier query paths and their current tests
+
+### Do
+
+1. Add failing-first fixtures for no matching post observation, measured post quantity/revenue equal to zero, partial post fields, and complete post evidence.
+2. Carry an explicit post-observation/coverage state through direct SQL, precomputed cache, DTO mapping and trust metadata; do not infer it from a coalesced numeric zero.
+3. When required post evidence is absent or partial, keep ratios and confidence unavailable or conservatively bounded, set `recommendationAllowed=false` where required by the established contract, and expose a safe limitation reason.
+4. Keep genuine measured zero valid and distinct from missing evidence.
+5. Prove summary, quadrant/ranking, article detail, export and report parity; do not recalculate decision logic in the frontend.
+
+### Tests
+
+- SQL contract tests for explicit coverage/state and recommendation gating.
+- Supplier contract tests for absent post, valid zero, partial and complete evidence.
+- Parity tests across direct query and materialized-view/cache paths.
+- `git diff --check`, analytics guardrails and focused backend validation.
+
+### Acceptance
+
+- Missing post observation never appears as measured zero or supports a trusted supplier recommendation.
+- Genuine post zero remains a valid measured value.
+- Confidence/reliability and actionability are absent/blocked when the evidence basis is insufficient.
+- Every supplier surface exposes the same backend-owned state and safe explanation.
+
+### Dependencies
+
+- `RQ140` remains the owner of causal comparability and live refresh proof.
+- `RQ156` remains the frontend unknown-coverage owner.
+- `RQ145` and `RQ147` remain parity and metric-evidence owners.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ164 - Prevent null/non-positive purchase cost from becoming a complete 100% margin signal
+
+Status: WAITING
+Priority: P0
+Type: backend/tests
+Feature family: pre-nivelacija-cost-evidence
+Parallel-safe: no, cost evidence drives pre-nivelacija score and scenario outputs
+Owner: Codex
+Commit suggestion: `fix(analytics): gate pre-nivelacija margin on cost evidence`
+
+### Problem
+
+The pre-nivelacija candidate builder sets missing purchase price to zero and accepts `PurchasePrice >= 0` as complete evidence. A null or zero cost can therefore enter the complete-evidence branch and produce a 100% gross margin, influencing score filtering and scenario values. This conflicts with the established positive-cost policy used by data-quality and margin helpers.
+
+### Evidence
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:258-266` coalesces `PurchasePrice` to zero and treats a non-negative purchase price as complete, so zero cost yields `grossMarginPct=100` when selling price is positive.
+- `Api/Services/AnalyticsMarginPolicy.cs` and `Infrastructure/Services/AnalyticsDataQualityHealthService.cs:44,98` treat null/non-positive purchase cost as missing evidence.
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:268-294` passes the derived margin into filtering, score computation and scenario simulation.
+- `Api.Tests/PreNivelacijaScoringServiceTests.cs` covers scenario arithmetic and an incomplete candidate DTO, but not the endpoint branch where `PurchasePrice=0` is classified complete.
+
+### Scope
+
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`
+- `Api/Services/PreNivelacijaScoringService.cs` only if the contract boundary requires a service-level guard
+- `Api.Tests/PreNivelacijaScoringServiceTests.cs`
+- nearest pre-nivelacija endpoint/query-failure tests
+
+Do not touch forecast, trend, Shopify or unrelated margin/return measurement owned by `RQ148`.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ140`, `RQ148` and `AnalyticsMarginPolicy`
+- the pre-nivelacija DTO, endpoint and scoring tests
+
+### Do
+
+1. Add failing-first tests for null, zero, negative, positive and genuinely zero-margin cost inputs.
+2. Align completeness with the established positive-cost policy. If the business explicitly permits zero acquisition cost, create a separate documented evidence state instead of treating it as an ordinary margin denominator.
+3. Do not derive 100% margin, confidence or scenario output from missing/invalid cost; return an unavailable/insufficient reason and block recommendation where required.
+4. Preserve valid positive-cost arithmetic, including a genuine zero-margin result, and keep all score/scenario outputs backend-owned.
+5. Verify candidate filtering, response DTO, export/report if present and user-safe messaging remain consistent.
+
+### Tests
+
+- Focused endpoint/scoring tests for all cost states and score/filter behavior.
+- Regression proving missing cost cannot pass a margin floor or produce actionable confidence.
+- Regression proving positive cost with equal selling price yields valid zero margin.
+- Focused backend build/test and analytics guardrails.
+
+### Acceptance
+
+- Null, zero and negative cost are never silently converted into a 100% margin signal.
+- Valid positive cost and genuine zero margin remain measurable.
+- Recommendation/confidence is unavailable or blocked when cost evidence is insufficient.
+- No frontend code recomputes margin or actionability.
+
+### Dependencies
+
+- `RQ148` remains the broader sales/margin measurement-basis owner.
+- `RQ139` and `RQ140` remain owners of existing denominator and pre/post semantics.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ165 - Make Data Quality time boundaries and sale/article scope consistent
+
+Status: WAITING
+Priority: P0
+Type: backend/SQL/tests
+Feature family: data-quality-window-scope
+Parallel-safe: no, health percentages and top-offender impact must describe the same population
+Owner: Codex
+Commit suggestion: `fix(analytics): align data quality window and scope semantics`
+
+### Problem
+
+Data Quality has two remaining consistency risks. The top-offender SQL and issue handler use only a lower bound for their “30d” sales window, so future-dated sales can enter the result. The health snapshot filters sales by article `DataOrigin`, while the canonical top-offender contract scopes sales by sale-header origin, so health and offender surfaces can describe different populations for the same `dataScope`.
+
+### Evidence
+
+- `Infrastructure/Services/AnalyticsDataQualityHealthService.cs:10-29` documents sale-header scope, but `TopOffendersSql:17-28` has `p.datum_prodaje >= @salesFromUtc` without an upper boundary.
+- `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesHandler.cs:31-43` repeats the lower-only window in `sales_30d`.
+- `AnalyticsDataQualityHealthService.CaptureAsync:124-147` bounds the date but filters `dataScope` using article origin only at `130-132`, creating a scope mismatch with sale-header-based revenue impact.
+- Existing `Api.Tests/DataQualityIssuesHandlerTests.cs:245-370` proves basic imported/existing scope, while `Api.Tests/AnalyticsDataQualityHealthServiceTests.cs` does not prove future-date exclusion and health/offender population parity together.
+
+### Scope
+
+- `Infrastructure/Services/AnalyticsDataQualityHealthService.cs`
+- `Application/Analytics/Queries/GetDataQualityIssues/GetDataQualityIssuesHandler.cs`
+- `Api.Tests/AnalyticsDataQualityHealthServiceTests.cs`
+- `Api.Tests/DataQualityIssuesHandlerTests.cs`
+- `Api.Tests/DataQualityPostgresIntegrationTests.cs` only if relational boundary proof is needed
+
+Do not change the established `RQ05`/`RQ06` dataScope definitions, frontend formulas, trend, forecast or Shopify behavior.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ05`, `RQ06`, `RQ118`, `RQ135` and `RQ144`
+- the health service, issues handler and current scope tests
+
+### Do
+
+1. Add failing-first fixtures with in-window, boundary, future-dated and empty sales rows.
+2. Define one explicit finite interval, preferably `[fromUtc, toExclusiveUtc)`, and apply it consistently to health, top offenders and issues.
+3. Apply the canonical sale-header/article scope rule consistently, or expose a deliberate documented distinction if the two surfaces intentionally serve different populations.
+4. Keep no-sales, valid zero revenue and unavailable denominator states distinct; do not turn future/scope-excluded rows into valid impact.
+5. Prove percentage denominators, empty results, exports/reports and safe user-facing quality status remain aligned.
+
+### Tests
+
+- Unit/SQL contract tests for lower boundary, upper exclusive boundary and future dates.
+- Integration tests for imported/existing/all scope across health and offender/issue surfaces.
+- Tests for empty, valid zero and unavailable denominator states.
+- `git diff --check`, analytics guardrails and focused backend validation.
+
+### Acceptance
+
+- Future-dated sales cannot enter a 30-day Data Quality result.
+- Health, top-offender and issue results describe the same declared scope and interval.
+- Empty and zero evidence remain distinct from query failure or unknown denominator.
+- No raw backend scope/error code is exposed as user messaging.
+
+### Dependencies
+
+- `RQ05`, `RQ06` and `RQ118` remain the canonical scope owners; this is a bounded residual consistency fix.
+- `RQ144` remains the health denominator owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ166 - Reject reversed action-timeline periods instead of silently swapping scope
+
+Status: WAITING
+Priority: P1
+Type: backend/tests
+Feature family: action-timeline-period-state
+Parallel-safe: no, action timeline and export must preserve the same requested/effective period
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on reversed action periods`
+
+### Problem
+
+The action timeline filter silently swaps a reversed period, and the product-decision timeline endpoint repeats that behavior. A caller that requests `from > to` can therefore receive a valid-looking timeline for a different effective period, while export metadata reports the swapped range instead of the requested invalid scope.
+
+### Evidence
+
+- `Infrastructure/Services/Analytics/AnalyticsActionTimelineFilterProjection.cs:23-42` swaps `periodFromUtc` and `periodToUtc` when the request is reversed.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:5376-5392` repeats the swap before calling the projection.
+- `Api.Tests/AnalyticsActionTimelineFilterProjectionTests.cs` and `Api.Tests/DecisionTimelineExportProjectionTests.cs` cover valid/outside-period behavior but have no reversed-period regression.
+
+### Scope
+
+- `Infrastructure/Services/Analytics/AnalyticsActionTimelineFilterProjection.cs`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` timeline filter path only
+- `Api.Tests/AnalyticsActionTimelineFilterProjectionTests.cs`
+- `Api.Tests/DecisionTimelineExportProjectionTests.cs`
+
+Do not alter action outcome measurement, recommendation ownership, forecast/trend logic or unrelated dashboard period normalization.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ145`, `RQ151` and the decision timeline export contract
+- the filter, endpoint and export tests listed above
+
+### Do
+
+1. Add failing-first tests for valid one-day/multi-day, reversed, equal and invalid/non-finite period inputs.
+2. Fail closed on a reversed/invalid period without swapping it into a different valid scope; preserve requested/effective period semantics in the response and export.
+3. Keep valid inclusive period behavior unchanged and distinguish no events from invalid request.
+4. Verify frontend/export/report messaging uses safe wording and does not expose raw validation codes.
+
+### Tests
+
+- Focused filter, endpoint and export tests for period state and parity.
+- Empty/no-event versus invalid-period tests.
+- `git diff --check`, analytics guardrails and focused backend validation.
+
+### Acceptance
+
+- Reversed or invalid input cannot return a plausible timeline for a swapped period.
+- Valid periods remain unchanged and exports match the table/timeline effective period.
+- Invalid, empty and error states remain distinct with user-safe messaging.
+
+### Dependencies
+
+- `RQ137` remains the shared period-lineage owner.
+- `RQ145` remains the parity and safe-messaging owner.
+- Keep this prompt `WAITING` behind the single `READY` item.
