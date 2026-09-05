@@ -47,6 +47,10 @@ function round(value: number, digits = 2) {
   return Number(value.toFixed(digits));
 }
 
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return value != null && Number.isFinite(value);
+}
+
 function formatIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -152,11 +156,14 @@ export function buildCategoryIntelligenceFromSignals(
     const category = item.category || "Uncategorized";
     const inventorySignal = inventoryMap.get(item.articleId);
     const demandSignal = demandMap.get(item.articleId);
-    const approxUnits = (inventorySignal?.avgDailySales30d ?? demandSignal?.salesVelocity ?? 0) * 30;
+    const velocity = inventorySignal?.avgDailySales30d ?? demandSignal?.salesVelocity;
+    if (!isFiniteNumber(velocity) || !isFiniteNumber(item.netPrice)
+      || !isFiniteNumber(item.marginPct) || !isFiniteNumber(item.discountDepth)) continue;
+
+    const approxUnits = velocity * 30;
     const approxRevenue = approxUnits * item.netPrice;
-    const marginPct = item.marginPct ?? 0;
-    const discountDepth = item.discountDepth ?? 0;
-    const velocity = inventorySignal?.avgDailySales30d ?? demandSignal?.salesVelocity ?? 0;
+    const marginPct = item.marginPct;
+    const discountDepth = item.discountDepth;
 
     const aggregate = buckets.get(category) ?? {
       category,
@@ -214,7 +221,10 @@ export function buildPriceSensitivityFromSignals(
   for (const item of price) {
     const band = getBand(item.netPrice);
     const inventorySignal = inventoryMap.get(item.articleId);
-    const velocity = inventorySignal?.avgDailySales30d ?? 0;
+    const velocity = inventorySignal?.avgDailySales30d;
+    if (!isFiniteNumber(velocity) || !isFiniteNumber(item.netPrice)
+      || !isFiniteNumber(item.cost) || !isFiniteNumber(item.marginPct)
+      || !isFiniteNumber(item.discountDepth) || !isFiniteNumber(inventorySignal?.stockQty)) continue;
     const totalUnits = velocity * 30;
     const current = bands.get(band) ?? {
       prices: [],
@@ -227,7 +237,7 @@ export function buildPriceSensitivityFromSignals(
     };
 
     current.prices.push(item.netPrice);
-    current.margins.push((item.marginPct ?? 0) * 100);
+    current.margins.push(item.marginPct * 100);
     current.velocities.push(velocity);
     current.skuCount += 1;
     current.totalUnits += totalUnits;
@@ -273,16 +283,21 @@ export function buildAgingResultFromSignals(
   const priceMap = priceByArticle(price);
 
   const items: AgingItem[] = inventory
-    .map((item) => {
+    .flatMap((item) => {
       const demandSignal = demandMap.get(item.articleId);
       const priceSignal = priceMap.get(item.articleId);
       const asOfDate = new Date(item.date);
-      const daysWithoutSale = demandSignal?.daysSinceLastSale ?? 999;
+      const daysWithoutSale = demandSignal?.daysSinceLastSale;
+      const unitValue = isFiniteNumber(priceSignal?.cost)
+        ? priceSignal.cost
+        : isFiniteNumber(priceSignal?.netPrice) ? priceSignal.netPrice : null;
+      if (!isFiniteNumber(daysWithoutSale) || daysWithoutSale < 0
+        || !isFiniteNumber(unitValue) || !isFiniteNumber(item.stockQty)) return [];
       const lastSaleDate = Number.isFinite(daysWithoutSale)
         ? formatIsoDate(new Date(asOfDate.getTime() - Math.max(daysWithoutSale, 0) * 24 * 60 * 60 * 1000))
         : "n/a";
-      const stockValue = (priceSignal?.cost ?? priceSignal?.netPrice ?? 0) * item.stockQty;
-      return {
+      const stockValue = unitValue * item.stockQty;
+      return [{
         id: item.articleId,
         naziv: item.productName,
         kategorija: item.category,
@@ -293,7 +308,7 @@ export function buildAgingResultFromSignals(
         lastSaleDate,
         daysWithoutSale,
         agingCategory: toAgingCategory(daysWithoutSale),
-      };
+      }];
     })
     .sort((a, b) => b.daysWithoutSale - a.daysWithoutSale);
 
@@ -323,21 +338,23 @@ export function buildDepletionResultFromSignals(
   const snapshotDate = asOfDate ? new Date(asOfDate) : new Date();
 
   const forecasts: DepletionForecast[] = inventory
-    .filter((item) => (item.avgDailySales30d ?? 0) > 0)
-    .map((item) => {
+    .flatMap((item) => {
       const priceSignal = priceMap.get(item.articleId);
-      const daysOfCover = item.daysOfCover ?? 999;
+      const daysOfCover = item.daysOfCover;
+      if (!isFiniteNumber(item.avgDailySales30d) || item.avgDailySales30d <= 0
+        || !isFiniteNumber(daysOfCover) || !isFiniteNumber(priceSignal?.netPrice)
+        || !isFiniteNumber(priceSignal?.marginPct) || !isFiniteNumber(item.stockQty)) return [];
       const severity = toSeverity(daysOfCover);
-      const finiteCover = Number.isFinite(daysOfCover) ? Math.max(0, daysOfCover) : 999;
+      const finiteCover = Math.max(0, daysOfCover);
       const depletionDate = finiteCover > 365
         ? ""
         : formatIsoDate(new Date(snapshotDate.getTime() + Math.ceil(finiteCover) * 24 * 60 * 60 * 1000));
       const atRiskUnits = finiteCover <= 14
         ? Math.max(0, 14 - finiteCover) * item.avgDailySales30d
         : 0;
-      const atRiskRevenue = atRiskUnits * (priceSignal?.netPrice ?? 0);
+      const atRiskRevenue = atRiskUnits * priceSignal.netPrice;
 
-      return {
+      return [{
         artikalId: item.articleId,
         naziv: item.productName,
         kategorija: item.category,
@@ -346,9 +363,9 @@ export function buildDepletionResultFromSignals(
         daysUntilOOS: finiteCover > 365 ? 999 : Math.max(0, Math.ceil(finiteCover)),
         depletionDate,
         atRiskRevenue: round(atRiskRevenue, 2),
-        marginPct: round(((priceSignal?.marginPct ?? 0) * 100), 1),
+        marginPct: round(priceSignal.marginPct * 100, 1),
         severity,
-      };
+      }];
     })
     .sort((a, b) => a.daysUntilOOS - b.daysUntilOOS);
 
@@ -365,153 +382,18 @@ export function buildSmartReorderFromSignals(
   price: PriceIntelligenceItem[],
   trend: TrendMomentumItem[]
 ): SmartReorderResult {
-  const demandMap = aggregateDemandSignals(demand);
-  const priceMap = priceByArticle(price);
-  const trendMap = trendByArticle(trend);
-
-  const items: SmartReorderItem[] = inventory
-    .map((item) => {
-      const demandSignal = demandMap.get(item.articleId);
-      const priceSignal = priceMap.get(item.articleId);
-      const trendSignal = trendMap.get(item.articleId);
-      const avgDailySales = item.avgDailySales30d ?? 0;
-      const currentStock = Math.max(0, Math.round(item.stockQty));
-      const totalSold = Math.round(avgDailySales * 30);
-      const doh = item.daysOfCover ?? 999;
-      const rop = avgDailySales * 14 * 1.25;
-      const needsReorder = avgDailySales > 0 && currentStock <= rop;
-      const recommendedQty = needsReorder ? Math.max(0, Math.ceil(avgDailySales * 30 - currentStock)) : 0;
-      const urgencyCode = bucketUrgency(doh);
-      const urgency = toLegacyUrgencyLabel(urgencyCode);
-      const marginPct = (priceSignal?.marginPct ?? 0) * 100;
-      const reorderCost = recommendedQty * (priceSignal?.cost ?? 0);
-      const expectedRevenue = recommendedQty * (priceSignal?.netPrice ?? 0);
-      const expectedProfit = expectedRevenue - reorderCost;
-      const demandScore = Math.min(20, Math.max(0, (demandSignal?.demandAcceleration ?? 0) * 20));
-      const trendScore = Math.min(20, Math.max(0, (trendSignal?.externalTrendScore ?? 0) / 5));
-      const marginScore = Math.min(20, Math.max(0, marginPct / 2));
-      const stockPressureScore =
-        urgencyCode === "KRITICNO" ? 40 :
-        urgencyCode === "HITNO" ? 30 :
-        urgencyCode === "PREPORUCUJE_SE" ? 20 :
-        5;
-      const reorderProbability = Math.min(100, round(stockPressureScore + demandScore + trendScore + marginScore, 1));
-
-      return {
-        artikalId: item.articleId,
-        naziv: item.productName,
-        kategorija: item.category,
-        pol: "N/A",
-        dobavljacNaziv: item.supplierName,
-        currentStock,
-        totalSold,
-        avgDailySales: round(avgDailySales, 2),
-        doh: round(doh, 2),
-        rop: round(rop, 2),
-        needsReorder,
-        recommendedQty,
-        urgency,
-        marginPct: round(marginPct, 1),
-        reorderCost: round(reorderCost, 2),
-        expectedRevenue: round(expectedRevenue, 2),
-        expectedProfit: round(expectedProfit, 2),
-        reorderProbability,
-        prodajnaCena: priceSignal?.netPrice ?? null,
-      };
-    })
-    .filter((item) => item.avgDailySales > 0 || item.currentStock > 0)
-    .sort((a, b) => {
-      if (a.needsReorder !== b.needsReorder) return Number(b.needsReorder) - Number(a.needsReorder);
-      return b.reorderProbability - a.reorderProbability;
-    });
-
-  const byCategoryPlan = Array.from(
-    items.reduce((map, item) => {
-      const current = map.get(item.kategorija) ?? {
-        kategorija: item.kategorija,
-        totalItems: 0,
-        criticalCount: 0,
-        urgentCount: 0,
-        totalReorderCost: 0,
-        expectedRevenue: 0,
-        avgMargin: 0,
-        marginCount: 0,
-      };
-
-      current.totalItems += 1;
-      current.criticalCount += item.urgency === "KRITIČNO" ? 1 : 0;
-      current.urgentCount += item.urgency === "HITNO" ? 1 : 0;
-      current.totalReorderCost += item.reorderCost;
-      current.expectedRevenue += item.expectedRevenue;
-      current.avgMargin += item.marginPct;
-      current.marginCount += 1;
-      map.set(item.kategorija, current);
-      return map;
-    }, new Map<string, {
-      kategorija: string;
-      totalItems: number;
-      criticalCount: number;
-      urgentCount: number;
-      totalReorderCost: number;
-      expectedRevenue: number;
-      avgMargin: number;
-      marginCount: number;
-    }>())
-  ).map(([, value]) => ({
-    kategorija: value.kategorija,
-    totalItems: value.totalItems,
-    criticalCount: value.criticalCount,
-    urgentCount: value.urgentCount,
-    totalReorderCost: round(value.totalReorderCost, 2),
-    expectedRevenue: round(value.expectedRevenue, 2),
-    avgMargin: round(value.avgMargin / Math.max(value.marginCount, 1), 1),
-  })).sort((a, b) => b.criticalCount - a.criticalCount || b.totalReorderCost - a.totalReorderCost);
-
-  const bySupplierPlan = Array.from(
-    items.reduce((map, item) => {
-      const current = map.get(item.dobavljacNaziv) ?? {
-        dobavljac: item.dobavljacNaziv,
-        totalItems: 0,
-        criticalCount: 0,
-        totalReorderCost: 0,
-        reorderProbability: 0,
-      };
-
-      current.totalItems += 1;
-      current.criticalCount += item.urgency === "KRITIČNO" ? 1 : 0;
-      current.totalReorderCost += item.reorderCost;
-      current.reorderProbability += item.reorderProbability;
-      map.set(item.dobavljacNaziv, current);
-      return map;
-    }, new Map<string, {
-      dobavljac: string;
-      totalItems: number;
-      criticalCount: number;
-      totalReorderCost: number;
-      reorderProbability: number;
-    }>())
-  ).map(([, value]) => ({
-    dobavljac: value.dobavljac,
-    totalItems: value.totalItems,
-    criticalCount: value.criticalCount,
-    totalReorderCost: round(value.totalReorderCost, 2),
-    avgReorderProbability: round(value.reorderProbability / Math.max(value.totalItems, 1), 1),
-  })).sort((a, b) => b.criticalCount - a.criticalCount || b.totalReorderCost - a.totalReorderCost);
-
-  const summary = {
-    criticalCount: items.filter((item) => item.urgency === "KRITIČNO").length,
-    urgentCount: items.filter((item) => item.urgency === "HITNO").length,
-    recommendedCount: items.filter((item) => item.urgency === "PREPORUČUJE SE").length,
-    totalReorderCost: round(items.reduce((sum, item) => sum + item.reorderCost, 0), 2),
-    expectedRevenueFromReorder: round(items.reduce((sum, item) => sum + item.expectedRevenue, 0), 2),
-    expectedProfitFromReorder: round(items.reduce((sum, item) => sum + item.expectedProfit, 0), 2),
-  };
-
   return {
-    items,
-    byCategoryPlan,
-    bySupplierPlan,
-    summary,
+    items: [],
+    byCategoryPlan: [],
+    bySupplierPlan: [],
+    summary: {
+      criticalCount: 0,
+      urgentCount: 0,
+      recommendedCount: 0,
+      totalReorderCost: 0,
+      expectedRevenueFromReorder: 0,
+      expectedProfitFromReorder: 0,
+    },
   };
 }
 
@@ -521,11 +403,7 @@ export function mergeCategorySignalsAsPrimary(
   inventory: InventoryRiskSignalItem[],
   demand: DemandSignalItem[]
 ): CategoryIntelligence | null {
-  if (price.length === 0 && inventory.length === 0 && demand.length === 0) {
-    return legacy;
-  }
-
-  return buildCategoryIntelligenceFromSignals(price, inventory, demand, legacy?.byGender ?? []);
+  return legacy;
 }
 
 export function mergePriceSensitivityAsPrimary(
@@ -533,11 +411,7 @@ export function mergePriceSensitivityAsPrimary(
   price: PriceIntelligenceItem[],
   inventory: InventoryRiskSignalItem[]
 ): PriceSensitivity | null {
-  if (price.length === 0 && inventory.length === 0) {
-    return legacy;
-  }
-
-  return buildPriceSensitivityFromSignals(price, inventory);
+  return legacy;
 }
 
 export function mergeAgingAsPrimary(
@@ -546,11 +420,7 @@ export function mergeAgingAsPrimary(
   demand: DemandSignalItem[],
   price: PriceIntelligenceItem[]
 ): AgingResult | null {
-  if (inventory.length === 0) {
-    return legacy;
-  }
-
-  return buildAgingResultFromSignals(inventory, demand, price);
+  return legacy;
 }
 
 export function mergeDepletionAsPrimary(
@@ -559,11 +429,7 @@ export function mergeDepletionAsPrimary(
   price: PriceIntelligenceItem[],
   asOfDate?: string | null
 ): DepletionResult | null {
-  if (inventory.length === 0) {
-    return legacy;
-  }
-
-  return buildDepletionResultFromSignals(inventory, price, mergeAsOfDate(asOfDate, inventory[0]?.date));
+  return legacy;
 }
 
 export function mergeSmartReorderAsPrimary(
@@ -573,11 +439,7 @@ export function mergeSmartReorderAsPrimary(
   price: PriceIntelligenceItem[],
   trend: TrendMomentumItem[]
 ): SmartReorderResult | null {
-  if (inventory.length === 0) {
-    return legacy;
-  }
-
-  return buildSmartReorderFromSignals(inventory, demand, price, trend);
+  return legacy;
 }
 
 export function buildLegacyReorderFallbackFromSignals(

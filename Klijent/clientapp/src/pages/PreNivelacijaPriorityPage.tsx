@@ -69,9 +69,10 @@ type ActiveFilters = {
 type DecisionCandidate = PreNivelacijaSkuCandidate & {
   revenueDelta: number;
   marginDelta: number;
-  confidencePct: number;
+  confidencePct: number | null;
   confidenceAvailable: boolean;
   reliabilityAvailable: boolean;
+  recommendationAllowed: boolean;
   status: DecisionStatus;
   statusReason: string;
   dataQualityStatus: RecommendationQualityStatus;
@@ -99,8 +100,8 @@ const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
   { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
-  { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency" },
-  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "number" },
+  { key: "revenueDelta", header: "Isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
+  { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "number", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
   { key: "decisionScore", header: "Ocena preporuke", dataType: "number" },
   { key: "status", header: "Preporuka", dataType: "text" },
 ];
@@ -177,8 +178,8 @@ type StatusTooltipData = {
   statusReason: string;
   decisionScore: number;
   revenueDelta: number;
-  reliabilityPct: number;
-  confidencePct: number;
+  reliabilityPct: number | null;
+  confidencePct: number | null;
   reliabilityAvailable: boolean;
   confidenceAvailable: boolean;
   dataQualityStatus: RecommendationQualityStatus;
@@ -186,8 +187,8 @@ type StatusTooltipData = {
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  const reliabilityText = data.reliabilityAvailable ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
-  const confidenceText = data.confidenceAvailable ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const reliabilityText = data.reliabilityAvailable && data.reliabilityPct != null ? fmtPct(data.reliabilityPct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
+  const confidenceText = data.confidenceAvailable && data.confidencePct != null ? fmtPct(data.confidencePct, 0) : RECOMMENDATION_SIGNAL_UNAVAILABLE;
   const qualityText = recommendationQualityLabel(data.dataQualityStatus);
   const hintText = recommendationReasonHints(data.reasonCodes).join(" | ");
   return `${statusDisplayLabel(data.status)}: ${data.statusReason} | ${recommendationStatusTooltipBrief(data.status)} | Ocena ${data.decisionScore} | Delta ${fmtRsd(data.revenueDelta)} | ${RECOMMENDATION_RELIABILITY_LABEL} ${reliabilityText} | ${RECOMMENDATION_CONFIDENCE_LABEL} ${confidenceText} | Kvalitet ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
@@ -345,15 +346,17 @@ export default function PreNivelacijaPriorityPage() {
       const marginDelta = item.marginDeltaHighlightVsMarkdown;
       const confidencePctValue = normalizeRecommendationPct(recommendation.confidencePct);
       const reliabilityPctValue = normalizeRecommendationPct(recommendation.reliabilityPct ?? item.reliabilityPct);
+      const recommendationAllowed = recommendation.recommendationAllowed === true;
 
       return {
         ...item,
         revenueDelta,
         marginDelta,
-        confidencePct: confidencePctValue ?? 0,
-        confidenceAvailable: confidencePctValue != null,
-        reliabilityAvailable: reliabilityPctValue != null,
-        reliabilityPct: reliabilityPctValue ?? 0,
+        confidencePct: recommendationAllowed ? confidencePctValue : null,
+        confidenceAvailable: recommendationAllowed && confidencePctValue != null,
+        reliabilityAvailable: recommendationAllowed && reliabilityPctValue != null,
+        reliabilityPct: recommendationAllowed ? reliabilityPctValue : null,
+        recommendationAllowed,
         status: recommendation.status,
         statusReason: recommendation.summary,
         dataQualityStatus: normalizeRecommendationQualityStatus(recommendation.dataQualityStatus),
@@ -376,7 +379,7 @@ export default function PreNivelacijaPriorityPage() {
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
 
       if (compare === 0) compare = a.decisionScore - b.decisionScore;
-      if (compare === 0) compare = a.confidencePct - b.confidencePct;
+      if (compare === 0) compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
       return sortDir === "asc" ? compare : -compare;
     });
   }, [decisionRows, sortDir, sortField]);
@@ -666,14 +669,15 @@ export default function PreNivelacijaPriorityPage() {
 
   return (
     <div className="pnp-decision-page">
-      <AnalyticsTrustHeader
+        <AnalyticsTrustHeader
         title="Prioriteti pre-nivelacije"
         description="Operativna podrška za odluke po SKU pre faze sniženja."
         periodFrom={null}
         periodTo={null}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
         dataSource="Nivelacija analytics"
-        mode="recommendation"
+        mode={data?.recommendationAllowed === true ? "recommendation" : "signal"}
+        recommendationAllowed={data?.recommendationAllowed ?? null}
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
         isPartial={showMetaWarning}
         emptyStateReason={showEmptyState ? (dataMetaMessage ?? null) : null}
@@ -946,7 +950,7 @@ export default function PreNivelacijaPriorityPage() {
                             </td>
                             <td className="align-right">{row.stockUnits}</td>
                             <td className="align-right">{row.daysSinceLastSale}</td>
-                            <td className={`align-right ${row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{fmtRsd(row.revenueDelta)}</td>
+                            <td className={`align-right ${row.recommendationAllowed && row.revenueDelta >= 0 ? "trend-up" : "trend-down"}`}>{row.recommendationAllowed ? fmtRsd(row.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</td>
                             <td className="align-center">
                               <span
                                 className={reliability.className}
@@ -1005,15 +1009,15 @@ export default function PreNivelacijaPriorityPage() {
                 </article>
                 <article>
                   <span>Scenario isticanje (30d procena prihoda)</span>
-                  <strong>{fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d)}</strong>
+                  <strong>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.scenarioHighlightNow.expectedRevenue30d) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Scenario sniženje (30d procena prihoda)</span>
-                  <strong>{fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d)}</strong>
+                  <strong>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.scenarioMarkdownNow.expectedRevenue30d) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Procenjena delta prihoda</span>
-                  <strong className={selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{fmtRsd(selectedRow.revenueDelta)}</strong>
+                  <strong className={selectedRow.recommendationAllowed && selectedRow.revenueDelta >= 0 ? "trend-up" : "trend-down"}>{selectedRow.recommendationAllowed ? fmtRsd(selectedRow.revenueDelta) : RECOMMENDATION_SIGNAL_UNAVAILABLE}</strong>
                 </article>
                 <article>
                   <span>Procenjena delta marže</span>
@@ -1048,11 +1052,11 @@ export default function PreNivelacijaPriorityPage() {
               </div>
 
               <div className="pnp-decision-callouts">
-                <article className="pnp-decision-callout pnp-decision-callout--action">
+                {selectedRow.recommendationAllowed ? <article className="pnp-decision-callout pnp-decision-callout--action">
                   <span>Sledeći korak</span>
                   <strong>{getRecommendedNextStep(selectedRow.status)}</strong>
                   <p>{selectedRow.statusReason}</p>
-                </article>
+                </article> : null}
                 <article
                   className={`pnp-decision-callout ${
                     hasLimitedMarkdownSignal(selectedRow)

@@ -31,6 +31,9 @@ export interface VendorSalesNivelacijaVendorStat {
     postRevenueSharePercent: number;
     avgCoveragePre30: number;
     avgCoveragePost30: number | null;
+    hasComparableSalesWindow?: boolean;
+    semanticChangePercentRevenue?: number | null;
+    semanticChangePercentQty?: number | null;
     articleCount: number;
     activeArticlesCount: number;
     increasedPriceArticlesCount: number;
@@ -58,6 +61,15 @@ export interface VendorSalesNivelacijaArticleStat {
     coveragePre30: number;
     coveragePost30: number;
     hasSalesWindow: boolean;
+    hasPreSalesEvidence?: boolean;
+    hasPostSalesEvidence?: boolean;
+    hasComparableSalesWindow?: boolean;
+    hasQtyBaseline?: boolean;
+    qtyBaselineReason?: string | null;
+    hasRevenueBaseline?: boolean;
+    revenueBaselineReason?: string | null;
+    semanticChangePercentRevenue?: number | null;
+    semanticChangePercentQty?: number | null;
     priceChanged: boolean;
     priceChangePercent: number | null;
     rolling7dPreRevenue?: number | null;
@@ -88,6 +100,7 @@ export interface VendorSalesNivelacijaTotals {
     absoluteChangeRevenue: number;
     avgCoveragePre30: number;
     avgCoveragePost30: number;
+    hasComparableSalesWindow?: boolean;
 }
 
 export interface VendorSalesNivelacijaDataQuality {

@@ -94,9 +94,11 @@ SELECT
     e.vendor_name,
     e.old_price,
     e.new_price,
-    COALESCE(SUM(s.units), 0) AS pre_qty,
-    COALESCE(SUM(s.revenue), 0) AS pre_revenue,
-    LEAST(COUNT(DISTINCT s.day) / 30.0, 1) AS coverage_pre30,
+    SUM(s.units) AS pre_qty,
+    SUM(s.revenue) AS pre_revenue,
+    CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+         ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+    END AS coverage_pre30,
     COUNT(DISTINCT s.day) AS valid_days_pre30,
     (
         COUNT(DISTINCT s.day) < 7
@@ -153,9 +155,11 @@ SELECT
     e.category,
     e.old_price,
     e.new_price,
-    COALESCE(SUM(s.units), 0) AS post_qty,
-    COALESCE(SUM(s.revenue), 0) AS post_revenue,
-    LEAST(COUNT(DISTINCT s.day) / 30.0, 1) AS coverage_post30,
+    SUM(s.units) AS post_qty,
+    SUM(s.revenue) AS post_revenue,
+    CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
+         ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
+    END AS coverage_post30,
     COUNT(DISTINCT s.day) AS valid_days_post30
 FROM nivelacija_events e
 LEFT JOIN sales_daily s
@@ -231,8 +235,9 @@ SELECT
         ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
     END AS change_percent_revenue,
     (pre.is_low_signal OR post.coverage_post30 < 0.2) AS is_low_signal,
-    (pre.pre_qty > 0) AS has_qty_baseline,
+    COALESCE(pre.pre_qty > 0, FALSE) AS has_qty_baseline,
     CASE
+        WHEN pre.pre_qty IS NULL THEN 'missing_pre_qty_window'
         WHEN pre.pre_qty = 0 AND post.post_qty > 0 THEN 'no_pre_qty_baseline_uplift'
         WHEN pre.pre_qty = 0 AND post.post_qty = 0 THEN 'no_pre_qty_baseline_flat'
         ELSE NULL
@@ -241,8 +246,9 @@ SELECT
         WHEN pre.pre_qty = 0 THEN NULL
         ELSE ROUND(((post.post_qty - pre.pre_qty) / NULLIF(pre.pre_qty, 0)) * 100, 2)
     END AS change_percent_qty_semantic,
-    (pre.pre_revenue > 0) AS has_revenue_baseline,
+    COALESCE(pre.pre_revenue > 0, FALSE) AS has_revenue_baseline,
     CASE
+        WHEN pre.pre_revenue IS NULL THEN 'missing_pre_revenue_window'
         WHEN pre.pre_revenue = 0 AND post.post_revenue > 0 THEN 'no_pre_revenue_baseline_uplift'
         WHEN pre.pre_revenue = 0 AND post.post_revenue = 0 THEN 'no_pre_revenue_baseline_flat'
         ELSE NULL

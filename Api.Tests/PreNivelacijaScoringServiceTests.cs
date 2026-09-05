@@ -68,4 +68,27 @@ public sealed class PreNivelacijaScoringServiceTests
         Assert.Equal(0m, highlight.ExpectedRevenue30d);
         Assert.Equal(0m, markdown.ExpectedRevenue30d);
     }
+
+    [Fact]
+    public void EvaluateRecommendation_WithMissingEvidence_BlocksActionAndMarksInsufficientData()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var result = service.EvaluateRecommendation(new IPreNivelacijaScoringService.RecommendationInput(
+            PreNivelacijaScore: 82m,
+            RevenueDelta: 120m,
+            MinRevenueDelta: -20m,
+            MaxRevenueDelta: 180m,
+            DaysSinceLastSale: 70,
+            PriorityBand: "high",
+            Confidence: "High",
+            Units180: 40,
+            StockUnits: 10,
+            HasCompleteEvidence: false));
+
+        Assert.False(result.Recommendation.RecommendationAllowed);
+        Assert.Equal("insufficient_data", result.Recommendation.Status);
+        Assert.Equal("insufficient_data", result.Recommendation.DataQualityStatus);
+        Assert.Contains("missing_evidence", result.Recommendation.ReasonCodes);
+    }
 }

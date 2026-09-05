@@ -13,7 +13,8 @@ public interface IPreNivelacijaScoringService
         string PriorityBand,
         string Confidence,
         int Units180,
-        int StockUnits);
+        int StockUnits,
+        bool HasCompleteEvidence = true);
 
     public sealed record RecommendationResult(
         int DecisionScore,
@@ -157,7 +158,10 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
     {
         var reliabilityPct = ResolveReliabilityPct(input.Confidence);
         var scoreBase = Clamp(input.PreNivelacijaScore);
-        var deltaNorm = ResolveRevenueDeltaNorm(input.RevenueDelta, input.MinRevenueDelta, input.MaxRevenueDelta);
+        var hasRevenueDeltaEvidence = input.MaxRevenueDelta > input.MinRevenueDelta;
+        var deltaNorm = hasRevenueDeltaEvidence
+            ? ResolveRevenueDeltaNorm(input.RevenueDelta, input.MinRevenueDelta, input.MaxRevenueDelta)
+            : 0m;
         var staleRiskNorm = Clamp((input.DaysSinceLastSale / 90m) * 100m);
         var decisionScore = (int)Math.Round(
             (double)Clamp(scoreBase * 0.50m + deltaNorm * 0.20m + staleRiskNorm * 0.15m + (decimal)reliabilityPct * 0.15m),
@@ -169,6 +173,8 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var thinSample = input.Units180 < 6 && input.StockUnits < 4;
 
         var reasons = new List<string>();
+        if (!input.HasCompleteEvidence) reasons.Add("missing_evidence");
+        if (!hasRevenueDeltaEvidence) reasons.Add("missing_revenue_delta_baseline");
         if (thinSample) reasons.Add("thin_sample");
         if (lowReliability) reasons.Add("low_confidence_signal");
         if (lowPriorityBand) reasons.Add("low_priority_band");
@@ -176,7 +182,9 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         if (input.DaysSinceLastSale >= 60) reasons.Add("stale_inventory_pressure");
         if (input.PreNivelacijaScore >= 75m) reasons.Add("high_pre_nivelacija_score");
 
-        var status = ResolveStatus(decisionScore, lowReliability, lowPriorityBand, negativeDelta, thinSample);
+        var status = !input.HasCompleteEvidence || !hasRevenueDeltaEvidence
+            ? "insufficient_data"
+            : ResolveStatus(decisionScore, lowReliability, lowPriorityBand, negativeDelta, thinSample);
         var confidencePct = ResolveConfidencePct(status, decisionScore, reliabilityPct, thinSample);
 
         var recommendation = new PreNivelacijaRecommendationDto
@@ -186,7 +194,10 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
             Summary = BuildSummary(status, lowReliability, lowPriorityBand, negativeDelta, reliabilityPct),
             ConfidencePct = confidencePct,
             ReliabilityPct = reliabilityPct,
-            DataQualityStatus = ResolveDataQualityStatus(reliabilityPct, thinSample),
+            DataQualityStatus = !input.HasCompleteEvidence || !hasRevenueDeltaEvidence
+                ? "insufficient_data"
+                : ResolveDataQualityStatus(reliabilityPct, thinSample),
+            RecommendationAllowed = input.HasCompleteEvidence && hasRevenueDeltaEvidence && status is not ("insufficient_data" or "do_not_trust"),
             ReasonCodes = reasons
         };
 
@@ -228,10 +239,7 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
     private static decimal ResolveRevenueDeltaNorm(decimal revenueDelta, decimal minRevenueDelta, decimal maxRevenueDelta)
     {
         var span = maxRevenueDelta - minRevenueDelta;
-        if (span <= 0m)
-        {
-            return 50m;
-        }
+        if (span <= 0m) return 0m;
 
         return Clamp(((revenueDelta - minRevenueDelta) / span) * 100m);
     }
@@ -242,7 +250,7 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         if (string.Equals(normalized, "High", StringComparison.OrdinalIgnoreCase)) return 90d;
         if (string.Equals(normalized, "Medium", StringComparison.OrdinalIgnoreCase)) return 65d;
         if (string.Equals(normalized, "Low", StringComparison.OrdinalIgnoreCase)) return 35d;
-        return 50d;
+        return 0d;
     }
 
     private static string ResolveStatus(

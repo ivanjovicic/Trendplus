@@ -137,7 +137,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     expect(result.byCategory[0].totalRevenue).toBe(0);
   });
 
-  it("keeps percent units when merge promotes derived over legacy", () => {
+  it("does not promote frontend-derived signals over the backend result", () => {
     const legacy: CategoryIntelligence = {
       byCategory: [
         {
@@ -167,8 +167,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
       [] as DemandSignalItem[],
     );
 
-    expect(merged).not.toBeNull();
-    expect(merged!.byCategory.find((r) => r.kategorija === "A")?.revShare).toBe(25);
+    expect(merged).toEqual(legacy);
     expect(merged!.byGender).toEqual(legacy.byGender);
   });
 });

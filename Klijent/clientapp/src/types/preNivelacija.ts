@@ -21,9 +21,10 @@ export interface PreNivelacijaRecommendation {
   label: string;
   summary: string;
   confidencePct: number;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   dataQualityStatus: "good" | "warning" | "critical" | string;
   reasonCodes: string[];
+  recommendationAllowed?: boolean | null;
 }
 
 export interface PreNivelacijaSkuCandidate {
@@ -51,8 +52,10 @@ export interface PreNivelacijaSkuCandidate {
   scenarioMarkdownNow: PreNivelacijaScenario;
   marginDeltaHighlightVsMarkdown: number;
   revenueDeltaHighlightVsMarkdown: number;
+  hasCompleteEvidence?: boolean;
+  evidenceReason?: string | null;
   confidence: "High" | "Medium" | "Low" | string;
-  reliabilityPct: number;
+  reliabilityPct: number | null;
   decisionScore: number;
   recommendation: PreNivelacijaRecommendation;
 }
@@ -116,5 +119,6 @@ export interface PreNivelacijaPriorityResponse {
   page: number;
   pageSize: number;
   totalCandidates: number;
+  recommendationAllowed?: boolean | null;
   meta?: AnalyticsResponseMeta | null;
 }

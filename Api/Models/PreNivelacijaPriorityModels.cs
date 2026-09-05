@@ -15,6 +15,7 @@ public sealed class PreNivelacijaPriorityResponseDto
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public int TotalCandidates { get; set; }
+    public bool RecommendationAllowed { get; set; }
     public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 
@@ -96,10 +97,13 @@ public sealed class PreNivelacijaSkuCandidateDto
     public PreNivelacijaScenarioDto ScenarioMarkdownNow { get; set; } = new();
     public decimal MarginDeltaHighlightVsMarkdown { get; set; }
     public decimal RevenueDeltaHighlightVsMarkdown { get; set; }
+    public bool HasCompleteEvidence { get; set; }
+    public string? EvidenceReason { get; set; }
     public string Confidence { get; set; } = "Low";
     public double ReliabilityPct { get; set; }
     public int DecisionScore { get; set; }
     public PreNivelacijaRecommendationDto Recommendation { get; set; } = new();
+    public bool RecommendationAllowed => Recommendation.RecommendationAllowed;
 }
 
 public sealed class PreNivelacijaRecommendationDto
@@ -110,6 +114,7 @@ public sealed class PreNivelacijaRecommendationDto
     public double ConfidencePct { get; set; }
     public double ReliabilityPct { get; set; }
     public string DataQualityStatus { get; set; } = "critical";
+    public bool RecommendationAllowed { get; set; }
     public IReadOnlyList<string> ReasonCodes { get; set; } = [];
 }
 

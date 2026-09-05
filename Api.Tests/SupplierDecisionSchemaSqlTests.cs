@@ -75,6 +75,31 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaEndpointUsesSemanticRevenueChangeWithoutZeroCoalescing()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("change_percent_revenue_semantic::numeric AS change_percent", source);
+        Assert.DoesNotContain("changePercentExpr = hasRevenuePercent ? \"change_percent_revenue\" : \"change_percent_qty\"", source);
+        Assert.DoesNotContain("COALESCE(pre_qty, 0)::numeric AS pre_qty", source);
+        Assert.DoesNotContain("COALESCE(post_revenue, 0)::numeric AS post_revenue", source);
+        Assert.Contains("HasComparableSalesWindow", source);
+        Assert.Contains("preQtyEvidence.HasValue && postQtyEvidence.HasValue", source);
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaViewPreservesMissingWindowAsNullAndLabelsBaselineReason()
+    {
+        var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("SUM(s.units) AS pre_qty", sql);
+        Assert.Contains("SUM(s.revenue) AS post_revenue", sql);
+        Assert.Contains("WHEN pre.pre_qty IS NULL THEN 'missing_pre_qty_window'", sql);
+        Assert.Contains("WHEN pre.pre_revenue IS NULL THEN 'missing_pre_revenue_window'", sql);
+        Assert.Contains("change_percent_revenue_semantic::numeric AS change_percent", ReadRepoFile("Api/Endpoints/AllEndpoints.cs"));
+    }
+
+    [Fact]
     public void SupplierDecisionViewsExposeMissingEvidenceFlagsAndConservativeGuardrails()
     {
         var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");

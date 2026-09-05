@@ -37,6 +37,7 @@ public static class PreNivelacijaPriorityEndpoints
         public PreNivelacijaQueuesDto Queues { get; init; } = new();
         public List<PreNivelacijaAlertDto> Alerts { get; init; } = [];
         public int TotalCandidates { get; init; }
+        public bool RecommendationAllowed { get; init; }
         public AnalyticsResponseMetaDto? Meta { get; init; }
     }
 
@@ -46,6 +47,7 @@ public static class PreNivelacijaPriorityEndpoints
             TrendplusDbContext db,
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
+            ILoggerFactory loggerFactory,
             int? supplierId = null,
             int? seasonId = null,
             int? footwearTypeId = null,
@@ -60,6 +62,9 @@ public static class PreNivelacijaPriorityEndpoints
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
+
+            try
+            {
 
             var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
                 supplierId,
@@ -137,8 +142,8 @@ public static class PreNivelacijaPriorityEndpoints
                             FootwearTypeId = a.IDTipObuce,
                             StockUnits = a.Kolicina ?? 0,
                             a.Kategorija,
-                            SellingPrice = a.ProdajnaCena ?? a.PrvaProdajnaCena ?? 0m,
-                            PurchasePrice = a.NabavnaCenaDin ?? a.NabavnaCena ?? 0m
+                            SellingPrice = a.ProdajnaCena ?? a.PrvaProdajnaCena,
+                            PurchasePrice = a.NabavnaCenaDin ?? a.NabavnaCena
                         })
                         .ToListAsync(ct);
 
@@ -250,9 +255,13 @@ public static class PreNivelacijaPriorityEndpoints
                         var markdownEvents = markdownByArtikal.TryGetValue(a.Id, out var markdownLite) ? markdownLite.MarkdownEvents : 0;
                         var avgMarkdownPct = markdownByArtikal.TryGetValue(a.Id, out markdownLite) ? markdownLite.AvgMarkdownPct : 0m;
 
-                        var sellingPrice = a.SellingPrice;
-                        var purchasePrice = a.PurchasePrice;
-                        var grossMarginPct = sellingPrice > 0m && purchasePrice > 0m
+                        var sellingPrice = a.SellingPrice ?? 0m;
+                        var purchasePrice = a.PurchasePrice ?? 0m;
+                        var hasCompleteEvidence = a.SellingPrice.HasValue
+                            && a.SellingPrice.Value > 0m
+                            && a.PurchasePrice.HasValue
+                            && a.PurchasePrice.Value >= 0m;
+                        var grossMarginPct = hasCompleteEvidence && sellingPrice > 0m
                             ? decimal.Round(Math.Clamp(((sellingPrice - purchasePrice) / sellingPrice) * 100m, 0m, 100m), 2)
                             : 0m;
 
@@ -310,6 +319,8 @@ public static class PreNivelacijaPriorityEndpoints
                             ScenarioMarkdownNow = markdown,
                             MarginDeltaHighlightVsMarkdown = decimal.Round(highlight.ExpectedMargin30d - markdown.ExpectedMargin30d, 2),
                             RevenueDeltaHighlightVsMarkdown = decimal.Round(highlight.ExpectedRevenue30d - markdown.ExpectedRevenue30d, 2),
+                            HasCompleteEvidence = hasCompleteEvidence,
+                            EvidenceReason = hasCompleteEvidence ? null : "missing_price_baseline",
                             Confidence = confidence
                         });
                     }
@@ -333,7 +344,8 @@ public static class PreNivelacijaPriorityEndpoints
                             candidate.PriorityBand,
                             candidate.Confidence,
                             candidate.Units180,
-                            candidate.StockUnits));
+                            candidate.StockUnits,
+                            HasCompleteEvidence: candidate.HasCompleteEvidence));
 
                         candidate.DecisionScore = recommendation.DecisionScore;
                         candidate.ReliabilityPct = recommendation.ReliabilityPct;
@@ -406,17 +418,18 @@ public static class PreNivelacijaPriorityEndpoints
                     var queues = new PreNivelacijaQueuesDto
                     {
                         HighlightNow = allCandidates
-                            .Where(x => x.PriorityBand == "high")
+                            .Where(x => x.PriorityBand == "high" && x.Recommendation.RecommendationAllowed)
                             .Take(30)
                             .Select(x => ToQueueItem(x, nowUtc.AddDays(2)))
                             .ToList(),
                         Monitor = allCandidates
-                            .Where(x => x.PriorityBand == "medium")
+                            .Where(x => x.PriorityBand == "medium" && x.Recommendation.RecommendationAllowed)
                             .Take(30)
                             .Select(x => ToQueueItem(x, nowUtc.AddDays(7)))
                             .ToList(),
                         LikelyMarkdownSoon = allCandidates
-                            .Where(x => x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m)
+                            .Where(x => x.Recommendation.RecommendationAllowed
+                                && (x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m))
                             .OrderByDescending(x => x.DaysSinceLastSale)
                             .ThenByDescending(x => x.StockUnits)
                             .Take(30)
@@ -436,7 +449,8 @@ public static class PreNivelacijaPriorityEndpoints
                         Candidates = allCandidates,
                         Queues = queues,
                         Alerts = alerts,
-                        TotalCandidates = totalCandidates
+                        TotalCandidates = totalCandidates,
+                        RecommendationAllowed = allCandidates.All(x => x.Recommendation.RecommendationAllowed)
                     };
                 },
                 CacheExpiration.HeavyAnalytics,
@@ -444,7 +458,21 @@ public static class PreNivelacijaPriorityEndpoints
 
             var response = BuildResponse(baseEntry, page, pageSize);
 
-            return Results.Ok(response);
+                return Results.Ok(response);
+            }
+            catch (Exception ex)
+            {
+                loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                    .LogWarning(ex, "Pre-nivelacija analytics unavailable; returning explicit error metadata.");
+
+                var unavailable = BuildEmptyBaseEntry(
+                    DateTime.UtcNow,
+                    AnalyticsResponseMetaFactory.Error(
+                        "pre_nivelacija_unavailable",
+                        "Pre-nivelacija podaci trenutno nisu dostupni.",
+                        null));
+                return Results.Ok(BuildResponse(unavailable, page, pageSize));
+            }
         })
         .WithName("GetPreNivelacijaPrioriteti")
         .WithTags("Analytics")
@@ -517,7 +545,7 @@ public static class PreNivelacijaPriorityEndpoints
             .Take(pageSize)
             .ToList();
 
-        return new PreNivelacijaPriorityResponseDto
+        var response = new PreNivelacijaPriorityResponseDto
         {
             GeneratedAtUtc = baseEntry.GeneratedAtUtc,
             FormulaVersion = baseEntry.FormulaVersion,
@@ -530,8 +558,12 @@ public static class PreNivelacijaPriorityEndpoints
             Page = page,
             PageSize = pageSize,
             TotalCandidates = baseEntry.TotalCandidates,
+            RecommendationAllowed = baseEntry.RecommendationAllowed,
             Meta = baseEntry.Meta ?? AnalyticsResponseMetaFactory.Success()
         };
+
+        response.Meta!.RecommendationAllowed = response.RecommendationAllowed;
+        return response;
     }
 
     private static string ResolvePriorityBand(decimal score)

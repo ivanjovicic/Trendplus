@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import SupplierFootwearAnalyticsPage from "../SupplierFootwearAnalyticsPage";
+import SupplierFootwearAnalyticsPage, { decisionColumns } from "../SupplierFootwearAnalyticsPage";
 import { getVendorSalesNivelacija } from "../../services/vendorSalesNivelacijaApi";
+import { buildAnalyticsDetailSnapshot, resolveAnalyticsTablePayload } from "../../services/analyticsTableState";
 
 vi.mock("recharts", () => ({
   Bar: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -301,5 +302,58 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(confidenceArticle).not.toBeNull();
     expect(within(reliabilityArticle!).getByText("Nije dostupno")).toBeInTheDocument();
     expect(within(confidenceArticle!).getByText("Nije dostupno")).toBeInTheDocument();
+  });
+
+  it("keeps untrusted pre/post values unavailable in table, detail, and export payloads", () => {
+    const row = {
+      vendorId: 1,
+      vendorName: "Dobavljač 1",
+      preQty: 0,
+      preRevenue: 0,
+      postQty: 0,
+      postRevenue: 0,
+      changeQty: 0,
+      changeRevenue: 0,
+      changePercent: 0,
+      absoluteChangeRevenue: 0,
+      changeSharePercent: 0,
+      postRevenueSharePercent: 0,
+      avgCoveragePre30: 0,
+      avgCoveragePost30: null,
+      articleCount: 1,
+      activeArticlesCount: 0,
+      increasedPriceArticlesCount: 0,
+      decreasedPriceArticlesCount: 0,
+      reliabilityPct: 50,
+      hasComparableSalesWindow: false,
+      recommendationAllowed: false,
+      sharePct: null,
+      trendPct: null,
+      topFootwearType: "N/A",
+      topFootwearTypeSharePct: null,
+      avgElasticity: null,
+      confidencePct: null,
+      status: "insufficient_data" as const,
+      statusReason: "Nema uporedivog prozora.",
+    };
+
+    const payload = resolveAnalyticsTablePayload({
+      tableKey: "dobavljaci-tipovi-obuce",
+      tableTitle: "Dobavljači i tipovi obuće",
+      columns: decisionColumns,
+      rows: [row],
+    });
+    const snapshot = buildAnalyticsDetailSnapshot({
+      table: "dobavljaci-tipovi-obuce",
+      recordId: "1",
+      title: row.vendorName,
+      columns: decisionColumns,
+      row,
+    });
+
+    expect(payload.rows[0].postRevenue).toBeNull();
+    expect(payload.rows[0].confidencePct).toBeNull();
+    expect(snapshot.fields.find((field) => field.key === "postRevenue")?.value).toBe("");
+    expect(snapshot.fields.find((field) => field.key === "confidencePct")?.value).toBe("");
   });
 });

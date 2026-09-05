@@ -35,11 +35,12 @@ type DataQualityStatus = "good" | "warning" | "critical" | "insufficient_data" |
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePct: number | null;
-  trendPct: number;
+  trendPct: number | null;
   topFootwearType: string;
   topFootwearTypeSharePct: number | null;
   avgElasticity: number | null;
   confidencePct: number | null;
+  recommendationAllowed: boolean;
   status: DecisionStatus;
   statusReason: string;
 };
@@ -52,15 +53,24 @@ const STATUS_PRIORITY: Record<DecisionStatus, number> = {
   do_not_trust: 1,
 };
 
-const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
+function comparableMetric(value: number | null | undefined, comparable: boolean): number | null {
+  if (!comparable) return null;
+  return normalizeMetricNumber(value);
+}
+
+function rowHasComparableEvidence(row: VendorSalesNivelacijaVendorStat): boolean {
+  return row.hasComparableSalesWindow !== false && comparableMetric(row.postRevenue, true) != null;
+}
+
+export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljač", dataType: "text" },
-  { key: "postRevenue", header: "Promet", dataType: "currency" },
+  { key: "postRevenue", header: "Promet", dataType: "currency", getValue: (row) => comparableMetric(row.postRevenue, rowHasComparableEvidence(row)) },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "status", header: "Preporuka", dataType: "text" },
-  { key: "confidencePct", header: "Poverenje %", dataType: "percent" },
+  { key: "confidencePct", header: "Poverenje %", dataType: "percent", getValue: (row) => row.recommendationAllowed ? row.confidencePct : null },
 ];
 
 function toUtcRange(fromDate: string, toDate: string) { return { from: `${fromDate}T00:00:00Z`, to: `${toDate}T23:59:59Z` }; }
@@ -106,15 +116,19 @@ type StatusTooltipData = {
   status: DecisionStatus;
   statusReason: string;
   sharePct: number | null;
-  trendPct: number;
+  trendPct: number | null;
   topFootwearType: string;
   topFootwearTypeSharePct: number | null;
   reliabilityPct: number | null;
   confidencePct: number | null;
+  recommendationAllowed: boolean;
 };
 
 function buildStatusTooltip(data: StatusTooltipData): string {
-  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })}) | Pouzdanost ${formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })} | Poverenje ${formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })}`;
+  const trust = data.recommendationAllowed
+    ? ` | Pouzdanost ${formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })} | Poverenje ${formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })}`
+    : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
+  return `${statusDisplayLabel(data.status)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
 function normalizeName(value: string | null | undefined): string { return (value ?? "").trim().toUpperCase(); }
 function vendorKey(vendor: { vendorId: number | null; vendorName: string }): string { if (vendor.vendorId != null) return `id:${vendor.vendorId}`; return `name:${normalizeName(vendor.vendorName)}`; }
@@ -125,6 +139,7 @@ function buildTypeInsights(articleStats: VendorSalesNivelacijaArticleStat[]) {
   const globalCategoryRevenue = new Map<string, number>();
 
   articleStats.forEach((row) => {
+    if (row.hasComparableSalesWindow === false) return;
     const vKey = row.vendorId != null ? `id:${row.vendorId}` : `name:${normalizeName(row.vendorName)}`;
     const category = (row.category ?? "").trim() || "N/A";
     const revenue = normalizeMetricNumber(row.postRevenue);
@@ -346,15 +361,19 @@ export default function SupplierFootwearAnalyticsPage({
     const rows = data?.vendorStats ?? [];
     if (rows.length === 0) return [];
 
-    const totalRevenue = rows.reduce((sum, item) => sum + item.postRevenue, 0);
+    const evidenceRows = rows.filter(rowHasComparableEvidence);
+    const totalRevenue = evidenceRows.reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);
     return rows.flatMap((item) => {
       const recommendation = item.recommendation;
       if (!recommendation) return [];
 
       const key = vendorKey(item);
       const typeInsight = typeInsights.byVendor.get(key);
-      const sharePct = totalRevenue > 0 ? (item.postRevenue / totalRevenue) * 100 : null;
-      const trendPct = item.changePercent;
+      const hasComparableEvidence = rowHasComparableEvidence(item);
+      const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
+      const sharePct = postRevenue != null && totalRevenue > 0 ? (postRevenue / totalRevenue) * 100 : null;
+      const trendPct = comparableMetric(item.semanticChangePercentRevenue ?? item.changePercent, hasComparableEvidence);
+      const recommendationAllowed = recommendation.recommendationAllowed === true;
 
       const topFootwearType = typeInsight?.topType ?? "N/A";
       const topFootwearTypeSharePct = typeInsight?.topTypeSharePct ?? null;
@@ -367,7 +386,8 @@ export default function SupplierFootwearAnalyticsPage({
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
-        confidencePct: normalizeMetricNumber(recommendation.confidencePct),
+        confidencePct: recommendationAllowed ? normalizeMetricNumber(recommendation.confidencePct) : null,
+        recommendationAllowed,
         status: recommendation.status,
         statusReason: recommendation.summary,
       }];
@@ -379,10 +399,10 @@ export default function SupplierFootwearAnalyticsPage({
     return rows.sort((a, b) => {
       let compare = 0;
       if (sortField === "vendorName") compare = a.vendorName.localeCompare(b.vendorName, "sr");
-      else if (sortField === "postRevenue") compare = a.postRevenue - b.postRevenue;
+      else if (sortField === "postRevenue") compare = (comparableMetric(a.postRevenue, rowHasComparableEvidence(a)) ?? -1) - (comparableMetric(b.postRevenue, rowHasComparableEvidence(b)) ?? -1);
       else if (sortField === "sharePct") compare = (a.sharePct ?? -1) - (b.sharePct ?? -1);
       else if (sortField === "topFootwearType") compare = a.topFootwearType.localeCompare(b.topFootwearType, "sr");
-      else if (sortField === "trendPct") compare = a.trendPct - b.trendPct;
+      else if (sortField === "trendPct") compare = (a.trendPct ?? -1) - (b.trendPct ?? -1);
       else if (sortField === "status") compare = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       if (compare === 0) compare = (a.confidencePct ?? -1) - (b.confidencePct ?? -1);
       if (compare === 0) compare = (a.reliabilityPct ?? -1) - (b.reliabilityPct ?? -1);
@@ -390,14 +410,18 @@ export default function SupplierFootwearAnalyticsPage({
     });
   }, [decisionRows, sortDir, sortField]);
 
-  const totalRevenue = data?.totals.postRevenue
-    ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + row.postRevenue, 0) : null);
+  const hasUntrustedRows = data?.vendorStats?.some((row) => !rowHasComparableEvidence(row)) ?? false;
+  const serverTotalRevenue = normalizeMetricNumber(data?.totals.postRevenue);
+  const totalRevenue = hasUntrustedRows
+    ? null
+    : serverTotalRevenue
+      ?? (data?.vendorStats?.length ? data.vendorStats.reduce((sum, row) => sum + (comparableMetric(row.postRevenue, true) ?? 0), 0) : null);
   const top5SharePct = useMemo(() => {
     if (sortedRows.length === 0 || totalRevenue == null || totalRevenue <= 0) return null;
-    const top5 = [...sortedRows].sort((a, b) => b.postRevenue - a.postRevenue).slice(0, 5).reduce((sum, item) => sum + item.postRevenue, 0);
+    const top5 = [...sortedRows].sort((a, b) => (comparableMetric(b.postRevenue, rowHasComparableEvidence(b)) ?? -1) - (comparableMetric(a.postRevenue, rowHasComparableEvidence(a)) ?? -1)).slice(0, 5).reduce((sum, item) => sum + (comparableMetric(item.postRevenue, true) ?? 0), 0);
     return (top5 / totalRevenue) * 100;
   }, [sortedRows, totalRevenue]);
-  const totalChangeRevenue = data?.totals.changeRevenue ?? null;
+  const totalChangeRevenue = hasUntrustedRows ? null : data?.totals.changeRevenue ?? null;
   const periodGrowthPct = useMemo(() => (
     previousRevenue == null || previousRevenue <= 0 || totalRevenue == null
       ? data?.totals.changePercent ?? null
@@ -751,7 +775,7 @@ export default function SupplierFootwearAnalyticsPage({
                         return (
                           <tr key={rowId} className={expanded ? "expanded-row" : ""}>
                             <td>{row.vendorName || "Nepoznat dobavljač"}</td>
-                            <td className="align-right">{fmtRsd(row.postRevenue)}</td>
+                            <td className="align-right">{fmtRsd(comparableMetric(row.postRevenue, rowHasComparableEvidence(row)))}</td>
                             <td className="align-right">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{formatMetricDisplayValue({ value: row.topFootwearTypeSharePct, kind: "percent" })} udela kod dobavljača</div></td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
@@ -772,15 +796,15 @@ export default function SupplierFootwearAnalyticsPage({
             <section className="sf-decision-detail">
               <div className="sf-decision-detail-head"><h3>Detalj odluke: {selectedRow.vendorName || "Nepoznat dobavljač"}</h3><button type="button" onClick={() => openVendorDetail(selectedRow)}>Otvori puni detalj</button></div>
               <div className="sf-decision-detail-grid">
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(selectedRow.preRevenue)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(selectedRow.postRevenue)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(selectedRow.preQty)}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(selectedRow.postQty)}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.preRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Posle nivelacije promet</span><strong>{fmtRsd(comparableMetric(selectedRow.postRevenue, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Pre nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.preQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Posle nivo kolicina</span><strong>{fmtQty(comparableMetric(selectedRow.postQty, rowHasComparableEvidence(selectedRow)))}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-info"><span>Glavni tip obuće</span><strong>{selectedRow.topFootwearType} ({formatMetricDisplayValue({ value: selectedRow.topFootwearTypeSharePct, kind: "percent" })})</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-warning"><span>Elastičnost glavnog tipa</span><strong>{fmtElasticity(selectedRow.avgElasticity)}</strong></article>
                 <article className="analytics-kpi-card analytics-kpi-card--tone-neutral"><span>Aktivni artikli</span><strong>{selectedRow.activeArticlesCount} / {selectedRow.articleCount}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{formatMetricDisplayValue({ value: selectedRow.reliabilityPct, kind: "percent" })}</strong></article>
-                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{formatMetricDisplayValue({ value: selectedRow.confidencePct, kind: "percent" })}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-success"><span>Pouzdanost signala</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.reliabilityPct : null, kind: "percent" })}</strong></article>
+                <article className="analytics-kpi-card analytics-kpi-card--tone-value"><span>Poverenje preporuke</span><strong>{formatMetricDisplayValue({ value: selectedRow.recommendationAllowed ? selectedRow.confidencePct : null, kind: "percent" })}</strong></article>
               </div>
               <p className="sf-decision-reason"><strong>Razlog preporuke:</strong> {selectedRow.statusReason}</p>
             </section>

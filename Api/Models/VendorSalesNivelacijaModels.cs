@@ -28,6 +28,17 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public bool PriceChanged { get; set; }
     public decimal? PriceChangePercent { get; set; }
 
+    // Legacy numeric fields remain for compatibility; these fields preserve evidence state.
+    public bool HasPreSalesEvidence { get; set; }
+    public bool HasPostSalesEvidence { get; set; }
+    public bool HasComparableSalesWindow { get; set; }
+    public bool HasRevenueBaseline { get; set; }
+    public bool HasQtyBaseline { get; set; }
+    public string? QtyBaselineReason { get; set; }
+    public string? RevenueBaselineReason { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
+    public decimal? SemanticChangePercentQty { get; set; }
+
     // --- Advanced metrics ---
     public decimal? Rolling7dPreRevenue { get; set; }
     public decimal? Rolling7dPostRevenue { get; set; }
@@ -73,6 +84,7 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int IncreasedPriceArticlesCount { get; set; }
     public int DecreasedPriceArticlesCount { get; set; }
     public double ReliabilityPct { get; set; }
+    public bool HasComparableSalesWindow { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
 

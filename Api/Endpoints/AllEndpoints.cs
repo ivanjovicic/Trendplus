@@ -3228,8 +3228,23 @@ public static class AllEndpoints
                 var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
                 var hasPriceColumns = hasOldPrice && hasNewPrice;
 
-                var hasRevenuePercent = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue", ct);
-                var changePercentExpr = hasRevenuePercent ? "change_percent_revenue" : "change_percent_qty";
+                var hasRevenueSemanticPercent = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic", ct);
+                if (!hasRevenueSemanticPercent)
+                {
+                    var missingContract = CreateVendorSalesNivelacijaFallbackResponse(
+                        vendorId,
+                        eventDateOnly,
+                        from,
+                        to,
+                        categoryTrimmed,
+                        includeInactive,
+                        "Missing semantic revenue baseline contract.",
+                        AnalyticsResponseMetaFactory.Error(
+                            "vendor_sales_nivelacija_contract_missing",
+                            "Pre/post nivelacija nema potvrđen ugovor za prihodnu promenu.",
+                            correlationId));
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId));
+                }
 
                 const string rawCountSql = """
                     SELECT COUNT(*)::INT
@@ -3335,15 +3350,21 @@ public static class AllEndpoints
                                 COALESCE(NULLIF(category, ''), 'N/A') AS category,
                                 old_price,
                                 new_price,
-                                COALESCE(pre_qty, 0)::numeric AS pre_qty,
-                                COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
-                                COALESCE(post_qty, 0)::numeric AS post_qty,
-                                COALESCE(post_revenue, 0)::numeric AS post_revenue,
-                                COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
-                                COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
-                                COALESCE(change_qty, 0)::numeric AS change_qty,
-                                COALESCE(change_revenue, 0)::numeric AS change_revenue,
-                                COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
+                                pre_qty::numeric AS pre_qty,
+                                pre_revenue::numeric AS pre_revenue,
+                                post_qty::numeric AS post_qty,
+                                post_revenue::numeric AS post_revenue,
+                                coverage_pre30::numeric AS coverage_pre30,
+                                coverage_post30::numeric AS coverage_post30,
+                                change_qty::numeric AS change_qty,
+                                change_revenue::numeric AS change_revenue,
+                                change_percent_revenue_semantic::numeric AS change_percent,
+                                has_qty_baseline,
+                                qty_baseline_reason,
+                                change_percent_qty_semantic::numeric AS change_percent_qty_semantic,
+                                has_revenue_baseline,
+                                revenue_baseline_reason,
+                                change_percent_revenue_semantic::numeric AS change_percent_revenue_semantic,
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
@@ -3379,7 +3400,13 @@ public static class AllEndpoints
                             coverage_post30,
                             change_qty,
                             change_revenue,
-                            change_percent
+                            change_percent,
+                            has_qty_baseline,
+                            qty_baseline_reason,
+                            change_percent_qty_semantic,
+                            has_revenue_baseline,
+                            revenue_baseline_reason,
+                            change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
                         ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
@@ -3398,15 +3425,21 @@ public static class AllEndpoints
                                 COALESCE(NULLIF(category, ''), 'N/A') AS category,
                                 NULL::numeric AS old_price,
                                 NULL::numeric AS new_price,
-                                COALESCE(pre_qty, 0)::numeric AS pre_qty,
-                                COALESCE(pre_revenue, 0)::numeric AS pre_revenue,
-                                COALESCE(post_qty, 0)::numeric AS post_qty,
-                                COALESCE(post_revenue, 0)::numeric AS post_revenue,
-                                COALESCE(coverage_pre30, 0)::numeric AS coverage_pre30,
-                                COALESCE(coverage_post30, 0)::numeric AS coverage_post30,
-                                COALESCE(change_qty, 0)::numeric AS change_qty,
-                                COALESCE(change_revenue, 0)::numeric AS change_revenue,
-                                COALESCE({changePercentExpr}, 0)::numeric AS change_percent,
+                                pre_qty::numeric AS pre_qty,
+                                pre_revenue::numeric AS pre_revenue,
+                                post_qty::numeric AS post_qty,
+                                post_revenue::numeric AS post_revenue,
+                                coverage_pre30::numeric AS coverage_pre30,
+                                coverage_post30::numeric AS coverage_post30,
+                                change_qty::numeric AS change_qty,
+                                change_revenue::numeric AS change_revenue,
+                                change_percent_revenue_semantic::numeric AS change_percent,
+                                has_qty_baseline,
+                                qty_baseline_reason,
+                                change_percent_qty_semantic::numeric AS change_percent_qty_semantic,
+                                has_revenue_baseline,
+                                revenue_baseline_reason,
+                                change_percent_revenue_semantic::numeric AS change_percent_revenue_semantic,
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
@@ -3440,7 +3473,13 @@ public static class AllEndpoints
                             coverage_post30,
                             change_qty,
                             change_revenue,
-                            change_percent
+                            change_percent,
+                            has_qty_baseline,
+                            qty_baseline_reason,
+                            change_percent_qty_semantic,
+                            has_revenue_baseline,
+                            revenue_baseline_reason,
+                            change_percent_revenue_semantic
                         FROM ranked
                         WHERE rn = 1
                         ORDER BY vendor_name, ABS(change_revenue) DESC, article_name
@@ -3503,18 +3542,32 @@ public static class AllEndpoints
                         var oldPrice = reader.IsDBNull(8) ? (decimal?)null : reader.GetDecimal(8);
                         var newPrice = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
 
-                        var preQty = reader.IsDBNull(10) ? 0 : (int)reader.GetDecimal(10);
-                        var preRevenue = reader.IsDBNull(11) ? 0m : reader.GetDecimal(11);
-                        var postQty = reader.IsDBNull(12) ? 0 : (int)reader.GetDecimal(12);
-                        var postRevenue = reader.IsDBNull(13) ? 0m : reader.GetDecimal(13);
-                        var coveragePre30 = reader.IsDBNull(14) ? 0m : reader.GetDecimal(14);
-                        var coveragePost30 = reader.IsDBNull(15) ? 0m : reader.GetDecimal(15);
-                        var changeQty = reader.IsDBNull(16) ? 0 : (int)reader.GetDecimal(16);
-                        var changeRevenue = reader.IsDBNull(17) ? 0m : reader.GetDecimal(17);
-                        var changePercentRevenue = reader.IsDBNull(18) ? 0m : reader.GetDecimal(18);
+                        var preQtyEvidence = reader.IsDBNull(10) ? (decimal?)null : reader.GetDecimal(10);
+                        var preRevenueEvidence = reader.IsDBNull(11) ? (decimal?)null : reader.GetDecimal(11);
+                        var postQtyEvidence = reader.IsDBNull(12) ? (decimal?)null : reader.GetDecimal(12);
+                        var postRevenueEvidence = reader.IsDBNull(13) ? (decimal?)null : reader.GetDecimal(13);
+                        var coveragePre30Evidence = reader.IsDBNull(14) ? (decimal?)null : reader.GetDecimal(14);
+                        var coveragePost30Evidence = reader.IsDBNull(15) ? (decimal?)null : reader.GetDecimal(15);
+                        var changeQtyEvidence = reader.IsDBNull(16) ? (decimal?)null : reader.GetDecimal(16);
+                        var changeRevenueEvidence = reader.IsDBNull(17) ? (decimal?)null : reader.GetDecimal(17);
+                        var changePercentRevenue = reader.IsDBNull(18) ? (decimal?)null : reader.GetDecimal(18);
+                        var hasQtyBaseline = !reader.IsDBNull(19) && reader.GetBoolean(19);
+                        var qtyBaselineReason = reader.IsDBNull(20) ? null : reader.GetString(20);
+                        var semanticChangePercentQty = reader.IsDBNull(21) ? (decimal?)null : reader.GetDecimal(21);
+                        var hasRevenueBaseline = !reader.IsDBNull(22) && reader.GetBoolean(22);
+                        var revenueBaselineReason = reader.IsDBNull(23) ? null : reader.GetString(23);
+                        var semanticChangePercentRevenue = reader.IsDBNull(24) ? (decimal?)null : reader.GetDecimal(24);
 
-                        var hasSalesWindow =
-                            preQty != 0 || postQty != 0 || preRevenue != 0m || postRevenue != 0m;
+                        var preQty = preQtyEvidence.HasValue ? (int)preQtyEvidence.Value : 0;
+                        var preRevenue = preRevenueEvidence ?? 0m;
+                        var postQty = postQtyEvidence.HasValue ? (int)postQtyEvidence.Value : 0;
+                        var postRevenue = postRevenueEvidence ?? 0m;
+                        var coveragePre30 = coveragePre30Evidence ?? 0m;
+                        var coveragePost30 = coveragePost30Evidence ?? 0m;
+                        var changeQty = changeQtyEvidence.HasValue ? (int)changeQtyEvidence.Value : 0;
+                        var changeRevenue = changeRevenueEvidence ?? 0m;
+                        var hasSalesWindow = preQtyEvidence.HasValue || postQtyEvidence.HasValue
+                            || preRevenueEvidence.HasValue || postRevenueEvidence.HasValue;
 
                         if (!hasSalesWindow)
                             inactiveRows++;
@@ -3546,12 +3599,22 @@ public static class AllEndpoints
                             PostRevenue = postRevenue,
                             ChangeQty = changeQty,
                             ChangeRevenue = changeRevenue,
-                            ChangePercent = changePercentRevenue,
+                            ChangePercent = changePercentRevenue ?? 0m,
                             CoveragePre30 = coveragePre30,
                             CoveragePost30 = coveragePost30,
                             HasSalesWindow = hasSalesWindow,
                             PriceChanged = priceChanged,
-                            PriceChangePercent = priceChangePercent
+                            PriceChangePercent = priceChangePercent,
+                            HasPreSalesEvidence = preQtyEvidence.HasValue || preRevenueEvidence.HasValue,
+                            HasPostSalesEvidence = postQtyEvidence.HasValue || postRevenueEvidence.HasValue,
+                            HasComparableSalesWindow = preQtyEvidence.HasValue && postQtyEvidence.HasValue
+                                && preRevenueEvidence.HasValue && postRevenueEvidence.HasValue,
+                            HasQtyBaseline = hasQtyBaseline,
+                            QtyBaselineReason = qtyBaselineReason,
+                            HasRevenueBaseline = hasRevenueBaseline,
+                            RevenueBaselineReason = revenueBaselineReason,
+                            SemanticChangePercentRevenue = semanticChangePercentRevenue ?? changePercentRevenue,
+                            SemanticChangePercentQty = semanticChangePercentQty
                         };
 
                         dedupRows.Add(dto);
@@ -3759,7 +3822,8 @@ public static class AllEndpoints
                                     .Distinct(StringComparer.Ordinal)
                                     .Count(),
                                 IncreasedPriceArticlesCount = increased,
-                                DecreasedPriceArticlesCount = decreased
+                                DecreasedPriceArticlesCount = decreased,
+                                HasComparableSalesWindow = g.All(x => x.HasComparableSalesWindow)
                             },
                             IsUnknownVendor = isUnknownVendor,
                             SplitCoveragePct = splitCoveragePct,
@@ -3798,7 +3862,7 @@ public static class AllEndpoints
                             PopUnitsChangePct: row.PopUnitsChangePct,
                             PreviousPeriodRevenue: row.Vendor.PreRevenue,
                             PreviousPeriodUnits: row.Vendor.PreQty,
-                            HasPreviousPeriodWindow: true,
+                            HasPreviousPeriodWindow: row.Vendor.HasComparableSalesWindow,
                             IsNewEntity: row.IsNewVendor,
                             UnknownBucketSharePct: unknownVendorSharePct),
                             averageKnownMarginPct);
@@ -3812,6 +3876,7 @@ public static class AllEndpoints
                             ConfidencePct = recommendation.ConfidencePct,
                             ReliabilityPct = recommendation.ReliabilityPct,
                             DataQualityStatus = recommendation.DataQualityStatus,
+                            RecommendationAllowed = recommendation.RecommendationAllowed && row.Vendor.HasComparableSalesWindow,
                             ReasonCodes = recommendation.ReasonCodes
                         };
 

@@ -201,6 +201,35 @@ describe("PreNivelacijaPriorityPage", () => {
   });
 
   it("shows backend reliability as a percent instead of local Visoko/Srednje/Nisko bands", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([
+      makeCandidate({
+        recommendation: {
+          status: "review",
+          label: "Pregled",
+          summary: "Signal zahteva proveru.",
+          confidencePct: 22,
+          reliabilityPct: 28,
+          dataQualityStatus: "warning",
+          recommendationAllowed: true,
+          reasonCodes: ["review_signal"],
+        },
+      }),
+      makeCandidate({
+        artikalId: 102,
+        sku: "SKU-102",
+        recommendation: {
+          status: "maintain",
+          label: "Zadrži",
+          summary: "Signal je upotrebljiv.",
+          confidencePct: 64,
+          reliabilityPct: 61,
+          dataQualityStatus: "good",
+          recommendationAllowed: true,
+          reasonCodes: ["stable_signal"],
+        },
+      }),
+    ]));
+
     render(
       <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
         <PreNivelacijaPriorityPage />

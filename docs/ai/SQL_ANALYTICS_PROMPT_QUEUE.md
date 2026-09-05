@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: Q83
+Current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -37,7 +37,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q80 | DONE | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | DONE | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | DONE | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
-| Q83 | READY | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
+| Q83 | PARTIAL | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
 
 ---
 
@@ -1035,7 +1035,7 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 ## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
 
-Status: READY
+Status: PARTIAL
 Priority: P0
 Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
@@ -1107,3 +1107,21 @@ The vendor nivelacija endpoint has compatibility SQL that coalesces missing pre/
 - `RQ139` is independently promoted and supplies the shared numeric-state vocabulary; this SQL prompt must not wait for its runtime implementation or edit its files.
 - `RQ140` consumes this SQL contract for cross-layer comparability.
 - Live database/schema proof may remain `PARTIAL` or `BLOCKED` when the required runtime relation is unavailable; do not claim production proof from static SQL tests.
+
+### Completion note
+
+- Date: 2026-09-05
+- Status: PARTIAL
+- Completion: SQL/backend semantic contract, nullable reader mapping and focused regression coverage completed; live schema/refresh proof unavailable.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`, `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+- Checks run: focused backend tests 33/33 and wider mapped analytics tests 77/77; API build pass; solution build pass; `git diff --check` pass; EF migration enumeration/build pass.
+- Checks not run: applied migration status and live view verification, blocked by Neon PostgreSQL `28P01 password authentication failed for user neondb_owner`.
+- Run log: `.ai/runs/2026-09-05-analytics-trust-parity-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending final commit and push
+- Missed: live schema and successful refresh proof.
+- Follow-up: restore valid DB access and repeat migration/view/refresh verification; RQ140 remains the consumer for cross-layer comparability.
+- Residual risk: production schema may still be missing the additive semantic columns until migration/view deployment is verified.
+- Prompt defect / scope repair: the user-requested full pre/post/parity outcome required a bounded connected frontend contract in addition to the SQL owner scope; no unrelated analytics formulas were changed.
