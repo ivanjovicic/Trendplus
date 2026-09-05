@@ -4339,10 +4339,10 @@ Commit suggestion: `docs(analytics): map offline route lineage`
 - Checks run: `node scripts/check-analytics-lineage-matrix.mjs` passed with 17 analytics route/family rows and all required trust fields; `git diff --check` passed; agent-instruction, queue and planning validators passed before delivery.
 - Checks not run: frontend/backend build/tests, live database/schema/migration/404/refresh, deployed worker proof, browser console/theme/chart smoke and export/table/chart/report runtime parity; these are explicitly outside this static prompt and remain unproven. The repository encoding check was run but failed on six pre-existing mojibake findings in unrelated historical `docs/qa` files; the new matrix was not among them.
 - Run log: `.ai/runs/2026-09-05-RQ153-evidence.md`.
-- Evidence state: pending.
-- Delivery mode: direct-main pending.
-- Main commit SHA: pending.
-- Main verification: pending.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `bb4f821a171f6e46c0d177e6cadea7f3d604fa95`.
+- Main verification: `git merge-base --is-ancestor bb4f821a171f6e46c0d177e6cadea7f3d604fa95 origin/main` passed; current `main` contains the delivered matrix/checker commit.
 - Missed: no production call, schema mutation, forecast calculation, Shopify work or runtime claim was made.
 - Follow-up: keep `RQ141`/`RQ145`/`RQ146` and live `STAB16` work waiting behind their declared dependencies; no next RQ prompt is promoted.
 - Residual risk: static lineage can identify owners and gaps but cannot prove deployed response parity, applied migrations, cache contents, refresh success or browser behavior.
