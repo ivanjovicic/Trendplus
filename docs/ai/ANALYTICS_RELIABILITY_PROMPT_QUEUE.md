@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ139
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -62,7 +62,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
-| RQ139 | WAITING | analytics-denominator-null-zero-contract | Prove every analytics numerator/denominator and prevent missing values becoming trusted zeroes |
+| RQ139 | READY | analytics-denominator-null-zero-contract | Prove every analytics numerator/denominator and prevent missing values becoming trusted zeroes |
 | RQ140 | WAITING | pre-post-nivelacija-causal-comparability | Prove pre/post nivelacija effects are comparable and separate from availability/composition effects |
 | RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
@@ -3218,7 +3218,7 @@ Do not invent scores from frontend heuristics, backfill fake history, or mix sce
 
 ## RQ139 - Prove analytics denominator, null and zero semantics across every decision surface
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: analytics-denominator-null-zero-contract
@@ -3245,6 +3245,8 @@ Several analytics paths still use a numeric zero as a compatibility/default valu
 - Backend DTO/meta fields that preserve `unknown`, `missing`, `insufficient`, `not_applicable`, `error` and `valid_zero` without overloading numeric zero.
 - Frontend shared mapping/formatting for all analytics pages, cards, tables, charts, details, action lists, exports and reports.
 - The affected sales, trend, forecast, inventory, supplier, data-quality and pre/post nivelacija calculations; do not silently limit the repair to one page.
+
+Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume its additive contract after that SQL prompt lands. This keeps the independently runnable numeric-state work disjoint from the SQL owner path.
 
 ### Read first
 
@@ -3284,7 +3286,8 @@ Several analytics paths still use a numeric zero as a compatibility/default valu
 
 ### Dependencies
 
-- `RQ137` and `RQ138` remain partial/non-runnable and provide existing period/evaluation contracts; reuse them.
+- `RQ137` and `RQ138` remain partial/non-runnable; their existing fields may be reused, but completing them is not a prerequisite for this bounded numeric-state work.
+- `Q83` is independently promoted for the raw vendor nivelacija SQL path; `RQ139` must not edit those SQL/reader files in parallel.
 - `STAB16` remains the owner of production worker/live refresh access. This prompt may use deterministic fixtures and current runtime contracts but must not claim live proof without that evidence.
 - Later prompts `RQ140`-`RQ146` must reuse this numeric-state vocabulary rather than creating local exceptions.
 

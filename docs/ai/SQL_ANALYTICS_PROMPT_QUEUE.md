@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: Q83
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -34,10 +34,10 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q77 | DONE | supplier-decision-null-reader | Audit nullable reader/detail-query trust semantics |
 | Q78 | DONE | analytics-backend-encoding | Extend encoding guardrail to backend analytics decision strings |
 | Q79 | DONE | analytics-filter-fallback-meta | Add explicit meta/warnings to filter/list fallback paths |
-| Q80 | WAITING | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
-| Q81 | WAITING | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
-| Q82 | WAITING | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
-| Q83 | WAITING | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
+| Q80 | DONE | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
+| Q81 | DONE | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
+| Q82 | DONE | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
+| Q83 | READY | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
 
 ---
 
@@ -1035,7 +1035,7 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 ## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
@@ -1104,5 +1104,6 @@ The vendor nivelacija endpoint has compatibility SQL that coalesces missing pre/
 ### Dependencies
 
 - `Q69`, `Q70`, `Q71`, `Q76` and `Q77` are historical prerequisites and must be reused.
-- `RQ139` supplies the shared numeric-state vocabulary; `RQ140` consumes this SQL contract for cross-layer comparability.
+- `RQ139` is independently promoted and supplies the shared numeric-state vocabulary; this SQL prompt must not wait for its runtime implementation or edit its files.
+- `RQ140` consumes this SQL contract for cross-layer comparability.
 - Live database/schema proof may remain `PARTIAL` or `BLOCKED` when the required runtime relation is unavailable; do not claim production proof from static SQL tests.
