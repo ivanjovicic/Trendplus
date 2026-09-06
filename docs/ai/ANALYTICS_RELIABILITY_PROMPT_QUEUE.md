@@ -5706,8 +5706,8 @@ Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend
 - Run log: `.ai/runs/2026-09-06-RQ168-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct local `main`; committed locally, not pushed in this turn.
-- Main commit SHA: recorded in the run log after commit.
-- Main verification: recorded in the run log after commit.
+- Main commit SHA: `322ec5fad536077e99ae22e1fc70e2a6a1e84480`
+- Main verification: passed - current local `main` contains `322ec5fad536077e99ae22e1fc70e2a6a1e84480`; not pushed in this turn.
 - Missed: live SQL execution and runtime consumers outside the dashboard remain unverified; the additive fields are present in the shared DTO/type contract.
 - Follow-up: `RQ169` - empty intake readiness must fail closed.
 - Residual risk: raw SQL/provider schema compatibility still needs the live STAB16/runtime proof; current local proof covers policy, mapping, serialization and ranking behavior.
