@@ -4691,8 +4691,8 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 - Run log: `.ai/runs/2026-09-06-RQ156-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: 7a3cc0401b0a3f0649a1d3cb7466ed2d7e2c1ec0
-- Main verification: local `main` contains the implementation commit; remote verification follows the queue/evidence metadata commit.
+- Main commit SHA: 7a3cc04080790a170b5452facbdc7afbd468946f
+- Main verification: `git ls-remote origin refs/heads/main` returned `99919292484fad80bc92ebc0d92df0e83190f45c`; implementation SHA is an ancestor of current `main`.
 - Missed: No export adapter is owned by these page helpers; broad table/chart/detail/export/report parity remains RQ145 scope.
 - Follow-up: RQ158 remains IN_PROGRESS under `local-session-ivan`; RQ145 owns broad parity and RQ146/STAB16 own runtime/schema/refresh proof.
 - Residual risk: Live deployed data and browser console behavior remain unverified outside this bounded frontend prompt.
