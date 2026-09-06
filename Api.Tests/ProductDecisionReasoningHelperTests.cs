@@ -125,6 +125,16 @@ public class ProductDecisionReasoningHelperTests
         Assert.Equal(3, ProductDecisionReasoningHelper.MinimumUnitsForRecommendation);
     }
 
+    [Fact(DisplayName = "Missing or zero previous baseline never becomes +100% trend")]
+    public void ComputeTrendPct_MissingOrZeroBaseline_StaysUnavailable()
+    {
+        Assert.Null(ProductDecisionReasoningHelper.ComputeTrendPct(50_000m, previousRevenue: null));
+        Assert.Null(ProductDecisionReasoningHelper.ComputeTrendPct(50_000m, previousRevenue: 0m));
+        Assert.Equal(100m, ProductDecisionReasoningHelper.ComputeTrendPct(200m, previousRevenue: 100m));
+        Assert.Equal(0m, ProductDecisionReasoningHelper.ComputeTrendPct(100m, previousRevenue: 100m));
+        Assert.Equal(-50m, ProductDecisionReasoningHelper.ComputeTrendPct(50m, previousRevenue: 100m));
+    }
+
     [Fact]
     public void RecommendationLabel_MapsFamilyCodesForOperatorFacingScope()
     {
@@ -158,8 +168,7 @@ public class ProductDecisionReasoningHelperTests
             DaysSinceLastSale: 3));
 
         // Should NOT allow BOOST with missing trend evidence
-        Assert.NotEqual("BOOST", result.RecommendationStatus);
-        // Should indicate missing evidence
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
@@ -185,7 +194,8 @@ public class ProductDecisionReasoningHelperTests
             DaysSinceLastSale: 2));
 
         // Should NOT create actionable recommendation with missing margin evidence
-        Assert.True(result.RecommendationStatus is "INSUFFICIENT_DATA" or "WATCH");
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
     [Fact(DisplayName = "Null trend with null margin should definitely not enable BOOST")]
@@ -209,9 +219,8 @@ public class ProductDecisionReasoningHelperTests
             DaysSinceLastSale: 1));
 
         // Should absolutely NOT recommend with both trend and margin missing
-        Assert.NotEqual("BOOST", result.RecommendationStatus);
-        Assert.NotEqual("REPLENISH", result.RecommendationStatus);
-        Assert.True(result.RecommendationStatus is "INSUFFICIENT_DATA" or "WATCH");
+        Assert.Equal("INSUFFICIENT_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
     [Fact(DisplayName = "Genuine zero trend should be distinct from null trend")]
@@ -251,8 +260,8 @@ public class ProductDecisionReasoningHelperTests
             MinStock: 5,
             DaysSinceLastSale: 5));
 
-        // Different inputs should produce different (or more restrictive) outputs
-        // Zero trend might allow REPLENISH, but null should not
+        Assert.Equal("REPLENISH", withZeroTrend.RecommendationStatus);
+        Assert.Equal("INSUFFICIENT_DATA", withNullTrend.RecommendationStatus);
         Assert.NotEqual(withZeroTrend.RecommendationStatus, withNullTrend.RecommendationStatus);
     }
 }

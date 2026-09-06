@@ -5677,7 +5677,7 @@ public static class CachedAnalyticsEndpoints
         foreach (var article in articles)
         {
             currentByProduct.TryGetValue(article.ProductId, out var sales);
-            previousByProduct.TryGetValue(article.ProductId, out var previousRevenueValue);
+            var hasPreviousBaseline = previousByProduct.TryGetValue(article.ProductId, out var previousRevenueValue);
             lastSaleByProduct.TryGetValue(article.ProductId, out var lastSaleAtUtc);
 
             var revenue = sales?.Revenue ?? 0m;
@@ -5699,15 +5699,10 @@ public static class CachedAnalyticsEndpoints
                 ? (int?)Math.Max(0, (int)Math.Floor((nowUtc - DateTime.SpecifyKind(lastSaleAtUtc, DateTimeKind.Utc)).TotalDays))
                 : null;
 
-            decimal? trendPct = null;
-            if (previousRevenueValue > 0m)
-            {
-                trendPct = ((revenue - previousRevenueValue) / previousRevenueValue) * 100m;
-            }
-            else if (revenue > 0m)
-            {
-                trendPct = 100m;
-            }
+            // Missing previous baseline must stay null — never synthesize +100% growth.
+            // True zero previous with current sales also has no finite percent change.
+            decimal? previousBaseline = hasPreviousBaseline ? previousRevenueValue : null;
+            var trendPct = ProductDecisionReasoningHelper.ComputeTrendPct(revenue, previousBaseline);
 
             var avgUnitPrice = unitsSold > 0 ? revenue / unitsSold : 0m;
             var lostSalesEstimate = stockGap > 0 && velocityUnitsPerDay > 0m && avgUnitPrice > 0m

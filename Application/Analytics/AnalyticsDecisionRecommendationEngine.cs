@@ -33,8 +33,10 @@ public static class AnalyticsDecisionRecommendationEngine
     {
         var reasons = new List<string>();
 
-        var marginCoverage = Clamp(input.MarginCoveragePct ?? 0d, 0d, 100d);
-        var splitCoverage = Clamp(input.SplitCoveragePct ?? 0d, 0d, 100d);
+        var hasMarginCoverage = input.MarginCoveragePct.HasValue;
+        var hasSplitCoverage = input.SplitCoveragePct.HasValue;
+        var marginCoverage = hasMarginCoverage ? Clamp(input.MarginCoveragePct!.Value, 0d, 100d) : 0d;
+        var splitCoverage = hasSplitCoverage ? Clamp(input.SplitCoveragePct!.Value, 0d, 100d) : 0d;
         var unknownShare = Clamp(input.UnknownBucketSharePct, 0d, 100d);
 
         if (input.IsUnknownEntity) reasons.Add("unknown_entity");
@@ -42,15 +44,23 @@ public static class AnalyticsDecisionRecommendationEngine
         if (!input.HasPreviousPeriodWindow) reasons.Add("previous_period_missing");
         if (input.PreviousPeriodRevenue.HasValue && input.PreviousPeriodRevenue.Value <= 0m && input.TotalRevenue > 0m) reasons.Add("no_previous_baseline");
         if (!averageMarginPct.HasValue) reasons.Add("missing_known_margin_baseline");
-        if (marginCoverage < 70d) reasons.Add("missing_cost_coverage");
-        if (splitCoverage > 0d && splitCoverage < 60d) reasons.Add("limited_nivelacija_coverage");
+        if (!hasMarginCoverage || marginCoverage < 70d) reasons.Add("missing_cost_coverage");
+        if (!hasSplitCoverage) reasons.Add("missing_split_coverage");
+        else if (splitCoverage > 0d && splitCoverage < 60d) reasons.Add("limited_nivelacija_coverage");
         if (unknownShare >= 15d) reasons.Add("unknown_heavy_dataset");
         if (IsTinySample(input)) reasons.Add("tiny_sample");
         if (IsUnstableMargin(input.MarginPct)) reasons.Add("unstable_margin");
         if (input.PopRevenueChangePct is null && input.HasPreviousPeriodWindow) reasons.Add("pop_unavailable");
 
-        var reliability = ComputeReliabilityPct(input, marginCoverage, splitCoverage);
-        var dataQualityStatus = ComputeDataQualityStatus(input, marginCoverage, splitCoverage, unknownShare, reliability);
+        var reliability = ComputeReliabilityPct(input, hasMarginCoverage, marginCoverage, hasSplitCoverage, splitCoverage);
+        var dataQualityStatus = ComputeDataQualityStatus(
+            input,
+            hasMarginCoverage,
+            marginCoverage,
+            hasSplitCoverage,
+            splitCoverage,
+            unknownShare,
+            reliability);
         var status = DecideStatus(input, averageMarginPct, reliability, dataQualityStatus, reasons);
         var confidence = ComputeConfidence(status, reliability, reasons);
         var summary = BuildSummary(status, reasons, input, reliability);
@@ -75,12 +85,14 @@ public static class AnalyticsDecisionRecommendationEngine
 
     private static double ComputeReliabilityPct(
         RecommendationInput input,
+        bool hasMarginCoverage,
         double marginCoverage,
+        bool hasSplitCoverage,
         double splitCoverage)
     {
         var reliability =
-            marginCoverage * 0.50 +
-            splitCoverage * 0.15 +
+            (hasMarginCoverage ? marginCoverage * 0.50 : 0d) +
+            (hasSplitCoverage ? splitCoverage * 0.15 : 0d) +
             (input.HasPreviousPeriodWindow ? 20d : 0d) +
             (input.IsUnknownEntity ? 0d : 10d) +
             (input.ItemCount >= 6 ? 5d : input.ItemCount >= 3 ? 2d : 0d);
@@ -90,17 +102,27 @@ public static class AnalyticsDecisionRecommendationEngine
 
     private static string ComputeDataQualityStatus(
         RecommendationInput input,
+        bool hasMarginCoverage,
         double marginCoverage,
+        bool hasSplitCoverage,
         double splitCoverage,
         double unknownShare,
         double reliabilityPct)
     {
-        if (input.IsUnknownEntity || marginCoverage < 40d || unknownShare >= 25d || reliabilityPct < 35d)
+        if (input.IsUnknownEntity
+            || !hasMarginCoverage
+            || marginCoverage < 40d
+            || unknownShare >= 25d
+            || reliabilityPct < 35d)
         {
             return "critical";
         }
 
-        if (marginCoverage < 70d || (splitCoverage > 0d && splitCoverage < 60d) || unknownShare >= 10d || reliabilityPct < 55d)
+        if (marginCoverage < 70d
+            || !hasSplitCoverage
+            || (splitCoverage > 0d && splitCoverage < 60d)
+            || unknownShare >= 10d
+            || reliabilityPct < 55d)
         {
             return "warning";
         }
@@ -120,7 +142,8 @@ public static class AnalyticsDecisionRecommendationEngine
             return "do_not_trust";
         }
 
-        if (reasons.Contains("missing_known_margin_baseline"))
+        if (reasons.Contains("missing_known_margin_baseline")
+            || reasons.Contains("missing_split_coverage"))
         {
             return "insufficient_data";
         }
@@ -201,6 +224,8 @@ public static class AnalyticsDecisionRecommendationEngine
                 "Comparable previous period is missing; insufficient evidence for a reliable recommendation.",
             "insufficient_data" when reasons.Contains("missing_known_margin_baseline") =>
                 "Comparable known-margin baseline is missing; insufficient evidence for a reliable recommendation.",
+            "insufficient_data" when reasons.Contains("missing_split_coverage") =>
+                "Nivelacija split coverage is missing; insufficient evidence for a reliable recommendation.",
             "insufficient_data" when IsTinySample(input) =>
                 "Sample is too small (revenue/units/articles) to produce a trustworthy recommendation.",
             _ => "Insufficient evidence for automated decision support."

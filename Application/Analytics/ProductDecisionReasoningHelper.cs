@@ -48,6 +48,18 @@ public static class ProductDecisionReasoningHelper
         return new Result(recommendationStatus, codes);
     }
 
+    /// <summary>
+    /// Previous baseline must be present and positive to emit a finite trend.
+    /// Missing or zero previous revenue stays unavailable (never synthesizes +100%).
+    /// </summary>
+    public static decimal? ComputeTrendPct(decimal currentRevenue, decimal? previousRevenue)
+    {
+        if (previousRevenue is null || previousRevenue.Value <= 0m)
+            return null;
+
+        return ((currentRevenue - previousRevenue.Value) / previousRevenue.Value) * 100m;
+    }
+
     public static string ResolveRecommendationStatus(Input input)
     {
         if (input.MissingSupplier || input.MissingCost || input.MissingCategory)
@@ -104,13 +116,20 @@ public static class ProductDecisionReasoningHelper
         if (input.VelocityUnitsPerDay >= 0.8m)
             codes.Add(ReasonCodes.HighVelocity);
 
-        if ((input.MarginPct ?? 0m) < 10m || input.MarginCoveragePct < 60m)
+        if (input.MarginPct.HasValue && (input.MarginPct.Value < 10m || input.MarginCoveragePct < 60m))
             codes.Add(ReasonCodes.PoorMargin);
 
         if (input.DaysSinceLastSale.HasValue && input.DaysSinceLastSale.Value >= 45)
             codes.Add(ReasonCodes.StaleStock);
 
-        if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
+        var missingDecisionEvidence =
+            input.TrendPct is null ||
+            input.MarginPct is null ||
+            input.UnitsSold < MinimumUnitsForRecommendation ||
+            input.Revenue <= 0m ||
+            !input.DaysSinceLastSale.HasValue;
+
+        if (missingDecisionEvidence)
         {
             codes.Add(ReasonCodes.InsufficientHistory);
 

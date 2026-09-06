@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ157
+Current READY prompt: RQ158
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -80,9 +80,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 | RQ154 | DONE | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
 | RQ155 | DONE | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
-| RQ156 | WAITING | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
-| RQ157 | IN_PROGRESS | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
-| RQ158 | WAITING | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
+| RQ156 | IN_PROGRESS | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
+| RQ157 | DONE | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
+| RQ158 | READY | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
 | RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
@@ -4608,12 +4608,14 @@ Do not change the backend trend formula, backend ordering contract, recommendati
 
 ## RQ156 - Keep unknown pre/post coverage distinct from measured zero
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: pre-post-coverage-unknown-state
 Parallel-safe: no, supplier/category pre/post wording has one presentation owner
 Owner: Codex
+Agent: Codex
+StartedAtUtc: 2026-09-06T06:12:16Z
 Commit suggestion: `fix(analytics): distinguish unknown pre-post coverage`
 
 ### Problem
@@ -4679,7 +4681,7 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 
 ## RQ157 - Preserve missing Product Decision baseline and coverage evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/contract/tests
 Feature family: pdc-baseline-coverage-state
@@ -4687,7 +4689,18 @@ Parallel-safe: no, Product Decision backend is the owner of recommendation evide
 Owner: Codex
 Agent: local-session-ivan
 StartedAtUtc: 2026-09-06T08:00:00Z
+CompletedAtUtc: 2026-09-06T08:20:00Z
 Commit suggestion: `fix(analytics): preserve missing pdc evidence`
+Evidence: `.ai/runs/2026-09-06-rq157-pdc-baseline-coverage-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Missing previous-revenue baseline no longer synthesizes `trendPct=100`; `ComputeTrendPct` returns null for missing/zero previous.
+- Null `TrendPct` / `MarginPct` fail closed to `INSUFFICIENT_DATA` with `insufficient_history` in PDC reasoning.
+- Null margin/split coverage in `AnalyticsDecisionRecommendationEngine` no longer coalesce to measured zero; split null → `missing_split_coverage` / `insufficient_data`.
+- Focused tests: ProductDecisionReasoningHelperTests, AnalyticsDecisionRecommendationEngineTests, ProductDecisionCenterBuilderIntegrationTests — 26 passed.
+- Next READY: RQ158.
 
 ### Problem
 
@@ -4756,7 +4769,7 @@ Do not change frontend ranking, forecast logic, Shopify/vendor integrations or u
 
 ## RQ158 - Keep null inventory stock evidence unavailable
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: inventory-null-stock-state

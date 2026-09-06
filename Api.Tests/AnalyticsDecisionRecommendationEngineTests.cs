@@ -242,4 +242,79 @@ public class AnalyticsDecisionRecommendationEngineTests
         Assert.False(lifecycle.LearningEligible);
         Assert.DoesNotContain(lifecycle.LearningEligibilityReasonCodes, code => code == "measured_learning_eligible");
     }
+
+    [Fact(DisplayName = "Null split coverage fails closed — not treated as measured zero")]
+    public void NullSplitCoverage_FailsClosed()
+    {
+        var withNullSplit = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: null,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d);
+
+        var withZeroSplit = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: 95d,
+            SplitCoveragePct: 0d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d);
+
+        var nullResult = AnalyticsDecisionRecommendationEngine.Evaluate(withNullSplit, averageMarginPct: 15d);
+        var zeroResult = AnalyticsDecisionRecommendationEngine.Evaluate(withZeroSplit, averageMarginPct: 15d);
+
+        Assert.Equal("insufficient_data", nullResult.Status);
+        Assert.False(nullResult.RecommendationAllowed);
+        Assert.Contains("missing_split_coverage", nullResult.ReasonCodes);
+        Assert.NotEqual(nullResult.Status, zeroResult.Status);
+        Assert.DoesNotContain("missing_split_coverage", zeroResult.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Null margin coverage fails closed as critical / not trusted")]
+    public void NullMarginCoverage_FailsClosed()
+    {
+        var input = new AnalyticsDecisionRecommendationEngine.RecommendationInput(
+            IsUnknownEntity: false,
+            TotalRevenue: 200000m,
+            TotalUnits: 500,
+            ItemCount: 50,
+            SharePct: 5d,
+            MarginPct: 25d,
+            MarginCoveragePct: null,
+            SplitCoveragePct: 90d,
+            PopRevenueChangePct: 15d,
+            PopUnitsChangePct: 10d,
+            PreviousPeriodRevenue: 170000m,
+            PreviousPeriodUnits: 450,
+            HasPreviousPeriodWindow: true,
+            IsNewEntity: false,
+            UnknownBucketSharePct: 0d);
+
+        var res = AnalyticsDecisionRecommendationEngine.Evaluate(input, averageMarginPct: 15d);
+
+        Assert.False(res.RecommendationAllowed);
+        Assert.Contains("missing_cost_coverage", res.ReasonCodes);
+        Assert.Equal("critical", res.DataQualityStatus);
+        Assert.True(res.Status is "do_not_trust" or "insufficient_data");
+    }
 }
