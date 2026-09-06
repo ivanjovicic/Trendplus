@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ162
+Current READY prompt: RQ163
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -94,8 +94,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ159 | DONE | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | DONE | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | DONE | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
-| RQ162 | READY | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
-| RQ163 | WAITING | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
+| RQ162 | DONE | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
+| RQ163 | READY | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
 | RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | WAITING | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
 | RQ166 | WAITING | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
@@ -5137,13 +5137,26 @@ Do not change backend ranking ownership, forecast logic, Shopify/vendor work or 
 
 ## RQ162 - Keep partially missing sell-through denominator evidence unavailable
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/tests
 Feature family: inventory-sellthrough-denominator-state
 Parallel-safe: no, denominator semantics must be shared by inventory list, detail and decision payloads
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T08:47:00Z
+CompletedAtUtc: 2026-09-06T08:50:00Z
 Commit suggestion: `fix(analytics): block partial inventory sell-through denominators`
+Evidence: `.ai/runs/2026-09-06-rq162-sellthrough-denominator-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Contract confirmed: both `openingStockUnits` and `inboundUnits` are required (metric definition + formula).
+- Partial null no longer coalesces to zero; returns null ratio, `insufficient_data`, `recommendationAllowed=false`.
+- Negative inputs fail closed; genuine zero sold with positive denominator remains measured `0`.
+- Focused InventorySignalCalculatorTests + list integration filter passed.
+- Next READY: RQ163.
 
 ### Problem
 
@@ -5204,7 +5217,7 @@ Do not touch forecast, trend, Shopify/vendor work or unrelated inventory null-st
 
 ## RQ163 - Prevent absent post-nivelacija observations from becoming measured zero
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/SQL/tests
 Feature family: supplier-post-observation-state

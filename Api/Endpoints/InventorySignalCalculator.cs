@@ -134,13 +134,21 @@ public static class InventorySignalCalculator
             return (null, SellThroughInsufficientData);
         }
 
-        if (!openingStockUnits.HasValue && !inboundUnits.HasValue)
+        // Both opening and inbound are required evidence (see analyticsMetricDefinitions sellThrough).
+        // A single missing component must not coalesce to zero and invent a ratio.
+        if (!openingStockUnits.HasValue || !inboundUnits.HasValue)
         {
             reasonCodes.Add("sell_through_insufficient_denominator_data");
             return (null, SellThroughInsufficientData);
         }
 
-        decimal denominator = Math.Max(openingStockUnits ?? 0, 0) + Math.Max(inboundUnits ?? 0, 0);
+        if (openingStockUnits.Value < 0 || inboundUnits.Value < 0 || soldUnits < 0)
+        {
+            reasonCodes.Add("sell_through_invalid_denominator_input");
+            return (null, SellThroughInsufficientData);
+        }
+
+        decimal denominator = openingStockUnits.Value + inboundUnits.Value;
 
         if (denominator <= 0)
         {
@@ -148,7 +156,7 @@ public static class InventorySignalCalculator
             return (null, SellThroughInsufficientData);
         }
 
-        var ratio = Math.Round(Math.Max((decimal)soldUnits, 0m) / denominator, 4, MidpointRounding.AwayFromZero);
+        var ratio = Math.Round((decimal)soldUnits / denominator, 4, MidpointRounding.AwayFromZero);
         var status = ratio switch
         {
             >= 0.60m => SellThroughGood,

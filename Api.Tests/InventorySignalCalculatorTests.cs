@@ -114,6 +114,77 @@ public class InventorySignalCalculatorTests
         Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
     }
 
+    [Fact(DisplayName = "Opening-only missing sell-through denominator stays unavailable")]
+    public void Calculate_SellThroughInsufficient_WhenOnlyOpeningMissing()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: 12,
+            avgDailySalesUnits: 2m,
+            soldUnits: 30,
+            openingStockUnits: null,
+            inboundUnits: 20,
+            dataQualityStatus: "good",
+            hasSufficientData: true);
+
+        Assert.Null(result.SellThroughRatio);
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Inbound-only missing sell-through denominator stays unavailable")]
+    public void Calculate_SellThroughInsufficient_WhenOnlyInboundMissing()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: 12,
+            avgDailySalesUnits: 2m,
+            soldUnits: 30,
+            openingStockUnits: 100,
+            inboundUnits: null,
+            dataQualityStatus: "good",
+            hasSufficientData: true);
+
+        Assert.Null(result.SellThroughRatio);
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Contains("sell_through_insufficient_denominator_data", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Genuine zero sold units with valid denominator remains measured zero")]
+    public void Calculate_SellThroughZeroSold_WithValidDenominator()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: 50,
+            avgDailySalesUnits: 0m,
+            soldUnits: 0,
+            openingStockUnits: 40,
+            inboundUnits: 10,
+            dataQualityStatus: "good",
+            hasSufficientData: true);
+
+        Assert.Equal(0m, result.SellThroughRatio);
+        Assert.Equal(InventorySignalCalculator.SellThroughCritical, result.SellThroughStatus);
+        Assert.Contains("sell_through_status:critical", result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Negative denominator inputs fail closed")]
+    public void Calculate_SellThroughInsufficient_WhenDenominatorInputsNegative()
+    {
+        var result = InventorySignalCalculator.Calculate(
+            currentOnHandUnits: 12,
+            avgDailySalesUnits: 2m,
+            soldUnits: 5,
+            openingStockUnits: -1,
+            inboundUnits: 10,
+            dataQualityStatus: "good",
+            hasSufficientData: true);
+
+        Assert.Null(result.SellThroughRatio);
+        Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, result.SellThroughStatus);
+        Assert.False(result.RecommendationAllowed);
+        Assert.Contains("sell_through_invalid_denominator_input", result.ReasonCodes);
+    }
+
     [Fact(DisplayName = "Signal labels are Serbian and UTF-8 safe")]
     public void StatusLabels_AreSerbianAndUtf8Safe()
     {
