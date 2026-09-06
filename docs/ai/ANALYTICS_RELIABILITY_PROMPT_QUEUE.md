@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ154
+Current READY prompt: RQ155
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -4501,12 +4501,14 @@ Do not change backend business formulas, recommendation scoring, cache/refresh b
 
 ## RQ155 - Keep unknown Dashboard trends visible and non-ranked
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/tests
 Feature family: dashboard-trend-unknown-visibility
 Parallel-safe: no, Dashboard top-row ranking has one owner
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T07:51:00Z
 Commit suggestion: `fix(analytics): keep dashboard unknown trends visible`
 
 ### Problem

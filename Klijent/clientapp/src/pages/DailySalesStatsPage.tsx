@@ -198,9 +198,9 @@ function fmtCompactNumber(value: DailySalesNumeric): string {
   return normalized == null ? "Nije dostupno" : COMPACT_NUMBER_FORMATTER.format(normalized);
 }
 
-function fmtDelta(deltaPct: number | null, currentValue: number, previousValue: number): string {
+function fmtDelta(deltaPct: number | null, currentValue: DailySalesNumeric, previousValue: DailySalesNumeric): string {
   if (deltaPct == null) {
-    if (previousValue === 0 && currentValue > 0) return "Nova baza";
+    if (finiteOrNull(previousValue) === 0 && (finiteOrNull(currentValue) ?? 0) > 0) return "Nova baza";
     return "N/A";
   }
   return fmtSignedPct(deltaPct, 1);
@@ -268,9 +268,9 @@ function hasMissingShiftSummary(row: DailySalesRow): boolean {
     && finiteOrNull(row.secondShiftTotalItems) === 0;
 }
 
-function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number {
+function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number | null {
   if (hasMissingShiftSummary(row)) return SHIFT_PLACEHOLDER;
-  return shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems;
+  return finiteOrNull(shift === "first" ? row.firstShiftTotalItems : row.secondShiftTotalItems);
 }
 
 function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): string {
@@ -517,18 +517,18 @@ export default function DailySalesStatsPage() {
 
   const sortedRows = useMemo(() => {
     const rows = [...(data?.dateRows ?? [])];
-    const resolveValue = (row: DailySalesRow, key: SortKey): number | string => {
+    const resolveValue = (row: DailySalesRow, key: SortKey): number | string | null => {
       if (key === "date") return new Date(row.date).getTime();
-      if (key === "firstShiftTotalItems") return row.firstShiftTotalItems;
-      if (key === "secondShiftTotalItems") return row.secondShiftTotalItems;
-      if (key === "totalRevenue") return row.totalRevenue;
-      if (key === "othersCount") return row.othersCount;
-      if (key === "totalItemsSold") return row.totalItemsSold;
+      if (key === "firstShiftTotalItems") return finiteOrNull(row.firstShiftTotalItems);
+      if (key === "secondShiftTotalItems") return finiteOrNull(row.secondShiftTotalItems);
+      if (key === "totalRevenue") return finiteOrNull(row.totalRevenue);
+      if (key === "othersCount") return finiteOrNull(row.othersCount);
+      if (key === "totalItemsSold") return finiteOrNull(row.totalItemsSold);
       if (key.startsWith("supplier:")) {
         const index = Number(key.split(":")[1]);
-        return row.topSupplierCounts[index] ?? 0;
+        return finiteOrNull(row.topSupplierCounts[index]);
       }
-      return 0;
+      return null;
     };
 
     return rows.sort((a, b) => {
@@ -536,6 +536,9 @@ export default function DailySalesStatsPage() {
       const right = resolveValue(b, sortKey);
       let compare = 0;
 
+      if (left == null && right == null) return 0;
+      if (left == null) return sortDir === "asc" ? 1 : -1;
+      if (right == null) return sortDir === "asc" ? -1 : 1;
       if (typeof left === "number" && typeof right === "number") {
         compare = left - right;
       } else {
@@ -549,8 +552,10 @@ export default function DailySalesStatsPage() {
   const mismatchCount = useMemo(
     () =>
       timeSeriesRows.filter((row) => {
-        const bySuppliers = sum(row.topSupplierCounts) + row.othersCount;
-        return bySuppliers !== row.totalItemsSold;
+        const bySuppliers = sum(row.topSupplierCounts);
+        const others = finiteOrNull(row.othersCount);
+        const total = finiteOrNull(row.totalItemsSold);
+        return bySuppliers != null && others != null && total != null && bySuppliers + others !== total;
       }).length,
     [timeSeriesRows]
   );
@@ -644,11 +649,11 @@ export default function DailySalesStatsPage() {
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
     { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(data?.requestedTo) ?? "" },
-    { key: "totalDays", label: "Broj dana", value: data?.metadata.totalDays ?? 0 },
+    { key: "totalDays", label: "Broj dana", value: finiteOrNull(data?.metadata.totalDays) },
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
-    { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings.join(" | ") ?? "" },
+      { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
   ], [data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo]);
 
 
@@ -657,8 +662,8 @@ export default function DailySalesStatsPage() {
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
-      totalRevenue: row.totalRevenue,
-      totalItemsSold: row.totalItemsSold,
+      totalRevenue: finiteOrNull(row.totalRevenue),
+      totalItemsSold: finiteOrNull(row.totalItemsSold),
       ma7Revenue: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalRevenue, 7),
       ma7Items: buildRollingAverage(timeSeriesRows, index, (currentRow) => currentRow.totalItemsSold, 7),
     }))
@@ -669,9 +674,9 @@ export default function DailySalesStatsPage() {
       date: row.date,
       label: fmtDateShort(row.date),
       fullLabel: fmtDate(row.date),
-      firstShiftTotalItems: row.firstShiftTotalItems,
-      secondShiftTotalItems: row.secondShiftTotalItems,
-      totalItemsSold: row.totalItemsSold,
+      firstShiftTotalItems: finiteOrNull(row.firstShiftTotalItems),
+      secondShiftTotalItems: finiteOrNull(row.secondShiftTotalItems),
+      totalItemsSold: finiteOrNull(row.totalItemsSold),
     }))
   ), [timeSeriesRows]);
 
@@ -680,66 +685,73 @@ export default function DailySalesStatsPage() {
       return {
         chartData: [] as SupplierConcentrationPoint[],
         displayChartData: [] as SupplierConcentrationPoint[],
-        top3QtySharePct: 0,
-        top5QtySharePct: 0,
+        top3QtySharePct: null,
+        top5QtySharePct: null,
         suppliersTo80Pct: 0,
       };
     }
 
-    const supplierQtyBasis = Math.max(
-      data.metadata.totalItemsInRange,
-      data.topSuppliers.reduce((acc, supplier) => acc + supplier.totalQty, 0)
-    );
-    const supplierRevenueBasis = Math.max(
-      currentSummary.totalRevenue,
-      data.topSuppliers.reduce((acc, supplier) => acc + supplier.totalRevenue, 0)
-    );
+    const supplierTotalsQty = sum(data.topSuppliers.map((supplier) => supplier.totalQty));
+    const supplierTotalsRevenue = sum(data.topSuppliers.map((supplier) => supplier.totalRevenue));
+    const metadataQty = finiteOrNull(data.metadata.totalItemsInRange);
+    const supplierQtyBasis = metadataQty != null && supplierTotalsQty != null
+      ? Math.max(metadataQty, supplierTotalsQty)
+      : null;
+    const supplierRevenueBasis = currentSummary.totalRevenue != null && supplierTotalsRevenue != null
+      ? Math.max(currentSummary.totalRevenue, supplierTotalsRevenue)
+      : null;
 
     const baseRows = data.topSuppliers.map((supplier) => ({
       supplierName: supplier.supplierName,
       displayName: truncateLabel(supplier.supplierName),
-      totalQty: supplier.totalQty,
-      totalRevenue: supplier.totalRevenue,
-      qtySharePct: safeDivide(supplier.totalQty, supplierQtyBasis) * 100,
-      revenueSharePct: safeDivide(supplier.totalRevenue, supplierRevenueBasis) * 100,
+      totalQty: finiteOrNull(supplier.totalQty),
+      totalRevenue: finiteOrNull(supplier.totalRevenue),
+      qtySharePct: percent(safeDivide(supplier.totalQty, supplierQtyBasis)),
+      revenueSharePct: percent(safeDivide(supplier.totalRevenue, supplierRevenueBasis)),
       cumulativeQtySharePct: 0,
     }));
 
-    const topSupplierQty = baseRows.reduce((acc, row) => acc + row.totalQty, 0);
-    const topSupplierRevenue = baseRows.reduce((acc, row) => acc + row.totalRevenue, 0);
-    const othersQty = Math.max(0, supplierQtyBasis - topSupplierQty);
-    const othersRevenue = Math.max(0, supplierRevenueBasis - topSupplierRevenue);
+    const topSupplierQty = sum(baseRows.map((row) => row.totalQty));
+    const topSupplierRevenue = sum(baseRows.map((row) => row.totalRevenue));
+    const othersQty = supplierQtyBasis != null && topSupplierQty != null
+      ? Math.max(0, supplierQtyBasis - topSupplierQty)
+      : null;
+    const othersRevenue = supplierRevenueBasis != null && topSupplierRevenue != null
+      ? Math.max(0, supplierRevenueBasis - topSupplierRevenue)
+      : null;
 
     const allRows = [...baseRows];
-    if (othersQty > 0 || othersRevenue > 0) {
+    if ((othersQty ?? 0) > 0 || (othersRevenue ?? 0) > 0) {
       allRows.push({
         supplierName: "Ostali",
         displayName: "Ostali",
         totalQty: othersQty,
         totalRevenue: othersRevenue,
-        qtySharePct: safeDivide(othersQty, supplierQtyBasis) * 100,
-        revenueSharePct: safeDivide(othersRevenue, supplierRevenueBasis) * 100,
+        qtySharePct: percent(safeDivide(othersQty, supplierQtyBasis)),
+        revenueSharePct: percent(safeDivide(othersRevenue, supplierRevenueBasis)),
         cumulativeQtySharePct: 0,
       });
     }
 
-    let runningShare = 0;
+    let runningShare: number | null = 0;
     const chartData = allRows.map((row) => {
-      runningShare += row.qtySharePct;
+      runningShare = runningShare == null || row.qtySharePct == null ? null : runningShare + row.qtySharePct;
       return {
         ...row,
         cumulativeQtySharePct: runningShare,
       };
     });
 
-    const top3QtySharePct = safeDivide(baseRows.slice(0, 3).reduce((acc, row) => acc + row.totalQty, 0), supplierQtyBasis) * 100;
-    const top5QtySharePct = safeDivide(baseRows.slice(0, 5).reduce((acc, row) => acc + row.totalQty, 0), supplierQtyBasis) * 100;
+    const top3QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 3).map((row) => row.totalQty)), supplierQtyBasis));
+    const top5QtySharePct = percent(safeDivide(sum(baseRows.slice(0, 5).map((row) => row.totalQty)), supplierQtyBasis));
 
-    let cumulative = 0;
+    let cumulative: number | null = 0;
     let suppliersTo80Pct = 0;
     for (let index = 0; index < baseRows.length; index += 1) {
-      cumulative += baseRows[index].qtySharePct;
-      if (cumulative >= 80) {
+      cumulative = cumulative == null || baseRows[index].qtySharePct == null
+        ? null
+        : cumulative + baseRows[index].qtySharePct;
+      if (cumulative != null && cumulative >= 80) {
         suppliersTo80Pct = index + 1;
         break;
       }
@@ -763,30 +775,38 @@ export default function DailySalesStatsPage() {
   }, [currentSummary.totalRevenue, data]);
 
   const weekdayData = useMemo<WeekdayPoint[]>(() => {
-    const buckets = new Map<number, { revenue: number; items: number; firstShift: number; secondShift: number; dayCount: number }>();
+    const buckets = new Map<number, { revenue: number | null; items: number | null; firstShift: number | null; secondShift: number | null; dayCount: number }>();
 
     timeSeriesRows.forEach((row) => {
       const parsed = parseDateOnly(row.date);
       if (!parsed) return;
       const weekday = parsed.getUTCDay();
       const current = buckets.get(weekday) ?? { revenue: 0, items: 0, firstShift: 0, secondShift: 0, dayCount: 0 };
-      current.revenue += row.totalRevenue;
-      current.items += row.totalItemsSold;
-      current.firstShift += row.firstShiftTotalItems;
-      current.secondShift += row.secondShiftTotalItems;
+      current.revenue = current.revenue == null || finiteOrNull(row.totalRevenue) == null
+        ? null
+        : current.revenue + (row.totalRevenue as number);
+      current.items = current.items == null || finiteOrNull(row.totalItemsSold) == null
+        ? null
+        : current.items + (row.totalItemsSold as number);
+      current.firstShift = current.firstShift == null || finiteOrNull(row.firstShiftTotalItems) == null
+        ? null
+        : current.firstShift + (row.firstShiftTotalItems as number);
+      current.secondShift = current.secondShift == null || finiteOrNull(row.secondShiftTotalItems) == null
+        ? null
+        : current.secondShift + (row.secondShiftTotalItems as number);
       current.dayCount += 1;
       buckets.set(weekday, current);
     });
 
     return WEEKDAY_ORDER.map(({ key, label }) => {
       const bucket = buckets.get(key) ?? { revenue: 0, items: 0, firstShift: 0, secondShift: 0, dayCount: 0 };
-      const shiftItems = bucket.firstShift + bucket.secondShift;
+      const shiftItems = sum([bucket.firstShift, bucket.secondShift]);
       return {
         weekday: key,
         dayName: label,
         avgRevenue: safeDivide(bucket.revenue, bucket.dayCount),
         avgItems: safeDivide(bucket.items, bucket.dayCount),
-        firstShiftSharePct: safeDivide(bucket.firstShift, shiftItems) * 100,
+        firstShiftSharePct: percent(safeDivide(bucket.firstShift, shiftItems)),
         dayCount: bucket.dayCount,
       };
     });
@@ -828,12 +848,20 @@ export default function DailySalesStatsPage() {
   ], [currentSummary, previousSummary]);
 
   const bestRevenueDay = useMemo(
-    () => timeSeriesRows.reduce<DailySalesRow | null>((best, row) => (!best || row.totalRevenue > best.totalRevenue ? row : best), null),
+    () => timeSeriesRows.reduce<DailySalesRow | null>((best, row) => {
+      const value = finiteOrNull(row.totalRevenue);
+      const bestValue = finiteOrNull(best?.totalRevenue);
+      return value != null && (bestValue == null || value > bestValue) ? row : best;
+    }, null),
     [timeSeriesRows]
   );
 
   const weakestRevenueDay = useMemo(
-    () => timeSeriesRows.reduce<DailySalesRow | null>((lowest, row) => (!lowest || row.totalRevenue < lowest.totalRevenue ? row : lowest), null),
+    () => timeSeriesRows.reduce<DailySalesRow | null>((lowest, row) => {
+      const value = finiteOrNull(row.totalRevenue);
+      const lowestValue = finiteOrNull(lowest?.totalRevenue);
+      return value != null && (lowestValue == null || value < lowestValue) ? row : lowest;
+    }, null),
     [timeSeriesRows]
   );
 
@@ -842,12 +870,15 @@ export default function DailySalesStatsPage() {
     for (let index = 1; index < timeSeriesRows.length; index += 1) {
       const current = timeSeriesRows[index];
       const previous = timeSeriesRows[index - 1];
-      const revenueDelta = current.totalRevenue - previous.totalRevenue;
+      const currentRevenue = finiteOrNull(current.totalRevenue);
+      const previousRevenue = finiteOrNull(previous.totalRevenue);
+      if (currentRevenue == null || previousRevenue == null) continue;
+      const revenueDelta = currentRevenue - previousRevenue;
       changes.push({
         date: current.date,
         label: fmtDate(current.date),
         revenueDelta,
-        revenueDeltaPct: calculateDeltaPct(current.totalRevenue, previous.totalRevenue),
+        revenueDeltaPct: calculateDeltaPct(currentRevenue, previousRevenue),
       });
     }
     return changes;
@@ -876,6 +907,7 @@ export default function DailySalesStatsPage() {
           deviationValue,
         };
       })
+      .filter((point): point is AnomalyPoint & { deviationValue: number } => point.deviationValue != null)
       .sort((left, right) => Math.abs(right.deviationValue) - Math.abs(left.deviationValue))
       .slice(0, 3);
   }, [trendData]);
