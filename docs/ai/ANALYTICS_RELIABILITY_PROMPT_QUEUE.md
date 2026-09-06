@@ -4501,7 +4501,7 @@ Do not change backend business formulas, recommendation scoring, cache/refresh b
 
 ## RQ155 - Keep unknown Dashboard trends visible and non-ranked
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P1
 Type: frontend/tests
 Feature family: dashboard-trend-unknown-visibility
