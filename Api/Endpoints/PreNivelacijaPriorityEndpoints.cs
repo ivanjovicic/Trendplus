@@ -1,6 +1,7 @@
 using System.Globalization;
 using Api.Models;
 using Api.Services;
+using Application.Analytics;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
@@ -255,18 +256,17 @@ public static class PreNivelacijaPriorityEndpoints
                         var markdownEvents = markdownByArtikal.TryGetValue(a.Id, out var markdownLite) ? markdownLite.MarkdownEvents : 0;
                         var avgMarkdownPct = markdownByArtikal.TryGetValue(a.Id, out markdownLite) ? markdownLite.AvgMarkdownPct : 0m;
 
-                        var sellingPrice = a.SellingPrice ?? 0m;
-                        var purchasePrice = a.PurchasePrice ?? 0m;
-                        var hasCompleteEvidence = a.SellingPrice.HasValue
-                            && a.SellingPrice.Value > 0m
-                            && a.PurchasePrice.HasValue
-                            && a.PurchasePrice.Value >= 0m;
-                        var grossMarginPct = hasCompleteEvidence && sellingPrice > 0m
-                            ? decimal.Round(Math.Clamp(((sellingPrice - purchasePrice) / sellingPrice) * 100m, 0m, 100m), 2)
-                            : 0m;
+                        var marginEvidence = ResolveMarginEvidence(a.SellingPrice, a.PurchasePrice);
+                        var sellingPrice = marginEvidence.SellingPriceForScenarios;
+                        var purchasePrice = marginEvidence.PurchasePriceForScenarios;
+                        var hasCompleteEvidence = marginEvidence.HasCompleteEvidence;
+                        var grossMarginPct = marginEvidence.GrossMarginPctEst ?? 0m;
 
-                        if (marginFloor.HasValue && grossMarginPct < marginFloor.Value)
-                            continue;
+                        if (marginFloor.HasValue)
+                        {
+                            if (!hasCompleteEvidence || grossMarginPct < marginFloor.Value)
+                                continue;
+                        }
 
                         var seasonRecencyBoost = ResolveSeasonRecencyBoost(a.SeasonId, seasons, todayUtc);
                         var breakdown = scoring.ComputeScoreBreakdown(
@@ -275,7 +275,7 @@ public static class PreNivelacijaPriorityEndpoints
                             daysSinceLastSale,
                             markdownEvents,
                             avgMarkdownPct,
-                            grossMarginPct,
+                            hasCompleteEvidence ? grossMarginPct : 0m,
                             seasonRecencyBoost,
                             maxStock,
                             maxVelocity);
@@ -291,7 +291,8 @@ public static class PreNivelacijaPriorityEndpoints
                             avgMarkdownPct,
                             sellingPrice,
                             purchasePrice,
-                            preNivelacijaScore);
+                            preNivelacijaScore,
+                            hasReliableCost: hasCompleteEvidence);
 
                         allCandidates.Add(new PreNivelacijaSkuCandidateDto
                         {
@@ -317,11 +318,13 @@ public static class PreNivelacijaPriorityEndpoints
                             ScoreBreakdown = breakdown,
                             ScenarioHighlightNow = highlight,
                             ScenarioMarkdownNow = markdown,
-                            MarginDeltaHighlightVsMarkdown = decimal.Round(highlight.ExpectedMargin30d - markdown.ExpectedMargin30d, 2),
+                            MarginDeltaHighlightVsMarkdown = hasCompleteEvidence
+                                ? decimal.Round(highlight.ExpectedMargin30d - markdown.ExpectedMargin30d, 2)
+                                : 0m,
                             RevenueDeltaHighlightVsMarkdown = decimal.Round(highlight.ExpectedRevenue30d - markdown.ExpectedRevenue30d, 2),
                             HasCompleteEvidence = hasCompleteEvidence,
-                            EvidenceReason = hasCompleteEvidence ? null : "missing_price_baseline",
-                            Confidence = confidence
+                            EvidenceReason = marginEvidence.EvidenceReason,
+                            Confidence = hasCompleteEvidence ? confidence : "Low"
                         });
                     }
 
@@ -503,6 +506,49 @@ public static class PreNivelacijaPriorityEndpoints
         }
 
         return AnalyticsResponseMetaFactory.Success();
+    }
+
+    internal readonly record struct PreNivelacijaMarginEvidence(
+        bool HasCompleteEvidence,
+        string? EvidenceReason,
+        decimal? GrossMarginPctEst,
+        decimal SellingPriceForScenarios,
+        decimal PurchasePriceForScenarios);
+
+    /// <summary>
+    /// Aligns pre-nivelacija completeness with <see cref="AnalyticsMarginPolicy.IsReliableCost"/>:
+    /// null/zero/negative purchase cost is missing evidence, never a 100% margin signal.
+    /// </summary>
+    internal static PreNivelacijaMarginEvidence ResolveMarginEvidence(decimal? sellingPrice, decimal? purchasePrice)
+    {
+        var hasSellingPrice = sellingPrice.HasValue && sellingPrice.Value > 0m;
+        var hasReliableCost = AnalyticsMarginPolicy.IsReliableCost(purchasePrice);
+
+        if (!hasSellingPrice && !hasReliableCost)
+        {
+            return new PreNivelacijaMarginEvidence(false, "missing_price_baseline", null, 0m, 0m);
+        }
+
+        if (!hasSellingPrice)
+        {
+            return new PreNivelacijaMarginEvidence(false, "missing_selling_price", null, 0m, purchasePrice!.Value);
+        }
+
+        if (!hasReliableCost)
+        {
+            var reason = !purchasePrice.HasValue
+                ? "missing_purchase_cost"
+                : "non_positive_purchase_cost";
+            return new PreNivelacijaMarginEvidence(false, reason, null, sellingPrice!.Value, 0m);
+        }
+
+        var sell = sellingPrice!.Value;
+        var cost = purchasePrice!.Value;
+        var grossMarginPct = decimal.Round(
+            Math.Clamp(((sell - cost) / sell) * 100m, 0m, 100m),
+            2);
+
+        return new PreNivelacijaMarginEvidence(true, null, grossMarginPct, sell, cost);
     }
 
     private static PreNivelacijaPriorityBaseCacheEntry BuildEmptyBaseEntry(

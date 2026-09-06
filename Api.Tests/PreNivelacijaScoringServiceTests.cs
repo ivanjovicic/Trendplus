@@ -91,4 +91,45 @@ public sealed class PreNivelacijaScoringServiceTests
         Assert.Equal("insufficient_data", result.Recommendation.DataQualityStatus);
         Assert.Contains("missing_evidence", result.Recommendation.ReasonCodes);
     }
+
+    [Fact]
+    public void SimulateScenarios_WithoutReliableCost_DoesNotInventFullMargin()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var (highlight, markdown, confidence) = service.SimulateScenarios(
+            stockUnits: 40,
+            units180: 12,
+            markdownEvents: 2,
+            avgMarkdownPct: 15m,
+            sellingPrice: 5200m,
+            purchasePrice: 0m,
+            preNivelacijaScore: 78m,
+            hasReliableCost: false);
+
+        Assert.Equal(0m, highlight.ExpectedMargin30d);
+        Assert.Equal(0m, markdown.ExpectedMargin30d);
+        Assert.Equal("Low", confidence);
+        Assert.True(highlight.ExpectedRevenue30d > 0m);
+    }
+
+    [Fact]
+    public void SimulateScenarios_WithReliableEqualCost_KeepsGenuineZeroMargin()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var (highlight, markdown, confidence) = service.SimulateScenarios(
+            stockUnits: 40,
+            units180: 12,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            sellingPrice: 5200m,
+            purchasePrice: 5200m,
+            preNivelacijaScore: 78m,
+            hasReliableCost: true);
+
+        Assert.Equal(0m, highlight.ExpectedMargin30d);
+        Assert.Equal(0m, markdown.ExpectedMargin30d);
+        Assert.Contains(confidence, new[] { "Low", "Medium", "High" });
+    }
 }

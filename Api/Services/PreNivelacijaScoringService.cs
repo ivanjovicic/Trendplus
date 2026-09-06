@@ -42,7 +42,8 @@ public interface IPreNivelacijaScoringService
             decimal avgMarkdownPct,
             decimal sellingPrice,
             decimal purchasePrice,
-            decimal preNivelacijaScore);
+            decimal preNivelacijaScore,
+            bool hasReliableCost = true);
 
     RecommendationResult EvaluateRecommendation(RecommendationInput input);
 }
@@ -112,7 +113,8 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
             decimal avgMarkdownPct,
             decimal sellingPrice,
             decimal purchasePrice,
-            decimal preNivelacijaScore)
+            decimal preNivelacijaScore,
+            bool hasReliableCost = true)
     {
         // Bayesian smoothing for baseline daily units
         var smoothedUnits = BayesianSmoothing(units180, 180m, 0.05m);
@@ -121,7 +123,9 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var highlightBoost = 0.15m + (preNivelacijaScore / 100m) * 0.30m;
         var highlightUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, highlightBoost);
         var highlightRevenue = highlightUnits * sellingPrice;
-        var highlightMargin = highlightUnits * Math.Max(0m, sellingPrice - purchasePrice);
+        var highlightMargin = hasReliableCost
+            ? highlightUnits * Math.Max(0m, sellingPrice - purchasePrice)
+            : 0m;
 
         // Markdown scenario
         var markdownDiscountPct = Clamp(0.08m + markdownEvents * 0.02m + avgMarkdownPct / 200m, 0.08m, 0.35m);
@@ -129,10 +133,14 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var markdownDemandBoost = 1m + markdownDiscountPct * 1.8m;
         var markdownUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, markdownDemandBoost);
         var markdownRevenue = markdownUnits * markdownPrice;
-        var markdownMargin = markdownUnits * Math.Max(0m, markdownPrice - purchasePrice);
+        var markdownMargin = hasReliableCost
+            ? markdownUnits * Math.Max(0m, markdownPrice - purchasePrice)
+            : 0m;
 
         // Confidence level
-        var confidence = CalculateConfidence(units180, stockUnits);
+        var confidence = hasReliableCost
+            ? CalculateConfidence(units180, stockUnits)
+            : "Low";
 
         return (
             new PreNivelacijaScenarioDto
