@@ -5540,7 +5540,7 @@ Do not alter action outcome measurement, recommendation ownership, forecast/tren
 
 ## RQ167 - Do not serialize failed sales/inventory KPI responses as valid-looking zero values
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/contract/tests
 Feature family: analytics-error-kpi-state

@@ -6,9 +6,9 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Composer
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending-commit
+Main commit SHA: b930c4a2a0f5d6f42d2e46451d3cb96f7fbcb9f3
 Main verification: pending-push
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 
@@ -30,7 +30,8 @@ Fail-closed reversed action-timeline periods instead of silently swapping `from`
 ## Validation run
 
 - `dotnet test ... AnalyticsActionTimelineFilterProjectionTests|DecisionTimelineExportProjectionTests` — Passed 14 / Failed 0
-- `git diff --check` / queue check — pending close
+- `git diff --check` — pass
+- `node scripts/check-prompt-queues.mjs` — pass (371 tasks)
 
 ## Validation not run
 
