@@ -6,8 +6,8 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Cursor
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: (set after push)
-Main verification: pending push
+Main commit SHA: db72b5cb
+Main verification: pushed to origin/main (`git rev-parse HEAD` after push)
 Evidence state: synchronized
 
 ## What was done
