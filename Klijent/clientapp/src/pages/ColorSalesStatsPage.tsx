@@ -192,8 +192,8 @@ export function describePopMetric(item: ColorSalesStat): { label: string; title:
   };
 }
 
-function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
-  if (item.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(item.prePostNivelacijaRevenueImpactPct)) {
+export function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: string; title: string; className: string } {
+  if (Number.isFinite(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
       title: `Pre/post nivelacija impact meri promenu prometa unutar artikala sa poznatim prvim datumom nivelacije. Pokriće: ${fmtPct(item.prePostNivelacijaRevenueCoveragePct, 1)} prometa.`,
@@ -201,10 +201,19 @@ function describeNivelacijaImpactMetric(item: ColorSalesStat): { label: string; 
     };
   }
 
-  if ((item.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+  const coverage = item.prePostNivelacijaRevenueCoveragePct;
+  if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno artikala sa poznatom istorijom nivelacije za pre/post impact metriku.",
+      title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (coverage === 0) {
+    return {
+      label: "0% pokriće",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa poznatom istorijom nivelacije, pa impact nije merljiv.",
       className: "trend-neutral",
     };
   }

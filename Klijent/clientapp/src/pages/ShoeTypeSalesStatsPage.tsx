@@ -270,8 +270,8 @@ function describePopMetric(item: ShoeTypeSalesStat): { label: string; title: str
   };
 }
 
-function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
-  if (item.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(item.prePostNivelacijaRevenueImpactPct)) {
+export function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label: string; title: string; className: string } {
+  if (Number.isFinite(item.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(item.prePostNivelacijaRevenueImpactPct, 2),
       title: buildPrePostNivelacijaImpactDescription(
@@ -290,10 +290,19 @@ function describeNivelacijaImpactMetric(item: ShoeTypeSalesStat): { label: strin
     };
   }
 
-  if ((item.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+  const coverage = item.prePostNivelacijaRevenueCoveragePct;
+  if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno uporedivih artikala sa prodajom i pre i posle prve nivelacije za pre/post impact metriku.",
+      title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (coverage === 0) {
+    return {
+      label: "0% pokriće",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle prve nivelacije, pa impact nije merljiv.",
       className: "trend-neutral",
     };
   }

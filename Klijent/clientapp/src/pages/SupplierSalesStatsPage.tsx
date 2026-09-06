@@ -340,8 +340,8 @@ function describePopMetric(supplier: Pick<DecisionSupplier, "popRevenueChangePct
   };
 }
 
-function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaRevenueImpactPct" | "prePostNivelacijaRevenueCoveragePct" | "prePostSignalNote" | "preNivelacijePromet" | "posleNivelacijePromet">): { label: string; title: string; className: string } {
-  if (supplier.prePostNivelacijaRevenueImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaRevenueImpactPct)) {
+export function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaRevenueImpactPct" | "prePostNivelacijaRevenueCoveragePct" | "prePostSignalNote" | "preNivelacijePromet" | "posleNivelacijePromet">): { label: string; title: string; className: string } {
+  if (Number.isFinite(supplier.prePostNivelacijaRevenueImpactPct)) {
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaRevenueImpactPct, 2),
       title: buildPrePostNivelacijaImpactDescription(
@@ -360,10 +360,19 @@ function describeNivelacijaImpactMetric(supplier: Pick<DecisionSupplier, "prePos
     };
   }
 
-  if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+  const coverage = supplier.prePostNivelacijaRevenueCoveragePct;
+  if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno uporedivih artikala sa prodajom i pre i posle prve nivelacije za pre/post impact metriku.",
+      title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (coverage === 0) {
+    return {
+      label: "0% pokriće",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle prve nivelacije, pa impact nije merljiv.",
       className: "trend-neutral",
     };
   }
@@ -407,8 +416,8 @@ function describePopUnitsMetric(supplier: Pick<DecisionSupplier, "popUnitsChange
   };
 }
 
-function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaUnitsImpactPct" | "prePostSignalNote" | "prePostNivelacijaRevenueCoveragePct" | "preNivelacijeKolicina" | "posleNivelacijeKolicina">): { label: string; title: string; className: string } {
-  if (supplier.prePostNivelacijaUnitsImpactPct != null && !Number.isNaN(supplier.prePostNivelacijaUnitsImpactPct)) {
+export function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSupplier, "prePostNivelacijaUnitsImpactPct" | "prePostSignalNote" | "prePostNivelacijaRevenueCoveragePct" | "preNivelacijeKolicina" | "posleNivelacijeKolicina">): { label: string; title: string; className: string } {
+  if (Number.isFinite(supplier.prePostNivelacijaUnitsImpactPct)) {
     const noteSuffix = supplier.prePostSignalNote ? ` Napomena: ${supplier.prePostSignalNote}` : "";
     return {
       label: fmtSignedPct(supplier.prePostNivelacijaUnitsImpactPct, 2),
@@ -425,10 +434,19 @@ function describeNivelacijaUnitsImpactMetric(supplier: Pick<DecisionSupplier, "p
     };
   }
 
-  if ((supplier.prePostNivelacijaRevenueCoveragePct ?? 0) <= 0) {
+  const coverage = supplier.prePostNivelacijaRevenueCoveragePct;
+  if (typeof coverage !== "number" || !Number.isFinite(coverage) || coverage < 0) {
     return {
       label: "N/A",
-      title: "Nema dovoljno uporedivih artikala sa prodajom i pre i posle prve nivelacije za pre/post metriku kolicine.",
+      title: "Pre/post pokriće nije dostupno jer validno pokriće nije dostupno za ovaj skup podataka.",
+      className: "trend-neutral",
+    };
+  }
+
+  if (coverage === 0) {
+    return {
+      label: "0% pokriće",
+      title: "Pre/post pokriće je izmereno kao 0%; nema artikala sa prodajom i pre i posle prve nivelacije, pa promena količine nije merljiva.",
       className: "trend-neutral",
     };
   }
