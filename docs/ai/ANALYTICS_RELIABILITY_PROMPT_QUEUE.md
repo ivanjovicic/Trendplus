@@ -105,6 +105,22 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ190 | WAITING | forecast-snapshot-freshness-aggregation | Forecast provenance freshness aggregated optimistically |
 | RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
+| RQ193 | WAITING | analytics-async-ordering | Inventory page cross-panel async race condition |
+| RQ194 | WAITING | analytics-details-async-safety | Analytics Details missing in-flight guard |
+| RQ195 | WAITING | pilot-readiness-async-consistency | Pilot Readiness multi-signal load can mix reload generations |
+| RQ196 | WAITING | report-schedule-validation | Inventory report schedules saved without validation |
+| RQ197 | WAITING | export-truncation-safety | Scheduled inventory export has no row cap |
+| RQ198 | WAITING | decision-board-datascope-override | Executive Decision Board hardcoded dataScope |
+| RQ199 | WAITING | pre-nivelacija-datascope | Pre-nivelacija priority endpoint missing DataScope |
+| RQ200 | WAITING | pdc-search-pagination-boundary | Product Decision Center search capped at backend rows |
+| RQ201 | WAITING | sales-stats-chart-table-parity | Daily Sales chart vs table order divergence |
+| RQ202 | WAITING | date-timezone-safety | Daily Sales date sort timezone drift |
+| RQ203 | WAITING | inventory-detail-scope-consistency | Inventory detail ignores parent scope and uses fixed 30-day |
+| RQ204 | WAITING | analytics-details-scope-parity | Analytics Details global inventory snapshot unrelated to period |
+| RQ205 | WAITING | client-cache-invalidation | Frontend 15s cache not invalidated after refresh |
+| RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
+| RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
+| RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
 | RQ176 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -6587,4 +6603,487 @@ Commit suggestion: `fix(ml): preserve missing return rate as NULL, not zero feat
 ### Dependencies
 
 - ML/scoring owners; this is feature encoding correctness.
+
+---
+
+## RQ193 - Inventory page cross-panel async race condition
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-async-ordering
+Parallel-safe: no
+Owner: Frontend
+
+Commit suggestion: `fix(analytics): add request sequencing to prevent cross-panel races`
+
+### Problem
+
+Inventory page fires 6–7 parallel requests without a monotonic sequence check. Slow response from an earlier filter state can land after a newer filter state, overwriting fresher data across panels.
+
+### Evidence
+
+- `InventoryPage.tsx:288–461` uses shared `cancelled` flag only, no sequence ID.
+
+### Do
+
+1. Add monotonic `requestSequence` counter; increment on filter change.
+2. Tag requests with sequence ID; discard responses if stale.
+3. Add tests for rapid filter changes.
+
+### Acceptance
+
+- KPI cards, table rows, and panels show consistent snapshot after filter changes.
+
+---
+
+## RQ194 - Analytics Details missing in-flight guard for parallel requests
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-details-async-safety
+Parallel-safe: no
+Owner: Frontend
+
+Commit suggestion: `fix(analytics-details): add request sequencing`
+
+### Problem
+
+`AnalyticsDetails.tsx` fires 10+ parallel requests without sequence check. Rapid period changes mix summary/daily/top/advanced from different loads.
+
+### Evidence
+
+- `AnalyticsDetails.tsx:151–184` (`load()` fires all requests unguarded).
+
+### Do
+
+1. Add monotonic `requestSequence` counter; increment on period/filter change.
+2. Discard responses if stale.
+
+### Acceptance
+
+- Trend cards and tables reflect one consistent period after rapid changes.
+
+---
+
+## RQ195 - Pilot Readiness multi-signal load can mix reload generations
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: pilot-readiness-async-consistency
+Parallel-safe: no
+Owner: Frontend
+
+Commit suggestion: `fix(pilot-readiness): sequence signal loads`
+
+### Problem
+
+`PilotReadinessPage.tsx:loadSignals` uses `cancelled` only; nine tasks can mix across reload ticks.
+
+### Do
+
+1. Add request sequence tracking; discard stale responses.
+
+### Acceptance
+
+- Readiness cards show coherent state (all fresh or all stale).
+
+---
+
+## RQ196 - Inventory report schedules saved without validation
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/tests
+Feature family: report-schedule-validation
+Parallel-safe: no
+Owner: Inventory/Reports
+
+Commit suggestion: `fix(reports): validate schedules before persistence`
+
+### Problem
+
+Schedules persist with no checks for empty/invalid recipients, timezone, or `RunAtLocalTime` format. Validation only happens at delivery time.
+
+### Evidence
+
+- `InventoryEndpoints.cs:603–633`, `InventoryReportScheduleService.cs:61–131`.
+
+### Do
+
+1. Add pre-persist validation: parse recipients, validate timezone, format.
+2. Return 400 with error messages.
+3. Add UI validation before save.
+
+### Acceptance
+
+- Users cannot save schedules that will silently fail.
+
+---
+
+## RQ197 - Scheduled inventory export has no row cap / tight completion window
+
+Status: WAITING
+Priority: P2
+Type: backend/tests
+Feature family: export-truncation-safety
+Parallel-safe: yes
+Owner: Reports/Export
+
+Commit suggestion: `fix(export): add row cap and graceful truncation`
+
+### Problem
+
+Export loads all articles unbounded; completion waits ~90s. Large catalogs can time out mid-generation.
+
+### Evidence
+
+- `InventoryReportDeliveryService.cs:173–197, 199–220`.
+
+### Do
+
+1. Add configurable `MaxExportRows` (default 50000).
+2. Add truncation warning footer.
+3. Add tests for large catalogs.
+
+### Acceptance
+
+- Large exports complete with clear truncation messaging.
+
+---
+
+## RQ198 - Executive Decision Board hardcoded dataScope="all"
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: decision-board-datascope-override
+Parallel-safe: no
+Owner: Analytics/Decision Board
+
+Commit suggestion: `fix(decision-board): pass user DataScope`
+
+### Problem
+
+Board calls `getDecisionBoardAggregate({ dataScope: "all" })` explicitly, overriding user preference.
+
+### Evidence
+
+- `ExecutiveDecisionBoardPage.tsx:1345`.
+
+### Do
+
+1. Remove hardcoded `"all"`.
+2. Read user DataScope from context.
+3. Pass it to backend.
+
+### Acceptance
+
+- Board respects user scope selection.
+
+---
+
+## RQ199 - Pre-nivelacija priority endpoint has no DataScope parameter
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: pre-nivelacija-datascope
+Parallel-safe: no
+Owner: Pre-nivelacija/Analytics
+
+Commit suggestion: `fix(pre-nivelacija): add DataScope parameter`
+
+### Problem
+
+Endpoint accepts no `dataScope`; cache key omits scope. Imported and existing articles always mixed.
+
+### Evidence
+
+- `PreNivelacijaPriorityEndpoints.cs:46–77`.
+
+### Do
+
+1. Add `dataScope` query parameter.
+2. Include scope in cache key.
+3. Add SQL WHERE clause to filter by scope.
+
+### Acceptance
+
+- Priority list respects user scope selection.
+
+---
+
+## RQ200 - Product Decision Center search is client-only over capped backend rows
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: pdc-search-pagination-boundary
+Parallel-safe: no
+Owner: Product Decision/Search
+
+Commit suggestion: `fix(pdc): move search to backend or extend cap`
+
+### Problem
+
+Backend fetch uses `top: 1200`; search runs only on returned rows. Products ranked below cap are unsearchable.
+
+### Evidence
+
+- `ProductDecisionCenterPage.tsx:768, 810–819`.
+
+### Do
+
+1. **Option A:** Add backend `search` parameter; filter there before top-1200.
+2. **Option B:** Increase cap with frontend virtualization.
+3. Add tests: search for tail SKU → found.
+
+### Acceptance
+
+- All PDC products are searchable.
+
+---
+
+## RQ201 - Daily Sales chart order diverges from table order
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: sales-stats-chart-table-parity
+Parallel-safe: yes
+Owner: Daily Sales/Analytics
+
+Commit suggestion: `fix(daily-sales): align chart and table sort`
+
+### Problem
+
+Chart always uses ascending order; table uses user sort (date desc or user column). Chart and table show different orderings.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:484–518, 626–636, 1640–1663`.
+
+### Do
+
+1. Pass `sortConfig` to chart; sort by same order.
+2. Add tests for sort consistency.
+
+### Acceptance
+
+- Chart and table row orders match.
+
+---
+
+## RQ202 - Daily Sales date sort uses local Date parsing (timezone drift)
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: date-timezone-safety
+Parallel-safe: yes
+Owner: Daily Sales/Analytics
+
+Commit suggestion: `fix(daily-sales): use UTC date parsing`
+
+### Problem
+
+Date sort uses `new Date(row.date).getTime()`, which drifts across timezone boundaries.
+
+### Evidence
+
+- `DailySalesStatsPage.tsx:492`.
+
+### Do
+
+1. Parse dates as UTC: `new Date(row.date + 'T00:00:00Z').getTime()`.
+2. Add tests for DST boundary cases.
+
+### Acceptance
+
+- Date boundaries sort correctly regardless of timezone.
+
+---
+
+## RQ203 - Inventory SKU detail ignores parent list scope and uses fixed 30-day window
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: inventory-detail-scope-consistency
+Parallel-safe: no
+Owner: Inventory Detail/Analytics
+
+Commit suggestion: `fix(inventory-detail): pass list scope and period`
+
+### Problem
+
+Detail endpoint uses hardcoded `DateTime.UtcNow.AddDays(-30)` and `/30` divisor. Doesn't accept store/supplier/period from list view.
+
+### Evidence
+
+- `InventoryEndpoints.cs:268–334` (hardcoded window, no scope parameters).
+
+### Do
+
+1. Add `storeId`, `supplierId`, `fromDate`, `toDate` parameters.
+2. Frontend passes them from list view.
+3. Add tests for scope consistency.
+
+### Acceptance
+
+- Detail view signals match list-view values and respect filters.
+
+---
+
+## RQ204 - Analytics Details uses global inventory snapshot unrelated to selected period
+
+Status: WAITING
+Priority: P2
+Type: frontend/contract/tests
+Feature family: analytics-details-scope-parity
+Parallel-safe: yes
+Owner: Analytics Details
+
+Commit suggestion: `fix(analytics-details): scope inventory status to period`
+
+### Problem
+
+Calls `getInventoryStatus(2, true)` with no period/store filters while sales series are period-scoped.
+
+### Evidence
+
+- `AnalyticsDetails.tsx:158, 215–227`.
+
+### Do
+
+1. Pass period/scope to `getInventoryStatus` call.
+2. Backend filters inventory snapshot to requested period.
+
+### Acceptance
+
+- Detail page metrics are temporally consistent.
+
+---
+
+## RQ205 - Frontend 15s client cache not invalidated after refresh
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: client-cache-invalidation
+Parallel-safe: yes
+Owner: Frontend Caching
+
+Commit suggestion: `fix(analytics): clear client cache after refresh`
+
+### Problem
+
+`analyticsApi.ts` caches `/api/analytics/cached/*` for 15–300s. No hook clears cache after worker refresh.
+
+### Evidence
+
+- `analyticsApi.ts:78–80, 353–361`.
+
+### Do
+
+1. Expose `invalidateAnalyticsCache()`.
+2. Call after refresh completion.
+3. Add tests: cache clears after refresh.
+
+### Acceptance
+
+- Users see updated numbers immediately after refresh.
+
+---
+
+## RQ206 - Partial nightly refresh treated as "last successful refresh"
+
+Status: WAITING
+Priority: P1
+Type: backend/tests
+Feature family: refresh-run-status-accuracy
+Parallel-safe: no
+Owner: Analytics Worker/Refresh
+
+Commit suggestion: `fix(analytics): distinguish partial from successful refresh`
+
+### Problem
+
+`FindLatestSuccessfulRun` includes `"partial"` status. Dashboard can show green after incomplete MV refresh.
+
+### Evidence
+
+- `AnalyticsRefreshStatusService.cs:418–427`.
+
+### Do
+
+1. Exclude `"partial"` from success check.
+2. Update UI to render partial as yellow/warning.
+
+### Acceptance
+
+- Dashboard clearly indicates partial/incomplete refreshes.
+
+---
+
+## RQ207 - Failed nightly refresh skips cache invalidation despite partial MV updates
+
+Status: WAITING
+Priority: P1
+Type: backend/tests
+Feature family: refresh-failure-cache-safety
+Parallel-safe: no
+Owner: Analytics Worker/Cache
+
+Commit suggestion: `fix(analytics): invalidate cache even on failed refresh`
+
+### Problem
+
+When `errors.Count > 0`, worker returns before cache clear. Some views may have partially refreshed while API cache serves old aggregates.
+
+### Evidence
+
+- `NightlyAnalyticsRefreshWorker.cs:349–361 vs 382–393`.
+
+### Do
+
+1. Move cache invalidation outside success check; always run if any view completed.
+2. Add tests for failure scenarios.
+
+### Acceptance
+
+- Cache is invalidated consistently after failures.
+
+---
+
+## RQ208 - Dashboard "per day" KPIs use local calendar day count (timezone drift)
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: period-timezone-boundary-safety
+Parallel-safe: yes
+Owner: Analytics Dashboard
+
+Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
+
+### Problem
+
+`selectedDays` derived from local `parseInputDate()` floor division. Backend boundaries are UTC. Divisor can be off by one near DST boundaries.
+
+### Evidence
+
+- `AnalyticsDashboard.tsx:644–648, 824–825`.
+
+### Do
+
+1. Compute day count from backend UTC timestamps.
+2. Add tests for DST boundary cases.
+
+### Acceptance
+
+- Revenue/day and Transactions/day divisors match backend period length.
 
