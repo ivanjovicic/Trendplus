@@ -56,10 +56,18 @@ public static class ProductDecisionReasoningHelper
         if (input.UnitsSold < MinimumUnitsForRecommendation || input.Revenue <= 0m || !input.DaysSinceLastSale.HasValue)
             return "INSUFFICIENT_DATA";
 
-        var goodTrend = (input.TrendPct ?? 0m) >= 10m;
-        var badTrend = (input.TrendPct ?? 0m) <= -10m;
-        var goodMargin = (input.MarginPct ?? 0m) >= 22m;
-        var lowMargin = (input.MarginPct ?? 0m) < 10m;
+        // Require valid evidence for trend and margin before allowing recommendations
+        // null/missing evidence must fail closed
+        if (input.TrendPct == null)
+            return "INSUFFICIENT_DATA";
+
+        if (input.MarginPct == null)
+            return "INSUFFICIENT_DATA";
+
+        var goodTrend = input.TrendPct.Value >= 10m;
+        var badTrend = input.TrendPct.Value <= -10m;
+        var goodMargin = input.MarginPct.Value >= 22m;
+        var lowMargin = input.MarginPct.Value < 10m;
         var highVelocity = input.VelocityUnitsPerDay >= 0.8m;
         var lowVelocity = input.VelocityUnitsPerDay < 0.15m;
         var staleStock = input.DaysSinceLastSale.Value >= 45;

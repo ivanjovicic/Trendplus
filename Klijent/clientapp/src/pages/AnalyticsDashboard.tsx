@@ -456,8 +456,13 @@ function buildFallbackDecisionActionsFromAdvanced(
 }
 
 function trendLabel(value?: number | null): string {
-  if (value == null) return "Nema trenda";
+  if (value == null || !Number.isFinite(value)) return "Nema trenda";
+  if (value === 0) return "Bez promene";
   return value >= 0 ? "Rast" : "Pad";
+}
+
+function isFiniteTrend(value?: number | null): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function buildStoreLabel(store: StoreOption): string {
@@ -727,7 +732,6 @@ export default function AnalyticsDashboard() {
 
     const nextErrors: string[] = [];
     if (bootstrapR.status === "fulfilled") {
-      console.log("RQ155 load", bootstrapR.value.topAdvanced);
       setSummary(bootstrapR.value.summary);
       setInventory(bootstrapR.value.inventory);
       setDailySales(bootstrapR.value.dailySales);
@@ -866,7 +870,7 @@ export default function AnalyticsDashboard() {
   const topGainers = useMemo(
     () =>
       (topAdvanced?.byRevenue ?? [])
-        .filter((row) => row.trendPct != null && isFinite(row.trendPct) && row.trendPct > 0)
+        .filter((row) => isFiniteTrend(row.trendPct) && row.trendPct > 0)
         .sort((a, b) => (b.trendPct ?? 0) - (a.trendPct ?? 0))
         .slice(0, 5),
     [topAdvanced],
@@ -875,7 +879,7 @@ export default function AnalyticsDashboard() {
   const topLosers = useMemo(
     () =>
       (topAdvanced?.byRevenue ?? [])
-        .filter((row) => row.trendPct != null && isFinite(row.trendPct) && row.trendPct < 0)
+        .filter((row) => isFiniteTrend(row.trendPct) && row.trendPct < 0)
         .sort((a, b) => (a.trendPct ?? 0) - (b.trendPct ?? 0))
         .slice(0, 5),
     [topAdvanced],
@@ -1356,7 +1360,7 @@ export default function AnalyticsDashboard() {
         row.units.toString(),
         row.velocityUnitsPerDay.toFixed(2),
         row.marginImpact == null ? "" : row.marginImpact.toFixed(2),
-        row.trendPct == null ? "" : row.trendPct.toFixed(2),
+         !isFiniteTrend(row.trendPct) ? "" : row.trendPct.toFixed(2),
         statusLabel(row.stockStatus),
       ]),
     ];
@@ -2814,16 +2818,18 @@ export default function AnalyticsDashboard() {
                             </td>
                             <td
                               className={`analytics-data-table__numeric ${
-                                row.trendPct != null && row.trendPct < 0
-                                  ? "trend down"
-                                  : "trend up"
+                                !isFiniteTrend(row.trendPct) || row.trendPct === 0
+                                  ? "trend-neutral"
+                                  : row.trendPct < 0
+                                    ? "trend down"
+                                    : "trend up"
                               }`}
                             >
                               <div>
                                 {trendLabel(row.trendPct)}{" "}
                                 {fmtPct(row.trendPct)}
                               </div>
-                              {row.trendPct == null ? (
+                              {!isFiniteTrend(row.trendPct) ? (
                                 <small className="analytics-data-table__subvalue">
                                   Nema prethodnog perioda za PoP poređenje.
                                 </small>

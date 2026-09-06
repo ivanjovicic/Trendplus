@@ -133,4 +133,127 @@ public class ProductDecisionReasoningHelperTests
         Assert.Equal("sve porodice", ProductDecisionReasoningHelper.RecommendationLabel(null));
         Assert.Equal("CUSTOM", ProductDecisionReasoningHelper.RecommendationLabel("CUSTOM"));
     }
+
+    // FAILING-FIRST TESTS: Null evidence must not enable recommendations
+    
+    [Fact(DisplayName = "Null trend should not enable BOOST even with good margin and velocity")]
+    public void NullTrend_ShouldNotEnableBoost()
+    {
+        // FAILING TEST: Currently this passes BOOST because null trend coalesces to 0
+        // Expected: INSUFFICIENT_DATA (missing denominator for trend signal)
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 200_000m,
+            UnitsSold: 80,
+            VelocityUnitsPerDay: 1.5m,
+            MarginPct: 28m,  // good margin
+            MarginCoveragePct: 95m,
+            TrendPct: null,  // MISSING EVIDENCE
+            StockGap: 15,
+            CurrentStock: 2,
+            MinStock: 5,
+            DaysSinceLastSale: 3));
+
+        // Should NOT allow BOOST with missing trend evidence
+        Assert.NotEqual("BOOST", result.RecommendationStatus);
+        // Should indicate missing evidence
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Null margin should not enable BOOST")]
+    public void NullMargin_ShouldNotEnableBoost()
+    {
+        // FAILING TEST: Currently this might pass REPLENISH because null margin coalesces to 0
+        // Expected: Should reject null margin as insufficient evidence
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 250_000m,
+            UnitsSold: 90,
+            VelocityUnitsPerDay: 1.8m,
+            MarginPct: null,  // MISSING EVIDENCE
+            MarginCoveragePct: 95m,
+            TrendPct: 15m,  // good trend
+            StockGap: 20,
+            CurrentStock: 1,
+            MinStock: 10,
+            DaysSinceLastSale: 2));
+
+        // Should NOT create actionable recommendation with missing margin evidence
+        Assert.True(result.RecommendationStatus is "INSUFFICIENT_DATA" or "WATCH");
+    }
+
+    [Fact(DisplayName = "Null trend with null margin should definitely not enable BOOST")]
+    public void BothNullTrendAndMargin_ShouldNotEnableBOOST()
+    {
+        // FAILING TEST: Multiple missing evidence should clearly fail closed
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 300_000m,
+            UnitsSold: 100,
+            VelocityUnitsPerDay: 2.0m,
+            MarginPct: null,     // MISSING
+            MarginCoveragePct: 95m,
+            TrendPct: null,      // MISSING
+            StockGap: 30,
+            CurrentStock: 1,
+            MinStock: 15,
+            DaysSinceLastSale: 1));
+
+        // Should absolutely NOT recommend with both trend and margin missing
+        Assert.NotEqual("BOOST", result.RecommendationStatus);
+        Assert.NotEqual("REPLENISH", result.RecommendationStatus);
+        Assert.True(result.RecommendationStatus is "INSUFFICIENT_DATA" or "WATCH");
+    }
+
+    [Fact(DisplayName = "Genuine zero trend should be distinct from null trend")]
+    public void ZeroTrendVsNullTrend_MustBeDistinct()
+    {
+        // With genuine zero trend (measured, not missing)
+        var withZeroTrend = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 150_000m,
+            UnitsSold: 60,
+            VelocityUnitsPerDay: 1.2m,
+            MarginPct: 20m,
+            MarginCoveragePct: 90m,
+            TrendPct: 0m,  // Genuine ZERO (measured neutral trend)
+            StockGap: 8,
+            CurrentStock: 2,
+            MinStock: 5,
+            DaysSinceLastSale: 5));
+
+        // With null trend (missing evidence)
+        var withNullTrend = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 150_000m,
+            UnitsSold: 60,
+            VelocityUnitsPerDay: 1.2m,
+            MarginPct: 20m,
+            MarginCoveragePct: 90m,
+            TrendPct: null,  // Missing evidence
+            StockGap: 8,
+            CurrentStock: 2,
+            MinStock: 5,
+            DaysSinceLastSale: 5));
+
+        // Different inputs should produce different (or more restrictive) outputs
+        // Zero trend might allow REPLENISH, but null should not
+        Assert.NotEqual(withZeroTrend.RecommendationStatus, withNullTrend.RecommendationStatus);
+    }
 }
+

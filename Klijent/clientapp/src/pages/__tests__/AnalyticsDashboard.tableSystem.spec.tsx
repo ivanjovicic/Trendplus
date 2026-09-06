@@ -298,20 +298,23 @@ describe("AnalyticsDashboard table system", () => {
         <AnalyticsDashboard />
       </MemoryRouter>,
     );
-    console.log("RQ155 bootstrap calls", vi.mocked(getDashboardBootstrap).mock.calls.length);
-
     // Find the top gainers section
+    fireEvent.click(
+      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
+    );
     const gainersSection = await screen.findByTestId("top-gainers-section");
 
-    // Should only see SKU-101 (trendPct: 12.4) in gainers
-    expect(within(gainersSection).getByText("SKU-101")).toBeInTheDocument();
+    // Should only see Runner 101 (trendPct: 12.4) in gainers
+    expect(within(gainersSection).getByText("Runner 101")).toBeInTheDocument();
 
     // Should NOT see SKU-201 (null trend) even though it should be filtered out
     // This will fail with current implementation because null is coalesced to 0 and filtered as neutral
-    expect(within(gainersSection).queryByText("SKU-201")).not.toBeInTheDocument();
+    expect(within(gainersSection).queryByText("Unknown Trend Product")).not.toBeInTheDocument();
 
     // Should NOT see SKU-204 (genuine zero trend, measured neutral)
-    expect(within(gainersSection).queryByText("SKU-204")).not.toBeInTheDocument();
+    expect(within(gainersSection).queryByText("Zero Trend Product (Measured)")).not.toBeInTheDocument();
+    expect(screen.getByText("Unknown Trend Product")).toBeInTheDocument();
+    expect(screen.getByText("Unknown Trend Product").closest("tr")?.textContent).toContain("Nema trenda");
   });
 
   it("excludes unknown/non-finite trends from top losers list", async () => {
@@ -379,15 +382,20 @@ describe("AnalyticsDashboard table system", () => {
     );
 
     // Find the top losers section
+    fireEvent.click(
+      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
+    );
     const losersSection = await screen.findByTestId("top-losers-section");
 
-    // Should only see SKU-102 (trendPct: -4.8) in losers
-    expect(within(losersSection).getByText("SKU-102")).toBeInTheDocument();
+    // Should only see Runner 102 (trendPct: -4.8) in losers
+    expect(within(losersSection).getByText("Runner 102")).toBeInTheDocument();
 
     // Should NOT see SKU-202 (NaN trend) or SKU-203 (Infinity trend)
     // This will fail with current implementation because NaN/Infinity are coalesced to 0 and filtered as neutral
-    expect(within(losersSection).queryByText("SKU-202")).not.toBeInTheDocument();
-    expect(within(losersSection).queryByText("SKU-203")).not.toBeInTheDocument();
+    expect(within(losersSection).queryByText("NaN Trend Product")).not.toBeInTheDocument();
+    expect(within(losersSection).queryByText("Infinity Trend Product")).not.toBeInTheDocument();
+    expect(screen.getByText("NaN Trend Product").closest("tr")?.textContent).toContain("Nema trenda");
+    expect(screen.getByText("Infinity Trend Product").closest("tr")?.textContent).toContain("Nema trenda");
   });
 
   it("preserves genuine zero trend as measured neutral (not in gainers or losers)", async () => {
@@ -453,15 +461,19 @@ describe("AnalyticsDashboard table system", () => {
     );
 
     // Find the top gainers section
+    fireEvent.click(
+      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
+    );
     const gainersSection = await screen.findByTestId("top-gainers-section");
 
     // SKU-204 (zero trend) should NOT be in gainers
-    expect(within(gainersSection).queryByText("SKU-204")).not.toBeInTheDocument();
+    expect(within(gainersSection).queryByText("Zero Trend Product (Measured)")).not.toBeInTheDocument();
 
     // Find the top losers section
     const losersSection = await screen.findByTestId("top-losers-section");
 
     // SKU-204 (zero trend) should NOT be in losers
-    expect(within(losersSection).queryByText("SKU-204")).not.toBeInTheDocument();
+    expect(within(losersSection).queryByText("Zero Trend Product (Measured)")).not.toBeInTheDocument();
+    expect(screen.getByText("Zero Trend Product (Measured)").closest("tr")?.textContent).toContain("Bez promene");
   });
 });
