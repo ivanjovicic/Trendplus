@@ -95,6 +95,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
+| RQ171 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
+| RQ172 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
+| RQ173 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
+| RQ174 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
+| RQ175 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 
 ---
 
@@ -5536,3 +5541,423 @@ Do not duplicate `RQ166` action-timeline validation or change valid default-peri
 - `RQ145` remains the parity and safe-messaging owner.
 - Keep this prompt `WAITING` behind the single `READY` item.
 - Keep this prompt `WAITING` behind the single `READY` item.
+
+---
+
+## RQ171 - Keep inventory snapshot query time separate from source freshness
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: inventory-snapshot-freshness-provenance
+Parallel-safe: no, freshness and refresh ownership must have one inventory signal contract
+Owner: Codex
+Commit suggestion: `fix(inventory): expose snapshot freshness provenance`
+
+### Problem
+
+Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, but the handlers set it to `DateTime.UtcNow` while reading the snapshot. `InventoryPage` then compares those query timestamps as secondary-panel freshness. A successful query or cache hit must not look like a successful source refresh.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs:90`, `GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs:94` and `GetInventorySizeCurve/GetInventorySizeCurveHandler.cs:103` set `GeneratedAtUtc` to the request time.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:667-675` collects those values as `secondaryPanelTimestamps`, and `:714-725` presents them as panel freshness.
+- `InventoryAlertListDto`, `RebalanceSuggestionListDto` and `InventorySizeCurveListDto` do not expose source snapshot freshness or last successful refresh.
+- `docs/qa/FORECAST_SNAPSHOT_PROVENANCE_CONTRACT_2026-08-20.md` explicitly distinguishes response generation from snapshot freshness; this prompt applies the same rule to non-forecast inventory signals.
+
+### Scope
+
+- The three inventory snapshot handlers, DTOs/types and cached routes for alerts, rebalance and size curve.
+- `InventoryPage` secondary-panel freshness display and the nearest cache/refresh metadata source.
+- Existing snapshot relation/migration/view evidence only as needed to prove or expose source freshness; no new forecasting or Shopify work.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `RQ141`, `RQ145`, `RQ146`, `RQ151`
+- `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
+- the three inventory snapshot handlers, `InventoryPage.tsx`, `InventorySnapshotContractTests.cs` and `docs/analytics/ANALYTICS_CACHE_POLICY.md`
+
+### Do
+
+1. Add a failing-first contract proving `GeneratedAtUtc` is response generation only and cannot be used as source freshness.
+2. Expose snapshot freshness/last-successful-refresh and freshness status from a proven source, or return `unknown` when source lineage is unavailable.
+3. Keep successful empty, missing relation, stale and partial states distinct and visible.
+4. Make the page compare primary refresh only with proven secondary source freshness; never use current query time as a substitute.
+5. Keep cache hit, failed refresh and missing-refresh-history semantics explicit.
+
+### Tests
+
+- Backend contract tests for known snapshot timestamp, unknown timestamp, stale, missing relation, partial and successful empty results.
+- Frontend tests proving query time is not rendered as last refresh and that unknown freshness is visible.
+- Cache/refresh test proving a cache read does not advance last successful refresh and a failed refresh does not publish a new timestamp.
+- `dotnet test` focused inventory snapshot tests, affected frontend tests, analytics guardrails, changed-project builds and `git diff --check`.
+
+### Acceptance
+
+- Inventory signal panels never label response generation time as source freshness or last successful refresh.
+- Known, stale, unknown, partial, missing and empty states remain distinct in DTO, page and trust messaging.
+- No forecast, Shopify or external connector scope is pulled into this prompt.
+
+### Dependencies
+
+- `RQ141` remains the broad lineage owner; `RQ146` owns full runtime schema/refresh proof.
+- `RQ64`-`RQ71` and `RQ99` remain completed null/count/reader foundations.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ172 - Preserve missing, empty and partial size-curve states in the panel
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: size-curve-empty-error-state
+Parallel-safe: yes, bounded to size-curve panel projection
+Owner: Codex
+Commit suggestion: `fix(inventory): preserve size-curve empty and unavailable states`
+
+### Problem
+
+The size-curve panel uses the same branch and copy for a missing snapshot relation and a successful empty result. It also drops the backend warning. This makes a schema/source failure look like a valid SKU with no data and hides degraded evidence.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs:102-110` returns successful empty with `SnapshotAvailable=true` and an empty warning.
+- `:117-125` returns missing relation with `SnapshotAvailable=false` and a missing-snapshot warning.
+- `Klijent/clientapp/src/components/inventory/SizeCurvePanel.tsx:60-63` combines `!snapshotAvailable` and `items.length === 0`, renders identical text and does not render `sizeCurve.warning`.
+- `Api.Tests/InventorySnapshotContractTests.cs` covers the backend states, but no panel test protects their user-facing distinction.
+
+### Scope
+
+- `SizeCurvePanel.tsx` and its focused frontend spec.
+- Types/API adapter only if needed to preserve warning/state fields.
+- No size-curve formula, SQL materializer or chart redesign.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ144`, `RQ145`, `RQ151`
+- `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
+- `SizeCurvePanel.tsx`, `SizeCurveVisualization.tsx`, `InventorySnapshotContractTests.cs` and existing inventory null-evidence tests
+
+### Do
+
+1. Add failing-first tests for missing relation, successful empty, partial warning and populated complete data.
+2. Render distinct Serbian copy for unavailable source, valid empty result and partial/missing evidence.
+3. Preserve warning text through the panel without exposing raw backend codes.
+4. Keep true zero share and missing share distinct in cards, chart tooltips and detail view.
+
+### Tests
+
+- Focused `SizeCurvePanel` tests for all four states.
+- Chart tests for valid zero, null, NaN/Infinity and initial width/height `0`/`-1`.
+- Dark/light/soft-gray DOM/theme assertions and no console warning/error assertions.
+- Analytics guardrails, focused frontend test and `git diff --check`.
+
+### Acceptance
+
+- Missing relation is not shown as a normal empty SKU result.
+- Successful empty remains an empty state, not an error.
+- Partial/missing evidence and backend warning are visible in user-safe language.
+- Valid zero remains visible as zero; missing remains unavailable in every size-curve projection.
+
+### Dependencies
+
+- `RQ64`/`RQ71` own backend null and boolean evidence semantics.
+- `RQ145` owns broader parity; this prompt only repairs the size-curve panel state projection.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ173 - Add backend-owned actionability and safe copy to inventory signal snapshots
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: inventory-snapshot-safe-actionability
+Parallel-safe: no, snapshot rows need one actionability and reason vocabulary
+Owner: Codex
+Commit suggestion: `fix(inventory): harden snapshot signal actionability`
+
+### Problem
+
+Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs do not carry a shared backend-owned `recommendationAllowed`/status contract. The UI still renders confidence slots and raw signal/reason strings. An incomplete suggestion can therefore look operationally actionable, and internal codes can reach users.
+
+### Evidence
+
+- `InventoryAlertsFeed.tsx:77` renders a confidence slot even when `confidenceScore` is null, and `:83` renders raw `alertType`.
+- `RebalancingTable.tsx:98` renders `item.reason` directly; `RebalanceSuggestionDto` has no actionability/status field.
+- `InventoryAlertListDto`, `RebalanceSuggestionListDto` and `InventorySizeCurveListDto` only expose list warning text, not a shared row-level evidence/actionability contract.
+- Backend handlers correctly preserve null evidence and emit warnings, so the remaining defect is the boundary between preserved evidence and user-facing actionability/copy.
+
+### Scope
+
+- Alert and rebalance DTOs, handlers and their inventory panels; size-curve reason-code mapping only if it shares the same contract.
+- Backend-safe reason/status labels and `recommendationAllowed` semantics for snapshot rows.
+- Tests for no action/confidence display when evidence is insufficient; no formula rewrite or forecast/Shopify work.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ145`, `RQ147`, `RQ151`
+- `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
+- snapshot DTOs/handlers, `InventoryAlertsFeed.tsx`, `RebalancingTable.tsx`, inventory action tests and `InventorySnapshotContractTests.cs`
+
+### Do
+
+1. Add failing-first fixtures for complete actionable signal, null confidence, null expected impact, unknown reason, stale/partial warning and true zero impact.
+2. Define one backend-owned row state: status, recommendationAllowed, data quality and safe reason/label.
+3. Do not display confidence/reliability or executable/recommendation action when the backend denies actionability or evidence is unavailable.
+4. Map raw alert/reason codes to clear Serbian copy; keep technical codes only in an audit/debug channel.
+5. Reuse the same row payload in panel, detail, export and report where those consumers exist.
+
+### Tests
+
+- Backend DTO/handler tests for true zero versus null, stale/partial/fallback, unknown code and recommendationAllowed=false.
+- Frontend tests for no confidence slot/action on blocked rows, safe Serbian copy, empty/error distinction and parity with detail/export.
+- Theme tests for dark/light/soft-gray and no console warning/error assertions.
+- Focused backend/frontend tests, analytics guardrails, affected builds and `git diff --check`.
+
+### Acceptance
+
+- Backend owns row actionability, status, confidence eligibility and reason; frontend only presents them.
+- Blocked or incomplete snapshot rows cannot show a recommendation action or numeric confidence.
+- No raw backend code is user-facing.
+- Valid zero values remain valid zeros, while missing/unknown values stay unavailable.
+
+### Dependencies
+
+- `RQ143`/`RQ145` remain broad owners; this prompt is the bounded inventory snapshot slice.
+- `RQ64`-`RQ71` remain the completed nullable evidence foundation.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ174 - Do not mark supplier footwear data fresh from response generated time
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-footwear-freshness-state
+Parallel-safe: yes, bounded to supplier footwear freshness projection
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
+
+### Problem
+
+`SupplierFootwearAnalyticsPage` marks the screen `fresh` whenever `data.generatedAt` exists and no warning flag exists. That field proves a response was generated, not that the source data was refreshed successfully. The page can therefore show a fresh signal while `lastRefreshAtUtc` is unknown.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx:575-576` uses `data.generatedAt ? "fresh" : "unknown"` as a fallback.
+- `:655-656` repeats the same logic in the visible trust header.
+- `:575` separately passes `data.meta?.lastRefreshAtUtc`, so the freshness badge and last-refresh value can contradict each other.
+- The response is loaded through `vendorSalesNivelacijaApi.ts:207-221`; `generatedAt` belongs to the response payload, not a proven refresh-run record.
+
+### Scope
+
+- `SupplierFootwearAnalyticsPage.tsx`, vendor pre/post response metadata adapter and focused page tests.
+- Only freshness/refresh lineage and safe UI state; no trend, forecast, Shopify or pre/post formula changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ140`, `RQ141`, `RQ145`
+- `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
+- `SupplierFootwearAnalyticsPage.tsx`, `vendorSalesNivelacijaApi.ts`, pre/post metadata types and nearest specs
+
+### Do
+
+1. Add failing-first tests for known refresh, missing refresh, stale/partial response, fallback and response-only generated time.
+2. Use only proven `lastRefreshAtUtc`/freshness metadata for a `fresh` label; otherwise show `unknown` or the backend-declared degraded state.
+3. Keep `generatedAt` available as generation metadata but never use it as last refresh or freshness proof.
+4. Ensure embedded and standalone trust headers use the same state.
+
+### Tests
+
+- Focused page tests for fresh-with-refresh, generated-only-unknown, stale, partial, fallback and empty states.
+- Metadata parity test for header, table/detail snapshot and export/report if they consume the same payload.
+- Analytics guardrails, focused frontend test, build and `git diff --check`.
+
+### Acceptance
+
+- Supplier footwear cannot appear fresh solely because the HTTP response has a generated timestamp.
+- Missing refresh history is visibly unknown, not current time and not fresh.
+- Standalone and embedded surfaces agree on freshness and limitation state.
+
+### Dependencies
+
+- `RQ141` remains the broad lineage owner and `RQ140` the pre/post comparability owner.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ175 - Remove frontend reconstruction of backend-owned pre/post aggregate denominators
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: pre-post-aggregate-owner-parity
+Parallel-safe: no, pre/post aggregate denominator must have one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve pre-post aggregate owner parity`
+
+### Problem
+
+The pre/post vendor page uses a frontend fallback sum of absolute row changes when the backend total is unavailable, then uses that reconstructed value for shares, concentration cards, charts and export/table projections. This creates a second owner for a backend-owned aggregate and can diverge when rows are partial, filtered or not comparable.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:630-634` computes `rows.reduce((sum, item) => sum + Math.abs(item.changeRevenue), 0)` as a fallback.
+- `:646-649` derives row share from that frontend denominator.
+- The same denominator drives concentration/top-five calculations around `:733-745`, `:847-894` and `:942-963`, plus the table/export value around `:151-155`.
+- `Api/Endpoints/AllEndpoints.cs` already builds `VendorSalesNivelacijaTotalsDto.AbsoluteChangeRevenue` and vendor-level absolute values.
+
+### Scope
+
+- `ProdajaPrePostNivelacijePage.tsx`, pre/post trust adapter and affected focused specs.
+- Table/chart/detail/export parity for the absolute-change aggregate and share.
+- No change to causal comparability, coverage formula, backend recommendation score, forecast, trend or Shopify behavior.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ143`, `RQ145`, `RQ156`
+- `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
+- `ProdajaPrePostNivelacijePage.tsx`, `vendorSalesNivelacijaApi.ts`, `VendorSalesNivelacijaModels.cs`, `AllEndpoints.cs` and existing pre/post specs
+
+### Do
+
+1. Add failing-first parity fixtures where backend aggregate differs from a naive row sum because of partial/non-comparable rows, filters or rounding.
+2. Make the backend aggregate and row shares the single source of truth; if the authoritative field is absent, render unavailable rather than recompute business arithmetic in React.
+3. Keep valid zero aggregate distinct from missing aggregate.
+4. Prove the same state/value in KPI cards, table, chart, detail snapshot, export and report.
+5. Keep frontend sorting/display-only behavior separate from business aggregation.
+
+### Tests
+
+- Frontend tests for valid zero, null/missing aggregate, partial/non-comparable rows, rounding mismatch and non-finite values.
+- Table/chart/detail/export/report parity tests proving no consumer reintroduces the fallback sum.
+- Backend contract assertion that the authoritative aggregate is present or explicitly unavailable.
+- Analytics guardrails, focused frontend/backend tests, affected builds and `git diff --check`.
+
+### Acceptance
+
+- React never reconstructs the backend-owned absolute-change denominator or recommendation aggregate.
+- Missing backend aggregate is visible as unavailable, not a plausible locally recomputed number.
+- All pre/post consumers use one value/state and preserve valid zero.
+
+### Dependencies
+
+- `RQ140` owns comparable cohort and causal semantics; `RQ156` owns coverage unknown/zero; `RQ143` owns backend decision ownership; `RQ145` owns parity.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ171 - Add GMROI metric roadmap and prevent premature UI exposure
+
+Status: WAITING
+Priority: P2
+Type: frontend/contract/tests
+Feature family: analytics-metric-roadmap
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(analytics): add GMROI roadmap guard and test coverage`
+
+### Problem
+
+Repository contains a frontend TODO to add GMROI when the backend exposes a stable metric and DTO fields (`Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`). If the UI surfaces GMROI before backend contract stabilizes, visualizations or exports may show misleading or incomplete KPI values.
+
+### Evidence
+
+- `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts:497` contains a `TODO(analytics-methodology): Dodati GMROI` marker.
+- No active prompt currently covers GMROI introduction or a backend DTO contract rollout for GMROI in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`.
+
+### Scope
+
+- Frontend metric definitions and UI rendering guards (`Klijent/.../analyticsMetricDefinitions.ts`, `Klijent/clientapp/src/pages/*`).
+- Backend DTO contract for KPI fields (if/when proposed).
+- Tests for metric presence and graceful absence handling.
+
+### Do
+
+1. Add a guarded metric registration in `analyticsMetricDefinitions.ts` that only enables GMROI when the backend DTO explicitly exposes `gmroi` and `gmroi_basis` fields.
+2. Add focused unit and integration tests that confirm UI renders no GMROI card/column when backend DTO lacks fields, and renders correct formatted GMROI when DTO present.
+3. Draft a short acceptance checklist for backend owners to add the DTO fields before enabling the metric globally.
+
+### Tests
+
+- Frontend unit tests for metric definitions.
+- API contract test or mock that toggles `gmroi` fields.
+
+### Acceptance
+
+- UI must not display GMROI unless backend DTO provides explicit fields.
+- Tests must fail when UI attempts to render GMROI without DTO support.
+
+### Dependencies
+
+- Coordination with backend DTO owner and `REQ`/analytics roadmap owners.
+
+---
+
+## RQ172 - Hardening embedding parameterization and DB binding for similarity queries
+
+Status: WAITING
+Priority: P1
+Type: backend/security/tests
+Feature family: embedding-service-hardening
+Parallel-safe: no
+Owner: Platform
+
+Commit suggestion: `fix(embeddings): use proper pgvector param binding and avoid NpgsqlDbType.Unknown`
+
+### Problem
+
+Embedding code currently serializes embedding arrays into a string and binds them as `NpgsqlDbType.Unknown` when executing similarity queries (`Infrastructure/Services/EmbeddingService.cs`, `Api/Endpoints/AllEndpoints.cs`). This can cause runtime DB parameter type errors, parsing edge-cases, and injection/formatting issues across Postgres/vector operators. Mock/random embeddings are also used in some runtimes (`MockEmbeddingService`) which, if mis-configured, may leak into production.
+
+### Evidence
+
+- `Infrastructure/Services/EmbeddingService.cs` creates `embeddingStr = "[" + string.Join(",", embedding) + "]"` and binds with `NpgsqlDbType.Unknown`.
+- `Api/Endpoints/AllEndpoints.cs` contains a `TODO: Generate embedding vector when Python service is deployed`.
+- GenAI/embedding readiness prompts note mock service and quarantine work, but this specific DB-parameterization risk is not separately queued in analytics reliability prompts.
+
+### Scope
+
+- `Infrastructure/Services/EmbeddingService.cs`
+- `Api/Endpoints/AllEndpoints.cs` and any code paths that pass embedding parameters into SQL queries
+- Integration test that exercises similarity queries using pgvector and parameter binding
+
+### Do
+
+1. Replace ad-hoc string serialization with proper pgvector/JSONB binding using typed parameters or `NpgsqlDbType.Array`/custom mapping for vector types, or use `pgvector` parameterization utilities.
+2. Add integration tests that run the similarity SQL against a test Postgres (pgvector enabled) to assert query success and correct parameter typing.
+3. Confirm mock embedding service cannot be selected in production (validate runtime config and startup guards).
+
+### Tests
+
+- Integration test: generate a deterministic embedding, bind it as a typed parameter, run similarity query, assert rows and no DB type errors.
+- Startup test: ensure production config rejects `UseMock=true` or fails closed.
+
+### Acceptance
+
+- Similarity queries succeed without parameter type warnings or runtime failures locally and in CI integration (pgvector-enabled test).
+- Production startup does not accidentally use mock embeddings.
+
+### Dependencies
+
+- Coordination with DB/infra team for pgvector parameterization guidance.
+
