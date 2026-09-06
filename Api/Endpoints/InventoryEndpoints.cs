@@ -77,16 +77,18 @@ public static class InventoryEndpoints
             catch (Exception ex)
             {
                 logger.LogError(ex, "Inventory balance query failed.");
-                return Results.Ok(new InventoryBalanceDto(
-                    TotalSku: 0,
-                    TotalOnHand: 0,
-                    LowStockCount: 0,
-                    OutOfStockCount: 0,
-                    EstimatedInventoryValue: 0m,
-                    Meta: AnalyticsResponseMetaFactory.Error(
+                return Results.Ok(new
+                {
+                    TotalSku = (int?)null,
+                    TotalOnHand = (int?)null,
+                    LowStockCount = (int?)null,
+                    OutOfStockCount = (int?)null,
+                    EstimatedInventoryValue = (decimal?)null,
+                    Meta = AnalyticsResponseMetaFactory.Error(
                         "inventory_balance_error",
                         "Bilans zaliha trenutno nije dostupan.",
-                        correlationId)));
+                        correlationId)
+                });
             }
         })
         .WithName("GetInventoryBalance");

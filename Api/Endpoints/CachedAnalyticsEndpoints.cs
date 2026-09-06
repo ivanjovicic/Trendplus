@@ -155,11 +155,11 @@ public static class CachedAnalyticsEndpoints
                     ResolveCorrelationId(httpContext));
                 return Results.Ok(new
                 {
-                    TotalRevenue = 0m,
-                    TotalTransactions = 0,
-                    TotalUnits = 0,
-                    AvgBasketValue = 0m,
-                    AvgItemPrice = 0m,
+                    TotalRevenue = (decimal?)null,
+                    TotalTransactions = (int?)null,
+                    TotalUnits = (int?)null,
+                    AvgBasketValue = (decimal?)null,
+                    AvgItemPrice = (decimal?)null,
                     Meta = meta
                 });
             }
@@ -171,11 +171,11 @@ public static class CachedAnalyticsEndpoints
                     ResolveCorrelationId(httpContext));
                 return Results.Ok(new
                 {
-                    TotalRevenue = 0m,
-                    TotalTransactions = 0,
-                    TotalUnits = 0,
-                    AvgBasketValue = 0m,
-                    AvgItemPrice = 0m,
+                    TotalRevenue = (decimal?)null,
+                    TotalTransactions = (int?)null,
+                    TotalUnits = (int?)null,
+                    AvgBasketValue = (decimal?)null,
+                    AvgItemPrice = (decimal?)null,
                     Meta = meta
                 });
             }
@@ -187,11 +187,33 @@ public static class CachedAnalyticsEndpoints
                     ResolveCorrelationId(httpContext));
                 return Results.Ok(new
                 {
-                    TotalRevenue = 0m,
-                    TotalTransactions = 0,
-                    TotalUnits = 0,
-                    AvgBasketValue = 0m,
-                    AvgItemPrice = 0m,
+                    TotalRevenue = (decimal?)null,
+                    TotalTransactions = (int?)null,
+                    TotalUnits = (int?)null,
+                    AvgBasketValue = (decimal?)null,
+                    AvgItemPrice = (decimal?)null,
+                    Meta = meta
+                });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
+            }
+            catch (Exception ex)
+            {
+                var logger = loggerFactory.CreateLogger("CachedAnalyticsEndpoints");
+                logger.LogError(ex, "Unexpected error loading cached sales summary.");
+                var meta = AnalyticsResponseMetaFactory.Error(
+                    "analytics_sales_summary_error",
+                    "Prodajni sažetak trenutno nije dostupan.",
+                    ResolveCorrelationId(httpContext));
+                return Results.Ok(new
+                {
+                    TotalRevenue = (decimal?)null,
+                    TotalTransactions = (int?)null,
+                    TotalUnits = (int?)null,
+                    AvgBasketValue = (decimal?)null,
+                    AvgItemPrice = (decimal?)null,
                     Meta = meta
                 });
             }
@@ -516,16 +538,34 @@ public static class CachedAnalyticsEndpoints
             catch (NpgsqlException ex)
             {
                 logger.LogWarning(ex, "Cached inventory balance query failed due to database issue.");
-                return Results.Ok(new InventoryBalanceDto(
-                    0, 0, 0, 0, 0m,
-                    AnalyticsResponseMetaFactory.Error("inventory_cached_balance_db_error", "Zalihe trenutno nisu dostupne.", correlationId)));
+                return Results.Ok(new
+                {
+                    TotalSku = (int?)null,
+                    TotalOnHand = (int?)null,
+                    LowStockCount = (int?)null,
+                    OutOfStockCount = (int?)null,
+                    EstimatedInventoryValue = (decimal?)null,
+                    Meta = AnalyticsResponseMetaFactory.Error(
+                        "inventory_cached_balance_db_error",
+                        "Zalihe trenutno nisu dostupne.",
+                        correlationId)
+                });
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Unexpected error loading cached inventory balance.");
-                return Results.Ok(new InventoryBalanceDto(
-                    0, 0, 0, 0, 0m,
-                    AnalyticsResponseMetaFactory.Error("inventory_cached_balance_error", "Neocekivana greska pri ucitavanju zaliha.", correlationId)));
+                return Results.Ok(new
+                {
+                    TotalSku = (int?)null,
+                    TotalOnHand = (int?)null,
+                    LowStockCount = (int?)null,
+                    OutOfStockCount = (int?)null,
+                    EstimatedInventoryValue = (decimal?)null,
+                    Meta = AnalyticsResponseMetaFactory.Error(
+                        "inventory_cached_balance_error",
+                        "Neocekivana greska pri ucitavanju zaliha.",
+                        correlationId)
+                });
             }
         });
 

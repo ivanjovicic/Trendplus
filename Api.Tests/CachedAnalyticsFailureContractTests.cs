@@ -16,16 +16,44 @@ namespace Api.Tests;
 public sealed class CachedAnalyticsFailureContractTests
 {
     [Fact]
+    public async Task SalesSummary_UnexpectedFailureReturnsUnavailableKpis()
+    {
+        await using var factory = new FailureFactory(new InvalidOperationException("sales summary failed"));
+        var root = await GetJsonAsync(factory, "/api/analytics/cached/sales/summary?storeId=4", "failure-sales-summary");
+
+        AssertJsonNull(root, "totalRevenue");
+        AssertJsonNull(root, "totalTransactions");
+        AssertJsonNull(root, "totalUnits");
+        AssertJsonNull(root, "avgBasketValue");
+        AssertJsonNull(root, "avgItemPrice");
+        AssertErrorMeta(root.GetProperty("meta"), "analytics_sales_summary_error", "failure-sales-summary");
+    }
+
+    [Fact]
+    public async Task SalesSummary_TimeoutReturnsUnavailableKpisWithTimeoutCode()
+    {
+        await using var factory = new FailureFactory(new TimeoutException("sales summary timeout"));
+        var root = await GetJsonAsync(factory, "/api/analytics/cached/sales/summary?storeId=4", "timeout-sales-summary");
+
+        AssertJsonNull(root, "totalRevenue");
+        AssertJsonNull(root, "totalTransactions");
+        AssertJsonNull(root, "totalUnits");
+        AssertJsonNull(root, "avgBasketValue");
+        AssertJsonNull(root, "avgItemPrice");
+        AssertErrorMeta(root.GetProperty("meta"), "sql_timeout", "timeout-sales-summary");
+    }
+
+    [Fact]
     public async Task InventoryBalance_UnexpectedFailureReturnsStableErrorPayload()
     {
         await using var factory = new FailureFactory(new InvalidOperationException("cache factory failed"));
         var root = await GetJsonAsync(factory, "/api/analytics/cached/inventory/balance?storeId=4", "failure-balance");
 
-        Assert.Equal(0, root.GetProperty("totalSku").GetInt32());
-        Assert.Equal(0, root.GetProperty("totalOnHand").GetInt32());
-        Assert.Equal(0, root.GetProperty("lowStockCount").GetInt32());
-        Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
-        Assert.Equal(0m, root.GetProperty("estimatedInventoryValue").GetDecimal());
+        AssertJsonNull(root, "totalSku");
+        AssertJsonNull(root, "totalOnHand");
+        AssertJsonNull(root, "lowStockCount");
+        AssertJsonNull(root, "outOfStockCount");
+        AssertJsonNull(root, "estimatedInventoryValue");
         AssertErrorMeta(root.GetProperty("meta"), "inventory_cached_balance_error", "failure-balance");
     }
 
@@ -96,6 +124,11 @@ public sealed class CachedAnalyticsFailureContractTests
         Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
         Assert.False(string.IsNullOrWhiteSpace(meta.GetProperty("errorMessage").GetString()));
         Assert.False(string.IsNullOrWhiteSpace(meta.GetProperty("message").GetString()));
+    }
+
+    private static void AssertJsonNull(JsonElement root, string propertyName)
+    {
+        Assert.Equal(JsonValueKind.Null, root.GetProperty(propertyName).ValueKind);
     }
 
     private static async Task<JsonElement> GetJsonAsync(

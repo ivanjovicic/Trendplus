@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ167
+Current READY prompt: RQ168
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -99,8 +99,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ164 | DONE | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | DONE | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
 | RQ166 | DONE | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
-| RQ167 | READY | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
-| RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
+| RQ167 | DONE | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
+| RQ168 | READY | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
@@ -5483,7 +5483,7 @@ Evidence state: synchronized
 - Reversed input returns `invalid_period`, empty timelines and error meta/export with requested dates preserved.
 - Equal from/to remains a valid one-day window.
 - Focused timeline filter/export tests: 14 passed.
-- Next READY: RQ167.
+- Next READY: RQ168.
 
 ### Problem
 
@@ -5540,12 +5540,14 @@ Do not alter action outcome measurement, recommendation ownership, forecast/tren
 
 ## RQ167 - Do not serialize failed sales/inventory KPI responses as valid-looking zero values
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/contract/tests
 Feature family: analytics-error-kpi-state
 Parallel-safe: no, error payload semantics must be consistent across core KPI consumers
 Owner: Codex
+StartedAtUtc: 2026-09-06T09:20:00Z
+CompletedAtUtc: 2026-09-06T09:55:00Z
 Commit suggestion: `fix(analytics): keep failed KPI payloads unavailable`
 
 ### Problem
@@ -5601,13 +5603,32 @@ Do not change successful empty-result semantics, recommendation scoring, trend/f
 
 - `RQ139` remains the shared numeric-state owner; this is the residual error-payload contract.
 - `RQ145` remains the cross-surface parity and safe-messaging owner.
-- Keep this prompt `WAITING` behind the single `READY` item.
+
+### Completion note
+
+- Date: 2026-09-06
+- Status: DONE
+- Completion: Failed sales-summary and inventory-balance KPI payloads now serialize numeric evidence as `null` instead of valid-looking zero values; unexpected sales failures return the stable error meta contract; cancellation remains an explicit `499`; successful empty sales data remains genuine zero with `empty` meta.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/InventoryEndpoints.cs`, `Api.Tests/CachedAnalyticsFailureContractTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-06-RQ167-evidence.md`
+- Contract/runtime behavior changed: yes, failure-only response representation changed from numeric zero to nullable unavailable KPI evidence; success and empty contracts were preserved.
+- Checks run: focused `CachedAnalyticsFailureContractTests` plus valid empty sales test, 8 passed; `git diff --check`, queue/agent/planning validators and backend build are recorded in the run log.
+- Checks not run: live provider database/schema/refresh proof, browser console/theme/chart/export/report smoke and frontend build; no frontend source changed in this backend-only prompt.
+- Run log: `.ai/runs/2026-09-06-RQ167-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct local `main`; no commit or push requested in this turn.
+- Main commit SHA: pending
+- Main verification: pending commit delivery; implementation is present in the current `main` working tree.
+- Missed: direct inventory failure injection and live missing-relation/refresh verification remain unexecuted by the available local test harness.
+- Follow-up: `RQ168` is the next READY prompt.
+- Residual risk: alternate consumers must honor `meta.success=false` and nullable failure KPI fields; live provider behavior still requires the runtime proof owned by the stabilization/live-gate work.
+- Next: claim and execute `RQ168` when selected.
+- Prompt defect / scope repair: the queue/roadmap pointer was stale (`RQ162` was described as current READY); repaired same-owner routing truth before claiming `RQ167`.
 
 ---
 
 ## RQ168 - Keep partial cost coverage out of confirmed top-product margin ranking
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/SQL/tests
 Feature family: top-products-margin-coverage
@@ -5669,7 +5690,7 @@ Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend
 
 - `RQ148` remains the broad financial-basis owner.
 - `RQ147` remains the metric evidence registry owner.
-- Keep this prompt `WAITING` behind the single `READY` item.
+- This is the single current `READY` item after completion of `RQ167`.
 
 ---
 
@@ -8541,5 +8562,402 @@ Analytics Details and the main Analytics Dashboard treat missing OOS and low-sto
 
 - `RQ204` remains the Analytics Details period/scope owner.
 - `RQ154`/`RQ161` remain numeric/trend state owners for their respective families.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ243 - Preserve unknown supplier footwear data-quality evidence in fallback responses
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/frontend/tests
+Feature family: supplier-footwear-nivelacija-quality-state
+Parallel-safe: no, shares the supplier footwear pre/post response and trust projection
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve supplier footwear quality unknown state`
+
+### Problem
+
+The supplier footwear pre/post endpoint uses a non-null data-quality DTO and constructs a default DTO in schema/database fallback mode. The frontend then reads the default fields as measured zeroes, builds a numeric trust summary and copies those values into toolbar/export metadata. A fallback or missing data-quality snapshot can therefore look like a measured low-confidence result instead of unknown/unavailable evidence.
+
+### Evidence
+
+- `Api/Models/VendorSalesNivelacijaModels.cs:112-124` declares all `VendorSalesNivelacijaDataQualityDto` counters and `AnalyzedSharePercent` as non-null numeric values.
+- `Api/Endpoints/AllEndpoints.cs:6760-6765` creates `DataQuality = new VendorSalesNivelacijaDataQualityDto()` in the fallback response, leaving every field at zero.
+- `Api/Endpoints/AllEndpoints.cs:3237-3249` and `:4098-4112` use that fallback for missing view/schema and database failure paths while returning a user-visible fallback/meta warning.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:795-807` coalesces the data-quality values to zero and constructs the trust-detail string.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:811-830` classifies that substituted share as low/medium/high trust; it has no separate unknown branch for missing data-quality evidence.
+- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:1037-1060` carries the same values and trust label into table/export metadata.
+- `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx` covers complete and insufficient fixtures but does not cover omitted/null data-quality fields in a fallback/partial response, or toolbar/export parity for that state.
+
+### Scope
+
+- `VendorSalesNivelacijaDataQualityDto`, fallback/meta mapping and the supplier footwear API adapter only as needed to preserve unknown versus measured zero.
+- `ProdajaPrePostNivelacijePage.tsx`, `vendorSalesNivelacijaApi.ts` and nearest supplier footwear tests.
+- Trust summary, data-quality counters and export/table metadata for this surface.
+- No redesign of pre/post formulas, denominator reconstruction, freshness or recommendation ranking.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ156`, `RQ179`, `RQ180`, `RQ182`
+- `VendorSalesNivelacijaModels.cs`, `AllEndpoints.cs`, `vendorSalesNivelacijaApi.ts`, `ProdajaPrePostNivelacijePage.tsx` and `SupplierFootwearAnalyticsPage.spec.tsx`
+
+### Do
+
+1. Add failing-first contract tests proving that successful measured zero counters remain zero, while fallback, omitted, null, partial and non-finite data-quality evidence remains unknown/unavailable.
+2. Preserve an explicit evidence state or nullable fields across backend DTO, JSON adapter, page trust summary and export metadata; do not infer trust from default constructor zeroes.
+3. Keep successful empty data distinct from schema/database fallback. A valid empty result may expose measured zero counts only when the response proves the query completed and the denominator semantics are known.
+4. Ensure missing quality evidence cannot produce a numeric trust classification, confidence/reliability claim or actionable recommendation. Keep fallback/error warning visible with user-safe Serbian text.
+5. Verify the same quality state in trust header, table/detail view, export and print/report projection.
+
+### Tests
+
+- Backend fallback/serialization tests for missing relation or migration, successful empty, complete measured zero, null/omitted fields, partial payload and non-finite numeric input where the serializer/adapter accepts it.
+- Frontend supplier footwear tests for measured zero, missing/null quality fields, fallback warning, `recommendationAllowed=false`, table/detail/export parity and no fake trust classification.
+- Focused checks for dark/light/soft-gray themes and no console warning/error output where supported.
+- `node scripts/check-prompt-queues.mjs`, nearest backend/frontend tests, analytics guardrails and frontend build.
+
+### Acceptance
+
+- Fallback or incomplete supplier footwear data-quality evidence is never rendered as measured zero counters or a numeric trust level.
+- A genuine finite zero with a successful, known data-quality computation remains a genuine zero.
+- Unknown/partial/fallback state is visible and consistent across page, table, detail, export and report/print metadata.
+- Recommendation and pre/post formula ownership remains unchanged; no action is exposed when backend actionability is false.
+
+### Dependencies
+
+- `RQ156`/`RQ182` remain owners of pre/post coverage and backend unknown aggregate semantics.
+- `RQ180` remains the owner of frontend denominator reconstruction; do not merge this prompt into formula work.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ244 - Do not treat an outcome measurement timestamp as proof
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: analytics-actions-outcome-evidence-proof
+Parallel-safe: yes, bounded to read-side outcome evidence presentation
+Owner: Codex
+Commit suggestion: `fix(analytics): require outcome evidence before confirmation`
+
+### Problem
+
+The Analytics Actions read-side helper treats `outcomeMeasuredAtUtc` alone as confirmed outcome evidence. A legacy or partial payload with a qualitative outcome status and a timestamp but without `impactLedger.derived.hasEvidence`, `evidenceSource` or measured impact can therefore bypass the warning and read as a confirmed measured outcome. A timestamp records when a value was entered; it does not prove the source or the measured value.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:416-432` returns `true` from `hasConfirmedOutcomeEvidence` when `measuredImpactRsd != null || outcomeMeasuredAtUtc`, even if evidence source and ledger evidence are absent.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:447-464` suppresses the qualitative-without-proof warning when the timestamp is present and later states that the measured outcome is recorded.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:1371-1377` displays date, measured impact and evidence source as separate fields, so the current boolean conflates provenance and measurement.
+- `Api/Endpoints/AnalyticsActionsEndpoints.cs:326-333` requires `evidenceSource` for newly written success/neutral/negative outcomes, but this does not sanitize legacy/partial read payloads.
+- Existing `AnalyticsActionsPage.spec.tsx:691-741` tests a status with no timestamp and no proof, but not the timestamp-only legacy case.
+
+### Scope
+
+- Read-side outcome evidence classification in `AnalyticsActionsPage.tsx`, its API/type adapter if required, and nearest action outcome tests.
+- Outcome detail, table/list status messaging and any action outcome export/report projection that reuses this proof state.
+- No rewrite of the already-owned RQ82-RQ86 denominator contract or write authorization rules.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ82`, `RQ83`, `RQ84`, `RQ86`, `RQ87`, `RQ93`
+- `AnalyticsActionsPage.tsx`, `AnalyticsActionsPage.spec.tsx`, `analytics.ts`, `AnalyticsActionsEndpoints.cs` and `AnalyticsActionItemService.cs`
+
+### Do
+
+1. Add failing-first tests for timestamp-only, evidence-source-only qualitative, valid measured zero plus source, missing/null impact, `NaN`/`Infinity`, pending and not-measured outcomes.
+2. Separate measurement date from proof status. A timestamp alone must remain unconfirmed; a valid evidence source may support a qualitative outcome, while numeric impact requires a finite measured value and the existing contract.
+3. Keep the warning and unavailable measured-impact state visible when proof is incomplete. Never display a measured/confirmed label, confidence or reliability claim solely because a timestamp exists.
+4. Ensure list, detail, export and report use the same backend/read-model evidence state and do not reimplement a contradictory local decision.
+
+### Tests
+
+- Focused Analytics Actions tests for all evidence permutations above, including a genuine measured `0` that remains valid and timestamp-only data that remains unknown.
+- Action outcome summary/detail/export parity and no fake confirmed outcome assertions.
+- Existing RQ82-RQ86 denominator tests remain green; no change to empty/error semantics.
+- Analytics guardrails, frontend build, and no console warning/error assertions where supported.
+
+### Acceptance
+
+- `outcomeMeasuredAtUtc` alone never makes an outcome confirmed or measured.
+- A valid measured zero is preserved only when its evidence basis is valid; missing/unknown/non-finite values remain unavailable.
+- User-facing copy distinguishes date of entry, qualitative evidence and numeric measured impact.
+- No frontend decision, score, confidence or recommendation is derived differently from the backend contract.
+
+### Dependencies
+
+- `RQ86`/`RQ87` remain owners of write-side evidence requirements and ledger shape.
+- `RQ82`/`RQ83`/`RQ84` remain owners of action outcome denominator and measured-impact sample semantics.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ245 - Map unknown Analytics Actions metadata to safe user labels
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-actions-metadata-label-safety
+Parallel-safe: yes, bounded to user-facing action metadata formatting
+Owner: Codex
+Commit suggestion: `fix(analytics): hide raw action metadata codes`
+
+### Problem
+
+Analytics Actions has maps for known freshness, confidence, action-code, source-module and recommendation-type values, but the fallback for an unknown value returns the backend string with underscores replaced by spaces. New, malformed or legacy enum values can therefore appear as raw backend codes in the page and any projection that reuses the formatter, violating the user-facing error/text contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:359-362` returns an unmapped action code after replacing underscores.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:365-376` does the same for unknown source module and freshness values.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:379-387` does the same for unknown confidence and recommendation type values.
+- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:1388-1428` renders freshness, confidence and source module in user-visible decision/evidence details.
+- Existing `AnalyticsActionsPage.spec.tsx:838-847` protects unknown warning-code text, but no equivalent test covers unknown action metadata formatters or export/print output.
+
+### Scope
+
+- `AnalyticsActionsPage.tsx`, shared action metadata label utility only if extraction is needed, and nearest action tests.
+- User-facing list/detail/table/export/print/report labels for unknown metadata.
+- No change to backend enum values, recommendation status, confidence calculation or freshness calculation.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ178`, `RQ86`, `RQ154`
+- `AnalyticsActionsPage.tsx`, `AnalyticsActionsPage.spec.tsx`, `analytics.ts`, action export/print projection and existing label helpers
+
+### Do
+
+1. Add failing-first tests for unknown freshness, confidence, action code, source module and recommendation type values, including empty/null values and known values.
+2. Map unknown values to clear Serbian labels such as `Nepoznato` or `Nije mapirano`; never render the raw backend token in user-facing text.
+3. Preserve diagnostics through the proper non-user log/evidence channel if operators need the original token; do not put the raw token in visible analytics content.
+4. Verify table, detail, export, print and report projections use the same safe label policy without changing known labels or actionability.
+
+### Tests
+
+- Focused formatter/UI tests for known, unknown, null, empty, legacy and malformed metadata values.
+- Export/print/table/detail parity tests and dark/light/soft-gray theme smoke checks.
+- No raw backend token assertions, no console warning/error assertions where supported, analytics guardrails and frontend build.
+
+### Acceptance
+
+- No unknown backend action metadata value is displayed as a raw code or underscore-normalized token to users.
+- Known Serbian labels and established legacy mappings remain unchanged.
+- Unknown metadata remains visibly unknown without fabricating freshness, confidence, recommendation or data quality.
+- Export and report surfaces follow the same safe presentation policy as the page.
+
+### Dependencies
+
+- `RQ178` remains the Inventory-specific reason/alert code owner; this prompt covers Analytics Actions metadata.
+- Backend remains the source of truth for actionability and scores.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ246 - Do not synthesize Pilot Intake preview period or provenance from current time
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: pilot-intake-preview-provenance
+Parallel-safe: yes, bounded to the legacy browser-preview adapter
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve pilot preview provenance`
+
+### Problem
+
+The legacy browser-preview adapter for Pilot Intake creates a durable-shaped report even when the temporary table payload has no period or generation metadata. It substitutes the current browser time for `generatedAtUtc`, `period.fromUtc` and `period.toUtc`. A user can therefore see a report whose period and provenance look measured although neither came from the request, the saved preview payload or the backend.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/PilotIntakeReportPage.tsx:83-84` resolves preview period from query/metadata and correctly reaches `null` when both are absent.
+- `PilotIntakeReportPage.tsx:102` then uses `new Date().toISOString()` as `generatedAtUtc`.
+- `PilotIntakeReportPage.tsx:105-108` uses the current time again for missing `period.fromUtc` and `period.toUtc`.
+- `PilotIntakeReportPage.tsx:177-184` routes explicit browser previews through this compatibility adapter, while `:301-307` already distinguishes an expired preview from a valid snapshot.
+- `Klijent/clientapp/src/pages/__tests__/PilotIntakeReportPage.spec.tsx` covers durable reload, missing explicit preview and stale state keys, but has no legacy payload with missing period/generation metadata.
+- Git history shows the fallback was introduced by `8006a4a6f` in the legacy adapter; later durability changes did not remove the current-time substitution.
+- `RQ170` owns backend invalid/absent Pilot Intake request-period resolution. This prompt is only the local compatibility/preview provenance boundary and must not duplicate that backend decision.
+
+### Scope
+
+- `PilotIntakeReportPage.tsx` legacy payload mapping and browser-preview rendering.
+- Preview period/generation/refresh metadata, stable query link, table/export/print projections and the nearest page tests.
+- No backend period resolver, refresh worker, durable report schema, recommendation or score change.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ141`, `RQ145`, `RQ170`, `RQ239`
+- `PilotIntakeReportPage.tsx`, `PilotIntakeReportPage.spec.tsx`, `analyticsTableState` and durable report types
+
+### Do
+
+1. Add failing-first fixtures for explicit query period, metadata period, both sources absent, explicit generated/refresh timestamps and a valid empty preview.
+2. Remove current-time substitution from period and provenance fields. Use only an explicit query/metadata/snapshot value; otherwise represent the value as unavailable/unknown.
+3. Keep requested/effective/observed period separate and preserve the expired-preview state; missing metadata must not become a successful current-period report.
+4. Ensure table, chart/detail if present, CSV/server export and print/report metadata use the same unknown state and do not reintroduce `new Date()`.
+5. Keep backend-owned actionability and quality state unchanged; a legacy preview with missing trust metadata must not become actionable.
+
+### Tests
+
+- Focused `PilotIntakeReportPage` tests for query-vs-metadata precedence, absent period/generation/refresh metadata, valid empty payload, fallback and expired preview.
+- Export/print/stable-link parity and clear user-facing unknown-period/provenance copy.
+- No current-time freshness assertion, no console warning/error assertion where supported, analytics guardrails and frontend validation.
+
+### Acceptance
+
+- Missing legacy-preview period or provenance never becomes the current browser time.
+- Explicit query/metadata values are preserved exactly and remain separate from generation/refresh timestamps.
+- Empty valid preview, expired preview and backend/error states remain distinct.
+- Preview, table, export and report surfaces show the same period/provenance state.
+
+### Dependencies
+
+- `RQ170` remains the backend Pilot Intake request-period owner.
+- `RQ239` remains the Executive Decision Board fallback-provenance owner.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ247 - Map Pilot Intake import status and scope to safe user-facing labels
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: pilot-intake-import-metadata-labels
+Parallel-safe: yes, bounded to Pilot Intake readiness/report projections
+Owner: Codex
+Commit suggestion: `fix(analytics): map pilot import metadata labels`
+
+### Problem
+
+Pilot Intake readiness renders backend import metadata directly in the readiness card and CSV/export payload. Values such as `completed`, `failed`, `running`, `global` or future enum tokens are technical contract values, not clear user-facing Serbian explanations. This also makes card and export wording inconsistent with the existing safe status mapping used to determine readiness.
+
+### Evidence
+
+- `Klijent/clientapp/src/components/analytics/PilotImportReadinessCard.tsx:54-55` renders `report.lastImportStatus` and `report.lastImportScope` verbatim, with `unknown`/`-` only for missing values.
+- `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx:61` exports raw `report.readinessStatus`, while `:112-114` repeats raw readiness status and score in server-export rows.
+- `PilotDataQualityIntakeReport.tsx:157-158` exports raw `lastImportStatus` and `lastImportScope` in metadata.
+- `Klijent/clientapp/src/utils/pilotImportReadiness.ts:80-83` already normalizes the same values for business branching, but does not provide a shared display-label contract.
+- `Klijent/clientapp/src/components/analytics/__tests__/PilotImportReadinessCard.spec.tsx:82-99` asserts raw `completed` text and failed behavior, but does not assert safe Serbian labels or export parity.
+- Git history shows the direct rendering was introduced in `ad1d86bfd`; no later change added a user-safe label projection.
+- `RQ245` owns unknown metadata labels for Analytics Actions. This prompt is limited to Pilot Intake import/readiness metadata and must not reopen the Actions mapping.
+
+### Scope
+
+- `PilotImportReadinessCard.tsx`, `PilotDataQualityIntakeReport.tsx`, the shared Pilot Intake readiness label helper if extraction is needed, and nearest tests.
+- Import status, import scope and readiness-status presentation in card, report, CSV, PDF/XLSX export metadata and copied summary.
+- No change to backend import state, readiness calculation, data scope authority, recommendation status or refresh semantics.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ151`, `RQ170`, `RQ245`
+- Pilot Intake report types, readiness utility, card/report components and export payload builders
+
+### Do
+
+1. Add failing-first tests for known `completed`, `failed`, `running`, `partial`, `global`, missing/empty and unknown/future values.
+2. Map known values to clear Serbian labels and unknown values to `Nepoznato`/`Nije mapirano`; never expose raw backend tokens or underscore-normalized variants to users.
+3. Reuse the same display projection in readiness card, report, CSV/server-export metadata and copied summary; retain raw values only in a proper technical diagnostics channel if one exists.
+4. Preserve readiness branching and backend-owned decision semantics. A display-label change must not turn failed/partial/unknown import into ready.
+
+### Tests
+
+- Focused card/readiness utility tests for known, missing, unknown, partial and failed metadata.
+- Report/export/print/table parity tests and no raw-code assertions.
+- Empty, stale, fallback and error states remain distinct; dark/light/soft-gray theme and no-console checks where supported; analytics guardrails and frontend build.
+
+### Acceptance
+
+- Pilot Intake card, report and export never display raw import/readiness status or scope codes.
+- Known labels remain stable in Serbian; unknown values remain visibly unknown without fabricated success.
+- The displayed status/scope is identical across card, report, copied summary and export.
+- Backend readiness, recommendation and freshness ownership is unchanged.
+
+### Dependencies
+
+- `RQ245` remains the Analytics Actions metadata-label owner.
+- `RQ170` remains the backend Pilot Intake period/contract owner.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ248 - Preserve unknown and non-finite Pilot Intake impact percentages
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend-contract/tests
+Feature family: pilot-intake-impact-numeric-state
+Parallel-safe: no, Pilot Intake impact display and readiness warning logic share one numeric-state projection
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve unknown pilot intake impact metrics`
+
+### Problem
+
+Pilot Intake readiness treats `articlesWithoutSupplierPercent` as a guaranteed finite number and multiplies it directly by 100. At runtime, a partial/null payload becomes numeric zero through JavaScript coercion, while `NaN` or `Infinity` can reach the user-facing warning formatter. This confuses missing evidence with a measured zero and can make report/readiness messaging disagree with the underlying data quality state.
+
+### Evidence
+
+- `Klijent/clientapp/src/utils/pilotImportReadiness.ts:93-96` handles `revenueWithoutCostPercent` null explicitly but calculates `articlesWithoutSupplierPercent` with `Math.max(0, value * 100)` without null or finite validation.
+- `pilotImportReadiness.ts:113-118` uses those values to decide whether to emit impact warnings; `null * 100` can suppress the missing-supplier warning as if the share were zero, and non-finite values can be formatted.
+- `Klijent/clientapp/src/types/analytics.ts:953-958` declares `articlesWithoutSupplierPercent` as non-null even though API responses can be partial and the report is consumed at a runtime boundary.
+- `Api/Endpoints/DataQualityEndpoints.cs:634` emits `0d` whenever `totalArticles <= 0`, so empty/undefined denominator semantics must remain coordinated with the existing `RQ169` empty-readiness owner rather than being hidden in React.
+- `PilotDataQualityIntakeReport.tsx:80-81` and `:131-132` independently format the same impact fields for CSV/server export, so the readiness warning and export can diverge.
+- Existing `pilotImportReadiness.spec.ts` covers null revenue share and import status, but no test covers null/missing/non-finite supplier share or true zero with a positive denominator.
+
+### Scope
+
+- `pilotImportReadiness.ts`, Pilot Intake report/card impact projections, analytics types/adapters and nearest utility/report tests.
+- Optional backend DTO/meta extension only if the current contract cannot distinguish undefined denominator from measured zero; do not redesign the readiness score.
+- Impact percentage state and card/report/export parity only. No trend, forecast, Shopify or recommendation formula changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ144`, `RQ147`, `RQ169`, `RQ182`
+- `pilotImportReadiness.ts`, `PilotDataQualityIntakeReport.tsx`, `PilotImportReadinessCard.tsx`, analytics types and Data Quality endpoint DTO builder
+
+### Do
+
+1. Add failing-first fixtures for a valid positive denominator with true zero numerator, missing/null supplier share, `NaN`, `Infinity`, negative malformed value and empty intake.
+2. Validate finite numeric states before comparison, arithmetic or formatting; represent unknown/insufficient impact as unavailable and emit a clear limitation reason.
+3. Keep a genuine measured `0%` only when the backend supplies a valid denominator-backed zero; do not infer it from absent fields or empty intake.
+4. Route card, readiness reasons, report, CSV/server-export metadata and copied summary through one numeric-state projection.
+5. Keep recommendationAllowed and readiness decisions backend-owned; this prompt must not unlock recommendations from a frontend-normalized percentage.
+
+### Tests
+
+- Utility tests for null, missing, true zero, positive/negative finite, `NaN` and `Infinity` values.
+- Empty/partial/error report tests and card/report/export parity assertions.
+- Verify no `NaN`, `Infinity`, fake `0%` or fake healthy state reaches visible analytics output; run analytics guardrails and focused frontend validation.
+
+### Acceptance
+
+- Missing, unknown and non-finite impact percentages remain unavailable/insufficient, never valid zero or visible `NaN`/`Infinity`.
+- A backend-measured zero with a valid denominator remains visible as `0%`.
+- Readiness reasons, card, report and export agree on the same numeric state.
+- `RQ169` remains the owner of empty-intake readiness; no duplicate empty-data score policy is introduced.
+
+### Dependencies
+
+- `RQ169` owns empty-intake readiness score/status semantics.
+- `RQ144`/`RQ147` own health/evidence-tier semantics; this prompt hardens the Pilot Intake numeric presentation boundary.
 - Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
 
