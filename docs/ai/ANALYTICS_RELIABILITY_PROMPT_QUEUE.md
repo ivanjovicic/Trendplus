@@ -80,9 +80,9 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
 | RQ154 | DONE | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
 | RQ155 | DONE | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
-| RQ156 | IN_PROGRESS | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
+| RQ156 | DONE | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
 | RQ157 | DONE | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
-| RQ158 | READY | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
+| RQ158 | IN_PROGRESS | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
 | RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
@@ -4423,7 +4423,7 @@ Commit suggestion: `docs(analytics): map offline route lineage`
 
 ## RQ154 - Keep Daily Sales unknown numeric evidence unavailable
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: frontend/contract/tests
 Feature family: daily-sales-numeric-state
@@ -4608,7 +4608,7 @@ Do not change the backend trend formula, backend ordering contract, recommendati
 
 ## RQ156 - Keep unknown pre/post coverage distinct from measured zero
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: pre-post-coverage-unknown-state
@@ -4676,6 +4676,27 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 - `RQ140` remains the owner of causal comparability and backend pre/post semantics.
 - `RQ145` remains the owner of complete cross-surface parity.
 - `RQ146` and `STAB16` retain schema, migration, refresh and deployed-runtime proof.
+
+---
+
+### Completion note
+
+- Date: 2026-09-06
+- Status: DONE
+- Completion: Supplier revenue/units and Color/Shoe Type pre/post presentation now keep unknown, invalid and measured-zero coverage states distinct; non-finite impact values fail closed.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/PrePostCoveragePresentation.spec.tsx`, `.ai/runs/2026-09-06-RQ156-evidence.md`
+- Contract/runtime behavior changed: Presentation-only mapping now requires finite non-negative coverage; missing/null/NaN/Infinity/negative coverage renders unavailable, finite `0%` renders explicit measured zero coverage, and non-finite impact cannot be formatted as a decision metric. Backend formulas, recommendations, confidence/reliability and refresh behavior were not changed.
+- Checks run: `npm run test:run -- src/pages/__tests__/PrePostCoveragePresentation.spec.tsx src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx src/pages/__tests__/ColorSalesStatsPage.spec.tsx src/pages/__tests__/ColorSalesStatsPage.premium.spec.tsx src/pages/__tests__/ShoeTypeSalesStatsPage.premium.spec.tsx src/pages/ShoeTypeSalesStatsPage.spec.tsx` (35 passed); `npm run check:analytics-guardrails` (pass); `npm run build` (pass); `git diff --check` (pass).
+- Checks not run: Backend build/tests, live browser/console and deployed database/refresh proof were not run because RQ156 is explicitly frontend-only and those surfaces belong to RQ140/RQ146/STAB16.
+- Run log: `.ai/runs/2026-09-06-RQ156-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 7a3cc0401b0a3f0649a1d3cb7466ed2d7e2c1ec0
+- Main verification: local `main` contains the implementation commit; remote verification follows the queue/evidence metadata commit.
+- Missed: No export adapter is owned by these page helpers; broad table/chart/detail/export/report parity remains RQ145 scope.
+- Follow-up: RQ158 remains IN_PROGRESS under `local-session-ivan`; RQ145 owns broad parity and RQ146/STAB16 own runtime/schema/refresh proof.
+- Residual risk: Live deployed data and browser console behavior remain unverified outside this bounded frontend prompt.
+- Prompt defect / scope repair: Added direct helper exports solely to make the three presentation decisions regression-testable; no business logic was moved to the frontend.
 
 ---
 
@@ -4769,12 +4790,14 @@ Do not change frontend ranking, forecast logic, Shopify/vendor integrations or u
 
 ## RQ158 - Keep null inventory stock evidence unavailable
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: inventory-null-stock-state
 Parallel-safe: no, inventory status has one backend/frontend contract owner
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T08:18:00Z
 Commit suggestion: `fix(analytics): preserve null inventory stock state`
 
 ### Problem
