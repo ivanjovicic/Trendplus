@@ -6,8 +6,8 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Cursor
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: (set after push)
-Main verification: pending push
+Main commit SHA: a5c97d66
+Main verification: pushed to origin/main; SHA from `git rev-parse HEAD` after push
 Evidence state: synchronized
 Queue: claimed-as-RQ157 (was WAITING P0; promoted over RQ156 while RQ155 PARTIAL)
 
