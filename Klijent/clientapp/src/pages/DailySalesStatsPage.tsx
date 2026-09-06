@@ -29,6 +29,7 @@ import {
   getDailySalesStats,
   type DailySalesRow,
   type DailySalesTableResponse,
+  type DailySalesNumeric,
 } from "../services/dailySalesStatsApi";
 import type { StoreOption } from "../types/analytics";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
@@ -57,68 +58,68 @@ type ActiveFilters = {
 };
 
 type PeriodSummary = {
-  totalRevenue: number;
-  totalVisibleItems: number;
-  totalItemsInRange: number;
-  totalDays: number;
-  avgRevenuePerDay: number;
-  avgItemsPerDay: number;
-  avgRevenuePerItem: number;
-  firstShiftItems: number;
-  secondShiftItems: number;
-  firstShiftSharePct: number;
-  secondShiftSharePct: number;
-  offShiftItems: number;
-  offShiftRevenue: number;
-  offShiftSharePct: number;
+  totalRevenue: number | null;
+  totalVisibleItems: number | null;
+  totalItemsInRange: number | null;
+  totalDays: number | null;
+  avgRevenuePerDay: number | null;
+  avgItemsPerDay: number | null;
+  avgRevenuePerItem: number | null;
+  firstShiftItems: number | null;
+  secondShiftItems: number | null;
+  firstShiftSharePct: number | null;
+  secondShiftSharePct: number | null;
+  offShiftItems: number | null;
+  offShiftRevenue: number | null;
+  offShiftSharePct: number | null;
   unknownSupplierPct: number | null;
-  uniqueSuppliersInRange: number;
+  uniqueSuppliersInRange: number | null;
 };
 
 type ComparisonCard = {
   key: string;
   label: string;
-  currentValue: number;
-  previousValue: number;
+  currentValue: number | null;
+  previousValue: number | null;
   deltaPct: number | null;
-  formatter: (value: number) => string;
+  formatter: (value: DailySalesNumeric) => string;
 };
 
 type TrendPoint = {
   date: string;
   label: string;
   fullLabel: string;
-  totalRevenue: number;
-  totalItemsSold: number;
-  ma7Revenue: number;
-  ma7Items: number;
+  totalRevenue: number | null;
+  totalItemsSold: number | null;
+  ma7Revenue: number | null;
+  ma7Items: number | null;
 };
 
 type ShiftMixPoint = {
   date: string;
   label: string;
   fullLabel: string;
-  firstShiftTotalItems: number;
-  secondShiftTotalItems: number;
-  totalItemsSold: number;
+  firstShiftTotalItems: number | null;
+  secondShiftTotalItems: number | null;
+  totalItemsSold: number | null;
 };
 
 type SupplierConcentrationPoint = {
   supplierName: string;
   displayName: string;
-  totalQty: number;
-  totalRevenue: number;
-  qtySharePct: number;
-  revenueSharePct: number;
-  cumulativeQtySharePct: number;
+  totalQty: number | null;
+  totalRevenue: number | null;
+  qtySharePct: number | null;
+  revenueSharePct: number | null;
+  cumulativeQtySharePct: number | null;
 };
 
 type WeekdayPoint = {
   weekday: number;
   dayName: string;
-  avgRevenue: number;
-  avgItems: number;
-  firstShiftSharePct: number;
+  avgRevenue: number | null;
+  avgItems: number | null;
+  firstShiftSharePct: number | null;
   dayCount: number;
 };
 
@@ -133,10 +134,10 @@ type InsightCard = {
 type AnomalyPoint = {
   date: string;
   label: string;
-  revenue: number;
-  items: number;
+  revenue: number | null;
+  items: number | null;
   deviationPct: number | null;
-  deviationValue: number;
+  deviationValue: number | null;
 };
 
 const DEFAULT_TOP_N = 15;
@@ -183,12 +184,18 @@ function buildStoreLabel(store: StoreOption): string {
   return extras ? `${store.storeName} (${extras})` : store.storeName;
 }
 
-function fmtNumber(value: number): string {
-  return value.toLocaleString("sr-RS");
+function finiteOrNull(value: DailySalesNumeric): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function fmtCompactNumber(value: number): string {
-  return COMPACT_NUMBER_FORMATTER.format(value);
+function fmtNumber(value: DailySalesNumeric): string {
+  const normalized = finiteOrNull(value);
+  return normalized == null ? "Nije dostupno" : normalized.toLocaleString("sr-RS");
+}
+
+function fmtCompactNumber(value: DailySalesNumeric): string {
+  const normalized = finiteOrNull(value);
+  return normalized == null ? "Nije dostupno" : COMPACT_NUMBER_FORMATTER.format(normalized);
 }
 
 function fmtDelta(deltaPct: number | null, currentValue: number, previousValue: number): string {
@@ -248,12 +255,17 @@ function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | 
   return <span className="sort-badge">{dir === "asc" ? up : down}</span>;
 }
 
-function sum(values: number[]): number {
-  return values.reduce((acc, value) => acc + value, 0);
+function sum(values: DailySalesNumeric[]): number | null {
+  const normalized = values.map(finiteOrNull);
+  if (normalized.length === 0 || normalized.some((value) => value == null)) return null;
+  return normalized.reduce((acc, value) => acc + (value as number), 0);
 }
 
 function hasMissingShiftSummary(row: DailySalesRow): boolean {
-  return row.totalItemsSold > 0 && row.firstShiftTotalItems === 0 && row.secondShiftTotalItems === 0;
+  return finiteOrNull(row.totalItemsSold) != null
+    && (row.totalItemsSold as number) > 0
+    && finiteOrNull(row.firstShiftTotalItems) === 0
+    && finiteOrNull(row.secondShiftTotalItems) === 0;
 }
 
 function shiftExportValue(row: DailySalesRow, shift: "first" | "second"): string | number {
@@ -267,8 +279,16 @@ function shiftDisplayValue(row: DailySalesRow, shift: "first" | "second"): strin
   return fmtNumber(value);
 }
 
-function safeDivide(value: number, total: number): number {
-  return total === 0 ? 0 : value / total;
+export function safeDivide(value: DailySalesNumeric, total: DailySalesNumeric): number | null {
+  const numerator = finiteOrNull(value);
+  const denominator = finiteOrNull(total);
+  if (numerator == null || denominator == null || denominator === 0) return null;
+  const result = numerator / denominator;
+  return Number.isFinite(result) ? result : null;
+}
+
+function percent(value: number | null): number | null {
+  return value == null ? null : value * 100;
 }
 
 function parseDateOnly(value: string): Date | null {
@@ -305,17 +325,23 @@ function getPreviousPeriodRange(filters: ActiveFilters): { fromDate: string; toD
   };
 }
 
-export function calculateDeltaPct(currentValue: number, previousValue: number): number | null {
-  if (previousValue === 0) {
-    return currentValue === 0 ? 0 : null;
+export function calculateDeltaPct(currentValue: DailySalesNumeric, previousValue: DailySalesNumeric): number | null {
+  const current = finiteOrNull(currentValue);
+  const previous = finiteOrNull(previousValue);
+  if (current == null || previous == null) return null;
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
   }
-  return ((currentValue - previousValue) / previousValue) * 100;
+  const result = ((current - previous) / previous) * 100;
+  return Number.isFinite(result) ? result : null;
 }
 
-export function calculateAnomalyDeviation(currentValue: number, baselineValue: number): { deviationValue: number; deviationPct: number | null } {
+export function calculateAnomalyDeviation(currentValue: DailySalesNumeric, baselineValue: DailySalesNumeric): { deviationValue: number | null; deviationPct: number | null } {
+  const current = finiteOrNull(currentValue);
+  const baseline = finiteOrNull(baselineValue);
   return {
-    deviationValue: currentValue - baselineValue,
-    deviationPct: calculateDeltaPct(currentValue, baselineValue),
+    deviationValue: current == null || baseline == null ? null : current - baseline,
+    deviationPct: calculateDeltaPct(current, baseline),
   };
 }
 
@@ -324,24 +350,27 @@ function truncateLabel(value: string, maxLength = 18): string {
   return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
-function buildRollingAverage(rows: DailySalesRow[], index: number, accessor: (row: DailySalesRow) => number, windowSize = 7): number {
+export function buildRollingAverage(rows: DailySalesRow[], index: number, accessor: (row: DailySalesRow) => DailySalesNumeric, windowSize = 7): number | null {
   const start = Math.max(0, index - (windowSize - 1));
   const slice = rows.slice(start, index + 1);
-  if (slice.length === 0) return 0;
-  return slice.reduce((acc, row) => acc + accessor(row), 0) / slice.length;
+  if (slice.length === 0) return null;
+  const values = slice.map((row) => finiteOrNull(accessor(row)));
+  if (values.some((value) => value == null)) return null;
+  const result = values.reduce((acc, value) => acc + (value as number), 0) / values.length;
+  return Number.isFinite(result) ? result : null;
 }
 
-function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummary {
+export function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummary {
   const rows = response?.dateRows ?? [];
-  const totalRevenue = rows.reduce((acc, row) => acc + row.totalRevenue, 0);
-  const totalVisibleItems = rows.reduce((acc, row) => acc + row.totalItemsSold, 0);
-  const totalItemsInRange = response?.metadata.totalItemsInRange ?? totalVisibleItems;
-  const totalDays = response?.metadata.totalDays ?? rows.length;
-  const firstShiftItems = rows.reduce((acc, row) => acc + row.firstShiftTotalItems, 0);
-  const secondShiftItems = rows.reduce((acc, row) => acc + row.secondShiftTotalItems, 0);
-  const shiftAccountedItems = firstShiftItems + secondShiftItems;
-  const offShiftItems = response?.metadata.offShiftItems ?? 0;
-  const offShiftRevenue = response?.metadata.offShiftRevenue ?? 0;
+  const totalRevenue = sum(rows.map((row) => row.totalRevenue));
+  const totalVisibleItems = sum(rows.map((row) => row.totalItemsSold));
+  const totalItemsInRange = finiteOrNull(response?.metadata.totalItemsInRange) ?? totalVisibleItems;
+  const totalDays = finiteOrNull(response?.metadata.totalDays) ?? (rows.length > 0 ? rows.length : null);
+  const firstShiftItems = sum(rows.map((row) => row.firstShiftTotalItems));
+  const secondShiftItems = sum(rows.map((row) => row.secondShiftTotalItems));
+  const shiftAccountedItems = sum([firstShiftItems, secondShiftItems]);
+  const offShiftItems = finiteOrNull(response?.metadata.offShiftItems);
+  const offShiftRevenue = finiteOrNull(response?.metadata.offShiftRevenue);
 
   return {
     totalRevenue,
@@ -353,13 +382,13 @@ function summarizePeriod(response: DailySalesTableResponse | null): PeriodSummar
     avgRevenuePerItem: safeDivide(totalRevenue, totalVisibleItems),
     firstShiftItems,
     secondShiftItems,
-    firstShiftSharePct: safeDivide(firstShiftItems, shiftAccountedItems) * 100,
-    secondShiftSharePct: safeDivide(secondShiftItems, shiftAccountedItems) * 100,
+    firstShiftSharePct: percent(safeDivide(firstShiftItems, shiftAccountedItems)),
+    secondShiftSharePct: percent(safeDivide(secondShiftItems, shiftAccountedItems)),
     offShiftItems,
     offShiftRevenue,
-    offShiftSharePct: safeDivide(offShiftItems, totalItemsInRange) * 100,
-    unknownSupplierPct: response?.metadata.unknownSupplierPct ?? null,
-    uniqueSuppliersInRange: response?.metadata.uniqueSuppliersInRange ?? 0,
+    offShiftSharePct: percent(safeDivide(offShiftItems, totalItemsInRange)),
+    unknownSupplierPct: finiteOrNull(response?.metadata.unknownSupplierPct),
+    uniqueSuppliersInRange: finiteOrNull(response?.metadata.uniqueSuppliersInRange),
   };
 }
 

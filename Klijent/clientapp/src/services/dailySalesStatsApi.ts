@@ -1,45 +1,47 @@
 import { fetchAnalyticsJson } from "./analyticsHttp";
 import type { AnalyticsResponseMeta } from "../types/analytics";
 
+export type DailySalesNumeric = number | null | undefined;
+
 export interface DailySalesSupplierHeader {
   supplierId: number | null;
   supplierName: string;
   isUnknown: boolean;
-  totalQty: number;
-  totalRevenue: number;
+  totalQty: DailySalesNumeric;
+  totalRevenue: DailySalesNumeric;
 }
 
 export interface DailySalesRow {
   date: string;
-  firstShiftTotalItems: number;
-  secondShiftTotalItems: number;
-  totalRevenue: number;
-  topSupplierCounts: number[];
-  othersCount: number;
-  totalItemsSold: number;
+  firstShiftTotalItems: DailySalesNumeric;
+  secondShiftTotalItems: DailySalesNumeric;
+  totalRevenue: DailySalesNumeric;
+  topSupplierCounts: DailySalesNumeric[];
+  othersCount: DailySalesNumeric;
+  totalItemsSold: DailySalesNumeric;
 }
 
 export interface DailySalesMetadata {
-  totalDays: number;
-  uniqueSuppliersInRange: number;
-  unknownSupplierPct: number | null;
-  unknownSupplierItems: number;
-  offShiftItems: number;
-  offShiftRevenue: number;
-  totalItemsInRange: number;
-  duplicateReceiptGroupCount: number;
-  duplicateReceiptHeaderCount: number;
-  receiptAmountMismatchCount: number;
-  receiptAmountMismatchRevenue: number;
-  nonStandardReceiptCount: number;
-  nonStandardReceiptRevenue: number;
-  debtReceiptCount: number;
-  debtReceiptRevenue: number;
+  totalDays: DailySalesNumeric;
+  uniqueSuppliersInRange: DailySalesNumeric;
+  unknownSupplierPct: DailySalesNumeric;
+  unknownSupplierItems: DailySalesNumeric;
+  offShiftItems: DailySalesNumeric;
+  offShiftRevenue: DailySalesNumeric;
+  totalItemsInRange: DailySalesNumeric;
+  duplicateReceiptGroupCount: DailySalesNumeric;
+  duplicateReceiptHeaderCount: DailySalesNumeric;
+  receiptAmountMismatchCount: DailySalesNumeric;
+  receiptAmountMismatchRevenue: DailySalesNumeric;
+  nonStandardReceiptCount: DailySalesNumeric;
+  nonStandardReceiptRevenue: DailySalesNumeric;
+  debtReceiptCount: DailySalesNumeric;
+  debtReceiptRevenue: DailySalesNumeric;
   /** ISO 8601 date string — earliest sale date available in the whole dataset. Null if no data. */
   minAvailableDate: string | null;
   /** ISO 8601 date string — latest sale date available in the whole dataset. Null if no data. */
   maxAvailableDate: string | null;
-  warnings: string[];
+  warnings?: string[];
 }
 
 export interface DailySalesTableResponse {

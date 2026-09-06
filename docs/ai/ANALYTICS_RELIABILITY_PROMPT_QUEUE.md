@@ -78,7 +78,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
-| RQ154 | READY | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
+| RQ154 | IN_PROGRESS | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
 | RQ155 | WAITING | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
 | RQ156 | WAITING | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
 | RQ157 | WAITING | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
@@ -121,6 +121,26 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ206 | WAITING | refresh-run-status-accuracy | Partial nightly refresh treated as successful |
 | RQ207 | WAITING | refresh-failure-cache-safety | Failed refresh skips cache invalidation |
 | RQ208 | WAITING | period-timezone-boundary-safety | Dashboard per-day KPIs use local day count |
+| RQ209 | WAITING | database-migration-orchestration | Dual concurrent EF migration paths cause race condition |
+| RQ210 | WAITING | startup-readiness-gate | Startup init silently skipped after lock timeout |
+| RQ211 | WAITING | migration-sequencing | Parallel SQL migrations without ordering guarantees |
+| RQ212 | WAITING | migration-failure-safety | Migration failures swallowed; app runs on drifted schema |
+| RQ213 | WAITING | migration-reversibility | EF migration Down() drops fact tables without backup |
+| RQ214 | WAITING | seed-data-consistency | Seed sales created without decrementing stock |
+| RQ215 | WAITING | aggregation-worker-atomicity | Aggregate refresh delete+insert is non-transactional (P0) |
+| RQ216 | WAITING | aggregation-failure-cache-safety | Cache invalidated after partially failed aggregate refresh |
+| RQ217 | WAITING | outbox-concurrent-processing | Outbox worker has no row-level locking |
+| RQ218 | WAITING | import-retry-idempotency | Access import auto-retry requeues without rolling back |
+| RQ219 | WAITING | worker-process-health | Background worker crashes are silently ignored (P0) |
+| RQ220 | WAITING | outbox-dlq-observability | Outbox messages dead-lettered with no automatic surfacing |
+| RQ221 | WAITING | error-response-sanitization | Insight Studio endpoints return raw exception messages |
+| RQ222 | WAITING | aggregate-consistency | Daily vs dimensional aggregates disagree on orphan sales |
+| RQ223 | WAITING | import-data-completeness | SkipInvalidForeignKeys default silently drops orphan lines |
+| RQ224 | WAITING | analytics-db-routing-safety | Analytics DB connection silently falls back in production |
+| RQ225 | WAITING | feature-flag-safety | UseSnapshotCost feature flag toggles live without validation |
+| RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
+| RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
+| RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
 | RQ176 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -4403,7 +4423,7 @@ Commit suggestion: `docs(analytics): map offline route lineage`
 
 ## RQ154 - Keep Daily Sales unknown numeric evidence unavailable
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: frontend/contract/tests
 Feature family: daily-sales-numeric-state
@@ -7086,4 +7106,622 @@ Commit suggestion: `fix(dashboard): use UTC day count for per-day divisor`
 ### Acceptance
 
 - Revenue/day and Transactions/day divisors match backend period length.
+
+---
+
+## RQ209 - Dual concurrent EF migration paths cause race condition
+
+Status: WAITING
+Priority: P1
+Type: backend/infra/tests
+Feature family: database-migration-orchestration
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(db): coordinate EF migrations to prevent concurrent race`
+
+### Problem
+
+In Development, `Program.cs:997-1014` calls `Database.Migrate()` while `DeferredStartupTasksHostedService` later runs `DatabaseInitializer.MigrateAsync()`. Concurrent attempts cause duplicate-relation errors or partial schema state.
+
+### Evidence
+
+- `Program.cs:997-1014` (sync migrate at startup)
+- `DatabaseInitializer.cs:816` (async migrate in hosted service)
+
+### Do
+
+1. Remove sync migrate from Program.cs; rely only on DeferredStartupTasksHostedService.
+2. Or add a lock/gate to ensure only one migration runs.
+3. Add tests for startup with concurrent instance simulators.
+
+### Acceptance
+
+- Single migration runs per instance; no duplicate-table errors.
+
+---
+
+## RQ210 - Startup init silently skipped after lock timeout
+
+Status: WAITING
+Priority: P1
+Type: backend/infra
+Feature family: startup-readiness-gate
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(db): fail fast if startup lock cannot be acquired`
+
+### Problem
+
+If advisory startup lock not acquired within 120s, database init skipped with only warning. Instance serves traffic against unmigrated schema.
+
+### Evidence
+
+- `DatabaseInitializer.cs:53-58`.
+
+### Do
+
+1. If lock timeout, throw and fail startup hard instead of warning.
+2. Or extend timeout / retry with exponential backoff.
+
+### Acceptance
+
+- Unmigrated schemas cause startup failure, not silent skip.
+
+---
+
+## RQ211 - Parallel SQL migrations without ordering guarantees
+
+Status: WAITING
+Priority: P1
+Type: backend/infra
+Feature family: migration-sequencing
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(db): sequence critical migrations with proper dependencies`
+
+### Problem
+
+Migrations 012, 017, 019 run in parallel via `Task.WhenAll`; failures logged but swallowed. Partial view creation leaves dashboards slow/incomplete.
+
+### Evidence
+
+- `DatabaseInitializer.cs:838-866`.
+
+### Do
+
+1. Add explicit dependency checks between migrations.
+2. Fail hard on any migration error instead of swallowing.
+3. Add tests for migration order/dependency safety.
+
+### Acceptance
+
+- All migrations complete or startup fails; no partial state.
+
+---
+
+## RQ212 - Migration failures swallowed; app runs on drifted schema
+
+Status: WAITING
+Priority: P1
+Type: backend/infra
+Feature family: migration-failure-safety
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(db): fail on EF migration errors instead of continuing`
+
+### Problem
+
+EF migration exceptions logged as warnings; init continues with "self-heal" SQL. Production runs on schema diverged from migration history.
+
+### Evidence
+
+- `DatabaseInitializer.cs:819-833, 2105-2108`.
+
+### Do
+
+1. Throw on any EF migration error; don't continue.
+2. Remove "self-heal" fallback; let failure surface.
+
+### Acceptance
+
+- Migration errors prevent app startup; no drifted schema.
+
+---
+
+## RQ213 - EF migration Down() drops core analytics fact tables without backup
+
+Status: WAITING
+Priority: P1
+Type: backend/infra
+Feature family: migration-reversibility
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(migrations): archive or prevent irreversible rollbacks of fact tables`
+
+### Problem
+
+Rolling back SalesFacts migration drops both `SalesFacts` and `SalesLineFacts` with no archive. Mistaken rollback permanently destroys historical data.
+
+### Evidence
+
+- `20260110170000_AddSalesFacts.cs:84-90`.
+
+### Do
+
+1. Add archive/export step in `Down()`.
+2. Or prevent down-migration for fact tables via guards.
+
+### Acceptance
+
+- Core fact tables cannot be accidentally dropped without explicit backup.
+
+---
+
+## RQ214 - Seed sales created without decrementing stock
+
+Status: WAITING
+Priority: P2
+Type: backend/seed/tests
+Feature family: seed-data-consistency
+Parallel-safe: yes
+Owner: Data/Seeding
+
+Commit suggestion: `fix(seed): decrement article stock when creating seed sales`
+
+### Problem
+
+Seed creates up to 100 `SEED-*` sales from articles with `Kolicina > 0` but never updates `Artikli.Kolicina`.
+
+### Evidence
+
+- `TrendplusDbSeeder.cs:259-335`.
+
+### Do
+
+1. After each seed sale, decrement corresponding `Artikli.Kolicina`.
+2. Add tests verifying final stock matches sales generated.
+
+### Acceptance
+
+- Seed data is internally consistent (inventory + sales = reality).
+
+---
+
+## RQ215 - Aggregate refresh delete+insert is non-transactional (CRITICAL)
+
+Status: WAITING
+Priority: P0
+Type: backend/worker/tests
+Feature family: aggregation-worker-atomicity
+Parallel-safe: no
+Owner: Analytics Worker
+
+Commit suggestion: `fix(aggregation): wrap delete+insert in transaction`
+
+### Problem
+
+Category/Supplier/Gender/TopProducts refresh DELETEs a day's rows then INSERTs replacements in separate commands. If INSERT fails after DELETE, dashboards show zero/empty for that day.
+
+### Evidence
+
+- `AnalyticsAggregationWorker.cs:344-375, 387-420, 432-461, 474-508`.
+
+### Do
+
+1. Wrap DELETE + INSERT in single `BeginTransactionAsync()`.
+2. Retry entire transaction on failure.
+3. Add tests for mid-operation failure (DELETE succeeds, INSERT fails).
+
+### Tests
+
+- Simulate INSERT failure after DELETE → confirm transaction rolls back → data intact.
+
+### Acceptance
+
+- Aggregates are all-or-nothing; no partial deletions.
+
+---
+
+## RQ216 - Cache invalidated after partially failed aggregate refresh
+
+Status: WAITING
+Priority: P1
+Type: backend/worker/tests
+Feature family: aggregation-failure-cache-safety
+Parallel-safe: no
+Owner: Analytics Worker
+
+Commit suggestion: `fix(aggregation): only invalidate cache after all tables succeed`
+
+### Problem
+
+Per-table refresh failures are caught individually, but cache invalidation still runs after loop, causing misses followed by incomplete data.
+
+### Evidence
+
+- `AnalyticsAggregationWorker.cs:203-215, 215-218`.
+
+### Do
+
+1. Only call `InvalidateAggregateBackedCachesAsync` if all tables succeeded.
+2. Or add a "partial invalidation" state to warn UI.
+
+### Acceptance
+
+- Cache invalidated consistently with actual refresh success.
+
+---
+
+## RQ217 - Outbox worker has no row-level locking
+
+Status: WAITING
+Priority: P1
+Type: backend/worker/tests
+Feature family: outbox-concurrent-processing
+Parallel-safe: no
+Owner: Outbox/Worker
+
+Commit suggestion: `fix(outbox): add FOR UPDATE SKIP LOCKED to prevent duplicates`
+
+### Problem
+
+Messages fetched with plain SELECT, not `FOR UPDATE SKIP LOCKED`. Multiple instances process same event concurrently; `SalesLineFacts` has no unique constraint, so duplicate facts inflate revenue/units.
+
+### Evidence
+
+- `OutboxProcessorWorker.cs:168-172`.
+
+### Do
+
+1. Use `FOR UPDATE SKIP LOCKED` to claim rows atomically.
+2. Add unique constraint on `(SaleId, ProductId)` to prevent duplicates at DB level.
+3. Add tests for concurrent processing.
+
+### Tests
+
+- Two workers process same message concurrently → only one succeeds; no duplicate facts.
+
+### Acceptance
+
+- Outbox projection is idempotent across concurrent workers.
+
+---
+
+## RQ218 - Access import auto-retry requeues without rolling back
+
+Status: WAITING
+Priority: P1
+Type: backend/worker/tests
+Feature family: import-retry-idempotency
+Parallel-safe: no
+Owner: Import/Access
+
+Commit suggestion: `fix(import): compensate partial writes before retry`
+
+### Problem
+
+Failed batches reset to `pending` with progress zeroed but no rollback of partially imported rows. Retried imports duplicate sales/analytics facts.
+
+### Evidence
+
+- `AccessImportBackgroundWorker.cs:419-432`.
+
+### Do
+
+1. On failure, rollback/delete partial facts before requeuing.
+2. Or use batch-level transaction.
+3. Add idempotency check (detect+skip if re-imported).
+
+### Acceptance
+
+- Retried imports don't duplicate facts; data is consistent.
+
+---
+
+## RQ219 - Background worker crashes are silently ignored (CRITICAL)
+
+Status: WAITING
+Priority: P0
+Type: backend/infra/monitoring
+Feature family: worker-process-health
+Parallel-safe: no
+Owner: Infrastructure/Monitoring
+
+Commit suggestion: `fix(host): fail host on worker exception or add external monitoring`
+
+### Problem
+
+`BackgroundServiceExceptionBehavior = Ignore` means unhandled exceptions terminate workers permanently with no host failure or alert. Analytics go stale with no surface.
+
+### Evidence
+
+- `Program.cs:64-67`; `Trendplus2\Program.cs:47`.
+
+### Do
+
+1. Change to `BackgroundServiceExceptionBehavior = ThrowAndStop` or add exception handler that logs +alerts.
+2. Add external monitoring (e.g., health endpoint that checks worker status).
+3. Add tests for exception propagation.
+
+### Acceptance
+
+- Worker death is visible and causes app restart or alert.
+
+---
+
+## RQ220 - Outbox messages dead-lettered with no automatic surfacing
+
+Status: WAITING
+Priority: P1
+Type: backend/worker/monitoring
+Feature family: outbox-dlq-observability
+Parallel-safe: no
+Owner: Outbox/Monitoring
+
+Commit suggestion: `fix(outbox): surface dead-letter queue and enable auto-retry or alerts`
+
+### Problem
+
+Messages with `RetryCount >= 5` excluded forever; recovery requires manual `/api/outbox/retry-all-failed`. SLA mapper marks DLQ as "not instrumented."
+
+### Evidence
+
+- `OutboxProcessorWorker.cs:217-224`; `WorkerSlaEvidenceMapper.cs:13`.
+
+### Do
+
+1. Add background task to periodically alert on dead-lettered messages.
+2. Or implement exponential-backoff DLQ with eventual flush to error log.
+
+### Acceptance
+
+- Dead-letter queue is visible; operators can detect and fix stuck events.
+
+---
+
+## RQ221 - Insight Studio endpoints return raw exception messages
+
+Status: WAITING
+Priority: P2
+Type: backend/security
+Feature family: error-response-sanitization
+Parallel-safe: yes
+Owner: API/Security
+
+Commit suggestion: `fix(api): sanitize error responses in Insight Studio endpoints`
+
+### Problem
+
+Analytics endpoints return `Results.Problem(detail: ex.Message)` on failure. Postgres/SQL errors and table names can appear in API responses.
+
+### Evidence
+
+- `InsightStudioEndpoints.cs:137-140, 257, 336, 428, 532, 652, 756`.
+
+### Do
+
+1. Wrap exception details in `ProblemDetails` with generic message.
+2. Log full exception for diagnostics; expose only `statusCode` and reason to client.
+
+### Acceptance
+
+- No internal SQL errors or table names visible in API responses.
+
+---
+
+## RQ222 - Daily vs dimensional aggregates disagree on orphan sales lines
+
+Status: WAITING
+Priority: P1
+Type: backend/tests
+Feature family: aggregate-consistency
+Parallel-safe: no
+Owner: Analytics Worker
+
+Commit suggestion: `fix(aggregation): align join logic across daily and dimensional aggregates`
+
+### Problem
+
+`AnalyticsDailySummary` joins only headers/lines; category/supplier/gender INNER JOIN articles, excluding lines with missing products. Total revenue exceeds sum of breakdowns.
+
+### Evidence
+
+- `AnalyticsAggregationWorker.cs:311-312 vs 363-365`.
+
+### Do
+
+1. Use consistent join logic across all aggregates.
+2. Document whether orphan lines are included or excluded.
+3. Add tests proving total = sum of parts.
+
+### Acceptance
+
+- Dashboard total revenue = sum of category/supplier/gender breakdowns.
+
+---
+
+## RQ223 - Default SkipInvalidForeignKeys=true silently drops orphan import lines
+
+Status: WAITING
+Priority: P1
+Type: backend/import/tests
+Feature family: import-data-completeness
+Parallel-safe: no
+Owner: Import/Access
+
+Commit suggestion: `fix(import): make invalid-FK handling explicit and auditable`
+
+### Problem
+
+Access import skips `prodaja_stavke` rows with missing parent headers when default flag is true. Analytics appear successful while data is incomplete.
+
+### Evidence
+
+- `AccessImportOptions.cs:28`; `AccessImportService.cs:4769, 4896-4898`.
+
+### Do
+
+1. Default to `SkipInvalidForeignKeys=false` (fail on invalid FKs).
+2. Log count of skipped rows; fail import if count > 0.
+3. Add tests for orphan detection.
+
+### Acceptance
+
+- Invalid FKs cause import failure or explicit warning; no silent data loss.
+
+---
+
+## RQ224 - Analytics DB connection silently falls back in production
+
+Status: WAITING
+Priority: P1
+Type: backend/infra
+Feature family: analytics-db-routing-safety
+Parallel-safe: no
+Owner: Infrastructure
+
+Commit suggestion: `fix(config): fail startup if AnalyticsConnection missing in prod`
+
+### Problem
+
+Missing `AnalyticsConnection` falls back to `DefaultConnection` in non-dev. Staging/prod can query wrong database with no hard failure.
+
+### Evidence
+
+- `AnalyticsConnectionResolver.cs:71-87`.
+
+### Do
+
+1. In prod/staging, throw if `AnalyticsConnection` not configured.
+2. Or use explicit `IsProduction` check in fallback guard.
+
+### Acceptance
+
+- Wrong database configuration causes startup failure, not silent fallback.
+
+---
+
+## RQ225 - UseSnapshotCost feature flag toggles live without validation
+
+Status: WAITING
+Priority: P1
+Type: backend/config
+Feature family: feature-flag-safety
+Parallel-safe: no
+Owner: Config/Analytics
+
+Commit suggestion: `fix(config): validate snapshot-cost flag at startup or add runtime guards`
+
+### Problem
+
+Only `StorageOptions` validates at startup; snapshot cost flag read via `IOptionsMonitor.CurrentValue` with no validator. Flipping live switches margin calculations, causing KPI jumps.
+
+### Evidence
+
+- `AnalyticsSnapshotOptions.cs:7-9`; `AnalyticsCostSnapshotService.cs:408-410, 656`.
+
+### Do
+
+1. Add `ValidateOnStart` for snapshot cost options.
+2. Or add warning log when flag changes at runtime.
+
+### Acceptance
+
+- Snapshot cost flag is stable; changes require restart or explicit audit log.
+
+---
+
+## RQ226 - Invalid nightly refresh schedule silently defaults
+
+Status: WAITING
+Priority: P2
+Type: backend/config/worker
+Feature family: worker-schedule-safety
+Parallel-safe: yes
+Owner: Worker/Config
+
+Commit suggestion: `fix(config): fail or alert if nightly refresh schedule is malformed`
+
+### Problem
+
+Malformed `NightlyAnalyticsRefresh:RunAtUtc` values fall back to 00:10 UTC with no startup error. MV refreshes run at unintended times.
+
+### Evidence
+
+- `NightlyAnalyticsRefreshWorker.cs:794-802`; `WorkerRegistryService.cs:178-184`.
+
+### Do
+
+1. Add validation for `RunAtUtc` at startup.
+2. Log actual scheduled time to confirm intent.
+
+### Acceptance
+
+- Malformed refresh schedule causes startup failure or explicit audit trail.
+
+---
+
+## RQ227 - Batch delete proceeds after archive quota failure
+
+Status: WAITING
+Priority: P1
+Type: backend/operations
+Feature family: cleanup-safety-gates
+Parallel-safe: no
+Owner: Data/Operations
+
+Commit suggestion: `fix(cleanup): fail batch delete if archive quota exceeded`
+
+### Problem
+
+When archive insert fails (storage full), delete still proceeds. Irreversible data loss with no restore path.
+
+### Evidence
+
+- `AccessImportService.cs:3382-3386, 3771-3796, 3448-3457`.
+
+### Do
+
+1. If archive fails, halt delete; don't proceed.
+2. Or add explicit "force delete despite archive fail" flag requiring admin approval.
+
+### Acceptance
+
+- Data cleanup doesn't proceed without successful archive backup.
+
+---
+
+## RQ228 - Insight Studio v1/v2 period handling treats local dates as UTC
+
+Status: WAITING
+Priority: P1
+Type: backend/contract
+Feature family: period-timezone-contract-consistency
+Parallel-safe: no
+Owner: Insight Studio/Analytics
+
+Commit suggestion: `fix(api): align period parsing across Insight Studio v1/v2 and legacy endpoints`
+
+### Problem
+
+Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `DateTime.SpecifyKind(value, DateTimeKind.Utc)` without converting from local time. Clients sending local dates get shifted boundaries; KPIs differ between Insight Studio and legacy screens.
+
+### Evidence
+
+- `InsightStudioEndpoints.cs:32-37`; `InsightStudioV2Endpoints.cs:34-39`.
+
+### Do
+
+1. Normalize all period parsing (v1, v2, legacy) to use same timezone logic.
+2. Add explicit UTC vs local handling.
+3. Add contract tests proving consistency.
+
+### Acceptance
+
+- Same local date produces same KPIs across all endpoints.
 
