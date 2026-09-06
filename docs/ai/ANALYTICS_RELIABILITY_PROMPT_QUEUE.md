@@ -78,10 +78,10 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
-| RQ154 | IN_PROGRESS | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
-| RQ155 | WAITING | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
+| RQ154 | DONE | daily-sales-numeric-state | Keep Daily Sales missing, empty and non-finite chart/summary evidence unavailable instead of zero |
+| RQ155 | DONE | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
 | RQ156 | WAITING | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
-| RQ157 | WAITING | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
+| RQ157 | IN_PROGRESS | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
 | RQ158 | WAITING | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
 | RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
@@ -4497,11 +4497,30 @@ Do not change backend business formulas, recommendation scoring, cache/refresh b
 - `STAB16` remains the owner of deployed worker, live refresh and browser-console proof; this prompt must not infer those facts.
 - Do not promote forecast, Shopify, vendor comparison or recommendation-ranking work under this prompt.
 
+### Completion note
+
+- Date: 2026-09-06
+- Status: DONE
+- Completion: Daily Sales now preserves unknown, missing, insufficient and non-finite numeric evidence as unavailable across summaries, rolling averages, shares, anomaly selection, table/export adapters and chart tooltips; valid measured zero remains zero and a zero denominator remains unavailable.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/services/dailySalesStatsApi.ts`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-06-RQ154-evidence.md`.
+- Contract/runtime behavior changed: additive nullable Daily Sales DTO typing and page-owned state-preserving rendering/calculation only. Backend formulas, recommendation status, confidence, cache/refresh and SQL were not changed.
+- Checks run: focused Daily Sales tests passed 12/12; `npm run check:analytics-guardrails` passed; `npm run typecheck` passed; `npm run build` passed; `git diff --check` passed.
+- Checks not run: backend build/tests, live database/schema/migration/404/refresh, browser console/theme/chart smoke and cross-route export/report parity; those remain owned by `RQ145`, `RQ146` and `STAB16`.
+- Run log: `.ai/runs/2026-09-06-RQ154-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `568aaf7de34a3915cfd67b7fbf537a1d6697f0c7` contains the implementation validated by this run.
+- Main verification: current `main` contained `568aaf7de34a3915cfd67b7fbf537a1d6697f0c7` before the queue/evidence synchronization commit; final remote verification is recorded in the delivery commit evidence.
+- Missed: no backend decision or recommendation semantics were invented; Dashboard trend work was tracked separately under `RQ155`.
+- Residual risk: runtime payloads can still violate the additive frontend DTO assumption until backend/runtime proof is completed by the broader queue owners.
+- Next: `RQ157` is already claimed by another local agent; do not steal that claim.
+- Follow-up: preserve the active `RQ157` claim and lock; `RQ145`, `RQ146` and `STAB16` remain separate owners for parity/runtime proof.
+
 ---
 
 ## RQ155 - Keep unknown Dashboard trends visible and non-ranked
 
-Status: PARTIAL
+Status: DONE
 Priority: P1
 Type: frontend/tests
 Feature family: dashboard-trend-unknown-visibility
@@ -4565,6 +4584,25 @@ Do not change the backend trend formula, backend ordering contract, recommendati
 - `RQ143` remains the owner of end-to-end backend decision/ranking ownership.
 - `RQ145` remains the owner of complete cross-route parity and safe messaging.
 - `STAB16` remains the owner of live browser/refresh evidence.
+
+### Completion note
+
+- Date: 2026-09-06
+- Status: DONE
+- Completion: Dashboard gain/loss lists now include only finite measured positive/negative trends, exclude null/missing/`NaN`/`Infinity`, show a measured zero as `Bez promene 0%`, and keep unknown trend evidence visible as `Nema trenda` in the existing top-product table/detail context. CSV export emits an empty trend cell for unknown/non-finite values instead of `NaN` or `Infinity`.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`; `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-06-RQ155-evidence.md`.
+- Contract/runtime behavior changed: frontend display/filtering/export hardening only; backend ordering, formulas, recommendation, score and confidence ownership remain unchanged.
+- Checks run: focused Dashboard regression suite passed 4/4; combined focused Daily Sales/Dashboard suite passed 16/16; `npm run check:analytics-guardrails` passed; `npm run typecheck` passed; `npm run build` passed; `git diff --check` passed.
+- Checks not run: backend build/tests, live database/schema/migration/404/refresh, browser console/theme/chart smoke and complete cross-route report/export parity; these remain outside this prompt.
+- Run log: `.ai/runs/2026-09-06-RQ155-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `568aaf7de34a3915cfd67b7fbf537a1d6697f0c7` contains the implementation validated by this run.
+- Main verification: current `main` contained `568aaf7de34a3915cfd67b7fbf537a1d6697f0c7` before the queue/evidence synchronization commit; final remote verification is recorded in the delivery commit evidence.
+- Missed: no backend ranking or actionability semantics were created; PDC `RQ157` remains a separate active claim.
+- Residual risk: full cross-route parity and live browser/refresh proof remain unproven under `RQ145`/`STAB16`.
+- Next: preserve the already-active `RQ157` claim and its lock.
+- Follow-up: `RQ157` remains active for the separate Product Decision backend null-baseline/coverage repair.
 
 ---
 
