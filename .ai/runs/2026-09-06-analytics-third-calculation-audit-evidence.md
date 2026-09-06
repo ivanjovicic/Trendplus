@@ -4,8 +4,8 @@ Date: 2026-09-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: `2096316bf98328b42f754aa64d0244f8d0347f34`
-Main verification: `git ls-remote origin refs/heads/main` matched `HEAD` at `2096316bf98328b42f754aa64d0244f8d0347f34`.
+Main commit SHA: `2096316bf98328b42f754aa64d0244f8d0347f34` (analytics queue/audit content)
+Main verification: `git merge-base --is-ancestor 2096316bf98328b42f754aa64d0244f8d0347f34 origin/main` passed; the evidence-sync commit is also pushed to `origin/main`.
 Evidence state: synchronized
 
 ## What was done
