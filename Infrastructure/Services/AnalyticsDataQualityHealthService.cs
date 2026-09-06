@@ -1,3 +1,4 @@
+using Application.Analytics;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -8,9 +9,10 @@ namespace Infrastructure.Services;
 public sealed class AnalyticsDataQualityHealthService
 {
     /// <summary>
-    /// Top-offender SQL contract (RQ06/RQ07).
+    /// Top-offender SQL contract (RQ06/RQ07/RQ165).
     /// Article membership is scoped by <c>Artikli."DataOrigin"</c>;
-    /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule).
+    /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule)
+    /// over the shared finite interval <c>[@salesFromUtc, @salesToExclusiveUtc)</c>.
     /// <c>missingCost</c> uses the effective purchase price (sale-line override, then article price), where null and non-positive values are missing.
     /// </summary>
     public const string TopOffendersSql = """
@@ -21,6 +23,7 @@ public sealed class AnalyticsDataQualityHealthService
                 FROM prodaja_stavke ps
                 JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
                 WHERE p.datum_prodaje >= @salesFromUtc
+                  AND p.datum_prodaje < @salesToExclusiveUtc
                   AND (
                         @dataScope = 'all'
                      OR (@dataScope = 'imported' AND p.data_origin = 'access')
@@ -103,8 +106,9 @@ public sealed class AnalyticsDataQualityHealthService
     public async Task<AnalyticsDataQualityHealthSnapshot> CaptureAsync(int lookbackDays, string? dataScope, CancellationToken ct)
     {
         var safeLookbackDays = Math.Max(1, lookbackDays);
-        var windowToUtc = DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
-        var windowFromUtc = DateTime.UtcNow.Date.AddDays(-(safeLookbackDays - 1));
+        var (windowFromUtc, windowToExclusiveUtc) = DataQualitySalesWindow.Resolve(safeLookbackDays);
+        // Inclusive display end stays compatible with existing health/report consumers.
+        var windowToUtc = windowToExclusiveUtc.AddTicks(-1);
         var normalizedDataScope = NormalizeDataScope(dataScope);
         var importedOnly = normalizedDataScope == "imported";
         var existingOnly = normalizedDataScope == "existing";
@@ -127,9 +131,10 @@ public sealed class AnalyticsDataQualityHealthService
             join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
             from d in dj.DefaultIfEmpty()
-            where pz.DatumProdaje >= windowFromUtc && pz.DatumProdaje <= windowToUtc
-               && (!importedOnly || a.DataOrigin == "access")
-               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+            where pz.DatumProdaje >= windowFromUtc && pz.DatumProdaje < windowToExclusiveUtc
+               // Revenue impact follows sale-header origin (same rule as top offenders / issues).
+               && (!importedOnly || pz.DataOrigin == "access")
+               && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
             group new { ps, a, d } by 1 into g
             select new
             {
@@ -195,7 +200,9 @@ public sealed class AnalyticsDataQualityHealthService
         {
             await using var command = new NpgsqlCommand(TopOffendersSql, connection);
             command.CommandTimeout = 60;
-            command.Parameters.AddWithValue("salesFromUtc", DateTime.UtcNow.AddDays(-30));
+            var (salesFromUtc, salesToExclusiveUtc) = DataQualitySalesWindow.Resolve(DataQualitySalesWindow.DefaultLookbackDays);
+            command.Parameters.AddWithValue("salesFromUtc", salesFromUtc);
+            command.Parameters.AddWithValue("salesToExclusiveUtc", salesToExclusiveUtc);
             command.Parameters.AddWithValue("issueType", normalizedIssueType);
             command.Parameters.AddWithValue("minSalesRsd", minSalesRsd);
             command.Parameters.AddWithValue("limit", limit);

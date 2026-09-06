@@ -1,4 +1,5 @@
 using System.Data;
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using MediatR;
 using Npgsql;
@@ -36,6 +37,7 @@ public sealed class GetDataQualityIssuesHandler
                 FROM prodaja_stavke ps
                 JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
                 WHERE p.datum_prodaje >= @salesFromUtc
+                  AND p.datum_prodaje < @salesToExclusiveUtc
                   AND (
                         @dataScope = 'all'
                      OR (@dataScope = 'imported' AND p.data_origin = 'access')
@@ -110,7 +112,9 @@ public sealed class GetDataQualityIssuesHandler
         {
             await using var command = new NpgsqlCommand(sql, connection);
             command.CommandTimeout = 60;
-            command.Parameters.AddWithValue("salesFromUtc", DateTime.UtcNow.AddDays(-30));
+            var (salesFromUtc, salesToExclusiveUtc) = DataQualitySalesWindow.Resolve(DataQualitySalesWindow.DefaultLookbackDays);
+            command.Parameters.AddWithValue("salesFromUtc", salesFromUtc);
+            command.Parameters.AddWithValue("salesToExclusiveUtc", salesToExclusiveUtc);
             command.Parameters.AddWithValue("issueType", issueType);
             command.Parameters.AddWithValue("query", query);
             command.Parameters.AddWithValue("queryPattern", $"%{query}%");

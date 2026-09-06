@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ165
+Current READY prompt: RQ166
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -97,8 +97,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ162 | DONE | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
 | RQ163 | DONE | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
 | RQ164 | DONE | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
-| RQ165 | READY | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
-| RQ166 | WAITING | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
+| RQ165 | DONE | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
+| RQ166 | READY | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 | RQ167 | WAITING | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
 | RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
@@ -5382,13 +5382,26 @@ Do not touch forecast, trend, Shopify or unrelated margin/return measurement own
 
 ## RQ165 - Make Data Quality time boundaries and sale/article scope consistent
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/SQL/tests
 Feature family: data-quality-window-scope
 Parallel-safe: no, health percentages and top-offender impact must describe the same population
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T07:05:00Z
+CompletedAtUtc: 2026-09-06T07:20:00Z
 Commit suggestion: `fix(analytics): align data quality window and scope semantics`
+Evidence: `.ai/runs/2026-09-06-rq165-data-quality-window-scope-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Shared `DataQualitySalesWindow` uses `[fromUtc, toExclusiveUtc)` for health, top offenders and issues.
+- Future-dated sales are excluded; top-offender/issues SQL gain `@salesToExclusiveUtc`.
+- Health revenue impact now scopes by sale-header origin (article origin remains for orphan membership).
+- Focused Data Quality tests: 34 passed.
+- Next READY: RQ166.
 
 ### Problem
 
@@ -5451,7 +5464,7 @@ Do not change the established `RQ05`/`RQ06` dataScope definitions, frontend form
 
 ## RQ166 - Reject reversed action-timeline periods instead of silently swapping scope
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/tests
 Feature family: action-timeline-period-state

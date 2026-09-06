@@ -47,5 +47,6 @@ public sealed class DataQualityMissingCostOffenderContractTests
         // Sale-header origin is mapped to snake_case data_origin; do not regress to quoted "DataOrigin".
         Assert.Contains("p.data_origin = 'access'", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("p.\"DataOrigin\"", sql, StringComparison.Ordinal);
+        Assert.Contains("p.datum_prodaje < @salesToExclusiveUtc", sql, StringComparison.Ordinal);
     }
 }

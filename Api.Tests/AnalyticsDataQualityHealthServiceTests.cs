@@ -156,6 +156,82 @@ public sealed class AnalyticsDataQualityHealthServiceTests
         Assert.True(snapshot.HasRevenueEvidence);
     }
 
+    [Fact]
+    public async Task CaptureAsync_ExcludesFutureDatedSalesFromWindow()
+    {
+        await using var db = CreateContext();
+        db.Artikli.Add(new Artikli
+        {
+            Id = 1,
+            Naziv = "Artikal",
+            Kolicina = 1,
+            NabavnaCena = 10m,
+            DataOrigin = "existing",
+            UpdatedAt = DateTime.UtcNow
+        });
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 1,
+                DatumProdaje = DateTime.UtcNow.Date.AddHours(8),
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 2,
+                DatumProdaje = DateTime.UtcNow.Date.AddDays(2),
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 1, IdProdaja = 1, IdArtikal = 1, Kolicina = 1, Cena = 100m },
+            new ProdajaStavka { Id = 2, IdProdaja = 2, IdArtikal = 1, Kolicina = 1, Cena = 9_000m });
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var snapshot = await service.CaptureAsync(30, "all", CancellationToken.None);
+
+        Assert.Equal(100m, snapshot.TotalRevenue);
+        Assert.True(snapshot.WindowFromUtc < snapshot.WindowToUtc);
+        Assert.True(snapshot.WindowToUtc < DateTime.UtcNow.Date.AddDays(1));
+    }
+
+    [Fact]
+    public async Task CaptureAsync_ExistingScopeUsesSaleHeaderOrigin_NotArticleOriginAlone()
+    {
+        await using var db = CreateContext();
+        db.Artikli.Add(new Artikli
+        {
+            Id = 1,
+            Naziv = "Existing artikal",
+            Kolicina = 1,
+            NabavnaCena = 10m,
+            DataOrigin = "existing",
+            UpdatedAt = DateTime.UtcNow
+        });
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 1,
+                DatumProdaje = DateTime.UtcNow.Date.AddHours(9),
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 2,
+                DatumProdaje = DateTime.UtcNow.Date.AddHours(10),
+                DataOrigin = "access"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 1, IdProdaja = 1, IdArtikal = 1, Kolicina = 1, Cena = 200m },
+            new ProdajaStavka { Id = 2, IdProdaja = 2, IdArtikal = 1, Kolicina = 1, Cena = 800m });
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var snapshot = await service.CaptureAsync(30, "existing", CancellationToken.None);
+
+        Assert.Equal(200m, snapshot.TotalRevenue);
+    }
+
     private static TrendplusDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()
