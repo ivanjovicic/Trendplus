@@ -377,8 +377,8 @@ WITH signal_base AS (
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
         fs.signal_quality_reason,
-        COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
+        vn.post_qty::numeric AS post_qty_30d,
+        vn.post_revenue::numeric(18,2) AS post_revenue_30d,
         CASE
             WHEN fs.old_price IS NULL OR fs.old_price = 0 THEN 0::numeric
             ELSE ROUND((fs.old_price - fs.new_price) / fs.old_price, 4)
@@ -457,10 +457,11 @@ aggregated AS (
                 / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
         ) AS oos_adjusted_markdown_dependency,
         COUNT(*) FILTER (
-            WHERE COALESCE(current_stock, 0) > 0
+            WHERE has_post_signal
+              AND COALESCE(current_stock, 0) > 0
               AND COALESCE(post_qty_30d, 0) = 0
         )::numeric
-        / NULLIF(COUNT(*), 0) AS dead_stock_rate,
+        / NULLIF(COUNT(*) FILTER (WHERE has_post_signal), 0) AS dead_stock_rate,
         SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value
     FROM signal_base
     GROUP BY GROUPING SETS (

@@ -621,7 +621,8 @@ public static class SupplierDecisionHubEndpoints
         decimal ReliabilityPct,
         string DataQualityStatus,
         string StatusReason,
-        IReadOnlyList<string> ReasonCodes);
+        IReadOnlyList<string> ReasonCodes,
+        decimal PostSignalCoverage = 1m);
 
     internal sealed record SupplierRowsDataset(
         IReadOnlyList<SupplierScoreRow> Rows,
@@ -2148,7 +2149,10 @@ public static class SupplierDecisionHubEndpoints
                 var supplierName = NormalizeSupplierName(supplierId, sourceSupplierName);
                 var recommendationCode = GetString(reader, "recommendation_code");
                 var confidenceScore = GetDecimal(reader, "confidence_score");
-                var recommendationSignal = BuildRecommendationSignal(recommendationCode, confidenceScore);
+                var postSignalCoverage = HasColumn(reader, "post_signal_coverage")
+                    ? GetDecimal(reader, "post_signal_coverage")
+                    : 1m;
+                var recommendationSignal = BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage);
 
                 results.Add(new SupplierScoreRow(
                     supplierId,
@@ -2180,7 +2184,8 @@ public static class SupplierDecisionHubEndpoints
                         recommendationSignal.ReliabilityPct,
                         recommendationSignal.DataQualityStatus,
                         recommendationSignal.StatusReason,
-                        recommendationSignal.ReasonCodes));
+                        recommendationSignal.ReasonCodes,
+                        postSignalCoverage));
             }
 
             sw.Stop();
@@ -2231,10 +2236,26 @@ public static class SupplierDecisionHubEndpoints
         string StatusReason,
         IReadOnlyList<string> ReasonCodes);
 
-    private static RecommendationSignal BuildRecommendationSignal(string recommendationCode, decimal confidenceScore)
+    private static RecommendationSignal BuildRecommendationSignal(
+        string recommendationCode,
+        decimal confidenceScore,
+        decimal postSignalCoverage = 1m)
     {
         var normalizedCode = (recommendationCode ?? string.Empty).Trim().ToUpperInvariant();
         var reliabilityPct = Math.Clamp(confidenceScore, 0m, 100m);
+
+        if (postSignalCoverage < 1m)
+        {
+            var incompleteStatus = postSignalCoverage <= 0m ? "insufficient_data" : "warning";
+            var incompleteReliability = postSignalCoverage <= 0m
+                ? 0m
+                : Math.Min(reliabilityPct, 44m);
+            return new RecommendationSignal(
+                incompleteReliability,
+                incompleteStatus,
+                "Post-nivelacija opservacija nedostaje ili je delimična; odsutno se ne tretira kao mereni nula.",
+                ["missing_post_observation"]);
+        }
 
         var dataQualityStatus = reliabilityPct switch
         {
@@ -2521,6 +2542,7 @@ SELECT
         var effectiveTo = hasData ? rows.Max(x => x.PeriodTo) : filters.ToDate;
         var missingSupplierNameCount = rows.Count(x => x.SupplierNameMissing);
         var hasLowSampleSize = rows.Count > 0 && rows.Count < 3;
+        var hasIncompletePostCoverage = rows.Any(x => x.PostSignalCoverage < 1m);
         var zeroRevenueRowsExcludedCount = dataset.ZeroRevenueRowsExcludedCount;
         var ignoredRowCount = dataset.IgnoredRowCount;
         // Dataset generation is request/cache time, not a successful analytics
@@ -2531,10 +2553,11 @@ SELECT
             ? "insufficient_data"
             : (missingSupplierNameCount > 0
                 ? "critical"
-                : (usedFallback || hasLowSampleSize ? "warning" : "good"));
+                : (usedFallback || hasLowSampleSize || hasIncompletePostCoverage ? "warning" : "good"));
         var recommendationAllowed = hasData
             && !usedFallback
             && !hasLowSampleSize
+            && !hasIncompletePostCoverage
             && missingSupplierNameCount == 0
             && (dataCoverageStatus == "good" || dataCoverageStatus == "warning");
         var coverage = windowDays switch
@@ -2563,6 +2586,11 @@ SELECT
                 fallbackReasonCode = "fallback_dataset_used";
                 fallbackReason = "Trazeni dataset nije dostupan; prikazan je siri helper dataset uz striktan filter opsega (bez tihog fallback-a).";
             }
+        }
+        else if (hasIncompletePostCoverage)
+        {
+            fallbackReasonCode = "missing_post_observation";
+            fallbackReason = "Post-nivelacija opservacija nedostaje ili je delimična; odsutno se ne tretira kao mereni nula i finalna preporuka je blokirana.";
         }
 
         return new ScorecardTrustMetadata(
@@ -2693,7 +2721,8 @@ SELECT
 {mlSelect}
     ds.supplier_quality_index,
     ds.recommendation_code,
-    ROUND(ds.confidence_score * 100, 2) AS confidence_score
+    ROUND(ds.confidence_score * 100, 2) AS confidence_score,
+    ROUND(COALESCE(ds.post_signal_coverage, 0), 4) AS post_signal_coverage
 FROM {mvName} ds
 {markdownJoin}{mlJoin}
 {where}
@@ -2791,8 +2820,9 @@ WITH filtered_signals AS (
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
         fs.signal_quality_reason,
-        COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
+        vn.post_qty::numeric AS post_qty_30d,
+        vn.post_revenue::numeric(18,2) AS post_revenue_30d,
+        (vn.price_event_id IS NOT NULL) AS has_post_signal,
         COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue,
         COALESCE(nd.did_qty, 0)::numeric AS did_qty,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
@@ -2838,6 +2868,7 @@ supplier_base AS (
         MIN((first_markdown_date - INTERVAL '30 days')::date) AS period_from,
         MAX((first_markdown_date + INTERVAL '30 days')::date) AS period_to,
         COUNT(*)::int AS article_count,
+        AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage,
         SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue,
         SUM(COALESCE(pre_qty_30d, 0) + COALESCE(post_qty_30d, 0))::numeric AS units,
         SUM(COALESCE(pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
@@ -2862,9 +2893,10 @@ supplier_base AS (
             / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
         ) AS oos_adjusted_markdown_dependency,
         COUNT(*) FILTER (
-            WHERE COALESCE(current_stock, 0) > 0
+            WHERE has_post_signal
+              AND COALESCE(current_stock, 0) > 0
               AND COALESCE(post_qty_30d, 0) = 0
-        )::numeric / NULLIF(COUNT(*), 0) AS dead_stock_rate,
+        )::numeric / NULLIF(COUNT(*) FILTER (WHERE has_post_signal), 0) AS dead_stock_rate,
         SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value,
         AVG(COALESCE(did_revenue, 0))::numeric(18,2) AS avg_did_revenue,
         AVG(COALESCE(did_qty, 0))::numeric(18,4) AS avg_did_qty,
@@ -2967,13 +2999,16 @@ supplier_scored AS (
                 100,
                 GREATEST(
                     0,
-                    LEAST(COALESCE(b.article_count, 0), 10) * 4
-                    + 35 * COALESCE(b.high_signal_share, 0)
-                    + 25 * COALESCE(b.had_sales_share, 0)
+                    (
+                        LEAST(COALESCE(b.article_count, 0), 10) * 4
+                        + 35 * COALESCE(b.high_signal_share, 0)
+                        + 25 * COALESCE(b.had_sales_share, 0)
+                    ) * (0.55 + 0.45 * COALESCE(b.post_signal_coverage, 0))
                 )
             ),
             2
         ) AS confidence_score,
+        ROUND(COALESCE(b.post_signal_coverage, 0), 4) AS post_signal_coverage,
         COALESCE(b.avg_did_revenue, 0)::numeric(18,2) AS avg_did_revenue,
         COALESCE(b.avg_did_qty, 0)::numeric(18,4) AS avg_did_qty,
         COALESCE(b.stockout_article_share, 0) AS stockout_article_share
@@ -3009,6 +3044,7 @@ filtered_suppliers AS (
     SELECT
         sr.*,
         CASE
+            WHEN COALESCE(sr.post_signal_coverage, 0) < 1 THEN 'REVIEW_QUALITY'
             WHEN sr.return_rate >= 0.12 THEN 'REVIEW_QUALITY'
             WHEN sr.stockout_article_share >= 0.35
              AND sr.fullprice_sellthrough < 0.45
@@ -3057,6 +3093,7 @@ final_suppliers AS (
     SELECT
         sr.*,
         CASE
+            WHEN COALESCE(sr.post_signal_coverage, 0) < 1 THEN 'REVIEW_QUALITY'
             WHEN sr.return_rate >= 0.12 THEN 'REVIEW_QUALITY'
             WHEN sr.stockout_article_share >= 0.35
              AND sr.fullprice_sellthrough < 0.45
@@ -3095,7 +3132,8 @@ SELECT
     top_feature_3,
     blended_supplier_quality_index AS supplier_quality_index,
     blended_recommendation_code AS recommendation_code,
-    confidence_score
+    confidence_score,
+    post_signal_coverage
 FROM final_suppliers;
 """;
 
@@ -3288,7 +3326,8 @@ FROM final_suppliers;
                 GetDecimal(reader, "stock_before_markdown"),
                 GetBoolean(reader, "stockout_before_markdown_flag"),
                 GetString(reader, "signal_quality_flag"),
-                GetString(reader, "signal_quality_reason")));
+                GetString(reader, "signal_quality_reason"),
+                HasColumn(reader, "has_post_signal") && GetBoolean(reader, "has_post_signal")));
         }
 
         return items;
@@ -3343,13 +3382,14 @@ WITH filtered_signals AS (
         fs.stockout_before_markdown_flag,
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
-        COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
+        vn.post_qty::numeric AS post_qty_30d,
+        vn.post_revenue::numeric(18,2) AS post_revenue_30d,
+        (vn.price_event_id IS NOT NULL) AS has_post_signal,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
         COALESCE({currentCostSql}, 0)::numeric(18,2) AS current_cost
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
-        SELECT v.post_qty, v.post_revenue
+        SELECT v.price_event_id, v.post_qty, v.post_revenue
         FROM vw_vendor_sales_nivelacija v
         WHERE v.article_id = fs.article_id
           AND v.event_date::date = fs.first_markdown_date
@@ -3381,8 +3421,12 @@ SELECT
         4
     ) AS markdown_revenue_share,
     ROUND(
-        COUNT(*) FILTER (WHERE COALESCE(current_stock, 0) > 0 AND COALESCE(post_qty_30d, 0) = 0)::numeric
-        / NULLIF(COUNT(*), 0),
+        COUNT(*) FILTER (
+            WHERE has_post_signal
+              AND COALESCE(current_stock, 0) > 0
+              AND COALESCE(post_qty_30d, 0) = 0
+        )::numeric
+        / NULLIF(COUNT(*) FILTER (WHERE has_post_signal), 0),
         4
     ) AS dead_stock_rate,
     SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value,
@@ -3420,7 +3464,8 @@ ORDER BY pre_revenue_30d DESC, pre_sellthrough_30d DESC
 LIMIT 10
 """,
             "markdown" => """
-WHERE COALESCE(post_revenue_30d, 0) > 0
+WHERE has_post_signal
+  AND COALESCE(post_revenue_30d, 0) > 0
 ORDER BY markdown_revenue_share DESC, post_revenue_30d DESC
 LIMIT 10
 """,
@@ -3447,10 +3492,16 @@ WITH filtered_signals AS (
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
         fs.signal_quality_reason,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d
+        vn.post_revenue::numeric(18,2) AS post_revenue_30d,
+        (vn.price_event_id IS NOT NULL) AS has_post_signal,
+        CASE
+            WHEN vn.price_event_id IS NULL THEN NULL
+            ELSE COALESCE(vn.post_revenue, 0)
+                / NULLIF(COALESCE(fs.pre_revenue_30d, 0) + COALESCE(vn.post_revenue, 0), 0)
+        END AS markdown_revenue_share
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
-        SELECT v.post_revenue
+        SELECT v.price_event_id, v.post_revenue
         FROM vw_vendor_sales_nivelacija v
         WHERE v.article_id = fs.article_id
           AND v.event_date::date = fs.first_markdown_date
@@ -3469,10 +3520,11 @@ SELECT
     category,
     first_markdown_date,
     COALESCE(pre_revenue_30d, 0)::numeric(18,2) AS pre_revenue_30d,
-    COALESCE(post_revenue_30d, 0)::numeric(18,2) AS post_revenue_30d,
+    CASE WHEN has_post_signal THEN COALESCE(post_revenue_30d, 0) ELSE NULL END::numeric(18,2) AS post_revenue_30d,
+    has_post_signal,
     COALESCE(pre_sellthrough_30d, 0) AS pre_sellthrough_30d,
     COALESCE(pre_margin_30d, 0)::numeric(18,2) AS pre_margin_30d,
-    COALESCE(markdown_revenue_share, 0) AS markdown_revenue_share,
+    markdown_revenue_share,
     COALESCE(stock_before_markdown, 0) AS stock_before_markdown,
     COALESCE(stockout_before_markdown_flag, FALSE) AS stockout_before_markdown_flag,
     COALESCE(signal_quality_flag, 'low') AS signal_quality_flag,
@@ -3499,10 +3551,11 @@ WITH filtered_signals AS (
         fs.pre_sellthrough_30d,
         fs.stock_before_markdown,
         fs.stockout_before_markdown_flag,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d
+        vn.post_revenue::numeric(18,2) AS post_revenue_30d,
+        (vn.price_event_id IS NOT NULL) AS has_post_signal
     FROM vw_supplier_fullprice_signals fs
     LEFT JOIN LATERAL (
-        SELECT v.post_revenue
+        SELECT v.price_event_id, v.post_revenue
         FROM vw_vendor_sales_nivelacija v
         WHERE v.article_id = fs.article_id
           AND v.event_date::date = fs.first_markdown_date
@@ -3520,8 +3573,11 @@ monthly AS (
         SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue,
         SUM(COALESCE(pre_revenue_30d, 0))
             / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS fullprice_revenue_share,
-        SUM(COALESCE(post_revenue_30d, 0))
-            / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS markdown_revenue_share,
+        CASE
+            WHEN AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) < 1 THEN NULL
+            ELSE SUM(COALESCE(post_revenue_30d, 0))
+                / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
+        END AS markdown_revenue_share,
         SUM(COALESCE(pre_qty_30d, 0))
             / NULLIF(SUM(COALESCE(pre_qty_30d, 0) + GREATEST(COALESCE(stock_before_markdown, 0), 0)), 0) AS fullprice_sellthrough,
         SUM(COALESCE(pre_margin_30d, 0))
@@ -3534,10 +3590,11 @@ SELECT
     period_start,
     revenue,
     ROUND(COALESCE(fullprice_revenue_share, 0), 4) AS fullprice_revenue_share,
-    ROUND(COALESCE(markdown_revenue_share, 0), 4) AS markdown_revenue_share,
+    ROUND(markdown_revenue_share, 4) AS markdown_revenue_share,
     ROUND(COALESCE(fullprice_sellthrough, 0), 4) AS fullprice_sellthrough,
     ROUND(COALESCE(pre_markdown_margin_pct, 0), 4) AS pre_markdown_margin_pct,
     CASE
+        WHEN markdown_revenue_share IS NULL THEN 'REVIEW_QUALITY'
         WHEN COALESCE(stockout_share, 0) >= 0.35 AND COALESCE(fullprice_sellthrough, 0) < 0.45 THEN 'OOS_FALSE_NEGATIVE'
         WHEN COALESCE(fullprice_revenue_share, 0) >= 0.55
          AND COALESCE(fullprice_sellthrough, 0) >= 0.45
@@ -3603,6 +3660,19 @@ LIMIT 6;
 
     private static bool GetBoolean(IDataRecord record, string column) =>
         !record.IsDBNull(record.GetOrdinal(column)) && Convert.ToBoolean(record.GetValue(record.GetOrdinal(column)), CultureInfo.InvariantCulture);
+
+    private static bool HasColumn(IDataRecord record, string column)
+    {
+        for (var i = 0; i < record.FieldCount; i++)
+        {
+            if (string.Equals(record.GetName(i), column, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static DateTime GetDateTime(IDataRecord record, string column)
     {
@@ -3857,7 +3927,8 @@ public sealed record ArticleDecisionItem(
     decimal StockBeforeMarkdown,
     bool StockoutBeforeMarkdownFlag,
     string SignalQualityFlag,
-    string SignalQualityReason);
+    string SignalQualityReason,
+    bool HasPostSignal = false);
 
 public sealed record RecommendationHistoryItem(
     DateTime PeriodStart,

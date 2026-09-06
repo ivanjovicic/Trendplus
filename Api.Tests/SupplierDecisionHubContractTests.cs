@@ -301,6 +301,67 @@ public sealed class SupplierDecisionHubContractTests
     }
 
     [Fact]
+    public void BuildSummaryResponse_IncompletePostCoverageBlocksTrustedRecommendation()
+    {
+        var filters = Filters90Days();
+        var dataset = Dataset(
+            Row(1, "A", recommendationCode: "EXPAND", confidence: 90m, postSignalCoverage: 0m),
+            Row(2, "B", recommendationCode: "HOLD", confidence: 80m, postSignalCoverage: 0.5m),
+            Row(3, "C", recommendationCode: "HOLD", confidence: 75m, postSignalCoverage: 1m));
+
+        var response = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+
+        Assert.Equal("warning", response.TrustMetadata!.DataCoverageStatus);
+        Assert.False(response.TrustMetadata.RecommendationAllowed);
+        Assert.Equal("missing_post_observation", response.TrustMetadata.FallbackReasonCode);
+        Assert.Contains("Post-nivelacija", response.TrustMetadata.FallbackReason ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildSummaryResponse_CompletePostCoverageKeepsRecommendationAllowed()
+    {
+        var filters = Filters90Days();
+        var dataset = Dataset(
+            Row(1, "A", recommendationCode: "EXPAND", confidence: 90m, postSignalCoverage: 1m),
+            Row(2, "B", recommendationCode: "HOLD", confidence: 80m, postSignalCoverage: 1m),
+            Row(3, "C", recommendationCode: "HOLD", confidence: 75m, postSignalCoverage: 1m));
+
+        var response = SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters);
+
+        Assert.Equal("good", response.TrustMetadata!.DataCoverageStatus);
+        Assert.True(response.TrustMetadata.RecommendationAllowed);
+        Assert.Null(response.TrustMetadata.FallbackReasonCode);
+    }
+
+    [Fact]
+    public void ArticleDecisionItem_DistinguishesMeasuredPostZeroFromMissingObservation()
+    {
+        var measuredZero = new ArticleDecisionItem(
+            ArticleId: 1,
+            Sku: "SKU-1",
+            ArticleName: "Artikal 1",
+            Category: "Patike",
+            FirstMarkdownDate: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            PreRevenue30d: 100m,
+            PostRevenue30d: 0m,
+            PreSellthrough30d: 0.4m,
+            PreMargin30d: 20m,
+            MarkdownRevenueShare: 0m,
+            StockBeforeMarkdown: 5m,
+            StockoutBeforeMarkdownFlag: false,
+            SignalQualityFlag: "high",
+            SignalQualityReason: "ok",
+            HasPostSignal: true);
+
+        var missingPost = measuredZero with { HasPostSignal = false, PostRevenue30d = 0m, MarkdownRevenueShare = 0m };
+
+        Assert.True(measuredZero.HasPostSignal);
+        Assert.Equal(0m, measuredZero.PostRevenue30d);
+        Assert.False(missingPost.HasPostSignal);
+        Assert.Equal(0m, missingPost.PostRevenue30d);
+    }
+
+    [Fact]
     public void BuildSupplierDecisionErrorReportResponse_DoesNotFabricateBusinessResults()
     {
         var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionErrorReportResponse(
@@ -380,7 +441,8 @@ public sealed class SupplierDecisionHubContractTests
         string recommendationCode = "HOLD",
         decimal confidence = 75m,
         decimal stockRiskScore = 20m,
-        bool supplierNameMissing = false) =>
+        bool supplierNameMissing = false,
+        decimal postSignalCoverage = 1m) =>
         new(
             SupplierId: supplierId,
             SupplierName: supplierName,
@@ -411,5 +473,6 @@ public sealed class SupplierDecisionHubContractTests
             ReliabilityPct: confidence,
             DataQualityStatus: confidence >= 70m ? "good" : confidence >= 45m ? "warning" : "critical",
             StatusReason: "Test signal",
-            ReasonCodes: [recommendationCode.ToLowerInvariant()]);
+            ReasonCodes: [recommendationCode.ToLowerInvariant()],
+            PostSignalCoverage: postSignalCoverage);
 }

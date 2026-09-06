@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ163
+Current READY prompt: RQ164
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -95,8 +95,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ160 | DONE | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | DONE | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
 | RQ162 | DONE | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
-| RQ163 | READY | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
-| RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
+| RQ163 | DONE | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
+| RQ164 | READY | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | WAITING | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
 | RQ166 | WAITING | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 | RQ167 | WAITING | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
@@ -5217,13 +5217,27 @@ Do not touch forecast, trend, Shopify/vendor work or unrelated inventory null-st
 
 ## RQ163 - Prevent absent post-nivelacija observations from becoming measured zero
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/SQL/tests
 Feature family: supplier-post-observation-state
 Parallel-safe: no, supplier ratios, scores and recommendations share the post-observation contract
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T06:50:00Z
+CompletedAtUtc: 2026-09-06T07:05:00Z
 Commit suggestion: `fix(analytics): preserve supplier post observation state`
+Evidence: `.ai/runs/2026-09-06-rq163-post-observation-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Unmatched post left-joins stay nullable; `has_post_signal` / `post_signal_coverage` are explicit.
+- Dead-stock only counts measured post zero among observed posts.
+- Incomplete coverage forces `REVIEW_QUALITY`, lowers confidence, and sets `recommendationAllowed=false` with `missing_post_observation`.
+- Measured post zero remains valid via `HasPostSignal=true` + zero revenue/qty.
+- Focused schema + contract tests: 44 passed.
+- Next READY: RQ164.
 
 ### Problem
 
@@ -5287,7 +5301,7 @@ Do not duplicate the full causal-comparability redesign owned by `RQ140`; do not
 
 ## RQ164 - Prevent null/non-positive purchase cost from becoming a complete 100% margin signal
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/tests
 Feature family: pre-nivelacija-cost-evidence

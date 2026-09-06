@@ -119,8 +119,10 @@ public sealed class SupplierDecisionSchemaSqlTests
     {
         var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");
 
-        Assert.Contains("COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d", sql);
-        Assert.Contains("COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d", sql);
+        Assert.Contains("vn.post_qty::numeric AS post_qty_30d", sql);
+        Assert.Contains("vn.post_revenue::numeric(18,2) AS post_revenue_30d", sql);
+        Assert.DoesNotContain("COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d", sql);
+        Assert.DoesNotContain("COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d", sql);
         Assert.Contains("COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue", sql);
         Assert.Contains("COALESCE(nd.did_qty, 0)::numeric AS did_qty", sql);
         Assert.Contains("has_post_signal", sql);
@@ -134,6 +136,8 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("WHEN COALESCE(fs.evidence_quality_status, 'partial') <> 'complete' THEN 'REVIEW_QUALITY'", sql);
         Assert.Contains("stock_proxy_clamped_to_zero", sql);
         Assert.Contains("SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value", sql);
+        Assert.Contains("WHERE has_post_signal", sql);
+        Assert.Contains("NULLIF(COUNT(*) FILTER (WHERE has_post_signal), 0) AS dead_stock_rate", sql);
     }
 
     [Fact]
@@ -179,6 +183,26 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierDecisionLiveAndPrecomputedSqlPreservePostObservationState()
+    {
+        var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+
+        Assert.Contains("vn.post_qty::numeric AS post_qty_30d", endpoint);
+        Assert.Contains("vn.post_revenue::numeric(18,2) AS post_revenue_30d", endpoint);
+        Assert.DoesNotContain("COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d", endpoint);
+        Assert.Contains("(vn.price_event_id IS NOT NULL) AS has_post_signal", endpoint);
+        Assert.Contains("AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage", endpoint);
+        Assert.Contains("WHEN COALESCE(sr.post_signal_coverage, 0) < 1 THEN 'REVIEW_QUALITY'", endpoint);
+        Assert.Contains("ROUND(COALESCE(ds.post_signal_coverage, 0), 4) AS post_signal_coverage", endpoint);
+        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage)", endpoint);
+        Assert.Contains("hasIncompletePostCoverage", endpoint);
+        Assert.Contains("missing_post_observation", endpoint);
+        Assert.Contains("WHERE has_post_signal", endpoint);
+        Assert.Contains("AND COALESCE(post_revenue_30d, 0) > 0", endpoint);
+        Assert.Contains("NULLIF(COUNT(*) FILTER (WHERE has_post_signal), 0) AS dead_stock_rate", endpoint);
+    }
+
+    [Fact]
     public void SupplierDecisionPrecomputedAndLiveSqlParityMatrixLocksIntentionalDifferences()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
@@ -203,9 +227,10 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("a.\\\"IDSezona\\\" = @seasonId", endpoint);
 
         Assert.Contains("ROUND(ds.confidence_score * 100, 2) AS confidence_score", endpoint);
+        Assert.Contains("ROUND(COALESCE(ds.post_signal_coverage, 0), 4) AS post_signal_coverage", endpoint);
         Assert.Contains("ROUND(COALESCE(ml.ml_supplier_score, fs.supplier_quality_index), 2) AS ml_supplier_score", endpoint);
         Assert.Contains("GetString(reader, \"recommendation_code\")", endpoint);
-        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore)", endpoint);
+        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage)", endpoint);
         Assert.Contains("GetDecimal(reader, \"fullprice_revenue_share\")", endpoint);
         Assert.Contains("GetString(reader, \"ai_explanation\")", endpoint);
     }
@@ -425,7 +450,7 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("GetString(reader, \"supplier_name\")", endpoint);
         Assert.Contains("NormalizeSupplierName(supplierId, sourceSupplierName)", endpoint);
         Assert.Contains("GetString(reader, \"recommendation_code\")", endpoint);
-        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore)", endpoint);
+        Assert.Contains("BuildRecommendationSignal(recommendationCode, confidenceScore, postSignalCoverage)", endpoint);
         Assert.Contains("GetInt32(reader, \"article_id\")", endpoint);
         Assert.Contains("GetString(reader, \"signal_quality_flag\")", endpoint);
         Assert.Contains("GetString(reader, \"signal_quality_reason\")", endpoint);
