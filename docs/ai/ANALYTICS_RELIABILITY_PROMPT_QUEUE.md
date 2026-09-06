@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ161
+Current READY prompt: RQ162
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -93,8 +93,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ158 | DONE | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
 | RQ159 | DONE | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | DONE | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
-| RQ161 | READY | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
-| RQ162 | WAITING | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
+| RQ161 | DONE | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
+| RQ162 | READY | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
 | RQ163 | WAITING | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
 | RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | WAITING | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
@@ -5053,12 +5053,15 @@ Do not introduce a forecast, heuristic trend or frontend recommendation formula.
 
 ## RQ161 - Fail closed on Analytics Details periods and unknown trends
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-details-period-state
 Parallel-safe: no, details period and ranking display must match shared analytics period semantics
 Owner: Codex
+Agent: Codex
+StartedAtUtc: 2026-09-06T06:37:56Z
+CompletedAtUtc: 2026-09-06T06:45:00Z
 Commit suggestion: `fix(analytics): validate details periods and unknown trends`
 
 ### Problem
@@ -5118,11 +5121,23 @@ Do not change backend ranking ownership, forecast logic, Shopify/vendor work or 
 - `RQ143` remains the backend decision/ranking owner.
 - `RQ145` remains the parity and safe-messaging owner.
 
+### Completion note (2026-09-06)
+
+- Status: DONE
+- Completion: Analytics Details now rejects empty, malformed, reversed and calendar-invalid periods before loading; valid periods use an exact inclusive calendar-day count. Per-day KPIs remain unavailable for missing or non-finite summary values.
+- Trend behavior: null, missing, NaN and Infinity trend percentages are neutral/unavailable and excluded from gainers/losers; finite zero remains measured neutral; only finite positive/negative trends are ranked.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/pages/__tests__/analyticsIndicatorRegression.spec.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.periodState.spec.tsx`, this queue, and `.ai/runs/2026-09-06-RQ161-evidence.md`.
+- Regression proof: failing-first period/trend tests reproduced the prior defect; final focused package passed 3 files / 15 tests, including no fetch and no KPI rendering for the final reversed custom period.
+- Scope note: no backend/API/DTO/SQL/EF contract changed; backend ownership of ranking/decision semantics remains unchanged. Forecast, Trend Models, Shopify and vendor work were not touched.
+- Run log: `.ai/runs/2026-09-06-RQ161-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct delivery on `main`; commit and current-main verification recorded in the run log.
+
 ---
 
 ## RQ162 - Keep partially missing sell-through denominator evidence unavailable
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/tests
 Feature family: inventory-sellthrough-denominator-state

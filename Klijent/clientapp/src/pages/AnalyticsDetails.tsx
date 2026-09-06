@@ -26,23 +26,68 @@ type TopTab = "revenue" | "units" | "velocity" | "margin";
 type Tone = "good" | "warning" | "critical" | "neutral";
 
 type AnalyticsDetailSummary = {
-  totalRevenue: number;
-  totalTransactions: number;
-  totalUnits: number;
+  totalRevenue: number | null;
+  totalTransactions: number | null;
+  totalUnits: number | null;
 };
+
+type TrendDirection = "up" | "down" | "neutral";
+
+const INVALID_PERIOD_MESSAGE = "Izabrani period nije validan. Datum Od mora biti pre ili jednak datumu Do.";
+
+function parseAnalyticsDetailDate(value: string): Date | null {
+  if (!value.trim()) return null;
+  const localDateMatch = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(value);
+  if (localDateMatch) {
+    const [, yearText, monthText, dayText, hourText, minuteText, secondText] = localDateMatch;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const hour = hourText == null ? 0 : Number(hourText);
+    const minute = minuteText == null ? 0 : Number(minuteText);
+    const second = secondText == null ? 0 : Number(secondText);
+    const localDate = new Date(year, month - 1, day, hour, minute, second);
+    if (localDate.getFullYear() !== year
+      || localDate.getMonth() !== month - 1
+      || localDate.getDate() !== day
+      || localDate.getHours() !== hour
+      || localDate.getMinutes() !== minute
+      || localDate.getSeconds() !== second) {
+      return null;
+    }
+    return localDate;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export function getAnalyticsDetailPeriodDays(fromDate: string, toDate: string): number | null {
+  const from = parseAnalyticsDetailDate(fromDate);
+  const to = parseAnalyticsDetailDate(toDate);
+  if (!from || !to || to.getTime() < from.getTime()) return null;
+
+  const fromCalendarDay = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  const toCalendarDay = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.floor((toCalendarDay - fromCalendarDay) / (24 * 3600 * 1000)) + 1;
+}
+
+export function isAnalyticsDetailPeriodValid(fromDate: string, toDate: string): boolean {
+  return getAnalyticsDetailPeriodDays(fromDate, toDate) != null;
+}
 
 export function deriveAnalyticsDetailMetrics(
   summary: AnalyticsDetailSummary | null,
   fromDate: string,
   toDate: string,
-): { days: number; revPerDay: number | null; txPerDay: number | null; unitsPerDay: number | null } {
-  const days = Math.max(1, Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (24 * 3600 * 1000)) + 1);
-  if (!summary) return { days, revPerDay: null, txPerDay: null, unitsPerDay: null };
+): { days: number | null; revPerDay: number | null; txPerDay: number | null; unitsPerDay: number | null } {
+  const days = getAnalyticsDetailPeriodDays(fromDate, toDate);
+  if (days == null || !summary) return { days, revPerDay: null, txPerDay: null, unitsPerDay: null };
+  const perDay = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? null : value / days);
   return {
     days,
-    revPerDay: summary.totalRevenue / days,
-    txPerDay: summary.totalTransactions / days,
-    unitsPerDay: summary.totalUnits / days,
+    revPerDay: perDay(summary.totalRevenue),
+    txPerDay: perDay(summary.totalTransactions),
+    unitsPerDay: perDay(summary.totalUnits),
   };
 }
 
@@ -56,7 +101,17 @@ interface TrendPoint {
 
 const tone = (s?: string | null): Tone => (!s ? "neutral" : s === "error" ? "critical" : (s as Tone));
 const toneText = (t: Tone) => (t === "good" ? "Dobro" : t === "warning" ? "Upozorenje" : t === "critical" ? "Kriticno" : "Neutralno");
-const trendArrow = (v?: number | null) => (v == null ? "\u2022" : v >= 0 ? "\u2191" : "\u2193");
+export function getTrendDirection(value?: number | null): TrendDirection {
+  if (value == null || !Number.isFinite(value)) return "neutral";
+  return value > 0 ? "up" : value < 0 ? "down" : "neutral";
+}
+
+const trendArrow = (value?: number | null) => {
+  const direction = getTrendDirection(value);
+  return direction === "up" ? "\u2191" : direction === "down" ? "\u2193" : "\u2022";
+};
+
+const trendClass = (value?: number | null) => getTrendDirection(value);
 
 function moving(values: number[], w: number): Array<number | null> {
   return values.map((_, i) => (i + 1 < w ? null : values.slice(i - w + 1, i + 1).reduce((a, b) => a + b, 0) / w));
@@ -89,6 +144,16 @@ function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProduc
   if (tab === "units") return data.byUnits;
   if (tab === "velocity") return data.byVelocity;
   return data.byMarginImpact;
+}
+
+export function selectTrendRowsByDirection(
+  rows: TopProductAdvancedItem[],
+  direction: Exclude<TrendDirection, "neutral">,
+): TopProductAdvancedItem[] {
+  return rows
+    .filter((row) => getTrendDirection(row.trendPct) === direction)
+    .sort((left, right) => (direction === "up" ? right.trendPct! - left.trendPct! : left.trendPct! - right.trendPct!))
+    .slice(0, 5);
 }
 
 function getErrorText(reason: unknown, fallback: string): string {
@@ -147,10 +212,26 @@ export default function AnalyticsDetails() {
   const [validL, setValidL] = useState<DashboardValidationEndpoint | null>(null);
   const [validN, setValidN] = useState<DashboardValidationEndpoint | null>(null);
   const [adv, setAdv] = useState<{ cards: Array<{ key: string; value: number; trendPct?: number | null; status: string; subtitle: string }>; insights: Array<{ badge: string; description: string; color?: string }>; actions: Array<{ priority: string; title: string; recommendation: string }>; validations: Array<{ severity: string; message: string }> } | null>(null);
+  const periodValid = isAnalyticsDetailPeriodValid(fromDate, toDate);
 
   const load = useCallback(async () => {
     setLoading(true);
     setErrors([]);
+    if (!isAnalyticsDetailPeriodValid(fromDate, toDate)) {
+      setHealthText("");
+      setSummary(null);
+      setDaily([]);
+      setInventory(null);
+      setTop(null);
+      setAdv(null);
+      setValidC(null);
+      setValidF(null);
+      setValidL(null);
+      setValidN(null);
+      setLoading(false);
+      return;
+    }
+
     const rs = await Promise.allSettled([
       checkAnalyticsHealth(),
       getSalesSummary(fromDate, toDate, true),
@@ -230,19 +311,11 @@ export default function AnalyticsDetails() {
   const shortTop = useMemo(() => topRows(top, topTab).slice(0, 5), [top, topTab]);
   const fullTop = useMemo(() => topRows(top, topTab).slice(0, 20), [top, topTab]);
   const gainers = useMemo(
-    () =>
-      (top?.byRevenue ?? [])
-        .filter((x) => (x.trendPct ?? 0) > 0)
-        .sort((a, b) => (b.trendPct ?? 0) - (a.trendPct ?? 0))
-        .slice(0, 5),
+    () => selectTrendRowsByDirection(top?.byRevenue ?? [], "up"),
     [top]
   );
   const losers = useMemo(
-    () =>
-      (top?.byRevenue ?? [])
-        .filter((x) => (x.trendPct ?? 0) < 0)
-        .sort((a, b) => (a.trendPct ?? 0) - (b.trendPct ?? 0))
-        .slice(0, 5),
+    () => selectTrendRowsByDirection(top?.byRevenue ?? [], "down"),
     [top]
   );
 
@@ -312,7 +385,15 @@ export default function AnalyticsDetails() {
         </section>
       )}
 
-      {!loading && (
+      {!loading && !periodValid && (
+        <section className="ad-panel ad-error" data-testid="analytics-details-invalid-period">
+          <h3>Period nije validan</h3>
+          <p>{INVALID_PERIOD_MESSAGE}</p>
+          <p>Podaci nisu učitani za ovaj period.</p>
+        </section>
+      )}
+
+      {!loading && periodValid && (
         <>
           <section className="ad-grid ad-kpi-grid">
             <article className="ad-kpi-card"><span>Promet</span><strong>{fmtRsd(summary?.totalRevenue, 0, "Nije dostupno")}</strong><small>Ukupno u periodu</small></article>
@@ -410,10 +491,10 @@ export default function AnalyticsDetails() {
                 <span>{fmtNumber(row.units)}</span>
                 <span>{fmtNumber(row.velocityUnitsPerDay, 2)}</span>
                 <span
-                  className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
+                  className={trendClass(row.trendPct)}
                   title="Trend u odnosu na prethodni uporedivi period"
                 >
-                  {trendArrow(row.trendPct)} {fmtPct(row.trendPct)}
+                  {trendArrow(row.trendPct)} {fmtPct(row.trendPct, 1, "Nije dostupno")}
                 </span>
                 <span className={`status-tag ${tone(row.stockStatus)}`}>{toneText(tone(row.stockStatus))}</span>
               </div>
@@ -488,10 +569,10 @@ export default function AnalyticsDetails() {
                     <span>{fmtNumber(row.units)}</span>
                     <span>{fmtNumber(row.velocityUnitsPerDay, 2)}</span>
                     <span
-                      className={(row.trendPct ?? 0) >= 0 ? "up" : "down"}
+                      className={trendClass(row.trendPct)}
                       title="Trend u odnosu na prethodni uporedivi period"
                     >
-                      {trendArrow(row.trendPct)} {fmtPct(row.trendPct)}
+                      {trendArrow(row.trendPct)} {fmtPct(row.trendPct, 1, "Nije dostupno")}
                     </span>
                     <span className={`status-tag ${tone(row.stockStatus)}`}>{toneText(tone(row.stockStatus))}</span>
                   </div>
