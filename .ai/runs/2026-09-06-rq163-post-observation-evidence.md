@@ -6,9 +6,9 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Composer
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending-commit
+Main commit SHA: 27d2a1ecdb12a17be4abf9495dfa3a845a6769fa
 Main verification: pending-push
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 
