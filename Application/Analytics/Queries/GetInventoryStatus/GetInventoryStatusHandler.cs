@@ -21,9 +21,12 @@ namespace Application.Analytics.Queries.GetInventoryStatus
             var result = await _db.ProductsDim.AsNoTracking().GroupBy(_ => 1).Select(g => new
             {
                 TotalSkuCount = g.Count(),
-                TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
-                LowStockCount = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= request.LowStockThreshold),
-                OutOfStockCount = g.Count(x => (x.Kolicina ?? 0) == 0)
+                // Sum ignores null quantities; do not coalesce null → 0 into on-hand.
+                TotalOnHand = g.Sum(x => x.Kolicina > 0 ? x.Kolicina : (int?)0) ?? 0,
+                // Known positive quantity at/below threshold only.
+                LowStockCount = g.Count(x => x.Kolicina != null && x.Kolicina > 0 && x.Kolicina <= request.LowStockThreshold),
+                // Measured zero only — null quantity is not OOS.
+                OutOfStockCount = g.Count(x => x.Kolicina == 0)
             }).FirstOrDefaultAsync(cancellationToken);
 
             return new InventoryStatusDto(

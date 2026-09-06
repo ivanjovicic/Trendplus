@@ -7,7 +7,7 @@ public sealed record InventoryListItemDto(
     int? Kolicina,
     int? MinimalnaKolicina,
     decimal? NabavnaCena,
-    decimal EstimatedValue,
+    decimal? EstimatedValue,
     int? IDObjekat,
     int? IDDobavljac,
     decimal? StockCoverDays,

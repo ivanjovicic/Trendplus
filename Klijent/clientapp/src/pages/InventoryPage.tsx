@@ -566,7 +566,24 @@ export default function InventoryPage() {
     }).join(" ");
   }, [healthTrendPoints]);
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
-  const topRiskRows = useMemo(() => rows.slice().sort((left, right) => (left.stockState === right.stockState ? right.reorderGap - left.reorderGap : { critical: 0, warning: 1, healthy: 2 }[left.stockState] - { critical: 0, warning: 1, healthy: 2 }[right.stockState])).slice(0, TOP_RISK_ITEMS), [rows]);
+  const topRiskRows = useMemo(
+    () =>
+      rows
+        .slice()
+        .sort((left, right) => {
+          const rank: Record<InventoryRow["stockState"], number> = {
+            critical: 0,
+            warning: 1,
+            unknown: 2,
+            healthy: 3,
+          };
+          const byState = rank[left.stockState] - rank[right.stockState];
+          if (byState !== 0) return byState;
+          return (right.reorderGap ?? -1) - (left.reorderGap ?? -1);
+        })
+        .slice(0, TOP_RISK_ITEMS),
+    [rows],
+  );
   const highestValueRows = useMemo(() => rows.slice().sort((left, right) => (right.estimatedValueAmount ?? Number.NEGATIVE_INFINITY) - (left.estimatedValueAmount ?? Number.NEGATIVE_INFINITY)).slice(0, TOP_VALUE_ITEMS), [rows]);
   const forecastMetricsByRowKey = useMemo(() => new Map(rows.map((row) => {
     const matching = (forecast?.items ?? []).filter((item) => item.skuId === row.id && (row.idObjekat == null || item.storeId === row.idObjekat));

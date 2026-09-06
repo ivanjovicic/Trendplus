@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ158
+Current READY prompt: RQ159
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -82,8 +82,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ155 | DONE | dashboard-trend-unknown-visibility | Keep unknown trend values visible and out of gain/loss ranking |
 | RQ156 | DONE | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
 | RQ157 | DONE | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
-| RQ158 | IN_PROGRESS | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
-| RQ159 | WAITING | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
+| RQ158 | DONE | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
+| RQ159 | READY | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
 | RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
 | RQ162 | WAITING | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
@@ -4790,7 +4790,7 @@ Do not change frontend ranking, forecast logic, Shopify/vendor integrations or u
 
 ## RQ158 - Keep null inventory stock evidence unavailable
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: inventory-null-stock-state
@@ -4798,7 +4798,20 @@ Parallel-safe: no, inventory status has one backend/frontend contract owner
 Owner: Codex
 Agent: local-session-ivan
 StartedAtUtc: 2026-09-06T08:18:00Z
+CompletedAtUtc: 2026-09-06T08:25:00Z
 Commit suggestion: `fix(analytics): preserve null inventory stock state`
+Evidence: `.ai/runs/2026-09-06-rq158-inventory-null-stock-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Null quantity is never counted as OOS; measured zero remains OOS.
+- Low-stock requires known quantity (and known minimum on balance endpoint).
+- List/detail preserve nullable quantity/minimum; missing quantity fails closed for signals.
+- Estimated value stays unavailable without quantity/cost; measured zero quantity is true zero capital.
+- Frontend `getStockState` / `buildInventoryRow` render unknown vs measured zero distinctly.
+- Tests: InventoryStockEvidenceTests + inventory fake-zero specs + list/signal inventory filters — passed.
+- Next READY: RQ159.
 
 ### Problem
 
@@ -4866,7 +4879,7 @@ Do not add forecast calculations or change forecast endpoints. Do not invent his
 
 ## RQ159 - Correct inventory decision summary counts and wording
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-decision-summary-counts

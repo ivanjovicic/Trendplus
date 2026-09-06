@@ -52,6 +52,42 @@ describe("inventory fake-zero value guardrail", () => {
     expect(row.estimatedValueAmount).toBe(0);
   });
 
+  it("keeps null quantity unavailable instead of measured OOS zero", () => {
+    const row = buildInventoryRow(makeItem({ kolicina: null, minimalnaKolicina: 3 }), [], []);
+
+    expect(row.quantity).toBeNull();
+    expect(row.stockState).toBe("unknown");
+    expect(row.stockStateLabel).toBe("Nepoznata zaliha");
+    expect(row.estimatedValueAmount).toBeNull();
+    expect(row.recommendationAllowed).toBe(false);
+    expect(row.dataQualityStatus).toBe("insufficient_data");
+  });
+
+  it("does not label positive stock as stable when minimum is missing", () => {
+    const row = buildInventoryRow(makeItem({ kolicina: 12, minimalnaKolicina: null }), [], []);
+
+    expect(row.minimum).toBeNull();
+    expect(row.stockState).toBe("unknown");
+    expect(row.stockStateLabel).toBe("Bez praga");
+    expect(row.coverageRatio).toBeNull();
+    expect(row.recommendationAllowed).toBe(false);
+  });
+
+  it("preserves measured zero quantity as out-of-stock", () => {
+    const row = buildInventoryRow(makeItem({ kolicina: 0, minimalnaKolicina: 3 }), [], []);
+
+    expect(row.quantity).toBe(0);
+    expect(row.stockState).toBe("critical");
+    expect(row.stockStateLabel).toBe("Bez zaliha");
+  });
+
+  it("rejects non-finite quantity as unknown", () => {
+    const row = buildInventoryRow(makeItem({ kolicina: Number.NaN, minimalnaKolicina: 3 }), [], []);
+
+    expect(row.quantity).toBeNull();
+    expect(row.stockState).toBe("unknown");
+  });
+
   it("excludes unknown values from supplier chart totals and screen CSV", () => {
     const known = buildInventoryRow(makeItem({ id: 1, nabavnaCena: 100, estimatedValue: null, idDobavljac: 1 }), [], [
       { supplierId: 1, supplierName: "Known" },

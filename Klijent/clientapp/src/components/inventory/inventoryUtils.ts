@@ -26,7 +26,8 @@ export const WEEKDAY_OPTIONS = [
   { value: 0, label: "Nedelja" },
 ];
 
-export function formatNumber(value: number, digits = 0) {
+export function formatNumber(value: number | null | undefined, digits = 0) {
+  if (value == null || Number.isNaN(value)) return "Nije dostupno";
   return value.toLocaleString("sr-RS", { maximumFractionDigits: digits });
 }
 
@@ -78,9 +79,9 @@ export type InventoryScreenCsvRow = {
   supplierName: string;
   storeName: string;
   stockStateLabel: string;
-  quantity: number;
-  minimum: number;
-  reorderGap: number;
+  quantity: number | null;
+  minimum: number | null;
+  reorderGap: number | null;
   unitCost: number | null;
   estimatedValueAmount: number | null;
 };
@@ -95,9 +96,9 @@ export function buildInventoryScreenCsvLines(rows: InventoryScreenCsvRow[]): str
         csvEscape(row.supplierName),
         csvEscape(row.storeName),
         csvEscape(row.stockStateLabel),
-        row.quantity,
-        row.minimum,
-        row.reorderGap,
+        row.quantity == null ? "" : row.quantity,
+        row.minimum == null ? "" : row.minimum,
+        row.reorderGap == null ? "" : row.reorderGap,
         row.unitCost == null ? "" : row.unitCost.toFixed(2),
         row.estimatedValueAmount == null ? "" : row.estimatedValueAmount.toFixed(2),
       ].join(";"),
@@ -115,7 +116,16 @@ export function buildInventoryScreenCsvFilename(pageNumber: number, sortBy: stri
   return `bilans-stanja-strana-${pageNumber}${sortSuffix}.csv`;
 }
 
-export function getStockState(quantity: number, minimum: number) {
+export function getStockState(quantity: number | null | undefined, minimum: number | null | undefined) {
+  if (quantity == null || !Number.isFinite(quantity)) {
+    return {
+      key: "unknown" as const,
+      label: "Nepoznata zaliha",
+      badge: TONE.stock.warning,
+      panel: TONE.stockPanel.warning,
+    };
+  }
+
   if (quantity <= 0) {
     return {
       key: "critical" as const,
@@ -124,6 +134,16 @@ export function getStockState(quantity: number, minimum: number) {
       panel: TONE.stockPanel.critical,
     };
   }
+
+  if (minimum == null || !Number.isFinite(minimum)) {
+    return {
+      key: "unknown" as const,
+      label: "Bez praga",
+      badge: TONE.stock.warning,
+      panel: TONE.stockPanel.warning,
+    };
+  }
+
   if (quantity <= minimum) {
     return {
       key: "warning" as const,
@@ -211,28 +231,36 @@ export function buildSignalText(stockCoverStatus: string, sellThroughStatus: str
 }
 
 export function buildInventoryRow(item: InventoryListItemWithSignals, stores: StoreOption[], suppliers: SupplierFilterOption[]): InventoryRow {
-  const quantity = item.kolicina ?? 0;
-  const minimum = item.minimalnaKolicina ?? 0;
+  const quantity =
+    item.kolicina == null || !Number.isFinite(item.kolicina) ? null : item.kolicina;
+  const minimum =
+    item.minimalnaKolicina == null || !Number.isFinite(item.minimalnaKolicina)
+      ? null
+      : item.minimalnaKolicina;
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName ?? (item.idDobavljac != null ? `Dobavljac #${item.idDobavljac}` : "Nerasporedjen");
   const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
   const unitCost = item.nabavnaCena ?? null;
-  const positiveQuantity = Math.max(quantity, 0);
   // Missing cost + missing backend estimate must stay unknown (not fake zero capital),
-  // except when on-hand quantity is already zero (true zero capital).
+  // except when on-hand quantity is already a measured zero (true zero capital).
   const estimatedValueAmount =
     item.estimatedValue != null
       ? item.estimatedValue
-      : unitCost != null
-        ? unitCost * positiveQuantity
-        : positiveQuantity === 0
-          ? 0
-          : null;
-  const coverageRatio = minimum > 0 ? quantity / minimum : null;
+      : quantity == null
+        ? null
+        : unitCost != null
+          ? unitCost * Math.max(quantity, 0)
+          : quantity === 0
+            ? 0
+            : null;
+  const coverageRatio =
+    quantity != null && minimum != null && minimum > 0 ? quantity / minimum : null;
   const stock = getStockState(quantity, minimum);
   const stockCoverStatus = item.stockCoverStatus ?? "insufficient_data";
   const sellThroughStatus = item.sellThroughStatus ?? "insufficient_data";
   const stockCoverStatusLabelValue = item.stockCoverStatusLabel ?? stockCoverStatusLabel(stockCoverStatus);
   const sellThroughStatusLabelValue = item.sellThroughStatusLabel ?? sellThroughStatusLabel(sellThroughStatus);
+  const reorderGap =
+    quantity != null && minimum != null ? Math.max(minimum - quantity, 0) : null;
 
   return {
     ...item,
@@ -240,7 +268,7 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     storeName,
     quantity,
     minimum,
-    reorderGap: Math.max(minimum - quantity, 0),
+    reorderGap,
     stockState: stock.key,
     stockStateLabel: stock.label,
     estimatedValueAmount,
@@ -253,9 +281,15 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
     sellThroughStatus,
     sellThroughStatusLabel: sellThroughStatusLabelValue,
     signalConfidencePct: item.signalConfidencePct ?? null,
-    recommendationAllowed: item.recommendationAllowed ?? null,
+    recommendationAllowed:
+      quantity == null || minimum == null
+        ? false
+        : (item.recommendationAllowed ?? null),
     signalText: buildSignalText(stockCoverStatus, sellThroughStatus, item.recommendationAllowed),
-    dataQualityStatus: item.dataQualityStatus ?? "insufficient_data",
+    dataQualityStatus:
+      quantity == null
+        ? "insufficient_data"
+        : (item.dataQualityStatus ?? "insufficient_data"),
     reasonCodes: item.reasonCodes ?? [],
   };
 }
@@ -352,9 +386,16 @@ export function formatSellThroughRatio(value: number | null | undefined, status?
 }
 
 export function getRecommendation(row: InventoryRow) {
+  if (row.stockState === "unknown" || row.quantity == null || row.minimum == null) {
+    return "Nedostaje dokaz o količini ili minimalnoj zalihi; ne klasifikuj kao stabilno ili OOS.";
+  }
   if (row.stockState === "critical") return "Hitno proveriti dopunu ili redistribuciju iz druge lokacije.";
-  if (row.stockState === "warning") return `Planirati dopunu od najmanje ${formatNumber(Math.max(row.reorderGap, 1))} komada.`;
-  if (row.quantity >= Math.max(row.minimum * 3, 15)) return "Zaliha je komforna; proveri da li je kapital previse vezan u robi.";
+  if (row.stockState === "warning") {
+    return `Planirati dopunu od najmanje ${formatNumber(Math.max(row.reorderGap ?? 0, 1))} komada.`;
+  }
+  if (row.quantity >= Math.max(row.minimum * 3, 15)) {
+    return "Zaliha je komforna; proveri da li je kapital previse vezan u robi.";
+  }
   return "Zaliha je stabilna i ne zahteva hitnu akciju.";
 }
 

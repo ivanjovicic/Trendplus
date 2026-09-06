@@ -3,10 +3,10 @@ import type { InventoryInsightItem, InventoryListItem, StoreOption, SupplierFilt
 export type InventoryRow = InventoryListItem & {
   supplierName: string;
   storeName: string;
-  quantity: number;
-  minimum: number;
-  reorderGap: number;
-  stockState: "critical" | "warning" | "healthy";
+  quantity: number | null;
+  minimum: number | null;
+  reorderGap: number | null;
+  stockState: "critical" | "warning" | "healthy" | "unknown";
   stockStateLabel: string;
   estimatedValueAmount: number | null;
   unitCost: number | null;

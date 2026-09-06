@@ -41,10 +41,21 @@ public static class InventoryEndpoints
                 var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null);
 
                 var totalSku = await query.CountAsync(ct);
-                var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
-                var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0) && (a.Kolicina ?? 0) > 0, ct);
-                var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-                var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
+                var totalOnHand = await query.SumAsync(
+                    a => a.Kolicina > 0 ? a.Kolicina : (int?)0,
+                    ct) ?? 0;
+                var lowStock = await query.CountAsync(
+                    a => a.Kolicina != null
+                         && a.Kolicina > 0
+                         && a.MinimalnaKolicina != null
+                         && a.Kolicina <= a.MinimalnaKolicina,
+                    ct);
+                var outOfStock = await query.CountAsync(a => a.Kolicina == 0, ct);
+                var estimatedValue = await query.SumAsync(
+                    a => a.Kolicina != null && a.Kolicina > 0 && a.NabavnaCena != null
+                        ? a.NabavnaCena * a.Kolicina
+                        : (decimal?)0m,
+                    ct) ?? 0m;
 
                 var meta = totalSku == 0
                     ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
@@ -123,28 +134,39 @@ public static class InventoryEndpoints
             var items = new List<InventoryListItemDto>(rawItems.Count);
             foreach (var item in rawItems)
             {
-                var quantity = item.Kolicina ?? 0;
+                var quantity = item.Kolicina;
+                var estimatedValue = Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(
+                    item.Kolicina,
+                    item.NabavnaCena);
                 var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
                 var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
                     ? stats
                     : new InventorySignalWindowStats(0, 0);
-                var openingStockUnits = Math.Max(quantity - movementWindowStats.NetMovementUnits, 0);
-                var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+                var openingStockUnits = quantity is null
+                    ? (int?)null
+                    : Math.Max(quantity.Value - movementWindowStats.NetMovementUnits, 0);
+                var hasReliableSellThroughInputs = (openingStockUnits ?? 0) > 0 || movementWindowStats.InboundUnits > 0;
                 var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
-                var hasSufficientData = soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs;
-                var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
-                    ? "good"
-                    : hasSufficientData
-                        ? "warning"
-                        : "insufficient_data";
-                var signal = ComputeInventorySignalEvidence(
-                    quantity,
-                    avgDailySalesUnits,
-                    soldUnits30d,
-                    openingStockUnits,
-                    movementWindowStats.InboundUnits,
-                    signalDataQuality,
-                    hasSufficientData);
+                var hasQuantityEvidence = quantity is not null;
+                var hasSufficientData = hasQuantityEvidence
+                    && (soldUnits30d > 0 || quantity > 0 || hasReliableSellThroughInputs);
+                var signalDataQuality = !hasQuantityEvidence
+                    ? "insufficient_data"
+                    : soldUnits30d > 0 && hasReliableSellThroughInputs
+                        ? "good"
+                        : hasSufficientData
+                            ? "warning"
+                            : "insufficient_data";
+                var signal = hasQuantityEvidence
+                    ? ComputeInventorySignalEvidence(
+                        quantity!.Value,
+                        avgDailySalesUnits,
+                        soldUnits30d,
+                        openingStockUnits,
+                        movementWindowStats.InboundUnits,
+                        signalDataQuality,
+                        hasSufficientData)
+                    : CreateInsufficientInventorySignalEvidence("missing_quantity");
 
                 items.Add(new InventoryListItemDto(
                     item.Id,
@@ -153,7 +175,7 @@ public static class InventoryEndpoints
                     item.Kolicina,
                     item.MinimalnaKolicina,
                     item.NabavnaCena,
-                    (item.NabavnaCena ?? 0m) * (quantity > 0 ? quantity : 0),
+                    estimatedValue,
                     item.IDObjekat,
                     item.IDDobavljac,
                     signal.StockCoverDays,
@@ -204,9 +226,9 @@ public static class InventoryEndpoints
                     a.Id,
                     a.PLU,
                     a.Naziv,
-                    a.Kolicina ?? 0,
-                    a.MinimalnaKolicina ?? 0,
-                    a.NabavnaCena ?? 0m,
+                    a.Kolicina,
+                    a.MinimalnaKolicina,
+                    a.NabavnaCena,
                     a.IDObjekat,
                     a.IDDobavljac,
                     a.Kategorija,
@@ -294,6 +316,9 @@ public static class InventoryEndpoints
 
             var daysSinceMovement = ResolveDaysSinceMovement(lastMovementAt, article.UpdatedAt);
             var (agingBucket, agingLabel) = ResolveAging(daysSinceMovement);
+            var estimatedValue = Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(
+                article.Quantity,
+                article.UnitCost);
 
             var singleton = ApplyAbcClassification(new List<InventoryDatasetItem>
             {
@@ -301,10 +326,10 @@ public static class InventoryEndpoints
                     article.Id,
                     article.Plu,
                     article.Naziv,
-                    article.Quantity,
-                    article.Minimum,
-                    article.UnitCost,
-                    article.UnitCost * article.Quantity,
+                    article.Quantity ?? 0,
+                    article.Minimum ?? 0,
+                    article.UnitCost ?? 0m,
+                    estimatedValue ?? 0m,
                     article.StoreId,
                     ResolveLookup(storeNameMap, article.StoreId),
                     article.SupplierId,
@@ -329,32 +354,41 @@ public static class InventoryEndpoints
             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(singleton.Id, out var movementStats)
                 ? movementStats
                 : new InventorySignalWindowStats(0, 0);
-            var openingStockUnits = Math.Max(singleton.Quantity - movementWindowStats.NetMovementUnits, 0);
-            var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
-            var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
-            var hasSufficientData = soldUnits30d > 0 || singleton.Quantity > 0 || hasReliableSellThroughInputs;
-            var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
-                ? "good"
-                : hasSufficientData
-                    ? "warning"
-                    : "insufficient_data";
-            var signalEvidence = ComputeInventorySignalEvidence(
-                singleton.Quantity,
-                avgDailySalesUnits,
-                soldUnits30d,
-                openingStockUnits,
-                movementWindowStats.InboundUnits,
-                signalDataQuality,
-                hasSufficientData);
+
+            InventorySignalEvidenceSnapshot signalEvidence;
+            if (article.Quantity is null)
+            {
+                signalEvidence = CreateInsufficientInventorySignalEvidence("missing_quantity");
+            }
+            else
+            {
+                var openingStockUnits = Math.Max(article.Quantity.Value - movementWindowStats.NetMovementUnits, 0);
+                var hasReliableSellThroughInputs = openingStockUnits > 0 || movementWindowStats.InboundUnits > 0;
+                var avgDailySalesUnits = Math.Round(soldUnits30d / 30m, 4, MidpointRounding.AwayFromZero);
+                var hasSufficientData = soldUnits30d > 0 || article.Quantity > 0 || hasReliableSellThroughInputs;
+                var signalDataQuality = soldUnits30d > 0 && hasReliableSellThroughInputs
+                    ? "good"
+                    : hasSufficientData
+                        ? "warning"
+                        : "insufficient_data";
+                signalEvidence = ComputeInventorySignalEvidence(
+                    article.Quantity.Value,
+                    avgDailySalesUnits,
+                    soldUnits30d,
+                    openingStockUnits,
+                    movementWindowStats.InboundUnits,
+                    signalDataQuality,
+                    hasSufficientData);
+            }
 
             var detail = new InventoryItemDetailDto(
                 singleton.Id,
                 singleton.Plu,
                 singleton.Naziv,
-                singleton.Quantity,
-                singleton.Minimum,
-                singleton.UnitCost,
-                singleton.EstimatedValue,
+                article.Quantity,
+                article.Minimum,
+                article.UnitCost,
+                estimatedValue,
                 singleton.StoreId,
                 singleton.StoreName,
                 singleton.SupplierId,
@@ -844,9 +878,9 @@ public static class InventoryEndpoints
                 a.Id,
                 a.PLU,
                 a.Naziv,
-                a.Kolicina ?? 0,
-                a.MinimalnaKolicina ?? 0,
-                a.NabavnaCena ?? 0m,
+                a.Kolicina,
+                a.MinimalnaKolicina,
+                a.NabavnaCena,
                 a.IDObjekat,
                 a.IDDobavljac,
                 a.Kategorija,
@@ -878,10 +912,10 @@ public static class InventoryEndpoints
                     item.Id,
                     item.Plu,
                     item.Naziv,
-                    item.Quantity,
-                    item.Minimum,
-                    item.UnitCost,
-                    item.UnitCost * Math.Max(item.Quantity, 0),
+                    item.Quantity ?? 0,
+                    item.Minimum ?? 0,
+                    item.UnitCost ?? 0m,
+                    Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, item.UnitCost) ?? 0m,
                     item.StoreId,
                     ResolveLookup(storeNameMap, item.StoreId),
                     item.SupplierId,
@@ -1433,6 +1467,19 @@ public static class InventoryEndpoints
         string DataQualityStatus,
         IReadOnlyList<string> ReasonCodes);
 
+    private static InventorySignalEvidenceSnapshot CreateInsufficientInventorySignalEvidence(string reasonCode)
+        => new(
+            StockCoverDays: null,
+            StockCoverStatus: "insufficient_data",
+            StockCoverStatusLabel: "Nedovoljno podataka",
+            SellThroughRatio: null,
+            SellThroughStatus: "insufficient_data",
+            SellThroughStatusLabel: "Nedovoljno podataka",
+            SignalConfidencePct: 0m,
+            RecommendationAllowed: false,
+            DataQualityStatus: "insufficient_data",
+            ReasonCodes: new[] { reasonCode });
+
     private static InventorySignalEvidenceSnapshot ComputeInventorySignalEvidence(
         InventoryDatasetItem item,
         int soldUnits30d,
@@ -1851,9 +1898,9 @@ public static class InventoryEndpoints
         int Id,
         string? Plu,
         string Naziv,
-        int Quantity,
-        int Minimum,
-        decimal UnitCost,
+        int? Quantity,
+        int? Minimum,
+        decimal? UnitCost,
         int? StoreId,
         int? SupplierId,
         string? Kategorija,

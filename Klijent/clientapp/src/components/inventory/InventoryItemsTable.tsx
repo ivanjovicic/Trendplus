@@ -45,7 +45,7 @@ function isInsufficientStatus(status: string): boolean {
 
 function stockAccentClass(state: string): string {
   if (state === "critical") return "border-l-[var(--error)]";
-  if (state === "warning") return "border-l-[var(--warning)]";
+  if (state === "warning" || state === "unknown") return "border-l-[var(--warning)]";
   return "border-l-[var(--success)]";
 }
 
