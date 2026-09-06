@@ -95,11 +95,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
-| RQ171 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
-| RQ172 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
-| RQ173 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
-| RQ174 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
-| RQ175 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
+| RQ176 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
+| RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
+| RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
+| RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
+| RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 
 ---
 
@@ -5544,7 +5544,7 @@ Do not duplicate `RQ166` action-timeline validation or change valid default-peri
 
 ---
 
-## RQ171 - Keep inventory snapshot query time separate from source freshness
+## RQ176 - Keep inventory snapshot query time separate from source freshness
 
 Status: WAITING
 Priority: P1
@@ -5610,7 +5610,7 @@ Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, bu
 
 ---
 
-## RQ172 - Preserve missing, empty and partial size-curve states in the panel
+## RQ177 - Preserve missing, empty and partial size-curve states in the panel
 
 Status: WAITING
 Priority: P1
@@ -5675,7 +5675,7 @@ The size-curve panel uses the same branch and copy for a missing snapshot relati
 
 ---
 
-## RQ173 - Add backend-owned actionability and safe copy to inventory signal snapshots
+## RQ178 - Add backend-owned actionability and safe copy to inventory signal snapshots
 
 Status: WAITING
 Priority: P1
@@ -5741,7 +5741,7 @@ Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs d
 
 ---
 
-## RQ174 - Do not mark supplier footwear data fresh from response generated time
+## RQ179 - Do not mark supplier footwear data fresh from response generated time
 
 Status: WAITING
 Priority: P1
@@ -5802,7 +5802,7 @@ Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
 
 ---
 
-## RQ175 - Remove frontend reconstruction of backend-owned pre/post aggregate denominators
+## RQ180 - Remove frontend reconstruction of backend-owned pre/post aggregate denominators
 
 Status: WAITING
 Priority: P1

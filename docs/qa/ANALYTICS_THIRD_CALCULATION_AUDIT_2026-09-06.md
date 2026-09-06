@@ -95,7 +95,7 @@ History checked: `570a31e8` and `a84d8a42` improved the backend pre/post contrac
 
 ## Queue result
 
-Added waiting prompts `RQ171`-`RQ175` to `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`. `RQ154` remains the only `READY` prompt. No forecast, Shopify or external connector prompt was promoted.
+Added waiting prompts `RQ176`-`RQ180` to `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`. `RQ154` remains the only `READY` prompt. No forecast, Shopify or external connector prompt was promoted.
 
 ## Proof boundary
 
