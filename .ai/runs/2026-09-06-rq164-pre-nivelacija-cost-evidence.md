@@ -6,9 +6,9 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Composer
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending-commit
+Main commit SHA: c66c4ac4cbe0d2c067e848c3cb434994a01cfc0c
 Main verification: pending-push
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 
@@ -31,7 +31,8 @@ Aligned pre-nivelacija purchase-cost completeness with `AnalyticsMarginPolicy.Is
 ## Validation run
 
 - `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~PreNivelacija"` — Passed 15 / Failed 0
-- `node scripts/check-prompt-queues.mjs` — pending close
+- `node scripts/check-prompt-queues.mjs` — pass (371 tasks)
+- `git diff --check` — pass
 
 ## Validation not run
 
