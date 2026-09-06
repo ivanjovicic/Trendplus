@@ -237,7 +237,7 @@ describe("AnalyticsDashboard table system", () => {
 
   it("excludes unknown/null trends from top gainers list", async () => {
     // FAILING-FIRST TEST: Currently this fails because null trend is coalesced to 0 and included
-    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+    vi.mocked(getDashboardBootstrap).mockResolvedValue({
       summary: {
         totalRevenue: 12345,
         totalTransactions: 12,
@@ -280,14 +280,14 @@ describe("AnalyticsDashboard table system", () => {
       errors: [],
       meta: { success: true, dataQualityStatus: "good" },
     });
-    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValue({
       isRunning: false,
       currentStep: null,
       dataFreshnessStatus: "good",
       lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
       jobs: [],
     });
-    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+    vi.mocked(checkAnalyticsHealth).mockResolvedValue({
       status: "ok",
       tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
       message: "ok",
@@ -298,6 +298,7 @@ describe("AnalyticsDashboard table system", () => {
         <AnalyticsDashboard />
       </MemoryRouter>,
     );
+    console.log("RQ155 bootstrap calls", vi.mocked(getDashboardBootstrap).mock.calls.length);
 
     // Find the top gainers section
     const gainersSection = await screen.findByTestId("top-gainers-section");
@@ -315,7 +316,7 @@ describe("AnalyticsDashboard table system", () => {
 
   it("excludes unknown/non-finite trends from top losers list", async () => {
     // FAILING-FIRST TEST: Currently this fails because NaN/Infinity trends are coalesced to 0 and filtered
-    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+    vi.mocked(getDashboardBootstrap).mockResolvedValue({
       summary: {
         totalRevenue: 12345,
         totalTransactions: 12,
@@ -358,14 +359,14 @@ describe("AnalyticsDashboard table system", () => {
       errors: [],
       meta: { success: true, dataQualityStatus: "good" },
     });
-    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValue({
       isRunning: false,
       currentStep: null,
       dataFreshnessStatus: "good",
       lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
       jobs: [],
     });
-    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+    vi.mocked(checkAnalyticsHealth).mockResolvedValue({
       status: "ok",
       tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
       message: "ok",
@@ -391,7 +392,7 @@ describe("AnalyticsDashboard table system", () => {
 
   it("preserves genuine zero trend as measured neutral (not in gainers or losers)", async () => {
     // FAILING-FIRST TEST: Verify that genuine zero trend is distinct from unknown
-    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+    vi.mocked(getDashboardBootstrap).mockResolvedValue({
       summary: {
         totalRevenue: 12345,
         totalTransactions: 12,
@@ -432,14 +433,14 @@ describe("AnalyticsDashboard table system", () => {
       errors: [],
       meta: { success: true, dataQualityStatus: "good" },
     });
-    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValue({
       isRunning: false,
       currentStep: null,
       dataFreshnessStatus: "good",
       lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
       jobs: [],
     });
-    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+    vi.mocked(checkAnalyticsHealth).mockResolvedValue({
       status: "ok",
       tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
       message: "ok",

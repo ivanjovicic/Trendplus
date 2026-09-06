@@ -727,6 +727,7 @@ export default function AnalyticsDashboard() {
 
     const nextErrors: string[] = [];
     if (bootstrapR.status === "fulfilled") {
+      console.log("RQ155 load", bootstrapR.value.topAdvanced);
       setSummary(bootstrapR.value.summary);
       setInventory(bootstrapR.value.inventory);
       setDailySales(bootstrapR.value.dailySales);

@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ155
+Current READY prompt: RQ157
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -4641,12 +4641,14 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 
 ## RQ157 - Preserve missing Product Decision baseline and coverage evidence
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/contract/tests
 Feature family: pdc-baseline-coverage-state
 Parallel-safe: no, Product Decision backend is the owner of recommendation evidence
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T08:00:00Z
 Commit suggestion: `fix(analytics): preserve missing pdc evidence`
 
 ### Problem
