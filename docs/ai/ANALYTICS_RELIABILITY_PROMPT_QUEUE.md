@@ -4705,7 +4705,7 @@ Do not change SQL, pre/post formulas, comparable-cohort selection, coverage calc
 - Main commit SHA: 7a3cc04080790a170b5452facbdc7afbd468946f
 - Main verification: `git ls-remote origin refs/heads/main` returned `99919292484fad80bc92ebc0d92df0e83190f45c`; implementation SHA is an ancestor of current `main`.
 - Missed: No export adapter is owned by these page helpers; broad table/chart/detail/export/report parity remains RQ145 scope.
-- Follow-up: RQ158 remains IN_PROGRESS under `local-session-ivan`; RQ145 owns broad parity and RQ146/STAB16 own runtime/schema/refresh proof.
+- Follow-up: RQ160 is the current READY inventory-surface prompt; RQ145 owns broad parity and RQ146/STAB16 own runtime/schema/refresh proof.
 - Residual risk: Live deployed data and browser console behavior remain unverified outside this bounded frontend prompt.
 - Prompt defect / scope repair: Added direct helper exports solely to make the three presentation decisions regression-testable; no business logic was moved to the frontend.
 
@@ -4732,7 +4732,7 @@ Evidence state: synchronized
 - Null `TrendPct` / `MarginPct` fail closed to `INSUFFICIENT_DATA` with `insufficient_history` in PDC reasoning.
 - Null margin/split coverage in `AnalyticsDecisionRecommendationEngine` no longer coalesce to measured zero; split null → `missing_split_coverage` / `insufficient_data`.
 - Focused tests: ProductDecisionReasoningHelperTests, AnalyticsDecisionRecommendationEngineTests, ProductDecisionCenterBuilderIntegrationTests — 26 passed.
-- Next READY: RQ158.
+- Next READY: RQ160 after RQ158 and RQ159 completed their inventory contracts.
 
 ### Problem
 
@@ -4822,7 +4822,7 @@ Evidence state: synchronized
 - Estimated value stays unavailable without quantity/cost; measured zero quantity is true zero capital.
 - Frontend `getStockState` / `buildInventoryRow` render unknown vs measured zero distinctly.
 - Tests: InventoryStockEvidenceTests + inventory fake-zero specs + list/signal inventory filters — passed.
-- Next READY: RQ159.
+- Next READY: RQ160.
 
 ### Problem
 
