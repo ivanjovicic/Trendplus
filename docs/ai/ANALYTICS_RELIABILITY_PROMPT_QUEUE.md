@@ -7938,3 +7938,608 @@ Both v1 (`/api/analytics/advanced`) and v2 (`/api/analytics/advanced/v2`) use `D
 
 - Same local date produces same KPIs across all endpoints.
 
+---
+
+## RQ233 - Preserve supplier concentration denominator scope
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-concentration-scope-parity
+Parallel-safe: no
+Owner: Supplier Analytics
+
+### Problem
+
+`SupplierSalesStatsPage` filters visible supplier rows by `supplierId` and `includeUnknown`, but `Udeo top 5 dobavljača` keeps the unfiltered `data.totals.ukupanPromet` denominator. A focused supplier can therefore be used as the numerator while the label and denominator describe all suppliers.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:820-826` derives `visibleSuppliers` from focus and unknown filters.
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:873-887` derives `knownSuppliers` from visible rows but calculates `top5SharePct` against response totals.
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx:899-917` builds the concentration chart from the filtered population.
+- Existing supplier tests cover trust, empty and error states but not focused-supplier concentration denominator scope.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ143`, `RQ145`, `RQ198`, `RQ199`, `RQ231`, `RQ232`
+- `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`
+
+### Do
+
+1. Define one explicit population for the concentration metric; never mix filtered numerator and unfiltered denominator.
+2. Prefer backend-owned aggregate scope metadata, or apply one normalized scope consistently to KPI, chart, table, detail, export and report.
+3. Keep unknown, empty, valid-zero, missing and non-finite denominator states distinct.
+4. Preserve backend ownership of recommendation, score and confidence.
+
+### Tests
+
+- all suppliers, focused supplier, `includeUnknown=false`, unknown-only and empty visible populations;
+- valid zero versus null, missing, `NaN` and `Infinity` denominator;
+- exact KPI/chart/table/detail/export/report parity and scope labels.
+
+### Acceptance
+
+- Numerator, denominator, label, tooltip and scope metadata always describe the same population.
+- Unavailable evidence never becomes a valid percentage or action signal.
+- Focused and unfiltered regression tests fail before the fix and pass after it.
+
+### Dependencies
+
+- Coordinates with `RQ145` but is independently reproducible in the supplier overview.
+- Does not redo supplier period validation from `RQ231` or supplier-footwear denominator work from `RQ232`.
+
+---
+
+## RQ234 - Preserve all supplier decision filters in report deep-links
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: supplier-report-filter-fidelity
+Parallel-safe: no
+Owner: Supplier Analytics Reports
+
+### Problem
+
+Supplier Decision Hub report links preserve period, scope, supplier and store only. Season, minimum revenue, high-confidence, OOS, category and gender filters are accepted by the decision/report contract but omitted from the durable link, so opening the report can silently broaden or change its dataset.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:688-703` serializes only period, scope, supplier and store.
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx:611-621` exposes additional active decision filters.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:967-986` has the same reduced stable URL builder.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:44-54` and `:449-460` show that report-capable endpoints accept additional filters.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ145`, `RQ146`, `RQ198`, `RQ199`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`
+- `Klijent/clientapp/src/pages/SupplierDecisionReportPage.tsx`
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs`
+
+### Do
+
+1. Enumerate every material Decision Hub filter and define one canonical serialization contract.
+2. Make Hub link, stable backend URL, report API, print and export preserve the same filters.
+3. Keep absent, empty, zero and malformed values distinct; never silently broaden a report.
+4. Show effective period, scope and material filters in report metadata.
+
+### Tests
+
+- filter round-trip for season, minimum revenue, high-confidence, OOS, category, gender, supplier, store and data scope;
+- absent, empty, zero and malformed values;
+- report/table/export parity, reversed period, unknown scope, 404 and safe error copy.
+
+### Acceptance
+
+- A report opened from the Hub queries exactly the same period, scope and material filters as the originating view.
+- Invalid filters fail closed and compatibility links preserve or explicitly replace the contract.
+
+### Dependencies
+
+- Coordinates with `RQ141` and `RQ145`; this is the narrow report-link reproduction, not a replacement for their full matrix/parity work.
+
+---
+
+## RQ235 - Suppress supplier report negotiation actions when recommendation is blocked
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-report-actionability-gate
+Parallel-safe: no
+Owner: Supplier Analytics Reports
+
+### Problem
+
+The supplier report correctly marks `Preporuka dozvoljena: Ne` and changes `Finalni savet` to a helper signal, but still emits concrete negotiation actions as `Preporučeno` based on local counts. This violates the rule that no action may be shown when backend `recommendationAllowed=false`.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:108` resolves the backend actionability gate.
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:251-267` still emits `Preporučeno` for cooperation, terms, order reduction, returns and discount negotiation based on local counts.
+- `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts:91-110` checks only the final advice, not all negotiation actions when the gate is false.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ145`, `RQ181`
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+- `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`
+
+### Do
+
+1. Treat backend `recommendationAllowed` as the single gate for every concrete report action and negotiation recommendation.
+2. When blocked, show only a safe verification/data-quality message, not an actionable “Preporučeno” outcome.
+3. Keep evidence/context rows visible where useful, but clearly label them as non-actionable.
+4. Apply the same gate to printable and exported report payloads.
+
+### Tests
+
+- blocked, allowed, missing-gate, stale, fallback, partial and insufficient metadata;
+- assert no `Preporučeno` action row is emitted when blocked;
+- assert report, print and export use the same actionability state.
+
+### Acceptance
+
+- `recommendationAllowed=false` or missing prevents every concrete action recommendation in the report/export.
+- A blocked report contains a clear Serbian explanation and verification next step.
+- Backend status, score and confidence are not recreated in the report builder.
+
+### Dependencies
+
+- Consumes backend decision truth and coordinates with `RQ145`; no new local recommendation engine is allowed.
+
+---
+
+## RQ236 - Preserve unavailable supplier report numerics instead of zero-filling
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: supplier-report-numeric-state
+Parallel-safe: no
+Owner: Supplier Analytics Reports
+
+### Problem
+
+`buildSupplierDecisionReportPayload` treats missing optional row metrics as measured zero. Missing `units` becomes `0`, and missing `markdownRevenueShare` contributes `0` to the weighted markdown KPI and filtering. The report can therefore understate units and markdown dependency while presenting a valid-looking numeric result.
+
+### Evidence
+
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:109` uses `row.units ?? 0`.
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:111-113` uses `row.markdownRevenueShare ?? 0` in a KPI denominator-weighted calculation.
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts:204-207` uses the same fallback to classify markdown-dependent rows.
+- Existing `supplierDecisionReport.spec.ts` uses known zero fixtures but does not distinguish missing optional metrics from measured zero.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ139`, `RQ145`, `RQ147`, `RQ148`
+- `Klijent/clientapp/src/services/supplierDecisionReport.ts`
+- `Klijent/clientapp/src/services/__tests__/supplierDecisionReport.spec.ts`
+
+### Do
+
+1. Define report-level numeric states for measured zero, unavailable, partial and non-finite values.
+2. Do not include missing/invalid optional inputs in weighted calculations or threshold-based recommendation evidence.
+3. Keep valid zero distinct from missing/null/`NaN`/`Infinity` in report, print and export payloads.
+4. Show a clear limitation when a KPI cannot be calculated from complete evidence.
+
+### Tests
+
+- empty rows, valid zero units/markdown, missing/null units/markdown, `NaN` and `Infinity`;
+- partial row coverage and mixed valid/unknown populations;
+- exact report/print/export parity and no false recommendation caused by zero-filling.
+
+### Acceptance
+
+- Missing optional metrics never become measured zero or silently lower a weighted KPI.
+- Valid zero remains zero.
+- Unavailable or partial metrics are shown as unavailable with a limitation, and actionability is not increased by missing evidence.
+
+### Dependencies
+
+- Coordinates with `RQ145` and `RQ147`; it is the focused supplier-report numeric-state reproduction.
+
+---
+
+## RQ237 - Aggregate inventory trust metadata conservatively across panels
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: inventory-composite-trust-lineage
+Parallel-safe: no, the Inventory page has one composite trust header owner
+Owner: Codex
+Commit suggestion: `fix(analytics): aggregate inventory trust state conservatively`
+
+### Problem
+
+`InventoryPage` combines several independent responses in one trust header. It selects the newest timestamp from the primary panel metas but uses the first meta for quality status and partial state. A good first source can therefore hide a warning/stale/unknown state from the balance or insights source, while a query timestamp gives a false impression of freshness.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:658-676` builds `[pageData.meta, balance.meta, insights.meta]`, picks the newest `lastRefreshAtUtc`, and then uses `primaryInventoryMetas[0]` as `primaryMeta`.
+- `:677-721` finds a warning separately, but the header still receives only `primaryMeta` quality/partial state.
+- `:1046-1054` passes `primaryRefreshAt`, `primaryMeta.dataQualityStatus` and `isAnalyticsMetaWarning(primaryMeta)` to `AnalyticsTrustHeader`.
+- `RQ176` and `RQ187` address query/cache timestamps, but do not repair this page-level aggregation of independent source states.
+
+### Scope
+
+- `InventoryPage.tsx`, the shared inventory trust projection only if it remains page-owned, and nearest Inventory page tests.
+- Composite freshness/quality/partial state, source lineage copy and header parity.
+- No inventory formulas, rebalance contract, forecast behavior or unrelated cache changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ141`, `RQ145`, `RQ176`, `RQ178`, `RQ187`
+- `InventoryPage.tsx`, `InventoryPage.freshnessLineage.spec.tsx`, `InventoryPage.forecastRestock.spec.tsx` and shared analytics meta helpers
+
+### Do
+
+1. Add failing-first fixtures where `pageData` is good but balance or insights is warning, stale or unknown; include mixed timestamps and missing refresh fields.
+2. Aggregate quality and partial state conservatively across every displayed source, or expose each source state explicitly; never let the newest query timestamp mask an older/unknown source.
+3. Keep generated/query time separate from last successful refresh and preserve empty, error and fallback states.
+4. Ensure header, warning copy and secondary-panel lineage describe the same source set.
+
+### Tests
+
+- Focused Inventory page tests for good+warning, good+stale, unknown refresh, mixed timestamps, empty, partial and error responses.
+- Assert no current query time is displayed as source refresh and no console warning/error is introduced.
+- Theme and initial chart geometry coverage where the changed panel renders charts; analytics guardrails and focused frontend checks.
+
+### Acceptance
+
+- Any degraded primary inventory source is visible in the trust header or explicit per-source lineage.
+- Quality/partial state and refresh timestamp cannot be selected from contradictory source projections.
+- Missing source freshness remains unknown; generated/query time is never used as last refresh.
+- Empty remains distinct from error and fallback/partial remains visible.
+
+### Dependencies
+
+- `RQ141` remains broad lineage owner; `RQ176`/`RQ187` remain source timestamp owners.
+- `RQ178` remains row actionability owner; this prompt does not redesign rebalance or alert DTOs.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ241 - Reject invalid custom Dashboard dates instead of using current time
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-dashboard-period-validation
+Parallel-safe: yes, bounded to Dashboard custom-period input validation
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on invalid dashboard dates`
+
+### Problem
+
+The Analytics Dashboard parses a malformed or temporarily empty `datetime-local` value as the current time. The same fallback is used for range validation and selected-day calculation, so an invalid custom period can bypass the intended guard, derive an arbitrary day count and still issue an API request with an invalid period. This can show stale previous data beside a misleading period or cause the backend to receive a request the UI should have rejected.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:206-209` returns `new Date()` when `new Date(value)` is invalid.
+- `:645-653` uses that helper for both `isInvalidFilterRange` and `selectedDays`, so blank/malformed input is not represented as an invalid state.
+- `:713-718` blocks only an inverted range and otherwise calls `getDashboardBootstrap(fromDate, toDate, ...)`.
+- `:1071-1091` binds raw `datetime-local` values directly to `fromDate` and `toDate`; empty values are possible while editing a custom period.
+- Existing Dashboard control-bar tests cover presets and normal filter changes but do not prove malformed/empty custom date values fail closed before a request.
+- `RQ208` owns DST-safe day counting; this prompt owns invalid-input semantics and must not replace that contract.
+
+### Scope
+
+- `AnalyticsDashboard.tsx`, the nearest Dashboard control/integration tests and a shared date-input helper only if the Dashboard remains its owner.
+- Custom date parse validity, inverted-range validation, selected-day derivation and request gating.
+- No backend period formula, timezone/DST policy, recommendation, score or freshness calculation changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ161`, `RQ208`
+- `AnalyticsDashboard.tsx`, `AnalyticsDashboard.controlBar.spec.tsx`, `AnalyticsDashboard.integration.spec.tsx`, `analyticsPeriodLineage.ts` and Dashboard API types
+
+### Do
+
+1. Add failing-first tests for empty `fromDate`, empty `toDate`, malformed date text, an inverted valid range and a valid same-day range.
+2. Represent invalid input explicitly; never substitute current time, epoch or another valid date for validation or KPI denominators.
+3. Prevent the Dashboard request while custom input is invalid, preserve the previous trusted response separately from the validation message, and make the user-facing message clear and code-free.
+4. Keep selected-day counting timezone-safe for valid input and preserve existing preset behavior and period lineage fields.
+
+### Tests
+
+- Focused Dashboard control-bar/integration tests asserting no bootstrap request for empty or malformed custom input.
+- Valid same-day, inverted-range, preset and rapid-edit cases, including selected-day calculation.
+- Assert error/validation state is distinct from empty, stale, fallback and backend-error states; no fake KPI update occurs.
+- No console warning/error assertion where supported, theme smoke for the validation surface, analytics guardrails and focused frontend validation.
+
+### Acceptance
+
+- Empty, malformed and non-finite custom date values fail closed before the analytics request.
+- A valid measured same-day period remains valid; an inverted period is rejected with a clear user message.
+- Current query time is never used as a substitute for invalid input or displayed as data freshness.
+- Existing backend-owned period, freshness, recommendation and score semantics remain unchanged.
+
+### Dependencies
+
+- `RQ208` remains the valid-period DST/day-count owner.
+- `RQ145`/`RQ161` remain broad period-lineage and validation owners; this prompt is the concrete Dashboard input-boundary repair.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ242 - Do not fabricate Daily Sales supplier shares from inconsistent totals
+
+Status: WAITING
+Priority: P1
+Type: frontend/backend/contract/tests
+Feature family: daily-sales-supplier-concentration-reconciliation
+Parallel-safe: no, Daily Sales concentration has one response/projection owner
+Owner: Codex
+Commit suggestion: `fix(analytics): fail closed on inconsistent supplier concentration totals`
+
+### Problem
+
+Daily Sales receives a full-period item/revenue total and a `TopN` supplier list. The page currently chooses `Math.max` between the total and the sum of the returned top suppliers, then derives `Ostali` and concentration shares from that synthetic basis. If the sources disagree, a negative/return supplier, scope mismatch or partial response can make the top suppliers exceed the real total; selecting the larger value hides the contradiction, lowers shares and can create a false zero/positive `Ostali` bucket.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:694-702` computes the top supplier sums and silently chooses the larger of those sums and the period total for quantity and revenue denominators.
+- `:714-733` subtracts the top rows from that selected basis and constructs an `Ostali` row with `Math.max`, so an inconsistent response is rendered as a reconciled population.
+- `:745-760` uses the same synthetic quantity basis for Top 3/Top 5 share and suppliers-to-80% metrics.
+- `Api/Models/DailySalesStatsDto.cs:5-16` exposes `TopN`/`TopSuppliers` alongside period metadata, while `Api/Services/DailySalesStatsService.cs:400-438` ranks and truncates suppliers with `Take(topN)`.
+- `Api/Services/DailySalesStatsService.cs:455-460` warns for per-day top/others mismatch, but no equivalent contract state protects the cross-period concentration calculation.
+- Existing Daily Sales service/page tests assert normal reconciliation and numeric unknown-state behavior but do not inject a top-supplier total greater than the authoritative period total or assert unavailable concentration output.
+- `RQ233` owns Supplier Sales focused/unfiltered denominator scope; this prompt owns the separate Daily Sales response reconciliation and must not duplicate that route.
+
+### Scope
+
+- `DailySalesStatsService.cs`/`DailySalesStatsDto.cs` if the backend must expose an explicit reconciliation or quality field, `DailySalesStatsPage.tsx`, `dailySalesStatsApi.ts`, and nearest service/page/integration tests.
+- Period total versus `TopN` supplier population semantics, concentration shares and `Ostali` derivation.
+- No trend, forecast, Shopify, supplier-report formula or recommendation score changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ145`, `RQ154`, `RQ201`, `RQ202`, `RQ233`
+- `DailySalesStatsService.cs`, `DailySalesStatsDto.cs`, `DailySalesStatsPage.tsx`, `dailySalesStatsApi.ts`, Daily Sales focused specs and analytics response meta helpers
+
+### Do
+
+1. Add failing-first fixtures for a consistent TopN subset, a true zero total with no suppliers, a normal positive `Ostali` remainder and contradictory top quantity/revenue totals.
+2. Define one backend-owned authoritative basis for the selected period and scope. If the response cannot prove reconciliation, return an explicit warning/degraded or unavailable concentration state rather than selecting `Math.max`.
+3. Keep a TopN/truncated population explicit; never imply that returned suppliers are the complete population and never fabricate `Ostali` from an invalid basis.
+4. Preserve genuine measured zero, unknown/null/non-finite values and empty-success semantics. Keep table, chart, KPI, details and export on the same concentration projection.
+
+### Tests
+
+- Backend service/contract tests for consistent totals, TopN truncation, zero total, negative/return rows and contradictory totals.
+- Frontend tests for unavailable/degraded concentration, genuine zero, valid `Ostali`, `NaN`/`Infinity`, empty and partial responses.
+- Table/chart/KPI/export parity and scope/period preservation; no raw backend codes in user copy.
+- Dark/light/soft-gray theme and no console warning/error assertions where supported, analytics guardrails, focused frontend tests and mapped backend tests.
+
+### Acceptance
+
+- The UI never uses `Math.max` or another silent reconciliation to turn contradictory supplier and period totals into trusted shares.
+- A valid TopN subset has explicit scope and a valid remainder; an invalid or insufficient basis renders unavailable/degraded concentration with a clear limitation.
+- True zero remains zero; missing, unknown, insufficient and non-finite evidence never becomes a valid zero or 100% share.
+- Daily Sales table, chart, KPI, detail and export agree on the same backend-owned period/scope and numeric state.
+
+### Dependencies
+
+- `RQ154` remains the Daily Sales nullable/non-finite numeric-state owner; `RQ201`/`RQ202` remain chart order and date-timezone owners.
+- `RQ233` remains Supplier Sales denominator-scope owner; do not merge the two routes or duplicate its fix.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ238 - Preserve undefined zero-denominator coverage on Shoe Type Sales
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: shoe-type-coverage-denominator-state
+Parallel-safe: yes, bounded to Shoe Type Sales coverage projection
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve shoe-type coverage denominator state`
+
+### Problem
+
+The Shoe Type Sales page derives an article-level nivelacija coverage value as `0` when the total article denominator is zero. Zero is a valid measured coverage only when the denominator supports a measurement; an undefined ratio must stay unavailable and must not be carried as a non-null numeric field.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx:91` declares `coveragePct: number`.
+- `:435-437` calculates `brojArtikalaSaNivelacijom / brojArtikalaUkupno` when positive, otherwise returns `0`.
+- `Api/Endpoints/AllEndpoints.cs:2264-2265` supplies the source counts for the shoe-type response; a zero denominator is not proof of measured zero coverage.
+- Existing Shoe Type tests cover populated and empty responses but do not distinguish a real zero numerator with a positive denominator from an undefined zero denominator.
+
+### Scope
+
+- `ShoeTypeSalesStatsPage.tsx`, its derived/detail/export row projection if consumed, and nearest Shoe Type tests.
+- Null/zero/non-finite denominator semantics only.
+- No pre/post formula, recommendation status, confidence, trend or backend calculation rewrite.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ145`, `RQ156`
+- `ShoeTypeSalesStatsPage.tsx`, Shoe Type focused specs, `AllEndpoints.cs` and the pre/post coverage contract
+
+### Do
+
+1. Add failing-first fixtures for positive denominator with true `0` numerator, positive coverage, zero denominator, null counts, negative/non-finite counts and missing response fields.
+2. Return/render unavailable for an undefined denominator; keep genuine measured `0%` distinct.
+3. Verify status tooltips, detail snapshot, table and export do not reintroduce zero for unavailable coverage.
+4. Preserve backend recommendation/actionability ownership and use safe Serbian limitation copy.
+
+### Tests
+
+- Shoe Type focused tests for true zero versus undefined coverage and `NaN`/`Infinity` inputs.
+- Detail/table/export parity and empty/error state tests.
+- Dark/light/soft-gray theme and no console warning/error assertions where the existing test harness supports them.
+- Analytics guardrails and focused frontend validation.
+
+### Acceptance
+
+- Zero denominator never becomes measured `0%`.
+- Genuine finite zero with a valid denominator remains visible as zero.
+- Missing/non-finite evidence stays unavailable and cannot affect recommendation or confidence presentation.
+- All Shoe Type projections agree on the same numeric state.
+
+### Dependencies
+
+- `RQ140` remains pre/post comparability owner; `RQ156` remains revenue-coverage unknown-state owner.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ239 - Do not use Executive fallback period end as generation time
+
+Status: WAITING
+Priority: P1
+Type: frontend/contract/tests
+Feature family: decision-board-fallback-provenance
+Parallel-safe: yes, bounded to Executive supplier compatibility fallback
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve decision board fallback provenance`
+
+### Problem
+
+The Executive Decision Board compatibility supplier fallback puts the selected period end into `generatedAtUtc`. A period boundary is not response generation time or source refresh time, so the card footer presents false provenance and can contradict the trust contract.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx:599-604` builds fallback cards from `SummaryResponse` and has no generation timestamp from that response.
+- `:668` assigns `generatedAtUtc: summary.to`.
+- `:1278-1282` renders `generatedAtUtc` in the visible card footer.
+- `docs/qa/DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md:227-228` requires missing freshness timestamps to remain unknown, but no queue item currently owns this concrete fallback assignment.
+- Existing Executive Board tests assert actionability and impact state but do not assert that period end is not used as generation time.
+
+### Scope
+
+- `ExecutiveDecisionBoardPage.tsx`, the compatibility `SummaryResponse` adapter only if required to preserve a real source timestamp, and nearest Executive Board tests.
+- Generation/refresh provenance display for fallback cards.
+- No ranking, expected-impact, recommendation or period formula changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ137`, `RQ141`, `RQ145`, `RQ181`
+- `ExecutiveDecisionBoardPage.tsx`, Executive Board tests, `supplierDecisionHubApi.ts`, `DECISION_BOARD_CANDIDATE_CONTRACT_AUDIT.md` and `DECISION_BOARD_FRESHNESS_CONTRACT.md`
+
+### Do
+
+1. Add failing-first tests with a period end, a real generated timestamp, a real refresh timestamp and no provenance timestamp.
+2. Use only an explicit source generation/refresh field for the card timestamp; otherwise render unavailable/unknown.
+3. Keep period metadata separate from provenance metadata in card, aggregate header and report/export projections.
+4. Preserve blocked/fallback copy and do not turn the compatibility path into an actionable recommendation.
+
+### Tests
+
+- Focused fallback card tests for generated-only, refresh-only, missing timestamp and period-end-only payloads.
+- Card/footer and aggregate trust-header parity, empty/error/fallback tests, and no console warning/error assertions.
+- Analytics guardrails and focused frontend validation.
+
+### Acceptance
+
+- Period end is never rendered as generation or last-refresh time.
+- Missing provenance remains visibly unknown, not current time and not period end.
+- Fallback cards, aggregate header and any report/export use the same provenance state.
+- Existing actionability and recommendation gates remain unchanged.
+
+### Dependencies
+
+- `RQ141` remains broad provenance owner and `RQ181` remains blocked-action CTA owner.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
+---
+
+## RQ240 - Preserve nullable inventory counts in Analytics Details and Dashboard ratios
+
+Status: WAITING
+Priority: P1
+Type: frontend/tests
+Feature family: analytics-inventory-ratio-state
+Parallel-safe: no, shared nullable inventory ratio semantics across Details and Dashboard
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve unknown inventory ratio inputs`
+
+### Problem
+
+Analytics Details and the main Analytics Dashboard treat missing OOS and low-stock counts as zero before calculating in-stock and red-zone percentages. When the total SKU count is known but either numerator is missing, either page produces a plausible but unsupported percentage.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:303-306` uses `inventory?.outOfStockCount ?? 0`, `inventory?.totalSkuCount ?? 0` and `inventory?.lowStockCount ?? 0` before ratio calculation.
+- `:408-414` renders the resulting values as `In-stock %` and `Red zone SKU %` decision-facing KPIs.
+- `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:208` keeps inventory in local state with non-null TypeScript fields, although runtime API payloads can be partial/null.
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:824-827` repeats the same `?? 0` coercion before deriving `availablePct` and `redZonePct`.
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:2275-2285` renders those derived values as the primary `Dostupnost SKU` and `Crvena zona zaliha` KPI cards.
+- Existing period-state tests use complete zero fixtures and do not cover known denominator plus missing numerator, `NaN` or `Infinity`.
+- `RQ204` owns period/scope parity for this screen; it does not protect nullable ratio inputs.
+
+### Scope
+
+- `AnalyticsDetails.tsx`, `AnalyticsDashboard.tsx`, the inventory status type/adapter if needed, and nearest Details/Dashboard tests.
+- In-stock/red-zone ratio input validation and user-safe unavailable state.
+- No inventory formula redesign, period/scope change, forecast or trend changes.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ154`, `RQ161`, `RQ204`
+- `AnalyticsDetails.tsx`, `AnalyticsDashboard.tsx`, `AnalyticsDetails.periodState.spec.tsx`, `AnalyticsDashboard` focused specs, `analyticsIndicatorRegression.spec.ts`, `analyticsApi.ts` and `InventoryStatus` types
+
+### Do
+
+1. Add failing-first fixtures for complete counts, valid zero counts, known total with missing OOS/low-stock, missing total, `NaN` and `Infinity`.
+2. Calculate a ratio only when denominator and numerator are finite and semantically compatible; otherwise render unavailable.
+3. Keep a genuine OOS/low-stock zero distinct from a missing numerator and preserve empty/error response states.
+4. Ensure Details and Dashboard use the same numeric-state projection and risk-card tone does not classify unavailable ratios as healthy or critical solely because the value is absent.
+
+### Tests
+
+- Focused Analytics Details numeric-state tests for valid zero, null, missing, `NaN`, `Infinity`, empty and error responses.
+- Focused Dashboard numeric-state tests for the same cases, including Details/Dashboard parity.
+- KPI/card parity and no fake `100%`/`0%` assertions; preserve period/scope behavior owned elsewhere.
+- Dark/light/soft-gray and no console warning/error assertions where supported, plus analytics guardrails.
+
+### Acceptance
+
+- Missing inventory counts never become zero inputs or measured percentages.
+- Valid finite zero remains a valid zero.
+- Unknown ratios render a clear unavailable state and do not receive a misleading health tone.
+- No period/scope, recommendation or backend ownership semantics are changed.
+
+### Dependencies
+
+- `RQ204` remains the Analytics Details period/scope owner.
+- `RQ154`/`RQ161` remain numeric/trend state owners for their respective families.
+- Keep this prompt `WAITING` while `RQ167` remains the existing `READY` item.
+
