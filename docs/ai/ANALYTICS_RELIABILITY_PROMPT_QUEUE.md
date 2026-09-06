@@ -110,6 +110,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
+| RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
+| RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
 
 ---
 
@@ -5970,6 +5972,154 @@ Embedding code currently serializes embedding arrays into a string and binds the
 ### Dependencies
 
 - Coordination with DB/infra team for pgvector parameterization guidance.
+
+---
+
+## RQ181 - Do not expose an executable action CTA for blocked Decision Board cards
+
+Status: WAITING
+Priority: P0
+Type: frontend/contract/tests
+Feature family: decision-board-blocked-action-cta
+Parallel-safe: no, Decision Board actionability presentation has one owner
+Owner: Codex
+Commit suggestion: `fix(analytics): hide blocked decision board action cta`
+
+### Problem
+
+The Executive Decision Board renders the primary action link for every card. A card with `recommendationAllowed=false` and no existing workflow action still receives the generic `Dodaj u akcije` label from the frontend action-state mapper. This makes a blocked or insufficient signal look executable even though the backend has explicitly denied recommendation actionability.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx:257-260` returns `Dodaj u akcije` for the `none` action state without considering `recommendationAllowed`.
+- `:1109-1125` maps the backend `recommendationAllowed` field but still assigns the unconditional action CTA.
+- `:1271-1274` always renders the primary `Link` to `card.actionHref`, including for blocked cards.
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx` already exercises blocked inventory cards and action links, but does not assert that a blocked card cannot render an executable action CTA.
+- `Api/Dtos/DecisionBoardDtos.cs:40-67` and `Api/Endpoints/DecisionBoardEndpoints.cs` already carry backend-owned `RecommendationAllowed`; this prompt must not recreate decision scoring.
+- Recent history (`41790622`, `08abe2bf`, `785b88b8`, `df538b3b`) hardened trust/confidence gating but did not prove primary CTA suppression in the active card renderer.
+
+### Scope
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`
+- `Api/Dtos/DecisionBoardDtos.cs` and `Api/Endpoints/DecisionBoardEndpoints.cs` only if a backward-compatible actionability/label field is required to preserve one contract
+- Existing shared safe-copy mapping only if needed for the blocked-card explanation
+
+Do not change backend ranking, score, confidence calculation, action lifecycle, or the broad RQ143 ownership contract. Do not remove the safe `Otvori izvor`/data-quality review navigation.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ143`, `RQ145` and the current Decision Board trust contract
+- `ExecutiveDecisionBoardPage.tsx`, `ExecutiveDecisionBoardPage.spec.tsx`, `DecisionBoardDtos.cs` and `DecisionBoardEndpoints.cs`
+
+### Do
+
+1. Add a failing-first DOM regression fixture with `recommendationAllowed=false`, no existing open/closed action and an action route in the payload.
+2. Fail closed for `false`, `null` and omitted `recommendationAllowed`; do not infer permission from confidence, impact, status, or the existence of `actionHref`.
+3. Hide the executable action CTA or replace it with an explicitly non-executable review/data-quality affordance. Keep source navigation and the blocked reason visible.
+4. Preserve the existing allowed-card behavior and existing-action labels for cards whose backend state permits them.
+5. Verify that card details, source navigation, export/report links and bulk/action surfaces do not reintroduce the blocked action label on this Decision Board path.
+
+### Tests
+
+- Failing-first focused page tests for `recommendationAllowed=false`, `null`, omitted, `true`, open action and closed action.
+- Assert blocked cards have no link/button named `Dodaj u akcije`, while the safe source/data-quality link remains available.
+- Assert no raw backend reason code is rendered and blocked state remains visible in light/dark/soft-gray themes if the existing test harness supports theme variants.
+- Run the nearest frontend specs, `npm run check:analytics-guardrails`, affected frontend build/typecheck, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- A blocked, unknown or insufficient Decision Board card never exposes an executable `Dodaj u akcije` affordance.
+- An allowed card preserves its backend-owned actionability and workflow state.
+- The frontend does not recalculate score, confidence, recommendation status or permission.
+- Users can still open the source and understand why the action is unavailable.
+
+### Dependencies
+
+- `RQ143` remains the broad backend decision/actionability owner.
+- `RQ145` remains the complete cross-surface parity and safe-messaging owner.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+
+---
+
+## RQ182 - Preserve unknown pre/post coverage in backend DTOs and aggregate calculations
+
+Status: WAITING
+Priority: P0
+Type: backend/contract/frontend/tests
+Feature family: pre-post-coverage-backend-null-state
+Parallel-safe: no, pre/post coverage state has one backend contract owner
+Owner: Codex
+Commit suggestion: `fix(analytics): preserve unknown pre-post coverage state`
+
+### Problem
+
+The authoritative pre/post SQL views return `NULL` coverage when a window has no observed sales days, but the vendor-level endpoint converts `coveragePre30` and `coveragePost30` to `0` before creating article DTOs. It then calculates aggregate averages over those fallback zeros and serializes non-nullable coverage fields. Missing observation can therefore appear as measured zero coverage in vendor, data-quality, detail, table, chart and report consumers.
+
+### Evidence
+
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql:101-103` and `:160-162` intentionally return `NULL` when `COUNT(DISTINCT s.day) = 0`.
+- `Api/Endpoints/AllEndpoints.cs:3558-3559` reads nullable evidence, but `:3577-3578` assigns `coveragePre30Evidence ?? 0m` and `coveragePost30Evidence ?? 0m`.
+- `:3720-3721` computes `avgCoveragePre30` and `avgCoveragePost30` as ordinary averages over those fallback-filled values, and `:3722` counts missing coverage as low coverage.
+- `Api/Models/VendorSalesNivelacijaModels.cs:25-26,80-81,107-108` declares affected coverage fields as non-nullable, while `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts:32-33,101-102,115-116` has an inconsistent partial nullable contract.
+- Existing `SupplierDecisionSchemaSqlTests` prove missing sales-window/baseline semantics, but no test proves that missing coverage remains `null` through endpoint serialization and aggregate calculations.
+- Git history (`570a31e8`, `a84d8a42`, `29a5943a`) hardened comparability and trust gating but left the coverage reader/DTO coalescing path unchanged.
+
+### Scope
+
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql` only if the explicit null/valid-zero source contract needs clarification
+- `Api/Endpoints/AllEndpoints.cs`
+- `Api/Models/VendorSalesNivelacijaModels.cs`
+- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts` and the nearest pre/post adapters/pages required for type and parity correctness
+- `Api.Tests/SupplierDecisionSchemaSqlTests.cs` plus focused endpoint/contract tests and nearest pre/post frontend specs
+
+Do not change the causal/comparability formula, recommendation score, confidence calibration, forecast/trend logic or the separate frontend-only RQ156 display owner.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/ARCHITECTURE_BOUNDARIES.md`
+- `docs/ai/VALIDATION_SELECTOR.md`
+- `RQ140`, `RQ145`, `RQ156` and the pre/post contract notes
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`
+- `AllEndpoints.cs`, `VendorSalesNivelacijaModels.cs`, `vendorSalesNivelacijaApi.ts` and the existing schema/contract tests
+
+### Do
+
+1. Add failing-first tests for no observed days (`NULL`), explicit finite zero from an authoritative source, positive coverage, mixed known/unknown rows, empty analyzed sets and non-finite client payloads where the JSON boundary permits them.
+2. Preserve unknown coverage as nullable/unavailable from SQL reader through article, vendor, totals and data-quality DTOs. Do not use `0` as a missing-value sentinel.
+3. Compute coverage averages and low-coverage counts only from known finite coverage values; if no value is known, return an explicit unavailable state rather than `0%`.
+4. Keep true finite zero distinguishable from missing/unknown. Do not manufacture a true zero merely because no observation exists.
+5. Align TypeScript DTOs and all table/chart/detail/export/report adapters with the backend nullability and ensure recommendation/actionability remains blocked when required evidence is unavailable.
+
+### Tests
+
+- Backend SQL contract test for null-on-no-observation and valid finite-zero preservation.
+- Focused endpoint/DTO tests for null, true zero, positive, mixed and empty coverage states, including aggregate average/count behavior.
+- Frontend adapter/page parity tests proving the same unknown/zero state in KPI, table, chart, detail, export and report projections.
+- Non-finite guard tests where the boundary can receive `NaN`/`Infinity`; invalid values must become unavailable, never zero.
+- Run focused backend/frontend tests, `npm run check:analytics-guardrails`, affected builds, `git diff --check` and queue/planning validators.
+
+### Acceptance
+
+- Missing pre/post observation never serializes as a valid `0` coverage value.
+- A true finite zero remains valid and visibly distinct from unavailable coverage.
+- Aggregate coverage averages/counts exclude unknown values and become unavailable when there is no known basis.
+- Backend recommendation/actionability remains conservative when coverage evidence is missing.
+- All consumers preserve the same null/zero/positive state without frontend recomputation or silent fallback.
+
+### Dependencies
+
+- `RQ140` owns comparable cohort and causal semantics.
+- `RQ156` owns the bounded frontend branch/message repair for supplier/category pre/post screens.
+- `RQ145` owns complete table/chart/detail/export/report parity.
+- `RQ146` and `STAB16` retain runtime schema, migration, refresh and deployed proof.
+- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
 
 ---
 

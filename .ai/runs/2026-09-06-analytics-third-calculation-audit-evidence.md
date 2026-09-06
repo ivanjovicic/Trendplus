@@ -9,9 +9,10 @@ Main verification: pending
 Evidence state: pending
 
 ## What was done
-- Performed a third independent static analytics calculation/reliability audit.
+- Performed an independent follow-up static analytics calculation/reliability audit.
 - Rechecked inventory snapshot handlers, cached routes, DTOs, panels, supplier footwear freshness projection and pre/post aggregate consumers.
-- Confirmed five new bounded follow-ups: `RQ176`-`RQ180`.
+- Verified that `RQ176`-`RQ180` and the existing `RQ183`-`RQ189` follow-ups were already present in the current `main` history; they were not duplicated.
+- Found two new bounded follow-ups: `RQ181` (blocked Decision Board action CTA) and `RQ182` (backend pre/post coverage null-to-zero coalescing).
 - Kept all new prompts `WAITING`; `RQ154` remains the only `READY` prompt.
 - Explicitly did not promote or implement forecast, Shopify or connector work.
 
@@ -26,7 +27,7 @@ Evidence state: pending
 - `node scripts/check-agent-instructions.mjs --self-test` -> pass.
 - `node scripts/check-agent-instructions.mjs` -> pass; 8 canonical files checked.
 - `node scripts/check-prompt-queues.mjs --self-test` -> pass.
-- `node scripts/check-prompt-queues.mjs` -> pass after correcting prompt ID collision; 323 tasks checked.
+- `node scripts/check-prompt-queues.mjs` -> pass; 335 tasks checked after adding RQ181-RQ182.
 - `node scripts/check-planning-architecture.mjs --self-test` -> pass.
 - `node scripts/check-planning-architecture.mjs` -> pass; 78 planning tasks checked.
 - `node scripts/check-analytics-lineage-matrix.mjs` -> pass; 17 route/family rows and required trust fields covered.
@@ -37,12 +38,12 @@ Evidence state: pending
 - Live database/refresh/browser console proof -> not run; no runtime environment was requested or required to write the new prompts.
 
 ## Documentation impact
-- Added the third audit with source-to-consumer evidence, Git history checks, non-findings and proof boundaries.
-- Added `RQ176`-`RQ180` to the canonical analytics reliability queue as `WAITING`.
-- Updated `MASTER_ROADMAP.md` to reflect the new waiting range while preserving `RQ154` as the sole `READY` item.
+- Updated the audit with source-to-consumer evidence, Git history checks, non-findings and proof boundaries.
+- Added `RQ181`-`RQ182` to the canonical analytics reliability queue as `WAITING`; existing `RQ176`-`RQ180` and `RQ183`-`RQ189` were explicitly not duplicated.
+- Updated `MASTER_ROADMAP.md` to reflect the waiting range while preserving `RQ154` as the sole `READY` item.
 
 ## What was missed
-- Runtime behavior remains unchanged; the five findings still require execution of their queued prompts.
+- Runtime behavior remains unchanged; the two new findings still require execution of their queued prompts. The already queued RQ176-RQ180 findings also remain unimplemented unless their own prompts are executed.
 - No new live cache/refresh or browser proof was produced in this docs-only pass.
 
 ## Risks

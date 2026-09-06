@@ -2,11 +2,11 @@
 
 Date: 2026-09-06  
 Repository: `ivanjovicic/Trendplus`  
-Scope: new findings after the 2026-09-05 calculation recheck and the 2026-09-06 second calculation audit
+Scope: independent follow-up after the 2026-09-05 calculation recheck and the 2026-09-06 third calculation audit
 
 ## Verdict
 
-This pass found five additional, bounded reliability gaps. They are not duplicates of `RQ154`-`RQ170`, and they are not being silently fixed in this audit. Each gap has a concrete source/consumer path, a failing-first test shape and a separate waiting prompt in the canonical queue.
+This pass revalidated that `RQ176`-`RQ180` and the existing `RQ183`-`RQ189` follow-ups were already present on `main`, then found two additional bounded reliability gaps. The two new findings are not duplicates of the existing queue work, and they are not being silently fixed in this audit. Each has a concrete source/consumer path, a failing-first test shape and a separate waiting prompt in the canonical queue.
 
 No product runtime files were changed in this pass. The work is an audit and queue refill only.
 
@@ -17,6 +17,8 @@ No product runtime files were changed in this pass. The work is an audit and que
 | Inventory signal freshness | `InventoryPage.tsx`, `InventoryAlertsFeed.tsx`, `RebalancingTable.tsx`, `SizeCurvePanel.tsx` | `analyticsApi.ts`; cached `/api/analytics/cached/inventory/alerts`, `/rebalance-suggestions`, `/size-curve` | `InventoryAlertListDto`, `RebalanceSuggestionListDto`, `InventorySizeCurveListDto`; handlers read `analytics_*_snapshot` relations | `AnalyticsCachePolicy.Inventory.Ttl`; response `GeneratedAtUtc` is assigned in the reader handler | `InventorySnapshotContractTests`, inventory page freshness/null-evidence tests | Query time is still used as secondary freshness; size-curve state loses warning/empty distinction; actionability and copy are not fully contract-backed |
 | Supplier footwear signal | `SupplierFootwearAnalyticsPage.tsx` | `vendorSalesNivelacijaApi.ts`; `/api/analytics/vendor-sales-nivelacija` | `VendorSalesNivelacijaResponse`; `AllEndpoints.cs` vendor pre/post SQL/reader path | vendor analytics cache/meta path | `SupplierFootwearAnalyticsPage.spec.tsx`, pre/post parity tests | Page can label data `fresh` from `generatedAt` when no proven refresh metadata exists |
 | Pre/post aggregate parity | `ProdajaPrePostNivelacijePage.tsx` | `vendorSalesNivelacijaApi.ts`; vendor pre/post endpoint | `VendorSalesNivelacijaTotalsDto` and vendor rows from `AllEndpoints.cs` | vendor analytics cache/meta path | `ProdajaPrePostNivelacijePage.spec.tsx`, pre/post trust utility tests | Frontend reconstructs absolute-change total/share when backend total is unavailable instead of keeping backend as sole owner |
+| Decision Board actionability | `ExecutiveDecisionBoardPage.tsx` | `analyticsApi.ts`; `/api/analytics/decision-board` | `DecisionBoardCardDto.RecommendationAllowed`; `DecisionBoardEndpoints.cs` | Decision Board aggregate response/cache | `ExecutiveDecisionBoardPage.spec.tsx` covers blocked card data but not CTA suppression | A blocked card still receives the executable `Dodaj u akcije` CTA |
+| Pre/post coverage contract | `ProdajaPrePostNivelacijePage.tsx`, supplier footwear adapters | `vendorSalesNivelacijaApi.ts`; vendor pre/post endpoint | `vw_sales_pre_nivelacija`, `vw_sales_post_nivelacija`, `VendorSalesNivelacijaArticleStatDto`, vendor/totals/data-quality DTOs | vendor analytics cache/meta path | SQL/schema tests cover missing windows, not coverage null-to-zero serialization | SQL `NULL` coverage is coalesced to zero before aggregate averages and response serialization |
 
 ## Findings
 
@@ -86,17 +88,46 @@ Risk: cards, table, chart and export can use a frontend-derived denominator that
 
 History checked: `570a31e8` and `a84d8a42` improved the backend pre/post contract; the current page still contains the local fallback arithmetic.
 
+### RQ181: Decision Board exposes an executable CTA for a blocked card
+
+Evidence:
+
+- `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx:257-260` returns `Dodaj u akcije` for every card whose workflow state is `none`.
+- `:1109-1125` preserves backend `recommendationAllowed`, but does not use it to gate `actionCta`.
+- `:1271-1274` renders the primary link to `card.actionHref` for every card, including cards with `recommendationAllowed=false`, `null` or omitted.
+- `ExecutiveDecisionBoardPage.spec.tsx` uses blocked inventory fixtures but only asserts that a permitted product action link exists; it does not assert the absence of an executable action link on the blocked card.
+- The backend DTO already exposes `RecommendationAllowed`, so this is a consumer/actionability presentation gap rather than a missing scoring formula.
+
+Risk: users can interpret a blocked or insufficient signal as a direct action recommendation and send it to the central action workflow, contradicting the backend-owned permission and the product rule that no action is shown when recommendation is not allowed.
+
+History checked: `41790622`, `08abe2bf`, `785b88b8` and `df538b3b` hardened trust/confidence propagation and blocked-card ranking, but no active renderer regression proves CTA suppression.
+
+### RQ182: Backend pre/post coverage `NULL` becomes measured zero
+
+Evidence:
+
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql:101-103` and `:160-162` return `NULL` when a pre/post window has no observed sales days.
+- `Api/Endpoints/AllEndpoints.cs:3558-3559` reads nullable coverage evidence, then `:3577-3578` coalesces both fields to `0m`.
+- `:3720-3722` calculates average coverage and low-coverage counts from the coalesced values, so missing rows contribute as measured zero/low coverage rather than remaining unknown.
+- `Api/Models/VendorSalesNivelacijaModels.cs:25-26,80-81,107-108` serializes affected fields as non-nullable, while the TypeScript API contract is only partially nullable.
+- Existing schema tests verify missing baseline/window semantics but do not cover coverage nullability through endpoint JSON and aggregate output.
+
+Risk: users and downstream recommendation/readiness logic cannot distinguish “no observed days / unknown coverage” from a measured `0%` coverage result. This can understate data quality, distort averages and create false parity between vendor, table, chart, detail, export and report surfaces.
+
+History checked: `570a31e8`, `a84d8a42` and `29a5943a` hardened pre/post comparability and trust gating, but the coverage reader and DTO nullability path remains unchanged.
+
 ## Not new findings in this pass
 
 - The pre/post `AbsoluteChangeRevenue = 0m` initializer is overwritten by `vendorStats.Sum(...)` in the normal endpoint path; it is not recorded as a standalone bug without an exception/empty-path reproducer.
 - Inventory snapshot null-to-zero/false coercion, count/truncation, placeholder-zero, search/store lineage and size-curve boolean evidence are already marked DONE in the inventory-signal addendum (`RQ64`-`RQ71`).
 - The primary inventory freshness fallback was already addressed by `RQ61`; this pass only records the remaining secondary snapshot query-time path.
 - Existing broader owners remain authoritative: `RQ141` for lineage/refresh, `RQ143` for backend decision ownership, `RQ145` for parity/safe messaging and `RQ146` for runtime schema/refresh proof.
+- Existing `RQ183`-`RQ189` calculation follow-ups were present in the queue before this pass and were not re-created or counted as new findings here.
 
 ## Queue result
 
-Added waiting prompts `RQ176`-`RQ180` to `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`. `RQ154` remains the only `READY` prompt. No forecast, Shopify or external connector prompt was promoted.
+`RQ176`-`RQ180` and `RQ183`-`RQ189` were confirmed already present on `main` and were not duplicated. Added new waiting prompts `RQ181` and `RQ182` to `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`. `RQ154` remains the only `READY` prompt. No forecast, Shopify or external connector prompt was promoted.
 
 ## Proof boundary
 
-This audit is static/repository evidence only. It proves the source paths and missing tests; it does not claim that the runtime fixes are complete. The new prompts require failing-first backend/frontend tests, parity checks, safe copy, and the appropriate focused builds when executed.
+This audit is static/repository evidence only. It proves the source paths and missing tests; it does not claim that the runtime fixes are complete. The queued prompts require failing-first backend/frontend tests, parity checks, safe copy, and the appropriate focused builds when executed.
