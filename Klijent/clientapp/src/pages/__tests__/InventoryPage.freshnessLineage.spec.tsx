@@ -142,4 +142,18 @@ describe("InventoryPage freshness lineage", () => {
     expect(capturedTrustHeaderProps?.lastRefreshAt).toBeNull();
     expect(screen.getByTestId("trust-header")).toHaveAttribute("data-last-refresh", "");
   });
+
+  it("does not present a single inventory snapshot as an observed health trend", async () => {
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("inventory-health-snapshot-only");
+
+    expect(screen.getByTestId("inventory-health-snapshot-only")).toHaveTextContent("Istorijska serija nije dostupna");
+    expect(screen.queryByText(/\/100/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("inventory-health-sparkline")).not.toBeInTheDocument();
+  });
 });

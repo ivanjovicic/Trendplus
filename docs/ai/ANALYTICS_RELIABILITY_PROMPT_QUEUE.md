@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ160
+Current READY prompt: RQ161
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -92,8 +92,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ157 | DONE | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
 | RQ158 | DONE | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
 | RQ159 | DONE | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
-| RQ160 | READY | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
-| RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
+| RQ160 | DONE | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
+| RQ161 | READY | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
 | RQ162 | WAITING | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
 | RQ163 | WAITING | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
 | RQ164 | WAITING | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
@@ -4971,12 +4971,15 @@ Do not invent a seven-day risk from current counts, a snapshot or a forecast. If
 
 ## RQ160 - Remove synthetic inventory health trend or make it observed
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: frontend/backend-contract/tests
 Feature family: inventory-health-observed-series
 Parallel-safe: no, health score provenance needs one metric owner
 Owner: Codex
+Agent: Codex
+StartedAtUtc: 2026-09-06T08:45:00Z
+CompletedAtUtc: 2026-09-06T08:56:00Z
 Commit suggestion: `fix(analytics): stop fabricating inventory health trend`
 
 ### Problem
@@ -5029,16 +5032,28 @@ Do not introduce a forecast, heuristic trend or frontend recommendation formula.
 
 ### Dependencies
 
-- Queue order is after `RQ159`; keep `RQ160` `WAITING` until its metric ownership is available.
+- Queue order was after `RQ159`. No backend-owned historical health series exists for this card, so the safe same-owner outcome was removal of the synthetic score/trend and an explicit snapshot-only limitation.
 - `RQ147` remains the KPI evidence registry owner.
 - `RQ149` remains the inventory economic/availability evidence owner.
 - `RQ145` and `STAB16` retain parity and live proof ownership.
+
+### Completion note (2026-09-06)
+
+- Status: DONE
+- Completion: removed the frontend weighted `inventoryHealthScore`, fixed-drift seven-point `healthTrendPoints` and SVG sparkline; the card now states that no backend-owned historical series is available and does not expose an action, score or direction label.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx`, this queue and `.ai/runs/2026-09-06-RQ160-evidence.md`.
+- Regression proof: the new failing-first test did fail before the production patch and passed after it; focused inventory tests, analytics guardrails, typecheck and frontend build passed.
+- Runtime contract: no backend change was required because the current inventory DTO has no provenance-bearing observed health series. The removed raw SVG also cannot render an invalid initial chart size.
+- Scope note: broader inventory signal, parity and live browser/refresh proof remain owned by `RQ145`, `RQ149`, `RQ146` and `STAB16`; this prompt did not introduce or validate forecast/trend behavior.
+- Run log: `.ai/runs/2026-09-06-RQ160-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct delivery on `main`; commit and current-main verification recorded in the run log.
 
 ---
 
 ## RQ161 - Fail closed on Analytics Details periods and unknown trends
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: analytics-details-period-state
@@ -5098,7 +5113,7 @@ Do not change backend ranking ownership, forecast logic, Shopify/vendor work or 
 
 ### Dependencies
 
-- Queue order is after `RQ160`; keep this prompt `WAITING` behind the single `READY` item.
+- Queue order is after `RQ160`; this prompt is now the single `READY` item.
 - `RQ137` remains the period-lineage owner.
 - `RQ143` remains the backend decision/ranking owner.
 - `RQ145` remains the parity and safe-messaging owner.

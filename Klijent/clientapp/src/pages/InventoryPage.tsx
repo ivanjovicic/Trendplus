@@ -543,28 +543,6 @@ export default function InventoryPage() {
   const activeSkuShare = useMemo(() => (balance && balance.totalSku > 0 ? ((balance.totalSku - balance.outOfStockCount) / balance.totalSku) * 100 : null), [balance]);
   const lowStockShare = useMemo(() => (balance && balance.totalSku > 0 ? (balance.lowStockCount / balance.totalSku) * 100 : null), [balance]);
   const avgUnitsPerSku = useMemo(() => (balance && balance.totalSku > 0 ? balance.totalOnHand / balance.totalSku : null), [balance]);
-  const inventoryHealthScore = useMemo(() => balance && balance.totalSku > 0
-    ? Math.max(0, Math.round(100 - (balance.outOfStockCount / balance.totalSku) * 60 - (balance.lowStockCount / balance.totalSku) * 25))
-    : null, [balance]);
-  const healthTrendPoints = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    if (inventoryHealthScore == null || activeSkuShare == null || lowStockShare == null) return null;
-    const slope = index - 6;
-    const lowStockDrift = lowStockShare * 0.06 * slope;
-    const activeSkuDrift = activeSkuShare * 0.018 * (6 - index);
-    return Math.max(42, Math.min(99, +(inventoryHealthScore + activeSkuDrift - lowStockDrift).toFixed(1)));
-  }).filter((point): point is number => point != null), [activeSkuShare, inventoryHealthScore, lowStockShare]);
-  const healthSparklinePath = useMemo(() => {
-    const width = 60;
-    const height = 24;
-    if (healthTrendPoints.length === 0) return "";
-    const min = Math.min(...healthTrendPoints);
-    const max = Math.max(...healthTrendPoints);
-    return healthTrendPoints.map((point, index) => {
-      const x = (index / Math.max(healthTrendPoints.length - 1, 1)) * width;
-      const y = max === min ? height / 2 : height - ((point - min) / (max - min)) * height;
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    }).join(" ");
-  }, [healthTrendPoints]);
   const chartData = useMemo(() => buildSupplierChart(rows).sort((left, right) => right.totalValue - left.totalValue).slice(0, TOP_SUPPLIERS_CHART), [rows]);
   const topRiskRows = useMemo(
     () =>
@@ -1139,15 +1117,9 @@ export default function InventoryPage() {
               <KpiExplainButton metricKey="activeSkuShare" ariaLabel="Kako je izračunato: Aktivni SKU" />
             </div>
             <div className="rounded-2xl border border-muted bg-[var(--surface-darker)] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
-                <svg width="60" height="24" viewBox="0 0 60 24" aria-hidden="true" className="shrink-0">
-                  {healthSparklinePath ? <path d={healthSparklinePath} fill="none" stroke="var(--focus-ring)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> : null}
-                </svg>
-              </div>
-              <div className="mt-2 text-2xl font-semibold text-contrast">{inventoryHealthScore == null ? "Nije dostupno" : <>{inventoryHealthScore}<span className="text-sm font-normal text-secondary">/100</span></>}</div>
-              <div className="mt-2 text-sm text-secondary">{inventoryHealthScore == null ? "Nema SKU imenitelja za pouzdanu procenu." : inventoryHealthScore >= 85 ? "Stabilan fond robe." : inventoryHealthScore >= 65 ? "Potrebno praćenje kritičnih SKU." : "Povećan rizik od praznih polica."}</div>
-              <KpiExplainButton metricKey="inventoryHealthScore" ariaLabel="Kako je izračunato: Stanje fonda" />
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-primary)]">Stanje fonda</div>
+              <div data-testid="inventory-health-snapshot-only" className="mt-2 text-lg font-semibold text-contrast">Istorijska serija nije dostupna</div>
+              <div className="mt-2 text-sm text-secondary">Trenutni snapshot ne daje backend-obranjeni health score ni istorijski trend. Za ovaj prikaz nisu dostupni period, izvor, svežina i kvalitet istorijskih opažanja.</div>
             </div>
           </div>
         </div>
