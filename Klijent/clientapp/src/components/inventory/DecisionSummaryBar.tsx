@@ -6,12 +6,17 @@ import { formatNumber } from "./inventoryUtils";
 type DecisionSummaryBarProps = {
   balance: InventoryBalance | null;
   actionWorkflow: InventoryActionWorkflow | null;
-  outOfStockCount?: number;
-  lowStockCount?: number;
+  outOfStockCount?: number | null;
+  lowStockCount?: number | null;
   dataQualityWarning?: boolean | null;
   dataQualityHref?: string | null;
   loading?: boolean;
 };
+
+function formatCount(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "Nije dostupno";
+  return formatNumber(value);
+}
 
 export function DecisionSummaryBar({
   balance,
@@ -22,11 +27,16 @@ export function DecisionSummaryBar({
   dataQualityHref,
   loading,
 }: DecisionSummaryBarProps) {
-  const p1DopuniOdmah = outOfStockCount ?? 0;
-  const p1OosRisk = (lowStockCount ?? 0) - p1DopuniOdmah;
+  // Backend low-stock already excludes OOS; never subtract. Null stays unavailable.
+  const currentOosCount =
+    outOfStockCount == null || !Number.isFinite(outOfStockCount) ? null : Math.max(0, outOfStockCount);
+  const currentLowStockCount =
+    lowStockCount == null || !Number.isFinite(lowStockCount) ? null : Math.max(0, lowStockCount);
   const p2Transfer = actionWorkflow?.items?.filter((item) => item.actionType === "transfer" && item.status === "pending").length ?? 0;
   const p2DeadStock = actionWorkflow?.items?.filter((item) => (item.actionType === "clearance" || item.actionType === "markdown") && item.status === "pending").length ?? 0;
   const workflowPending = actionWorkflow?.pendingCount ?? 0;
+  const hasOos = (currentOosCount ?? 0) > 0;
+  const hasLowStock = (currentLowStockCount ?? 0) > 0;
 
   if (loading && !balance && !actionWorkflow) {
     return (
@@ -43,24 +53,24 @@ export function DecisionSummaryBar({
   return (
     <section className="rounded-[28px] border border-border bg-surface p-4 shadow-lg">
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        {/* P1: Dopuni odmah */}
-        <div className={`rounded-2xl border-2 p-3 transition-colors ${p1DopuniOdmah > 0 ? "border-error bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
+        {/* Current OOS (measured zero quantity) */}
+        <div className={`rounded-2xl border-2 p-3 transition-colors ${hasOos ? "border-error bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
-            <ShoppingCart size={12} className={p1DopuniOdmah > 0 ? "text-error" : "text-muted"} />
-            <span className={p1DopuniOdmah > 0 ? "text-error" : "text-muted"}>P1 Dopuni</span>
+            <ShoppingCart size={12} className={hasOos ? "text-error" : "text-muted"} />
+            <span className={hasOos ? "text-error" : "text-muted"}>Trenutno OOS</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p1DopuniOdmah > 0 ? "text-error" : "text-foreground"}`}>{formatNumber(p1DopuniOdmah)}</div>
-          <div className="mt-1 text-[10px] text-muted">bez zalihe / nula</div>
+          <div className={`mt-2 text-lg font-bold ${hasOos ? "text-error" : "text-foreground"}`}>{formatCount(currentOosCount)}</div>
+          <div className="mt-1 text-[10px] text-muted">bez zalihe (trenutno)</div>
         </div>
 
-        {/* P1: Rizik OOS */}
-        <div className={`rounded-2xl border-2 p-3 transition-colors ${p1OosRisk > 0 ? "border-warning bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
+        {/* Current low stock — not a 7d risk forecast */}
+        <div className={`rounded-2xl border-2 p-3 transition-colors ${hasLowStock ? "border-warning bg-[var(--surface-darker)]" : "border-border bg-surface"}`}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-semibold">
-            <AlertTriangle size={12} className={p1OosRisk > 0 ? "text-warning" : "text-muted"} />
-            <span className={p1OosRisk > 0 ? "text-warning" : "text-muted"}>P1 OOS 7d</span>
+            <AlertTriangle size={12} className={hasLowStock ? "text-warning" : "text-muted"} />
+            <span className={hasLowStock ? "text-warning" : "text-muted"}>Niska zaliha</span>
           </div>
-          <div className={`mt-2 text-lg font-bold ${p1OosRisk > 0 ? "text-warning" : "text-foreground"}`}>{formatNumber(p1OosRisk)}</div>
-          <div className="mt-1 text-[10px] text-muted">uskoro bez zalihe</div>
+          <div className={`mt-2 text-lg font-bold ${hasLowStock ? "text-warning" : "text-foreground"}`}>{formatCount(currentLowStockCount)}</div>
+          <div className="mt-1 text-[10px] text-muted">pozitivna ≤ minimum (trenutno)</div>
         </div>
 
         {/* P2: Transfer kandidati */}

@@ -2,13 +2,21 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ159
+Current READY prompt: RQ160
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
 Purpose: isolate analytics data-reliability work from SQL formula work. This queue targets false confidence, wrong denominators, hidden fallback states, dataScope drift and board composition errors.
+
+## Active scope
+
+Keep only prompts whose runtime owner is an analytics screen or the data contract that directly serves one: `/analytics`, products, suppliers, inventory, actions, Decision Board, Data Quality, reports, sales and pre/post nivelacija. Backend/API/DTO, SQL/EF, cache/refresh, export/report and focused regression tests remain in scope when they protect one of those surfaces.
+
+Exclude from this queue: standalone forecast or Trend Models work, scenario/ML/embedding/Python work, Shopify/vendor/scraper integrations, generic security/platform/worker/migration work without a direct analytics-surface contract, and test/demo/fixture-only functionality. Tests remain required evidence for an in-scope analytics change; a prompt is excluded only when it has no production analytics behavior to protect.
+
+Historical `DONE` entries remain as audit evidence and are not claimable. Only `READY`, `IN_PROGRESS` and `WAITING` entries are candidates for future execution.
 
 ## Queue rules
 
@@ -62,11 +70,11 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ129 | DONE | decision-board-non-product-confidence-normalization | Remove non-product fake confidence from blocked and insufficient Decision Board cards |
 | RQ132 | WAITING | dashboard-support-signal-explainability | Explain the exact block reason, evidence state and next safe operator step for Dashboard support signals |
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
-| RQ138 | PARTIAL | trend-model-evaluation-contract | Add an authoritative evaluation contract before Trend Models can show numeric scores again |
+| RQ138 | OBSOLETE | trend-model-evaluation-contract | Excluded: standalone Trend Models evaluation is outside the current analytics-surface scope |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
 | RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local comparability and recommendation gates are hardened; live database/refresh/browser proof remains with STAB16 |
 | RQ141 | WAITING | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
-| RQ142 | WAITING | forecast-trend-measured-evaluation | Materialize measured forecast/trend evaluation instead of contract-only or heuristic claims |
+| RQ142 | OBSOLETE | forecast-trend-measured-evaluation | Excluded: standalone forecast/Trend Models evaluation is deferred |
 | RQ143 | WAITING | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
 | RQ144 | DONE | data-quality-health-denominator-contract | Make Data Quality health distinguish no evidence, valid zero and unavailable shares |
 | RQ145 | WAITING | analytics-surface-parity-and-safe-messaging | Prove table/chart/detail/export/report parity and safe mapping of backend codes |
@@ -74,7 +82,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ147 | WAITING | analytics-metric-evidence-registry | Make the proof level, decision use and limitation of every KPI backend-owned and portable |
 | RQ148 | WAITING | sales-margin-returns-measurement-basis | Prove whether sales and margin KPIs are gross/net/returned/cost-covered before they drive decisions |
 | RQ149 | WAITING | inventory-economic-metric-evidence | Make inventory economics and availability-censored demand explicitly measurable or unavailable |
-| RQ150 | WAITING | forecast-decision-calibration | Prove forecast calibration and cost-sensitive usefulness by cohort before presenting forecast confidence |
+| RQ150 | OBSOLETE | forecast-decision-calibration | Excluded: forecast calibration is deferred from the analytics queue |
 | RQ151 | DONE | analytics-action-safe-messaging | Replace raw unknown action warning/reason codes with safe user-facing copy |
 | RQ152 | DONE | analytics-derived-numeric-state | Preserve unknown/missing numeric evidence in legacy derived intelligence builders |
 | RQ153 | DONE | analytics-lineage-static-matrix | Build the offline route lineage matrix without claiming live refresh proof |
@@ -83,8 +91,8 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ156 | DONE | pre-post-coverage-unknown-state | Keep unknown pre/post coverage distinct from measured zero on supplier/category surfaces |
 | RQ157 | DONE | pdc-baseline-coverage-state | Keep Product Decision trend, margin and coverage evidence unknown when the denominator or baseline is missing |
 | RQ158 | DONE | inventory-null-stock-state | Keep null inventory quantity/minimum unknown instead of converting it to OOS or stable stock |
-| RQ159 | READY | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
-| RQ160 | WAITING | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
+| RQ159 | DONE | inventory-decision-summary-counts | Remove incorrect inventory count arithmetic and the unmeasured 7-day risk label |
+| RQ160 | READY | inventory-health-observed-series | Remove or replace the synthetic inventory health score and sparkline |
 | RQ161 | WAITING | analytics-details-period-state | Reject invalid periods and keep unknown detail trends out of rankings and direction labels |
 | RQ162 | WAITING | inventory-sellthrough-denominator-state | Keep partially missing sell-through denominator evidence unavailable instead of treating it as zero |
 | RQ163 | WAITING | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
@@ -102,7 +110,7 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
 | RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
 | RQ189 | WAITING | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
-| RQ190 | WAITING | forecast-snapshot-freshness-aggregation | Forecast provenance freshness aggregated optimistically |
+| RQ190 | OBSOLETE | forecast-snapshot-freshness-aggregation | Excluded: standalone forecast provenance work is deferred |
 | RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
 | RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
 | RQ193 | WAITING | analytics-async-ordering | Inventory page cross-panel async race condition |
@@ -3211,12 +3219,13 @@ Do not rewrite recommendation formulas, move worker ownership into the web proce
 
 ## RQ138 - Add an authoritative Trend Models evaluation contract before numeric claims return
 
-Status: PARTIAL
+Status: OBSOLETE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: trend-model-evaluation-contract
 Parallel-safe: no, score semantics must remain backend-owned
 Owner: Codex
+Obsolete reason: User scope excludes standalone Trend Models and trend-evaluation functionality; historical fail-closed evidence remains in the completed prompt and QA audit.
 Commit suggestion: `feat(analytics): add trend model evaluation contract`
 
 ### Problem
@@ -3569,12 +3578,13 @@ Produce and implement a matrix for every listed route and all sales, trend, fore
 
 ## RQ142 - Materialize measured forecast and trend evaluation with safe chart states
 
-Status: WAITING
+Status: OBSOLETE
 Priority: P1
 Type: backend/SQL/contract/frontend/tests
 Feature family: forecast-trend-measured-evaluation
 Parallel-safe: no, evaluation semantics must remain backend-owned
 Owner: Codex
+Obsolete reason: User scope excludes standalone forecast and Trend Models functionality; inventory analytics guardrails remain covered by inventory-surface prompts.
 Commit suggestion: `feat(analytics): materialize measured forecast evaluation`
 
 ### Problem
@@ -4109,12 +4119,13 @@ Trendplus correctly blocks selected sell-through and stock-cover denominators, b
 
 ## RQ150 - Calibrate forecast usefulness by cohort and decision cost
 
-Status: WAITING
+Status: OBSOLETE
 Priority: P1
 Type: backend/contract/frontend/export/report/tests
 Feature family: forecast-decision-calibration
 Parallel-safe: no, evaluation and forecast confidence must have one backend owner
 Owner: Codex
+Obsolete reason: User scope excludes forecast calibration and confidence work for now.
 Commit suggestion: `feat(analytics): calibrate forecast decision value`
 
 ### Problem
@@ -4879,13 +4890,26 @@ Do not add forecast calculations or change forecast endpoints. Do not invent his
 
 ## RQ159 - Correct inventory decision summary counts and wording
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/contract/tests
 Feature family: inventory-decision-summary-counts
 Parallel-safe: no, the summary card and inventory balance contract must share one metric meaning
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T08:26:00Z
+CompletedAtUtc: 2026-09-06T08:28:00Z
 Commit suggestion: `fix(analytics): align inventory decision summary counts`
+Evidence: `.ai/runs/2026-09-06-rq159-inventory-decision-summary-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Removed `lowStockCount - outOfStockCount` subtraction; cards show separate current OOS and current low-stock counts.
+- Removed `P1 OOS 7d` label; wording is current-snapshot only.
+- Null counts render `Nije dostupno`; measured zero remains `0`.
+- Focused DecisionSummaryBar tests pass (5).
+- Next READY: RQ160.
 
 ### Problem
 
@@ -4947,7 +4971,7 @@ Do not invent a seven-day risk from current counts, a snapshot or a forecast. If
 
 ## RQ160 - Remove synthetic inventory health trend or make it observed
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: frontend/backend-contract/tests
 Feature family: inventory-health-observed-series
@@ -6007,12 +6031,14 @@ The pre/post vendor page uses a frontend fallback sum of absolute row changes wh
 
 ## RQ171 - Add GMROI metric roadmap and prevent premature UI exposure
 
-Status: WAITING
+Status: OBSOLETE
 Priority: P2
 Type: frontend/contract/tests
 Feature family: analytics-metric-roadmap
 Parallel-safe: yes
 Owner: Analytics
+
+Obsolete reason: GMROI is a future metric roadmap item, not an existing analytics screen/function in the requested scope.
 
 Commit suggestion: `fix(analytics): add GMROI roadmap guard and test coverage`
 
