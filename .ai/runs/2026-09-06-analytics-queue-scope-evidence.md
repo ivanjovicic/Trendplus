@@ -4,9 +4,9 @@ Date: 2026-09-06
 Agent/tool: Codex / local PowerShell
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending until documentation cleanup is committed and pushed
-Evidence state: pending
+Main commit SHA: c12d9345a9db4f57cdac3f04aa9dcb38de7c9482
+Main verification: `git ls-remote origin refs/heads/main` must return this SHA after the evidence-sync commit.
+Evidence state: synchronized
 
 ## What was done
 - Narrowed the active Analytics Reliability queue to production analytics screens and their directly supporting API/DTO, SQL/EF, cache/refresh, export/report and regression-test contracts.
