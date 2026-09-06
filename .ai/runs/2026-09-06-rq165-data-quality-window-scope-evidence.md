@@ -6,9 +6,9 @@ Date: 2026-09-06
 Agent/tool: local-session-ivan / Composer
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending-commit
-Main verification: pending-push
-Evidence state: pending
+Main commit SHA: 22cc2ae497a6bdca233a0c3a5cf9eb246531c269
+Main verification: origin/main contains 22cc2ae4
+Evidence state: synchronized
 
 ## What was done
 
@@ -33,8 +33,8 @@ Aligned Data Quality sales intervals and revenue scope across health, top offend
 ## Validation run
 
 - `dotnet test ... filter DataQuality/Health/Scope window tests` — Passed 34 / Failed 0
-- `git diff --check` — pending close
-- `node scripts/check-prompt-queues.mjs` — pending close
+- `git diff --check` — pass
+- `node scripts/check-prompt-queues.mjs` — pass (371 tasks)
 
 ## Validation not run
 
