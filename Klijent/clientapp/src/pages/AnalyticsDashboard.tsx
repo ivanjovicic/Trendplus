@@ -865,7 +865,7 @@ export default function AnalyticsDashboard() {
   const topGainers = useMemo(
     () =>
       (topAdvanced?.byRevenue ?? [])
-        .filter((row) => (row.trendPct ?? 0) > 0)
+        .filter((row) => row.trendPct != null && isFinite(row.trendPct) && row.trendPct > 0)
         .sort((a, b) => (b.trendPct ?? 0) - (a.trendPct ?? 0))
         .slice(0, 5),
     [topAdvanced],
@@ -874,7 +874,7 @@ export default function AnalyticsDashboard() {
   const topLosers = useMemo(
     () =>
       (topAdvanced?.byRevenue ?? [])
-        .filter((row) => (row.trendPct ?? 0) < 0)
+        .filter((row) => row.trendPct != null && isFinite(row.trendPct) && row.trendPct < 0)
         .sort((a, b) => (a.trendPct ?? 0) - (b.trendPct ?? 0))
         .slice(0, 5),
     [topAdvanced],
@@ -2593,7 +2593,7 @@ export default function AnalyticsDashboard() {
                   <InfoTip text="Najvece promene po trendu iz top prometa. Klik na red otvara detalj artikla." />
                 </h3>
                 <div className="trend-split-grid">
-                  <article className="trend-list">
+                  <article className="trend-list" data-testid="top-gainers-section">
                     <h4>Top rast</h4>
                     {topGainers.length === 0 && (
                       <div className="analytics-empty">
@@ -2612,7 +2612,7 @@ export default function AnalyticsDashboard() {
                       </button>
                     ))}
                   </article>
-                  <article className="trend-list">
+                  <article className="trend-list" data-testid="top-losers-section">
                     <h4>Top pad</h4>
                     {topLosers.length === 0 && (
                       <div className="analytics-empty">

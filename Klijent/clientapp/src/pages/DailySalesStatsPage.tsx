@@ -257,8 +257,8 @@ function sortMarker(field: SortKey, active: SortKey, dir: SortDir): ReactNode | 
 
 function sum(values: DailySalesNumeric[]): number | null {
   const normalized = values.map(finiteOrNull);
-  if (normalized.length === 0 || normalized.some((value) => value == null)) return null;
-  return normalized.reduce((acc, value) => acc + (value as number), 0);
+  if (normalized.length === 0 || !normalized.every((value): value is number => value != null)) return null;
+  return normalized.reduce((acc, value) => acc + value, 0);
 }
 
 function hasMissingShiftSummary(row: DailySalesRow): boolean {
@@ -355,8 +355,8 @@ export function buildRollingAverage(rows: DailySalesRow[], index: number, access
   const slice = rows.slice(start, index + 1);
   if (slice.length === 0) return null;
   const values = slice.map((row) => finiteOrNull(accessor(row)));
-  if (values.some((value) => value == null)) return null;
-  const result = values.reduce((acc, value) => acc + (value as number), 0) / values.length;
+  if (!values.every((value): value is number => value != null)) return null;
+  const result = values.reduce((acc, value) => acc + value, 0) / values.length;
   return Number.isFinite(result) ? result : null;
 }
 
@@ -625,7 +625,7 @@ export default function DailySalesStatsPage() {
         key: `supplier:${index}`,
         header: displayName,
         dataType: "number",
-        getValue: (row) => row.topSupplierCounts[index] ?? 0,
+        getValue: (row) => finiteOrNull(row.topSupplierCounts[index]),
         detailLabel: `${displayName} (kom.)`,
       };
     });
@@ -748,9 +748,10 @@ export default function DailySalesStatsPage() {
     let cumulative: number | null = 0;
     let suppliersTo80Pct = 0;
     for (let index = 0; index < baseRows.length; index += 1) {
-      cumulative = cumulative == null || baseRows[index].qtySharePct == null
+      const current = baseRows[index];
+      cumulative = cumulative == null || current?.qtySharePct == null
         ? null
-        : cumulative + baseRows[index].qtySharePct;
+        : cumulative + current.qtySharePct;
       if (cumulative != null && cumulative >= 80) {
         suppliersTo80Pct = index + 1;
         break;
@@ -912,26 +913,37 @@ export default function DailySalesStatsPage() {
       .slice(0, 3);
   }, [trendData]);
 
-  const qualitySignals = useMemo(() => ([
+  const qualitySignals = useMemo(() => {
+    const metadata = data?.metadata;
+    const unknownSupplierPct = finiteOrNull(metadata?.unknownSupplierPct);
+    const offShiftItems = finiteOrNull(metadata?.offShiftItems);
+    const offShiftRevenue = finiteOrNull(metadata?.offShiftRevenue);
+    const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
+    const receiptMismatch = finiteOrNull(metadata?.receiptAmountMismatchCount);
+    const nonStandardReceipts = finiteOrNull(metadata?.nonStandardReceiptCount);
+    const nonStandardRevenue = finiteOrNull(metadata?.nonStandardReceiptRevenue);
+    const suppliers = finiteOrNull(metadata?.uniqueSuppliersInRange);
+
+    return [
     {
       key: "unknown",
       label: "Nepoznati dobavljac",
-      value: fmtPct(data?.metadata.unknownSupplierPct, 1, "Nije dostupno"),
-      tone: data?.metadata.unknownSupplierPct == null ? "info" : data.metadata.unknownSupplierPct >= 5 ? "danger" : data.metadata.unknownSupplierPct > 0 ? "warning" : "good",
+      value: fmtPct(unknownSupplierPct, 1, "Nije dostupno"),
+      tone: unknownSupplierPct == null ? "info" : unknownSupplierPct >= 5 ? "danger" : unknownSupplierPct > 0 ? "warning" : "good",
       description: "Udeo prodaje bez mapiranog dobavljača.",
     },
     {
       key: "offShiftItems",
       label: "Van smene (kom.)",
-      value: fmtNumber(data?.metadata.offShiftItems ?? 0),
-      tone: (data?.metadata.offShiftItems ?? 0) > 0 ? "warning" : "good",
+      value: fmtNumber(offShiftItems),
+      tone: offShiftItems == null ? "info" : offShiftItems > 0 ? "warning" : "good",
       description: "Prodaja sa satnicom van definisanih smena.",
     },
     {
       key: "offShiftRevenue",
       label: "Van smene (RSD)",
-      value: fmtRsdShort(data?.metadata.offShiftRevenue ?? 0),
-      tone: (data?.metadata.offShiftRevenue ?? 0) > 0 ? "warning" : "good",
+      value: fmtRsdShort(offShiftRevenue),
+      tone: offShiftRevenue == null ? "info" : offShiftRevenue > 0 ? "warning" : "good",
       description: "Prihod evidentiran van operativnih smena.",
     },
     {
@@ -951,39 +963,40 @@ export default function DailySalesStatsPage() {
     {
       key: "duplicateReceipts",
       label: "Dupli računi",
-      value: fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0),
-      tone: (data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 ? "danger" : "good",
+      value: fmtNumber(duplicateReceipts),
+      tone: duplicateReceipts == null ? "info" : duplicateReceipts > 0 ? "danger" : "good",
       description: "Isti broj računa više puta za isti datum i objekat.",
     },
     {
       key: "receiptMismatch",
       label: "Neusklađeni računi",
-      value: fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0),
-      tone: (data?.metadata.receiptAmountMismatchCount ?? 0) > 0 ? "danger" : "good",
+      value: fmtNumber(receiptMismatch),
+      tone: receiptMismatch == null ? "info" : receiptMismatch > 0 ? "danger" : "good",
       description: "Računi gde dnevnik i suma stavki ne daju isti iznos.",
     },
     {
       key: "nonStandardReceipts",
       label: "Nestandardni računi",
-      value: fmtNumber(data?.metadata.nonStandardReceiptCount ?? 0),
-      tone: (data?.metadata.nonStandardReceiptCount ?? 0) > 0 ? "warning" : "good",
+      value: fmtNumber(nonStandardReceipts),
+      tone: nonStandardReceipts == null ? "info" : nonStandardReceipts > 0 ? "warning" : "good",
       description: "Dokumenti sa nenumerickim brojem racuna, npr. DUG.",
     },
     {
       key: "nonStandardRevenue",
       label: "Nestandardni RSD",
-      value: fmtRsdShort(data?.metadata.nonStandardReceiptRevenue ?? 0),
-      tone: (data?.metadata.nonStandardReceiptRevenue ?? 0) > 0 ? "warning" : "good",
+      value: fmtRsdShort(nonStandardRevenue),
+      tone: nonStandardRevenue == null ? "info" : nonStandardRevenue > 0 ? "warning" : "good",
       description: "Promet ostvaren kroz nestandardne prodajne dokumente.",
     },
     {
       key: "suppliers",
       label: "Aktivni dobavljači",
-      value: fmtNumber(data?.metadata.uniqueSuppliersInRange ?? 0),
-      tone: "info",
+      value: fmtNumber(suppliers),
+      tone: suppliers == null ? "info" : "info",
       description: "Broj dobavljača sa prometom u opsegu.",
     },
-  ]), [
+  ];
+  }, [
     data?.metadata.duplicateReceiptGroupCount,
     data?.metadata.nonStandardReceiptCount,
     data?.metadata.nonStandardReceiptRevenue,
@@ -1009,6 +1022,12 @@ export default function DailySalesStatsPage() {
   const heuristicInsights = useMemo<InsightCard[]>(() => {
     const insights: InsightCard[] = [];
     const revenueDeltaPct = comparisonCards.find((item) => item.key === "revenue")?.deltaPct ?? null;
+    const offShiftItems = finiteOrNull(data?.metadata.offShiftItems);
+    const duplicateReceipts = finiteOrNull(data?.metadata.duplicateReceiptGroupCount);
+    const receiptMismatch = finiteOrNull(data?.metadata.receiptAmountMismatchCount);
+    const nonStandardReceipts = finiteOrNull(data?.metadata.nonStandardReceiptCount);
+    const debtReceipts = finiteOrNull(data?.metadata.debtReceiptCount);
+    const nonStandardRevenue = finiteOrNull(data?.metadata.nonStandardReceiptRevenue);
 
     if (revenueDeltaPct != null && revenueDeltaPct >= 8) {
       insights.push({
@@ -1024,14 +1043,16 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    const shiftGap = currentSummary.secondShiftSharePct - currentSummary.firstShiftSharePct;
-    if (shiftGap >= 10) {
+    const shiftGap = currentSummary.secondShiftSharePct != null && currentSummary.firstShiftSharePct != null
+      ? currentSummary.secondShiftSharePct - currentSummary.firstShiftSharePct
+      : null;
+    if (shiftGap != null && shiftGap >= 10) {
       insights.push({
         title: "Druga smena nosi prodaju",
         detail: `Druga smena drži ${fmtPct(currentSummary.secondShiftSharePct, 1)} vidljivih komada, što je ${fmtPct(shiftGap, 1)} više od prve smene.`,
         tone: "info",
       });
-    } else if (shiftGap <= -10) {
+    } else if (shiftGap != null && shiftGap <= -10) {
       insights.push({
         title: "Prva smena dominira",
         detail: `Prva smena drži ${fmtPct(currentSummary.firstShiftSharePct, 1)} vidljivih komada. Vredi provjeriti raspored osoblja i dopunu ujutru.`,
@@ -1039,7 +1060,7 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if (supplierConcentration.top3QtySharePct >= 55) {
+    if (supplierConcentration.top3QtySharePct != null && supplierConcentration.top3QtySharePct >= 55) {
       insights.push({
         title: "Visoka koncentracija dobavljača",
         detail: `Top 3 dobavljača nose ${fmtPct(supplierConcentration.top3QtySharePct, 1)} komada. Rizik zavisnosti je povišen.`,
@@ -1055,26 +1076,26 @@ export default function DailySalesStatsPage() {
       });
     }
 
-    if ((data?.metadata.duplicateReceiptGroupCount ?? 0) > 0 || (data?.metadata.receiptAmountMismatchCount ?? 0) > 0) {
+    if ((duplicateReceipts != null && duplicateReceipts > 0) || (receiptMismatch != null && receiptMismatch > 0)) {
       insights.push({
         title: "Prodaja trazi rekonsilijaciju",
-        detail: `Duplih racuna je ${fmtNumber(data?.metadata.duplicateReceiptGroupCount ?? 0)}, a racuna sa mismatch-om između dnevnika i stavki ${fmtNumber(data?.metadata.receiptAmountMismatchCount ?? 0)}.`,
+        detail: `Duplih racuna je ${fmtNumber(duplicateReceipts)}, a racuna sa mismatch-om između dnevnika i stavki ${fmtNumber(receiptMismatch)}.`,
         tone: "danger",
       });
     }
 
-    if ((data?.metadata.nonStandardReceiptCount ?? 0) > 0) {
+    if (nonStandardReceipts != null && nonStandardReceipts > 0) {
       insights.push({
         title: "Postoje nestandardni dokumenti prodaje",
-        detail: `${fmtNumber(data?.metadata.nonStandardReceiptCount ?? 0)} dokumenta nose ${fmtRsdShort(data?.metadata.nonStandardReceiptRevenue ?? 0)}. DUG se pojavljuje ${fmtNumber(data?.metadata.debtReceiptCount ?? 0)} put(a).`,
+        detail: `${fmtNumber(nonStandardReceipts)} dokumenta nose ${fmtRsdShort(nonStandardRevenue)}. DUG se pojavljuje ${fmtNumber(debtReceipts)} put(a).`,
         tone: "warning",
       });
     }
 
-    if ((data?.metadata.offShiftItems ?? 0) > 0) {
+    if (offShiftItems != null && offShiftItems > 0) {
       insights.push({
         title: "Ima prodaje van smene",
-        detail: `${fmtNumber(data?.metadata.offShiftItems ?? 0)} komada i ${fmtRsdShort(data?.metadata.offShiftRevenue ?? 0)} evidentirano je van standardne satnice.`,
+        detail: `${fmtNumber(offShiftItems)} komada i ${fmtRsdShort(data?.metadata.offShiftRevenue)} evidentirano je van standardne satnice.`,
         tone: "warning",
       });
     }
@@ -1114,11 +1135,11 @@ export default function DailySalesStatsPage() {
       : weekdayData.filter((row) => row.dayCount > 0);
 
     const strongestDay = candidateDays.reduce<WeekdayPoint | null>(
-      (best, row) => (!best || row.avgRevenue > best.avgRevenue ? row : best),
+      (best, row) => row.avgRevenue != null && (!best || best.avgRevenue == null || row.avgRevenue > best.avgRevenue) ? row : best,
       null
     );
     const weakestDay = candidateDays.reduce<WeekdayPoint | null>(
-      (lowest, row) => (!lowest || row.avgRevenue < lowest.avgRevenue ? row : lowest),
+      (lowest, row) => row.avgRevenue != null && (!lowest || lowest.avgRevenue == null || row.avgRevenue < lowest.avgRevenue) ? row : lowest,
       null
     );
     return { strongestDay, weakestDay };
@@ -1461,7 +1482,7 @@ export default function DailySalesStatsPage() {
             <article>
               <span>Ukupno komada <InfoTip text="Ukupan broj prodatih komada vidljivih u tabeli. Moze biti manji od baze ako je primenjen filter na prodavnicu ili top-N dobavljaca." /></span>
               <strong>{fmtNumber(currentSummary.totalVisibleItems)}</strong>
-              <small>{fmtNumber(Math.round(currentSummary.avgItemsPerDay))} / dan</small>
+              <small>{fmtNumber(currentSummary.avgItemsPerDay == null ? null : Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
             <article>
               <span>Dana u opsegu <InfoTip text="Broj kalendarskih dana izabranog perioda. Koristi se kao imenilac za dnevne proseke. Prethodni period je isti opseg, pomeren unazad." /></span>
@@ -1583,8 +1604,10 @@ export default function DailySalesStatsPage() {
                     </tr>
                   ) : (
                     sortedRows.map((row) => {
-                      const supplierTotal = sum(row.topSupplierCounts) + row.othersCount;
-                      const mismatch = supplierTotal !== row.totalItemsSold;
+                      const supplierTotal = sum(row.topSupplierCounts);
+                      const others = finiteOrNull(row.othersCount);
+                      const total = finiteOrNull(row.totalItemsSold);
+                      const mismatch = supplierTotal != null && others != null && total != null && supplierTotal + others !== total;
                       return (
                         <tr key={row.date} className={mismatch ? "row-mismatch" : ""}>
                           <td>{fmtDate(row.date)}</td>
@@ -1593,7 +1616,7 @@ export default function DailySalesStatsPage() {
                           <td className="analytics-data-table__numeric">{fmtRsd(row.totalRevenue, 2)}</td>
                           {supplierHeaders.map((_, index) => (
                             <td key={`${row.date}-supplier-${index}`} className="analytics-data-table__numeric">
-                              {fmtNumber(row.topSupplierCounts[index] ?? 0)}
+                              {fmtNumber(row.topSupplierCounts[index])}
                             </td>
                           ))}
                           <td className="analytics-data-table__numeric">{fmtNumber(row.othersCount)}</td>
@@ -1615,9 +1638,9 @@ export default function DailySalesStatsPage() {
             ) : null}
           </section>
 
-          {emptyStateVariant ? null : data.metadata.warnings.length > 0 ? (
+          {emptyStateVariant ? null : (data.metadata.warnings?.length ?? 0) > 0 ? (
             <section className="daily-sales-warnings">
-              {data.metadata.warnings.map((warning) => (
+              {(data.metadata.warnings ?? []).map((warning) => (
                 <p key={warning}>{warning}</p>
               ))}
             </section>
@@ -1709,11 +1732,11 @@ export default function DailySalesStatsPage() {
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.fullLabel ?? ""}
                     formatter={(value: number | string | undefined, name: string | undefined) => {
                       const seriesName = name ?? "";
-                      const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+                      const numericValue = finiteOrNull(typeof value === "number" ? value : value == null ? null : Number(value));
                       if (seriesName === "Prihod" || seriesName === "Prihod MA7") {
                         return [fmtRsdShort(numericValue), seriesName];
                       }
-                      return [fmtNumber(Math.round(numericValue)), seriesName];
+                      return [fmtNumber(numericValue == null ? null : Math.round(numericValue)), seriesName];
                     }}
                   />
                   <Legend wrapperStyle={CHART_LEGEND_STYLE} />
@@ -1748,7 +1771,10 @@ export default function DailySalesStatsPage() {
                       contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                       labelFormatter={(_, payload) => payload?.[0]?.payload?.fullLabel ?? ""}
-                      formatter={(value: number | string | undefined, name: string | undefined) => [fmtNumber(Number(value ?? 0)), name ?? ""]}
+                      formatter={(value: number | string | undefined, name: string | undefined) => {
+                        const numericValue = finiteOrNull(typeof value === "number" ? value : value == null ? null : Number(value));
+                        return [fmtNumber(numericValue), name ?? ""];
+                      }}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                     <Bar dataKey="firstShiftTotalItems" name="Prva smena" stackId="shift" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
@@ -1796,7 +1822,7 @@ export default function DailySalesStatsPage() {
                       formatter={(value: number | string | undefined, name: string | undefined, payload) => {
                         const seriesName = name ?? "";
                         const row = payload?.payload as SupplierConcentrationPoint | undefined;
-                        const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+                        const numericValue = finiteOrNull(typeof value === "number" ? value : value == null ? null : Number(value));
                         if (seriesName === "Udeo komada") return [fmtPct(numericValue, 1), seriesName];
                         return [row ? fmtNumber(row.totalQty) : fmtNumber(numericValue), seriesName];
                       }}
@@ -1849,9 +1875,9 @@ export default function DailySalesStatsPage() {
                       labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                       formatter={(value: number | string | undefined, name: string | undefined) => {
                         const seriesName = name ?? "";
-                        const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+                        const numericValue = finiteOrNull(typeof value === "number" ? value : value == null ? null : Number(value));
                         if (seriesName === "Avg prihod") return [fmtRsdShort(numericValue), seriesName];
-                        return [fmtNumber(Math.round(numericValue)), seriesName];
+                        return [fmtNumber(numericValue == null ? null : Math.round(numericValue)), seriesName];
                       }}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
@@ -1922,7 +1948,7 @@ export default function DailySalesStatsPage() {
                     <span>{row.label}</span>
                     <span>{fmtRsdShort(row.revenue)}</span>
                     <span>{fmtNumber(row.items)}</span>
-                    <span className={row.deviationValue >= 0 ? "trend-up" : "trend-down"}>{row.deviationPct == null ? "Nije dostupno" : fmtSignedPct(row.deviationPct, 1)}</span>
+                    <span className={row.deviationValue != null && row.deviationValue >= 0 ? "trend-up" : "trend-down"}>{row.deviationPct == null ? "Nije dostupno" : fmtSignedPct(row.deviationPct, 1)}</span>
                   </div>
                 ))}
               </div>

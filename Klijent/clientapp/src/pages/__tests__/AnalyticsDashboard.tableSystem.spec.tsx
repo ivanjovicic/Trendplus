@@ -69,6 +69,81 @@ const topRows = [
   },
 ];
 
+const unknownTrendRows = [
+  {
+    productId: 201,
+    sku: "SKU-201",
+    productName: "Unknown Trend Product",
+    revenue: 50000,
+    units: 5,
+    velocityUnitsPerDay: 0.8,
+    marginImpact: 15000,
+    stockStatus: "good",
+    trendPct: null, // Unknown trend
+    marginQualityLabel: "Margin signal dostupan",
+    marginQualityTier: "good",
+    marginQualityShortLabel: "Dostupno",
+    marginQualityTooltip: "Margin impact je izračunat iz dostupne nabavne cene.",
+    dataQualityStatus: "good",
+    statusReason: "Margin signal je potvrđen na osnovu dostupne nabavne cene.",
+    reasonCodes: ["margin_available"],
+  },
+  {
+    productId: 202,
+    sku: "SKU-202",
+    productName: "NaN Trend Product",
+    revenue: 35000,
+    units: 3,
+    velocityUnitsPerDay: 0.5,
+    marginImpact: 10000,
+    stockStatus: "warning",
+    trendPct: NaN, // Invalid non-finite trend
+    marginQualityLabel: "Nedovoljno podataka",
+    marginQualityTier: "insufficient_data",
+    marginQualityShortLabel: "Nedostaje dokaz",
+    marginQualityTooltip: "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+    dataQualityStatus: "insufficient_data",
+    statusReason: "Nabavna cena nije dostupna za ovaj artikal.",
+    reasonCodes: ["missing_cost"],
+  },
+  {
+    productId: 203,
+    sku: "SKU-203",
+    productName: "Infinity Trend Product",
+    revenue: 20000,
+    units: 2,
+    velocityUnitsPerDay: 0.3,
+    marginImpact: 5000,
+    stockStatus: "critical",
+    trendPct: Infinity, // Non-finite trend
+    marginQualityLabel: "Nedovoljno podataka",
+    marginQualityTier: "insufficient_data",
+    marginQualityShortLabel: "Nedostaje dokaz",
+    marginQualityTooltip: "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+    dataQualityStatus: "insufficient_data",
+    statusReason: "Nabavna cena nije dostupna za ovaj artikal.",
+    reasonCodes: ["missing_cost"],
+  },
+  {
+    productId: 204,
+    sku: "SKU-204",
+    productName: "Zero Trend Product (Measured)",
+    revenue: 15000,
+    units: 1,
+    velocityUnitsPerDay: 0.2,
+    marginImpact: 3000,
+    stockStatus: "good",
+    trendPct: 0, // Genuine measured zero trend
+    marginQualityLabel: "Margin signal dostupan",
+    marginQualityTier: "good",
+    marginQualityShortLabel: "Dostupno",
+    marginQualityTooltip: "Margin impact je izračunat iz dostupne nabavne cene.",
+    dataQualityStatus: "good",
+    statusReason: "Margin signal je potvrđen na osnovu dostupne nabavne cene.",
+    reasonCodes: ["margin_available"],
+  },
+];
+
 describe("AnalyticsDashboard table system", () => {
   beforeEach(() => {
     vi.mocked(getDashboardBootstrap).mockResolvedValue({
@@ -158,5 +233,234 @@ describe("AnalyticsDashboard table system", () => {
     expect(
       within(table).getByTitle("Nabavna cena nije dostupna, pa margin signal nije potvrđen."),
     ).toBeInTheDocument();
+  });
+
+  it("excludes unknown/null trends from top gainers list", async () => {
+    // FAILING-FIRST TEST: Currently this fails because null trend is coalesced to 0 and included
+    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+      summary: {
+        totalRevenue: 12345,
+        totalTransactions: 12,
+        totalUnits: 8,
+      },
+      inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+      dailySales: [],
+      categoryData: [],
+      genderData: [],
+      supplierData: [],
+      supplierOptions: [{ supplierId: 77, supplierName: "Alfa Shoes" }],
+      weekdayData: [],
+      hourData: [],
+      paymentData: [],
+      quickInsights: null,
+      transactionStats: null,
+      advanced: null,
+      topAdvanced: {
+        byRevenue: [
+          // positive trend (should be in gainers)
+          { ...topRows[0], trendPct: 12.4 },
+          // null trend (should NOT be in gainers)
+          { ...unknownTrendRows[0], trendPct: null },
+          // negative trend (should be in losers, not gainers)
+          { ...topRows[1], trendPct: -4.8 },
+          // genuine zero trend (should NOT be in gainers)
+          { ...unknownTrendRows[3], trendPct: 0 },
+        ],
+        byUnits: [],
+        byVelocity: [],
+        byMarginImpact: [],
+        marginAvailable: true,
+        marginMessage: "Margin data available.",
+      },
+      validationCompleteness: null,
+      validationFreshness: null,
+      validationLostSales: null,
+      executive: null,
+      decisionActions: [],
+      errors: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+      isRunning: false,
+      currentStep: null,
+      dataFreshnessStatus: "good",
+      lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
+      jobs: [],
+    });
+    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+      status: "ok",
+      tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
+      message: "ok",
+    });
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    // Find the top gainers section
+    const gainersSection = await screen.findByTestId("top-gainers-section");
+
+    // Should only see SKU-101 (trendPct: 12.4) in gainers
+    expect(within(gainersSection).getByText("SKU-101")).toBeInTheDocument();
+
+    // Should NOT see SKU-201 (null trend) even though it should be filtered out
+    // This will fail with current implementation because null is coalesced to 0 and filtered as neutral
+    expect(within(gainersSection).queryByText("SKU-201")).not.toBeInTheDocument();
+
+    // Should NOT see SKU-204 (genuine zero trend, measured neutral)
+    expect(within(gainersSection).queryByText("SKU-204")).not.toBeInTheDocument();
+  });
+
+  it("excludes unknown/non-finite trends from top losers list", async () => {
+    // FAILING-FIRST TEST: Currently this fails because NaN/Infinity trends are coalesced to 0 and filtered
+    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+      summary: {
+        totalRevenue: 12345,
+        totalTransactions: 12,
+        totalUnits: 8,
+      },
+      inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+      dailySales: [],
+      categoryData: [],
+      genderData: [],
+      supplierData: [],
+      supplierOptions: [{ supplierId: 77, supplierName: "Alfa Shoes" }],
+      weekdayData: [],
+      hourData: [],
+      paymentData: [],
+      quickInsights: null,
+      transactionStats: null,
+      advanced: null,
+      topAdvanced: {
+        byRevenue: [
+          // negative trend (should be in losers)
+          { ...topRows[1], trendPct: -4.8 },
+          // NaN trend (should NOT be in losers)
+          { ...unknownTrendRows[1], trendPct: NaN },
+          // positive trend (should be in gainers, not losers)
+          { ...topRows[0], trendPct: 12.4 },
+          // Infinity trend (should NOT be in losers)
+          { ...unknownTrendRows[2], trendPct: Infinity },
+        ],
+        byUnits: [],
+        byVelocity: [],
+        byMarginImpact: [],
+        marginAvailable: true,
+        marginMessage: "Margin data available.",
+      },
+      validationCompleteness: null,
+      validationFreshness: null,
+      validationLostSales: null,
+      executive: null,
+      decisionActions: [],
+      errors: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+      isRunning: false,
+      currentStep: null,
+      dataFreshnessStatus: "good",
+      lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
+      jobs: [],
+    });
+    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+      status: "ok",
+      tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
+      message: "ok",
+    });
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    // Find the top losers section
+    const losersSection = await screen.findByTestId("top-losers-section");
+
+    // Should only see SKU-102 (trendPct: -4.8) in losers
+    expect(within(losersSection).getByText("SKU-102")).toBeInTheDocument();
+
+    // Should NOT see SKU-202 (NaN trend) or SKU-203 (Infinity trend)
+    // This will fail with current implementation because NaN/Infinity are coalesced to 0 and filtered as neutral
+    expect(within(losersSection).queryByText("SKU-202")).not.toBeInTheDocument();
+    expect(within(losersSection).queryByText("SKU-203")).not.toBeInTheDocument();
+  });
+
+  it("preserves genuine zero trend as measured neutral (not in gainers or losers)", async () => {
+    // FAILING-FIRST TEST: Verify that genuine zero trend is distinct from unknown
+    vi.mocked(getDashboardBootstrap).mockResolvedValueOnce({
+      summary: {
+        totalRevenue: 12345,
+        totalTransactions: 12,
+        totalUnits: 8,
+      },
+      inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
+      dailySales: [],
+      categoryData: [],
+      genderData: [],
+      supplierData: [],
+      supplierOptions: [{ supplierId: 77, supplierName: "Alfa Shoes" }],
+      weekdayData: [],
+      hourData: [],
+      paymentData: [],
+      quickInsights: null,
+      transactionStats: null,
+      advanced: null,
+      topAdvanced: {
+        byRevenue: [
+          // genuine zero trend
+          { ...unknownTrendRows[3], trendPct: 0 },
+          // positive trend
+          { ...topRows[0], trendPct: 12.4 },
+          // negative trend
+          { ...topRows[1], trendPct: -4.8 },
+        ],
+        byUnits: [],
+        byVelocity: [],
+        byMarginImpact: [],
+        marginAvailable: true,
+        marginMessage: "Margin data available.",
+      },
+      validationCompleteness: null,
+      validationFreshness: null,
+      validationLostSales: null,
+      executive: null,
+      decisionActions: [],
+      errors: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    vi.mocked(getAnalyticsRefreshStatus).mockResolvedValueOnce({
+      isRunning: false,
+      currentStep: null,
+      dataFreshnessStatus: "good",
+      lastSuccessfulRefreshAtUtc: "2026-08-05T10:00:00Z",
+      jobs: [],
+    });
+    vi.mocked(checkAnalyticsHealth).mockResolvedValueOnce({
+      status: "ok",
+      tables: { salesFacts: 10, salesLineFacts: 20, productsDim: 5 },
+      message: "ok",
+    });
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    // Find the top gainers section
+    const gainersSection = await screen.findByTestId("top-gainers-section");
+
+    // SKU-204 (zero trend) should NOT be in gainers
+    expect(within(gainersSection).queryByText("SKU-204")).not.toBeInTheDocument();
+
+    // Find the top losers section
+    const losersSection = await screen.findByTestId("top-losers-section");
+
+    // SKU-204 (zero trend) should NOT be in losers
+    expect(within(losersSection).queryByText("SKU-204")).not.toBeInTheDocument();
   });
 });
