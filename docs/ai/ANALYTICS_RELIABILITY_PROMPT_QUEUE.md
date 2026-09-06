@@ -95,6 +95,16 @@ Purpose: isolate analytics data-reliability work from SQL formula work. This que
 | RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
+| RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
+| RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
+| RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
+| RQ186 | WAITING | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
+| RQ187 | WAITING | cache-meta-freshness-truth | Cache write time published as LastRefreshAtUtc on cache hits |
+| RQ188 | WAITING | price-intelligence-validity | Price-intelligence discount depth encodes missing list price as 0% |
+| RQ189 | WAITING | demand-acceleration-new-product-state | Demand acceleration hardcodes 1.0 sentinel for new demand |
+| RQ190 | WAITING | forecast-snapshot-freshness-aggregation | Forecast provenance freshness aggregated optimistically |
+| RQ191 | WAITING | frontend-numeric-safety | Frontend percent clamp hides negative backend signals |
+| RQ192 | WAITING | ml-feature-missing-encoding | Supplier ML return rate coalesces missing to 0% |
 | RQ176 | WAITING | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -5960,4 +5970,471 @@ Embedding code currently serializes embedding arrays into a string and binds the
 ### Dependencies
 
 - Coordination with DB/infra team for pgvector parameterization guidance.
+
+---
+
+## RQ183 - Journal-derived opening stock for sell-through denominator integrity
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: inventory-opening-stock-proof
+Parallel-safe: no
+Owner: Analytics
+
+Commit suggestion: `fix(analytics): prove opening stock derivation or reject stale inventory assumptions`
+
+### Problem
+
+Cached inventory list and Product Decision Center infer `openingStockUnits = currentStock - sum(all DnevnikPromena quantities)` and feed that into sell-through/stock-cover calculations. If journal movements are incomplete, out-of-order, or fail to record, a plausible sell-through ratio is produced from an unreliable denominator.
+
+### Evidence
+
+- `CachedAnalyticsEndpoints.cs:629`, `:5785`, `:7604-7659` perform the reconstruction.
+- No test asserts that all valid movements exist before using the derived opening stock.
+- No contract exposes the derivation method, calculation uncertainty or required journal completeness.
+
+### Scope
+
+- Backend: journal movement completeness proof and opening-stock derivation confidence
+- Cached inventory DTO: add `openingStockConfidence` or `isOpeningStockDerived` flag
+- Tests for missing/partial journal, out-of-order entries and concurrent writes
+
+### Do
+
+1. Define journal completeness requirements (date range, movement type coverage).
+2. Add a backend check that fails or marks the opening-stock as unavailable when journal is incomplete or uncertain.
+3. Expose `isOpeningStockDerived` and `confidence` in the DTO.
+4. Add tests for incomplete journals and concurrent write scenarios.
+
+### Tests
+
+- Backend: incomplete journal → `isOpeningStockDerived=false` or unavailable state.
+- Integration: concurrent journal writes and inventory-list query; assert derivation method is consistent.
+
+### Acceptance
+
+- Opening stock is never silently derived from an unverified journal.
+- Uncertainty is visible in sell-through confidence and recommendation state.
+
+### Dependencies
+
+- `RQ141` owns lineage; this is bounded to opening-stock proof.
+
+---
+
+## RQ184 - Fixed 30-day divisor for inventory velocity miscalculation
+
+Status: WAITING
+Priority: P1
+Type: backend/tests
+Feature family: velocity-divisor-accuracy
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(analytics): use actual elapsed days or active selling span for velocity divisor`
+
+### Problem
+
+Sales are counted over `UtcNow.AddDays(-30)`, but `avgDailySalesUnits` always divides by `30m`, not actual elapsed days or observed selling span. This understates velocity for sparse sellers and overstates days-of-cover, skewing replenishment/slow-stock signals.
+
+### Evidence
+
+- `CachedAnalyticsEndpoints.cs:596`, `:631` hardcode `30m` divisor.
+- No test validates velocity against actual day count or selling span.
+
+### Scope
+
+- `CachedAnalyticsEndpoints.cs` inventory-list velocity calculation
+- Focused backend tests
+
+### Do
+
+1. Replace fixed `30m` with actual elapsed days between window start and `UtcNow`.
+2. Add tests comparing expected velocity with a known sales-per-day input.
+3. Document and enforce window definitions (end = `UtcNow`, start = 30 days prior).
+
+### Tests
+
+- Unit: 30-day window, 10 units total → expect 10/30 ≈ 0.33 units/day.
+- Unit: 10-day elapsed window, 10 units → expect 10/10 = 1.0 units/day.
+
+### Acceptance
+
+- Velocity divisor matches actual elapsed days in the query window.
+- Stock-cover and replenishment signals reflect correct daily run-rate.
+
+---
+
+## RQ185 - "Velocity per day" label with active-selling-days divisor confusion
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: velocity-active-days-semantics
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(analytics): clarify velocity metric definition: calendar days vs active selling days`
+
+### Problem
+
+Velocity is computed as `units / COUNT(active sale days)` or `units / active_days`, while DTOs/labels expose `velocity_units_per_day`. Intermittent sellers look much faster than they are; rankings, stock comparisons, and dashboard insights overstate daily run-rate.
+
+### Evidence
+
+- `CachedAnalyticsEndpoints.cs:3202` (quick insights), `:3497` (top products advanced SQL).
+- Label says "per day" but denominator is active selling days, not calendar days.
+
+### Scope
+
+- Backend: velocity calculation method and active-day counting
+- DTO fields: clarify semantics or use separate fields for active-days-based vs calendar-based metrics
+- Frontend labels and dashboard context
+
+### Do
+
+1. Choose one definition: either active-selling-days velocity or calendar-day velocity.
+2. Update DTOs and labels to clarify which metric is being returned (e.g., `velocityUnitsPerActiveSalesDay` vs `velocityUnitsPerCalendarDay`).
+3. Add tests validating the definition against known input (e.g., item sold on 5 out of 30 days, 100 units total → either 100/5 or 100/30).
+
+### Tests
+
+- Backend: verify active-day count logic and velocity calculation.
+- Frontend: mock both metrics and assert label matches calculation method.
+
+### Acceptance
+
+- Velocity metric definition is unambiguous and matches label.
+- Intermittent and continuous sellers are ranked with correct run-rate understanding.
+
+---
+
+## RQ186 - Product Decision lost-sales formula ignores velocity (static stock-gap risk)
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: pdc-lost-sales-arithmetic
+Parallel-safe: no
+Owner: Analytics
+
+Commit suggestion: `fix(pdc): lost-sales estimate must incorporate velocity or mark unavailable`
+
+### Problem
+
+`lostSalesEstimate` is `stockGap * avgUnitPrice` without incorporating velocity/demand. Fast movers with the same stock gap get the same "lost sales" RSD as slow movers, misranking opportunity and inflating portfolio totals.
+
+### Evidence
+
+- `CachedAnalyticsEndpoints.cs:5712-5715`, `:5808`.
+- Formula lacks a time/velocity factor.
+
+### Scope
+
+- PDC lost-sales calculation and risk confidence
+- Backend DTO: clarify lost-sales semantics or expand formula
+- Tests for velocity impact
+
+### Do
+
+1. Incorporate `velocityUnitsPerDay` into lost-sales: e.g., `lostSalesEstimate = stockGap * avgUnitPrice * daysInWindow / (window.Days or 30)`.
+2. Or mark lost-sales unavailable when velocity is missing/unreliable.
+3. Add tests proving fast movers have higher estimated loss than slow movers with same stock gap.
+
+### Tests
+
+- Unit: same stock gap, different velocities → different loss estimates.
+- Backend: lost-sales ranking changes when velocity is added to formula.
+
+### Acceptance
+
+- Lost-sales RSD reflects both stock gap and demand velocity.
+- Fast movers are correctly ranked higher-opportunity than slow movers.
+
+### Dependencies
+
+- `RQ03` owns lost-sales unavailability validation; this is the arithmetic formula.
+
+---
+
+## RQ187 - Cache write time published as LastRefreshAtUtc on cache hits
+
+Status: WAITING
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: cache-meta-freshness-truth
+Parallel-safe: no
+Owner: Analytics
+
+Commit suggestion: `fix(analytics): distinguish cache creation time from data refresh timestamp`
+
+### Problem
+
+`ApplyStaleCacheWarning` always sets `meta.LastRefreshAtUtc = metadata.CreatedAtUtc` (cache entry creation), even on fresh cache hits. Dashboard/PDC can show a believable "last refresh" that is only cache population time, masking stale underlying data.
+
+### Evidence
+
+- `CachedAnalyticsEndpoints.cs:2634-2656`; callers at `:137`, `:308`, `:1526`, `:2110`.
+- No distinction between "cache populated" and "underlying data refreshed."
+
+### Scope
+
+- `AnalyticsCachePolicy` and cache wrapper
+- All cached analytics endpoints
+- Cache metadata contract (DTO)
+
+### Do
+
+1. Add a separate `data.RefreshAtUtc` field that tracks the actual data source refresh timestamp (from worker/migration, not cache write).
+2. Use `meta.CacheCreatedAtUtc` for cache diagnostics only.
+3. Return `data.RefreshAtUtc` as the authoritative freshness signal to clients.
+4. Add tests proving old-data cache hits do not update the refresh timestamp.
+
+### Tests
+
+- Unit: cache hit on 2-hour-old data → assert `RefreshAtUtc` is 2 hours old, not `now`.
+- Integration: refresh worker populates cache; assert both timestamps are tracked separately.
+
+### Acceptance
+
+- Dashboard/PDC freshness display uses true data refresh time, not cache write time.
+- Cache hits do not reset the refresh timestamp.
+
+### Dependencies
+
+- `RQ141` owns broad lineage; this is cache metadata semantics.
+
+---
+
+## RQ188 - Price-intelligence discount depth encodes missing list price as 0%
+
+Status: WAITING
+Priority: P2
+Type: backend/tests
+Feature family: price-intelligence-validity
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(price): reject invalid list price and mark discount depth unavailable`
+
+### Problem
+
+SQL view encodes `WHEN pp.list_price <= 0 THEN 0::numeric` for `discount_depth`. Invalid/missing list price becomes a measured zero discount, not an unknown signal.
+
+### Evidence
+
+- `Database/Analytics/Intelligence/023_price_intelligence_v1.sql:109-112`.
+
+### Scope
+
+- SQL view: replace silent zero with NULL or explicit unavailable marker.
+- Consumer queries that use discount_depth: add null-safety tests.
+
+### Do
+
+1. Change `WHEN pp.list_price <= 0 THEN 0::numeric` to `WHEN pp.list_price <= 0 THEN NULL::numeric`.
+2. Add a test asserting discount_depth is NULL for invalid list prices.
+3. Update downstream consumers to handle NULL (render unavailable, not as 0% markdown).
+
+### Tests
+
+- SQL: verify NULL discount_depth when list_price <= 0.
+- Backend: consumers render unavailable, not zero, for NULL discount.
+
+### Acceptance
+
+- Unknown list price does not become measured zero discount.
+- Downstream price/markdown analytics treat missing list price correctly.
+
+### Dependencies
+
+- Pricing/ML owners for consumer impact.
+
+---
+
+## RQ189 - Demand acceleration hardcodes 1.0 sentinel for new demand
+
+Status: WAITING
+Priority: P2
+Type: backend/tests
+Feature family: demand-acceleration-new-product-state
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(intelligence): mark new demand distinctly from measured acceleration`
+
+### Problem
+
+When prior 7-day rolling units = 0 and current > 0, `demand_acceleration` is fixed to `1.0` instead of NULL or explicit "new demand" state. Sparse/new SKUs get a moderate score indistinguishable from true +100% relative change, affecting intelligence ranking and derived frontend depletion logic.
+
+### Evidence
+
+- `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql:198-207`.
+
+### Scope
+
+- SQL view: replace hardcoded `1.0` with NULL or add a separate `is_new_demand` flag.
+- Frontend consumers of `demand_acceleration`: update to handle NULL or new-demand state.
+
+### Do
+
+1. Replace `1.0` sentinel with NULL for new demand.
+2. Or add `demand_state` enum: NEW_DEMAND, ACCELERATING, STABLE, DECELERATING.
+3. Add tests proving new-demand products render distinctly.
+
+### Tests
+
+- SQL: zero prior → NULL or NEW_DEMAND state.
+- Frontend: mock NULL acceleration; assert new-product copy/icon render.
+
+### Acceptance
+
+- New demand is visually/semantically distinct from measured acceleration.
+- Rankings correctly prioritize new vs accelerating products.
+
+### Dependencies
+
+- `RQ152` owns derived-builder semantics; this is the specific new-demand state.
+
+---
+
+## RQ190 - Forecast provenance freshness aggregated optimistically
+
+Status: WAITING
+Priority: P1
+Type: backend/contract/tests
+Feature family: forecast-snapshot-freshness-aggregation
+Parallel-safe: no
+Owner: Analytics
+
+Commit suggestion: `fix(forecast): aggregate row freshness conservatively; preserve partial-trust states`
+
+### Problem
+
+Row freshness falls back to `issue_time_utc`; list-level freshness uses MAX across rows and can fall back to `DateTime.UtcNow` when marking trusted materialization. Mixed-trust snapshot batches can appear uniformly fresh/trusted while many rows lack real snapshot freshness metadata.
+
+### Evidence
+
+- `GetInventoryForecastHandler.cs:81`, `:88-92`, `:119-126`.
+
+### Scope
+
+- Forecast handler: snapshot freshness aggregation logic
+- Forecast DTO: expose row-level and batch-level freshness separately
+- Tests for mixed-trust scenarios
+
+### Do
+
+1. Aggregate row freshness conservatively: use MIN (oldest row) instead of MAX.
+2. Add a `trustedRowCount` / `totalRowCount` ratio to the batch-level freshness.
+3. Preserve and expose row-level freshness when meaningful.
+4. Render partial-trust state (e.g., "75% of forecast rows refreshed 2h ago, 25% from 5h ago").
+
+### Tests
+
+- Unit: mixed-age rows → batch freshness reflects oldest row.
+- Frontend: render partial-trust messaging.
+
+### Acceptance
+
+- Forecast freshness reflects actual data staleness, not optimistic MAX.
+- Partial-trust states are visible.
+
+### Dependencies
+
+- `RQ141` owns lineage; `RQ176` owns inventory snapshot query-time; this is forecast-specific aggregation.
+
+---
+
+## RQ191 - Frontend percent clamp hides negative backend signals
+
+Status: WAITING
+Priority: P2
+Type: frontend/tests
+Feature family: frontend-numeric-safety
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(frontend): render unavailable for out-of-bounds confidence, not clamped zero`
+
+### Problem
+
+`normalizePercent()` clamps with `Math.max(0, Math.min(100, value))` before formatting confidence/reliability. Negative or >100 backend values display as `0%` instead of unavailable/negative, weakening trust messaging.
+
+### Evidence
+
+- `analyticsQuality.ts:21-24`, `:26-35`.
+
+### Scope
+
+- Frontend formatter: replace clamp with boundary check + unavailable rendering.
+- Tests for out-of-bounds values.
+
+### Do
+
+1. Change clamp logic: if `value < 0` or `value > 100`, return unavailable marker instead of clamping to 0 or 100.
+2. Add tests for negative, >100, and null inputs.
+3. Document expected range as 0–100, with unavailable as a third state.
+
+### Tests
+
+- Unit: -10 → unavailable; 150 → unavailable; 0 → "0%"; 100 → "100%".
+- Frontend: render null/error icon for out-of-bounds confidence.
+
+### Acceptance
+
+- Out-of-bounds confidence values are visible as unavailable/error, not silent zeros.
+- Trust messaging is accurate.
+
+### Dependencies
+
+- `RQ139` owns numeric states; this is formatter safety.
+
+---
+
+## RQ192 - Supplier ML return rate coalesces missing to 0%
+
+Status: WAITING
+Priority: P2
+Type: backend/tests
+Feature family: ml-feature-missing-encoding
+Parallel-safe: yes
+Owner: Analytics
+
+Commit suggestion: `fix(ml): preserve missing return rate as NULL, not zero feature value`
+
+### Problem
+
+`return_rate` uses `NULLIF(units_30d, 0)`, but outer `COALESCE(a.return_rate, 0)` turns no-sales/missing return data into `0`. Training/ranking features treat "unknown returns" as best-case 0% return rate, biasing ML scores and success labels.
+
+### Evidence
+
+- `015_AddSupplierMlRanking.sql:294`, `:357`.
+
+### Scope
+
+- SQL view: replace outer COALESCE(0) with NULL preservation or explicit missing-flag.
+- ML training: add missing-value indicators to feature set.
+- Tests for missing-data encoding.
+
+### Do
+
+1. Remove outer `COALESCE(..., 0)` or replace with `NULL`.
+2. Or add a separate `has_return_data` boolean feature.
+3. Add tests proving no-sales suppliers are encoded as missing-return, not zero-return.
+
+### Tests
+
+- SQL: no return data in window → NULL or has_return_data=FALSE.
+- ML: missing-return feature prevents bias toward "perfect suppliers."
+
+### Acceptance
+
+- ML features distinguish "unknown returns" from "measured zero returns."
+- Training is not biased by missing data.
+
+### Dependencies
+
+- ML/scoring owners; this is feature encoding correctness.
 
