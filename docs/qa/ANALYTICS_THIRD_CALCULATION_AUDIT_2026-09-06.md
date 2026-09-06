@@ -20,7 +20,7 @@ No product runtime files were changed in this pass. The work is an audit and que
 
 ## Findings
 
-### RQ171: Inventory snapshot query time is shown as data freshness
+### RQ176: Inventory snapshot query time is shown as data freshness
 
 Evidence:
 
@@ -34,7 +34,7 @@ Risk: a cache hit or an old snapshot read now can look freshly refreshed at the 
 
 History checked: `41790622`, `29a5943a`, `4c8844b9` and `e3933c0d` contain earlier trust/freshness and inventory-signal hardening. They do not add snapshot freshness metadata for alerts, rebalance or size curve.
 
-### RQ172: Size-curve missing relation and successful empty result collapse in the UI
+### RQ177: Size-curve missing relation and successful empty result collapse in the UI
 
 Evidence:
 
@@ -47,7 +47,7 @@ Risk: an unavailable table can look like a valid empty SKU result, and a backend
 
 History checked: the inventory snapshot fixes in `e3933c0d` and the current `InventorySignalNullEvidence` tests protect null values, but not this panel-level state projection.
 
-### RQ173: Inventory signal rows lack a complete user-safe actionability/copy contract
+### RQ178: Inventory signal rows lack a complete user-safe actionability/copy contract
 
 Evidence:
 
@@ -60,7 +60,7 @@ Risk: internal values such as `inventory_missing` or a technical reason can reac
 
 History checked: `5db83e1`/`e3933c0d` fixed null coercion and reader-count semantics; `RQ151` fixed action messages, but did not cover inventory snapshot `alertType`/`reason` or a shared snapshot actionability field.
 
-### RQ174: Supplier footwear marks query-time generated data as fresh
+### RQ179: Supplier footwear marks query-time generated data as fresh
 
 Evidence:
 
@@ -73,7 +73,7 @@ Risk: a supplier footwear signal can be presented as fresh solely because the re
 
 History checked: `570a31e8`, `41790622`, `a84d8a42` and `29a5943a` harden pre/post comparability/trust, but this page-specific freshness fallback remains.
 
-### RQ175: Pre/post frontend reconstructs a backend-owned aggregate
+### RQ180: Pre/post frontend reconstructs a backend-owned aggregate
 
 Evidence:
 
