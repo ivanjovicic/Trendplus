@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ166
+Current READY prompt: RQ167
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -98,8 +98,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ163 | DONE | supplier-post-observation-state | Prevent absent post-nivelacija observations from becoming measured zero in supplier decisions |
 | RQ164 | DONE | pre-nivelacija-cost-evidence | Prevent null/non-positive purchase cost from becoming a complete 100% margin signal |
 | RQ165 | DONE | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
-| RQ166 | READY | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
-| RQ167 | WAITING | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
+| RQ166 | DONE | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
+| RQ167 | READY | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
 | RQ168 | WAITING | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
@@ -5464,13 +5464,26 @@ Do not change the established `RQ05`/`RQ06` dataScope definitions, frontend form
 
 ## RQ166 - Reject reversed action-timeline periods instead of silently swapping scope
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/tests
 Feature family: action-timeline-period-state
 Parallel-safe: no, action timeline and export must preserve the same requested/effective period
 Owner: Codex
+Agent: local-session-ivan
+StartedAtUtc: 2026-09-06T07:10:00Z
+CompletedAtUtc: 2026-09-06T07:25:00Z
 Commit suggestion: `fix(analytics): fail closed on reversed action periods`
+Evidence: `.ai/runs/2026-09-06-rq166-action-timeline-period-evidence.md`
+Evidence state: synchronized
+
+### Completion note
+
+- Projection and product-decision timeline/export paths no longer swap reversed periods.
+- Reversed input returns `invalid_period`, empty timelines and error meta/export with requested dates preserved.
+- Equal from/to remains a valid one-day window.
+- Focused timeline filter/export tests: 14 passed.
+- Next READY: RQ167.
 
 ### Problem
 

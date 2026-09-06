@@ -12,6 +12,7 @@ public static class AnalyticsActionTimelineFilterProjection
     public const string EmptyReasonNoEvents = "no_events";
     public const string EmptyReasonOutsidePeriod = "outside_period";
     public const string EmptyReasonNoMeasurement = "no_measurement";
+    public const string EmptyReasonInvalidPeriod = "invalid_period";
 
     public static DecisionTimelineFilterResponseDto Filter(
         IEnumerable<AnalyticsActionItem> items,
@@ -22,10 +23,6 @@ public static class AnalyticsActionTimelineFilterProjection
 
         var periodFromUtc = NormalizeDateUtc(query.PeriodFromUtc);
         var periodToUtc = NormalizeDateUtc(query.PeriodToUtc);
-        if (periodFromUtc > periodToUtc)
-        {
-            (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
-        }
 
         var sourceType = NormalizeOptional(query.SourceType);
         var sourceKey = NormalizeOptional(query.SourceKey);
@@ -40,6 +37,18 @@ public static class AnalyticsActionTimelineFilterProjection
             PeriodFromUtc: periodFromUtc,
             PeriodToUtc: periodToUtc,
             ScopeExplanation: BuildScopeExplanation(sourceType, sourceKey, productId, recommendationType, periodFromUtc, periodToUtc));
+
+        // Fail closed on reversed ranges. Do not silently swap into a different valid scope.
+        if (periodFromUtc > periodToUtc)
+        {
+            return new DecisionTimelineFilterResponseDto(
+                Scope: scope,
+                EmptyReason: EmptyReasonInvalidPeriod,
+                Timelines: Array.Empty<DecisionTimelineItemDto>(),
+                MatchedActionCount: 0,
+                MatchedEventCount: 0,
+                WarningCodes: [EmptyReasonInvalidPeriod]);
+        }
 
         var entityFamilyMatches = new List<AnalyticsActionTimelineProjectionDto>();
         foreach (var item in items)

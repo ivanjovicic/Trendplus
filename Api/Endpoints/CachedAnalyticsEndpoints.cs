@@ -1634,10 +1634,7 @@ public static class CachedAnalyticsEndpoints
             var nowUtc = DateTime.UtcNow.Date;
             var periodToUtc = toDate?.Date ?? nowUtc;
             var periodFromUtc = fromDate?.Date ?? periodToUtc.AddDays(-29);
-            if (periodFromUtc > periodToUtc)
-            {
-                (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
-            }
+            // Do not swap reversed periods; BuildProductDecisionTimelineFilterAsync fails closed.
 
             var generatedAtUtc = DateTime.UtcNow;
             var correlationId = ResolveCorrelationId(httpContext);
@@ -1654,14 +1651,20 @@ public static class CachedAnalyticsEndpoints
                     ct);
 
                 DecisionTimelineExportDto export;
-                if (filtered.Meta is { Success: false } || filtered.Scope is null)
+                if (filtered.Meta is { Success: false }
+                    || filtered.Scope is null
+                    || string.Equals(
+                        filtered.EmptyReason,
+                        AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod,
+                        StringComparison.Ordinal))
                 {
                     export = DecisionTimelineExportProjection.Error(
                         periodFromUtc,
                         periodToUtc,
                         generatedAtUtc,
-                        filtered.Meta?.ErrorCode ?? "ANALYTICS_UNEXPECTED_ERROR",
-                        filtered.Meta?.ErrorMessage ?? "Decision Timeline export trenutno nije dostupan.",
+                        filtered.Meta?.ErrorCode ?? "INVALID_PERIOD",
+                        filtered.Meta?.ErrorMessage
+                            ?? "Izabrani period nije validan. Datum od mora biti raniji ili jednak datumu do.",
                         filtered.WarningCodes);
                 }
                 else
@@ -5386,14 +5389,37 @@ public static class CachedAnalyticsEndpoints
         var nowUtc = DateTime.UtcNow.Date;
         var periodToUtc = (toDate?.Date ?? nowUtc);
         var periodFromUtc = fromDate?.Date ?? periodToUtc.AddDays(-29);
-        if (periodFromUtc > periodToUtc)
-        {
-            (periodFromUtc, periodToUtc) = (periodToUtc, periodFromUtc);
-        }
-
         var normalizedSourceType = string.IsNullOrWhiteSpace(sourceType)
             ? (productId.HasValue ? "product" : null)
             : sourceType.Trim();
+        var normalizedSourceKey = string.IsNullOrWhiteSpace(sourceKey) ? null : sourceKey.Trim();
+        var normalizedRecommendationType = string.IsNullOrWhiteSpace(recommendationType) ? null : recommendationType.Trim();
+
+        if (periodFromUtc > periodToUtc)
+        {
+            var invalidScope = new DecisionTimelineFilterScopeDto(
+                SourceType: normalizedSourceType,
+                SourceKey: normalizedSourceKey,
+                ProductId: productId,
+                RecommendationType: normalizedRecommendationType,
+                PeriodFromUtc: periodFromUtc,
+                PeriodToUtc: periodToUtc,
+                ScopeExplanation: $"Period nije validan: {periodFromUtc:yyyy-MM-dd} – {periodToUtc:yyyy-MM-dd}");
+
+            return new ProductDecisionTimelineFilterResponseDto
+            {
+                Scope = invalidScope,
+                EmptyReason = AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod,
+                Timelines = [],
+                MatchedActionCount = 0,
+                MatchedEventCount = 0,
+                WarningCodes = [AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod],
+                Meta = BuildErrorMeta(
+                    "INVALID_PERIOD",
+                    "Izabrani period nije validan. Datum od mora biti raniji ili jednak datumu do.",
+                    correlationId: null)
+            };
+        }
 
         IQueryable<AnalyticsActionItem> query = analyticsDb.AnalyticsActionItems
             .AsNoTracking()
@@ -5404,9 +5430,8 @@ public static class CachedAnalyticsEndpoints
             query = query.Where(item => item.SourceType == normalizedSourceType);
         }
 
-        if (!string.IsNullOrWhiteSpace(sourceKey))
+        if (!string.IsNullOrWhiteSpace(normalizedSourceKey))
         {
-            var normalizedSourceKey = sourceKey.Trim();
             query = query.Where(item => item.SourceKey == normalizedSourceKey);
         }
         else if (productId.HasValue)
@@ -5437,9 +5462,9 @@ public static class CachedAnalyticsEndpoints
             items,
             new DecisionTimelineFilterQuery(
                 SourceType: normalizedSourceType,
-                SourceKey: string.IsNullOrWhiteSpace(sourceKey) ? null : sourceKey.Trim(),
+                SourceKey: normalizedSourceKey,
                 ProductId: productId,
-                RecommendationType: string.IsNullOrWhiteSpace(recommendationType) ? null : recommendationType.Trim(),
+                RecommendationType: normalizedRecommendationType,
                 PeriodFromUtc: periodFromUtc,
                 PeriodToUtc: periodToUtc));
 
@@ -5459,15 +5484,20 @@ public static class CachedAnalyticsEndpoints
             WarningCodes = filtered.WarningCodes.ToList(),
             Meta = filtered.EmptyReason is null
                 ? BuildSuccessMeta(dataQualityStatus: dataQuality, lastRefreshAtUtc: DateTime.UtcNow)
-                : BuildSuccessMeta(
-                    dataQualityStatus: "insufficient_data",
-                    message: filtered.EmptyReason switch
-                    {
-                        AnalyticsActionTimelineFilterProjection.EmptyReasonOutsidePeriod
-                            => "Nema timeline događaja u izabranom periodu.",
-                        _ => "Nema timeline događaja za izabrani entitet/porodicu."
-                    },
-                    lastRefreshAtUtc: DateTime.UtcNow)
+                : filtered.EmptyReason == AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod
+                    ? BuildErrorMeta(
+                        "INVALID_PERIOD",
+                        "Izabrani period nije validan. Datum od mora biti raniji ili jednak datumu do.",
+                        correlationId: null)
+                    : BuildSuccessMeta(
+                        dataQualityStatus: "insufficient_data",
+                        message: filtered.EmptyReason switch
+                        {
+                            AnalyticsActionTimelineFilterProjection.EmptyReasonOutsidePeriod
+                                => "Nema timeline događaja u izabranom periodu.",
+                            _ => "Nema timeline događaja za izabrani entitet/porodicu."
+                        },
+                        lastRefreshAtUtc: DateTime.UtcNow)
         };
     }
 

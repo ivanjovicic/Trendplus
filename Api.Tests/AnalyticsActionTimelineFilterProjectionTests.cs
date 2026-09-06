@@ -104,6 +104,70 @@ public sealed class AnalyticsActionTimelineFilterProjectionTests
         Assert.DoesNotContain("Porodica: REPLENISH", result.Scope.ScopeExplanation);
     }
 
+    [Fact]
+    public void Filter_ReversedPeriod_FailsClosedWithoutSwappingScope()
+    {
+        var periodFrom = new DateTime(2026, 8, 11, 0, 0, 0, DateTimeKind.Utc);
+        var periodTo = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var items = new[]
+        {
+            CreateAction(
+                id: 5,
+                sourceKey: "product:101",
+                recommendationStatus: "REPLENISH",
+                createdAtUtc: new DateTime(2026, 8, 5, 12, 0, 0, DateTimeKind.Utc),
+                recommendationType: "REPLENISH")
+        };
+
+        var result = AnalyticsActionTimelineFilterProjection.Filter(
+            items,
+            new DecisionTimelineFilterQuery(
+                SourceType: "product",
+                SourceKey: "product:101",
+                ProductId: 101,
+                RecommendationType: "REPLENISH",
+                PeriodFromUtc: periodFrom,
+                PeriodToUtc: periodTo));
+
+        Assert.Equal(AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod, result.EmptyReason);
+        Assert.Empty(result.Timelines);
+        Assert.Equal(0, result.MatchedActionCount);
+        Assert.Equal(periodFrom.Date, result.Scope.PeriodFromUtc);
+        Assert.Equal(periodTo.Date, result.Scope.PeriodToUtc);
+        Assert.Contains(AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod, result.WarningCodes);
+        Assert.DoesNotContain("2026-08-01 – 2026-08-11", result.Scope.ScopeExplanation);
+    }
+
+    [Fact]
+    public void Filter_EqualPeriod_IsValidOneDayWindow()
+    {
+        var day = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
+        var items = new[]
+        {
+            CreateAction(
+                id: 6,
+                sourceKey: "product:101",
+                recommendationStatus: "REPLENISH",
+                createdAtUtc: day.AddHours(10),
+                recommendationType: "REPLENISH")
+        };
+
+        var result = AnalyticsActionTimelineFilterProjection.Filter(
+            items,
+            new DecisionTimelineFilterQuery(
+                SourceType: "product",
+                SourceKey: "product:101",
+                ProductId: 101,
+                RecommendationType: "REPLENISH",
+                PeriodFromUtc: day,
+                PeriodToUtc: day));
+
+        Assert.Null(result.EmptyReason);
+        Assert.Single(result.Timelines);
+        Assert.Equal(day, result.Scope.PeriodFromUtc);
+        Assert.Equal(day, result.Scope.PeriodToUtc);
+    }
+
     private static AnalyticsActionItem CreateAction(
         long id,
         string sourceKey,

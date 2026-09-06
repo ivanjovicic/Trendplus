@@ -57,6 +57,54 @@ public sealed class DecisionTimelineExportProjectionTests
     }
 
     [Fact]
+    public void Export_ReversedPeriod_FailsClosedAndKeepsRequestedDates()
+    {
+        var periodFrom = new DateTime(2026, 8, 11, 0, 0, 0, DateTimeKind.Utc);
+        var periodTo = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var items = new[]
+        {
+            CreateAction(
+                id: 5,
+                sourceKey: "product:101",
+                recommendationStatus: "REPLENISH",
+                createdAtUtc: new DateTime(2026, 8, 5, 12, 0, 0, DateTimeKind.Utc),
+                recommendationType: "REPLENISH")
+        };
+
+        var filtered = AnalyticsActionTimelineFilterProjection.Filter(
+            items,
+            new DecisionTimelineFilterQuery(
+                SourceType: "product",
+                SourceKey: "product:101",
+                ProductId: 101,
+                RecommendationType: "REPLENISH",
+                PeriodFromUtc: periodFrom,
+                PeriodToUtc: periodTo));
+
+        var export = DecisionTimelineExportProjection.Error(
+            periodFrom,
+            periodTo,
+            GeneratedAtUtc,
+            errorCode: "INVALID_PERIOD",
+            errorMessage: "Izabrani period nije validan. Datum od mora biti raniji ili jednak datumu do.",
+            warningCodes: filtered.WarningCodes);
+        var csv = DecisionTimelineExportProjection.ToCsv(export);
+
+        Assert.Equal(AnalyticsActionTimelineFilterProjection.EmptyReasonInvalidPeriod, filtered.EmptyReason);
+        Assert.Empty(filtered.Timelines);
+        Assert.False(export.Success);
+        Assert.Equal(periodFrom.Date, export.Header.RequestedPeriodFromUtc.Date);
+        Assert.Equal(periodTo.Date, export.Header.RequestedPeriodToUtc.Date);
+        Assert.Equal(export.Header.RequestedPeriodFromUtc, export.Header.EffectivePeriodFromUtc);
+        Assert.Empty(export.Rows);
+        Assert.Contains("success=false", csv);
+        Assert.Contains("requestedPeriodFromUtc=2026-08-11", csv);
+        Assert.Contains("requestedPeriodToUtc=2026-08-01", csv);
+        Assert.DoesNotContain("requestedPeriodFromUtc=2026-08-01", csv);
+        Assert.DoesNotContain("recommendation_issued", csv);
+    }
+
+    [Fact]
     public void Export_Error_DoesNotEmitZeroRatesOrFakeEvents()
     {
         var export = DecisionTimelineExportProjection.Error(
