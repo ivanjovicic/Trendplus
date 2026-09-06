@@ -5616,8 +5616,8 @@ Do not change successful empty-result semantics, recommendation scoring, trend/f
 - Run log: `.ai/runs/2026-09-06-RQ167-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct local `main`; no commit or push requested in this turn.
-- Main commit SHA: `53e809de19bca5d1f3e3c8b9b0a36d56e3cb2df1`
-- Main verification: passed - current local `main` contains `53e809de19bca5d1f3e3c8b9b0a36d56e3cb2df1`; not pushed in this turn.
+- Main commit SHA: `53e809de51433b0446f3955b9b0d121eecda9ec5`
+- Main verification: passed - current local `main` contains `53e809de51433b0446f3955b9b0d121eecda9ec5`; not pushed in this turn.
 - Missed: direct inventory failure injection and live missing-relation/refresh verification remain unexecuted by the available local test harness.
 - Follow-up: `RQ168` is the next READY prompt.
 - Residual risk: alternate consumers must honor `meta.success=false` and nullable failure KPI fields; live provider behavior still requires the runtime proof owned by the stabilization/live-gate work.
