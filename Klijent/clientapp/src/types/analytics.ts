@@ -321,6 +321,12 @@ export interface TopProductAdvancedItem {
   units: number;
   velocityUnitsPerDay: number;
   marginImpact?: number | null;
+  costCoveredRevenue?: number;
+  costCoveredUnits?: number;
+  totalLines?: number;
+  costCoveredLines?: number;
+  marginCoveragePct?: number | null;
+  marginCoverageStatus?: string | null;
   stockStatus: "good" | "warning" | "critical" | "neutral" | string;
   trendPct?: number | null;
   marginQualityLabel?: string | null;

@@ -224,12 +224,14 @@ function statusLabel(value?: string | null): string {
   return "Neutralno";
 }
 
-function topProductTrustTone(row: Pick<TopProductAdvancedItem, "marginQualityTier" | "dataQualityStatus" | "marginImpact">): Tone {
+export function topProductTrustTone(row: Pick<TopProductAdvancedItem, "marginQualityTier" | "dataQualityStatus" | "marginImpact">): Tone {
   const normalized = (row.marginQualityTier ?? row.dataQualityStatus ?? "").trim().toLowerCase();
   if (normalized === "good") return "good";
   if (normalized === "warning") return "warning";
   if (normalized === "critical") return "critical";
   if (normalized === "insufficient_data") return "warning";
+  if (normalized === "partial" || normalized === "estimated") return "warning";
+  if (normalized === "no_data" || normalized === "unknown") return "warning";
   return row.marginImpact == null ? "warning" : "neutral";
 }
 

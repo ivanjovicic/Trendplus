@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDashboardMovingStats } from "../AnalyticsDashboard";
+import { calculateDashboardMovingStats, topProductTrustTone } from "../AnalyticsDashboard";
 import {
   deriveAnalyticsDetailMetrics,
   getAnalyticsDetailPeriodDays,
@@ -109,5 +109,12 @@ describe("analytics indicator regression guards", () => {
 
   it("does not turn an empty inventory denominator into a valid percentage", () => {
     expect(formatPercent(null)).toBe("Nije dostupno");
+  });
+
+  it("keeps partial and unknown margin coverage visibly degraded", () => {
+    expect(topProductTrustTone({ marginQualityTier: "partial", marginImpact: 120 })).toBe("warning");
+    expect(topProductTrustTone({ marginQualityTier: "estimated", marginImpact: 120 })).toBe("warning");
+    expect(topProductTrustTone({ marginQualityTier: "no_data", marginImpact: null })).toBe("warning");
+    expect(topProductTrustTone({ marginQualityTier: "unknown", marginImpact: null })).toBe("warning");
   });
 });

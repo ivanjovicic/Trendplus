@@ -2,7 +2,7 @@
 
 Date: 2026-09-06
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ168
+Current READY prompt: RQ169
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -100,8 +100,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ165 | DONE | data-quality-window-scope | Make Data Quality time boundaries and sale/article scope consistent across health and offender queries |
 | RQ166 | DONE | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 | RQ167 | DONE | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
-| RQ168 | READY | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
-| RQ169 | WAITING | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
+| RQ168 | DONE | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
+| RQ169 | READY | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
@@ -5628,12 +5628,14 @@ Do not change successful empty-result semantics, recommendation scoring, trend/f
 
 ## RQ168 - Keep partial cost coverage out of confirmed top-product margin ranking
 
-Status: READY
+Status: DONE
 Priority: P0
 Type: backend/SQL/tests
 Feature family: top-products-margin-coverage
 Parallel-safe: no, margin availability, ranking and trust labels share the same cost evidence
 Owner: Codex
+StartedAtUtc: 2026-09-06T10:20:00Z
+CompletedAtUtc: 2026-09-06T10:35:00Z
 Commit suggestion: `fix(analytics): expose top-product margin coverage`
 
 ### Problem
@@ -5690,13 +5692,33 @@ Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend
 
 - `RQ148` remains the broad financial-basis owner.
 - `RQ147` remains the metric evidence registry owner.
-- This is the single current `READY` item after completion of `RQ167`.
+- This was the single current `READY` item after completion of `RQ167`; `RQ169` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-06
+- Status: DONE
+- Completion: Advanced top-products margin evidence now carries covered revenue/units, line coverage and coverage percentage/status. Partial or unavailable cost evidence is visibly degraded and excluded from confirmed margin ranking; fully covered genuine zero margin remains eligible.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Application/Analytics/AnalyticsMarginPolicy.cs`, `Api.Tests/TopProductMarginCoverageTests.cs`, `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/__tests__/analyticsIndicatorRegression.spec.ts`, `Klijent/clientapp/src/types/analytics.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-06-RQ168-evidence.md`
+- Contract/runtime behavior changed: yes, partial cost coverage is no longer treated as confirmed margin evidence or included in the confirmed margin ranking; coverage metadata is additive to the DTO.
+- Checks run: failing-first focused test compile failure captured; `TopProductMarginCoverageTests` 8 passed; frontend analytics regression tests 11 passed; analytics guardrails passed; frontend build passed; backend API build passed; queue/agent/planning validators and `git diff --check` passed.
+- Checks not run: live provider SQL/database, migration, refresh, browser console/theme, export/report runtime parity; no live provider harness was available for this bounded local task.
+- Run log: `.ai/runs/2026-09-06-RQ168-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct local `main`; committed locally, not pushed in this turn.
+- Main commit SHA: recorded in the run log after commit.
+- Main verification: recorded in the run log after commit.
+- Missed: live SQL execution and runtime consumers outside the dashboard remain unverified; the additive fields are present in the shared DTO/type contract.
+- Follow-up: `RQ169` - empty intake readiness must fail closed.
+- Residual risk: raw SQL/provider schema compatibility still needs the live STAB16/runtime proof; current local proof covers policy, mapping, serialization and ranking behavior.
+- Next: claim and execute `RQ169` when selected.
+- Prompt defect / scope repair: the original prompt named an integration test path but the available bounded proof was policy/DTO/ranking based; no production owner boundary was crossed.
 
 ---
 
 ## RQ169 - Keep empty intake data from receiving a numeric readiness score or green label
 
-Status: WAITING
+Status: READY
 Priority: P0
 Type: backend/tests
 Feature family: data-quality-empty-readiness

@@ -3503,7 +3503,18 @@ public static class CachedAnalyticsEndpoints
                 CASE
                   WHEN COUNT(*) FILTER (WHERE {resolvedUnitCostSql} IS NOT NULL) = 0 THEN NULL
                   ELSE SUM((ps."cena" - {resolvedUnitCostSql}) * ps."kolicina")
-                END AS margin_impact
+                END AS margin_impact,
+                SUM(CASE WHEN ({resolvedUnitCostSql}) IS NOT NULL THEN ps."kolicina" * ps."cena" ELSE 0 END) AS cost_covered_revenue,
+                SUM(CASE WHEN ({resolvedUnitCostSql}) IS NOT NULL THEN ps."kolicina" ELSE 0 END)::int AS cost_covered_units,
+                CASE
+                  WHEN SUM(ps."kolicina" * ps."cena") > 0 THEN
+                    ROUND(SUM(CASE WHEN ({resolvedUnitCostSql}) IS NOT NULL THEN ps."kolicina" * ps."cena" ELSE 0 END) * 100 / NULLIF(SUM(ps."kolicina" * ps."cena"), 0), 2)
+                  WHEN SUM(ps."kolicina") > 0 THEN
+                    ROUND(SUM(CASE WHEN ({resolvedUnitCostSql}) IS NOT NULL THEN ps."kolicina" ELSE 0 END) * 100 / NULLIF(SUM(ps."kolicina"), 0), 2)
+                  ELSE NULL
+                END AS margin_coverage_pct,
+                COUNT(*)::int AS total_lines,
+                COUNT(*) FILTER (WHERE ({resolvedUnitCostSql}) IS NOT NULL)::int AS cost_covered_lines
               FROM "prodaja_stavke" ps
               JOIN "prodaja_zaglavlje" p ON p."id" = ps."id_prodaja"
               JOIN "Artikli" a ON a."Id" = ps."id_artikal"
@@ -3539,6 +3550,11 @@ public static class CachedAnalyticsEndpoints
               COALESCE(cp.units, 0)::int AS units,
               ROUND(COALESCE(cp.units, 0)::decimal / GREATEST(cp.active_days, 1), 2) AS velocity_units_per_day,
               cp.margin_impact,
+              cp.cost_covered_revenue,
+              cp.cost_covered_units,
+              cp.margin_coverage_pct,
+              cp.total_lines,
+              cp.cost_covered_lines,
               CASE
                 WHEN COALESCE(a."Kolicina", 0) <= 0 THEN 'critical'
                 WHEN COALESCE(a."Kolicina", 0) <= GREATEST(COALESCE(a."MinimalnaKolicina", 1), 1) THEN 'warning'
@@ -3567,21 +3583,61 @@ public static class CachedAnalyticsEndpoints
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var hasMarginImpact = !reader.IsDBNull(6);
-                var marginQualityTier = hasMarginImpact ? "good" : "insufficient_data";
-                var marginQualityLabel = hasMarginImpact
-                    ? "Margin signal dostupan"
-                    : "Nedovoljno podataka";
-                var marginQualityShortLabel = hasMarginImpact
-                    ? "Dostupno"
-                    : "Nedostaje dokaz";
-                var marginQualityTooltip = hasMarginImpact
-                    ? "Margin impact je izračunat iz dostupne nabavne cene."
-                    : "Nabavna cena nije dostupna, pa margin signal nije potvrđen.";
-                var dataQualityStatus = hasMarginImpact ? "good" : "insufficient_data";
-                var statusReason = hasMarginImpact
-                    ? "Margin signal je potvrđen na osnovu dostupne nabavne cene."
-                    : "Nabavna cena nije dostupna za ovaj artikal.";
+                var marginImpact = reader.IsDBNull(6) ? (decimal?)null : Math.Round(reader.GetDecimal(6), 2);
+                var costCoveredRevenue = reader.IsDBNull(7) ? 0m : reader.GetDecimal(7);
+                var costCoveredUnits = reader.IsDBNull(8) ? 0 : reader.GetInt32(8);
+                var totalLines = reader.IsDBNull(10) ? 0 : reader.GetInt32(10);
+                var costCoveredLines = reader.IsDBNull(11) ? 0 : reader.GetInt32(11);
+                var calculatedCoverage = AnalyticsMarginPolicy.ClassifyTopProductCoverage(
+                    reader.IsDBNull(3) ? 0m : reader.GetDecimal(3),
+                    reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                    costCoveredRevenue,
+                    costCoveredUnits,
+                    totalLines,
+                    costCoveredLines);
+                var coverage = calculatedCoverage with
+                {
+                    CoveragePct = reader.IsDBNull(9) ? calculatedCoverage.CoveragePct : Math.Round(reader.GetDecimal(9), 2)
+                };
+                var isConfirmedMargin = AnalyticsMarginPolicy.IsConfirmedMarginRankingEvidence(coverage, marginImpact);
+                var marginQualityTier = coverage.Status;
+                var marginQualityLabel = coverage.Status switch
+                {
+                    "confirmed" when isConfirmedMargin => "Margin signal potvrđen",
+                    "partial" => "Margin signal delimično pokriven",
+                    "no_data" => "Nedovoljno podataka",
+                    _ => "Margin signal nije potvrđen"
+                };
+                var marginQualityShortLabel = coverage.Status switch
+                {
+                    "confirmed" when isConfirmedMargin => "Potvrđeno",
+                    "partial" => "Delimično",
+                    "no_data" => "Nedostaje dokaz",
+                    _ => "Nepoznato"
+                };
+                var coverageLabel = coverage.CoveragePct.HasValue
+                    ? $" Pokriće troška: {coverage.CoveragePct.Value:0.##}%."
+                    : " Pokriće troška nije moguće utvrditi.";
+                var marginQualityTooltip = coverage.Status switch
+                {
+                    "confirmed" when isConfirmedMargin => $"Margin impact je izračunat uz potpuno pokriće troška.{coverageLabel}",
+                    "partial" => $"Margin impact koristi samo redove sa dostupnim troškom i nije uključen u potvrđeni ranking.{coverageLabel}",
+                    "no_data" => "Nabavna cena nije dostupna, pa margin signal nije potvrđen.",
+                    _ => "Pokriće troška nije dovoljno za potvrđen margin signal."
+                };
+                var dataQualityStatus = coverage.Status switch
+                {
+                    "confirmed" when isConfirmedMargin => "good",
+                    "no_data" => "insufficient_data",
+                    _ => "warning"
+                };
+                var statusReason = coverage.Status switch
+                {
+                    "confirmed" when isConfirmedMargin => $"Margin signal je potvrđen uz 100% pokriće troška.{coverageLabel}",
+                    "partial" => $"Margin signal je delimičan i nije potvrđen za ranking.{coverageLabel}",
+                    "no_data" => "Nabavna cena nije dostupna za ovaj artikal.",
+                    _ => "Nema dovoljno podataka za potvrđen margin signal."
+                };
 
                 all.Add(new TopProductAdvancedItemDto
                 {
@@ -3591,30 +3647,45 @@ public static class CachedAnalyticsEndpoints
                     Revenue = reader.IsDBNull(3) ? 0m : Math.Round(reader.GetDecimal(3), 2),
                     Units = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
                     VelocityUnitsPerDay = reader.IsDBNull(5) ? 0m : Math.Round(reader.GetDecimal(5), 2),
-                    MarginImpact = reader.IsDBNull(6) ? null : Math.Round(reader.GetDecimal(6), 2),
-                    StockStatus = reader.IsDBNull(7) ? "neutral" : reader.GetString(7),
-                    TrendPct = reader.IsDBNull(8) ? null : Math.Round(reader.GetDecimal(8), 2),
+                    MarginImpact = marginImpact,
+                    CostCoveredRevenue = costCoveredRevenue,
+                    CostCoveredUnits = costCoveredUnits,
+                    TotalLines = totalLines,
+                    CostCoveredLines = costCoveredLines,
+                    MarginCoveragePct = coverage.CoveragePct,
+                    MarginCoverageStatus = coverage.Status,
+                    StockStatus = reader.IsDBNull(12) ? "neutral" : reader.GetString(12),
+                    TrendPct = reader.IsDBNull(13) ? null : Math.Round(reader.GetDecimal(13), 2),
                     MarginQualityLabel = marginQualityLabel,
                     MarginQualityTier = marginQualityTier,
                     MarginQualityShortLabel = marginQualityShortLabel,
                     MarginQualityTooltip = marginQualityTooltip,
                     DataQualityStatus = dataQualityStatus,
                     StatusReason = statusReason,
-                    ReasonCodes = hasMarginImpact ? ["margin_available"] : ["missing_cost"]
+                    ReasonCodes = coverage.Status switch
+                    {
+                        "confirmed" when isConfirmedMargin => ["margin_available"],
+                        "partial" => ["partial_cost_coverage"],
+                        _ => ["missing_cost"]
+                    }
                 });
             }
 
-            var marginAvailable = all.Any(x => x.MarginImpact.HasValue);
+            var marginAvailable = all.Any(x => x.MarginQualityTier == "confirmed" && x.MarginImpact.HasValue);
             return new TopProductsAdvancedResultDto
             {
                 ByRevenue = all.OrderByDescending(x => x.Revenue).Take(safeTop).ToList(),
                 ByUnits = all.OrderByDescending(x => x.Units).Take(safeTop).ToList(),
                 ByVelocity = all.OrderByDescending(x => x.VelocityUnitsPerDay).Take(safeTop).ToList(),
                 ByMarginImpact = marginAvailable
-                    ? all.Where(x => x.MarginImpact.HasValue).OrderByDescending(x => x.MarginImpact).Take(safeTop).ToList()
+                    ? SelectConfirmedMarginRanking(all, safeTop)
                     : [],
                 MarginAvailable = marginAvailable,
-                MarginMessage = marginAvailable ? null : "Nabavna cena nije dostupna za margin impact izracun."
+                MarginMessage = marginAvailable
+                    ? null
+                    : all.Any(x => x.MarginImpact.HasValue)
+                        ? "Nema proizvoda sa potpuno pokrivenim troškom za potvrđeni margin ranking."
+                        : "Nabavna cena nije dostupna za margin impact izračun."
             };
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
@@ -3626,6 +3697,15 @@ public static class CachedAnalyticsEndpoints
             };
         }
     }
+
+    internal static List<TopProductAdvancedItemDto> SelectConfirmedMarginRanking(
+        IEnumerable<TopProductAdvancedItemDto> rows,
+        int top)
+        => rows
+            .Where(x => x.MarginQualityTier == "confirmed" && x.MarginImpact.HasValue)
+            .OrderByDescending(x => x.MarginImpact)
+            .Take(Math.Max(1, Math.Min(top, 100)))
+            .ToList();
 
     internal static async Task<DashboardAdvancedSnapshotDto> BuildAdvancedDashboardSnapshotAsync(
         ITrendplusDbContext db,
@@ -7888,6 +7968,12 @@ public class TopProductAdvancedItemDto
     public int Units { get; set; }
     public decimal VelocityUnitsPerDay { get; set; }
     public decimal? MarginImpact { get; set; }
+    public decimal CostCoveredRevenue { get; set; }
+    public int CostCoveredUnits { get; set; }
+    public int TotalLines { get; set; }
+    public int CostCoveredLines { get; set; }
+    public decimal? MarginCoveragePct { get; set; }
+    public string? MarginCoverageStatus { get; set; }
     public string StockStatus { get; set; } = "neutral";
     public decimal? TrendPct { get; set; }
     public string? MarginQualityLabel { get; set; }

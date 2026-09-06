@@ -13,6 +13,11 @@ public readonly record struct ResolvedUnitCost(
     decimal? UnitCost,
     MarginCostSource Source);
 
+public readonly record struct TopProductMarginCoverage(
+    decimal? CoveragePct,
+    string Status,
+    bool IsConfirmed);
+
 public readonly record struct MarginSnapshot(
     decimal RevenueWithCost,
     decimal TotalCost,
@@ -198,6 +203,41 @@ public static class AnalyticsMarginPolicy
 
     public static bool IsReliableCost(decimal? unitCost)
         => unitCost.HasValue && unitCost.Value > 0m;
+
+    public static TopProductMarginCoverage ClassifyTopProductCoverage(
+        decimal totalRevenue,
+        int totalUnits,
+        decimal costCoveredRevenue,
+        int costCoveredUnits,
+        int totalLines,
+        int costCoveredLines)
+    {
+        decimal? rawCoveragePct = totalRevenue > 0m
+            ? costCoveredRevenue / totalRevenue * 100m
+            : totalUnits > 0
+                ? (decimal)costCoveredUnits / totalUnits * 100m
+                : null;
+
+        if (!rawCoveragePct.HasValue)
+        {
+            return new TopProductMarginCoverage(null, "unknown", false);
+        }
+
+        var coveragePct = Math.Round(Math.Max(rawCoveragePct.Value, 0m), 2);
+        var allLinesCovered = totalLines > 0 && costCoveredLines >= totalLines;
+        var status = allLinesCovered && coveragePct >= 100m
+            ? "confirmed"
+            : coveragePct > 0m
+                ? "partial"
+                : "no_data";
+
+        return new TopProductMarginCoverage(coveragePct, status, status == "confirmed");
+    }
+
+    public static bool IsConfirmedMarginRankingEvidence(
+        TopProductMarginCoverage coverage,
+        decimal? marginImpact)
+        => coverage.IsConfirmed && marginImpact.HasValue;
 
     public static string BuildPositiveCostSql(params string[] candidates)
     {
