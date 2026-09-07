@@ -118,6 +118,45 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void VendorSalesNivelacijaCoverageContractPreservesUnknownAndTrueZero()
+    {
+        var sql = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        Assert.Contains("CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL", sql);
+        Assert.Contains("ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)", sql);
+        Assert.Equal(2, sql.Split("CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL", StringSplitOptions.None).Length - 1);
+
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaArticleStatDto>(nameof(Api.Models.VendorSalesNivelacijaArticleStatDto.CoveragePre30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaArticleStatDto>(nameof(Api.Models.VendorSalesNivelacijaArticleStatDto.CoveragePost30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaVendorStatDto>(nameof(Api.Models.VendorSalesNivelacijaVendorStatDto.AvgCoveragePre30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaVendorStatDto>(nameof(Api.Models.VendorSalesNivelacijaVendorStatDto.AvgCoveragePost30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaTotalsDto>(nameof(Api.Models.VendorSalesNivelacijaTotalsDto.AvgCoveragePre30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaTotalsDto>(nameof(Api.Models.VendorSalesNivelacijaTotalsDto.AvgCoveragePost30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AvgCoveragePre30));
+        AssertNullableCoverageProperty<Api.Models.VendorSalesNivelacijaDataQualityDto>(nameof(Api.Models.VendorSalesNivelacijaDataQualityDto.AvgCoveragePost30));
+    }
+
+    [Fact]
+    public void VendorSalesNivelacijaEndpointDoesNotConvertMissingCoverageToZero()
+    {
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+
+        Assert.Contains("var coveragePre30 = coveragePre30Evidence;", source);
+        Assert.Contains("var coveragePost30 = coveragePost30Evidence;", source);
+        Assert.DoesNotContain("var coveragePre30 = coveragePre30Evidence ?? 0m;", source);
+        Assert.DoesNotContain("var coveragePost30 = coveragePost30Evidence ?? 0m;", source);
+        Assert.Contains("AverageKnownCoverage", source);
+        Assert.Contains("x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m", source);
+    }
+
+    private static void AssertNullableCoverageProperty<T>(string propertyName)
+    {
+        var property = typeof(T).GetProperty(propertyName);
+        Assert.NotNull(property);
+        Assert.Equal(typeof(decimal), Nullable.GetUnderlyingType(property!.PropertyType));
+    }
+
+    [Fact]
     public void SupplierDecisionViewsExposeMissingEvidenceFlagsAndConservativeGuardrails()
     {
         var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");
