@@ -1,8 +1,8 @@
 # Analytics Reliability Prompt Queue
 
-Date: 2026-09-06
+Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ169
+Current READY prompt: RQ170
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -101,8 +101,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ166 | DONE | action-timeline-period-state | Reject reversed action-timeline periods instead of silently swapping the requested scope |
 | RQ167 | DONE | analytics-error-kpi-state | Do not serialize failed sales/inventory KPI responses as valid-looking zero values |
 | RQ168 | DONE | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
-| RQ169 | IN_PROGRESS | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
-| RQ170 | WAITING | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
+| RQ169 | DONE | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
+| RQ170 | READY | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
 | RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
@@ -5718,7 +5718,7 @@ Do not redesign all sales/margin accounting owned by `RQ148`; do not touch trend
 
 ## RQ169 - Keep empty intake data from receiving a numeric readiness score or green label
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/tests
 Feature family: data-quality-empty-readiness
@@ -5777,13 +5777,31 @@ Do not change the separate traffic health score contract owned by `RQ144`, refre
 
 - `RQ144` remains the health denominator owner.
 - `RQ147` remains the evidence-tier owner.
-- Keep this prompt `WAITING` behind the single `READY` item.
+- `RQ170` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: empty intake evidence now fails closed as `insufficient_data`; zero articles or zero import rows cannot produce a decision-ready numeric score, while populated zero-issue data remains measurable.
+- Changed files: `Api/Endpoints/DataQualityEndpoints.cs`; `Api.Tests/AnalyticsDataQualityConsistencyTests.cs`; `Api.Tests/AnalyticsReportsContractTests.cs`; `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/PilotDataQualityIntakeReport.spec.tsx`; `Klijent/clientapp/src/pages/PilotReadinessPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PilotReadinessPage.edgeCases.spec.ts`; `Klijent/clientapp/src/utils/analyticsResponseMeta.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `.ai/runs/2026-09-07-RQ169-evidence.md`
+- Checks run: focused backend tests (46 passed); focused frontend tests (12 passed); `npm run check:analytics-guardrails`; `npm run typecheck`; `npm run build`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests all passed.
+- Checks not run: live database/import-worker/browser deployment proof; wider full-suite proof was not required for this bounded contract.
+- Run log: `.ai/runs/2026-09-07-RQ169-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `5fb731d3a25c6f98039e2273fc8663988da87b6f`
+- Main verification: passed - `origin/main` is `992a2276` and contains implementation commit `5fb731d3a25c6f98039e2273fc8663988da87b6f` via the local merge.
+- Missed: live provider/database/refresh/browser proof remains outside this local contract task.
+- Follow-up: `RQ170` - validate pilot-intake report periods without silently swapping or defaulting user input.
+- Residual risk: live import/refresh data may reveal integration-specific behavior not represented by the deterministic local fixtures.
+- Prompt defect / scope repair: none; the frontend readiness surfaces were included because the existing non-null report rendered the backend empty sentinel as `0/100`.
 
 ---
 
 ## RQ170 - Reject invalid pilot-intake report periods instead of silently swapping or defaulting them
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/contract/tests
 Feature family: data-quality-report-period-state
