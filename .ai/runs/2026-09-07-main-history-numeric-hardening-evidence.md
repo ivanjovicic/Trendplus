@@ -3,9 +3,9 @@ Queue: direct-user-request
 Date: 2026-09-07
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/main-history-numeric-hardening-20260907 / local merge, no PR
-Main commit SHA: pending
-Main verification: pending
+Working branch / PR: main via local merge `b622aec898e468c0f6c71e03c4bd98c79edf56a5` from `codex/main-history-numeric-hardening-20260907` / no PR
+Main commit SHA: b622aec898e468c0f6c71e03c4bd98c79edf56a5
+Main verification: pending - local merge complete; verify `origin/main` after push
 Evidence state: pending
 
 ## What was done
@@ -14,6 +14,7 @@ Evidence state: pending
 - Confirmed that `TrendScoringService.ComputeRecommendedOrderQty` treated negative velocity and invalid inventory/horizon inputs as valid output, while `GroupFinalScore` could accept missing/inconsistent group evidence and propagate non-finite results.
 - Updated the same owner-scope to fail closed for missing, inconsistent, negative or overflowing numeric evidence, while preserving legitimate zero values.
 - Added regression coverage for invalid inputs, missing group evidence, evidence/count mismatch, valid zero, finite positive score and horizon overflow.
+- Created local merge commit `b622aec898e468c0f6c71e03c4bd98c79edf56a5`; remote verification is pending the push.
 
 ## Files changed
 
