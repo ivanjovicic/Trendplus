@@ -106,6 +106,8 @@ public sealed class GetInventorySizeCurveHandler
                 TotalMatchingCount: totalMatchingCount,
                 IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: items.Count == 0
                     ? "Size curve snapshot postoji, ali nema redova za trazene filtere."
                     : hasMissingEvidence ? "Size curve snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
@@ -121,6 +123,8 @@ public sealed class GetInventorySizeCurveHandler
                 TotalMatchingCount: 0,
                 IsTruncated: false,
                 SnapshotAvailable: false,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Size curve snapshot jos nije dostupan.",
                 Items: []);
         }

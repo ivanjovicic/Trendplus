@@ -98,6 +98,8 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
@@ -138,6 +140,8 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
@@ -176,6 +180,8 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(1, result.ReturnedCount);
         Assert.Equal(2, result.TotalMatchingCount);
@@ -350,6 +356,8 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(0, result.TotalCount);
         Assert.Equal(0, result.ReturnedCount);
         Assert.Equal(0, result.TotalMatchingCount);
@@ -378,6 +386,8 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(0, result.TotalCount);
         Assert.Equal(0, result.ReturnedCount);
         Assert.Equal(0, result.TotalMatchingCount);
@@ -409,12 +419,53 @@ public sealed class InventorySnapshotContractTests
         var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
 
         Assert.True(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
         Assert.Equal(0, result.TotalCount);
         Assert.Equal(0, result.ReturnedCount);
         Assert.Equal(0, result.TotalMatchingCount);
         Assert.False(result.IsTruncated);
         Assert.Empty(result.Items);
         Assert.Equal("Size curve snapshot postoji, ali nema redova za trazene filtere.", result.Warning);
+    }
+
+    [Fact(DisplayName = "Rebalance missing relation exposes unknown snapshot freshness")]
+    public async Task RebalanceHandler_MissingRelation_ExposesUnknownFreshness()
+    {
+        var context = CreateContext(CreateTable(("from_store_id", typeof(int))), missingRelation: true);
+        var handler = new GetRebalanceSuggestionsHandler(context, NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var result = await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None);
+
+        Assert.False(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
+    }
+
+    [Fact(DisplayName = "Alert missing relation exposes unknown snapshot freshness")]
+    public async Task AlertsHandler_MissingRelation_ExposesUnknownFreshness()
+    {
+        var context = CreateContext(CreateTable(("alert_type", typeof(string))), missingRelation: true);
+        var handler = new GetInventoryAlertsHandler(context, NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None);
+
+        Assert.False(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
+    }
+
+    [Fact(DisplayName = "Size curve missing relation exposes unknown snapshot freshness")]
+    public async Task SizeCurveHandler_MissingRelation_ExposesUnknownFreshness()
+    {
+        var context = CreateContext(CreateTable(("sku_id", typeof(int))), missingRelation: true);
+        var handler = new GetInventorySizeCurveHandler(context, NullLogger<GetInventorySizeCurveHandler>.Instance);
+
+        var result = await handler.Handle(new GetInventorySizeCurveQuery(Top: 1), CancellationToken.None);
+
+        Assert.False(result.SnapshotAvailable);
+        Assert.Equal("unknown", result.SnapshotFreshnessStatus);
+        Assert.Null(result.SnapshotFreshnessUtc);
     }
 
     [Fact(DisplayName = "Alert null severity stays null and is not coerced to info")]

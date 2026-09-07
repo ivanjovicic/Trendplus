@@ -124,7 +124,7 @@ describe("InventoryPage freshness lineage", () => {
     getAnalyticsActionSourceStatusesMock.mockResolvedValue({ items: [] });
   });
 
-  it("does not promote secondary panel timestamps to the inventory header", async () => {
+  it("does not treat response generation time as secondary snapshot freshness", async () => {
     render(
       <MemoryRouter>
         <InventoryPage />
@@ -132,8 +132,9 @@ describe("InventoryPage freshness lineage", () => {
     );
 
     const note = await screen.findByRole("note");
-    expect(note).toHaveTextContent("Sekundarni paneli imaju zasebnu svežinu");
-    expect(note).toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
+    expect(note).toHaveTextContent("status svežine „nepoznat“");
+    expect(note).toHaveTextContent("Vreme odgovora nije poslednje uspešno osvežavanje");
+    expect(note).not.toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
 
     await waitFor(() => {
       expect(capturedTrustHeaderProps).not.toBeNull();
@@ -141,6 +142,25 @@ describe("InventoryPage freshness lineage", () => {
 
     expect(capturedTrustHeaderProps?.lastRefreshAt).toBeNull();
     expect(screen.getByTestId("trust-header")).toHaveAttribute("data-last-refresh", "");
+  });
+
+  it("uses explicit proven snapshot freshness when available", async () => {
+    getForecastMock.mockResolvedValue({
+      generatedAtUtc: "2026-08-05T10:45:00Z",
+      provenanceStatus: "trusted",
+      snapshotFreshnessUtc: "2026-08-05T11:45:00Z",
+      items: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    const note = await screen.findByRole("note");
+    expect(note).toHaveTextContent(formatDateTime("2026-08-05T11:45:00Z"));
+    expect(note).not.toHaveTextContent(formatDateTime("2026-08-05T10:45:00Z"));
   });
 
   it("does not present a single inventory snapshot as an observed health trend", async () => {

@@ -93,6 +93,8 @@ public sealed class GetInventoryAlertsHandler
                 TotalMatchingCount: totalMatchingCount,
                 IsTruncated: totalMatchingCount > returnedCount,
                 SnapshotAvailable: true,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: items.Count == 0
                     ? "Inventory alert snapshot postoji, ali nema aktivnih alertova za trazene filtere."
                     : hasMissingEvidence ? "Inventory alert snapshot sadrzi redove sa nepotpunom signalnom evidencijom." : null,
@@ -108,6 +110,8 @@ public sealed class GetInventoryAlertsHandler
                 TotalMatchingCount: 0,
                 IsTruncated: false,
                 SnapshotAvailable: false,
+                SnapshotFreshnessUtc: null,
+                SnapshotFreshnessStatus: InventorySnapshotFreshness.Unknown,
                 Warning: "Inventory alert snapshot jos nije dostupan.",
                 Items: []);
         }
