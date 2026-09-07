@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ176
+Current READY prompt: RQ177
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -149,8 +149,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ226 | WAITING | worker-schedule-safety | Invalid nightly refresh schedule silently defaults |
 | RQ227 | WAITING | cleanup-safety-gates | Batch delete proceeds after archive quota failure |
 | RQ228 | WAITING | period-timezone-contract-consistency | Insight Studio v1/v2 period handling timezone mismatch |
-| RQ176 | READY | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
-| RQ177 | WAITING | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
+| RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
+| RQ177 | READY | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | WAITING | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
 | RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
@@ -5883,7 +5883,7 @@ Do not duplicate `RQ166` action-timeline validation or change valid default-peri
 
 ## RQ176 - Keep inventory snapshot query time separate from source freshness
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: inventory-snapshot-freshness-provenance
@@ -5943,13 +5943,31 @@ Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, bu
 
 - `RQ141` remains the broad lineage owner; `RQ146` owns full runtime schema/refresh proof.
 - `RQ64`-`RQ71` and `RQ99` remain completed null/count/reader foundations.
-- `RQ176` is now the single current `READY` item.
+- `RQ177` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: inventory alert, rebalance and size-curve DTOs now distinguish response generation from source freshness; current read paths fail closed with snapshot freshness status `unknown` and no fabricated timestamp, while the page uses only proven snapshot freshness and renders unknown lineage explicitly.
+- Changed files: `Application/Analytics/Queries/InventorySnapshotFreshness.cs`; `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsQuery.cs`; `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`; `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsQuery.cs`; `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`; `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveQuery.cs`; `Application/Analytics/Queries/GetInventorySizeCurve/GetInventorySizeCurveHandler.cs`; `Api.Tests/InventorySnapshotContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `Klijent/clientapp/src/pages/InventoryPage.tsx`; `Klijent/clientapp/src/pages/__tests__/InventoryPage.freshnessLineage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ176-evidence.md`
+- Checks run: focused backend inventory snapshot tests passed 17/17; focused frontend freshness tests passed 3/3; `npm run check:analytics-guardrails`; `npm run typecheck`; direct `npx vite build --logLevel info`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
+- Checks not run: live database/materializer/worker/browser deployment proof; no proven alert/rebalance/size-curve materializer lineage exists in the local repository, so current payloads intentionally remain `unknown`.
+- Run log: `.ai/runs/2026-09-07-RQ176-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: feature branch `codex/rq176-inventory-snapshot-freshness`, pushed; not merged per request.
+- Main commit SHA: `901a196d885b7810228e77c339050f52f11d2cf1` (implementation commit on pushed feature branch; main was not changed).
+- Main verification: not applicable - user requested feature push only; `origin/main` was not changed.
+- Missed: live provider/database/materializer/refresh/browser proof remains outside this local contract task.
+- Follow-up: `RQ177` - preserve missing, empty and partial size-curve states in the panel.
+- Residual risk: a future materializer can provide real freshness, but it must populate the explicit fields/status; until then UI must keep query time separate and show unknown.
+- Prompt defect / scope repair: no schema column or proven writer for these three snapshot relations was present locally, so the safe same-owner repair exposed nullable/status fields and returned `unknown` instead of inventing a timestamp or SQL column.
 
 ---
 
 ## RQ177 - Preserve missing, empty and partial size-curve states in the panel
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: size-curve-empty-error-state
@@ -6008,7 +6026,7 @@ The size-curve panel uses the same branch and copy for a missing snapshot relati
 
 - `RQ64`/`RQ71` own backend null and boolean evidence semantics.
 - `RQ145` owns broader parity; this prompt only repairs the size-curve panel state projection.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ177` is now the single current `READY` item.
 
 ---
 
