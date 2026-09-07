@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ178
+Current READY prompt: RQ179
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -158,8 +158,8 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ264 | WAITING | analytics-shared-output-finite-parity | Preserve finite/null semantics across table, detail, print and export |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
-| RQ178 | READY | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
-| RQ179 | WAITING | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
+| RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
+| RQ179 | READY | supplier-footwear-freshness-state | Do not mark supplier footwear data fresh from response generated time |
 | RQ180 | WAITING | pre-post-aggregate-owner-parity | Remove frontend reconstruction of backend-owned pre/post aggregate denominators |
 | RQ181 | WAITING | decision-board-blocked-action-cta | Do not expose an executable action CTA for blocked Decision Board cards |
 | RQ182 | WAITING | pre-post-coverage-backend-null-state | Preserve unknown pre/post coverage in backend DTOs and aggregate calculations |
@@ -6057,7 +6057,7 @@ The size-curve panel uses the same branch and copy for a missing snapshot relati
 
 ## RQ178 - Add backend-owned actionability and safe copy to inventory signal snapshots
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/contract/frontend/tests
 Feature family: inventory-snapshot-safe-actionability
@@ -6117,13 +6117,31 @@ Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs d
 
 - `RQ143`/`RQ145` remain broad owners; this prompt is the bounded inventory snapshot slice.
 - `RQ64`-`RQ71` remain the completed nullable evidence foundation.
-- `RQ178` is now the single current `READY` item.
+- `RQ179` is now the single current `READY` item.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: alert and rebalance snapshot rows now carry backend-owned actionability, recommendation allowance, data quality and safe reason labels; incomplete/unknown evidence fails closed and the panels no longer expose raw alert/reason codes or numeric confidence when blocked.
+- Changed files: `Application/Analytics/Queries/InventorySnapshotRowState.cs`; `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsQuery.cs`; `Application/Analytics/Queries/GetInventoryAlerts/GetInventoryAlertsHandler.cs`; `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsQuery.cs`; `Application/Analytics/Queries/GetRebalanceSuggestions/GetRebalanceSuggestionsHandler.cs`; `Api.Tests/InventorySnapshotContractTests.cs`; `Klijent/clientapp/src/types/analytics.ts`; `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`; `Klijent/clientapp/src/components/inventory/InventoryAlertsFeed.tsx`; `Klijent/clientapp/src/components/inventory/RebalancingTable.tsx`; `Klijent/clientapp/src/pages/__tests__/InventorySignalActionability.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ178-evidence.md`
+- Checks run: focused backend inventory snapshot tests passed 20/20; focused frontend RQ178/inventory tests passed 7/7; `npm run check:analytics-guardrails`; direct `npx vite build --logLevel info`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
+- Checks not run: live database/materializer/worker/browser deployment proof; full repository test suite.
+- Run log: `.ai/runs/2026-09-07-RQ178-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: feature branch `codex/rq178-inventory-snapshot-safe-actionability`, pushed and merged into `main`.
+- Main commit SHA: `PENDING_MERGE_VERIFICATION`.
+- Main verification: `PENDING_MERGE_VERIFICATION`.
+- Missed: live provider/database/materializer/browser proof remains outside this bounded inventory actionability task.
+- Follow-up: `RQ179` - do not mark supplier footwear data fresh from response generated time.
+- Residual risk: any separate inventory projection not consuming the shared `actionability` payload remains a follow-up; current scope covers alert and rebalance panels.
+- Prompt defect / scope repair: no schema/materializer change was needed; existing snapshot evidence fields were sufficient to compute fail-closed row state.
 
 ---
 
 ## RQ179 - Do not mark supplier footwear data fresh from response generated time
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/contract/tests
 Feature family: supplier-footwear-freshness-state
@@ -6178,7 +6196,7 @@ Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
 ### Dependencies
 
 - `RQ141` remains the broad lineage owner and `RQ140` the pre/post comparability owner.
-- Keep this prompt `WAITING` while `RQ154` is the sole `READY` item.
+- `RQ179` is now the single current `READY` item.
 
 ---
 
