@@ -2652,7 +2652,7 @@ Do not change recommendation thresholds, financial calculations, Product Decisio
 
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
-Status: DONE
+Status: WAITING
 Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
@@ -2713,23 +2713,6 @@ The first 2026-08-27 production audit found PDC rows looking actionable under in
 - A numeric diagnostic percentage is never rendered as high/medium/low recommendation confidence when the recommendation is blocked.
 - Live evidence ties the PDC/Board result to the exact current-main deployed SHA and records true returned/analyzed/ignored counts.
 - Empty, unknown, stale, warning, and critical states remain visibly distinct from a valid zero or healthy recommendation.
-
-### Completion note
-
-- Date: 2026-09-07
-- Status: DONE
-- Completion: Promoted and claimed RQ181, added failing-first coverage for `recommendationAllowed=false`, `null` and omitted, and removed the executable `Dodaj u akcije` CTA for blocked/unknown cards. Safe source/data-quality navigation remains available; allowed, open and closed action states preserve their existing workflow labels.
-- Changed files: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`, `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`, this queue, `MASTER_ROADMAP.md` and `.ai/runs/2026-09-07-RQ181-evidence.md`.
-- Checks run: failing-first CTA test reproduced the old defect; 10 focused frontend tests, analytics guardrails/typecheck, production build and `git diff --check` passed.
-- Checks not run: backend tests, live database/materializer/refresh/browser deployment proof, full repository suite and remote CI result; no backend contract code changed.
-- Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
-- Main commit SHA: `e3ad7df95389cef377faebed952f59499083e1e3` (delivered merge; final evidence sync is a descendant).
-- Main verification: `origin/main` contains `e3ad7df95389cef377faebed952f59499083e1e3`; feature branch `origin/codex/rq181-decision-board-blocked-action-cta` contains `1f12d7ce0d24ba2a4906f44adb91fe87aa13b09f`.
-- Missed: no backend ranking, score, confidence or action lifecycle changes; no report/export contract was changed because this CTA is owned by the Decision Board card renderer.
-- Follow-up: `RQ182` remains `WAITING`; no further prompt is promoted automatically.
-- Residual risk: cards with `recommendationAllowed` absent or non-true intentionally lose the executable CTA until backend permission is explicitly present.
-- Run log: `.ai/runs/2026-09-07-RQ181-evidence.md`
-- Evidence state: synchronized.
 
 ### Dependencies
 
@@ -6420,7 +6403,7 @@ Embedding code currently serializes embedding arrays into a string and binds the
 
 ## RQ181 - Do not expose an executable action CTA for blocked Decision Board cards
 
-Status: WAITING
+Status: DONE
 Priority: P0
 Type: frontend/contract/tests
 Feature family: decision-board-blocked-action-cta
@@ -6480,6 +6463,26 @@ Do not change backend ranking, score, confidence calculation, action lifecycle, 
 - An allowed card preserves its backend-owned actionability and workflow state.
 - The frontend does not recalculate score, confidence, recommendation status or permission.
 - Users can still open the source and understand why the action is unavailable.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Blocked, null and omitted `recommendationAllowed` values no longer expose executable `Dodaj u akcije`; safe source/data-quality navigation remains.
+- Changed files: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`; `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-09-07-RQ181-evidence.md`.
+- Contract/runtime behavior changed: blocked/unknown cards remain non-executable; allowed/open/closed action states preserve existing behavior.
+- Checks run: focused page spec 10/10; `npm run check:analytics-guardrails`; `npm run build`; `git diff --check`.
+- Checks not run: backend tests, live database/materializer/refresh/browser deployment proof, full repository suite and remote CI.
+- Run log: `.ai/runs/2026-09-07-RQ181-evidence.md`
+- Evidence state: synchronized.
+- Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
+- Main commit SHA: `e3ad7df95389cef377faebed952f59499083e1e3` (delivered merge; current `main` is a descendant).
+- Main verification: `origin/main` contains `e3ad7df95389cef377faebed952f59499083e1e3`.
+- Missed: backend ranking/score/confidence/action lifecycle and report/export contracts were intentionally unchanged.
+- Follow-up: `RQ182` and `RQ183` are DONE; no prompt promoted automatically.
+- Residual risk: live deployment/runtime proof remains outside this local bounded fix.
+- Next: none for RQ181.
+- Prompt defect / scope repair: the completion note was previously attached to the RQ128 section while the actual RQ181 section remained `WAITING`; this same-owner metadata repair restores detailed status/evidence parity.
 
 ### Dependencies
 
