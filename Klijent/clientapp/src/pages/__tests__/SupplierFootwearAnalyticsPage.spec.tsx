@@ -159,6 +159,105 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.getByText("Reset filtera")).toBeInTheDocument();
     expect(within(await screen.findByTestId("analytics-control-bar")).getByText("Kvalitet podataka")).toBeInTheDocument();
     expect(await screen.findByText(/Prikazano:\s*1 red/i)).toBeInTheDocument();
+    expect(screen.getByText("Sveže")).toBeInTheDocument();
+  });
+
+  it("does not infer fresh supplier footwear data from response generated time", async () => {
+    const generatedOnlyResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...generatedOnlyResponse,
+      generatedAt: "2026-08-11T10:00:00Z",
+      meta: {
+        ...generatedOnlyResponse.meta,
+        success: true,
+        lastRefreshAtUtc: null,
+        warningCode: null,
+        isPartial: false,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Nije poznato")).toBeInTheDocument();
+    expect(screen.queryByText("Sveže")).not.toBeInTheDocument();
+  });
+
+  it("keeps partial supplier footwear data visibly stale even with a refresh timestamp", async () => {
+    const partialResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...partialResponse,
+      meta: {
+        ...partialResponse.meta,
+        success: true,
+        lastRefreshAtUtc: "2026-08-11T09:00:00Z",
+        warningCode: "partial_payload",
+        isPartial: true,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Zastarelo")).toBeInTheDocument();
+    expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
+  });
+
+  it("keeps an empty supplier footwear response distinct from an error", async () => {
+    const emptyResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
+      ...emptyResponse,
+      vendorStats: [],
+      articleStats: [],
+      totals: {
+        ...emptyResponse.totals,
+        vendorsCount: 0,
+        articlesCount: 0,
+        activeArticlesCount: 0,
+      },
+      dataQuality: {
+        ...emptyResponse.dataQuality,
+        rawRows: 0,
+        deduplicatedRows: 0,
+        analyzedRows: 0,
+        inactiveRows: 0,
+      },
+      meta: {
+        success: true,
+        emptyReason: "no_data_in_period",
+        dataQualityStatus: "insufficient_data",
+        lastRefreshAtUtc: null,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Nema podataka za izabrane filtere.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps a supplier footwear fallback error unavailable and not fresh", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockRejectedValueOnce(new Error("Pre/post nivelacija nije dostupna."));
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Pre/post nivelacija nije dostupna.");
+    expect(screen.getByText("Nije poznato")).toBeInTheDocument();
+    expect(screen.queryByText("Sveže")).not.toBeInTheDocument();
   });
 
   it("publishes trust metadata for the embedded consolidated page", async () => {
@@ -187,6 +286,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
         periodTo: "2026-08-11",
         dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
         dataQualityStatus: "good",
+        dataFreshnessStatus: "fresh",
         recommendationAllowed: true,
       }));
     });

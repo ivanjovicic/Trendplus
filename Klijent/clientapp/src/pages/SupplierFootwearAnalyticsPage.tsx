@@ -18,6 +18,7 @@ import {
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import type { AnalyticsFreshnessStatus } from "../types/analytics";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -207,6 +208,17 @@ function getDataQualityStatus(data: VendorSalesNivelacijaResponse | null): DataQ
   }
 
   return "good";
+}
+
+export function resolveSupplierFootwearFreshnessStatus(data: VendorSalesNivelacijaResponse | null): AnalyticsFreshnessStatus {
+  if (!data) return "unknown";
+
+  const metaStatus = data.meta?.dataQualityStatus?.trim().toLowerCase();
+  if (metaStatus === "critical") return "critical";
+  if (data.meta?.warningCode || data.meta?.isPartial || metaStatus === "warning") return "stale";
+
+  const lastRefreshAtUtc = data.meta?.lastRefreshAtUtc?.trim();
+  return lastRefreshAtUtc && Number.isFinite(Date.parse(lastRefreshAtUtc)) ? "fresh" : "unknown";
 }
 
 export default function SupplierFootwearAnalyticsPage({
@@ -573,7 +585,7 @@ export default function SupplierFootwearAnalyticsPage({
       periodFrom: activeFilters.fromDate,
       periodTo: activeFilters.toDate,
       lastRefreshAt: data.meta?.lastRefreshAtUtc ?? null,
-      dataFreshnessStatus: data.meta?.isPartial || data.meta?.warningCode ? "stale" : data.generatedAt ? "fresh" : "unknown",
+      dataFreshnessStatus: resolveSupplierFootwearFreshnessStatus(data),
       dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
       dataQualityStatus: dataQualityStatus ?? (showMetaWarning ? "warning" : "good"),
       recommendationAllowed,
@@ -653,7 +665,7 @@ export default function SupplierFootwearAnalyticsPage({
           periodFrom={activeFilters.fromDate}
           periodTo={activeFilters.toDate}
           lastRefreshAt={data?.meta?.lastRefreshAtUtc ?? null}
-          dataFreshnessStatus={showMetaWarning || dataMeta?.isPartial ? "stale" : data?.generatedAt ? "fresh" : "unknown"}
+          dataFreshnessStatus={resolveSupplierFootwearFreshnessStatus(data)}
           dataSource="Supplier sales nivelacija"
           dataQualityStatus={dataQualityStatus}
           mode="signal"
