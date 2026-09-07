@@ -188,6 +188,31 @@ public sealed class InventorySnapshotContractTests
         Assert.Equal("Nedostatak zalihe zahteva proveru.", item.Actionability.ReasonLabel);
     }
 
+    [Theory]
+    [InlineData(-0.01)]
+    [InlineData(1.01)]
+    public async Task AlertsHandler_InvalidConfidenceBlocksActionability(decimal confidence)
+    {
+        var table = CreateTable(
+            ("alert_type", typeof(string)),
+            ("sku_id", typeof(int)),
+            ("store_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("severity", typeof(string)),
+            ("title", typeof(string)),
+            ("message", typeof(string)),
+            ("confidence_score", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add("inventory_missing", 101, 7, "42", "critical", "Alert", "Message", confidence, 1L);
+
+        var handler = new GetInventoryAlertsHandler(CreateContext(table), NullLogger<GetInventoryAlertsHandler>.Instance);
+
+        var item = Assert.Single((await handler.Handle(new GetInventoryAlertsQuery(Top: 1), CancellationToken.None)).Items);
+
+        Assert.False(item.Actionability.RecommendationAllowed);
+        Assert.Equal("warning", item.Actionability.DataQualityStatus);
+    }
+
     [Fact(DisplayName = "Complete rebalance snapshot exposes backend-owned actionability and safe reason")]
     public async Task RebalanceHandler_CompleteSignal_ExposesActionabilityAndSafeReason()
     {
@@ -219,6 +244,39 @@ public sealed class InventorySnapshotContractTests
         Assert.True(item.Actionability.RecommendationAllowed);
         Assert.Equal("good", item.Actionability.DataQualityStatus);
         Assert.Equal("Raspodela zalihe između lokacija odstupa.", item.Actionability.ReasonLabel);
+    }
+
+    [Theory]
+    [InlineData(-1, 0.75, 0, 0)]
+    [InlineData(1, -0.01, 0, 0)]
+    [InlineData(1, 0.75, -0.01, 0)]
+    [InlineData(1, 0.75, 0, -0.01)]
+    public async Task RebalanceHandler_InvalidNumericEvidenceBlocksActionability(
+        int recommendedQty,
+        decimal confidence,
+        decimal expectedSavedSales,
+        decimal expectedCapitalRelease)
+    {
+        var table = CreateTable(
+            ("from_store_id", typeof(int)),
+            ("to_store_id", typeof(int)),
+            ("sku_id", typeof(int)),
+            ("size_code", typeof(string)),
+            ("recommended_qty", typeof(int)),
+            ("urgency", typeof(string)),
+            ("confidence", typeof(decimal)),
+            ("reason", typeof(string)),
+            ("expected_saved_sales", typeof(decimal)),
+            ("expected_capital_release", typeof(decimal)),
+            ("total_matching_count", typeof(long)));
+        table.Rows.Add(1, 2, 101, "42", recommendedQty, "recommended", confidence, "rebalance_imbalance", expectedSavedSales, expectedCapitalRelease, 1L);
+
+        var handler = new GetRebalanceSuggestionsHandler(CreateContext(table), NullLogger<GetRebalanceSuggestionsHandler>.Instance);
+
+        var item = Assert.Single((await handler.Handle(new GetRebalanceSuggestionsQuery(Top: 1), CancellationToken.None)).Items);
+
+        Assert.False(item.Actionability.RecommendationAllowed);
+        Assert.Equal("warning", item.Actionability.DataQualityStatus);
     }
 
     [Fact(DisplayName = "Unknown rebalance reason blocks actionability without exposing the raw code")]

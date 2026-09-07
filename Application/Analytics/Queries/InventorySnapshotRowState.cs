@@ -29,7 +29,7 @@ public static class InventorySnapshotRowStateResolver
                 ReasonLabel: "Alert nema dovoljno kompletnih podataka za preporuku.");
         }
 
-        if (!IsKnownSeverity(severity))
+        if (!IsKnownSeverity(severity) || !IsValidConfidence(confidenceScore.Value))
         {
             return new(
                 Status: Blocked,
@@ -62,7 +62,12 @@ public static class InventorySnapshotRowStateResolver
                 ReasonLabel: "Predlog redistribucije nema dovoljno kompletnih podataka za preporuku.");
         }
 
-        if (!IsKnownUrgency(urgency) || IsUnknownReason(reason))
+        if (!IsKnownUrgency(urgency)
+            || !IsValidConfidence(confidence.Value)
+            || recommendedQty.Value < 0
+            || expectedSavedSales.Value < 0
+            || expectedCapitalRelease.Value < 0
+            || IsUnknownReason(reason))
         {
             return new(
                 Status: Blocked,
@@ -87,6 +92,8 @@ public static class InventorySnapshotRowStateResolver
         => value.Equals("urgent", StringComparison.OrdinalIgnoreCase)
             || value.Equals("recommended", StringComparison.OrdinalIgnoreCase)
             || value.Equals("optional", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsValidConfidence(decimal value) => value is >= 0m and <= 1m;
 
     private static bool IsUnknownReason(string value)
     {
