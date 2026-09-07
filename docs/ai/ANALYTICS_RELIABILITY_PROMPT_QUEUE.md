@@ -6208,10 +6208,10 @@ Commit suggestion: `fix(analytics): fail closed on supplier footwear freshness`
 - Checks run: failing-first generated-only test reproduced the defect; focused SupplierFootwear/AnalyticsTrustHeader tests passed 12/12; `npm run check:analytics-guardrails`; direct `npx vite build --logLevel info`; `git diff --check`; prompt-queue, agent-instruction and planning-architecture validators plus self-tests passed.
 - Checks not run: backend tests/build (no backend files changed); live database/worker/browser deployment proof; full repository test suite.
 - Run log: `.ai/runs/2026-09-07-RQ179-evidence.md`.
-- Evidence state: pending.
+- Evidence state: synchronized.
 - Delivery mode: feature branch `codex/rq179-supplier-footwear-freshness-state`, pushed and merged into `main`.
-- Main commit SHA: `PENDING_MERGE_VERIFICATION`.
-- Main verification: `PENDING_MERGE_VERIFICATION`.
+- Main commit SHA: `fbb181387baa62f9f36023add065d11abf58c8e8`.
+- Main verification: `git ls-remote --heads origin main` matched `fbb181387baa62f9f36023add065d11abf58c8e8` after the local merge and push; the final evidence commit remains a descendant of this delivered merge SHA.
 - Missed: live provider/worker proof of the source refresh writer remains outside this bounded frontend lineage task.
 - Follow-up: `RQ180` - remove frontend reconstruction of backend-owned pre/post aggregate denominators.
 - Residual risk: until the backend supplies a proven refresh timestamp for this endpoint, the screen will correctly remain `unknown` even when the response has data.
