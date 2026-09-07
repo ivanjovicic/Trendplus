@@ -6046,8 +6046,8 @@ The size-curve panel uses the same branch and copy for a missing snapshot relati
 - Run log: `.ai/runs/2026-09-07-RQ177-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: feature branch `codex/rq177-size-curve-empty-error-state`, pushed and merged into `main` per request.
-- Main commit SHA: `35a58fc38c74519965a7fbf4691fd1ac37504002` (feature implementation commit; main verification follows the requested merge/push).
-- Main verification: recorded after the local fast-forward merge and `origin/main` push in the final delivery verification.
+- Main commit SHA: `3e372c3e6f947332c38c78e1fdd62e09b4c9ae90` (local merge commit containing RQ177 and the requested unrelated audit docs; feature implementation SHA is `35a58fc38c74519965a7fbf4691fd1ac37504002`).
+- Main verification: `git ls-remote --heads origin main` matched `3e372c3e6f947332c38c78e1fdd62e09b4c9ae90` after the local merge and push.
 - Missed: live provider/database/materializer/browser proof remains outside this bounded panel-state task.
 - Follow-up: `RQ178` - add backend-owned actionability and safe user copy to inventory signal snapshots.
 - Residual risk: `SKUDetailModal` retains its separate size-curve projection and should be reconciled if it becomes part of the same user-facing state contract; this task stayed bounded to `SizeCurvePanel`.
