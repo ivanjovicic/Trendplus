@@ -6130,8 +6130,8 @@ Inventory alerts and rebalance rows preserve nullable evidence, but their DTOs d
 - Run log: `.ai/runs/2026-09-07-RQ178-evidence.md`.
 - Evidence state: synchronized.
 - Delivery mode: feature branch `codex/rq178-inventory-snapshot-safe-actionability`, pushed and merged into `main`.
-- Main commit SHA: `PENDING_MERGE_VERIFICATION`.
-- Main verification: `PENDING_MERGE_VERIFICATION`.
+- Main commit SHA: `bbc61d832419f4a542c2b430da02541fc77a7b85`.
+- Main verification: `git ls-remote --heads origin main` matched `bbc61d832419f4a542c2b430da02541fc77a7b85` after the local merge and push; the final evidence commit remains a descendant of this delivered merge SHA.
 - Missed: live provider/database/materializer/browser proof remains outside this bounded inventory actionability task.
 - Follow-up: `RQ179` - do not mark supplier footwear data fresh from response generated time.
 - Residual risk: any separate inventory projection not consuming the shared `actionability` payload remains a follow-up; current scope covers alert and rebalance panels.
