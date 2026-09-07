@@ -6633,16 +6633,16 @@ Cached inventory list and Product Decision Center infer `openingStockUnits = cur
 - Status: DONE
 - Completion: Cached inventory-list and Product Decision Center opening-stock derivation now fails closed without an authoritative journal completeness proof; uncertainty is exposed through `isOpeningStockDerived=false`, `openingStockConfidence=unknown`, `opening_stock_unavailable`, unavailable sell-through and blocked recommendation state.
 - Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Dtos/InventoryListItemDto.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-07-RQ183-evidence.md`.
-- Checks run: focused backend tests 14/14 and 26/26 passed; frontend analytics guardrails and typecheck passed; frontend production build passed; agent-instruction, prompt-queue and planning-architecture self-tests/normal checks passed; `git diff --check` passed. Delivery evidence is pending until merge and origin/main verification.
+- Checks run: focused backend tests 14/14 and 26/26 passed; frontend analytics guardrails and typecheck passed; frontend production build passed; agent-instruction, prompt-queue and planning-architecture self-tests/normal checks passed; `git diff --check` passed.
 - Checks not run: full repository suite, live database/import/materializer/refresh/browser/deployed proof and provider-level concurrent-write proof. One broader selected command was 39/41 with a local Neon authentication failure (`28P01`) in an unrelated existing test path.
 - Delivery mode: feature branch push, local no-fast-forward merge to main, then origin/main push and verification.
-- Main commit SHA: pending until delivery.
-- Main verification: pending until delivery.
+- Main commit SHA: `b0a9efc0fd4b4a782b1987d6918ebfdf487b8bd3` (implementation merge; final evidence sync is a descendant).
+- Main verification: `origin/main` contains `b0a9efc0fd4b4a782b1987d6918ebfdf487b8bd3`; feature branch `origin/codex/rq183-inventory-opening-stock-proof` contains `ee41ec8e`.
 - Missed: no authoritative journal completeness/watermark source exists yet; the legacy uncached inventory endpoint remains outside this bounded cached inventory/PDC scope.
 - Follow-up: `RQ184` remains WAITING; no further prompt promoted automatically.
 - Residual risk: current journal reads remain intentionally unverified, so sell-through information can be unavailable until a completeness contract exists; live provider proof remains external.
 - Run log: `.ai/runs/2026-09-07-RQ183-evidence.md`
-- Evidence state: pending until delivery verification.
+- Evidence state: synchronized.
 
 ### Dependencies
 
