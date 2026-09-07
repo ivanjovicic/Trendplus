@@ -237,6 +237,27 @@ describe("Pilot readiness edge-state mapping", () => {
     expect(card.reason).not.toContain("(70)");
   });
 
+  it("blocks and withholds the numeric score when intake evidence is empty", () => {
+    const report = intake({
+      readinessStatus: "insufficient_data",
+      readinessLabel: "Nema dovoljno podataka za readiness procenu",
+      readinessScore: 0,
+      loadedData: { ...intake().loadedData, articlesCount: 0, saleItemsCount: 0 },
+      meta: {
+        success: true,
+        emptyReason: "no_intake_evidence",
+        dataQualityStatus: "insufficient_data",
+        message: "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+      },
+    });
+
+    const card = findCard(payload({ intakeReport: report }), "data-quality");
+
+    expect(card.status).toBe("blocked");
+    expect(card.reason).toContain("Skor spremnosti nije dostupan");
+    expect(card.reason).not.toContain("(skor 0)");
+  });
+
   it("explains report quality in Serbian instead of exposing the backend code", () => {
     const card = findCard(payload({
       pilotReport: pilotReport({ dataQualityStatus: "warning" }),

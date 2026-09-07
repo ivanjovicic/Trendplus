@@ -602,6 +602,8 @@ public static class DataQualityEndpoints
                 ? latestBatch.SkippedRowCount
                 : Math.Max(0, latestBatch.RowsRead - latestBatch.RowsAccepted);
 
+        var rowsRead = latestBatch?.RowsRead ?? 0;
+        var hasIntakeEvidence = totalArticles > 0 && rowsRead > 0;
         var readinessScore = CalculateIntakeScore(
             totalArticles,
             missingSupplierCount,
@@ -614,7 +616,7 @@ public static class DataQualityEndpoints
             saleWithoutArticleCount,
             zeroOrNegativePriceCount,
             ignoredRows,
-            latestBatch?.RowsRead ?? 0,
+            rowsRead,
             insufficientSignalCount,
             refreshStatus.DataFreshnessStatus,
             health);
@@ -623,7 +625,8 @@ public static class DataQualityEndpoints
             readinessScore,
             refreshStatus.DataFreshnessStatus,
             insufficientSignalCount,
-            totalArticles);
+            totalArticles,
+            rowsRead);
         var blockedRecommendationsCount = missingSupplierCount + missingCostCount + missingSupplierNameCount + saleWithoutArticleCount;
         var latestImportAtUtc = latestBatch?.CompletedAtUtc ?? latestBatch?.StartedAtUtc ?? latestBatch?.QueuedAtUtc;
         var lastImportStatus = NormalizeImportBatchStatus(latestBatch?.Status);
@@ -632,11 +635,13 @@ public static class DataQualityEndpoints
         var generatedAtUtc = DateTime.UtcNow;
         var lastRefreshAtUtc = refreshStatus.LastSuccessfulRefreshAtUtc ?? health.GeneratedAtUtc;
         var articlesWithoutSupplierPercent = totalArticles <= 0 ? 0d : (double)missingSupplierCount / totalArticles;
-        var meta = latestBatch is null
+        var meta = !hasIntakeEvidence
             ? AnalyticsResponseMetaFactory.Empty(
-                "no_import",
-                "Pilot intake izvestaj nema import batch u periodu.",
-                readiness.MetaStatus)
+                latestBatch is null ? "no_import" : "no_intake_evidence",
+                latestBatch is null
+                    ? "Pilot intake izvestaj nema import batch u periodu."
+                    : "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+                "insufficient_data")
             : AnalyticsResponseMetaFactory.Success(readiness.MetaStatus, lastRefreshAtUtc);
         meta.GeneratedAtUtc = generatedAtUtc;
         meta.LastRefreshAtUtc = lastRefreshAtUtc;
@@ -1463,8 +1468,17 @@ public static class DataQualityEndpoints
         int readinessScore,
         string? freshnessStatus = null,
         int insufficientSignalCount = 0,
-        int totalArticles = 0)
+        int totalArticles = 0,
+        int rowsRead = -1)
     {
+        if (totalArticles <= 0 || rowsRead == 0)
+        {
+            return new IntakeReadinessDto(
+                "insufficient_data",
+                "Nema dovoljno podataka za readiness procenu",
+                "insufficient_data");
+        }
+
         var signalRatio = totalArticles <= 0 ? 0d : (double)insufficientSignalCount / totalArticles;
         var normalizedFreshness = (freshnessStatus ?? string.Empty).Trim().ToLowerInvariant();
         if (normalizedFreshness is "critical" || signalRatio >= 0.75d)
@@ -1498,6 +1512,11 @@ public static class DataQualityEndpoints
         string? freshnessStatus,
         AnalyticsDataQualityHealthSnapshot health)
     {
+        if (totalArticles <= 0 || rowsRead <= 0)
+        {
+            return 0;
+        }
+
         static double Ratio(int numerator, int denominator) => denominator <= 0 ? 0d : (double)numerator / denominator;
 
         var articleBase = Math.Max(totalArticles, 1);

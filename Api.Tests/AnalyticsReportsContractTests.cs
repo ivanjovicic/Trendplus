@@ -172,6 +172,25 @@ public sealed class AnalyticsReportsContractTests
     }
 
     [Fact]
+    public void PilotIntakeReport_EmptyIntakeEvidence_DoesNotReintroduceReadinessScore()
+    {
+        var intake = CreatePilotIntakeReport(
+            100,
+            AnalyticsResponseMetaFactory.Empty(
+                "no_intake_evidence",
+                "Nema dovoljno ucitanih artikala ili import redova za readiness procenu.",
+                "insufficient_data"));
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        Assert.False(report.RecommendationAllowed);
+        Assert.Equal("no_intake_evidence", report.Meta?.EmptyReason);
+        Assert.Empty(report.Kpis);
+        Assert.DoesNotContain(report.Rows, row => row.Item.Equals("Readiness score", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void PilotIntakeReport_Error_ReturnsErrorMeta()
     {
         var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));

@@ -18,7 +18,7 @@ import {
   formatDate,
   formatDateTime,
 } from "../../utils/analyticsFormatters";
-import { isAnalyticsMetaWarning } from "../../utils/analyticsResponseMeta";
+import { isAnalyticsMetaEmpty, isAnalyticsMetaWarning } from "../../utils/analyticsResponseMeta";
 import AnalyticsEmptyState from "./AnalyticsEmptyState";
 import AnalyticsErrorState from "./AnalyticsErrorState";
 import KpiExplainButton from "./KpiExplainButton";
@@ -329,12 +329,12 @@ export default function PilotDataQualityIntakeReportPanel({ report, loading, err
     );
   }
 
-  if (!report) {
+  if (!report || isAnalyticsMetaEmpty(report.meta)) {
     return (
       <AnalyticsEmptyState
         variant="insufficient_data"
-        title="Pilot intake izveštaj nema podatke"
-        message="Nema dovoljno učitanih podataka da bi se izračunao readiness score."
+        title="Pilot intake izveštaj nema dovoljno podataka"
+        message={report?.meta?.message ?? "Nema dovoljno učitanih podataka da bi se izračunao readiness score."}
         reasons={["Nema import batch-a ili prodajnih redova u izabranom periodu."]}
       />
     );
