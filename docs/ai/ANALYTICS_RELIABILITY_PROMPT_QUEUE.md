@@ -3,6 +3,7 @@
 Date: 2026-09-07
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion 2026-09-07: RQ183 was the next safe inventory contract slice after RQ182 and is now complete; no further prompt was promoted automatically.
 RQ140 was explicitly promoted by the owner after the bounded RQ139/Q83 semantic hardening and is now PARTIAL after local proof; live database/refresh/browser proof remains an external follow-up.
 Owner-promoted test pack: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` (`RQ100`-`RQ105` DONE); `RQ96` DONE; `RQ106` DONE; `RQ97` DONE; `RQ98` DONE. `RQ108` is DONE on current main and `RQ109` is DONE on current main.
 
@@ -103,7 +104,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ168 | DONE | top-products-margin-coverage | Keep partial cost coverage out of confirmed top-product margin ranking |
 | RQ169 | DONE | data-quality-empty-readiness | Keep empty intake data from receiving a numeric readiness score or green label |
 | RQ170 | DONE | data-quality-report-period-state | Reject invalid pilot-intake report periods instead of silently swapping or defaulting them |
-| RQ183 | WAITING | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
+| RQ183 | DONE | inventory-opening-stock-proof | Journal-derived opening stock for sell-through denominator integrity |
 | RQ184 | WAITING | velocity-divisor-accuracy | Fixed 30-day divisor for inventory velocity miscalculation |
 | RQ185 | WAITING | velocity-active-days-semantics | "Velocity per day" label with active-selling-days divisor confusion |
 | RQ186 | WAITING | pdc-lost-sales-arithmetic | Product Decision lost-sales formula ignores velocity |
@@ -6584,7 +6585,7 @@ Do not change the causal/comparability formula, recommendation score, confidence
 
 ## RQ183 - Journal-derived opening stock for sell-through denominator integrity
 
-Status: WAITING
+Status: DONE
 Priority: P1
 Type: backend/contract/tests
 Feature family: inventory-opening-stock-proof
@@ -6626,9 +6627,27 @@ Cached inventory list and Product Decision Center infer `openingStockUnits = cur
 - Opening stock is never silently derived from an unverified journal.
 - Uncertainty is visible in sell-through confidence and recommendation state.
 
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Cached inventory-list and Product Decision Center opening-stock derivation now fails closed without an authoritative journal completeness proof; uncertainty is exposed through `isOpeningStockDerived=false`, `openingStockConfidence=unknown`, `opening_stock_unavailable`, unavailable sell-through and blocked recommendation state.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Dtos/InventoryListItemDto.cs`, `Api.Tests/InventoryListEndpointIntegrationTests.cs`, `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `Klijent/clientapp/src/types/analytics.ts`, `MASTER_ROADMAP.md`, `.ai/runs/2026-09-07-RQ183-evidence.md`.
+- Checks run: focused backend tests 14/14 and 26/26 passed; frontend analytics guardrails and typecheck passed; frontend production build passed; agent-instruction, prompt-queue and planning-architecture self-tests/normal checks passed; `git diff --check` passed. Delivery evidence is pending until merge and origin/main verification.
+- Checks not run: full repository suite, live database/import/materializer/refresh/browser/deployed proof and provider-level concurrent-write proof. One broader selected command was 39/41 with a local Neon authentication failure (`28P01`) in an unrelated existing test path.
+- Delivery mode: feature branch push, local no-fast-forward merge to main, then origin/main push and verification.
+- Main commit SHA: pending until delivery.
+- Main verification: pending until delivery.
+- Missed: no authoritative journal completeness/watermark source exists yet; the legacy uncached inventory endpoint remains outside this bounded cached inventory/PDC scope.
+- Follow-up: `RQ184` remains WAITING; no further prompt promoted automatically.
+- Residual risk: current journal reads remain intentionally unverified, so sell-through information can be unavailable until a completeness contract exists; live provider proof remains external.
+- Run log: `.ai/runs/2026-09-07-RQ183-evidence.md`
+- Evidence state: pending until delivery verification.
+
 ### Dependencies
 
 - `RQ141` owns lineage; this is bounded to opening-stock proof.
+- Owner promotion 2026-09-07: `RQ182` was DONE, so `RQ183` was promoted as the single current `READY` item and is now complete.
 
 ---
 

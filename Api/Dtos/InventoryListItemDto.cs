@@ -19,5 +19,7 @@ public sealed record InventoryListItemDto(
     decimal SignalConfidencePct,
     bool RecommendationAllowed,
     List<string> ReasonCodes,
-    string DataQualityStatus
+    string DataQualityStatus,
+    bool IsOpeningStockDerived = false,
+    string OpeningStockConfidence = "unknown"
 );

@@ -593,6 +593,8 @@ export interface ProductDecisionCenterItem {
   trendPct?: number | null;
   lostSalesEstimate: number;
   slowStockCapital?: number | null;
+  isOpeningStockDerived?: boolean;
+  openingStockConfidence?: string | null;
   dataQualityStatus: string;
   confidenceLevel?: "high" | "medium" | "low" | "insufficient_data" | string | null;
   confidenceScore?: number | null;
@@ -1222,6 +1224,8 @@ export interface InventoryListItem {
   sellThroughStatusLabel?: string | null;
   signalConfidencePct?: number | null;
   recommendationAllowed?: boolean | null;
+  isOpeningStockDerived?: boolean;
+  openingStockConfidence?: string | null;
   reasonCodes?: string[] | null;
   dataQualityStatus?: string | null;
 }
