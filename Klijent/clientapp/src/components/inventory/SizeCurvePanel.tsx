@@ -11,6 +11,25 @@ type SizeCurvePanelProps = {
   onChangeSkuId: (value: number | null) => void;
 };
 
+function getSizeCurveWarningLabel(warning?: string | null): string | null {
+  const normalized = warning?.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized.includes("nema redova") || normalized.includes("empty") || normalized.includes("no_rows")) {
+    return "Size curve snapshot nema redove za izabrani opseg.";
+  }
+
+  if (normalized.includes("nepotpun") || normalized.includes("partial") || normalized.includes("incomplete")) {
+    return "Size curve snapshot sadrži delimične ili nepotpune podatke.";
+  }
+
+  if (normalized.includes("nije dostupan") || normalized.includes("missing") || normalized.includes("unavailable")) {
+    return "Size curve snapshot trenutno nije dostupan.";
+  }
+
+  return "Size curve snapshot ima ograničenje kvaliteta podataka.";
+}
+
 export function SizeCurvePanel({
   sizeCurveSkuId,
   sizeCurve,
@@ -19,6 +38,7 @@ export function SizeCurvePanel({
   onChangeSkuId,
 }: SizeCurvePanelProps) {
   const items = sizeCurve?.items ?? [];
+  const warningLabel = getSizeCurveWarningLabel(sizeCurve?.warning);
 
   return (
     <section className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
@@ -57,12 +77,21 @@ export function SizeCurvePanel({
         </div>
       ) : sizeCurveLoading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] p-4 text-center text-sm text-[var(--text-primary)]"><div className="mb-4">Učitavam size curve za SKU #{sizeCurveSkuId}...</div><LoadingSkeleton type="messages" count={1} /></div>
-      ) : !sizeCurve?.snapshotAvailable || items.length === 0 ? (
+      ) : !sizeCurve?.snapshotAvailable ? (
         <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
-          Nema size curve podataka za SKU #{sizeCurveSkuId}.
+          <div>Size curve nije dostupna za SKU #{sizeCurveSkuId}.</div>
+          {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">
+          <div>Size curve snapshot je dostupan, ali nema podataka za SKU #{sizeCurveSkuId} u izabranom opsegu.</div>
+          {warningLabel ? <div className="mt-2 text-xs text-warning">{warningLabel}</div> : null}
         </div>
       ) : (
-        <SizeCurveVisualization items={items} />
+        <>
+          {warningLabel ? <div className="mt-4 rounded-2xl border border-warning/40 bg-[var(--surface-elevated)] px-4 py-3 text-sm text-warning">{warningLabel}</div> : null}
+          <SizeCurveVisualization items={items} />
+        </>
       )}
     </section>
   );
