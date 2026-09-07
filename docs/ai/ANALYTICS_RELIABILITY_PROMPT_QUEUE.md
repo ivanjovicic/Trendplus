@@ -2722,13 +2722,13 @@ The first 2026-08-27 production audit found PDC rows looking actionable under in
 - Checks run: failing-first CTA test reproduced the old defect; 10 focused frontend tests, analytics guardrails/typecheck, production build and `git diff --check` passed.
 - Checks not run: backend tests, live database/materializer/refresh/browser deployment proof, full repository suite and remote CI result; no backend contract code changed.
 - Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
-- Main commit SHA: pending until delivery.
-- Main verification: pending local merge and `origin/main` verification.
+- Main commit SHA: `e3ad7df95389cef377faebed952f59499083e1e3` (delivered merge; final evidence sync is a descendant).
+- Main verification: `origin/main` contains `e3ad7df95389cef377faebed952f59499083e1e3`; feature branch `origin/codex/rq181-decision-board-blocked-action-cta` contains `1f12d7ce0d24ba2a4906f44adb91fe87aa13b09f`.
 - Missed: no backend ranking, score, confidence or action lifecycle changes; no report/export contract was changed because this CTA is owned by the Decision Board card renderer.
 - Follow-up: `RQ182` remains `WAITING`; no further prompt is promoted automatically.
 - Residual risk: cards with `recommendationAllowed` absent or non-true intentionally lose the executable CTA until backend permission is explicitly present.
 - Run log: `.ai/runs/2026-09-07-RQ181-evidence.md`
-- Evidence state: pending until delivery verification.
+- Evidence state: synchronized.
 
 ### Dependencies
 
