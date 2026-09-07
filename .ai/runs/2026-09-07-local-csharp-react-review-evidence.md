@@ -41,4 +41,7 @@ The existing fixes were structurally correct and their focused regressions passe
 
 - Live database/materializer/worker/browser deployment proof was not run; current inventory snapshot lineage remains intentionally `unknown` where no proven writer exists.
 - Full repository test suite was not run; focused tests cover the changed contracts and today's reviewed surfaces.
-- Delivery SHA and target-branch verification will be recorded after local merge and push.
+- Feature commit: `19f00ca8` was pushed to `origin/codex/review-2026-09-07-csharp-react`.
+- Local merge commit: `ac3b8035`.
+- Target verification: `git ls-remote --heads origin main` matched `ac3b8035` after the local merge and push.
+- Delivery state: review fix is on `main`; no live deployment claim was made.
