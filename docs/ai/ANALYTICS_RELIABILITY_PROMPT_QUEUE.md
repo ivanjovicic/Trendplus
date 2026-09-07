@@ -3593,23 +3593,6 @@ Produce and implement a matrix for every listed route and all sales, trend, fore
 - Last successful refresh is sourced from refresh history, never from request generation time.
 - 404, missing schema, refresh failure, partial/fallback, empty and stale states are distinguishable and visible.
 
-### Completion note
-
-- Date: 2026-09-07
-- Status: DONE
-- Completion: Preserved unknown pre/post coverage as nullable through backend DTOs and the TypeScript contract; aggregate averages exclude unknown values, preserve true zero, and become unavailable when no known basis exists; low-coverage counts exclude unknown rows; focused regression coverage was added.
-- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-07-RQ182-evidence.md`.
-- Checks run: focused backend coverage test 1/1; focused backend schema/meta tests 60/60; pre/post frontend spec 10/10; `npm run check:analytics-guardrails`; `npm run build`.
-- Checks not run: live database/materializer/refresh/browser/deployed proof, full repository suite and remote CI.
-- Delivery mode: feature branch push, local no-fast-forward merge to main, then origin/main push and verification.
-- Main commit SHA: pending until delivery.
-- Main verification: pending local merge and origin/main verification.
-- Missed: no SQL production change was required; non-finite JSON guard was not added because this C# decimal contract has no permissive NaN/Infinity path.
-- Follow-up: `RQ183` remains WAITING; no further prompt promoted automatically.
-- Residual risk: live refresh/materializer and deployed-client parity remain unverified outside this repository run.
-- Run log: `.ai/runs/2026-09-07-RQ182-evidence.md`
-- Evidence state: pending until delivery verification.
-
 ### Dependencies
 
 - `RQ137`, `RQ139` and existing cache/refresh prompts are prerequisites for vocabulary and compatibility.
@@ -6507,7 +6490,7 @@ Do not change backend ranking, score, confidence calculation, action lifecycle, 
 
 ## RQ182 - Preserve unknown pre/post coverage in backend DTOs and aggregate calculations
 
-Status: WAITING
+Status: DONE
 Priority: P0
 Type: backend/contract/frontend/tests
 Feature family: pre-post-coverage-backend-null-state
@@ -6571,6 +6554,23 @@ Do not change the causal/comparability formula, recommendation score, confidence
 - Aggregate coverage averages/counts exclude unknown values and become unavailable when there is no known basis.
 - Backend recommendation/actionability remains conservative when coverage evidence is missing.
 - All consumers preserve the same null/zero/positive state without frontend recomputation or silent fallback.
+
+### Completion note
+
+- Date: 2026-09-07
+- Status: DONE
+- Completion: Preserved unknown pre/post coverage as nullable through backend DTOs and the TypeScript contract; aggregate averages exclude unknown values, preserve true zero, and become unavailable when no known basis exists; low-coverage counts exclude unknown rows; focused regression coverage was added.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `.ai/runs/2026-09-07-RQ182-evidence.md`.
+- Checks run: focused backend coverage test 1/1; focused backend schema/meta tests 60/60; pre/post frontend spec 10/10; `npm run check:analytics-guardrails`; `npm run build`.
+- Checks not run: live database/materializer/refresh/browser/deployed proof, full repository suite and remote CI.
+- Delivery mode: feature branch push, local no-fast-forward merge to main, then origin/main push and verification.
+- Main commit SHA: `ab8f5439364fb0576612ed8ad7c0b1515229499` (delivered merge; final evidence sync is a descendant).
+- Main verification: `origin/main` contains `ab8f5439364fb0576612ed8ad7c0b1515229499`; feature branch `origin/codex/rq182-pre-post-coverage-backend-null-state` contains `ddd2cc33ee641c9bc92c17d77c68e1db56191020`.
+- Missed: no SQL production change was required; non-finite JSON guard was not added because this C# decimal contract has no permissive NaN/Infinity path.
+- Follow-up: `RQ183` remains WAITING; no further prompt promoted automatically.
+- Residual risk: live refresh/materializer and deployed-client parity remain unverified outside this repository run.
+- Run log: `.ai/runs/2026-09-07-RQ182-evidence.md`
+- Evidence state: synchronized.
 
 ### Dependencies
 
