@@ -5790,8 +5790,8 @@ Do not change the separate traffic health score contract owned by `RQ144`, refre
 - Run log: `.ai/runs/2026-09-07-RQ169-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `5fb731d3a25c6f98039e2273fc8663988da87b6f`
-- Main verification: passed - `origin/main` is `3239f67e` and contains implementation commit `5fb731d3a25c6f98039e2273fc8663988da87b6f` via the local merge.
+- Main commit SHA: `5fb731d3d0ac02ef74f2b659500b0c052e738598`
+- Main verification: passed - `git merge-base --is-ancestor 5fb731d3d0ac02ef74f2b659500b0c052e738598 origin/main` succeeded after the local merge and push; `origin/main` contains the implementation commit.
 - Missed: live provider/database/refresh/browser proof remains outside this local contract task.
 - Follow-up: `RQ170` - validate pilot-intake report periods without silently swapping or defaulting user input.
 - Residual risk: live import/refresh data may reveal integration-specific behavior not represented by the deterministic local fixtures.
