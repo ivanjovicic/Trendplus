@@ -1,12 +1,12 @@
 # Codex Publish Safe Cherry-Pick Plan
 
-Datum: 2026-06-16
-Izvorna grana: `origin/codex/publish-all-changes`
-Izvorni commit za bezbedne dodatke: `6278af4` (`feat: finalize analytics readiness and demo tooling`)
+Datum: 2026-06-16 (istorijski plan)
+Izvorna revizija: `64e8ff42` (`feat(demo-data): import safe seed package from codex publish`)
+Status: safe demo-seed paket je sada uključen na ovoj grani; dokument ostaje kao revizijski zapis
 
 ## Cilj
 
-Ovaj plan namerno ne koristi merge cele `origin/codex/publish-all-changes` grane.
+Ovaj plan namerno ne koristi merge cele izvorne publish grane.
 
 Razlog:
 - `main` je ispred te grane za veliki broj novijih analytics promena
@@ -77,7 +77,7 @@ Preporučeni način je file-level restore sa grane, ne commit-level cherry-pick:
 ```powershell
 git switch -c codex/import-safe-demo-seed
 
-git restore --source origin/codex/publish-all-changes -- `
+git restore --source 64e8ff42 -- `
   scripts/demo-data/generate-demo-data.py `
   scripts/demo-data/generate-demo-data.ps1 `
   seed/demo-data/analytics/AnalyticsActionItems.csv `

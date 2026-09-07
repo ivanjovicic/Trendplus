@@ -1546,11 +1546,6 @@ export default function ProductDecisionCenterPage() {
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}
-      {!hasBlockingError && actionStatusWarning ? (
-        <div className="product-decision-message product-decision-message-info" role="status">
-          {actionStatusWarning}
-        </div>
-      ) : null}
       {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
