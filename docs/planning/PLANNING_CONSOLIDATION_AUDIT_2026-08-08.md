@@ -216,4 +216,45 @@ They remain evidence. Current routing now has a higher-level canonical source so
 - Cost/FinOps roadmap once customer count and cloud usage justify explicit per-customer resource economics.
 - Support/incident operations roadmap after OBS establishes authoritative SLI/correlation vocabulary.
 
+## Analytical product architecture addendum - 2026-08-15
+
+This addendum preserves the 2026-08-08 consolidation finding and records a later architecture review of the listed roadmaps, current retail analytics contracts and representative market patterns. It is planning evidence only. It does not change an owner queue, promote a prompt, or assert that an unmeasured capability is shipped.
+
+### Evidence reviewed
+
+- current repository evidence, especially `ProductsDim`, the inventory signal contracts, `analytics_intel` views, Product Decision Center, inventory/supplier surfaces, source connector contracts and the RQ96-RQ98 waiting inventory foundations;
+- [Microsoft's Retail Analysis sample](https://learn.microsoft.com/en-us/power-bi/create-reports/sample-retail-analysis), which keeps sales, units, gross margin, variance and store/product drill context together;
+- [Dynamics 365 purchase and sales quantity analytics](https://learn.microsoft.com/en-us/dynamics365/business-central/inventory-powerbi-purchase-and-sales-qty), which makes purchase, sales, inventory, scheduled receipts and projected availability explicit;
+- [RELEX retail planning](https://www.relexsolutions.com/), which connects demand, supply, inventory, pricing and merchandising in one operational model;
+- [Tableau Pulse alert behavior](https://help.tableau.com/current/online/en-us/pulse_alerts.htm), which favors followed metrics, adverse threshold/trend signals and non-repeating alerts over dashboard-only monitoring;
+- [SAP predictive planning](https://help.sap.com/docs/SAP_ANALYTICS_CLOUD/00f68c2e08b941f081002fd3691d86a7/66eeff9e46334644b43b10e49e2022bf.html) and [SAP what-if analysis](https://help.sap.com/docs/SAP_INTEGRATED_BUSINESS_PLANNING/feae3cea3cc549aaa9d9de7d363a83e6/7c161596e45247e8a00c8df4f105464a.html), which treat forecast versions and scenarios as explicit, controlled planning artifacts.
+
+### Confirmed direction
+
+Trendplus should keep its narrow, differentiated path: trustworthy retail facts -> explainable prioritized decision -> action -> measured outcome. It should not compete by recreating generic dashboard authoring, arbitrary analytics querying or a full enterprise planning suite.
+
+The architecture review finds these foundations already represented in existing programs, not missing new top-level programs:
+
+| Capability | Existing foundation | Remaining depth work | Owner |
+|---|---|---|---|
+| Product and retail context | products, variants, stores, suppliers, price/cost, season and analytics dimensions exist | cross-source canonical identity/hierarchy and mapping coverage must be explicit before cross-system rollups | QDB + RQ |
+| Inventory and availability | inventory alerts, risk, rebalance, forecast read contracts and no-fake-zero guardrails exist | observed SKU/store/day historical inventory and provenance; do not turn reconstruction into observed history | RQ96 |
+| Forecasting | snapshot read surface, confidence and explanation fields exist | materializer ownership, baseline/backtest, uncertainty, sparse-demand policy and drift evidence | RQ97 -> RQ98 |
+| Decisions and learning | reason codes, confidence, alternatives, actions/outcomes, Decision Timeline and measurement statistics are established | eligibility must state grain, feasibility, provenance and outcome limits across decision families | DEX/RL/DT + RQ |
+| Exception workflow | inventory alerts and scheduled reports exist | narrow, deduplicated decision digest after data foundations; no generic rules engine or notification sprawl | existing DEX/OBS/RQ ownership |
+| Scenario planning | no need for full planning engine today | later bounded, read-only markdown/replenishment scenarios with explicit assumptions/ranges and no source write-back | RQ + DEX after RQ96-RQ98 |
+
+### What is intentionally deferred
+
+- generic product-master data management;
+- broad promotion/price-elasticity modeling before trustworthy promotion/availability/history inputs exist;
+- universal anomaly detection before retail-specific exceptions prove insufficient;
+- customer/basket/RFM analytics without supported customer-level data and commercial demand;
+- automated ERP/POS write-back;
+- adaptive recommendation policy or causal claims before outcome coverage and controlled evaluation justify them.
+
+### Documentation changes required by this review
+
+The master roadmap, business roadmap, Decision Intelligence roadmap, Premium UI roadmap, OBS/PERF/SEC roadmaps and Feature Lifecycle now require future analytical work to declare grain, source/proxy provenance, population/denominator, exclusions, freshness/coverage, action constraints and measurable outcome. This removes a common failure mode in retail analytics: a plausible aggregate or forecast being treated as a decision without enough evidence to support it.
+
 These are ideas only and should not become READY queues without passing the Feature Lifecycle and master ownership checks.

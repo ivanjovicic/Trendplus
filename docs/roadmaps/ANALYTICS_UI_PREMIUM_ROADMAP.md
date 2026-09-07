@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-08-13
+Updated: 2026-08-15
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -19,6 +19,16 @@ P-UI must not:
 - repair SQL/backend analytics correctness through visual fallbacks;
 - turn missing/unknown/stale/partial evidence into a healthy-looking state;
 - displace higher-priority BCI/STAB/RQ correctness work merely because a UI task is locally READY.
+
+## Product-led analytics rule
+
+The next UI improvements should make the existing retail decision flow easier to follow, not create additional visual destinations for the same signal. A user should be able to move from a prioritized exception to the same product/SKU, variant, store, supplier, period and trust context without losing the decision grain.
+
+When a future backend contract supports it, P-UI may render a consistent drill path:
+
+`portfolio/exception -> product or SKU -> variant/store context -> evidence -> recommended action -> recorded outcome`
+
+This is a navigation and presentation rule, not permission to invent a Product 360 API, aggregate variants in the browser, infer parent-child relationships, or make a local recommendation. The authoritative identity, hierarchy, metric scope, provenance and action eligibility remain backend contracts.
 
 ## Current direction
 
@@ -42,8 +52,9 @@ The queue remains authoritative for exact task status and acceptance.
 2. Finish migration of high-value analytics tables onto shared UI primitives.
 3. Consolidate dense page-specific controls where doing so does not change request/filter semantics.
 4. Improve dashboard/command-center hierarchy after correctness/trust states are stable.
-5. Keep dark/light/mobile/tablet/desktop visual evidence for broad UI changes.
-6. Re-evaluate remaining page-specific UI debt before creating more premium prompts.
+5. When an owner contract exists, make product/SKU-to-variant/store/evidence/action navigation consistent across product, inventory and supplier surfaces.
+6. Keep dark/light/mobile/tablet/desktop visual evidence for broad UI changes.
+7. Re-evaluate remaining page-specific UI debt before creating more premium prompts.
 
 ## Dependencies
 
@@ -58,4 +69,4 @@ The queue remains authoritative for exact task status and acceptance.
 
 ## Non-goals
 
-No broad visual rewrite, design-system replacement, business-logic migration to frontend, or parallel analytics formula work is authorized by this roadmap.
+No broad visual rewrite, design-system replacement, business-logic migration to frontend, parallel analytics formula work, generic self-service dashboard builder, or client-side product-hierarchy reconstruction is authorized by this roadmap.

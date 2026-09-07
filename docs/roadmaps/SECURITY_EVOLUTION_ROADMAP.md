@@ -1,6 +1,6 @@
 # Trendplus Security Evolution Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-15
 Status: future security roadmap; current pilot remediation remains owned by STAB  
 Owner queue: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`SEC`)
 
@@ -66,6 +66,8 @@ Pilot authz gaps remain STAB-owned; SEC owns only cross-cutting post-STAB orphan
 - retention/deletion expectations;
 - backup/restore protection;
 - generated reports/files;
+- product, customer, transaction and supplier fields used in analytics evidence, exports and decision snapshots;
+- data-minimization rules for observability, forecast/backtest fixtures and scenario artifacts;
 - tenant/customer offboarding;
 - AI data retention/provider policy when enabled.
 
@@ -128,6 +130,8 @@ Before customer-facing GenAI:
 - no real secrets/customer payloads in committed evidence;
 - threat-model updates should link exact owner prompts/tests;
 - security checks should fail closed where identity/scope is unresolved.
+- analytics evidence, decision snapshots, exports and benchmark fixtures must use the minimum data necessary for their purpose and must inherit the applicable customer/source access boundary.
+- anonymized or synthetic fixtures are required before broad sharing of product, transaction, price, cost or supplier-level evidence outside the authorized customer/deployment scope.
 
 ## Dependencies
 

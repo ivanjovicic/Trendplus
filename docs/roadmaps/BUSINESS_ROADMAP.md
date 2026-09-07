@@ -1,6 +1,6 @@
 # Trendplus Business Roadmap
 
-Updated: 2026-08-08  
+Updated: 2026-08-15
 Status: canonical business milestone map
 
 This roadmap maps commercial/product milestones to existing technical planning programs. It does not create a second implementation backlog.
@@ -20,6 +20,7 @@ A real retailer can use Trendplus for a bounded pilot without the team overstati
 - admin/security boundaries are appropriate for the pilot mode;
 - backup/restore rehearsal is usable;
 - pilot operator can see why a recommendation exists and whether evidence is stale/partial/unknown;
+- every sold recommendation family states its decision grain, scope, units, key exclusions and action limitation rather than relying on dashboard interpretation;
 - operational monitoring can detect a failed import, failed refresh and failed worker.
 
 ### Queue mapping
@@ -49,6 +50,8 @@ Onboarding the first paying/production customer is repeatable enough that the pr
 - import/analytics operational monitoring sufficient for support;
 - security responsibilities and credential handling documented;
 - deterministic explanation available or planned for the recommendation families sold as decision support;
+- the supported source mapping makes product/SKU, variant, store, supplier, price/cost and time context explicit enough for the analytics actually sold;
+- the customer can distinguish observed inventory history from any reconstructed/proxy history in high-impact stock, availability and lost-sales views;
 - basic support/rollback/recovery runbook complete.
 
 ### Queue mapping
@@ -75,6 +78,7 @@ Trendplus can onboard and operate around ten customers without each customer bec
 - import, analytics and worker SLIs are monitored;
 - incidents can be correlated to the correct customer/source/job;
 - decision/action/outcome data model is ready for reusable product learning.
+- data-quality coverage shows which sources/products/stores are excluded from a decision rather than treating incomplete mapping as a normal result.
 
 ### Queue mapping
 
@@ -99,6 +103,7 @@ Trendplus has a scalable operating model with predictable performance, support s
 - connector onboarding is standardized;
 - security reviews cover tenant boundaries, secrets, privileged operations and auditability;
 - decision timeline/outcome statistics are reliable enough for product-level learning;
+- predictive or planning claims, if sold, are backed by a declared baseline, backtest population, uncertainty and measured outcome rather than a point forecast alone;
 - support can distinguish product defects, source-data defects and customer configuration defects quickly.
 
 ### Queue mapping
@@ -163,3 +168,5 @@ Trendplus can add customer-facing GenAI features without making AI a dependency 
 - Each milestone consumes evidence from the canonical owner queues in `MASTER_ROADMAP.md`.
 - A milestone cannot be marked complete from docs-only assumptions where live/runtime evidence is required.
 - Warnings must be explicit, owned and visible; they are not silently converted to PASS.
+- Commercial material, demos and customer-facing documentation must not describe a metric as a forecast, availability, lost-sales estimate, optimization or recommendation beyond the evidence its owner contract supports.
+- A new analytical capability earns a customer-facing claim only after its grain, provenance, coverage, freshness, decision constraint and validation outcome are documented in the owning program.

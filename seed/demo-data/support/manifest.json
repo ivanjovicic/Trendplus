@@ -1,0 +1,20 @@
+{
+  "name": "Trendplus Demo Dataset",
+  "demoOnly": true,
+  "warning": "Demo podaci - ne koristiti za poslovne odluke.",
+  "anchorUtc": "2026-06-03T02:00:00Z",
+  "counts": {
+    "suppliers": 7,
+    "products": 120,
+    "stores": 3,
+    "salesDays": 180,
+    "salesHeaders": 540,
+    "salesLines": 1620,
+    "stockRows": 360,
+    "markdownEvents": 6,
+    "dataQualityIssues": 5,
+    "refreshRuns": 2,
+    "importBatches": 2,
+    "actionItems": 4
+  }
+}

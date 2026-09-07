@@ -76,6 +76,10 @@ type SortDir = "asc" | "desc";
 type RecommendationFilter = "all" | ProductDecisionRecommendationStatus;
 type DataQualityFilter = "all" | "good" | "warning" | "critical" | "insufficient_data";
 type PeriodPreset = "last30" | "last60" | "last90" | "custom";
+type OptionalActionStatusWarning = {
+  message: string;
+  detail?: string | null;
+};
 
 export type ProductDecisionSignalFields = {
   stockCoverDays?: number | null;
@@ -591,6 +595,33 @@ function toActionDataQualityStatus(value: string | null | undefined): AnalyticsA
   return "insufficient_data";
 }
 
+function buildActionStatusWarning(reason: unknown): OptionalActionStatusWarning {
+  const message = "Status akcija trenutno nije dostupan.";
+
+  if (reason instanceof AnalyticsMetaError) {
+    const details = [
+      reason.message?.trim(),
+      reason.errorCode ? `Kod: ${reason.errorCode}` : null,
+      reason.correlationId ? `Correlation ID: ${reason.correlationId}` : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return {
+      message,
+      detail: details.length > 0 ? details.join(" | ") : null,
+    };
+  }
+
+  if (reason instanceof Error) {
+    const detail = reason.message.trim();
+    return {
+      message,
+      detail: detail && detail !== message ? detail : null,
+    };
+  }
+
+  return { message, detail: null };
+}
+
 export function buildProductQueueSpec(row: ProductDecisionRow): {
   sourceType: AnalyticsActionSourceType;
   actionKind: string;
@@ -703,10 +734,10 @@ export default function ProductDecisionCenterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
   const [staleWarning, setStaleWarning] = useState<string | null>(null);
+  const [actionStatusWarning, setActionStatusWarning] = useState<OptionalActionStatusWarning | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
-  const [actionStatusWarning, setActionStatusWarning] = useState<string | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -898,11 +929,11 @@ export default function ProductDecisionCenterPage() {
         setQueuedActionKeys(keys);
         setEvidenceSnapshotByProductId(snapshots);
         setActionStatusWarning(null);
-      } catch {
+      } catch (reason) {
         if (!cancelled) {
           setQueuedActionKeys(null);
           setEvidenceSnapshotByProductId({});
-          setActionStatusWarning("Status akcija trenutno nije dostupan.");
+          setActionStatusWarning(buildActionStatusWarning(reason));
         }
       }
     })();
@@ -1504,14 +1535,15 @@ export default function ProductDecisionCenterPage() {
 
       {queueMessage ? <div className="product-decision-message product-decision-message-info">{queueMessage}</div> : null}
       {staleWarning ? <div className="product-decision-message product-decision-message-info">{staleWarning}</div> : null}
+      {actionStatusWarning ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          <strong>{actionStatusWarning.message}</strong>
+          {actionStatusWarning.detail ? <div>{actionStatusWarning.detail}</div> : null}
+        </div>
+      ) : null}
       {!hasBlockingError && error ? (
         <div className="product-decision-message product-decision-message-info">
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
-        </div>
-      ) : null}
-      {!hasBlockingError && actionStatusWarning ? (
-        <div className="product-decision-message product-decision-message-info" role="status">
-          {actionStatusWarning}
         </div>
       ) : null}
       {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}

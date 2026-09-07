@@ -1,0 +1,8 @@
+SupplierKey,SupplierId,Naziv,Adresa,Telefon,Napomena,DataOrigin,UpdatedAt
+1,1,Demo Sport,"Beograd, Knez Mihailova 1",+3811101001,Strong supplier,access,2026-06-03T02:00:00Z
+2,2,Balkan Comfort,"Novi Sad, Dunavska 5",+3811101002,Strong supplier,access,2026-06-03T02:00:00Z
+3,3,Adriatic Steps,"Subotica, Korzo 3",+3811101003,Weak supplier,access,2026-06-03T02:00:00Z
+4,4,Urban Motion,"Nis, Obrenoviceva 11",+3811101004,Weak supplier,access,2026-06-03T02:00:00Z
+5,5,Atlas Trade,"Kragujevac, Laze Kostic 2",+3811101005,Fallback-only supplier,access,2026-06-03T02:00:00Z
+6,6,Nova Obuca,"Cacak, Trg 7",+3811101006,New supplier with few sales,access,2026-06-03T02:00:00Z
+7,7,,"Pancevo, Industrijska 9",+3811101007,Intentional missing supplier name,access,2026-06-03T02:00:00Z
