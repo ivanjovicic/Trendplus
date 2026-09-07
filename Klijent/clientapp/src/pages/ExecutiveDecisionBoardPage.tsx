@@ -1041,6 +1041,10 @@ function boardActionState(card: { alreadyInAction: boolean; alreadyClosed: boole
   return "none";
 }
 
+function hasExecutableActionCta(card: Pick<BoardCard, "recommendationAllowed" | "alreadyInAction" | "alreadyClosed">): boolean {
+  return card.recommendationAllowed === true || card.alreadyInAction || card.alreadyClosed;
+}
+
 function confidencePresentationFromBoardCard(
   card: DecisionBoardAggregateResponse["sections"][number]["cards"][number],
 ): { label: string; tone: BoardTone; score: number | null } {
@@ -1186,6 +1190,7 @@ function renderSectionCard(card: BoardCard) {
   const seenCodeLabels = new Set<string>();
   const warningCodes = buildBoardCodeChips(card.warningCodes, seenCodeLabels);
   const reasonCodes = buildBoardCodeChips(card.reasonCodes, seenCodeLabels);
+  const executableActionCta = hasExecutableActionCta(card);
 
   return (
     <article key={card.id} className={`decision-board-card decision-board-card-${card.kind} decision-board-card-${card.confidenceTone}`}>
@@ -1270,9 +1275,15 @@ function renderSectionCard(card: BoardCard) {
         <Link to={card.sourceLink} className="decision-board-link decision-board-link-secondary">
           Otvori izvor
         </Link>
-        <Link to={card.actionHref} className="decision-board-link decision-board-link-primary">
-          {card.actionCta}
-        </Link>
+        {executableActionCta ? (
+          <Link to={card.actionHref} className="decision-board-link decision-board-link-primary">
+            {card.actionCta}
+          </Link>
+        ) : (
+          <Link to={card.sourceLink} className="decision-board-link decision-board-link-secondary">
+            Proveri podatke
+          </Link>
+        )}
       </div>
 
       <div className="decision-board-card-footer">

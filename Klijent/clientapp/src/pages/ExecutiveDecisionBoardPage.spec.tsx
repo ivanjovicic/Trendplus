@@ -124,6 +124,7 @@ function aggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}): Dec
     dataQualityStatus: "good",
     priorityScore: 280,
     impactScore: 120000,
+    recommendationAllowed: true,
   });
 
   const blocker = card({
@@ -324,6 +325,50 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.getByText("Realizacija očekivanog uticaja")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Otvori izvor" }).some((link) => link.getAttribute("href") === "/analytics/data-quality")).toBe(true);
     expect(screen.getAllByRole("link", { name: "Dodaj u akcije" }).some((link) => link.getAttribute("href") === "/analytics/actions?sourceType=product")).toBe(true);
+    expect(screen.getByRole("link", { name: "U akcijama" })).toHaveAttribute("href", "/analytics/actions");
+    expect(screen.getByRole("link", { name: "Već zatvoreno" })).toHaveAttribute("href", "/analytics/actions");
+  });
+
+  it.each([
+    ["false", false],
+    ["null", null],
+    ["omitted", undefined],
+  ] as const)("does not expose an executable CTA when recommendationAllowed is %s", async (_label, recommendationAllowed) => {
+    const blockedCard = card({
+      id: `blocker:action-${_label}`,
+      kind: "blocker",
+      sectionKey: "blockers",
+      sourceModule: "Kvalitet podataka",
+      sourceKey: `action-${_label}`,
+      title: `Blokirana akcija (${_label})`,
+      summary: "Signal nije dovoljno pouzdan za izvršnu akciju.",
+      confidenceLevel: "insufficient_data",
+      confidenceScore: null,
+      expectedImpactRsd: null,
+      riskIfIgnored: "Akcija bez potvrđenog signala može napraviti pogrešan potez.",
+      recommendedNextAction: "Proveri kvalitet podataka.",
+      actionHref: "/analytics/actions?sourceType=data_quality",
+      sourceType: "data_quality",
+      dataQualityStatus: "insufficient_data",
+      priorityScore: 100,
+      impactScore: 0,
+      recommendationAllowed,
+    });
+
+    vi.mocked(getDecisionBoardAggregate).mockResolvedValue(
+      aggregate({
+        sections: [section("blockers", [blockedCard], { title: "Blokatori kvaliteta podataka", sourceLink: "/analytics/data-quality" })],
+      }),
+    );
+
+    renderPage();
+
+    const title = await screen.findByText(`Blokirana akcija (${_label})`);
+    const blockedArticle = title.closest("article");
+    expect(blockedArticle).not.toBeNull();
+    expect(within(blockedArticle as HTMLElement).queryByRole("link", { name: "Dodaj u akcije" })).not.toBeInTheDocument();
+    expect(within(blockedArticle as HTMLElement).getByRole("link", { name: "Otvori izvor" })).toHaveAttribute("href", "/analytics/data-quality");
+    expect(within(blockedArticle as HTMLElement).getByRole("link", { name: "Proveri podatke" })).toHaveAttribute("href", "/analytics/data-quality");
   });
 
   it("keeps partial-source warnings visible instead of presenting the board as fully green", async () => {
