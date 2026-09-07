@@ -6286,13 +6286,13 @@ The pre/post vendor page uses a frontend fallback sum of absolute row changes wh
 - Checks run: failing-first null aggregate test reproduced the old fallback; 10 focused frontend tests, analytics guardrails/typecheck, production build, 58 focused backend contract/meta tests, 29 focused SQL/schema tests and `git diff --check` passed.
 - Checks not run: live database/materializer/refresh/browser deployment proof, full repository suite and remote CI result.
 - Delivery mode: feature branch push, local no-fast-forward merge to `main`, then `origin/main` push and verification.
-- Main commit SHA: pending until delivery.
-- Main verification: pending local merge and `origin/main` verification.
+- Main commit SHA: `8c68e15ae4dc95afed607d1a63c67c58856a6702` (delivered merge; final evidence sync is a descendant).
+- Main verification: `origin/main` contains `8c68e15ae4dc95afed607d1a63c67c58856a6702`; feature branch `origin/codex/rq180-pre-post-aggregate-owner-parity` contains `0cf6c5d7feacdefece46dc911985eb3f83febced`.
 - Missed: no backend production contract shape or separate report endpoint was changed because the authoritative fields and shared page projection already existed.
 - Follow-up: no prompt promoted automatically; `RQ181` and `RQ182` remain WAITING.
 - Residual risk: a response that omits or sends a non-finite authoritative aggregate/share intentionally remains unavailable until backend data is present.
 - Run log: `.ai/runs/2026-09-07-RQ180-evidence.md`
-- Evidence state: pending until the local merge and `origin/main` verification are recorded.
+- Evidence state: synchronized.
 
 ### Dependencies
 
